@@ -105,15 +105,18 @@ export type EngineEvent =
   | {
       type: "device.removed";
       deviceId: string;
+      deviceName: string;
     }
   | {
       type: "device.status_changed";
       deviceId: string;
+      deviceName: string;
       status: DeviceStatus;
     }
   | {
       type: "device.data.updated";
       deviceId: string;
+      deviceName: string;
       dataId: string;
       key: string;
       value: unknown;

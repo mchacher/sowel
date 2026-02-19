@@ -204,7 +204,7 @@ export class DeviceManager {
     if (existing) {
       this.stmts.updateDeviceStatus.run("offline", existing.id);
       this.logger.warn({ deviceId: existing.id, name: mqttName }, "Device removed from bridge");
-      this.eventBus.emit({ type: "device.removed", deviceId: existing.id });
+      this.eventBus.emit({ type: "device.removed", deviceId: existing.id, deviceName: existing.name });
     }
   }
 
@@ -228,6 +228,7 @@ export class DeviceManager {
       this.eventBus.emit({
         type: "device.status_changed",
         deviceId: device.id,
+        deviceName: device.name,
         status: "online",
       });
     }
@@ -248,6 +249,7 @@ export class DeviceManager {
         this.eventBus.emit({
           type: "device.data.updated",
           deviceId: device.id,
+          deviceName: device.name,
           dataId: dataRow.id,
           key,
           value,
@@ -277,6 +279,7 @@ export class DeviceManager {
       this.eventBus.emit({
         type: "device.status_changed",
         deviceId: device.id,
+        deviceName: device.name,
         status,
       });
     }
@@ -350,10 +353,11 @@ export class DeviceManager {
   }
 
   delete(id: string): boolean {
+    const existing = this.getById(id);
     const result = this.stmts.deleteDevice.run(id);
     if (result.changes > 0) {
       this.logger.info({ deviceId: id }, "Device deleted");
-      this.eventBus.emit({ type: "device.removed", deviceId: id });
+      this.eventBus.emit({ type: "device.removed", deviceId: id, deviceName: existing?.name ?? id });
       return true;
     }
     return false;
