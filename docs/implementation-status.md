@@ -1,21 +1,23 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-19 — V0.1 (backend + UI)
+> Updated: 2026-02-19 — V0.1 done, V0.2 in progress
 
-## Roadmap Change: Incremental UI
+## Roadmap Changes
 
-The original roadmap bundled all UI into V0.4. This has been changed to an **incremental approach**: each backend version now ships its corresponding UI pages. V0.4 becomes a polish/UX milestone.
+1. **Incremental UI**: The original roadmap bundled all UI into V0.4. Changed to an **incremental approach**: each backend version ships its corresponding UI pages. V0.4 becomes a polish/UX milestone.
+2. **Topology first**: V0.2 and V0.3 were swapped. Zones (spatial topology) are now implemented before Equipments, so users define where things are before assigning functional units.
+3. **Core data model**: See [data-model.md](data-model.md) for the complete 3-layer architecture (Zones → Equipments → Devices).
 
 ## Versions
 
 | Version | Feature | Status |
 |---------|---------|--------|
 | **V0.1** | MQTT + Devices + **UI Scaffolding & Devices page** | ✅ Done |
-| V0.2 | Equipments + Bindings + **UI Equipments** | — |
-| V0.3 | Zones + Aggregation + **UI Zones & Dashboard** | — |
+| **V0.2** | **Zones + Equipment Groups + UI Zones** (topology) | 🚧 In progress |
+| V0.3 | Equipments + Bindings + Orders + **UI Equipments** | — |
 | V0.4 | **UI Polish & Real-time UX** (reconnection, dark mode, responsive, animations) | — |
-| V0.5 | Computed Data | — |
-| V0.6 | History (InfluxDB) | — |
+| V0.5 | Computed Data + Internal Rules | — |
+| V0.6 | History (InfluxDB) + Zone Aggregation Engine | — |
 | V0.7 | Scenario Engine | — |
 | V0.8 | Recipes | — |
 | V0.9 | Polish | — |
