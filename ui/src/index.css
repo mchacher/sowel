@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+
+/* ============================================================
+   Corbel Design System — Tailwind v4 Theme
+   ============================================================ */
+
+@theme {
+  /* Colors — Light mode */
+  --color-primary: #1B6B5A;
+  --color-primary-light: #E8F4F0;
+  --color-primary-hover: #155A4A;
+  --color-accent: #D4873F;
+  --color-accent-hover: #BE7535;
+  --color-background: #FAFAF8;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-text: #1A1A1A;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary: #9CA3AF;
+  --color-border: #E5E5E3;
+  --color-border-light: #F0F0EE;
+  --color-success: #22A06B;
+  --color-warning: #D4873F;
+  --color-error: #C9372C;
+  --color-info: #2563EB;
+  --color-motion: #2563EB;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Font sizes — Corbel specific */
+  --font-size-data-lg: 28px;
+  --font-size-data-md: 20px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ============================================================
+   Base styles
+   ============================================================ */
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
