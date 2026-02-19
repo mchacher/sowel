@@ -1,0 +1,317 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import Database from "better-sqlite3";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { DeviceManager } from "./device-manager.js";
+import { EventBus } from "../core/event-bus.js";
+import { createLogger } from "../core/logger.js";
+import type { EngineEvent } from "../shared/types.js";
+
+function createTestDb(): Database.Database {
+  const db = new Database(":memory:");
+  db.pragma("foreign_keys = ON");
+  const migration = readFileSync(
+    resolve(import.meta.dirname ?? ".", "../../migrations/001_devices.sql"),
+    "utf-8",
+  );
+  db.exec(migration);
+  return db;
+}
+
+const logger = createLogger("silent");
+
+describe("DeviceManager", () => {
+  let db: Database.Database;
+  let eventBus: EventBus;
+  let manager: DeviceManager;
+  let events: EngineEvent[];
+
+  beforeEach(() => {
+    db = createTestDb();
+    eventBus = new EventBus(logger);
+    manager = new DeviceManager(db, eventBus, logger);
+    events = [];
+    eventBus.on((event) => events.push(event));
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  const sampleDevice = {
+    ieeeAddress: "0x00158d0001a2b3c4",
+    friendlyName: "salon_pir",
+    manufacturer: "Xiaomi",
+    model: "RTCGQ11LM",
+    data: [
+      { key: "occupancy", type: "boolean" as const, category: "motion" as const },
+      { key: "battery", type: "number" as const, category: "battery" as const, unit: "%" },
+      { key: "linkquality", type: "number" as const, category: "generic" as const, unit: "lqi" },
+    ],
+    orders: [],
+    rawExpose: [],
+  };
+
+  const sampleLight = {
+    ieeeAddress: "0x00158d0001a2b3c5",
+    friendlyName: "salon_lampe",
+    manufacturer: "IKEA",
+    model: "LED1545G12",
+    data: [
+      { key: "state", type: "enum" as const, category: "light_state" as const },
+      { key: "brightness", type: "number" as const, category: "light_brightness" as const },
+    ],
+    orders: [
+      { key: "state", type: "enum" as const, payloadKey: "state", enumValues: ["ON", "OFF", "TOGGLE"] },
+      { key: "brightness", type: "number" as const, payloadKey: "brightness", min: 0, max: 254 },
+    ],
+    rawExpose: [],
+  };
+
+  describe("upsertFromDiscovery", () => {
+    it("creates a new device", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+
+      const devices = manager.getAll();
+      expect(devices).toHaveLength(1);
+      expect(devices[0].name).toBe("salon_pir");
+      expect(devices[0].manufacturer).toBe("Xiaomi");
+      expect(devices[0].ieeeAddress).toBe("0x00158d0001a2b3c4");
+      expect(devices[0].source).toBe("zigbee2mqtt");
+    });
+
+    it("creates device data", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+
+      const devices = manager.getAll();
+      const data = manager.getDeviceData(devices[0].id);
+      expect(data).toHaveLength(3);
+      expect(data.map((d) => d.key).sort()).toEqual(["battery", "linkquality", "occupancy"]);
+      expect(data.find((d) => d.key === "occupancy")?.category).toBe("motion");
+      expect(data.find((d) => d.key === "battery")?.unit).toBe("%");
+    });
+
+    it("creates device orders", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+
+      const devices = manager.getAll();
+      const orders = manager.getDeviceOrders(devices[0].id);
+      expect(orders).toHaveLength(2);
+      expect(orders.find((o) => o.key === "brightness")?.min).toBe(0);
+      expect(orders.find((o) => o.key === "brightness")?.max).toBe(254);
+      expect(orders.find((o) => o.key === "state")?.enumValues).toEqual(["ON", "OFF", "TOGGLE"]);
+    });
+
+    it("emits device.discovered event", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+
+      const discovered = events.find((e) => e.type === "device.discovered");
+      expect(discovered).toBeDefined();
+      if (discovered?.type === "device.discovered") {
+        expect(discovered.device.name).toBe("salon_pir");
+      }
+    });
+
+    it("does not emit device.discovered on re-discovery", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+
+      expect(events.filter((e) => e.type === "device.discovered")).toHaveLength(0);
+    });
+
+    it("preserves existing device name on re-discovery", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      const device = manager.getAll()[0];
+      manager.update(device.id, { name: "PIR Salon" });
+
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      expect(manager.getById(device.id)?.name).toBe("PIR Salon");
+    });
+  });
+
+  describe("updateDeviceData", () => {
+    it("updates data values and emits events", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", {
+        occupancy: true,
+        battery: 88,
+      });
+
+      const dataEvents = events.filter((e) => e.type === "device.data.updated");
+      expect(dataEvents).toHaveLength(2);
+    });
+
+    it("includes deviceName in events", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type === "device.data.updated") {
+        expect(event.deviceName).toBe("salon_pir");
+        expect(event.key).toBe("occupancy");
+        expect(event.value).toBe(true);
+      }
+    });
+
+    it("does not emit event if value unchanged", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
+
+      const dataEvents = events.filter((e) => e.type === "device.data.updated");
+      expect(dataEvents).toHaveLength(0);
+    });
+
+    it("marks device as online when receiving data", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      const device = manager.getAll()[0];
+      expect(device.status).toBe("unknown");
+
+      events.length = 0;
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: false });
+
+      expect(manager.getById(device.id)?.status).toBe("online");
+      const statusEvent = events.find((e) => e.type === "device.status_changed");
+      expect(statusEvent).toBeDefined();
+    });
+
+    it("ignores unknown properties", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", { unknown_field: 42 });
+
+      const dataEvents = events.filter((e) => e.type === "device.data.updated");
+      expect(dataEvents).toHaveLength(0);
+    });
+
+    it("ignores unknown devices", () => {
+      events.length = 0;
+      manager.updateDeviceData("zigbee2mqtt", "nonexistent", { occupancy: true });
+      expect(events).toHaveLength(0);
+    });
+  });
+
+  describe("updateDeviceStatus", () => {
+    it("updates status and emits event", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
+
+      const device = manager.getAll()[0];
+      expect(device.status).toBe("online");
+
+      const statusEvent = events.find((e) => e.type === "device.status_changed");
+      if (statusEvent?.type === "device.status_changed") {
+        expect(statusEvent.status).toBe("online");
+        expect(statusEvent.deviceName).toBe("salon_pir");
+      }
+    });
+
+    it("does not emit event if status unchanged", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
+      events.length = 0;
+
+      manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
+      expect(events.filter((e) => e.type === "device.status_changed")).toHaveLength(0);
+    });
+  });
+
+  describe("CRUD", () => {
+    it("getAll returns all devices sorted by name", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+
+      const devices = manager.getAll();
+      expect(devices).toHaveLength(2);
+      // Sorted by name: salon_lampe < salon_pir
+      expect(devices[0].name).toBe("salon_lampe");
+      expect(devices[1].name).toBe("salon_pir");
+    });
+
+    it("getByIdWithDetails includes data and orders", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      const id = manager.getAll()[0].id;
+
+      const detail = manager.getByIdWithDetails(id);
+      expect(detail).not.toBeNull();
+      expect(detail!.data).toHaveLength(2);
+      expect(detail!.orders).toHaveLength(2);
+    });
+
+    it("update changes name", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      const id = manager.getAll()[0].id;
+
+      const updated = manager.update(id, { name: "PIR Salon" });
+      expect(updated?.name).toBe("PIR Salon");
+    });
+
+    it("update changes zoneId", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      const id = manager.getAll()[0].id;
+
+      const updated = manager.update(id, { zoneId: "zone-123" });
+      expect(updated?.zoneId).toBe("zone-123");
+    });
+
+    it("delete removes device and emits event", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      const id = manager.getAll()[0].id;
+      events.length = 0;
+
+      const result = manager.delete(id);
+      expect(result).toBe(true);
+      expect(manager.getAll()).toHaveLength(0);
+      expect(events.find((e) => e.type === "device.removed")).toBeDefined();
+    });
+
+    it("delete returns false for nonexistent device", () => {
+      expect(manager.delete("nonexistent")).toBe(false);
+    });
+
+    it("getById returns null for nonexistent device", () => {
+      expect(manager.getById("nonexistent")).toBeNull();
+    });
+  });
+
+  describe("markRemoved", () => {
+    it("sets device offline and emits event", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.markRemoved("zigbee2mqtt", "salon_pir");
+
+      const device = manager.getAll()[0];
+      expect(device.status).toBe("offline");
+      expect(events.find((e) => e.type === "device.removed")).toBeDefined();
+    });
+  });
+
+  describe("counts", () => {
+    it("getDeviceCount returns total", () => {
+      expect(manager.getDeviceCount()).toBe(0);
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      expect(manager.getDeviceCount()).toBe(1);
+    });
+
+    it("getStatusCounts groups by status", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
+
+      const counts = manager.getStatusCounts();
+      expect(counts.online).toBe(1);
+      expect(counts.unknown).toBe(1);
+    });
+  });
+});
