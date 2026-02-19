@@ -222,8 +222,15 @@ export class DeviceManager {
       | undefined;
     if (!device) return;
 
-    // Also update last_seen
-    this.stmts.updateDeviceStatus.run(device.status === "offline" ? "online" : device.status, device.id);
+    // A device sending data is online — update status and last_seen
+    if (device.status !== "online") {
+      this.stmts.updateDeviceStatus.run("online", device.id);
+      this.eventBus.emit({
+        type: "device.status_changed",
+        deviceId: device.id,
+        status: "online",
+      });
+    }
 
     for (const [key, value] of Object.entries(payload)) {
       const dataRow = this.stmts.findDeviceDataByKey.get(device.id, key) as
