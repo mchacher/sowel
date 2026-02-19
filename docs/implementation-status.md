@@ -1,15 +1,19 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-19 — V0.1
+> Updated: 2026-02-19 — V0.1 (backend + UI)
+
+## Roadmap Change: Incremental UI
+
+The original roadmap bundled all UI into V0.4. This has been changed to an **incremental approach**: each backend version now ships its corresponding UI pages. V0.4 becomes a polish/UX milestone.
 
 ## Versions
 
 | Version | Feature | Status |
 |---------|---------|--------|
-| **V0.1** | MQTT + Devices | ✅ Done |
-| V0.2 | Equipments + Bindings | — |
-| V0.3 | Zones + Aggregation | — |
-| V0.4 | UI + Real-time | — |
+| **V0.1** | MQTT + Devices + **UI Scaffolding & Devices page** | ✅ Done |
+| V0.2 | Equipments + Bindings + **UI Equipments** | — |
+| V0.3 | Zones + Aggregation + **UI Zones & Dashboard** | — |
+| V0.4 | **UI Polish & Real-time UX** (reconnection, dark mode, responsive, animations) | — |
 | V0.5 | Computed Data | — |
 | V0.6 | History (InfluxDB) | — |
 | V0.7 | Scenario Engine | — |
@@ -19,9 +23,9 @@
 
 ---
 
-## V0.1 — MQTT + Devices
+## V0.1 — MQTT + Devices + UI
 
-**Objective**: Connect to zigbee2mqtt, auto-discover all Zigbee devices, track their state in real-time, persist in SQLite.
+**Objective**: Connect to zigbee2mqtt, auto-discover all Zigbee devices, track their state in real-time, persist in SQLite. Provide a web UI to browse devices.
 
 ### What it does
 
@@ -33,6 +37,19 @@
 - Marks devices online when they send data
 - Persists everything in SQLite (WAL mode)
 - Broadcasts all events via WebSocket
+- **Web UI**: React app with Devices list and detail pages
+
+### UI (React)
+
+| Feature | Detail |
+|---------|--------|
+| Tech stack | React 18 + Vite + Tailwind v4 + Zustand + React Router v6 |
+| Design system | Inter + JetBrains Mono fonts, Corbel color palette, Lucide icons |
+| Devices list | Sortable table (name, manufacturer, model, source, battery, LQI, last seen), filter by name |
+| Device detail | Data table, Orders list, raw expose viewer, inline name editor |
+| Layout | Collapsible sidebar, connection status indicator, mobile bottom nav |
+| WebSocket | Auto-reconnect with exponential backoff, live updates for all device events |
+| State hydration | Devices fetched from API on startup, MQTT status from `/api/v1/health` |
 
 ### API Endpoints
 
@@ -85,6 +102,14 @@ MQTT Broker (zigbee2mqtt)
 | Entry | `src/index.ts` |
 | DB | `migrations/001_devices.sql` |
 | Tests | `src/devices/category-inference.test.ts`, `src/devices/device-manager.test.ts`, `src/core/event-bus.test.ts` |
+| **UI** | |
+| App | `ui/src/App.tsx`, `ui/src/main.tsx` |
+| Stores | `ui/src/store/useDevices.ts`, `ui/src/store/useWebSocket.ts` |
+| Layout | `ui/src/components/layout/AppLayout.tsx`, `Sidebar.tsx`, `ConnectionStatus.tsx` |
+| Devices | `ui/src/components/devices/DeviceList.tsx`, `DeviceDataTable.tsx`, `DeviceNameEditor.tsx` |
+| Pages | `ui/src/pages/DevicesPage.tsx`, `ui/src/pages/DeviceDetailPage.tsx` |
+| Helpers | `ui/src/api.ts`, `ui/src/lib/format.ts`, `ui/src/types.ts` |
+| Config | `ui/vite.config.ts`, `ui/src/index.css` (Tailwind theme) |
 
 ### Tests
 
@@ -95,8 +120,10 @@ MQTT Broker (zigbee2mqtt)
 ```bash
 cp .env.example .env     # Edit MQTT_URL
 npm install
-npm run dev              # Start engine
-curl localhost:3000/api/v1/health
-curl localhost:3000/api/v1/devices
-websocat ws://localhost:3000/ws
+npm run dev              # Start engine (port 3000)
+
+# In another terminal — start UI (port 5173)
+cd ui && npm install && npm run dev
+
+# Open http://localhost:5173/devices
 ```

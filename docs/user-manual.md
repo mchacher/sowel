@@ -1,6 +1,6 @@
 # Corbel — User Manual
 
-> Updated: 2026-02-19 — V0.1
+> Updated: 2026-02-19 — V0.1 (backend + UI)
 
 ## What is Corbel?
 
@@ -38,7 +38,11 @@ LOG_LEVEL=info
 ### Start
 
 ```bash
+# Terminal 1 — Start the engine
 npm run dev
+
+# Terminal 2 — Start the UI
+cd ui && npm install && npm run dev
 ```
 
 On startup, the engine will:
@@ -47,6 +51,8 @@ On startup, the engine will:
 3. Create a record for each device with its capabilities
 4. Start tracking state changes in real-time
 5. Expose a REST API on port 3000
+
+Then open **http://localhost:5173** in your browser to access the web UI.
 
 ---
 
