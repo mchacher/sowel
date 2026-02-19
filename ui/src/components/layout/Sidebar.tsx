@@ -21,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard", icon: <LayoutDashboard size={20} strokeWidth={1.5} />, disabled: true },
   { to: "/devices", label: "Devices", icon: <Radio size={20} strokeWidth={1.5} /> },
   { to: "/equipments", label: "Equipments", icon: <Box size={20} strokeWidth={1.5} />, disabled: true },
-  { to: "/zones", label: "Zones", icon: <Map size={20} strokeWidth={1.5} />, disabled: true },
+  { to: "/zones", label: "Zones", icon: <Map size={20} strokeWidth={1.5} /> },
   { to: "/scenarios", label: "Scenarios", icon: <Workflow size={20} strokeWidth={1.5} />, disabled: true },
 ];
 

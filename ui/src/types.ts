@@ -89,6 +89,41 @@ export interface DeviceWithDetails extends Device {
 }
 
 // ============================================================
+// Zone
+// ============================================================
+
+export interface Zone {
+  id: string;
+  name: string;
+  parentId: string | null;
+  icon?: string;
+  description?: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ZoneWithChildren extends Zone {
+  children: ZoneWithChildren[];
+  groups: EquipmentGroup[];
+}
+
+// ============================================================
+// Equipment Group
+// ============================================================
+
+export interface EquipmentGroup {
+  id: string;
+  name: string;
+  zoneId: string;
+  icon?: string;
+  description?: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // Engine Events (received via WebSocket)
 // ============================================================
 
@@ -111,6 +146,12 @@ export type EngineEvent =
       previous: unknown;
       timestamp: string;
     }
+  | { type: "zone.created"; zone: Zone }
+  | { type: "zone.updated"; zone: Zone }
+  | { type: "zone.removed"; zoneId: string; zoneName: string }
+  | { type: "group.created"; group: EquipmentGroup }
+  | { type: "group.updated"; group: EquipmentGroup }
+  | { type: "group.removed"; groupId: string; groupName: string }
   | { type: "system.started" }
   | { type: "system.mqtt.connected" }
   | { type: "system.mqtt.disconnected" }
