@@ -213,6 +213,10 @@ export async function updateDevice(
   });
 }
 
+export async function deleteDevice(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/devices/${id}`, { method: "DELETE" });
+}
+
 export async function getDeviceRawExpose(
   id: string
 ): Promise<{ deviceId: string; name: string; mqttName: string; expose: unknown }> {
@@ -408,4 +412,54 @@ export async function getRecipeInstanceLog(
   limit = 50,
 ): Promise<RecipeLogEntry[]> {
   return fetchJSON<RecipeLogEntry[]>(`${API_BASE}/recipe-instances/${instanceId}/log?limit=${limit}`);
+}
+
+// ============================================================
+// Settings (admin)
+// ============================================================
+
+export async function getSettings(): Promise<Record<string, string>> {
+  return fetchJSON<Record<string, string>>(`${API_BASE}/settings`);
+}
+
+export async function updateSettings(entries: Record<string, string>): Promise<{ success: boolean }> {
+  return fetchJSON(`${API_BASE}/settings`, {
+    method: "PUT",
+    body: JSON.stringify(entries),
+  });
+}
+
+export async function reconnectMqtt(): Promise<{ success: boolean; connected: boolean }> {
+  return fetchJSON(`${API_BASE}/settings/mqtt/reconnect`, {
+    method: "POST",
+  });
+}
+
+export async function getMqttStatus(): Promise<{ connected: boolean }> {
+  return fetchJSON(`${API_BASE}/settings/mqtt/status`);
+}
+
+// ============================================================
+// Backup (admin)
+// ============================================================
+
+export async function exportBackup(): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  if (_accessToken) {
+    headers["Authorization"] = `Bearer ${_accessToken}`;
+  }
+  const response = await fetch(`${API_BASE}/backup`, { headers });
+  if (!response.ok) {
+    throw new Error(`Export failed: ${response.statusText}`);
+  }
+  return response.blob();
+}
+
+export async function importBackup(file: File): Promise<{ success: boolean }> {
+  const text = await file.text();
+  const payload = JSON.parse(text);
+  return fetchJSON(`${API_BASE}/backup`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

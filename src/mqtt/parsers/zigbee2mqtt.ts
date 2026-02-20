@@ -38,7 +38,6 @@ export class Zigbee2MqttParser {
   private mqttConnector: MqttConnector;
   private deviceManager: DeviceManager;
   private baseTopic: string;
-  private knownDeviceNames = new Set<string>();
 
   constructor(
     baseTopic: string,
@@ -105,14 +104,8 @@ export class Zigbee2MqttParser {
         }
       }
 
-      // Detect removed devices
-      for (const name of this.knownDeviceNames) {
-        if (!currentNames.has(name)) {
-          this.deviceManager.markRemoved(this.baseTopic, name);
-        }
-      }
-
-      this.knownDeviceNames = currentNames;
+      // Clean up devices in DB that are no longer in the bridge device list
+      this.deviceManager.removeStaleDevices(this.baseTopic, currentNames);
       this.deviceManager.logSummary();
     } catch (err) {
       this.logger.error({ err }, "Failed to parse bridge/devices");
