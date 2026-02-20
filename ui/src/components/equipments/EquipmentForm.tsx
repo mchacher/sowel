@@ -6,6 +6,7 @@ import { DeviceSelector } from "./DeviceSelector";
 const EQUIPMENT_TYPES: { value: EquipmentType; label: string }[] = [
   { value: "light_onoff", label: "Light (On/Off)" },
   { value: "light_dimmable", label: "Light (Dimmable)" },
+  { value: "sensor", label: "Capteur" },
 ];
 
 interface EquipmentFormProps {

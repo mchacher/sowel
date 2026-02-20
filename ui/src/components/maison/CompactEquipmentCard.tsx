@@ -3,6 +3,17 @@ import { Link } from "react-router-dom";
 import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "../equipments/EquipmentCard";
+import {
+  getSensorIcon,
+  getSensorIconColor,
+  getSensorBindings,
+  getBatteryBinding,
+  getBatteryIcon,
+  getBatteryColor,
+  isBooleanSensorCategory,
+  formatBooleanSensor,
+  formatSensorValue,
+} from "../equipments/sensorUtils";
 
 const SETTLE_DELAY_MS = 2000;
 
@@ -21,6 +32,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     equipment.type === "light_onoff" ||
     equipment.type === "light_dimmable" ||
     equipment.type === "light_color";
+
+  const isSensor =
+    equipment.type === "sensor" ||
+    equipment.type === "motion_sensor" ||
+    equipment.type === "contact_sensor";
 
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state"
@@ -49,8 +65,13 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     (ob) => ob.alias === "brightness"
   );
 
-  // Find primary data value for non-light equipments
-  const primaryBinding = !isLight
+  // Sensor-specific data
+  const sensorBindings = isSensor ? getSensorBindings(equipment.dataBindings) : [];
+  const batteryBinding = isSensor ? getBatteryBinding(equipment.dataBindings) : null;
+  const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
+
+  // Find primary data value for non-light, non-sensor equipments
+  const primaryBinding = !isLight && !isSensor
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -94,6 +115,19 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     }, SETTLE_DELAY_MS);
   };
 
+  // Determine icon and icon color
+  const iconElement = isSensor
+    ? getSensorIcon(equipment.dataBindings)
+    : TYPE_ICONS[equipment.type];
+
+  const iconColor = isSensor
+    ? getSensorIconColor(equipment.dataBindings)
+    : isLight && isOn
+      ? "bg-amber-400/15 text-amber-500"
+      : isOn
+        ? "bg-primary/10 text-primary"
+        : "bg-border-light text-text-tertiary";
+
   return (
     <div
       className={`
@@ -106,10 +140,10 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
       <div
         className={`
           flex-shrink-0 w-8 h-8 rounded-[6px] flex items-center justify-center
-          ${isLight && isOn ? "bg-amber-400/15 text-amber-500" : isOn ? "bg-primary/10 text-primary" : "bg-border-light text-text-tertiary"}
+          ${iconColor}
         `}
       >
-        {TYPE_ICONS[equipment.type]}
+        {iconElement}
       </div>
 
       {/* Name — links to detail */}
@@ -120,8 +154,43 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         {equipment.name}
       </Link>
 
-      {/* Primary value for non-light equipments */}
-      {primaryBinding && !isLight && (
+      {/* Sensor values (multi-value) */}
+      {isSensor && sensorBindings.length > 0 && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {sensorBindings.map((b) => (
+            <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
+              {isBooleanSensorCategory(b.category) ? (
+                <span
+                  className={`
+                    font-medium px-2 py-0.5 rounded-full text-[11px]
+                    ${isBooleanActive(b.category, b.value)
+                      ? "bg-amber-400/15 text-amber-500"
+                      : "bg-border-light text-text-tertiary"
+                    }
+                  `}
+                >
+                  {formatBooleanSensor(b.category, b.value)}
+                </span>
+              ) : (
+                <span className="text-text-secondary">
+                  {formatSensorValue(b.value, b.unit)}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Battery indicator for sensors */}
+      {isSensor && batteryBinding && (
+        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`Batterie : ${batteryLevel ?? "?"}%`}>
+          {getBatteryIcon(batteryLevel, 14, 1.5)}
+          <span className="text-[11px] tabular-nums">{batteryLevel !== null ? `${batteryLevel}%` : "?"}</span>
+        </span>
+      )}
+
+      {/* Primary value for non-light, non-sensor equipments */}
+      {primaryBinding && !isLight && !isSensor && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -172,8 +241,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         </div>
       )}
 
-      {/* Boolean state badge for non-light equipments */}
-      {!isLight && stateBinding && (
+      {/* Boolean state badge for non-light, non-sensor equipments */}
+      {!isLight && !isSensor && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
@@ -188,6 +257,13 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
       )}
     </div>
   );
+}
+
+function isBooleanActive(category: string, value: unknown): boolean {
+  if (category === "contact_door" || category === "contact_window") {
+    return value === false || value === "OFF"; // contact=false means open
+  }
+  return value === true || value === "ON";
 }
 
 function formatValue(value: unknown, unit?: string): string {

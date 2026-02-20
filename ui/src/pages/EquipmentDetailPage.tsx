@@ -5,6 +5,7 @@ import { useZones } from "../store/useZones";
 import { getEquipment } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
+import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
 import {
@@ -118,6 +119,7 @@ export function EquipmentDetailPage() {
   };
 
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
+  const isSensor = equipment.type === "sensor" || equipment.type === "motion_sensor" || equipment.type === "contact_sensor";
 
   return (
     <div className="p-6">
@@ -174,6 +176,11 @@ export function EquipmentDetailPage() {
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
         </div>
+      )}
+
+      {/* Sensor data */}
+      {isSensor && (
+        <SensorDataPanel bindings={equipment.dataBindings} />
       )}
 
       {/* Devices */}
