@@ -6,7 +6,7 @@ import { ZonesPage } from "./pages/ZonesPage";
 import { ZoneDetailPage } from "./pages/ZoneDetailPage";
 import { EquipmentsPage } from "./pages/EquipmentsPage";
 import { EquipmentDetailPage } from "./pages/EquipmentDetailPage";
-import { MaisonPage } from "./pages/MaisonPage";
+import { HomePage } from "./pages/HomePage";
 
 export default function App() {
   return (
@@ -14,8 +14,8 @@ export default function App() {
       <Routes>
         <Route element={<AppLayout />}>
           {/* Maison — primary daily view */}
-          <Route path="/home" element={<MaisonPage />} />
-          <Route path="/home/:zoneId" element={<MaisonPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/home/:zoneId" element={<HomePage />} />
 
           {/* Settings pages */}
           <Route path="/devices" element={<DevicesPage />} />
