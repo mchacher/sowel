@@ -1,10 +1,10 @@
 # Corbel — User Manual
 
-> Updated: 2026-02-19 — V0.1 (backend + UI)
+> Updated: 2026-02-20 — V0.7 (MQTT + Devices + Zones + Equipments + Sensors + Shutters + Zone Aggregation)
 
 ## What is Corbel?
 
-Corbel is a home automation engine that uses MQTT as its only data source. It connects to zigbee2mqtt, discovers your Zigbee devices automatically, and tracks their state in real-time.
+Corbel is a home automation engine that uses MQTT as its only data source. It connects to zigbee2mqtt, discovers your Zigbee devices automatically, and lets you organize them into Equipments and Zones with real-time controls and aggregated status.
 
 ---
 
@@ -50,143 +50,172 @@ On startup, the engine will:
 2. Read the device list from zigbee2mqtt
 3. Create a record for each device with its capabilities
 4. Start tracking state changes in real-time
-5. Expose a REST API on port 3000
+5. Compute zone aggregations from equipment data
+6. Expose a REST API on port 3000
 
 Then open **http://localhost:5173** in your browser to access the web UI.
 
 ---
 
-## Features
+## Concepts
 
-### Device Auto-Discovery
+### Three-Layer Architecture
 
-Corbel reads `zigbee2mqtt/bridge/devices` and automatically creates a Device for each Zigbee device on your network. For each device, it parses the zigbee2mqtt `exposes` definition to determine:
+| Layer | What | Example |
+|-------|------|---------|
+| **Device** | Physical hardware on the MQTT network (auto-discovered) | "Ikea Dimmer Module 0x1234" |
+| **Equipment** | User-facing functional unit (you create these) | "Spots Salon" |
+| **Zone** | Physical space in the home (nestable) | "Salon", "Cuisine", "Étage 1" |
 
-- **Data** — readable properties (temperature, occupancy, battery, brightness, etc.)
-- **Orders** — writable properties (state on/off, brightness level, etc.)
-- **Category** — semantic classification used for future aggregation (motion, temperature, light_state, etc.)
+**Key insight**: a Device is what's on the network, an Equipment is what's in the room. The user thinks about "Spots Salon", not "Ikea Dimmer Module 0x1234".
 
-New devices joining the network are detected automatically via `zigbee2mqtt/bridge/event`.
+### Supported Equipment Types
 
-### Real-Time State Tracking
+| Type | Description | UI Controls |
+|------|-------------|-------------|
+| Light (On/Off) | Simple on/off light | Toggle button |
+| Light (Dimmable) | Dimmable light | Toggle + brightness slider |
+| Light (Color) | Color-capable light | Toggle + brightness slider |
+| Shutter | Cover, blind, roller shutter | Open / Stop / Close buttons + position % |
+| Switch / Prise | On/off switch or plug | State badge |
+| Capteur | Generic sensor (temperature, humidity...) | Auto-adaptive value display |
+| Capteur mouvement | Motion detector | Motion/Calm status |
+| Capteur contact | Door/window contact sensor | Open/Closed status |
 
-Every MQTT message from your devices is captured and stored. When a value changes, Corbel emits an event that can be observed via WebSocket.
+---
 
-A device that sends data is automatically marked as `online`.
+## UI Guide
 
-### REST API
+### Home (daily view)
 
-#### Health Check
+The **Home** page is the primary daily-use view. The sidebar shows a zone treeview (Home > Floor > Room). Clicking a zone displays:
+
+1. **Zone Status Header** — aggregated pills showing:
+   - Temperature, humidity, luminosity (averages)
+   - Motion status with duration ("Mouvement · 5 min" or "Calme · 12 min")
+   - Lights on/total count
+   - Shutters open/total count with average position
+   - Door/window open alerts
+   - Water leak / smoke alerts
+
+2. **Equipment Groups** — equipments organized by type:
+   - **Lights**: inline toggle + brightness slider
+   - **Shutters**: inline Open/Stop/Close buttons + position (Fermé / Ouvert / %)
+   - **Sensors**: multi-value display with battery indicator
+   - **Switches**: state badge
+
+### Equipments (settings)
+
+The **Equipments** page lists all equipments grouped by zone. Each card shows:
+- Type icon (color changes based on state)
+- Equipment name (clickable → detail page)
+- Quick controls (light toggle, shutter buttons, sensor values)
+
+**Creating an equipment:**
+1. Click "Add Equipment"
+2. Choose type, name, and zone
+3. Click "Next: Select devices"
+4. Pick compatible devices to bind
+5. Click "Create"
+
+### Equipment Detail
+
+Shows full details for an equipment:
+- Data bindings (bound device values)
+- Order bindings (available commands)
+- Controls: light toggle/slider, shutter Open/Stop/Close + position bar, sensor data panel
+- Edit name/zone, delete equipment
+
+### Zones (settings)
+
+The **Zones** page manages the spatial topology:
+- Create/edit/delete zones
+- Nest zones (Home → Floor → Room)
+- View zone tree
+
+### Devices (settings)
+
+The **Devices** page shows all auto-discovered MQTT devices:
+- Sortable table (name, manufacturer, model, battery, LQI, last seen)
+- Filter by name
+- Click for detail: raw data, orders, expose viewer, inline name editor
+
+---
+
+## REST API
+
+### Health
 
 ```bash
 curl http://localhost:3000/api/v1/health
 ```
 
-Returns engine status: MQTT connection, device count, uptime.
-
-#### List All Devices
+### Devices
 
 ```bash
+# List all
 curl http://localhost:3000/api/v1/devices
-```
 
-Returns all discovered devices with their current data values.
-
-#### Device Detail
-
-```bash
+# Detail
 curl http://localhost:3000/api/v1/devices/<id>
-```
 
-Returns a single device with all its Data and Orders.
-
-#### Update a Device
-
-```bash
+# Update name
 curl -X PUT http://localhost:3000/api/v1/devices/<id> \
   -H "Content-Type: application/json" \
   -d '{"name": "PIR Salon"}'
 ```
 
-You can update the device `name` (display name) and `zoneId` (physical location).
-
-#### Remove a Device
+### Zones
 
 ```bash
-curl -X DELETE http://localhost:3000/api/v1/devices/<id>
+# Zone tree
+curl http://localhost:3000/api/v1/zones/tree
+
+# Create zone
+curl -X POST http://localhost:3000/api/v1/zones \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Salon", "parentId": "<parent-zone-id>"}'
 ```
 
-Removes the device from Corbel. If the device is still on the Zigbee network, it will be re-discovered on next bridge/devices update.
-
-#### Raw Expose Data
+### Equipments
 
 ```bash
-curl http://localhost:3000/api/v1/devices/<id>/raw
+# List all with bindings + data
+curl http://localhost:3000/api/v1/equipments
+
+# Create equipment
+curl -X POST http://localhost:3000/api/v1/equipments \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Spots Salon", "type": "light_dimmable", "zoneId": "<zone-id>"}'
+
+# Execute an order
+curl -X POST http://localhost:3000/api/v1/equipments/<id>/orders/state \
+  -H "Content-Type: application/json" \
+  -d '{"value": "ON"}'
+
+# Execute shutter command
+curl -X POST http://localhost:3000/api/v1/equipments/<id>/orders/state \
+  -H "Content-Type: application/json" \
+  -d '{"value": "OPEN"}'
 ```
 
-Returns the raw zigbee2mqtt expose definition for debugging.
+### Zone Aggregation
+
+```bash
+# Get all zone aggregations
+curl http://localhost:3000/api/v1/zones/aggregation
+
+# Get aggregation for a specific zone
+curl http://localhost:3000/api/v1/zones/<id>/aggregation
+```
 
 ### WebSocket — Live Events
-
-Connect to the WebSocket to receive real-time events:
 
 ```bash
 websocat ws://localhost:3000/ws
 ```
 
-Events you'll see:
-
-| Event | When | Example |
-|-------|------|---------|
-| `device.data.updated` | A sensor value changes | PIR detects motion, temperature changes |
-| `device.status_changed` | Device goes online/offline | Device sends its first message |
-| `device.discovered` | New device found | A new Zigbee device joins the network |
-
-Example event:
-
-```json
-{
-  "type": "device.data.updated",
-  "deviceId": "4ac11f0e-...",
-  "deviceName": "Ikea_PIR_00",
-  "key": "occupancy",
-  "value": true,
-  "previous": false,
-  "timestamp": "2026-02-19T14:48:34.642Z"
-}
-```
-
-### Test Script
-
-Run the included test script to get a quick overview of your network:
-
-```bash
-./scripts/test-api.sh
-```
-
----
-
-## Data Categories
-
-Corbel classifies each device property into a semantic category. This classification will be used in future versions for zone aggregation and equipment type inference.
-
-| Property | Category | Description |
-|----------|----------|-------------|
-| occupancy | motion | PIR motion sensor |
-| temperature | temperature | Temperature reading |
-| humidity | humidity | Humidity reading |
-| illuminance | luminosity | Light level (lux) |
-| battery | battery | Battery percentage |
-| state (on light) | light_state | Light on/off |
-| brightness | light_brightness | Light brightness level |
-| color_temp | light_color_temp | Light color temperature |
-| position | shutter_position | Shutter/cover position |
-| contact | contact_door | Door/window contact |
-| power | power | Instantaneous power (W) |
-| energy | energy | Cumulative energy (kWh) |
-| water_leak | water_leak | Water leak detection |
-
-Properties not matching any known pattern are classified as `generic`.
+Events: `device.data.updated`, `device.status_changed`, `device.discovered`, `equipment.data.changed`, `equipment.order.executed`, `zone.aggregation.changed`
 
 ---
 
@@ -194,6 +223,8 @@ Properties not matching any known pattern are classified as `generic`.
 
 | Version | Feature |
 |---------|---------|
-| **V0.2** | Equipments + Bindings — create user-facing functional units, bind to devices, execute orders |
-| **V0.3** | Zones + Aggregation — spatial structure, auto-aggregate equipment data |
-| **V0.4** | UI + Real-time — web dashboard with live state |
+| **V0.8** | Computed Data — virtual Equipments that aggregate multiple Devices |
+| **V0.9** | Scenario Engine — trigger/condition/action automation |
+| **V0.10** | Recipes — reusable scenario templates |
+| **V0.11** | History — InfluxDB time-series charts |
+| **V1.0+** | AI Assistant — natural language scenarios |

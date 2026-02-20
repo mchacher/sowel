@@ -1,26 +1,30 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-19 — V0.1, V0.2, V0.3 done
+> Updated: 2026-02-20 — V0.1 through V0.7 done
 
 ## Roadmap Changes
 
-1. **Incremental UI**: The original roadmap bundled all UI into V0.4. Changed to an **incremental approach**: each backend version ships its corresponding UI pages. V0.4 becomes a polish/UX milestone.
-2. **Topology first**: V0.2 and V0.3 were swapped. Zones (spatial topology) are now implemented before Equipments, so users define where things are before assigning functional units.
-3. **Core data model**: See [data-model.md](data-model.md) for the complete 3-layer architecture (Zones → Equipments → Devices).
+1. **Incremental UI**: Each backend version ships its corresponding UI pages (not bundled in a single V0.4).
+2. **Topology first**: Zones implemented before Equipments, so users define spatial structure first.
+3. **Equipment Groups removed**: Replaced by automatic UI-level grouping by equipment type (Lights, Shutters, Sensors, Switches) in the Home view. No backend entity — purely a UI display pattern.
+4. **Core data model**: See [data-model.md](data-model.md) for the complete 3-layer architecture (Zones → Equipments → Devices).
 
 ## Versions
 
 | Version | Feature | Status |
 |---------|---------|--------|
-| **V0.1** | MQTT + Devices + **UI Scaffolding & Devices page** | ✅ Done |
-| **V0.2** | **Zones + Equipment Groups + UI Zones** (topology) | ✅ Done |
-| **V0.3** | **Equipments + Bindings + Orders + UI Equipments** | ✅ Done |
-| V0.4 | **UI Polish & Real-time UX** (reconnection, dark mode, responsive, animations) | — |
-| V0.5 | Computed Data + Internal Rules | — |
-| V0.6 | History (InfluxDB) + Zone Aggregation Engine | — |
-| V0.7 | Scenario Engine | — |
-| V0.8 | Recipes | — |
-| V0.9 | Polish | — |
+| **V0.1** | MQTT + Devices + UI Scaffolding & Devices page | ✅ Done |
+| **V0.2** | Zones + UI Zones (topology) | ✅ Done |
+| **V0.3** | Equipments + Bindings + Orders + UI Equipments | ✅ Done |
+| **V0.4** | UI Restructuring (Home view, zone navigation) | ✅ Done |
+| **V0.5** | Sensor Equipment Support (adaptive UI) | ✅ Done |
+| **V0.6** | Zone Aggregation Engine (real-time status) | ✅ Done |
+| **V0.7** | Shutter Equipment Support (controls + aggregation) | ✅ Done |
+| V0.8 | Computed Data + Internal Rules | — |
+| V0.9 | Scenario Engine | — |
+| V0.10 | Recipes | — |
+| V0.11 | History (InfluxDB) | — |
+| V0.12 | Polish | — |
 | V1.0+ | AI Assistant | — |
 
 ---
@@ -77,21 +81,6 @@
 | `system.mqtt.connected` | MQTT broker connected |
 | `system.mqtt.disconnected` | MQTT broker disconnected |
 
-### Architecture
-
-```
-MQTT Broker (zigbee2mqtt)
-  │
-  ├─ zigbee2mqtt/bridge/devices  → Z2M Parser → Device Manager (upsert)
-  ├─ zigbee2mqtt/bridge/event    → Z2M Parser (new device joins)
-  ├─ zigbee2mqtt/+               → Z2M Parser → Device Manager (update data)
-  └─ zigbee2mqtt/+/availability  → Z2M Parser → Device Manager (update status)
-                                        │
-                                   Event Bus
-                                        │
-                                   WebSocket → clients
-```
-
 ### Files
 
 | Module | Files |
@@ -119,22 +108,21 @@ MQTT Broker (zigbee2mqtt)
 
 ---
 
-## V0.2 — Zones + Equipment Groups + UI
+## V0.2 — Zones + UI
 
-**Objective**: Define the spatial topology of the home — hierarchical zones and functional equipment groups.
+**Objective**: Define the spatial topology of the home — hierarchical zones.
 
 ### What it does
 
 - Zone CRUD with hierarchical nesting (Home → Floor → Room)
-- Equipment Group CRUD within zones (e.g., "Volets Sud", "Éclairage Ambiance")
 - Circular reference detection for zone hierarchy
-- Delete guards (no children, no groups, no equipments)
+- Delete guards (no children, no equipments)
 - Zone tree API endpoint
-- **Web UI**: Zone tree view, zone detail page, inline group management
+- **Web UI**: Zone tree view, zone detail page
 
 ### Tests
 
-37 unit tests for ZoneManager and GroupManager
+23 unit tests for ZoneManager
 
 ---
 
@@ -144,8 +132,8 @@ MQTT Broker (zigbee2mqtt)
 
 ### What it does
 
-- Equipment CRUD (name, type, zone, group, enabled)
-- 14 equipment types (light, dimmer, color_light, shutter, thermostat, etc.)
+- Equipment CRUD (name, type, zone, enabled)
+- 14 equipment types defined in backend, 8 exposed in UI (light_onoff, light_dimmable, light_color, shutter, switch, sensor, motion_sensor, contact_sensor)
 - DataBinding: maps DeviceData to Equipment alias (state, brightness...)
 - OrderBinding: maps DeviceOrder to Equipment command (state, brightness...)
 - Multi-device dispatch: same alias → multiple DeviceOrders → parallel MQTT publish
@@ -159,11 +147,11 @@ MQTT Broker (zigbee2mqtt)
 
 | Component | Purpose |
 |-----------|---------|
-| EquipmentsPage | List all equipments grouped by zone, quick toggle |
+| EquipmentsPage | List all equipments grouped by zone, quick controls |
 | EquipmentDetailPage | Full detail with bindings, controls, edit/delete |
 | EquipmentForm | Create/edit modal with 2-step wizard (info → device selection) |
 | DeviceSelector | Filtered device picker (by DataCategory per EquipmentType) |
-| EquipmentCard | Card with type icon, state, quick toggle |
+| EquipmentCard | Card with type icon, state, quick toggle + shutter controls |
 | LightControl | On/off toggle + brightness slider for lights/dimmers |
 
 ### API Endpoints
@@ -191,25 +179,137 @@ MQTT Broker (zigbee2mqtt)
 | `equipment.data.changed` | Bound DeviceData value changed |
 | `equipment.order.executed` | Order dispatched to MQTT |
 
+### Tests
+
+38 unit tests — Equipment CRUD, bindings, order execution, reactive pipeline, zone delete guard
+
+---
+
+## V0.4 — UI Restructuring
+
+**Objective**: Reorganize the UI around a zone-centric daily view (Home) vs. a settings area.
+
+### What it does
+
+- Sidebar reorganized into two sections:
+  - **Home**: primary daily-use view with zone treeview navigation
+  - **Settings**: Devices, Equipments, Zones pages (configuration, rarely accessed)
+- Home page shows zone hierarchy (Home > Floor > Room)
+- Clicking a zone displays its equipments grouped by type
+- Equipment groups are UI-only display patterns (automatic by EquipmentType: Lights, Shutters, Sensors, Switches)
+- CompactEquipmentCard with inline controls for lights
+- SidebarZoneTree component for zone navigation
+
+### UI Components
+
+| Component | Purpose |
+|-----------|---------|
+| HomePage | Zone-centric daily dashboard |
+| SidebarZoneTree | Zone treeview in sidebar |
+| ZoneEquipmentsView | Equipment list within a zone, grouped by type |
+| CompactEquipmentCard | Compact card with inline quick controls |
+
+---
+
+## V0.5 — Sensor Equipment Support
+
+**Objective**: Full support for sensor-type equipments with auto-adaptive UI.
+
+### What it does
+
+- Sensor types fully supported: `sensor`, `motion_sensor`, `contact_sensor`
+- Auto-adaptive sensor UI: icon, color, and value display based on DataCategory
+- Multi-value sensor display (e.g. temperature + humidity on same card)
+- Battery level indicator with color-coded icon
+- Boolean sensor formatting (motion: Mouvement/Calme, contact: Ouverte/Fermée)
+- SensorDataPanel for equipment detail page
+
+### UI Components
+
+| Component | Purpose |
+|-----------|---------|
+| SensorDataPanel | Full sensor data display for detail page |
+| sensorUtils.tsx | Shared utilities: getSensorIcon, getSensorIconColor, getSensorBindings, getBatteryBinding, formatSensorValue, etc. |
+
+---
+
+## V0.6 — Zone Aggregation Engine
+
+**Objective**: Automatic real-time zone status aggregation from equipment data.
+
+### What it does
+
+- Bottom-up aggregation engine: processes leaf zones first, then walks up parent chain
+- 15 aggregated fields in `ZoneAggregatedData`:
+  - `temperature`, `humidity`, `luminosity` (AVG)
+  - `motion` (OR), `motionSensors` (COUNT), `motionSince` (timestamp)
+  - `lightsOn`, `lightsTotal` (COUNT)
+  - `shuttersOpen`, `shuttersTotal` (COUNT), `averageShutterPosition` (AVG)
+  - `openDoors`, `openWindows` (COUNT)
+  - `waterLeak`, `smoke` (OR)
+- Three-level cache (directCache, mergedCache, publicCache) with incremental updates
+- Recursive: parent Zone merges its own data + all child Zone accumulators
+- Event-driven: recomputes on `equipment.data.changed`, zone CRUD, `system.started`
+- Zustand store: `useZoneAggregation` for reactive UI updates
+
+### UI Components
+
+| Component | Purpose |
+|-----------|---------|
+| ZoneAggregationHeader | Status pills: temperature, humidity, luminosity, motion+duration, lights count, shutter count+position, door/window alerts, water/smoke alerts |
+
 ### Files
 
 | Module | Files |
 |--------|-------|
-| Shared | `src/shared/types.ts` (Equipment, DataBinding, OrderBinding, EquipmentWithDetails) |
-| Equipments | `src/equipments/equipment-manager.ts` |
-| API | `src/api/routes/equipments.ts` |
-| DB | `migrations/003_equipments.sql` |
-| Tests | `src/equipments/equipment-manager.test.ts` (40 tests) |
-| **UI** | |
-| Store | `ui/src/store/useEquipments.ts` |
-| Pages | `ui/src/pages/EquipmentsPage.tsx`, `EquipmentDetailPage.tsx` |
-| Components | `ui/src/components/equipments/EquipmentCard.tsx`, `EquipmentForm.tsx`, `DeviceSelector.tsx`, `LightControl.tsx` |
+| Backend | `src/zones/zone-aggregator.ts` |
+| API | Zone aggregation endpoint in `src/api/routes/zones.ts` |
+| UI Store | `ui/src/store/useZoneAggregation.ts` |
+| UI Component | `ui/src/components/home/ZoneAggregationHeader.tsx` |
+| Tests | `src/zones/zone-aggregator.test.ts` (25 tests) |
 
-### Tests
+---
 
-40 unit tests — Equipment CRUD, bindings, order execution, reactive pipeline, zone delete guard
+## V0.7 — Shutter Equipment Support
 
-### Quick Start
+**Objective**: Full shutter/cover control with zone aggregation.
+
+### What it does
+
+- Shutter controls: Open / Stop / Close buttons + position display
+- Position labels: "Fermé" (0%), "Ouvert" (100%), numeric % for intermediate values
+- ShutterControl component for equipment detail page
+- Inline shutter controls in EquipmentCard (equipment list) and CompactEquipmentCard (home view)
+- Zone aggregation: `shuttersOpen` / `shuttersTotal` / `averageShutterPosition`
+- Shutter pill in ZoneAggregationHeader
+- 8 supported equipment types in creation form (light_onoff, light_dimmable, light_color, shutter, switch, sensor, motion_sensor, contact_sensor)
+
+### UI Components
+
+| Component | Purpose |
+|-----------|---------|
+| ShutterControl | Full Open/Stop/Close buttons + position bar for detail page |
+| EquipmentCard | Updated with inline shutter controls |
+| CompactEquipmentCard | Updated with inline shutter controls |
+| ZoneAggregationHeader | Added shutter aggregation pill |
+
+---
+
+## Test Summary
+
+| Module | File | Tests |
+|--------|------|-------|
+| Event Bus | `src/core/event-bus.test.ts` | 5 |
+| Category Inference | `src/devices/category-inference.test.ts` | 24 |
+| Device Manager | `src/devices/device-manager.test.ts` | 24 |
+| Zone Manager | `src/zones/zone-manager.test.ts` | 23 |
+| Zone Aggregator | `src/zones/zone-aggregator.test.ts` | 25 |
+| Equipment Manager | `src/equipments/equipment-manager.test.ts` | 38 |
+| **Total** | **6 test files** | **139 tests** |
+
+---
+
+## Quick Start
 
 ```bash
 cp .env.example .env     # Edit MQTT_URL
@@ -219,5 +319,5 @@ npm run dev              # Start engine (port 3000)
 # In another terminal — start UI (port 5173)
 cd ui && npm install && npm run dev
 
-# Open http://localhost:5173/devices
+# Open http://localhost:5173
 ```
