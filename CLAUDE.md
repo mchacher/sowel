@@ -161,4 +161,4 @@ V0.1 MQTT+Devices → V0.2 Equipments+Bindings → V0.3 Zones+Aggregation → V0
 
 ## Environment Variables
 
-Key config via `.env`: `MQTT_URL`, `Z2M_BASE_TOPIC`, `SQLITE_PATH`, `INFLUX_URL`, `INFLUX_TOKEN`, `API_PORT`, `LATITUDE`/`LONGITUDE`/`TIMEZONE`, `JWT_SECRET`, `LOG_LEVEL`, `CORS_ORIGINS`, `TRUST_PROXY`.
+Key config via `.env`: `SQLITE_PATH`, `API_PORT`, `API_HOST`, `JWT_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `LOG_LEVEL`, `CORS_ORIGINS`. MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.
