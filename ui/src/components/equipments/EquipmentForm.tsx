@@ -7,7 +7,7 @@ const EQUIPMENT_TYPES: { value: EquipmentType; label: string }[] = [
   { value: "light_onoff", label: "Light (On/Off)" },
   { value: "light_dimmable", label: "Light (Dimmable)" },
   { value: "light_color", label: "Light (Color)" },
-  { value: "shutter", label: "Volet / Shutter" },
+  { value: "shutter", label: "Shutter" },
   { value: "switch", label: "Switch / Prise" },
   { value: "sensor", label: "Capteur" },
   { value: "motion_sensor", label: "Capteur mouvement" },
