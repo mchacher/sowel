@@ -114,6 +114,7 @@ export interface ZoneWithChildren extends Zone {
 export interface ZoneAggregatedData {
   temperature: number | null;
   humidity: number | null;
+  luminosity: number | null;
   motion: boolean;
   motionSensors: number;
   motionSince: string | null;

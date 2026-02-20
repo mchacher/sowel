@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Thermometer,
   Droplets,
+  Sun,
   PersonStanding,
   Lightbulb,
   DoorOpen,
@@ -34,6 +35,15 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
     pills.push(
       <Pill key="hum" icon={<Droplets size={14} strokeWidth={1.5} />} color="text-primary">
         {data.humidity}%
+      </Pill>,
+    );
+  }
+
+  // Luminosity
+  if (data.luminosity !== null) {
+    pills.push(
+      <Pill key="lux" icon={<Sun size={14} strokeWidth={1.5} />} color="text-primary">
+        {data.luminosity} lx
       </Pill>,
     );
   }

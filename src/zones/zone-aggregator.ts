@@ -18,6 +18,8 @@ interface Accumulator {
   temperatureCount: number;
   humiditySum: number;
   humidityCount: number;
+  luminositySum: number;
+  luminosityCount: number;
   motion: boolean;
   motionSensors: number;
   openDoors: number;
@@ -34,6 +36,8 @@ function emptyAccumulator(): Accumulator {
     temperatureCount: 0,
     humiditySum: 0,
     humidityCount: 0,
+    luminositySum: 0,
+    luminosityCount: 0,
     motion: false,
     motionSensors: 0,
     openDoors: 0,
@@ -51,6 +55,8 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     temperatureCount: a.temperatureCount + b.temperatureCount,
     humiditySum: a.humiditySum + b.humiditySum,
     humidityCount: a.humidityCount + b.humidityCount,
+    luminositySum: a.luminositySum + b.luminositySum,
+    luminosityCount: a.luminosityCount + b.luminosityCount,
     motion: a.motion || b.motion,
     motionSensors: a.motionSensors + b.motionSensors,
     openDoors: a.openDoors + b.openDoors,
@@ -69,6 +75,9 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       : null,
     humidity: acc.humidityCount > 0
       ? Math.round((acc.humiditySum / acc.humidityCount) * 10) / 10
+      : null,
+    luminosity: acc.luminosityCount > 0
+      ? Math.round(acc.luminositySum / acc.luminosityCount)
       : null,
     motion: acc.motion,
     motionSensors: acc.motionSensors,
@@ -89,6 +98,7 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
   return (
     a.temperature === b.temperature &&
     a.humidity === b.humidity &&
+    a.luminosity === b.luminosity &&
     a.motion === b.motion &&
     a.motionSensors === b.motionSensors &&
     a.openDoors === b.openDoors &&
@@ -383,6 +393,13 @@ export class ZoneAggregator {
           if (typeof value === "number") {
             acc.humiditySum += value;
             acc.humidityCount += 1;
+          }
+          break;
+
+        case "luminosity":
+          if (typeof value === "number") {
+            acc.luminositySum += value;
+            acc.luminosityCount += 1;
           }
           break;
 
