@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Thermometer,
   Droplets,
@@ -17,6 +18,7 @@ interface ZoneAggregationHeaderProps {
 
 export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   const pills: React.ReactNode[] = [];
+  const duration = useRelativeTime(data.motionSince);
 
   // Temperature
   if (data.temperature !== null) {
@@ -38,14 +40,16 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
 
   // Motion (shown when zone has motion sensors)
   if (data.motionSensors > 0) {
+    const label = data.motion ? "Mouvement" : "Calme";
+    const suffix = duration ? ` · ${duration}` : "";
     pills.push(
       data.motion ? (
         <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-amber-500" active>
-          Mouvement
+          {label}{suffix}
         </Pill>
       ) : (
         <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-text-tertiary">
-          Calme
+          {label}{suffix}
         </Pill>
       ),
     );
@@ -118,6 +122,42 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
     </div>
   );
 }
+
+// ============================================================
+// Relative time hook — refreshes every 30s, zero CPU when no timestamp
+// ============================================================
+
+function useRelativeTime(since: string | null): string | null {
+  const [, tick] = useState(0);
+
+  useEffect(() => {
+    if (!since) return;
+    const id = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, [since]);
+
+  if (!since) return null;
+  return formatDuration(since);
+}
+
+function formatDuration(since: string): string {
+  const ms = Date.now() - new Date(since).getTime();
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return "< 1 min";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainMinutes = minutes % 60;
+  if (hours < 24) {
+    return remainMinutes > 0 ? `${hours}h${String(remainMinutes).padStart(2, "0")}` : `${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  return `${days}j`;
+}
+
+// ============================================================
+// Pill component
+// ============================================================
 
 interface PillProps {
   icon: React.ReactNode;
