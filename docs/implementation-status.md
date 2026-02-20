@@ -1,6 +1,6 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-20 — V0.1 through V0.7 done
+> Updated: 2026-02-20 — V0.1 through V0.8 done
 
 ## Roadmap Changes
 
@@ -20,9 +20,9 @@
 | **V0.5** | Sensor Equipment Support (adaptive UI) | ✅ Done |
 | **V0.6** | Zone Aggregation Engine (real-time status) | ✅ Done |
 | **V0.7** | Shutter Equipment Support (controls + aggregation) | ✅ Done |
-| V0.8 | Computed Data + Internal Rules | — |
+| **V0.8** | Recipe Engine + Motion-Light Recipe | ✅ Done |
 | V0.9 | Scenario Engine | — |
-| V0.10 | Recipes | — |
+| V0.10 | Computed Data | — |
 | V0.11 | History (InfluxDB) | — |
 | V0.12 | Polish | — |
 | V1.0+ | AI Assistant | — |
@@ -295,6 +295,65 @@
 
 ---
 
+## V0.8 — Recipe Engine + Motion-Light Recipe
+
+**Objective**: Introduce a code-driven Recipe engine for pre-built behavior patterns with user-supplied parameters. First recipe: motion-light (auto-light on motion detection).
+
+### What it does
+
+- Abstract `Recipe` base class with lifecycle (`validate` / `start` / `stop`)
+- `RecipeManager` manages recipe registration, instance creation/deletion, DB persistence, execution logging
+- `RecipeStateStore` provides key-value persistence per instance (SQLite)
+- `RecipeContext` injected into recipes: eventBus, equipmentManager, zoneAggregator, logger, stateStore, log
+- Recipe instances restored on engine restart (all enabled instances re-started)
+- Execution log per instance (structured messages stored in SQLite)
+- EventBus enhanced with unsubscribe support (on/onType return cleanup functions)
+- **motion-light** recipe: auto-light on motion + timeout extinction + manual override support
+
+### Motion-Light Recipe Logic
+
+- Motion detected + light OFF → turn ON
+- Motion detected + light ON → reset timer
+- Motion stops + light ON → start extinction timer
+- Timer expires → turn OFF
+- Light turned ON externally (manual) → start timer if no motion
+- Light turned OFF externally → cancel timer
+
+### API Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/v1/recipes` | List available recipe definitions |
+| GET | `/api/v1/recipes/:recipeId` | Get recipe definition with slots |
+| GET | `/api/v1/recipe-instances` | List all active instances |
+| POST | `/api/v1/recipe-instances` | Create instance `{ recipeId, params }` |
+| DELETE | `/api/v1/recipe-instances/:id` | Stop and delete instance |
+| GET | `/api/v1/recipe-instances/:id/log` | Get execution log (`?limit=50`) |
+
+### Event Bus Events
+
+| Event | When |
+|-------|------|
+| `recipe.instance.created` | Instance created |
+| `recipe.instance.started` | Instance started |
+| `recipe.instance.stopped` | Instance stopped |
+| `recipe.instance.removed` | Instance deleted |
+| `recipe.instance.error` | Instance error |
+
+### Files
+
+| Module | Files |
+|--------|-------|
+| Types | `src/shared/types.ts` (RecipeSlotDef, RecipeInfo, RecipeInstance, RecipeLogEntry, recipe events) |
+| DB | `migrations/005_recipes.sql` |
+| Core | `src/core/event-bus.ts` (unsubscribe support) |
+| Recipes | `src/recipes/recipe.ts`, `recipe-manager.ts`, `recipe-state-store.ts`, `motion-light.ts` |
+| API | `src/api/routes/recipes.ts` |
+| Integration | `src/api/server.ts`, `src/index.ts` |
+| Tests | `src/recipes/recipe-manager.test.ts` (9), `src/recipes/motion-light.test.ts` (12) |
+
+---
+
 ## Test Summary
 
 | Module | File | Tests |
@@ -305,7 +364,9 @@
 | Zone Manager | `src/zones/zone-manager.test.ts` | 23 |
 | Zone Aggregator | `src/zones/zone-aggregator.test.ts` | 25 |
 | Equipment Manager | `src/equipments/equipment-manager.test.ts` | 38 |
-| **Total** | **6 test files** | **139 tests** |
+| Recipe Manager | `src/recipes/recipe-manager.test.ts` | 9 |
+| Motion-Light Recipe | `src/recipes/motion-light.test.ts` | 12 |
+| **Total** | **8 test files** | **160 tests** |
 
 ---
 
