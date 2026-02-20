@@ -19,6 +19,7 @@ interface Accumulator {
   humiditySum: number;
   humidityCount: number;
   motion: boolean;
+  motionSensors: number;
   openDoors: number;
   openWindows: number;
   waterLeak: boolean;
@@ -34,6 +35,7 @@ function emptyAccumulator(): Accumulator {
     humiditySum: 0,
     humidityCount: 0,
     motion: false,
+    motionSensors: 0,
     openDoors: 0,
     openWindows: 0,
     waterLeak: false,
@@ -50,6 +52,7 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     humiditySum: a.humiditySum + b.humiditySum,
     humidityCount: a.humidityCount + b.humidityCount,
     motion: a.motion || b.motion,
+    motionSensors: a.motionSensors + b.motionSensors,
     openDoors: a.openDoors + b.openDoors,
     openWindows: a.openWindows + b.openWindows,
     waterLeak: a.waterLeak || b.waterLeak,
@@ -68,6 +71,7 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       ? Math.round((acc.humiditySum / acc.humidityCount) * 10) / 10
       : null,
     motion: acc.motion,
+    motionSensors: acc.motionSensors,
     openDoors: acc.openDoors,
     openWindows: acc.openWindows,
     waterLeak: acc.waterLeak,
@@ -82,6 +86,7 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.temperature === b.temperature &&
     a.humidity === b.humidity &&
     a.motion === b.motion &&
+    a.motionSensors === b.motionSensors &&
     a.openDoors === b.openDoors &&
     a.openWindows === b.openWindows &&
     a.waterLeak === b.waterLeak &&
@@ -349,6 +354,7 @@ export class ZoneAggregator {
           break;
 
         case "motion":
+          acc.motionSensors += 1;
           if (isBooleanActive(value)) {
             acc.motion = true;
           }
