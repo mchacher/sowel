@@ -61,7 +61,7 @@ export function ZoneEquipmentsView({
               {group.equipments.length}
             </span>
           </div>
-          <div className="p-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+          <div className="divide-y divide-border-light">
             {group.equipments.map((eq) => (
               <CompactEquipmentCard
                 key={eq.id}
