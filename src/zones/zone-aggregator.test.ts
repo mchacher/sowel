@@ -120,6 +120,9 @@ describe("ZoneAggregator", () => {
         smoke: false,
         lightsOn: 0,
         lightsTotal: 0,
+        shuttersOpen: 0,
+        shuttersTotal: 0,
+        averageShutterPosition: null,
       });
     });
 
@@ -288,6 +291,60 @@ describe("ZoneAggregator", () => {
       expect(data?.smoke).toBe(false);
     });
 
+    it("aggregates shutter position as AVG and counts open/total", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+
+      // Shutter 1: position 80 (open)
+      const dev1 = seedDevice(db, {
+        name: "Shutter1",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "80" }],
+      });
+      // Shutter 2: position 0 (closed)
+      const dev2 = seedDevice(db, {
+        name: "Shutter2",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "0" }],
+      });
+      // Shutter 3: position 50 (open)
+      const dev3 = seedDevice(db, {
+        name: "Shutter3",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
+      });
+
+      const eq1 = equipmentManager.create({ name: "Volet Salon", type: "shutter", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "position");
+
+      const eq2 = equipmentManager.create({ name: "Volet Chambre", type: "shutter", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "position");
+
+      const eq3 = equipmentManager.create({ name: "Volet Bureau", type: "shutter", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq3.id, dev3.dataIds[0], "position");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.shuttersTotal).toBe(3);
+      expect(data?.shuttersOpen).toBe(2); // position > 0
+      expect(data?.averageShutterPosition).toBe(43); // round((80+0+50)/3) = 43
+    });
+
+    it("returns null averageShutterPosition when no shutters", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+
+      const dev = seedDevice(db, {
+        name: "Temp1",
+        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "20" }],
+      });
+      const eq = equipmentManager.create({ name: "Sensor", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "temperature");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.shuttersTotal).toBe(0);
+      expect(data?.shuttersOpen).toBe(0);
+      expect(data?.averageShutterPosition).toBeNull();
+    });
+
     it("counts lights on and total from light_state category", () => {
       const zone = zoneManager.create({ name: "Salon" });
 
@@ -383,6 +440,38 @@ describe("ZoneAggregator", () => {
       expect(aggregator.getByZoneId(child1.id)?.motionSensors).toBe(1);
       expect(aggregator.getByZoneId(child2.id)?.motion).toBe(true);
       expect(aggregator.getByZoneId(child2.id)?.motionSensors).toBe(1);
+    });
+
+    it("parent aggregates shutter data from children", () => {
+      const parent = zoneManager.create({ name: "Maison" });
+      const child1 = zoneManager.create({ name: "Salon", parentId: parent.id });
+      const child2 = zoneManager.create({ name: "Chambre", parentId: parent.id });
+
+      // Salon: shutter at 100 (open)
+      const dev1 = seedDevice(db, {
+        name: "Shutter1",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "100" }],
+      });
+      const eq1 = equipmentManager.create({ name: "Volet Salon", type: "shutter", zoneId: child1.id });
+      equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "position");
+
+      // Chambre: shutter at 0 (closed)
+      const dev2 = seedDevice(db, {
+        name: "Shutter2",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "0" }],
+      });
+      const eq2 = equipmentManager.create({ name: "Volet Chambre", type: "shutter", zoneId: child2.id });
+      equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "position");
+
+      aggregator.computeAll();
+
+      const parentData = aggregator.getByZoneId(parent.id);
+      expect(parentData?.shuttersTotal).toBe(2);
+      expect(parentData?.shuttersOpen).toBe(1);
+      expect(parentData?.averageShutterPosition).toBe(50); // (100+0)/2
+
+      expect(aggregator.getByZoneId(child1.id)?.shuttersOpen).toBe(1);
+      expect(aggregator.getByZoneId(child2.id)?.shuttersOpen).toBe(0);
     });
 
     it("parent sums light counts from children", () => {
