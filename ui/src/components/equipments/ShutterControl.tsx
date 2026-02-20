@@ -41,8 +41,8 @@ export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProp
               style={{ width: `${position}%` }}
             />
           </div>
-          <span className="text-[12px] text-text-secondary w-10 text-right tabular-nums">
-            {position}%
+          <span className="text-[12px] text-text-secondary w-auto text-right tabular-nums">
+            {position === 0 ? "Fermé" : position === 100 ? "Ouvert" : `${position}%`}
           </span>
         </div>
       )}

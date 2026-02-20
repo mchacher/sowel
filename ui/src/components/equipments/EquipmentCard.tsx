@@ -209,8 +209,8 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
           onClick={(e) => e.preventDefault()}
         >
           {shutterPosition !== null && (
-            <span className="text-[13px] text-text-secondary tabular-nums w-8 text-right">
-              {shutterPosition}%
+            <span className="text-[13px] text-text-secondary tabular-nums text-right">
+              {shutterPosition === 0 ? "Fermé" : shutterPosition === 100 ? "Ouvert" : `${shutterPosition}%`}
             </span>
           )}
           {hasShutterState && (

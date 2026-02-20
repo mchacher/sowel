@@ -84,7 +84,10 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   // Shutters
   if (data.shuttersTotal > 0) {
     const someOpen = data.shuttersOpen > 0;
-    const positionSuffix = data.averageShutterPosition !== null ? ` · ${data.averageShutterPosition}%` : "";
+    const pos = data.averageShutterPosition;
+    const positionSuffix = pos !== null
+      ? ` · ${pos === 0 ? "Fermé" : pos === 100 ? "Ouvert" : `${pos}%`}`
+      : "";
     pills.push(
       <Pill
         key="shutters"
