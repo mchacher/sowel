@@ -60,7 +60,7 @@ export function AppLayout() {
 function MobileNav() {
   return (
     <nav className="flex md:hidden items-center justify-around h-[56px] border-t border-border bg-surface px-2">
-      <MobileNavLink to="/maison" label="Maison" active />
+      <MobileNavLink to="/home" label="Maison" active />
       <MobileNavLink to="/devices" label="Devices" />
       <MobileNavLink to="/equipments" label="Equip." />
       <MobileNavLink to="/zones" label="Zones" />

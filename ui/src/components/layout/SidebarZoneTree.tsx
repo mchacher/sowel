@@ -81,7 +81,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
 
         {/* Zone link */}
         <NavLink
-          to={`/maison/${zone.id}`}
+          to={`/home/${zone.id}`}
           className={`
             flex-1 flex items-center gap-2 px-2 py-1.5 rounded-[6px] min-w-0
             text-[13px] transition-colors duration-150 ease-out
