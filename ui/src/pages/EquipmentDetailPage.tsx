@@ -5,6 +5,7 @@ import { useZones } from "../store/useZones";
 import { getEquipment } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
+import { ShutterControl } from "../components/equipments/ShutterControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
@@ -119,6 +120,7 @@ export function EquipmentDetailPage() {
   };
 
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
+  const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "motion_sensor" || equipment.type === "contact_sensor";
 
   return (
@@ -172,6 +174,17 @@ export function EquipmentDetailPage() {
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">Controls</h3>
           <LightControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* Shutter controls */}
+      {isShutter && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">Controls</h3>
+          <ShutterControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
