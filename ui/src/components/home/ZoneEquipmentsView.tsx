@@ -8,23 +8,24 @@ import {
   MonitorSpeaker,
   ToggleRight,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
 
 interface EquipmentGroup {
-  label: string;
+  labelKey: string;
   types: EquipmentType[];
   icon: React.ReactNode;
 }
 
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  { label: "Eclairages", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
-  { label: "Volets", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
-  { label: "Capteurs", types: ["sensor", "motion_sensor", "contact_sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
-  { label: "Climat", types: ["thermostat"], icon: <ThermometerSun size={14} strokeWidth={1.5} /> },
-  { label: "Securite", types: ["lock", "alarm"], icon: <Shield size={14} strokeWidth={1.5} /> },
-  { label: "Multimedia", types: ["media_player", "camera"], icon: <MonitorSpeaker size={14} strokeWidth={1.5} /> },
-  { label: "Autres", types: ["switch", "generic"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.sensors", types: ["sensor", "motion_sensor", "contact_sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.climate", types: ["thermostat"], icon: <ThermometerSun size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.security", types: ["lock", "alarm"], icon: <Shield size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.media", types: ["media_player", "camera"], icon: <MonitorSpeaker size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.other", types: ["switch", "generic"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
 ];
 
 interface ZoneEquipmentsViewProps {
@@ -38,6 +39,8 @@ export function ZoneEquipmentsView({
   equipments,
   onExecuteOrder,
 }: ZoneEquipmentsViewProps) {
+  const { t } = useTranslation();
+
   if (equipments.length === 0) {
     return <EmptyZone zoneName={zoneName} />;
   }
@@ -51,11 +54,11 @@ export function ZoneEquipmentsView({
   return (
     <div className="space-y-4">
       {grouped.map((group) => (
-        <div key={group.label} className="rounded-[10px] border border-border bg-surface overflow-hidden">
+        <div key={group.labelKey} className="rounded-[10px] border border-border bg-surface overflow-hidden">
           <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-light">
             <span className="text-text-tertiary">{group.icon}</span>
             <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
-              {group.label}
+              {t(group.labelKey)}
             </span>
             <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
               {group.equipments.length}
@@ -77,14 +80,15 @@ export function ZoneEquipmentsView({
 }
 
 function EmptyZone({ zoneName }: { zoneName: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-14 h-14 rounded-full bg-border-light flex items-center justify-center mb-3">
         <Box size={24} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[15px] font-medium text-text mb-1">No equipments</h3>
+      <h3 className="text-[15px] font-medium text-text mb-1">{t("equipments.noEquipments")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[280px]">
-        {zoneName} has no equipments yet. Add equipments in Settings &gt; Equipments.
+        {t("equipments.noEquipmentsMessage", { name: zoneName })}
       </p>
     </div>
   );

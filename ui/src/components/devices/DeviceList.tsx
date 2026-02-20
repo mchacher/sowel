@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Device, DeviceData } from "../../types";
 import { formatRelativeTime, sourceLabel } from "../../lib/format";
@@ -89,6 +90,7 @@ function compareSortKey(
 }
 
 export function DeviceList({ devices, deviceData }: DeviceListProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -124,7 +126,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               className="w-[42px]"
             />
             <SortHeader
-              label="Name"
+              label={t("devices.col.name")}
               sortKey="name"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -132,7 +134,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               align="left"
             />
             <SortHeader
-              label="Manufacturer"
+              label={t("devices.col.manufacturer")}
               sortKey="manufacturer"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -141,7 +143,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               className="hidden lg:table-cell"
             />
             <SortHeader
-              label="Model"
+              label={t("devices.col.model")}
               sortKey="model"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -150,7 +152,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               className="hidden md:table-cell"
             />
             <SortHeader
-              label="Source"
+              label={t("devices.col.source")}
               sortKey="source"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -159,7 +161,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               className="hidden sm:table-cell"
             />
             <SortHeader
-              label="Battery"
+              label={t("devices.col.battery")}
               sortKey="battery"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -168,7 +170,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               className="hidden md:table-cell"
             />
             <SortHeader
-              label="LQI"
+              label={t("devices.col.lqi")}
               sortKey="lqi"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -177,7 +179,7 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               className="hidden lg:table-cell"
             />
             <SortHeader
-              label="Last seen"
+              label={t("devices.col.lastSeen")}
               sortKey="lastSeen"
               currentKey={sortKey}
               currentDir={sortDir}
@@ -347,15 +349,15 @@ function LqiCell({ value }: { value: unknown }) {
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Radio size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">No devices discovered</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.empty.title")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px]">
-        Devices will appear here automatically when they are discovered via MQTT.
-        Make sure your MQTT broker and zigbee2mqtt are running.
+        {t("devices.empty.message")}
       </p>
     </div>
   );

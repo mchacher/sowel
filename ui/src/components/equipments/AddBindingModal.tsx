@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { X, Radio, Loader2, ChevronRight } from "lucide-react";
 import { getDevices, getDevice, type DeviceWithData } from "../../api";
 import type { DeviceWithDetails, DeviceData, DeviceOrder } from "../../types";
@@ -19,6 +20,7 @@ export function AddBindingModal({
   onClose,
   existingAliases,
 }: AddBindingModalProps) {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<DeviceWithData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,7 @@ export function AddBindingModal({
       setSelectedItemId(null);
       setAlias("");
     } catch {
-      setError("Failed to load device details");
+      setError(t("binding.loadError"));
     } finally {
       setLoadingDevice(false);
     }
@@ -65,7 +67,7 @@ export function AddBindingModal({
     if (!selectedItemId || !alias.trim()) return;
 
     if (existingAliases.includes(alias.trim())) {
-      setError(`Alias "${alias.trim()}" is already used.`);
+      setError(t("binding.aliasDuplicate", { alias: alias.trim() }));
       return;
     }
 
@@ -75,7 +77,7 @@ export function AddBindingModal({
       await onAdd({ id: selectedItemId, alias: alias.trim() });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add binding");
+      setError(err instanceof Error ? err.message : t("binding.addError"));
       setSubmitting(false);
     }
   };
@@ -92,7 +94,7 @@ export function AddBindingModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
           <h2 className="text-[16px] font-semibold text-text">
-            Add {mode === "data" ? "data" : "order"} binding
+            {mode === "data" ? t("binding.addData") : t("binding.addOrder")}
           </h2>
           <button
             onClick={onClose}
@@ -112,10 +114,10 @@ export function AddBindingModal({
             /* Step 1: Pick a device */
             <>
               <p className="text-[13px] text-text-secondary">
-                Select a device to bind {mode === "data" ? "data from" : "an order to"}.
+                {mode === "data" ? t("binding.selectDevice") : t("binding.selectDeviceOrder")}
               </p>
               {devices.length === 0 ? (
-                <p className="text-[13px] text-text-tertiary py-4">No devices available.</p>
+                <p className="text-[13px] text-text-tertiary py-4">{t("binding.noDevices")}</p>
               ) : (
                 <div className="space-y-1 max-h-[400px] overflow-y-auto">
                   {devices.map((device) => (
@@ -160,7 +162,7 @@ export function AddBindingModal({
                   onClick={() => setSelectedDevice(null)}
                   className="text-[13px] text-primary hover:underline"
                 >
-                  Devices
+                  {t("equipments.devices")}
                 </button>
                 <ChevronRight size={12} className="text-text-tertiary" />
                 <span className="text-[13px] font-medium text-text">{selectedDevice.name}</span>
@@ -168,7 +170,7 @@ export function AddBindingModal({
 
               {items.length === 0 ? (
                 <p className="text-[13px] text-text-tertiary py-4">
-                  No {mode === "data" ? "data properties" : "orders"} available on this device.
+                  {t("binding.noProperties", { type: mode === "data" ? t("binding.dataProperties") : t("binding.orders") })}
                 </p>
               ) : (
                 <div className="space-y-1 max-h-[250px] overflow-y-auto">
@@ -226,7 +228,7 @@ export function AddBindingModal({
               {selectedItemId && (
                 <div>
                   <label className="block text-[12px] font-medium text-text-secondary mb-1">
-                    Alias
+                    {t("binding.alias")}
                   </label>
                   <input
                     type="text"
@@ -235,7 +237,7 @@ export function AddBindingModal({
                       setAlias(e.target.value);
                       setError(null);
                     }}
-                    placeholder="e.g. state, brightness"
+                    placeholder={t("binding.aliasPlaceholder")}
                     className="w-full px-3 py-2 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                   />
                 </div>
@@ -255,14 +257,14 @@ export function AddBindingModal({
             onClick={onClose}
             className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!selectedItemId || !alias.trim() || submitting}
             className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "Adding..." : "Add binding"}
+            {submitting ? t("common.adding") : t("binding.addBinding")}
           </button>
         </div>
       </div>

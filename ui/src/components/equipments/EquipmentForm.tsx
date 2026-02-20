@@ -1,17 +1,18 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { EquipmentType, ZoneWithChildren } from "../../types";
 import { DeviceSelector } from "./DeviceSelector";
 
-const EQUIPMENT_TYPES: { value: EquipmentType; label: string }[] = [
-  { value: "light_onoff", label: "Light (On/Off)" },
-  { value: "light_dimmable", label: "Light (Dimmable)" },
-  { value: "light_color", label: "Light (Color)" },
-  { value: "shutter", label: "Shutter" },
-  { value: "switch", label: "Switch / Prise" },
-  { value: "sensor", label: "Capteur" },
-  { value: "motion_sensor", label: "Capteur mouvement" },
-  { value: "contact_sensor", label: "Capteur contact" },
+const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
+  { value: "light_onoff", labelKey: "equipments.type.light_onoff" },
+  { value: "light_dimmable", labelKey: "equipments.type.light_dimmable" },
+  { value: "light_color", labelKey: "equipments.type.light_color" },
+  { value: "shutter", labelKey: "equipments.type.shutter" },
+  { value: "switch", labelKey: "equipments.type.switch" },
+  { value: "sensor", labelKey: "equipments.type.sensor" },
+  { value: "motion_sensor", labelKey: "equipments.type.motion_sensor" },
+  { value: "contact_sensor", labelKey: "equipments.type.contact_sensor" },
 ];
 
 interface EquipmentFormProps {
@@ -33,6 +34,7 @@ interface EquipmentFormProps {
 }
 
 export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundDeviceIds }: EquipmentFormProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<EquipmentType>(initial?.type ?? "light_onoff");
@@ -91,7 +93,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                 {/* Type */}
                 <div>
                   <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-wider mb-1.5">
-                    Type
+                    {t("equipments.form.type")}
                   </label>
                   <select
                     value={type}
@@ -102,8 +104,8 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                     className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
                     disabled={!!initial}
                   >
-                    {EQUIPMENT_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
+                    {EQUIPMENT_TYPE_KEYS.map((et) => (
+                      <option key={et.value} value={et.value}>{t(et.labelKey)}</option>
                     ))}
                   </select>
                 </div>
@@ -111,14 +113,14 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                 {/* Name */}
                 <div>
                   <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-wider mb-1.5">
-                    Name
+                    {t("equipments.form.name")}
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Spots Salon, Appliques Cuisine..."
+                    placeholder={t("equipments.form.namePlaceholder")}
                     className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                     autoFocus
                     maxLength={100}
@@ -128,14 +130,14 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                 {/* Zone */}
                 <div>
                   <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-wider mb-1.5">
-                    Zone
+                    {t("equipments.form.zone")}
                   </label>
                   <select
                     value={zoneId}
                     onChange={(e) => setZoneId(e.target.value)}
                     className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
                   >
-                    <option value="">Select a zone...</option>
+                    <option value="">{t("equipments.form.selectZone")}</option>
                     {flatZones.map((z) => (
                       <option key={z.id} value={z.id}>
                         {"  ".repeat(z.depth)}{z.name}
@@ -149,7 +151,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
             {step === "devices" && (
               <>
                 <p className="text-[13px] text-text-secondary">
-                  Select the device(s) to bind to this equipment. Only compatible devices are shown.
+                  {t("equipments.form.deviceInstruction")}
                 </p>
                 <DeviceSelector
                   equipmentType={type}
@@ -173,7 +175,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                   onClick={() => setStep("info")}
                   className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
                 >
-                  Back
+                  {t("common.back")}
                 </button>
                 <button
                   type="button"
@@ -181,7 +183,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                   disabled={!name.trim() || !zoneId || saving}
                   className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Creating..." : initial ? "Save" : "Create"}
+                  {saving ? t("common.creating") : initial ? t("common.save") : t("common.create")}
                 </button>
               </>
             ) : (
@@ -191,7 +193,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                   onClick={onClose}
                   className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 {initial ? (
                   <button
@@ -200,7 +202,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                     disabled={!name.trim() || !zoneId || saving}
                     className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {saving ? "Saving..." : "Save"}
+                    {saving ? t("common.saving") : t("common.save")}
                   </button>
                 ) : (
                   <button
@@ -209,7 +211,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                     disabled={!name.trim() || !zoneId}
                     className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Next: Select devices
+                    {t("equipments.form.nextDevices")}
                   </button>
                 )}
               </>

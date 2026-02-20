@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Gauge } from "lucide-react";
 import type { DataBindingWithValue, DataCategory } from "../../types";
 import {
@@ -17,6 +18,7 @@ interface SensorDataPanelProps {
 }
 
 export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
+  const { t } = useTranslation();
   const sensorBindings = getSensorBindings(bindings);
   const batteryBinding = getBatteryBinding(bindings);
   const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
@@ -26,9 +28,9 @@ export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
         <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
           <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          Capteurs
+          {t("sensors.title")}
         </h3>
-        <p className="text-[13px] text-text-tertiary">Aucune donnée capteur.</p>
+        <p className="text-[13px] text-text-tertiary">{t("sensors.noData")}</p>
       </div>
     );
   }
@@ -45,7 +47,7 @@ export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
         <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        Capteurs
+        {t("sensors.title")}
       </h3>
       <div className="space-y-3">
         {[...byCategory.entries()].map(([category, categoryBindings]) => (
@@ -70,8 +72,9 @@ function SensorCategoryRow({
   category: DataCategory;
   bindings: DataBindingWithValue[];
 }) {
+  const { t } = useTranslation();
   const isBoolean = isBooleanSensorCategory(category);
-  const label = getSensorCategoryLabel(category);
+  const label = t(`category.${category}`);
 
   return (
     <div className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50">
@@ -90,7 +93,7 @@ function SensorCategoryRow({
         <div className="text-[13px] font-medium text-text-secondary">{label}</div>
         {bindings.length > 1 && (
           <div className="text-[11px] text-text-tertiary">
-            {bindings.length} sources
+            {t("sensors.sources", { count: bindings.length })}
           </div>
         )}
       </div>
@@ -114,6 +117,7 @@ function BooleanSensorValue({
   category: DataCategory;
   bindings: DataBindingWithValue[];
 }) {
+  const { t } = useTranslation();
   // For boolean sensors, OR logic: active if any binding is active
   const isActive = bindings.some(
     (b) => b.value === true || b.value === "ON",
@@ -124,7 +128,7 @@ function BooleanSensorValue({
     (b) => b.value === false || b.value === "OFF",
   );
   const displayActive = isContactCategory ? isContactOpen : isActive;
-  const text = formatBooleanSensor(category, bindings[0]?.value);
+  const text = formatBooleanSensor(category, bindings[0]?.value, t);
 
   return (
     <div className="flex items-center gap-2">
@@ -147,12 +151,13 @@ function BooleanSensorValue({
 }
 
 function NumericSensorValues({ bindings }: { bindings: DataBindingWithValue[] }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-baseline gap-3">
       {bindings.map((b) => (
         <div key={b.id} className="text-right">
           <span className="text-[22px] font-semibold text-text font-mono leading-none">
-            {formatSensorValue(b.value)}
+            {formatSensorValue(b.value, undefined, t)}
           </span>
           {b.unit && (
             <span className="text-[13px] text-text-tertiary ml-1">{b.unit}</span>
@@ -164,6 +169,7 @@ function NumericSensorValues({ bindings }: { bindings: DataBindingWithValue[] })
 }
 
 function BatteryRow({ level }: { level: number | null }) {
+  const { t } = useTranslation();
   const color = getBatteryColor(level);
   return (
     <div className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50">
@@ -171,7 +177,7 @@ function BatteryRow({ level }: { level: number | null }) {
         {getBatteryIcon(level, 18, 1.5)}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium text-text-secondary">Batterie</div>
+        <div className="text-[13px] font-medium text-text-secondary">{t("sensors.battery")}</div>
       </div>
       <div className="flex items-baseline gap-1 flex-shrink-0">
         <span className={`text-[22px] font-semibold font-mono leading-none ${color}`}>

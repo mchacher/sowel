@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Power, ChevronUp, Square, ChevronDown } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "../equipments/EquipmentCard";
@@ -23,6 +24,7 @@ interface CompactEquipmentCardProps {
 }
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquipmentCardProps) {
+  const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const [, forceRender] = useState(0);
   const localBrightness = useRef<number | null>(null);
@@ -190,7 +192,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
             <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-amber-400/15 text-amber-500 inline-flex items-center gap-1">
-                  {formatBooleanSensor(b.category, b.value)}
+                  {formatBooleanSensor(b.category, b.value, t)}
                   <ElapsedCounter lastUpdated={b.lastUpdated} />
                 </span>
               ) : isBooleanSensorCategory(b.category) ? (
@@ -203,11 +205,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
                     }
                   `}
                 >
-                  {formatBooleanSensor(b.category, b.value)}
+                  {formatBooleanSensor(b.category, b.value, t)}
                 </span>
               ) : (
                 <span className="text-text-secondary">
-                  {formatSensorValue(b.value, b.unit)}
+                  {formatSensorValue(b.value, b.unit, t)}
                 </span>
               )}
             </span>
@@ -217,7 +219,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
 
       {/* Battery indicator for sensors */}
       {isSensor && batteryBinding && (
-        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`Batterie : ${batteryLevel ?? "?"}%`}>
+        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`${t("sensors.battery")} : ${batteryLevel ?? "?"}%`}>
           {getBatteryIcon(batteryLevel, 14, 1.5)}
           <span className="text-[11px] tabular-nums">{batteryLevel !== null ? `${batteryLevel}%` : "?"}</span>
         </span>
@@ -272,7 +274,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
                 }
                 disabled:opacity-50 disabled:cursor-not-allowed
               `}
-              title={isOn ? "Turn off" : "Turn on"}
+              title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
             >
               <Power size={14} strokeWidth={1.5} />
             </button>
@@ -288,7 +290,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         >
           {shutterPosition !== null && (
             <span className="text-[13px] text-text-secondary tabular-nums text-right">
-              {shutterPosition === 0 ? "Fermé" : shutterPosition === 100 ? "Ouvert" : `${shutterPosition}%`}
+              {shutterPosition === 0 ? t("controls.closed") : shutterPosition === 100 ? t("controls.opened") : `${shutterPosition}%`}
             </span>
           )}
           {hasShutterState && (
@@ -298,7 +300,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
                 onClick={(e) => handleShutterCommand("OPEN", e)}
                 disabled={executing}
                 className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Ouvrir"
+                title={t("controls.open")}
               >
                 <ChevronUp size={14} strokeWidth={1.5} />
               </button>
@@ -306,7 +308,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
                 onClick={(e) => handleShutterCommand("STOP", e)}
                 disabled={executing}
                 className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Stop"
+                title={t("controls.stop")}
               >
                 <Square size={10} strokeWidth={2} />
               </button>
@@ -314,7 +316,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
                 onClick={(e) => handleShutterCommand("CLOSE", e)}
                 disabled={executing}
                 className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Fermer"
+                title={t("controls.close")}
               >
                 <ChevronDown size={14} strokeWidth={1.5} />
               </button>
@@ -334,7 +336,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
             }
           `}
         >
-          {isOn ? "ON" : "OFF"}
+          {isOn ? t("common.on") : t("common.off")}
         </span>
       )}
     </div>

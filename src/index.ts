@@ -11,6 +11,8 @@ import { Zigbee2MqttParser } from "./mqtt/parsers/zigbee2mqtt.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { MotionLightRecipe } from "./recipes/motion-light.js";
+import { UserManager } from "./auth/user-manager.js";
+import { AuthService } from "./auth/auth-service.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -60,6 +62,10 @@ async function main() {
   const recipeManager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, zoneAggregator, logger);
   recipeManager.register(MotionLightRecipe);
 
+  // 6f. Create Auth modules
+  const userManager = new UserManager(db, logger);
+  const authService = new AuthService(db, userManager, config.jwt, logger);
+
   // 7. Create zigbee2mqtt parser
   const z2mParser = new Zigbee2MqttParser(
     config.z2m.baseTopic,
@@ -79,6 +85,8 @@ async function main() {
     zoneAggregator,
     equipmentManager,
     recipeManager,
+    userManager,
+    authService,
     eventBus,
     mqttConnector,
     logger,
@@ -96,6 +104,11 @@ async function main() {
 
   // 11. Initialize recipe manager (restore persisted instances — after aggregation is ready)
   recipeManager.init();
+
+  if (!userManager.hasUsers()) {
+    logger.info("No users found — setup required. Navigate to the UI to create the first admin.");
+  }
+
   logger.info("Corbel engine started successfully");
 
   // Graceful shutdown

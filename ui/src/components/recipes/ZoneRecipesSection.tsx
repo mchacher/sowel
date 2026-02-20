@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Pencil, Check } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
@@ -11,6 +12,7 @@ interface ZoneRecipesSectionProps {
 }
 
 export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps) {
+  const { t } = useTranslation();
   const recipes = useRecipes((s) => s.recipes);
   const instances = useRecipes((s) => s.instances);
   const fetchRecipes = useRecipes((s) => s.fetchRecipes);
@@ -36,7 +38,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
         <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
-          Recipes
+          {t("recipes.title")}
         </span>
         <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
           {zoneInstances.length}
@@ -44,7 +46,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         <button
           onClick={() => setShowForm(true)}
           className="ml-2 p-1 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-          title="Add a recipe"
+          title={t("recipes.addRecipe")}
         >
           <Plus size={14} strokeWidth={1.5} />
         </button>
@@ -61,13 +63,13 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
       {zoneInstances.length === 0 && !showForm && (
         <div className="px-4 py-6 text-center">
           <p className="text-[13px] text-text-tertiary">
-            No active recipes for {zoneName}
+            {t("recipes.noActiveRecipes", { name: zoneName })}
           </p>
           <button
             onClick={() => setShowForm(true)}
             className="mt-2 text-[13px] text-primary hover:text-primary-hover transition-colors duration-150"
           >
-            Add a recipe
+            {t("recipes.addRecipe")}
           </button>
         </div>
       )}
@@ -96,6 +98,7 @@ function RecipeInstanceRow({
   recipes: RecipeInfo[];
   zoneId: string;
 }) {
+  const { t } = useTranslation();
   const deleteInstance = useRecipes((s) => s.deleteInstance);
   const updateInstance = useRecipes((s) => s.updateInstance);
   const getLog = useRecipes((s) => s.getLog);
@@ -113,7 +116,7 @@ function RecipeInstanceRow({
   const recipeName = recipe?.name ?? instance.recipeId;
 
   const handleDelete = async () => {
-    if (!confirm(`Delete this recipe?`)) return;
+    if (!confirm(t("recipes.deleteConfirm"))) return;
     setDeleting(true);
     try {
       await deleteInstance(instance.id);
@@ -156,7 +159,7 @@ function RecipeInstanceRow({
     for (const slot of recipe.slots) {
       const value = editParams[slot.id];
       if (slot.required && !value) {
-        setEditError(`${slot.name} is required`);
+        setEditError(t("recipes.slotRequired", { name: slot.name }));
         setSaving(false);
         return;
       }
@@ -246,7 +249,7 @@ function RecipeInstanceRow({
         <button
           onClick={handleShowLog}
           className="p-1.5 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
-          title="View log"
+          title={t("recipes.viewLog")}
         >
           <ScrollText size={14} strokeWidth={1.5} />
         </button>
@@ -254,7 +257,7 @@ function RecipeInstanceRow({
           onClick={handleDelete}
           disabled={deleting}
           className="p-1.5 rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
-          title="Delete"
+          title={t("common.delete")}
         >
           <Trash2 size={14} strokeWidth={1.5} />
         </button>
@@ -277,7 +280,7 @@ function RecipeInstanceRow({
                       onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                       className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                     >
-                      <option value="">Select...</option>
+                      <option value="">{t("common.select")}</option>
                       {getEquipmentOptions(slot.id).map((eq) => (
                         <option key={eq.id} value={eq.id}>{eq.name}</option>
                       ))}
@@ -303,13 +306,13 @@ function RecipeInstanceRow({
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[12px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
               >
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={1.5} />}
-                Save
+                {t("common.save")}
               </button>
               <button
                 onClick={handleCancelEdit}
                 className="px-3 py-1.5 bg-border-light text-text-secondary text-[12px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -321,7 +324,7 @@ function RecipeInstanceRow({
         <div className="px-4 pb-3">
           <div className="bg-border-light/40 rounded-[6px] p-2 max-h-[200px] overflow-y-auto">
             {logs.length === 0 ? (
-              <p className="text-[11px] text-text-tertiary text-center py-2">No logs</p>
+              <p className="text-[11px] text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
             ) : (
               <div className="space-y-0.5">
                 {logs.map((log) => (
@@ -403,6 +406,7 @@ function AddRecipeForm({
   recipes: RecipeInfo[];
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const createInstance = useRecipes((s) => s.createInstance);
   const instances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
@@ -502,7 +506,7 @@ function AddRecipeForm({
     for (const slot of selectedRecipe.slots) {
       const value = params[slot.id];
       if (slot.required && !value) {
-        setError(`${slot.name} is required`);
+        setError(t("recipes.slotRequired", { name: slot.name }));
         setSubmitting(false);
         return;
       }
@@ -532,7 +536,7 @@ function AddRecipeForm({
             </button>
           )}
           <span className="text-[13px] font-medium text-text">
-            {step === "choose" ? "Choose a recipe" : selectedRecipe?.name}
+            {step === "choose" ? t("recipes.chooseRecipe") : selectedRecipe?.name}
           </span>
         </div>
         <button onClick={onClose} className="p-1 text-text-tertiary hover:text-text transition-colors duration-150">
@@ -554,16 +558,16 @@ function AddRecipeForm({
           return (
             <div className="text-center py-4">
               <p className="text-[13px] text-text-secondary">
-                All lights in this zone are already managed by recipes.
+                {t("recipes.allLightsManaged")}
               </p>
               <p className="text-[11px] text-text-tertiary mt-1">
-                Delete an existing recipe to free up a light.
+                {t("recipes.deleteSuggestion")}
               </p>
               <button
                 onClick={onClose}
                 className="mt-3 px-4 py-1.5 bg-border-light text-text-secondary text-[12px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
           );
@@ -594,7 +598,7 @@ function AddRecipeForm({
                       {recipe.name}
                     </div>
                     <div className="text-[11px] text-text-tertiary line-clamp-1">
-                      {available ? recipe.description : "All lights in this zone are already managed"}
+                      {available ? recipe.description : t("recipes.allLightsManagedShort")}
                     </div>
                   </div>
                   {available && (
@@ -605,7 +609,7 @@ function AddRecipeForm({
             })}
             {recipes.length === 0 && (
               <p className="text-[13px] text-text-tertiary text-center py-4">
-                No recipes available
+                {t("recipes.noRecipesAvailable")}
               </p>
             )}
           </div>
@@ -630,7 +634,7 @@ function AddRecipeForm({
                     onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                     className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                   >
-                    <option value="">Select...</option>
+                    <option value="">{t("common.select")}</option>
                     {getEquipmentOptions(slot.id).map((eq) => (
                       <option key={eq.id} value={eq.id}>{eq.name}</option>
                     ))}
@@ -665,7 +669,7 @@ function AddRecipeForm({
               onClick={onClose}
               className="px-4 py-2 bg-border-light text-text-secondary text-[13px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </>

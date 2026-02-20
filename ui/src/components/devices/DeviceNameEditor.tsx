@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Pencil, Check, X } from "lucide-react";
 
 interface DeviceNameEditorProps {
@@ -7,6 +8,7 @@ interface DeviceNameEditorProps {
 }
 
 export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
       await onSave(trimmed);
       setEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : t("devices.saveFailed"));
       setValue(name);
     } finally {
       setSaving(false);
@@ -65,7 +67,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
         <button
           onClick={() => setEditing(true)}
           className="p-1.5 rounded-[6px] text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary hover:bg-border-light transition-all duration-150 ease-out"
-          title="Edit name"
+          title={t("devices.editName")}
         >
           <Pencil size={14} strokeWidth={1.5} />
         </button>
@@ -89,7 +91,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
           onClick={handleSave}
           disabled={saving}
           className="p-1.5 rounded-[6px] text-success hover:bg-success/10 transition-colors duration-150 ease-out disabled:opacity-50"
-          title="Save"
+          title={t("common.save")}
         >
           <Check size={16} strokeWidth={1.5} />
         </button>
@@ -97,7 +99,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
           onClick={handleCancel}
           disabled={saving}
           className="p-1.5 rounded-[6px] text-text-tertiary hover:text-error hover:bg-error/10 transition-colors duration-150 ease-out disabled:opacity-50"
-          title="Cancel"
+          title={t("common.cancel")}
         >
           <X size={16} strokeWidth={1.5} />
         </button>
