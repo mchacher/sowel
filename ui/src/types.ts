@@ -112,6 +112,7 @@ export interface ZoneAggregatedData {
   humidity: number | null;
   motion: boolean;
   motionSensors: number;
+  motionSince: string | null;
   openDoors: number;
   openWindows: number;
   waterLeak: boolean;

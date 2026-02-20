@@ -72,6 +72,7 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       : null,
     motion: acc.motion,
     motionSensors: acc.motionSensors,
+    motionSince: null, // Set separately — not accumulated
     openDoors: acc.openDoors,
     openWindows: acc.openWindows,
     waterLeak: acc.waterLeak,
@@ -81,6 +82,9 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
   };
 }
 
+/**
+ * Compare aggregated data excluding motionSince (which is derived, not accumulated).
+ */
 function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): boolean {
   return (
     a.temperature === b.temperature &&
@@ -94,6 +98,24 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.lightsOn === b.lightsOn &&
     a.lightsTotal === b.lightsTotal
   );
+}
+
+/**
+ * Compute motionSince for a zone based on current vs previous motion state.
+ * Only updates the timestamp on actual motion state transitions.
+ */
+function resolveMotionSince(
+  newData: ZoneAggregatedData,
+  oldData: ZoneAggregatedData | undefined,
+  now: string,
+): string | null {
+  if (newData.motionSensors === 0) return null;
+  // If previous data exists and motion state is unchanged, keep the old timestamp
+  if (oldData && oldData.motionSince && oldData.motion === newData.motion) {
+    return oldData.motionSince;
+  }
+  // Motion state changed (or first computation) — record transition time
+  return now;
 }
 
 // ============================================================
@@ -199,10 +221,14 @@ export class ZoneAggregator {
       }
 
       this.mergedCache.set(zoneId, merged);
-      this.publicCache.set(zoneId, accumulatorToPublic(merged));
+      const pub = accumulatorToPublic(merged);
+      const oldPub = this.publicCache.get(zoneId);
+      pub.motionSince = resolveMotionSince(pub, oldPub, now);
+      this.publicCache.set(zoneId, pub);
       computed.add(zoneId);
     };
 
+    const now = new Date().toISOString();
     for (const zone of zones) {
       computeZone(zone.id);
     }
@@ -276,6 +302,7 @@ export class ZoneAggregator {
 
     let currentId: string | null = zoneId;
     let recomputeDirect = true;
+    const now = new Date().toISOString();
 
     while (currentId) {
       const zone = zoneMap.get(currentId);
@@ -301,6 +328,9 @@ export class ZoneAggregator {
       const newPublic = accumulatorToPublic(merged);
       const oldPublic = this.publicCache.get(currentId);
 
+      // Resolve motionSince before equality check
+      newPublic.motionSince = resolveMotionSince(newPublic, oldPublic, now);
+
       if (!oldPublic || !aggregatedDataEqual(oldPublic, newPublic)) {
         this.publicCache.set(currentId, newPublic);
         this.eventBus.emit({
@@ -309,6 +339,9 @@ export class ZoneAggregator {
           aggregatedData: newPublic,
         });
         this.logger.debug({ zoneId: currentId, aggregatedData: newPublic }, "Zone aggregation updated");
+      } else {
+        // Even if aggregation data is unchanged, update cache with motionSince
+        this.publicCache.set(currentId, newPublic);
       }
 
       currentId = zone.parentId;

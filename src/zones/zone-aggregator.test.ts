@@ -112,6 +112,7 @@ describe("ZoneAggregator", () => {
         humidity: null,
         motion: false,
         motionSensors: 0,
+        motionSince: null,
         openDoors: 0,
         openWindows: 0,
         waterLeak: false,
@@ -188,6 +189,7 @@ describe("ZoneAggregator", () => {
       const data = aggregator.getByZoneId(zone.id);
       expect(data?.motion).toBe(true);
       expect(data?.motionSensors).toBe(2);
+      expect(data?.motionSince).toEqual(expect.any(String));
     });
 
     it("aggregates motion as OR (false if all inactive)", () => {
@@ -206,6 +208,7 @@ describe("ZoneAggregator", () => {
       const data = aggregator.getByZoneId(zone.id);
       expect(data?.motion).toBe(false);
       expect(data?.motionSensors).toBe(1);
+      expect(data?.motionSince).toEqual(expect.any(String));
     });
 
     it("counts open doors from contact_door category", () => {
@@ -505,6 +508,59 @@ describe("ZoneAggregator", () => {
       // Both zones should have emitted zone.data.changed
       const zoneEvents = events.filter((e) => e.type === "zone.data.changed");
       expect(zoneEvents).toHaveLength(2);
+    });
+
+    it("updates motionSince on motion state transition", () => {
+      const zone = zoneManager.create({ name: "Entrée" });
+
+      const dev = seedDevice(db, {
+        name: "PIR1",
+        dataKeys: [{ key: "occupancy", type: "boolean", category: "motion", value: "false" }],
+      });
+      const eq = equipmentManager.create({ name: "PIR", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "occupancy");
+
+      aggregator.computeAll();
+      const initialSince = aggregator.getByZoneId(zone.id)?.motionSince;
+      expect(initialSince).toEqual(expect.any(String));
+
+      // Simulate same-value update (no motion change) — motionSince should be preserved
+      eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: eq.id,
+        alias: "occupancy",
+        value: false,
+        previous: false,
+      });
+      expect(aggregator.getByZoneId(zone.id)?.motionSince).toBe(initialSince);
+
+      // Now motion detected — motionSince should change
+      db.prepare("UPDATE device_data SET value = ? WHERE id = ?").run("true", dev.dataIds[0]);
+      eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: eq.id,
+        alias: "occupancy",
+        value: true,
+        previous: false,
+      });
+
+      const newSince = aggregator.getByZoneId(zone.id)?.motionSince;
+      expect(newSince).toEqual(expect.any(String));
+      expect(aggregator.getByZoneId(zone.id)?.motion).toBe(true);
+    });
+
+    it("motionSince is null for zones without motion sensors", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+
+      const dev = seedDevice(db, {
+        name: "Temp1",
+        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "20" }],
+      });
+      const eq = equipmentManager.create({ name: "Sensor", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "temperature");
+
+      aggregator.computeAll();
+      expect(aggregator.getByZoneId(zone.id)?.motionSince).toBeNull();
     });
   });
 
