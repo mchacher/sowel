@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
@@ -26,6 +27,7 @@ import {
 import type { EquipmentWithDetails } from "../types";
 
 export function EquipmentDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const equipments = useEquipments((s) => s.equipments);
@@ -94,21 +96,21 @@ export function EquipmentDetailPage() {
       <div className="p-6">
         <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
           <ArrowLeft size={14} strokeWidth={1.5} />
-          Back to equipments
+          {t("equipments.backToEquipments")}
         </Link>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Box size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">Equipment not found</h3>
-          <p className="text-[13px] text-text-secondary">{error ?? "This equipment does not exist."}</p>
+          <h3 className="text-[16px] font-medium text-text mb-1">{t("equipments.notFound.title")}</h3>
+          <p className="text-[13px] text-text-secondary">{error ?? t("equipments.notFound.message")}</p>
         </div>
       </div>
     );
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Delete equipment "${equipment.name}"? This cannot be undone.`)) return;
+    if (!confirm(t("equipments.deleteConfirm", { name: equipment.name }))) return;
     setDeleting(true);
     try {
       await deleteEquipment(equipment.id);
@@ -128,7 +130,7 @@ export function EquipmentDetailPage() {
       {/* Back link */}
       <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
         <ArrowLeft size={14} strokeWidth={1.5} />
-        Back to equipments
+        {t("equipments.backToEquipments")}
       </Link>
 
       {/* Header */}
@@ -142,10 +144,10 @@ export function EquipmentDetailPage() {
               {equipment.name}
             </h1>
             <p className="text-[13px] text-text-secondary">
-              {TYPE_LABELS[equipment.type]}
+              {t(TYPE_LABELS[equipment.type])}
               {equipment.description && ` · ${equipment.description}`}
               {!equipment.enabled && (
-                <span className="text-warning ml-2">Disabled</span>
+                <span className="text-warning ml-2">{t("common.disabled")}</span>
               )}
             </p>
           </div>
@@ -156,7 +158,7 @@ export function EquipmentDetailPage() {
             className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
           >
             <Pencil size={14} strokeWidth={1.5} />
-            Edit
+            {t("common.edit")}
           </button>
           <button
             onClick={handleDelete}
@@ -164,7 +166,7 @@ export function EquipmentDetailPage() {
             className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
           >
             <Trash2 size={14} strokeWidth={1.5} />
-            {deleting ? "Deleting..." : "Delete"}
+            {deleting ? t("common.deleting") : t("common.delete")}
           </button>
         </div>
       </div>
@@ -172,7 +174,7 @@ export function EquipmentDetailPage() {
       {/* Controls */}
       {isLight && equipment.enabled && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">Controls</h3>
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <LightControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -183,7 +185,7 @@ export function EquipmentDetailPage() {
       {/* Shutter controls */}
       {isShutter && equipment.enabled && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">Controls</h3>
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ShutterControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -210,9 +212,9 @@ export function EquipmentDetailPage() {
             ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
             : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
           }
-          <span className="text-[13px] font-medium text-text-secondary">Bindings</span>
+          <span className="text-[13px] font-medium text-text-secondary">{t("equipments.bindings")}</span>
           <span className="text-[11px] text-text-tertiary">
-            {equipment.dataBindings.length + equipment.orderBindings.length} binding{equipment.dataBindings.length + equipment.orderBindings.length !== 1 ? "s" : ""}
+            {t("equipments.bindingCount", { count: equipment.dataBindings.length + equipment.orderBindings.length })}
           </span>
         </button>
 
@@ -223,18 +225,18 @@ export function EquipmentDetailPage() {
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
                   <Link2 size={13} strokeWidth={1.5} />
-                  Data Bindings
+                  {t("equipments.dataBindings")}
                 </h4>
                 <button
                   onClick={() => setShowAddDataBinding(true)}
                   className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
                 >
                   <Plus size={11} strokeWidth={1.5} />
-                  Add
+                  {t("common.add")}
                 </button>
               </div>
               {equipment.dataBindings.length === 0 ? (
-                <p className="text-[12px] text-text-tertiary">None</p>
+                <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
               ) : (
                 <div className="space-y-1">
                   {equipment.dataBindings.map((binding) => (
@@ -249,7 +251,7 @@ export function EquipmentDetailPage() {
                       <button
                         onClick={() => removeDataBinding(equipment.id, binding.id)}
                         className="p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove"
+                        title={t("common.remove")}
                       >
                         <Unlink size={11} strokeWidth={1.5} />
                       </button>
@@ -264,18 +266,18 @@ export function EquipmentDetailPage() {
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
                   <Zap size={13} strokeWidth={1.5} />
-                  Order Bindings
+                  {t("equipments.orderBindings")}
                 </h4>
                 <button
                   onClick={() => setShowAddOrderBinding(true)}
                   className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
                 >
                   <Plus size={11} strokeWidth={1.5} />
-                  Add
+                  {t("common.add")}
                 </button>
               </div>
               {equipment.orderBindings.length === 0 ? (
-                <p className="text-[12px] text-text-tertiary">None</p>
+                <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
               ) : (
                 <div className="space-y-1">
                   {equipment.orderBindings.map((binding) => (
@@ -286,7 +288,7 @@ export function EquipmentDetailPage() {
                       <button
                         onClick={() => removeOrderBinding(equipment.id, binding.id)}
                         className="ml-auto p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove"
+                        title={t("common.remove")}
                       >
                         <Unlink size={11} strokeWidth={1.5} />
                       </button>
@@ -302,7 +304,7 @@ export function EquipmentDetailPage() {
       {/* Edit equipment modal */}
       {showEditForm && (
         <EquipmentForm
-          title="Edit equipment"
+          title={t("equipments.editEquipment")}
           initial={{
             name: equipment.name,
             type: equipment.type,
@@ -349,6 +351,7 @@ export function EquipmentDetailPage() {
 
 /** Group bindings by device and show a summary card per device. */
 function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
   // Collect unique devices from all bindings
   const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[]; values: Record<string, { value: unknown; unit?: string }> }>();
 
@@ -377,9 +380,9 @@ function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
         <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
           <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          Devices
+          {t("equipments.devices")}
         </h3>
-        <p className="text-[13px] text-text-tertiary">No device associated.</p>
+        <p className="text-[13px] text-text-tertiary">{t("equipments.noDevice")}</p>
       </div>
     );
   }
@@ -388,7 +391,7 @@ function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-3">
         <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        Devices
+        {t("equipments.devices")}
       </h3>
       <div className="space-y-2">
         {devices.map((dev) => (

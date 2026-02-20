@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { EquipmentCard } from "../components/equipments/EquipmentCard";
@@ -9,6 +10,7 @@ import { getDevice } from "../api";
 import { addDataBinding, addOrderBinding } from "../api";
 
 export function EquipmentsPage() {
+  const { t } = useTranslation();
   const equipments = useEquipments((s) => s.equipments);
   const loading = useEquipments((s) => s.loading);
   const error = useEquipments((s) => s.error);
@@ -39,7 +41,7 @@ export function EquipmentsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[24px] font-semibold text-text leading-[32px]">
-            Equipments
+            {t("equipments.title")}
           </h1>
         </div>
 
@@ -52,7 +54,7 @@ export function EquipmentsPage() {
                 type="text"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filter..."
+                placeholder={t("equipments.filterPlaceholder")}
                 className="w-[180px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               />
               {filter && (
@@ -68,7 +70,7 @@ export function EquipmentsPage() {
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
-            Add equipment
+            {t("equipments.addEquipment")}
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
@@ -113,7 +115,7 @@ export function EquipmentsPage() {
       {/* Create equipment modal */}
       {showForm && (
         <EquipmentForm
-          title="Create equipment"
+          title={t("equipments.createEquipment")}
           zones={tree}
           boundDeviceIds={new Set(equipments.flatMap((e) => [
             ...e.dataBindings.map((b) => b.deviceId),
@@ -226,26 +228,28 @@ function groupByZone(
 }
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-primary-light flex items-center justify-center mb-4">
         <Box size={28} strokeWidth={1.5} className="text-primary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">No equipments yet</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("equipments.empty.title")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
-        Equipments are the functional units in your home. Create your first equipment and bind it to a device.
+        {t("equipments.empty.message")}
       </p>
       <button
         onClick={onAdd}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
-        Create equipment
+        {t("equipments.createEquipment")}
       </button>
     </div>
   );
 }
 
 function ErrorState({ error }: { error: string }) {
+  const { t } = useTranslation();
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
 
   return (
@@ -253,13 +257,13 @@ function ErrorState({ error }: { error: string }) {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Box size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">Failed to load equipments</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("equipments.error.title")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchEquipments()}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
-        Retry
+        {t("common.retry")}
       </button>
     </div>
   );

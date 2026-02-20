@@ -246,6 +246,36 @@ export interface RecipeLogEntry {
 }
 
 // ============================================================
+// User & Auth
+// ============================================================
+
+export type UserRole = "admin" | "standard";
+
+export interface User {
+  id: string;
+  username: string;
+  displayName: string;
+  role: UserRole;
+  preferences: UserPreferences;
+  enabled: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface UserPreferences {
+  language: "fr" | "en";
+  defaultZoneId?: string;
+}
+
+export interface ApiToken {
+  id: string;
+  name: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+// ============================================================
 // Event Bus
 // ============================================================
 
@@ -371,6 +401,11 @@ export interface AppConfig {
   api: {
     port: number;
     host: string;
+  };
+  jwt: {
+    secret: string;
+    accessTtl: number;
+    refreshTtl: number;
   };
   log: {
     level: string;

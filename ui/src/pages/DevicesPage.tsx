@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useDevices } from "../store/useDevices";
 import { DeviceList } from "../components/devices/DeviceList";
 import { Radio, Loader2, Search, X } from "lucide-react";
 
 export function DevicesPage() {
+  const { t } = useTranslation();
   const devices = useDevices((s) => s.devices);
   const deviceData = useDevices((s) => s.deviceData);
   const loading = useDevices((s) => s.loading);
@@ -25,12 +27,12 @@ export function DevicesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[24px] font-semibold text-text leading-[32px]">
-            Devices
+            {t("devices.title")}
           </h1>
           <p className="text-[13px] text-text-secondary mt-0.5">
             {deviceList.length === 0
-              ? "Waiting for MQTT discovery..."
-              : `${deviceList.length} device${deviceList.length !== 1 ? "s" : ""} · ${onlineCount} online`}
+              ? t("devices.waitingDiscovery")
+              : t("devices.subtitle", { count: deviceList.length, online: onlineCount })}
           </p>
         </div>
 
@@ -46,7 +48,7 @@ export function DevicesPage() {
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Filter by name..."
+              placeholder={t("devices.filterPlaceholder")}
               className="w-[200px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
             />
             {filter && (
@@ -83,6 +85,7 @@ export function DevicesPage() {
 }
 
 function ErrorState({ error }: { error: string }) {
+  const { t } = useTranslation();
   const fetchDevices = useDevices((s) => s.fetchDevices);
 
   return (
@@ -90,7 +93,7 @@ function ErrorState({ error }: { error: string }) {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Radio size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">Connection error</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.error.title")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
         {error}
       </p>
@@ -98,7 +101,7 @@ function ErrorState({ error }: { error: string }) {
         onClick={() => fetchDevices()}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
-        Retry
+        {t("common.retry")}
       </button>
     </div>
   );

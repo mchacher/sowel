@@ -39,6 +39,11 @@ export function loadConfig(): AppConfig {
       port: envInt("API_PORT", 3000),
       host: env("API_HOST", "0.0.0.0"),
     },
+    jwt: {
+      secret: env("JWT_SECRET", "corbel-dev-secret-change-me"),
+      accessTtl: envInt("JWT_ACCESS_TTL", 900),
+      refreshTtl: envInt("JWT_REFRESH_TTL", 2592000),
+    },
     log: {
       level: env("LOG_LEVEL", "info"),
     },

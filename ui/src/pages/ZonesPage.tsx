@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useZones } from "../store/useZones";
 import { ZoneTree } from "../components/zones/ZoneTree";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
 import { Home, Loader2, Plus } from "lucide-react";
 
 export function ZonesPage() {
+  const { t } = useTranslation();
   const tree = useZones((s) => s.tree);
   const loading = useZones((s) => s.loading);
   const error = useZones((s) => s.error);
@@ -25,12 +27,12 @@ export function ZonesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[24px] font-semibold text-text leading-[32px]">
-            Home Topology
+            {t("zones.title")}
           </h1>
           <p className="text-[13px] text-text-secondary mt-0.5">
             {zoneCount === 0
-              ? "Define the topology of your home"
-              : `${zoneCount} zone${zoneCount !== 1 ? "s" : ""}`}
+              ? t("zones.subtitle")
+              : t("zones.count", { count: zoneCount })}
           </p>
         </div>
 
@@ -40,7 +42,7 @@ export function ZonesPage() {
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
-            Add zone
+            {t("zones.addZone")}
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
@@ -71,7 +73,7 @@ export function ZonesPage() {
       {/* Create zone modal */}
       {showForm && (
         <ZoneForm
-          title="Create zone"
+          title={t("zones.createZone")}
           parentZones={flattenZoneTree(tree)}
           defaultParentId={defaultParentId}
           onSubmit={async (data) => {
@@ -95,6 +97,7 @@ function countZones(zones: { children?: { children?: unknown[] }[] }[]): number 
 }
 
 function ErrorState({ error }: { error: string }) {
+  const { t } = useTranslation();
   const fetchZones = useZones((s) => s.fetchZones);
 
   return (
@@ -102,13 +105,13 @@ function ErrorState({ error }: { error: string }) {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">Failed to load zones</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("zones.error.title")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchZones()}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
-        Retry
+        {t("common.retry")}
       </button>
     </div>
   );

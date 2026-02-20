@@ -1,18 +1,24 @@
 import { Outlet } from "react-router-dom";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useDevices } from "../../store/useDevices";
 import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
+import { useAuth } from "../../store/useAuth";
+import { LogOut, User } from "lucide-react";
 
 export function AppLayout() {
+  const { t } = useTranslation();
   const connect = useWebSocket((s) => s.connect);
   const disconnect = useWebSocket((s) => s.disconnect);
   const fetchDevices = useDevices((s) => s.fetchDevices);
   const fetchZones = useZones((s) => s.fetchZones);
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
+  const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
 
   useEffect(() => {
     fetchDevices();
@@ -39,10 +45,33 @@ export function AppLayout() {
               <div className="w-7 h-7 bg-primary rounded-[5px] flex items-center justify-center">
                 <span className="text-white font-semibold text-xs">C</span>
               </div>
-              <span className="font-semibold text-[15px] text-text">Corbel</span>
+              <span className="font-semibold text-[15px] text-text">{t("app.name")}</span>
             </div>
           </div>
-          <ConnectionStatus />
+
+          <div className="flex items-center gap-3">
+            <ConnectionStatus />
+            {user && (
+              <div className="flex items-center gap-2 ml-2">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-text-secondary">
+                  <User size={14} strokeWidth={1.5} />
+                  <span className="text-[12px] font-medium">{user.displayName}</span>
+                  {user.role === "admin" && (
+                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                      {t("auth.admin")}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => logout()}
+                  className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors duration-150 cursor-pointer"
+                  title={t("auth.logout")}
+                >
+                  <LogOut size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Page content */}
@@ -58,12 +87,14 @@ export function AppLayout() {
 }
 
 function MobileNav() {
+  const { t } = useTranslation();
   return (
     <nav className="flex md:hidden items-center justify-around h-[56px] border-t border-border bg-surface px-2">
-      <MobileNavLink to="/home" label="Maison" active />
-      <MobileNavLink to="/devices" label="Devices" />
-      <MobileNavLink to="/equipments" label="Equip." />
-      <MobileNavLink to="/zones" label="Zones" />
+      <MobileNavLink to="/home" label={t("nav.maison")} active />
+      <MobileNavLink to="/devices" label={t("nav.devices")} />
+      <MobileNavLink to="/equipments" label={t("nav.equipments")} />
+      <MobileNavLink to="/zones" label={t("nav.zones")} />
+      <MobileNavLink to="/settings" label={t("nav.settings")} />
     </nav>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronDown, Building2, Layers, DoorOpen, Home, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import type { ZoneWithChildren } from "../../types";
@@ -55,6 +56,7 @@ interface ZoneTreeNodeProps {
 }
 
 function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, onAddChild }: ZoneTreeNodeProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(depth < 2);
   const navigate = useNavigate();
   const hasChildren = zone.children.length > 0;
@@ -127,7 +129,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
           <div className="flex items-center gap-2 flex-shrink-0">
             {childCount > 0 && (
               <span className="text-[11px] text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
-                {childCount} zone{childCount > 1 ? "s" : ""}
+                {t("zones.childCount", { count: childCount })}
               </span>
             )}
           </div>
@@ -139,7 +141,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
             <button
               onClick={(e) => { e.stopPropagation(); onAddChild(zone.id); }}
               className="p-1 rounded text-text-tertiary hover:text-primary hover:bg-primary-light transition-colors cursor-pointer"
-              title="Add sub-zone"
+              title={t("zones.addSubZone")}
             >
               <Plus size={13} strokeWidth={1.5} />
             </button>
@@ -150,7 +152,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
                 onClick={(e) => { e.stopPropagation(); onMove(index, "up"); }}
                 disabled={isFirst}
                 className="p-1 rounded text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
-                title="Move up"
+                title={t("zones.moveUp")}
               >
                 <ArrowUp size={13} strokeWidth={1.5} />
               </button>
@@ -158,7 +160,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
                 onClick={(e) => { e.stopPropagation(); onMove(index, "down"); }}
                 disabled={isLast}
                 className="p-1 rounded text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
-                title="Move down"
+                title={t("zones.moveDown")}
               >
                 <ArrowDown size={13} strokeWidth={1.5} />
               </button>
@@ -189,14 +191,16 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">No zones yet</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("zones.empty.title")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px]">
-        Create your first zone to start building your home topology.
+        {t("zones.empty.message")}
       </p>
     </div>
   );
