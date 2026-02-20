@@ -11,6 +11,7 @@ import { EquipmentsPage } from "./pages/EquipmentsPage";
 import { EquipmentDetailPage } from "./pages/EquipmentDetailPage";
 import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { IntegrationsPage } from "./pages/IntegrationsPage";
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/zones" element={<ZonesPage />} />
           <Route path="/zones/:id" element={<ZoneDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/integrations" element={<IntegrationsPage />} />
 
           {/* Default redirect to Maison */}
           <Route path="*" element={<Navigate to="/home" replace />} />

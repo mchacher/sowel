@@ -8,9 +8,11 @@ import type { ZoneAggregator } from "../zones/zone-aggregator.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { MqttConnector } from "../mqtt/mqtt-connector.js";
+import type Database from "better-sqlite3";
 import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { UserManager } from "../auth/user-manager.js";
 import type { AuthService } from "../auth/auth-service.js";
+import type { SettingsManager } from "../core/settings-manager.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -20,9 +22,12 @@ import { registerRecipeRoutes } from "./routes/recipes.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerMeRoutes } from "./routes/me.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { registerBackupRoutes } from "./routes/backup.js";
+import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
+  db: Database.Database;
   deviceManager: DeviceManager;
   zoneManager: ZoneManager;
   zoneAggregator: ZoneAggregator;
@@ -30,6 +35,7 @@ interface ServerDeps {
   recipeManager: RecipeManager;
   userManager: UserManager;
   authService: AuthService;
+  settingsManager: SettingsManager;
   eventBus: EventBus;
   mqttConnector: MqttConnector;
   logger: Logger;
@@ -38,8 +44,8 @@ interface ServerDeps {
 
 export async function createServer(deps: ServerDeps) {
   const {
-    deviceManager, zoneManager, zoneAggregator, equipmentManager, recipeManager,
-    userManager, authService, eventBus, mqttConnector, logger, corsOrigins,
+    db, deviceManager, zoneManager, zoneAggregator, equipmentManager, recipeManager,
+    userManager, authService, settingsManager, eventBus, mqttConnector, logger, corsOrigins,
   } = deps;
 
   const app = Fastify({
@@ -67,6 +73,8 @@ export async function createServer(deps: ServerDeps) {
   registerZoneRoutes(app, { zoneManager, zoneAggregator, logger });
   registerEquipmentRoutes(app, { equipmentManager, logger });
   registerRecipeRoutes(app, { recipeManager, logger });
+  registerBackupRoutes(app, { db, logger });
+  registerSettingsRoutes(app, { settingsManager, mqttConnector, logger });
   registerWebSocket(app, { eventBus, authService, logger });
 
   return app;

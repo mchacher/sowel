@@ -386,15 +386,6 @@ export interface Z2MBridgeEvent {
 // ============================================================
 
 export interface AppConfig {
-  mqtt: {
-    url: string;
-    username?: string;
-    password?: string;
-    clientId: string;
-  };
-  z2m: {
-    baseTopic: string;
-  };
   sqlite: {
     path: string;
   };

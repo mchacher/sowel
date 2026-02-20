@@ -23,15 +23,6 @@ function envInt(key: string, fallback: number): number {
 
 export function loadConfig(): AppConfig {
   return {
-    mqtt: {
-      url: env("MQTT_URL", "mqtt://localhost:1883"),
-      username: process.env["MQTT_USERNAME"] || undefined,
-      password: process.env["MQTT_PASSWORD"] || undefined,
-      clientId: env("MQTT_CLIENT_ID", "corbel"),
-    },
-    z2m: {
-      baseTopic: env("Z2M_BASE_TOPIC", "zigbee2mqtt"),
-    },
     sqlite: {
       path: env("SQLITE_PATH", "./data/corbel.db"),
     },
