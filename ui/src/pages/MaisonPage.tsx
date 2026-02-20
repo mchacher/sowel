@@ -4,8 +4,8 @@ import { Loader2, Home } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
 import { useZoneAggregation } from "../store/useZoneAggregation";
-import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
-import { ZoneAggregationHeader } from "../components/home/ZoneAggregationHeader";
+import { ZoneEquipmentsView } from "../components/maison/ZoneEquipmentsView";
+import { ZoneAggregationHeader } from "../components/maison/ZoneAggregationHeader";
 import type { ZoneWithChildren } from "../types";
 
 export function MaisonPage() {
