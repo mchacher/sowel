@@ -28,6 +28,10 @@ interface Accumulator {
   smoke: boolean;
   lightsOn: number;
   lightsTotal: number;
+  shutterPositionSum: number;
+  shutterPositionCount: number;
+  shuttersOpen: number;
+  shuttersTotal: number;
 }
 
 function emptyAccumulator(): Accumulator {
@@ -46,6 +50,10 @@ function emptyAccumulator(): Accumulator {
     smoke: false,
     lightsOn: 0,
     lightsTotal: 0,
+    shutterPositionSum: 0,
+    shutterPositionCount: 0,
+    shuttersOpen: 0,
+    shuttersTotal: 0,
   };
 }
 
@@ -65,6 +73,10 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     smoke: a.smoke || b.smoke,
     lightsOn: a.lightsOn + b.lightsOn,
     lightsTotal: a.lightsTotal + b.lightsTotal,
+    shutterPositionSum: a.shutterPositionSum + b.shutterPositionSum,
+    shutterPositionCount: a.shutterPositionCount + b.shutterPositionCount,
+    shuttersOpen: a.shuttersOpen + b.shuttersOpen,
+    shuttersTotal: a.shuttersTotal + b.shuttersTotal,
   };
 }
 
@@ -88,6 +100,11 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     smoke: acc.smoke,
     lightsOn: acc.lightsOn,
     lightsTotal: acc.lightsTotal,
+    shuttersOpen: acc.shuttersOpen,
+    shuttersTotal: acc.shuttersTotal,
+    averageShutterPosition: acc.shutterPositionCount > 0
+      ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
+      : null,
   };
 }
 
@@ -106,7 +123,10 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.waterLeak === b.waterLeak &&
     a.smoke === b.smoke &&
     a.lightsOn === b.lightsOn &&
-    a.lightsTotal === b.lightsTotal
+    a.lightsTotal === b.lightsTotal &&
+    a.shuttersOpen === b.shuttersOpen &&
+    a.shuttersTotal === b.shuttersTotal &&
+    a.averageShutterPosition === b.averageShutterPosition
   );
 }
 
@@ -438,6 +458,17 @@ export class ZoneAggregator {
           acc.lightsTotal += 1;
           if (isBooleanActive(value)) {
             acc.lightsOn += 1;
+          }
+          break;
+
+        case "shutter_position":
+          if (typeof value === "number") {
+            acc.shuttersTotal += 1;
+            acc.shutterPositionSum += value;
+            acc.shutterPositionCount += 1;
+            if (value > 0) {
+              acc.shuttersOpen += 1;
+            }
           }
           break;
       }

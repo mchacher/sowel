@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Power } from "lucide-react";
+import { Power, ChevronUp, Square, ChevronDown } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "../equipments/EquipmentCard";
 import {
@@ -32,6 +32,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     equipment.type === "light_onoff" ||
     equipment.type === "light_dimmable" ||
     equipment.type === "light_color";
+
+  const isShutter = equipment.type === "shutter";
 
   const isSensor =
     equipment.type === "sensor" ||
@@ -70,8 +72,17 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   const batteryBinding = isSensor ? getBatteryBinding(equipment.dataBindings) : null;
   const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
 
-  // Find primary data value for non-light, non-sensor equipments
-  const primaryBinding = !isLight && !isSensor
+  // Shutter-specific data
+  const shutterPositionBinding = isShutter
+    ? equipment.dataBindings.find((db) => db.category === "shutter_position")
+    : null;
+  const shutterPosition = shutterPositionBinding && typeof shutterPositionBinding.value === "number"
+    ? shutterPositionBinding.value
+    : null;
+  const hasShutterState = isShutter && equipment.orderBindings.some((ob) => ob.alias === "state");
+
+  // Find primary data value for non-light, non-sensor, non-shutter equipments
+  const primaryBinding = !isLight && !isSensor && !isShutter
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -115,18 +126,36 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     }, SETTLE_DELAY_MS);
   };
 
+  const handleShutterCommand = async (command: "OPEN" | "STOP" | "CLOSE", e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (executing || !hasShutterState) return;
+    setExecuting(true);
+    try {
+      await onExecuteOrder(equipment.id, "state", command);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   // Determine icon and icon color
   const iconElement = isSensor
     ? getSensorIcon(equipment.dataBindings)
     : TYPE_ICONS[equipment.type];
 
+  const shutterIsOpen = shutterPosition !== null && shutterPosition > 0;
+
   const iconColor = isSensor
     ? getSensorIconColor(equipment.dataBindings)
-    : isLight && isOn
-      ? "bg-amber-400/15 text-amber-500"
-      : isOn
+    : isShutter
+      ? shutterIsOpen
         ? "bg-primary/10 text-primary"
-        : "bg-border-light text-text-tertiary";
+        : "bg-border-light text-text-tertiary"
+      : isLight && isOn
+        ? "bg-amber-400/15 text-amber-500"
+        : isOn
+          ? "bg-primary/10 text-primary"
+          : "bg-border-light text-text-tertiary";
 
   return (
     <div
@@ -189,8 +218,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         </span>
       )}
 
-      {/* Primary value for non-light, non-sensor equipments */}
-      {primaryBinding && !isLight && !isSensor && (
+      {/* Primary value for non-light, non-sensor, non-shutter equipments */}
+      {primaryBinding && !isLight && !isSensor && !isShutter && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -241,8 +270,51 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         </div>
       )}
 
-      {/* Boolean state badge for non-light, non-sensor equipments */}
-      {!isLight && !isSensor && stateBinding && (
+      {/* Shutter controls */}
+      {isShutter && equipment.enabled && (
+        <div
+          className="flex items-center gap-2 flex-shrink-0"
+          onClick={(e) => e.preventDefault()}
+        >
+          {shutterPosition !== null && (
+            <span className="text-[13px] text-text-secondary tabular-nums text-right">
+              {shutterPosition === 0 ? "Fermé" : shutterPosition === 100 ? "Ouvert" : `${shutterPosition}%`}
+            </span>
+          )}
+          {hasShutterState && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <button
+                onClick={(e) => handleShutterCommand("OPEN", e)}
+                disabled={executing}
+                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Ouvrir"
+              >
+                <ChevronUp size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={(e) => handleShutterCommand("STOP", e)}
+                disabled={executing}
+                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Stop"
+              >
+                <Square size={10} strokeWidth={2} />
+              </button>
+              <button
+                onClick={(e) => handleShutterCommand("CLOSE", e)}
+                disabled={executing}
+                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Fermer"
+              >
+                <ChevronDown size={14} strokeWidth={1.5} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Boolean state badge for non-light, non-sensor, non-shutter equipments */}
+      {!isLight && !isSensor && !isShutter && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
