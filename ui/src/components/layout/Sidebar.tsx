@@ -63,7 +63,7 @@ export function Sidebar() {
         )}
         {collapsed ? (
           <NavLink
-            to="/maison"
+            to="/home"
             className={({ isActive }) => `
               flex items-center justify-center px-3 py-2.5 rounded-[6px]
               transition-colors duration-150 ease-out

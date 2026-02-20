@@ -14,8 +14,8 @@ export default function App() {
       <Routes>
         <Route element={<AppLayout />}>
           {/* Maison — primary daily view */}
-          <Route path="/maison" element={<MaisonPage />} />
-          <Route path="/maison/:zoneId" element={<MaisonPage />} />
+          <Route path="/home" element={<MaisonPage />} />
+          <Route path="/home/:zoneId" element={<MaisonPage />} />
 
           {/* Settings pages */}
           <Route path="/devices" element={<DevicesPage />} />
@@ -26,7 +26,7 @@ export default function App() {
           <Route path="/zones/:id" element={<ZoneDetailPage />} />
 
           {/* Default redirect to Maison */}
-          <Route path="*" element={<Navigate to="/maison" replace />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -4,8 +4,8 @@ import { Loader2, Home } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
 import { useZoneAggregation } from "../store/useZoneAggregation";
-import { ZoneEquipmentsView } from "../components/maison/ZoneEquipmentsView";
-import { ZoneAggregationHeader } from "../components/maison/ZoneAggregationHeader";
+import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
+import { ZoneAggregationHeader } from "../components/home/ZoneAggregationHeader";
 import type { ZoneWithChildren } from "../types";
 
 export function MaisonPage() {
@@ -32,7 +32,7 @@ export function MaisonPage() {
     if (!zoneId && !zonesLoading && tree.length > 0) {
       const firstZone = getFirstLeafZone(tree);
       if (firstZone) {
-        navigate(`/maison/${firstZone.id}`, { replace: true });
+        navigate(`/home/${firstZone.id}`, { replace: true });
       }
     }
   }, [zoneId, zonesLoading, tree, navigate]);
@@ -133,7 +133,7 @@ function ZoneNotFound() {
         This zone may have been deleted.
       </p>
       <button
-        onClick={() => navigate("/maison")}
+        onClick={() => navigate("/home")}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
       >
         Back to Maison
