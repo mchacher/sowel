@@ -19,6 +19,7 @@ import type {
   DataType,
   DataCategory,
 } from "../shared/types.js";
+import { PROPERTY_TO_CATEGORY } from "../shared/constants.js";
 
 interface DiscoveredDevice {
   ieeeAddress: string;
@@ -293,10 +294,22 @@ export class DeviceManager {
     }
 
     for (const [key, value] of Object.entries(payload)) {
-      const dataRow = this.stmts.findDeviceDataByKey.get(device.id, key) as
+      let dataRow = this.stmts.findDeviceDataByKey.get(device.id, key) as
         | DeviceDataRow
         | undefined;
-      if (!dataRow) continue; // Unknown property, skip
+
+      // Auto-create device_data for known properties missing from exposes (e.g. Tuya battery)
+      if (!dataRow) {
+        const category = PROPERTY_TO_CATEGORY[key];
+        if (!category) continue; // Truly unknown property, skip
+        const dataType: DataType = typeof value === "boolean" ? "boolean" : typeof value === "number" ? "number" : "text";
+        const unit = category === "battery" ? "%" : category === "temperature" ? "°C" : category === "humidity" ? "%" : category === "pressure" ? "hPa" : category === "luminosity" ? "lx" : undefined;
+        const id = deterministicId(device.id, "data", key);
+        this.stmts.insertDeviceData.run({ id, deviceId: device.id, key, type: dataType, category, unit: unit ?? null });
+        this.logger.info({ deviceId: device.id, key, category }, "Auto-created device_data from MQTT payload");
+        dataRow = this.stmts.findDeviceDataByKey.get(device.id, key) as DeviceDataRow | undefined;
+        if (!dataRow) continue;
+      }
 
       const serialized = JSON.stringify(value);
       const previous = dataRow.value;

@@ -240,7 +240,8 @@ export class Zigbee2MqttParser {
 
       if (!expose.property) continue;
 
-      const access = expose.access ?? 0;
+      // Default to readable (1) when access is undefined — if z2m exposes a property, it's readable
+      const access = expose.access ?? Z2M_ACCESS_STATE;
       const dataType = Z2M_TYPE_TO_DATA_TYPE[expose.type] ?? "text";
 
       // If readable (bit 0 set) → create DeviceData
