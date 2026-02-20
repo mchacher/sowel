@@ -3,7 +3,6 @@ import Database from "better-sqlite3";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ZoneManager, ZoneError } from "./zone-manager.js";
-import { GroupManager } from "./group-manager.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import type { EngineEvent } from "../shared/types.js";
@@ -19,8 +18,13 @@ function createTestDb(): Database.Database {
     resolve(import.meta.dirname ?? ".", "../../migrations/002_zones.sql"),
     "utf-8",
   );
+  const migration3 = readFileSync(
+    resolve(import.meta.dirname ?? ".", "../../migrations/003_equipments.sql"),
+    "utf-8",
+  );
   db.exec(migration1);
   db.exec(migration2);
+  db.exec(migration3);
   return db;
 }
 
@@ -154,15 +158,6 @@ describe("ZoneManager", () => {
       expect(tree).toHaveLength(2);
     });
 
-    it("includes groups in tree nodes", () => {
-      const groupManager = new GroupManager(db, eventBus, logger);
-      const maison = manager.create({ name: "Maison" });
-      groupManager.create(maison.id, { name: "Volets Sud" });
-
-      const tree = manager.getTree();
-      expect(tree[0].groups).toHaveLength(1);
-      expect(tree[0].groups[0].name).toBe("Volets Sud");
-    });
   });
 
   // ============================================================
@@ -273,151 +268,10 @@ describe("ZoneManager", () => {
       }).toThrow("child zone");
     });
 
-    it("rejects delete when zone has groups", () => {
-      const groupManager = new GroupManager(db, eventBus, logger);
-      const zone = manager.create({ name: "Salon" });
-      groupManager.create(zone.id, { name: "Volets" });
-
-      expect(() => {
-        manager.delete(zone.id);
-      }).toThrow("group");
-    });
-
     it("throws for non-existent zone", () => {
       expect(() => {
         manager.delete("non-existent");
       }).toThrow("not found");
-    });
-  });
-});
-
-describe("GroupManager", () => {
-  let db: Database.Database;
-  let eventBus: EventBus;
-  let zoneManager: ZoneManager;
-  let groupManager: GroupManager;
-  let events: EngineEvent[];
-
-  beforeEach(() => {
-    db = createTestDb();
-    eventBus = new EventBus(logger);
-    zoneManager = new ZoneManager(db, eventBus, logger);
-    groupManager = new GroupManager(db, eventBus, logger);
-    events = [];
-    eventBus.on((event) => events.push(event));
-  });
-
-  afterEach(() => {
-    db.close();
-  });
-
-  describe("create", () => {
-    it("creates a group in a zone", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      const group = groupManager.create(zone.id, { name: "Volets Sud" });
-
-      expect(group.name).toBe("Volets Sud");
-      expect(group.zoneId).toBe(zone.id);
-      expect(group.id).toBeDefined();
-    });
-
-    it("emits group.created event", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      events.length = 0;
-
-      groupManager.create(zone.id, { name: "Volets Sud" });
-
-      expect(events).toHaveLength(1);
-      expect(events[0].type).toBe("group.created");
-    });
-
-    it("rejects non-existent zone", () => {
-      expect(() => {
-        groupManager.create("non-existent", { name: "Volets" });
-      }).toThrow("Zone not found");
-    });
-  });
-
-  describe("getByZoneId", () => {
-    it("returns groups for a zone", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      groupManager.create(zone.id, { name: "Volets Sud" });
-      groupManager.create(zone.id, { name: "Volets Nord" });
-
-      const groups = groupManager.getByZoneId(zone.id);
-      expect(groups).toHaveLength(2);
-    });
-
-    it("returns empty for zone without groups", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      expect(groupManager.getByZoneId(zone.id)).toHaveLength(0);
-    });
-  });
-
-  describe("update", () => {
-    it("updates group name", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      const group = groupManager.create(zone.id, { name: "Volets" });
-
-      const updated = groupManager.update(group.id, { name: "Volets Sud" });
-      expect(updated).not.toBeNull();
-      expect(updated!.name).toBe("Volets Sud");
-    });
-
-    it("emits group.updated event", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      const group = groupManager.create(zone.id, { name: "Volets" });
-      events.length = 0;
-
-      groupManager.update(group.id, { name: "Volets Sud" });
-
-      expect(events).toHaveLength(1);
-      expect(events[0].type).toBe("group.updated");
-    });
-
-    it("returns null for non-existent group", () => {
-      expect(groupManager.update("non-existent", { name: "Test" })).toBeNull();
-    });
-  });
-
-  describe("delete", () => {
-    it("deletes a group", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      const group = groupManager.create(zone.id, { name: "Volets" });
-
-      groupManager.delete(group.id);
-      expect(groupManager.getById(group.id)).toBeNull();
-    });
-
-    it("emits group.removed event", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      const group = groupManager.create(zone.id, { name: "Volets" });
-      events.length = 0;
-
-      groupManager.delete(group.id);
-
-      expect(events).toHaveLength(1);
-      expect(events[0].type).toBe("group.removed");
-      if (events[0].type === "group.removed") {
-        expect(events[0].groupName).toBe("Volets");
-      }
-    });
-
-    it("throws for non-existent group", () => {
-      expect(() => {
-        groupManager.delete("non-existent");
-      }).toThrow("not found");
-    });
-
-    it("cascade deletes groups when zone is deleted via SQL", () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      groupManager.create(zone.id, { name: "Volets" });
-
-      // Direct SQL delete (simulates cascade)
-      db.prepare("DELETE FROM zones WHERE id = ?").run(zone.id);
-
-      // Groups should be gone too (ON DELETE CASCADE)
-      expect(groupManager.getByZoneId(zone.id)).toHaveLength(0);
     });
   });
 });

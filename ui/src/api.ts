@@ -1,10 +1,20 @@
-import type { Device, DeviceData, DeviceWithDetails, ZoneWithChildren, Zone, EquipmentGroup } from "./types";
+import type {
+  Device, DeviceData, DeviceWithDetails,
+  ZoneWithChildren, Zone,
+  Equipment, EquipmentType, EquipmentWithDetails,
+  DataBinding, OrderBinding,
+} from "./types";
 
 const API_BASE = "/api/v1";
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (options?.body) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const response = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...options,
   });
 
@@ -86,34 +96,106 @@ export async function deleteZone(id: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/zones/${id}`, { method: "DELETE" });
 }
 
-// ============================================================
-// Equipment Groups
-// ============================================================
-
-export async function getGroups(zoneId: string): Promise<EquipmentGroup[]> {
-  return fetchJSON<EquipmentGroup[]>(`${API_BASE}/zones/${zoneId}/groups`);
+export async function reorderZones(parentId: string | null, orderedIds: string[]): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/zones/reorder`, {
+    method: "PUT",
+    body: JSON.stringify({ parentId, orderedIds }),
+  });
 }
 
-export async function createGroup(
-  zoneId: string,
-  data: { name: string; icon?: string; description?: string }
-): Promise<EquipmentGroup> {
-  return fetchJSON<EquipmentGroup>(`${API_BASE}/zones/${zoneId}/groups`, {
+// ============================================================
+// Equipments
+// ============================================================
+
+export async function getEquipments(): Promise<EquipmentWithDetails[]> {
+  return fetchJSON<EquipmentWithDetails[]>(`${API_BASE}/equipments`);
+}
+
+export async function getEquipment(id: string): Promise<EquipmentWithDetails> {
+  return fetchJSON<EquipmentWithDetails>(`${API_BASE}/equipments/${id}`);
+}
+
+export async function createEquipment(data: {
+  name: string;
+  type: EquipmentType;
+  zoneId: string;
+  icon?: string;
+  description?: string;
+}): Promise<Equipment> {
+  return fetchJSON<Equipment>(`${API_BASE}/equipments`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function updateGroup(
+export async function updateEquipment(
   id: string,
-  updates: { name?: string; icon?: string | null; description?: string | null; displayOrder?: number }
-): Promise<EquipmentGroup> {
-  return fetchJSON<EquipmentGroup>(`${API_BASE}/groups/${id}`, {
+  updates: {
+    name?: string;
+    type?: EquipmentType;
+    zoneId?: string;
+    icon?: string | null;
+    description?: string | null;
+    enabled?: boolean;
+  }
+): Promise<Equipment> {
+  return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {
     method: "PUT",
     body: JSON.stringify(updates),
   });
 }
 
-export async function deleteGroup(id: string): Promise<void> {
-  return fetchJSON<void>(`${API_BASE}/groups/${id}`, { method: "DELETE" });
+export async function deleteEquipment(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/equipments/${id}`, { method: "DELETE" });
+}
+
+export async function executeEquipmentOrder(
+  equipmentId: string,
+  alias: string,
+  value: unknown
+): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/orders/${alias}`, {
+    method: "POST",
+    body: JSON.stringify({ value }),
+  });
+}
+
+// ============================================================
+// DataBindings
+// ============================================================
+
+export async function addDataBinding(
+  equipmentId: string,
+  data: { deviceDataId: string; alias: string }
+): Promise<DataBinding> {
+  return fetchJSON<DataBinding>(`${API_BASE}/equipments/${equipmentId}/data-bindings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeDataBinding(equipmentId: string, bindingId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/data-bindings/${bindingId}`, {
+    method: "DELETE",
+  });
+}
+
+// ============================================================
+// OrderBindings
+// ============================================================
+
+export async function addOrderBinding(
+  equipmentId: string,
+  data: { deviceOrderId: string; alias: string }
+): Promise<OrderBinding> {
+  return fetchJSON<OrderBinding>(`${API_BASE}/equipments/${equipmentId}/order-bindings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeOrderBinding(equipmentId: string, bindingId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/order-bindings/${bindingId}`, {
+    method: "DELETE",
+  });
 }

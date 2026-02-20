@@ -6,7 +6,7 @@ import { EventBus } from "./core/event-bus.js";
 import { MqttConnector } from "./mqtt/mqtt-connector.js";
 import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
-import { GroupManager } from "./zones/group-manager.js";
+import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { Zigbee2MqttParser } from "./mqtt/parsers/zigbee2mqtt.js";
 import { createServer } from "./api/server.js";
 
@@ -44,9 +44,11 @@ async function main() {
   // 6. Create Device Manager
   const deviceManager = new DeviceManager(db, eventBus, logger);
 
-  // 6b. Create Zone & Group Managers
+  // 6b. Create Zone Manager
   const zoneManager = new ZoneManager(db, eventBus, logger);
-  const groupManager = new GroupManager(db, eventBus, logger);
+
+  // 6c. Create Equipment Manager
+  const equipmentManager = new EquipmentManager(db, eventBus, mqttConnector, logger);
 
   // 7. Create zigbee2mqtt parser
   const z2mParser = new Zigbee2MqttParser(
@@ -64,7 +66,7 @@ async function main() {
   const server = await createServer({
     deviceManager,
     zoneManager,
-    groupManager,
+    equipmentManager,
     eventBus,
     mqttConnector,
     logger,

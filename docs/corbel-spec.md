@@ -1238,12 +1238,23 @@ corbel/
 - Zone management page
 - **Deliverable**: functional web UI showing live state and allowing control
 
-### V0.5 — Computed Data + Virtual Equipments
+### V0.5 — UI Restructuring + Computed Data
+
+#### UI Restructuring
+- Reorganize the sidebar into two sections:
+  - **Settings**: move the 3 existing pages (Devices, Equipments, Zones) into a settings/admin area — these are configuration pages, rarely accessed day-to-day
+  - **Maison** (Home): new primary section with a treeview showing the zone hierarchy (Maison > Étage > Pièce). This is the main daily-use view
+- Clicking a zone in the treeview shows its equipments in context, with live state and controls
+- Equipment grouping within zones (e.g., "Éclairages", "Volets")
+- Rename binding sections: "Data Bindings" → "Status", "Order Bindings" → "Commands"
+
+#### Computed Data
 - Expression parser and evaluator
 - Computed Data on Equipments (OR, AVG, IF, etc.)
 - Internal Rules engine
-- UI: Equipment creation wizard with binding configuration and computed data editor
-- **Deliverable**: users can create virtual Equipments that aggregate multiple Devices
+- Computed data editor in equipment detail
+
+- **Deliverable**: restructured UI with zone-centric navigation + virtual Equipments that aggregate multiple Devices
 
 ### V0.6 — History
 - InfluxDB integration

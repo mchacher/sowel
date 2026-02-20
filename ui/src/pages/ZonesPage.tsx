@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useZones } from "../store/useZones";
 import { ZoneTree } from "../components/zones/ZoneTree";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
-import { Map, Loader2, Plus } from "lucide-react";
+import { Home, Loader2, Plus } from "lucide-react";
 
 export function ZonesPage() {
   const tree = useZones((s) => s.tree);
@@ -11,6 +11,7 @@ export function ZonesPage() {
   const fetchZones = useZones((s) => s.fetchZones);
   const createZone = useZones((s) => s.createZone);
   const [showForm, setShowForm] = useState(false);
+  const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchZones();
@@ -24,7 +25,7 @@ export function ZonesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[24px] font-semibold text-text leading-[32px]">
-            Zones
+            Home Topology
           </h1>
           <p className="text-[13px] text-text-secondary mt-0.5">
             {zoneCount === 0
@@ -35,7 +36,7 @@ export function ZonesPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setDefaultParentId(null); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
@@ -43,7 +44,7 @@ export function ZonesPage() {
           </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
-            <Map size={16} strokeWidth={1.5} />
+            <Home size={16} strokeWidth={1.5} />
             <span className="text-[13px] font-medium">{zoneCount}</span>
           </div>
         </div>
@@ -57,7 +58,14 @@ export function ZonesPage() {
       ) : error ? (
         <ErrorState error={error} />
       ) : (
-        <ZoneTree zones={tree} />
+        <ZoneTree
+          zones={tree}
+          onReordered={() => fetchZones()}
+          onAddChild={(parentId) => {
+            setDefaultParentId(parentId);
+            setShowForm(true);
+          }}
+        />
       )}
 
       {/* Create zone modal */}
@@ -65,10 +73,11 @@ export function ZonesPage() {
         <ZoneForm
           title="Create zone"
           parentZones={flattenZoneTree(tree)}
+          defaultParentId={defaultParentId}
           onSubmit={async (data) => {
             await createZone(data);
           }}
-          onClose={() => setShowForm(false)}
+          onClose={() => { setShowForm(false); setDefaultParentId(null); }}
         />
       )}
     </div>
@@ -91,7 +100,7 @@ function ErrorState({ error }: { error: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
-        <Map size={28} strokeWidth={1.5} className="text-error" />
+        <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
       <h3 className="text-[16px] font-medium text-text mb-1">Failed to load zones</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
