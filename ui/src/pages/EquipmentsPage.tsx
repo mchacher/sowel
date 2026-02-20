@@ -183,6 +183,7 @@ function isRelevantData(category: string, type: string): boolean {
     light_color: ["light_state", "light_brightness", "light_color", "light_color_temp"],
     shutter: ["shutter_position"],
     switch: ["light_state"],
+    sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   };
   return map[type]?.includes(category) ?? false;
 }
