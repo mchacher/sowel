@@ -200,7 +200,7 @@ describe("DeviceManager", () => {
   });
 
   describe("updateDeviceStatus", () => {
-    it("updates status and emits event", () => {
+    it("updates status to online and emits event", () => {
       manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
       events.length = 0;
 
@@ -214,6 +214,16 @@ describe("DeviceManager", () => {
         expect(statusEvent.status).toBe("online");
         expect(statusEvent.deviceName).toBe("salon_pir");
       }
+    });
+
+    it("deletes device on offline status", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "offline");
+
+      expect(manager.getAll()).toHaveLength(0);
+      expect(events.find((e) => e.type === "device.removed")).toBeDefined();
     });
 
     it("does not emit event if status unchanged", () => {
@@ -285,15 +295,52 @@ describe("DeviceManager", () => {
   });
 
   describe("markRemoved", () => {
-    it("sets device offline and emits event", () => {
+    it("deletes device from DB and emits event", () => {
       manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.markRemoved("zigbee2mqtt", "salon_pir");
 
-      const device = manager.getAll()[0];
-      expect(device.status).toBe("offline");
+      expect(manager.getAll()).toHaveLength(0);
       expect(events.find((e) => e.type === "device.removed")).toBeDefined();
+    });
+  });
+
+  describe("removeStaleDevices", () => {
+    it("deletes devices not in active set", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      events.length = 0;
+
+      // Only salon_lampe is active — salon_pir should be removed
+      manager.removeStaleDevices("zigbee2mqtt", new Set(["salon_lampe"]));
+
+      const devices = manager.getAll();
+      expect(devices).toHaveLength(1);
+      expect(devices[0].name).toBe("salon_lampe");
+      expect(events.filter((e) => e.type === "device.removed")).toHaveLength(1);
+    });
+
+    it("does nothing when all devices are active", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      events.length = 0;
+
+      manager.removeStaleDevices("zigbee2mqtt", new Set(["salon_pir", "salon_lampe"]));
+
+      expect(manager.getAll()).toHaveLength(2);
+      expect(events.filter((e) => e.type === "device.removed")).toHaveLength(0);
+    });
+
+    it("only affects devices with matching baseTopic", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      // Different baseTopic — should not touch zigbee2mqtt devices
+      manager.removeStaleDevices("other_topic", new Set());
+
+      expect(manager.getAll()).toHaveLength(1);
+      expect(events.filter((e) => e.type === "device.removed")).toHaveLength(0);
     });
   });
 

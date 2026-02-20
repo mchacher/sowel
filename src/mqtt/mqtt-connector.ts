@@ -118,10 +118,56 @@ export class MqttConnector {
     return this.client?.connected ?? false;
   }
 
+  /**
+   * Reconnect with new broker settings.
+   * Disconnects, updates URL/options, reconnects, and re-subscribes all handlers.
+   */
+  async reconnect(
+    url: string,
+    options: { username?: string; password?: string; clientId: string },
+  ): Promise<void> {
+    this.logger.info({ url }, "Reconnecting MQTT with new settings");
+
+    // Disconnect existing client
+    if (this.client) {
+      try {
+        await this.client.endAsync(true);
+      } catch {
+        // Ignore disconnect errors
+      }
+      this.client = null;
+    }
+
+    // Update connection settings
+    this.url = url;
+    this.options = {
+      clientId: options.clientId,
+      username: options.username,
+      password: options.password,
+      clean: true,
+      reconnectPeriod: 5000,
+    };
+
+    // Reconnect (preserves all registered handlers)
+    await this.connect();
+    this.resubscribeAll();
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.endAsync();
       this.logger.info("MQTT disconnected");
+    }
+  }
+
+  private resubscribeAll(): void {
+    if (!this.client) return;
+    for (const pattern of this.handlers.keys()) {
+      this.client.subscribe(pattern, (err) => {
+        if (err) {
+          this.logger.error({ err, topic: pattern }, "MQTT re-subscribe error");
+        }
+      });
     }
   }
 

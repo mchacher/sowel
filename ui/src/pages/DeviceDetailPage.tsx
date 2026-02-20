@@ -8,9 +8,10 @@ import {
   ChevronDown,
   ChevronRight,
   Zap,
+  Trash2,
 } from "lucide-react";
 import type { DeviceOrder, DeviceWithDetails } from "../types";
-import { getDevice, getDeviceRawExpose } from "../api";
+import { getDevice, getDeviceRawExpose, deleteDevice } from "../api";
 import { useDevices } from "../store/useDevices";
 import { DeviceNameEditor } from "../components/devices/DeviceNameEditor";
 import { DeviceDataTable } from "../components/devices/DeviceDataTable";
@@ -32,6 +33,19 @@ export function DeviceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!confirm(t("devices.deleteConfirm"))) return;
+    setDeleting(true);
+    try {
+      await deleteDevice(id);
+      navigate("/devices");
+    } catch {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -122,6 +136,14 @@ export function DeviceDetailPage() {
             </div>
           </div>
         </div>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
+        >
+          <Trash2 size={14} strokeWidth={1.5} />
+          {deleting ? t("common.deleting") : t("common.delete")}
+        </button>
       </div>
 
       {/* Info bar */}
