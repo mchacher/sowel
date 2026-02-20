@@ -6,16 +6,8 @@ import {
   SunDim,
   Palette,
   ArrowUpDown,
-  Thermometer,
-  Lock,
-  ShieldAlert,
   Gauge,
-  Eye,
-  DoorOpen,
-  Speaker,
-  Camera,
   ToggleLeft,
-  Box,
   ChevronUp,
   Square,
   ChevronDown,
@@ -39,16 +31,8 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   light_dimmable: <SunDim size={18} strokeWidth={1.5} />,
   light_color: <Palette size={18} strokeWidth={1.5} />,
   shutter: <ArrowUpDown size={18} strokeWidth={1.5} />,
-  thermostat: <Thermometer size={18} strokeWidth={1.5} />,
-  lock: <Lock size={18} strokeWidth={1.5} />,
-  alarm: <ShieldAlert size={18} strokeWidth={1.5} />,
-  sensor: <Gauge size={18} strokeWidth={1.5} />,
-  motion_sensor: <Eye size={18} strokeWidth={1.5} />,
-  contact_sensor: <DoorOpen size={18} strokeWidth={1.5} />,
-  media_player: <Speaker size={18} strokeWidth={1.5} />,
-  camera: <Camera size={18} strokeWidth={1.5} />,
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
-  generic: <Box size={18} strokeWidth={1.5} />,
+  sensor: <Gauge size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -56,16 +40,8 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   light_dimmable: "equipments.type.light_dimmable",
   light_color: "equipments.type.light_color",
   shutter: "equipments.type.shutter",
-  thermostat: "equipments.type.thermostat",
-  lock: "equipments.type.lock",
-  alarm: "equipments.type.alarm",
-  sensor: "equipments.type.sensor",
-  motion_sensor: "equipments.type.motion_sensor",
-  contact_sensor: "equipments.type.contact_sensor",
-  media_player: "equipments.type.media_player",
-  camera: "equipments.type.camera",
   switch: "equipments.type.switch",
-  generic: "equipments.type.generic",
+  sensor: "equipments.type.sensor",
 };
 
 interface EquipmentCardProps {
@@ -79,7 +55,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
-  const isSensor = equipment.type === "sensor" || equipment.type === "motion_sensor" || equipment.type === "contact_sensor";
+  const isSensor = equipment.type === "sensor";
 
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state"

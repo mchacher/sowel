@@ -111,7 +111,7 @@ function createTestSetup(): TestSetup {
     name: "PIR Salon",
     dataKeys: [{ key: "occupancy", type: "boolean", category: "motion", value: "false" }],
   });
-  const pirEq = equipmentManager.create({ name: "PIR Salon", type: "motion_sensor", zoneId: zone.id });
+  const pirEq = equipmentManager.create({ name: "PIR Salon", type: "sensor", zoneId: zone.id });
   equipmentManager.addDataBinding(pirEq.id, pirDevice.dataIds[0], "occupancy");
 
   // Create light device + equipment with both data and order bindings

@@ -11,8 +11,6 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "shutter", labelKey: "equipments.type.shutter" },
   { value: "switch", labelKey: "equipments.type.switch" },
   { value: "sensor", labelKey: "equipments.type.sensor" },
-  { value: "motion_sensor", labelKey: "equipments.type.motion_sensor" },
-  { value: "contact_sensor", labelKey: "equipments.type.contact_sensor" },
 ];
 
 interface EquipmentFormProps {
