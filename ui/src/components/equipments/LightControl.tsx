@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -11,6 +12,7 @@ interface LightControlProps {
 }
 
 export function LightControl({ equipment, onExecuteOrder, compact }: LightControlProps) {
+  const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const [, forceRender] = useState(0);
   const localValue = useRef<number | null>(null);
@@ -115,7 +117,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             }
             disabled:opacity-50 disabled:cursor-not-allowed
           `}
-          title={isOn ? "Turn off" : "Turn on"}
+          title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
         >
           <Power size={16} strokeWidth={1.5} />
         </button>
@@ -141,14 +143,14 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
           `}
         >
           <Power size={16} strokeWidth={1.5} />
-          {executing ? "..." : isOn ? "ON" : "OFF"}
+          {executing ? "..." : isOn ? t("common.on") : t("common.off")}
         </button>
       )}
 
       {/* Brightness slider */}
       {hasBrightness && brightness !== null && (
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-text-tertiary w-16">Brightness</span>
+          <span className="text-[12px] text-text-tertiary w-16">{t("controls.brightness")}</span>
           <input
             type="range"
             min={0}

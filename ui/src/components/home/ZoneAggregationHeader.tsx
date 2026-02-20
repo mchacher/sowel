@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Thermometer,
   Droplets,
@@ -19,8 +20,9 @@ interface ZoneAggregationHeaderProps {
 }
 
 export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
+  const { t } = useTranslation();
   const pills: React.ReactNode[] = [];
-  const duration = useRelativeTime(data.motionSince);
+  const duration = useRelativeTime(data.motionSince, t);
 
   // Temperature
   if (data.temperature !== null) {
@@ -51,7 +53,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
 
   // Motion (shown when zone has motion sensors)
   if (data.motionSensors > 0) {
-    const label = data.motion ? "Mouvement" : "Calme";
+    const label = data.motion ? t("aggregation.motion") : t("aggregation.calm");
     const suffix = duration ? ` · ${duration}` : "";
     pills.push(
       data.motion ? (
@@ -103,7 +105,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   if (data.openDoors > 0) {
     pills.push(
       <Pill key="doors" icon={<DoorOpen size={14} strokeWidth={1.5} />} color="text-amber-500" active>
-        {data.openDoors} ouverte{data.openDoors > 1 ? "s" : ""}
+        {t("aggregation.open", { count: data.openDoors })}
       </Pill>,
     );
   }
@@ -112,7 +114,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   if (data.openWindows > 0) {
     pills.push(
       <Pill key="windows" icon={<SquareStack size={14} strokeWidth={1.5} />} color="text-amber-500" active>
-        {data.openWindows} ouverte{data.openWindows > 1 ? "s" : ""}
+        {t("aggregation.open", { count: data.openWindows })}
       </Pill>,
     );
   }
@@ -121,7 +123,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   if (data.waterLeak) {
     pills.push(
       <Pill key="water" icon={<Droplet size={14} strokeWidth={1.5} />} color="text-error" alert>
-        Fuite eau
+        {t("aggregation.waterLeak")}
       </Pill>,
     );
   }
@@ -130,7 +132,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   if (data.smoke) {
     pills.push(
       <Pill key="smoke" icon={<Flame size={14} strokeWidth={1.5} />} color="text-error" alert>
-        Fumée
+        {t("aggregation.smoke")}
       </Pill>,
     );
   }
@@ -142,7 +144,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
       <div className="flex items-center gap-1.5 mb-2">
         <Activity size={14} strokeWidth={1.5} className="text-text-tertiary" />
         <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
-          Statut
+          {t("aggregation.status")}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -156,7 +158,7 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
 // Relative time hook — refreshes every 30s, zero CPU when no timestamp
 // ============================================================
 
-function useRelativeTime(since: string | null): string | null {
+function useRelativeTime(since: string | null, t: (key: string) => string): string | null {
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -166,22 +168,22 @@ function useRelativeTime(since: string | null): string | null {
   }, [since]);
 
   if (!since) return null;
-  return formatDuration(since);
+  return formatDuration(since, t);
 }
 
-function formatDuration(since: string): string | null {
+function formatDuration(since: string, t: (key: string) => string): string | null {
   const ms = Date.now() - new Date(since).getTime();
   const seconds = Math.floor(ms / 1000);
   if (seconds < 60) return null;
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes} ${t("time.min")}`;
   const hours = Math.floor(minutes / 60);
   const remainMinutes = minutes % 60;
   if (hours < 24) {
-    return remainMinutes > 0 ? `${hours}h${String(remainMinutes).padStart(2, "0")}` : `${hours}h`;
+    return remainMinutes > 0 ? `${hours}${t("time.hour")}${String(remainMinutes).padStart(2, "0")}` : `${hours}${t("time.hour")}`;
   }
   const days = Math.floor(hours / 24);
-  return `${days}j`;
+  return `${days}${t("time.day")}`;
 }
 
 // ============================================================

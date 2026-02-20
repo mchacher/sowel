@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { DeviceData } from "../../types";
 import { formatDataValue, formatRelativeTime, categoryLabel } from "../../lib/format";
 
@@ -6,10 +7,12 @@ interface DeviceDataTableProps {
 }
 
 export function DeviceDataTable({ data }: DeviceDataTableProps) {
+  const { t } = useTranslation();
+
   if (data.length === 0) {
     return (
       <p className="text-[13px] text-text-tertiary italic py-4">
-        No data points available.
+        {t("devices.noData")}
       </p>
     );
   }
@@ -26,16 +29,16 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
         <thead>
           <tr className="border-b border-border">
             <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-              Key
+              {t("devices.col.key")}
             </th>
             <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-              Category
+              {t("devices.col.category")}
             </th>
             <th className="text-right py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-              Value
+              {t("devices.col.value")}
             </th>
             <th className="text-right py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-              Updated
+              {t("devices.col.updated")}
             </th>
           </tr>
         </thead>
@@ -91,6 +94,8 @@ function DataValueCell({
   unit?: string;
   type: string;
 }) {
+  const { t } = useTranslation();
+
   if (value === null || value === undefined) {
     return <span className="text-[13px] text-text-tertiary">—</span>;
   }
@@ -105,7 +110,7 @@ function DataValueCell({
           ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}
         `}
       >
-        {isOn ? "ON" : "OFF"}
+        {isOn ? t("common.on") : t("common.off")}
       </span>
     );
   }

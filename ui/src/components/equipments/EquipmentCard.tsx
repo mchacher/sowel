@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   Lightbulb,
@@ -51,20 +52,20 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
-  light_onoff: "Light (On/Off)",
-  light_dimmable: "Light (Dimmable)",
-  light_color: "Light (Color)",
-  shutter: "Shutter",
-  thermostat: "Thermostat",
-  lock: "Lock",
-  alarm: "Alarm",
-  sensor: "Capteur",
-  motion_sensor: "Capteur mouvement",
-  contact_sensor: "Capteur contact",
-  media_player: "Media Player",
-  camera: "Camera",
-  switch: "Switch",
-  generic: "Generic",
+  light_onoff: "equipments.type.light_onoff",
+  light_dimmable: "equipments.type.light_dimmable",
+  light_color: "equipments.type.light_color",
+  shutter: "equipments.type.shutter",
+  thermostat: "equipments.type.thermostat",
+  lock: "equipments.type.lock",
+  alarm: "equipments.type.alarm",
+  sensor: "equipments.type.sensor",
+  motion_sensor: "equipments.type.motion_sensor",
+  contact_sensor: "equipments.type.contact_sensor",
+  media_player: "equipments.type.media_player",
+  camera: "equipments.type.camera",
+  switch: "equipments.type.switch",
+  generic: "equipments.type.generic",
 };
 
 interface EquipmentCardProps {
@@ -73,6 +74,7 @@ interface EquipmentCardProps {
 }
 
 export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps) {
+  const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
@@ -152,9 +154,9 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       <Link to={`/equipments/${equipment.id}`} className="flex-1 min-w-0 hover:opacity-80">
         <div className="text-[14px] font-medium text-text truncate">{equipment.name}</div>
         <div className="text-[12px] text-text-tertiary">
-          {TYPE_LABELS[equipment.type]}
-          {equipment.dataBindings.length === 0 && " · No bindings"}
-          {!equipment.enabled && " · Disabled"}
+          {t(TYPE_LABELS[equipment.type])}
+          {equipment.dataBindings.length === 0 && ` · ${t("equipments.noBindings")}`}
+          {!equipment.enabled && ` · ${t("common.disabled")}`}
         </div>
       </Link>
 
@@ -173,11 +175,11 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
                     }
                   `}
                 >
-                  {formatBooleanSensor(b.category, b.value)}
+                  {formatBooleanSensor(b.category, b.value, t)}
                 </span>
               ) : (
                 <span className="text-text-secondary">
-                  {formatSensorValue(b.value, b.unit)}
+                  {formatSensorValue(b.value, b.unit, t)}
                 </span>
               )}
             </span>
@@ -187,7 +189,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
       {/* Battery indicator for sensors */}
       {isSensor && batteryBinding && (
-        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`Batterie : ${batteryLevel ?? "?"}%`}>
+        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`${t("sensors.battery")} : ${batteryLevel ?? "?"}%`}>
           {getBatteryIcon(batteryLevel, 14, 1.5)}
           <span className="text-[11px] tabular-nums">{batteryLevel !== null ? `${batteryLevel}%` : "?"}</span>
         </span>
@@ -210,7 +212,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         >
           {shutterPosition !== null && (
             <span className="text-[13px] text-text-secondary tabular-nums text-right">
-              {shutterPosition === 0 ? "Fermé" : shutterPosition === 100 ? "Ouvert" : `${shutterPosition}%`}
+              {shutterPosition === 0 ? t("controls.closed") : shutterPosition === 100 ? t("controls.opened") : `${shutterPosition}%`}
             </span>
           )}
           {hasShutterState && (
@@ -220,7 +222,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
                 onClick={(e) => handleShutterCommand("OPEN", e)}
                 disabled={executing}
                 className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Ouvrir"
+                title={t("controls.open")}
               >
                 <ChevronUp size={14} strokeWidth={1.5} />
               </button>
@@ -228,7 +230,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
                 onClick={(e) => handleShutterCommand("STOP", e)}
                 disabled={executing}
                 className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Stop"
+                title={t("controls.stop")}
               >
                 <Square size={10} strokeWidth={2} />
               </button>
@@ -236,7 +238,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
                 onClick={(e) => handleShutterCommand("CLOSE", e)}
                 disabled={executing}
                 className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Fermer"
+                title={t("controls.close")}
               >
                 <ChevronDown size={14} strokeWidth={1.5} />
               </button>

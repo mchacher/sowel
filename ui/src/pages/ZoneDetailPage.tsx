@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useZones } from "../store/useZones";
 import { getZone } from "../api";
@@ -15,6 +16,7 @@ import {
 import type { ZoneWithChildren } from "../types";
 
 export function ZoneDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const tree = useZones((s) => s.tree);
@@ -64,21 +66,21 @@ export function ZoneDetailPage() {
       <div className="p-6">
         <Link to="/zones" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
           <ArrowLeft size={14} strokeWidth={1.5} />
-          Back to zones
+          {t("zones.backToZones")}
         </Link>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Map size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">Zone not found</h3>
-          <p className="text-[13px] text-text-secondary">{error ?? "This zone does not exist."}</p>
+          <h3 className="text-[16px] font-medium text-text mb-1">{t("zones.notFound.title")}</h3>
+          <p className="text-[13px] text-text-secondary">{error ?? t("zones.notFound.message")}</p>
         </div>
       </div>
     );
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Delete zone "${zone.name}"? This cannot be undone.`)) return;
+    if (!confirm(t("zones.deleteConfirm", { name: zone.name }))) return;
     setDeleting(true);
     try {
       await deleteZone(zone.id);
@@ -96,7 +98,7 @@ export function ZoneDetailPage() {
     <div className="p-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-[13px] text-text-secondary mb-4">
-        <Link to="/zones" className="hover:text-text transition-colors">Zones</Link>
+        <Link to="/zones" className="hover:text-text transition-colors">{t("zones.title")}</Link>
         {breadcrumb.map((item) => (
           <span key={item.id} className="flex items-center gap-1.5">
             <ChevronRight size={12} strokeWidth={1.5} className="text-text-tertiary" />
@@ -127,7 +129,7 @@ export function ZoneDetailPage() {
             className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
           >
             <Pencil size={14} strokeWidth={1.5} />
-            Edit
+            {t("common.edit")}
           </button>
           <button
             onClick={handleDelete}
@@ -135,7 +137,7 @@ export function ZoneDetailPage() {
             className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
           >
             <Trash2 size={14} strokeWidth={1.5} />
-            {deleting ? "Deleting..." : "Delete"}
+            {deleting ? t("common.deleting") : t("common.delete")}
           </button>
         </div>
       </div>
@@ -143,7 +145,7 @@ export function ZoneDetailPage() {
       {/* Child zones section */}
       {zone.children.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-[14px] font-semibold text-text mb-3">Child Zones</h3>
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("zones.childZones")}</h3>
           <div className="bg-surface rounded-[10px] border border-border overflow-hidden divide-y divide-border-light">
             {zone.children.map((child) => (
               <Link
@@ -161,7 +163,7 @@ export function ZoneDetailPage() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {child.children.length > 0 && (
                     <span className="text-[11px] text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
-                      {child.children.length} zone{child.children.length > 1 ? "s" : ""}
+                      {t("zones.childCount", { count: child.children.length })}
                     </span>
                   )}
                 </div>
@@ -175,7 +177,7 @@ export function ZoneDetailPage() {
       {/* Edit zone modal */}
       {showEditForm && (
         <ZoneForm
-          title="Edit zone"
+          title={t("zones.editZone")}
           initial={{ name: zone.name, description: zone.description }}
           parentZones={flattenZoneTree(tree, 0, zone.id)}
           defaultParentId={zone.parentId}

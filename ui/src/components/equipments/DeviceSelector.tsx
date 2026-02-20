@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Radio, Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { DataCategory, EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
@@ -31,6 +32,7 @@ export function DeviceSelector({
   onSelectionChange,
   boundDeviceIds,
 }: DeviceSelectorProps) {
+  const { t } = useTranslation();
   const [allDevices, setAllDevices] = useState<DeviceWithData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
@@ -71,13 +73,13 @@ export function DeviceSelector({
   };
 
   if (loading) {
-    return <p className="text-[13px] text-text-tertiary py-4">Loading devices...</p>;
+    return <p className="text-[13px] text-text-tertiary py-4">{t("deviceSelector.loading")}</p>;
   }
 
   if (allDevices.length === 0) {
     return (
       <p className="text-[13px] text-text-tertiary py-4">
-        No devices found. Connect devices via MQTT first.
+        {t("deviceSelector.noDevices")}
       </p>
     );
   }
@@ -88,23 +90,21 @@ export function DeviceSelector({
       {compatible.length < availableDevices.length && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-[12px] text-text-tertiary">
-            {compatible.length} compatible device{compatible.length !== 1 ? "s" : ""}
-            {" / "}
-            {availableDevices.length} available
+            {t("deviceSelector.compatible", { count: compatible.length, total: availableDevices.length })}
           </span>
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}
             className="text-[12px] text-primary hover:underline"
           >
-            {showAll ? "Show compatible only" : "Show all devices"}
+            {showAll ? t("deviceSelector.showCompatible") : t("deviceSelector.showAll")}
           </button>
         </div>
       )}
 
       {devices.length === 0 ? (
         <p className="text-[13px] text-text-tertiary py-4">
-          No compatible devices found for this equipment type.
+          {t("deviceSelector.noCompatible")}
         </p>
       ) : (
         <div className="space-y-1 max-h-[300px] overflow-y-auto">

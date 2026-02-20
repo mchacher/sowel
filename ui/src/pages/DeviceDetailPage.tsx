@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Radio,
@@ -16,6 +17,7 @@ import { DeviceDataTable } from "../components/devices/DeviceDataTable";
 import { formatRelativeTime, sourceLabel } from "../lib/format";
 
 export function DeviceDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const updateDeviceName = useDevices((s) => s.updateDeviceName);
@@ -72,11 +74,11 @@ export function DeviceDetailPage() {
           className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
-          Back to devices
+          {t("devices.backToDevices")}
         </button>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <h3 className="text-[16px] font-medium text-text mb-1">Device not found</h3>
-          <p className="text-[13px] text-text-secondary">{error ?? "This device does not exist."}</p>
+          <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.notFound.title")}</h3>
+          <p className="text-[13px] text-text-secondary">{error ?? t("devices.notFound.message")}</p>
         </div>
       </div>
     );
@@ -93,7 +95,7 @@ export function DeviceDetailPage() {
         className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
       >
         <ArrowLeft size={16} strokeWidth={1.5} />
-        Back to devices
+        {t("devices.backToDevices")}
       </button>
 
       {/* Device header */}
@@ -124,18 +126,18 @@ export function DeviceDetailPage() {
 
       {/* Info bar */}
       <div className="flex flex-wrap gap-4 mb-8 p-4 bg-surface rounded-[10px] border border-border">
-        <InfoItem label="MQTT Name" value={device.mqttName} mono />
+        <InfoItem label={t("devices.mqttName")} value={device.mqttName} mono />
         {device.ieeeAddress && (
-          <InfoItem label="IEEE Address" value={device.ieeeAddress} mono />
+          <InfoItem label={t("devices.ieeeAddress")} value={device.ieeeAddress} mono />
         )}
-        <InfoItem label="Last Seen" value={formatRelativeTime(device.lastSeen)} />
-        <InfoItem label="Created" value={formatRelativeTime(device.createdAt)} />
+        <InfoItem label={t("devices.lastSeen")} value={formatRelativeTime(device.lastSeen)} />
+        <InfoItem label={t("devices.created")} value={formatRelativeTime(device.createdAt)} />
       </div>
 
       {/* Data section */}
       <section className="mb-8">
         <h2 className="text-[20px] font-semibold text-text leading-[28px] mb-4">
-          Data
+          {t("devices.data")}
         </h2>
         <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
           <DeviceDataTable data={mergedData} />
@@ -146,7 +148,7 @@ export function DeviceDetailPage() {
       {detail.orders.length > 0 && (
         <section className="mb-8">
           <h2 className="text-[20px] font-semibold text-text leading-[28px] mb-4">
-            Orders
+            {t("devices.orders")}
           </h2>
           <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
             <OrdersTable orders={detail.orders} />
@@ -166,7 +168,7 @@ export function DeviceDetailPage() {
             ) : (
               <ChevronRight size={18} strokeWidth={1.5} />
             )}
-            Raw Expose Data
+            {t("devices.rawExpose")}
           </button>
           {showRaw && (
             <div className="bg-surface rounded-[10px] border border-border p-4 overflow-x-auto">
@@ -182,10 +184,11 @@ export function DeviceDetailPage() {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   const config = {
-    online: { color: "bg-success/10 text-success", dot: "bg-success", label: "Online" },
-    offline: { color: "bg-error/10 text-error", dot: "bg-error", label: "Offline" },
-    unknown: { color: "bg-border-light text-text-tertiary", dot: "bg-text-tertiary", label: "Unknown" },
+    online: { color: "bg-success/10 text-success", dot: "bg-success", label: t("status.online") },
+    offline: { color: "bg-error/10 text-error", dot: "bg-error", label: t("status.offline") },
+    unknown: { color: "bg-border-light text-text-tertiary", dot: "bg-text-tertiary", label: t("status.unknown") },
   }[status] ?? { color: "bg-border-light text-text-tertiary", dot: "bg-text-tertiary", label: status };
 
   return (
@@ -210,21 +213,22 @@ function InfoItem({ label, value, mono }: { label: string; value: string; mono?:
 }
 
 function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
+  const { t } = useTranslation();
   return (
     <table className="w-full">
       <thead>
         <tr className="border-b border-border">
           <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-            Key
+            {t("devices.col.key")}
           </th>
           <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-            Type
+            {t("common.type")}
           </th>
           <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-            Range / Values
+            {t("devices.col.range")}
           </th>
           <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-            Topic
+            {t("devices.col.topic")}
           </th>
         </tr>
       </thead>

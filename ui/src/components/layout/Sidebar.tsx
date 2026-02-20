@@ -3,31 +3,34 @@ import {
   Radio,
   Box,
   Map,
-  Workflow,
   Settings,
+  Shield,
   Home,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SidebarZoneTree } from "./SidebarZoneTree";
+import { useAuth } from "../../store/useAuth";
 
 interface NavItem {
   to: string;
   label: string;
   icon: React.ReactNode;
-  disabled?: boolean;
 }
 
-const SETTINGS_ITEMS: NavItem[] = [
-  { to: "/devices", label: "Devices", icon: <Radio size={18} strokeWidth={1.5} /> },
-  { to: "/equipments", label: "Equipments", icon: <Box size={18} strokeWidth={1.5} /> },
-  { to: "/zones", label: "Home Topology", icon: <Map size={18} strokeWidth={1.5} /> },
-  { to: "/scenarios", label: "Scenarios", icon: <Workflow size={18} strokeWidth={1.5} />, disabled: true },
+const ADMIN_ITEMS: NavItem[] = [
+  { to: "/devices", label: "nav.devices", icon: <Radio size={18} strokeWidth={1.5} /> },
+  { to: "/equipments", label: "nav.equipments", icon: <Box size={18} strokeWidth={1.5} /> },
+  { to: "/zones", label: "nav.zones", icon: <Map size={18} strokeWidth={1.5} /> },
 ];
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
+  const user = useAuth((s) => s.user);
+  const isAdmin = user?.role === "admin";
 
   return (
     <aside
@@ -45,7 +48,7 @@ export function Sidebar() {
           </div>
           {!collapsed && (
             <span className="font-semibold text-[16px] tracking-[-0.01em] text-text truncate">
-              Corbel
+              {t("app.name")}
             </span>
           )}
         </div>
@@ -57,7 +60,7 @@ export function Sidebar() {
           <div className="flex items-center gap-2 px-3 mb-2">
             <Home size={14} strokeWidth={1.5} className="text-text-tertiary" />
             <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
-              Maison
+              {t("nav.maison")}
             </span>
           </div>
         )}
@@ -72,7 +75,7 @@ export function Sidebar() {
                 : "text-text-secondary hover:bg-border-light hover:text-text"
               }
             `}
-            title="Maison"
+            title={t("nav.maison")}
           >
             <Home size={20} strokeWidth={1.5} />
           </NavLink>
@@ -81,38 +84,19 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Settings section — pinned at bottom */}
-      <div className="border-t border-border-light py-2 px-2">
-        {!collapsed && (
-          <div className="flex items-center gap-2 px-3 mb-1.5">
-            <Settings size={14} strokeWidth={1.5} className="text-text-tertiary" />
-            <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
-              Settings
-            </span>
-          </div>
-        )}
-        <nav className="space-y-0.5">
-          {SETTINGS_ITEMS.map((item) => {
-            if (item.disabled) {
-              return (
-                <div
-                  key={item.to}
-                  className={`
-                    flex items-center gap-3 px-3 py-1.5 rounded-[6px]
-                    text-text-tertiary cursor-not-allowed
-                    ${collapsed ? "justify-center" : ""}
-                  `}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <span className="flex-shrink-0 opacity-40">{item.icon}</span>
-                  {!collapsed && (
-                    <span className="text-[12px] font-medium opacity-40">{item.label}</span>
-                  )}
-                </div>
-              );
-            }
-
-            return (
+      {/* Administration section — admin only */}
+      {isAdmin && (
+        <div className="border-t border-border-light py-2 px-2">
+          {!collapsed && (
+            <div className="flex items-center gap-2 px-3 mb-1.5">
+              <Shield size={14} strokeWidth={1.5} className="text-text-tertiary" />
+              <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
+                {t("nav.administration")}
+              </span>
+            </div>
+          )}
+          <nav className="space-y-0.5">
+            {ADMIN_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -126,14 +110,35 @@ export function Sidebar() {
                       : "text-text-secondary hover:bg-border-light hover:text-text"
                   }
                 `}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? t(item.label) : undefined}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
-                {!collapsed && <span className="text-[12px] font-medium">{item.label}</span>}
+                {!collapsed && <span className="text-[12px] font-medium">{t(item.label)}</span>}
               </NavLink>
-            );
-          })}
-        </nav>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* Réglages section — all users */}
+      <div className="border-t border-border-light py-2 px-2">
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => `
+            flex items-center gap-3 px-3 py-1.5 rounded-[6px]
+            transition-colors duration-150 ease-out
+            ${collapsed ? "justify-center" : ""}
+            ${
+              isActive
+                ? "bg-primary-light text-primary font-medium"
+                : "text-text-secondary hover:bg-border-light hover:text-text"
+            }
+          `}
+          title={collapsed ? t("nav.settings") : undefined}
+        >
+          <span className="flex-shrink-0"><Settings size={18} strokeWidth={1.5} /></span>
+          {!collapsed && <span className="text-[12px] font-medium">{t("nav.settings")}</span>}
+        </NavLink>
       </div>
 
       {/* Collapse toggle */}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { ZoneWithChildren } from "../../types";
 
@@ -20,6 +21,7 @@ interface ZoneFormProps {
 }
 
 export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onClose, title }: ZoneFormProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial?.name ?? "");
   const [parentId, setParentId] = useState<string | null>(defaultParentId ?? null);
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -68,13 +70,13 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
           {/* Name */}
           <div>
             <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-wider mb-1.5">
-              Name
+              {t("zones.form.name")}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Salon, Étage 1, Maison..."
+              placeholder={t("zones.form.namePlaceholder")}
               className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               autoFocus
               maxLength={100}
@@ -84,14 +86,14 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
           {/* Parent zone */}
           <div>
             <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-wider mb-1.5">
-              Parent zone
+              {t("zones.form.parent")}
             </label>
             <select
               value={parentId ?? ""}
               onChange={(e) => setParentId(e.target.value || null)}
               className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
             >
-              <option value="">None (root zone)</option>
+              <option value="">{t("zones.form.parentNone")}</option>
               {parentZones.map((z) => (
                 <option key={z.id} value={z.id}>
                   {"  ".repeat(z.depth)}{z.name}
@@ -103,8 +105,8 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
           {/* Description */}
           <div>
             <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-wider mb-1.5">
-              Description
-              <span className="text-text-tertiary font-normal normal-case tracking-normal ml-1">(optional)</span>
+              {t("zones.form.description")}
+              <span className="text-text-tertiary font-normal normal-case tracking-normal ml-1">({t("common.optional")})</span>
             </label>
             <input
               type="text"
@@ -128,14 +130,14 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
               onClick={onClose}
               className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={!name.trim() || saving}
               className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving..." : initial ? "Save" : "Create"}
+              {saving ? t("common.saving") : initial ? t("common.save") : t("common.create")}
             </button>
           </div>
         </form>

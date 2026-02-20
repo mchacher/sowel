@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, Home } from "lucide-react";
 import { useZones } from "../store/useZones";
@@ -10,6 +11,7 @@ import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import type { ZoneWithChildren } from "../types";
 
 export function HomePage() {
+  const { t } = useTranslation();
   const { zoneId } = useParams();
   const navigate = useNavigate();
   const tree = useZones((s) => s.tree);
@@ -87,8 +89,8 @@ export function HomePage() {
         )}
         <p className="text-[13px] text-text-tertiary mt-0.5">
           {zoneEquipments.length === 0
-            ? "No equipments"
-            : `${zoneEquipments.length} equipment${zoneEquipments.length !== 1 ? "s" : ""}`}
+            ? t("equipments.noEquipments")
+            : t("equipments.count", { count: zoneEquipments.length })}
         </p>
       </div>
 
@@ -115,20 +117,23 @@ export function HomePage() {
 }
 
 function NoZonesState() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">Welcome to Home</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("home.welcome")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px]">
-        Create your first zone in Settings &gt; Home Topology to get started.
+        {t("home.noZones")}
       </p>
     </div>
   );
 }
 
 function ZoneNotFound() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -136,15 +141,15 @@ function ZoneNotFound() {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">Zone not found</h3>
+      <h3 className="text-[16px] font-medium text-text mb-1">{t("home.zoneNotFound")}</h3>
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
-        This zone may have been deleted.
+        {t("home.zoneDeleted")}
       </p>
       <button
         onClick={() => navigate("/home")}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
       >
-        Back to Home
+        {t("home.backToHome")}
       </button>
     </div>
   );

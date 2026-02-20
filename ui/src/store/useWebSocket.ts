@@ -22,7 +22,9 @@ const MAX_RECONNECT_DELAY = 30_000;
 
 function getWsUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws`;
+  const token = localStorage.getItem("corbel_access_token");
+  const base = `${protocol}//${window.location.host}/ws`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 
 function getReconnectDelay(): number {
