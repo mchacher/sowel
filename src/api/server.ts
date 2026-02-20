@@ -4,6 +4,7 @@ import websocket from "@fastify/websocket";
 import type { Logger } from "../core/logger.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { ZoneManager } from "../zones/zone-manager.js";
+import type { ZoneAggregator } from "../zones/zone-aggregator.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { MqttConnector } from "../mqtt/mqtt-connector.js";
@@ -16,6 +17,7 @@ import { registerWebSocket } from "./websocket.js";
 interface ServerDeps {
   deviceManager: DeviceManager;
   zoneManager: ZoneManager;
+  zoneAggregator: ZoneAggregator;
   equipmentManager: EquipmentManager;
   eventBus: EventBus;
   mqttConnector: MqttConnector;
@@ -24,7 +26,7 @@ interface ServerDeps {
 }
 
 export async function createServer(deps: ServerDeps) {
-  const { deviceManager, zoneManager, equipmentManager, eventBus, mqttConnector, logger, corsOrigins } = deps;
+  const { deviceManager, zoneManager, zoneAggregator, equipmentManager, eventBus, mqttConnector, logger, corsOrigins } = deps;
 
   const app = Fastify({
     logger: false, // We use our own pino logger
@@ -42,7 +44,7 @@ export async function createServer(deps: ServerDeps) {
   // Register routes
   registerHealthRoutes(app, { deviceManager, mqttConnector, logger });
   registerDeviceRoutes(app, { deviceManager, logger });
-  registerZoneRoutes(app, { zoneManager, logger });
+  registerZoneRoutes(app, { zoneManager, zoneAggregator, logger });
   registerEquipmentRoutes(app, { equipmentManager, logger });
   registerWebSocket(app, { eventBus, logger });
 

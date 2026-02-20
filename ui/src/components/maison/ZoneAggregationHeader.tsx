@@ -1,0 +1,134 @@
+import {
+  Thermometer,
+  Droplets,
+  PersonStanding,
+  Lightbulb,
+  DoorOpen,
+  SquareStack,
+  Droplet,
+  Flame,
+} from "lucide-react";
+import type { ZoneAggregatedData } from "../../types";
+
+interface ZoneAggregationHeaderProps {
+  data: ZoneAggregatedData;
+}
+
+export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
+  const pills: React.ReactNode[] = [];
+
+  // Temperature
+  if (data.temperature !== null) {
+    pills.push(
+      <Pill key="temp" icon={<Thermometer size={14} strokeWidth={1.5} />} color="text-primary">
+        {data.temperature}°C
+      </Pill>,
+    );
+  }
+
+  // Humidity
+  if (data.humidity !== null) {
+    pills.push(
+      <Pill key="hum" icon={<Droplets size={14} strokeWidth={1.5} />} color="text-primary">
+        {data.humidity}%
+      </Pill>,
+    );
+  }
+
+  // Motion (only shown when active)
+  if (data.motion) {
+    pills.push(
+      <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+        Mouvement
+      </Pill>,
+    );
+  }
+
+  // Lights
+  if (data.lightsTotal > 0) {
+    const isOn = data.lightsOn > 0;
+    pills.push(
+      <Pill
+        key="lights"
+        icon={<Lightbulb size={14} strokeWidth={1.5} />}
+        color={isOn ? "text-amber-500" : "text-text-tertiary"}
+        active={isOn}
+      >
+        {data.lightsOn}/{data.lightsTotal}
+      </Pill>,
+    );
+  }
+
+  // Open doors
+  if (data.openDoors > 0) {
+    pills.push(
+      <Pill key="doors" icon={<DoorOpen size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+        {data.openDoors} ouverte{data.openDoors > 1 ? "s" : ""}
+      </Pill>,
+    );
+  }
+
+  // Open windows
+  if (data.openWindows > 0) {
+    pills.push(
+      <Pill key="windows" icon={<SquareStack size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+        {data.openWindows} ouverte{data.openWindows > 1 ? "s" : ""}
+      </Pill>,
+    );
+  }
+
+  // Water leak alert
+  if (data.waterLeak) {
+    pills.push(
+      <Pill key="water" icon={<Droplet size={14} strokeWidth={1.5} />} color="text-error" alert>
+        Fuite eau
+      </Pill>,
+    );
+  }
+
+  // Smoke alert
+  if (data.smoke) {
+    pills.push(
+      <Pill key="smoke" icon={<Flame size={14} strokeWidth={1.5} />} color="text-error" alert>
+        Fumée
+      </Pill>,
+    );
+  }
+
+  if (pills.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-6">
+      {pills}
+    </div>
+  );
+}
+
+interface PillProps {
+  icon: React.ReactNode;
+  color: string;
+  active?: boolean;
+  alert?: boolean;
+  children: React.ReactNode;
+}
+
+function Pill({ icon, color, active, alert, children }: PillProps) {
+  const bg = alert
+    ? "bg-error/10"
+    : active
+      ? "bg-amber-400/10"
+      : "bg-border-light/60";
+
+  return (
+    <span
+      className={`
+        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+        text-[13px] font-medium tabular-nums
+        ${bg} ${color}
+      `}
+    >
+      {icon}
+      {children}
+    </span>
+  );
+}
