@@ -21,9 +21,7 @@ import type {
 // ============================================================
 
 const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
-  "light_onoff", "light_dimmable", "light_color", "shutter", "thermostat",
-  "lock", "alarm", "sensor", "motion_sensor", "contact_sensor",
-  "media_player", "camera", "switch", "generic",
+  "light_onoff", "light_dimmable", "light_color", "shutter", "switch", "sensor",
 ]);
 
 // ============================================================

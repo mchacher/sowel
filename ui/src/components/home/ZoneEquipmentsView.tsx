@@ -3,9 +3,6 @@ import {
   Lightbulb,
   ArrowUpDown,
   Gauge,
-  ThermometerSun,
-  Shield,
-  MonitorSpeaker,
   ToggleRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -21,11 +18,8 @@ interface EquipmentGroup {
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.sensors", types: ["sensor", "motion_sensor", "contact_sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.climate", types: ["thermostat"], icon: <ThermometerSun size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.security", types: ["lock", "alarm"], icon: <Shield size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.media", types: ["media_player", "camera"], icon: <MonitorSpeaker size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.other", types: ["switch", "generic"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.other", types: ["switch"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
 ];
 
 interface ZoneEquipmentsViewProps {
