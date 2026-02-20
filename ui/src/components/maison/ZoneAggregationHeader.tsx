@@ -7,6 +7,7 @@ import {
   SquareStack,
   Droplet,
   Flame,
+  Activity,
 } from "lucide-react";
 import type { ZoneAggregatedData } from "../../types";
 
@@ -98,8 +99,16 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
   if (pills.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-6">
-      {pills}
+    <div className="mb-6 rounded-[10px] border border-border bg-surface px-4 py-3">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Activity size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
+          Statut
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {pills}
+      </div>
     </div>
   );
 }
