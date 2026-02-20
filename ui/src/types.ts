@@ -105,22 +105,81 @@ export interface Zone {
 
 export interface ZoneWithChildren extends Zone {
   children: ZoneWithChildren[];
-  groups: EquipmentGroup[];
 }
 
 // ============================================================
-// Equipment Group
+// Equipment
 // ============================================================
 
-export interface EquipmentGroup {
+export type EquipmentType =
+  | "light_onoff"
+  | "light_dimmable"
+  | "light_color"
+  | "shutter"
+  | "thermostat"
+  | "lock"
+  | "alarm"
+  | "sensor"
+  | "motion_sensor"
+  | "contact_sensor"
+  | "media_player"
+  | "camera"
+  | "switch"
+  | "generic";
+
+export interface Equipment {
   id: string;
   name: string;
   zoneId: string;
+  type: EquipmentType;
   icon?: string;
   description?: string;
-  displayOrder: number;
+  enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DataBinding {
+  id: string;
+  equipmentId: string;
+  deviceDataId: string;
+  alias: string;
+}
+
+export interface OrderBinding {
+  id: string;
+  equipmentId: string;
+  deviceOrderId: string;
+  alias: string;
+}
+
+export interface DataBindingWithValue extends DataBinding {
+  deviceId: string;
+  deviceName: string;
+  key: string;
+  type: DataType;
+  category: DataCategory;
+  value: unknown;
+  unit?: string;
+  lastUpdated: string | null;
+}
+
+export interface OrderBindingWithDetails extends OrderBinding {
+  deviceId: string;
+  deviceName: string;
+  key: string;
+  type: DataType;
+  mqttSetTopic: string;
+  payloadKey: string;
+  min?: number;
+  max?: number;
+  enumValues?: string[];
+  unit?: string;
+}
+
+export interface EquipmentWithDetails extends Equipment {
+  dataBindings: DataBindingWithValue[];
+  orderBindings: OrderBindingWithDetails[];
 }
 
 // ============================================================
@@ -149,9 +208,22 @@ export type EngineEvent =
   | { type: "zone.created"; zone: Zone }
   | { type: "zone.updated"; zone: Zone }
   | { type: "zone.removed"; zoneId: string; zoneName: string }
-  | { type: "group.created"; group: EquipmentGroup }
-  | { type: "group.updated"; group: EquipmentGroup }
-  | { type: "group.removed"; groupId: string; groupName: string }
+  | { type: "equipment.created"; equipment: Equipment }
+  | { type: "equipment.updated"; equipment: Equipment }
+  | { type: "equipment.removed"; equipmentId: string; equipmentName: string }
+  | {
+      type: "equipment.data.changed";
+      equipmentId: string;
+      alias: string;
+      value: unknown;
+      previous: unknown;
+    }
+  | {
+      type: "equipment.order.executed";
+      equipmentId: string;
+      orderAlias: string;
+      value: unknown;
+    }
   | { type: "system.started" }
   | { type: "system.mqtt.connected" }
   | { type: "system.mqtt.disconnected" }

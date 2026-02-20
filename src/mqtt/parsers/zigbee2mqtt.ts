@@ -220,6 +220,7 @@ export class Zigbee2MqttParser {
     data: ParsedData[],
     orders: ParsedOrder[],
     deviceName: string,
+    parentExposeType?: string,
   ): void {
     for (const expose of exposes) {
       // Composite/list exposes contain nested features
@@ -227,13 +228,13 @@ export class Zigbee2MqttParser {
         (expose.type === "composite" || expose.type === "list") &&
         expose.features
       ) {
-        this.flattenExposes(expose.features, allProperties, data, orders, deviceName);
+        this.flattenExposes(expose.features, allProperties, data, orders, deviceName, parentExposeType);
         continue;
       }
 
       // Some top-level exposes have no property but have features (e.g. light, switch, climate)
       if (!expose.property && expose.features) {
-        this.flattenExposes(expose.features, allProperties, data, orders, deviceName);
+        this.flattenExposes(expose.features, allProperties, data, orders, deviceName, expose.type);
         continue;
       }
 
@@ -244,7 +245,7 @@ export class Zigbee2MqttParser {
 
       // If readable (bit 0 set) → create DeviceData
       if (access & Z2M_ACCESS_STATE) {
-        const category = inferCategory(expose.property, allProperties);
+        const category = inferCategory(expose.property, allProperties, parentExposeType);
         data.push({
           key: expose.property,
           type: dataType,
