@@ -114,13 +114,14 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
   handleEquipmentUpdated: () => { get().fetchEquipments(); },
   handleEquipmentRemoved: () => { get().fetchEquipments(); },
   handleEquipmentDataChanged: (equipmentId, alias, value) => {
+    const now = new Date().toISOString();
     set((state) => ({
       equipments: state.equipments.map((eq) => {
         if (eq.id !== equipmentId) return eq;
         return {
           ...eq,
           dataBindings: eq.dataBindings.map((db) =>
-            db.alias === alias ? { ...db, value } : db
+            db.alias === alias ? { ...db, value, lastUpdated: now } : db
           ),
         };
       }),
