@@ -1,20 +1,30 @@
-import { Box } from "lucide-react";
+import {
+  Box,
+  Lightbulb,
+  ArrowUpDown,
+  Gauge,
+  ThermometerSun,
+  Shield,
+  MonitorSpeaker,
+  ToggleRight,
+} from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
 
 interface EquipmentGroup {
   label: string;
   types: EquipmentType[];
+  icon: React.ReactNode;
 }
 
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  { label: "Eclairages", types: ["light_onoff", "light_dimmable", "light_color"] },
-  { label: "Volets", types: ["shutter"] },
-  { label: "Capteurs", types: ["sensor", "motion_sensor", "contact_sensor"] },
-  { label: "Climat", types: ["thermostat"] },
-  { label: "Securite", types: ["lock", "alarm"] },
-  { label: "Multimedia", types: ["media_player", "camera"] },
-  { label: "Autres", types: ["switch", "generic"] },
+  { label: "Eclairages", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
+  { label: "Volets", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
+  { label: "Capteurs", types: ["sensor", "motion_sensor", "contact_sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
+  { label: "Climat", types: ["thermostat"], icon: <ThermometerSun size={14} strokeWidth={1.5} /> },
+  { label: "Securite", types: ["lock", "alarm"], icon: <Shield size={14} strokeWidth={1.5} /> },
+  { label: "Multimedia", types: ["media_player", "camera"], icon: <MonitorSpeaker size={14} strokeWidth={1.5} /> },
+  { label: "Autres", types: ["switch", "generic"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
 ];
 
 interface ZoneEquipmentsViewProps {
@@ -39,13 +49,19 @@ export function ZoneEquipmentsView({
   })).filter((g) => g.equipments.length > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {grouped.map((group) => (
-        <div key={group.label}>
-          <h3 className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider mb-2 px-1">
-            {group.label}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+        <div key={group.label} className="rounded-[10px] border border-border bg-surface overflow-hidden">
+          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-light">
+            <span className="text-text-tertiary">{group.icon}</span>
+            <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
+              {group.label}
+            </span>
+            <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
+              {group.equipments.length}
+            </span>
+          </div>
+          <div className="p-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
             {group.equipments.map((eq) => (
               <CompactEquipmentCard
                 key={eq.id}
