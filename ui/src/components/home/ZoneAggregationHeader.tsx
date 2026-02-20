@@ -150,10 +150,10 @@ function useRelativeTime(since: string | null): string | null {
   return formatDuration(since);
 }
 
-function formatDuration(since: string): string {
+function formatDuration(since: string): string | null {
   const ms = Date.now() - new Date(since).getTime();
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return "< 1 min";
+  if (seconds < 60) return null;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
