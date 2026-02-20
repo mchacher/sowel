@@ -110,6 +110,7 @@ describe("ZoneAggregator", () => {
       expect(data).toEqual({
         temperature: null,
         humidity: null,
+        luminosity: null,
         motion: false,
         motionSensors: 0,
         motionSince: null,
