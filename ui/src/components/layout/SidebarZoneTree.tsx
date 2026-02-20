@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import { ChevronRight, ChevronDown, Building2, Layers, DoorOpen } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ZoneWithChildren } from "../../types";
 import { useZones } from "../../store/useZones";
 
 export function SidebarZoneTree({ collapsed }: { collapsed: boolean }) {
+  const { t } = useTranslation();
   const tree = useZones((s) => s.tree);
   const fetchZones = useZones((s) => s.fetchZones);
 
@@ -18,7 +20,7 @@ export function SidebarZoneTree({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="px-3 py-2">
         <p className="text-[11px] text-text-tertiary leading-tight">
-          No zones yet. Create zones in Settings.
+          {t("zones.noZonesSidebar")}
         </p>
       </div>
     );

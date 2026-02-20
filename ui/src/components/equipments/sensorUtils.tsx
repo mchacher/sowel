@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import {
   Thermometer,
   Droplets,
@@ -46,19 +47,19 @@ const CATEGORY_PRIORITY: DataCategory[] = [
   "smoke",
 ];
 
-const CATEGORY_LABELS: Partial<Record<DataCategory, string>> = {
-  motion: "Mouvement",
-  temperature: "Température",
-  humidity: "Humidité",
-  pressure: "Pression",
-  luminosity: "Luminosité",
-  contact_door: "Contact porte",
-  contact_window: "Contact fenêtre",
-  co2: "CO₂",
-  voc: "COV",
-  water_leak: "Fuite d'eau",
-  smoke: "Fumée",
-  battery: "Batterie",
+const CATEGORY_KEYS: Partial<Record<DataCategory, string>> = {
+  motion: "category.motion",
+  temperature: "category.temperature",
+  humidity: "category.humidity",
+  pressure: "category.pressure",
+  luminosity: "category.luminosity",
+  contact_door: "category.contact_door",
+  contact_window: "category.contact_window",
+  co2: "category.co2",
+  voc: "category.voc",
+  water_leak: "category.water_leak",
+  smoke: "category.smoke",
+  battery: "category.battery",
 };
 
 const ICON_SIZE = 18;
@@ -118,9 +119,13 @@ export function getSensorCategoryIcon(category: DataCategory, value?: unknown): 
   return iconForCategory(category, value);
 }
 
-/** Get French label for a data category. */
-export function getSensorCategoryLabel(category: DataCategory): string {
-  return CATEGORY_LABELS[category] ?? category;
+/** Get translated label for a data category. */
+export function getSensorCategoryLabel(category: DataCategory, t?: TFunction): string {
+  if (t) {
+    const key = CATEGORY_KEYS[category];
+    return key ? t(key) : category;
+  }
+  return CATEGORY_KEYS[category] ?? category;
 }
 
 /** Check if a category represents a boolean sensor (motion, contact, water_leak, smoke). */
@@ -160,9 +165,9 @@ export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
 }
 
 /** Format a sensor value for compact display. */
-export function formatSensorValue(value: unknown, unit?: string): string {
+export function formatSensorValue(value: unknown, unit?: string, t?: TFunction): string {
   if (value === null || value === undefined) return "\u2014";
-  if (typeof value === "boolean") return value ? "Oui" : "Non";
+  if (typeof value === "boolean") return t ? (value ? t("common.yes") : t("common.no")) : (value ? "Oui" : "Non");
   if (typeof value === "number") {
     const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
     return unit ? `${formatted}${unit}` : formatted;
@@ -170,22 +175,37 @@ export function formatSensorValue(value: unknown, unit?: string): string {
   return String(value);
 }
 
-/** Format a boolean sensor value as a French label. */
-export function formatBooleanSensor(category: DataCategory, value: unknown): string {
+/** Format a boolean sensor value as a translated label. */
+export function formatBooleanSensor(category: DataCategory, value: unknown, t?: TFunction): string {
   const isActive = value === true || value === "ON";
+  if (t) {
+    switch (category) {
+      case "motion":
+        return isActive ? t("category.value.motion.detected") : t("category.value.motion.clear");
+      case "contact_door":
+      case "contact_window":
+        return value === false || value === "OFF" ? t("controls.opened") : t("controls.closed");
+      case "water_leak":
+        return isActive ? t("category.value.water_leak.active") : t("category.value.water_leak.ok");
+      case "smoke":
+        return isActive ? t("category.value.smoke.active") : t("category.value.smoke.ok");
+      default:
+        return isActive ? t("common.yes") : t("common.no");
+    }
+  }
+  // Fallback without t
   switch (category) {
     case "motion":
-      return isActive ? "Détecté" : "RAS";
+      return isActive ? "Detected" : "Clear";
     case "contact_door":
     case "contact_window":
-      // contact=true means closed in zigbee2mqtt
-      return value === false || value === "OFF" ? "Ouvert" : "Fermé";
+      return value === false || value === "OFF" ? "Open" : "Closed";
     case "water_leak":
-      return isActive ? "Fuite !" : "OK";
+      return isActive ? "Leak!" : "OK";
     case "smoke":
-      return isActive ? "Alerte !" : "OK";
+      return isActive ? "Alert!" : "OK";
     default:
-      return isActive ? "Oui" : "Non";
+      return isActive ? "Yes" : "No";
   }
 }
 

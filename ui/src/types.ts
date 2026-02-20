@@ -297,3 +297,40 @@ export interface RecipeLogEntry {
   message: string;
   level: "info" | "warn" | "error";
 }
+
+// ============================================================
+// User & Auth
+// ============================================================
+
+export type UserRole = "admin" | "standard";
+
+export interface User {
+  id: string;
+  username: string;
+  displayName: string;
+  role: UserRole;
+  preferences: UserPreferences;
+  enabled: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface UserPreferences {
+  language: "fr" | "en";
+  defaultZoneId?: string;
+}
+
+export interface ApiToken {
+  id: string;
+  name: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: User;
+}
