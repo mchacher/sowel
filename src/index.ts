@@ -13,6 +13,7 @@ import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { MotionLightRecipe } from "./recipes/motion-light.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
+import { SettingsManager } from "./core/settings-manager.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -31,16 +32,20 @@ async function main() {
   );
   runMigrations(db, migrationsDir, logger);
 
-  // 4. Create Event Bus
+  // 4. Create Settings Manager
+  const settingsManager = new SettingsManager(db);
+
+  // 5. Create Event Bus
   const eventBus = new EventBus(logger);
 
-  // 5. Create MQTT Connector
+  // 6. Create MQTT Connector (settings come from DB, configured via UI)
+  const mqttConfig = settingsManager.getMqttConfig();
   const mqttConnector = new MqttConnector(
-    config.mqtt.url,
+    mqttConfig.url,
     {
-      username: config.mqtt.username,
-      password: config.mqtt.password,
-      clientId: config.mqtt.clientId,
+      username: mqttConfig.username,
+      password: mqttConfig.password,
+      clientId: mqttConfig.clientId,
     },
     eventBus,
     logger,
@@ -67,19 +72,25 @@ async function main() {
   const authService = new AuthService(db, userManager, config.jwt, logger);
 
   // 7. Create zigbee2mqtt parser
+  const z2mConfig = settingsManager.getZ2mConfig();
   const z2mParser = new Zigbee2MqttParser(
-    config.z2m.baseTopic,
+    z2mConfig.baseTopic,
     mqttConnector,
     deviceManager,
     logger,
   );
 
-  // 8. Connect to MQTT and start parser
-  await mqttConnector.connect();
-  z2mParser.start();
+  // 8. Connect to MQTT and start parser (only if integration is configured)
+  if (settingsManager.isMqttConfigured()) {
+    await mqttConnector.connect();
+    z2mParser.start();
+  } else {
+    logger.info("MQTT integration not configured — configure it from Administration > Intégrations");
+  }
 
   // 9. Start Fastify server
   const server = await createServer({
+    db,
     deviceManager,
     zoneManager,
     zoneAggregator,
@@ -87,6 +98,7 @@ async function main() {
     recipeManager,
     userManager,
     authService,
+    settingsManager,
     eventBus,
     mqttConnector,
     logger,

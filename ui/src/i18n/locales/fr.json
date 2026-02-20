@@ -97,6 +97,7 @@
   "devices.col.updated": "Mis à jour",
   "devices.col.range": "Plage / Valeurs",
   "devices.col.topic": "Topic",
+  "devices.deleteConfirm": "Supprimer cet appareil de Corbel ? Il sera redécouvert automatiquement s'il est toujours actif sur le bridge.",
 
   "zones.title": "Topologie",
   "zones.subtitle": "Définissez la topologie de votre maison",
@@ -297,5 +298,27 @@
   "settings.role": "Rôle",
   "settings.enabled": "Actif",
   "settings.deleteUserConfirm": "Supprimer l'utilisateur « {{name}} » ?",
-  "settings.cannotDeleteSelf": "Vous ne pouvez pas supprimer votre propre compte"
+  "settings.cannotDeleteSelf": "Vous ne pouvez pas supprimer votre propre compte",
+
+  "settings.backup": "Sauvegarde / Restauration",
+  "settings.backupDescription": "Exportez ou importez la configuration complète de Corbel (zones, appareils, équipements, utilisateurs, recettes, intégrations).",
+  "settings.exportBackup": "Exporter",
+  "settings.importBackup": "Importer",
+  "settings.backupExported": "Sauvegarde exportée avec succès",
+  "settings.backupImported": "Sauvegarde importée avec succès. Redémarrez Corbel pour appliquer les changements.",
+
+  "nav.integrations": "Intégrations",
+
+  "integrations.title": "Intégrations",
+  "integrations.subtitle": "Configurez les connexions avec vos systèmes domotiques.",
+  "integrations.z2mDescription": "Passerelle Zigbee vers MQTT",
+  "integrations.mqttUrl": "URL du broker MQTT",
+  "integrations.mqttUsername": "Identifiant",
+  "integrations.mqttPassword": "Mot de passe",
+  "integrations.mqttClientId": "Client ID",
+  "integrations.z2mBaseTopic": "Topic de base Z2M",
+  "integrations.reconnect": "Reconnecter",
+  "integrations.saved": "Configuration enregistrée",
+  "integrations.reconnectSuccess": "Reconnexion MQTT réussie",
+  "integrations.reconnectFailed": "Reconnexion MQTT échouée — vérifiez les paramètres"
 }

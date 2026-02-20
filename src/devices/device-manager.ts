@@ -255,17 +255,34 @@ export class DeviceManager {
   }
 
   /**
-   * Mark a device as removed (offline) when it disappears from bridge/devices.
-   * Does NOT delete from DB — user can delete via API.
+   * Remove a device from DB when it disappears from bridge/devices.
    */
   markRemoved(baseTopic: string, mqttName: string): void {
     const existing = this.stmts.findDeviceByMqtt.get(baseTopic, mqttName) as
       | DeviceRow
       | undefined;
     if (existing) {
-      this.stmts.updateDeviceStatus.run("offline", existing.id);
-      this.logger.warn({ deviceId: existing.id, name: mqttName }, "Device removed from bridge");
+      this.stmts.deleteDevice.run(existing.id);
+      this.logger.warn({ deviceId: existing.id, name: mqttName }, "Device removed from bridge — deleted from DB");
       this.eventBus.emit({ type: "device.removed", deviceId: existing.id, deviceName: existing.name });
+    }
+  }
+
+  /**
+   * Remove all devices for a baseTopic that are NOT in the active set.
+   * Called after processing bridge/devices to clean up stale DB entries.
+   */
+  removeStaleDevices(baseTopic: string, activeNames: Set<string>): void {
+    const allDevices = this.db
+      .prepare("SELECT id, mqtt_name, name FROM devices WHERE mqtt_base_topic = ?")
+      .all(baseTopic) as { id: string; mqtt_name: string; name: string }[];
+
+    for (const device of allDevices) {
+      if (!activeNames.has(device.mqtt_name)) {
+        this.stmts.deleteDevice.run(device.id);
+        this.logger.warn({ deviceId: device.id, name: device.mqtt_name }, "Stale device cleaned up — not in bridge device list");
+        this.eventBus.emit({ type: "device.removed", deviceId: device.id, deviceName: device.name });
+      }
     }
   }
 
@@ -334,7 +351,9 @@ export class DeviceManager {
   }
 
   /**
-   * Update device online/offline status.
+   * Update device status.
+   * "online" → update status in DB.
+   * "offline" → delete device from DB (will be re-created on next bridge/devices if still present).
    */
   updateDeviceStatus(
     baseTopic: string,
@@ -345,6 +364,13 @@ export class DeviceManager {
       | DeviceRow
       | undefined;
     if (!device) return;
+
+    if (status === "offline") {
+      this.stmts.deleteDevice.run(device.id);
+      this.logger.info({ deviceId: device.id, name: mqttName }, "Device offline — deleted from DB");
+      this.eventBus.emit({ type: "device.removed", deviceId: device.id, deviceName: device.name });
+      return;
+    }
 
     if (device.status !== status) {
       this.stmts.updateDeviceStatus.run(status, device.id);

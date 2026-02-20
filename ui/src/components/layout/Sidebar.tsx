@@ -3,6 +3,7 @@ import {
   Radio,
   Box,
   Map,
+  Plug,
   Settings,
   Shield,
   Home,
@@ -24,6 +25,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: "/devices", label: "nav.devices", icon: <Radio size={18} strokeWidth={1.5} /> },
   { to: "/equipments", label: "nav.equipments", icon: <Box size={18} strokeWidth={1.5} /> },
   { to: "/zones", label: "nav.zones", icon: <Map size={18} strokeWidth={1.5} /> },
+  { to: "/integrations", label: "nav.integrations", icon: <Plug size={18} strokeWidth={1.5} /> },
 ];
 
 export function Sidebar() {
