@@ -9,6 +9,7 @@ import {
   SquareStack,
   Droplet,
   Flame,
+  ArrowUpDown,
   Activity,
 } from "lucide-react";
 import type { ZoneAggregatedData } from "../../types";
@@ -76,6 +77,22 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
         active={isOn}
       >
         {data.lightsOn}/{data.lightsTotal}
+      </Pill>,
+    );
+  }
+
+  // Shutters
+  if (data.shuttersTotal > 0) {
+    const someOpen = data.shuttersOpen > 0;
+    const positionSuffix = data.averageShutterPosition !== null ? ` · ${data.averageShutterPosition}%` : "";
+    pills.push(
+      <Pill
+        key="shutters"
+        icon={<ArrowUpDown size={14} strokeWidth={1.5} />}
+        color={someOpen ? "text-primary" : "text-text-tertiary"}
+        active={someOpen}
+      >
+        {data.shuttersOpen}/{data.shuttersTotal}{positionSuffix}
       </Pill>,
     );
   }

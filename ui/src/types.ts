@@ -120,6 +120,9 @@ export interface ZoneAggregatedData {
   smoke: boolean;
   lightsOn: number;
   lightsTotal: number;
+  shuttersOpen: number;
+  shuttersTotal: number;
+  averageShutterPosition: number | null;
 }
 
 // ============================================================
