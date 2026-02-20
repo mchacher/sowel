@@ -701,6 +701,77 @@ CREATE TABLE internal_rules (
   action_expr TEXT NOT NULL,
   enabled INTEGER DEFAULT 1
 );
+
+-- ============================================================
+-- RECIPES (V0.8)
+-- ============================================================
+CREATE TABLE recipe_instances (
+  id TEXT PRIMARY KEY,
+  recipe_id TEXT NOT NULL,
+  params JSON NOT NULL DEFAULT '{}',
+  enabled INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE recipe_state (
+  instance_id TEXT NOT NULL REFERENCES recipe_instances(id) ON DELETE CASCADE,
+  key TEXT NOT NULL,
+  value TEXT,
+  PRIMARY KEY (instance_id, key)
+);
+
+CREATE TABLE recipe_log (
+  id TEXT PRIMARY KEY,
+  instance_id TEXT NOT NULL REFERENCES recipe_instances(id) ON DELETE CASCADE,
+  level TEXT NOT NULL DEFAULT 'info',
+  message TEXT NOT NULL,
+  data JSON,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- USERS & AUTH
+-- ============================================================
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'standard',
+  preferences JSON DEFAULT '{}',
+  enabled INTEGER DEFAULT 1,
+  last_login_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE api_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  last_used_at DATETIME,
+  expires_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE refresh_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- SETTINGS (key-value store for integration config)
+-- ============================================================
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ---

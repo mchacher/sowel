@@ -1,10 +1,10 @@
 # Corbel — User Manual
 
-> Updated: 2026-02-20 — V0.8 (MQTT + Devices + Zones + Equipments + Sensors + Shutters + Zone Aggregation + Recipes)
+> Updated: 2026-02-20 — Auth + i18n + Backup/Restore + Integrations
 
 ## What is Corbel?
 
-Corbel is a home automation engine that uses MQTT as its only data source. It connects to zigbee2mqtt, discovers your Zigbee devices automatically, and lets you organize them into Equipments and Zones with real-time controls and aggregated status.
+Corbel is a home automation engine that uses MQTT as its only data source. It connects to zigbee2mqtt, discovers your Zigbee devices automatically, and lets you organize them into Equipments and Zones with real-time controls and aggregated status. Multi-user with JWT authentication and bilingual (French/English).
 
 ---
 
@@ -20,20 +20,22 @@ Corbel is a home automation engine that uses MQTT as its only data source. It co
 ```bash
 git clone <repo>
 cd corbel
-cp .env.example .env
 npm install
 ```
 
 ### Configuration
 
-Edit `.env` with your MQTT broker address:
+Optionally edit `.env` for engine settings:
 
 ```env
-MQTT_URL=mqtt://192.168.0.45:1883
-Z2M_BASE_TOPIC=zigbee2mqtt
+SQLITE_PATH=./data/corbel.db
 API_PORT=3000
+JWT_SECRET=your-secret-here
 LOG_LEVEL=info
+CORS_ORIGINS=http://localhost:5173
 ```
+
+> **Note**: MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.
 
 ### Start
 
@@ -45,15 +47,21 @@ npm run dev
 cd ui && npm install && npm run dev
 ```
 
-On startup, the engine will:
-1. Connect to your MQTT broker
-2. Read the device list from zigbee2mqtt
-3. Create a record for each device with its capabilities
-4. Start tracking state changes in real-time
-5. Compute zone aggregations from equipment data
-6. Expose a REST API on port 3000
+Then open **http://localhost:5173** in your browser.
 
-Then open **http://localhost:5173** in your browser to access the web UI.
+### First Run
+
+1. The **Setup page** appears — create your first admin account
+2. Log in with your credentials
+3. Go to **Administration > Integrations** to configure your MQTT broker and Zigbee2MQTT
+4. Once connected, devices are auto-discovered
+
+On startup, the engine will:
+1. Open SQLite database and run migrations
+2. Check if MQTT integration is configured (from Settings, not `.env`)
+3. If configured: connect to MQTT, subscribe to zigbee2mqtt topics, auto-discover devices
+4. If not configured: start without MQTT (configure it from the Integrations page)
+5. Start the REST API and WebSocket server
 
 ---
 
@@ -139,10 +147,67 @@ The **Devices** page shows all auto-discovered MQTT devices:
 - Sortable table (name, manufacturer, model, battery, LQI, last seen)
 - Filter by name
 - Click for detail: raw data, orders, expose viewer, inline name editor
+- **Delete button**: remove a device from Corbel's database (does not affect zigbee2mqtt — the device will be re-discovered if still active on the bridge)
+
+**Device lifecycle**:
+- Devices are auto-discovered from zigbee2mqtt `bridge/devices` messages
+- Devices reported as "offline" by z2m are automatically deleted from the DB
+- Devices no longer in the z2m bridge list are cleaned up automatically
+- Deleted devices are re-created if they come back online
+
+### Integrations (administration)
+
+The **Integrations** page configures external system connections:
+- **Zigbee2MQTT**: MQTT broker URL, username, password, client ID, Z2M base topic
+- Connection status indicator (green/red)
+- Save settings and reconnect without restarting the engine
+
+### Settings
+
+The **Settings** page provides:
+- **Profile**: update display name
+- **Password**: change password
+- **Language**: switch between French and English (preference saved per user)
+- **API Tokens**: create/revoke API tokens for external integrations
+- **Backup** (admin): export/import full Corbel configuration as JSON
+- **User Management** (admin): create/edit/delete users, assign roles
+
+### Authentication
+
+- **Login page**: username + password authentication
+- **Setup page**: appears on first run to create the admin account
+- Two roles:
+  - **Admin**: full access to all features
+  - **Standard**: can control equipments, view data, manage recipes — cannot manage devices, zones, users, or system settings
+- JWT access tokens (15min) + refresh tokens (30 days)
+- API tokens for headless/external access (`cbl_` prefix)
 
 ---
 
 ## REST API
+
+All API endpoints (except auth) require a Bearer token in the `Authorization` header:
+```bash
+curl -H "Authorization: Bearer <token>" http://localhost:3000/api/v1/...
+```
+
+### Auth
+
+```bash
+# Check if setup is required
+curl http://localhost:3000/api/v1/auth/status
+
+# First-run setup
+curl -X POST http://localhost:3000/api/v1/auth/setup \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "secret", "displayName": "Admin"}'
+
+# Login
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "secret"}'
+# Returns: { accessToken, refreshToken, user }
+```
 
 ### Health
 
@@ -245,6 +310,36 @@ The motion-light recipe:
 - Turns light OFF when the timer expires
 - Handles manual turn-on: starts the timer if no motion is active
 - Handles manual turn-off: cancels any running timer
+
+### Settings & Integrations (admin)
+
+```bash
+# Get all settings
+curl http://localhost:3000/api/v1/settings
+
+# Update MQTT integration settings
+curl -X PUT http://localhost:3000/api/v1/settings \
+  -H "Content-Type: application/json" \
+  -d '{"mqtt.url": "mqtt://192.168.0.45:1883", "mqtt.clientId": "corbel", "z2m.baseTopic": "zigbee2mqtt"}'
+
+# Reconnect MQTT with current settings
+curl -X POST http://localhost:3000/api/v1/settings/mqtt/reconnect
+
+# Check MQTT connection status
+curl http://localhost:3000/api/v1/settings/mqtt/status
+```
+
+### Backup & Restore (admin)
+
+```bash
+# Export full configuration
+curl http://localhost:3000/api/v1/backup -o corbel-backup.json
+
+# Import configuration (replaces all data)
+curl -X POST http://localhost:3000/api/v1/backup \
+  -H "Content-Type: application/json" \
+  -d @corbel-backup.json
+```
 
 ### WebSocket — Live Events
 

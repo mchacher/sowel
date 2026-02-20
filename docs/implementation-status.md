@@ -1,6 +1,6 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-20 — V0.1 through V0.8 done
+> Updated: 2026-02-20 — V0.1 through V0.8 done, Auth + i18n, Backup/Restore + Integrations
 
 ## Roadmap Changes
 
@@ -21,6 +21,8 @@
 | **V0.6** | Zone Aggregation Engine (real-time status) | ✅ Done |
 | **V0.7** | Shutter Equipment Support (controls + aggregation) | ✅ Done |
 | **V0.8** | Recipe Engine + Motion-Light Recipe | ✅ Done |
+| **Auth** | Multi-user JWT auth + i18n (FR/EN) + Settings page | ✅ Done |
+| **Infra** | Backup/Restore + Integrations page + Device cleanup | ✅ Done |
 | V0.9 | Scenario Engine | — |
 | V0.10 | Computed Data | — |
 | V0.11 | History (InfluxDB) | — |
@@ -354,26 +356,112 @@
 
 ---
 
+## Auth + i18n
+
+**Objective**: Multi-user authentication, internationalization, and user settings.
+
+### What it does
+
+- JWT authentication (access + refresh tokens) with bcrypt password hashing
+- API token support (`cbl_` prefix, SHA-256 hashed)
+- Two roles: `admin` (full access) and `standard` (control equipments, view data, manage recipes — cannot manage devices, zones, users, or system settings)
+- First-run setup flow: create first admin user
+- Auth middleware on all API routes (whitelist: status, setup, login, refresh, health)
+- WebSocket authentication (token as query param or first message)
+- Internationalization with react-i18next: French + English
+- User preferences (language, stored in DB)
+- Settings page: profile, password change, language, API token management, user management (admin)
+
+### API Endpoints
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/v1/auth/status` | None | Returns `{ setupRequired }` |
+| POST | `/api/v1/auth/setup` | None (first-run) | Create first admin |
+| POST | `/api/v1/auth/login` | None | Returns access + refresh tokens |
+| POST | `/api/v1/auth/refresh` | Refresh token | Rotate tokens |
+| POST | `/api/v1/auth/logout` | Refresh token | Revoke refresh token |
+| GET | `/api/v1/me` | Any | Current user profile |
+| PUT | `/api/v1/me` | Any | Update display name |
+| PUT | `/api/v1/me/preferences` | Any | Update preferences |
+| PUT | `/api/v1/me/password` | Any | Change password |
+| GET/POST/DELETE | `/api/v1/me/tokens` | Any | API token CRUD |
+| GET/POST/PUT/DELETE | `/api/v1/users` | Admin | User management |
+
+### Files
+
+| Module | Files |
+|--------|-------|
+| DB | `migrations/006_users.sql` |
+| Auth | `src/auth/user-manager.ts`, `src/auth/auth-service.ts`, `src/auth/auth-middleware.ts` |
+| API | `src/api/routes/auth.ts`, `src/api/routes/me.ts`, `src/api/routes/users.ts` |
+| UI Store | `ui/src/store/useAuth.ts` |
+| UI Pages | `ui/src/pages/LoginPage.tsx`, `ui/src/pages/SetupPage.tsx`, `ui/src/pages/SettingsPage.tsx` |
+| UI Auth | `ui/src/components/auth/ProtectedRoute.tsx` |
+| i18n | `ui/src/i18n/index.ts`, `ui/src/i18n/locales/fr.json`, `ui/src/i18n/locales/en.json` |
+
+---
+
+## Backup/Restore + Integrations + Device Cleanup
+
+**Objective**: Configuration persistence (backup/restore), UI-configurable integrations, and automatic device lifecycle management.
+
+### What it does
+
+- **Settings table**: SQLite key-value store (`settings`) for integration configuration (replaces `.env` for MQTT/Z2M)
+- **Integrations page**: Admin UI to configure Zigbee2MQTT connection (MQTT URL, credentials, client ID, Z2M base topic), with connection status and reconnect button
+- **MQTT reconnect**: Change integration settings from UI and reconnect without engine restart
+- **Conditional MQTT startup**: Engine starts without MQTT if integration not yet configured (`isMqttConfigured()` check)
+- **Backup/restore**: Export/import full Corbel configuration as JSON (all config tables in dependency order)
+- **Backup UI**: Export/Import buttons in Settings page (admin only)
+- **Device auto-cleanup**: Offline devices are automatically deleted from DB when z2m sends availability "offline"
+- **Stale device cleanup**: On every `bridge/devices` message, devices in DB not in the bridge list are deleted
+- **Manual device delete**: Delete button on device detail page (Corbel DB only, does not touch z2m)
+
+### API Endpoints
+
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/api/v1/settings` | Admin | Get all settings |
+| PUT | `/api/v1/settings` | Admin | Update settings |
+| POST | `/api/v1/settings/mqtt/reconnect` | Admin | Reconnect MQTT with current settings |
+| GET | `/api/v1/settings/mqtt/status` | Admin | MQTT connection status |
+| GET | `/api/v1/backup` | Admin | Export full config as JSON |
+| POST | `/api/v1/backup` | Admin | Import config from JSON |
+
+### Files
+
+| Module | Files |
+|--------|-------|
+| DB | `migrations/007_settings.sql` |
+| Core | `src/core/settings-manager.ts` |
+| MQTT | `src/mqtt/mqtt-connector.ts` (reconnect method) |
+| API | `src/api/routes/settings.ts`, `src/api/routes/backup.ts` |
+| Devices | `src/devices/device-manager.ts` (removeStaleDevices, offline=delete) |
+| Parser | `src/mqtt/parsers/zigbee2mqtt.ts` (DB-based stale cleanup) |
+| UI | `ui/src/pages/IntegrationsPage.tsx`, `ui/src/pages/SettingsPage.tsx` (backup section) |
+
+---
+
 ## Test Summary
 
 | Module | File | Tests |
 |--------|------|-------|
 | Event Bus | `src/core/event-bus.test.ts` | 5 |
 | Category Inference | `src/devices/category-inference.test.ts` | 24 |
-| Device Manager | `src/devices/device-manager.test.ts` | 24 |
+| Device Manager | `src/devices/device-manager.test.ts` | 28 |
 | Zone Manager | `src/zones/zone-manager.test.ts` | 23 |
 | Zone Aggregator | `src/zones/zone-aggregator.test.ts` | 25 |
 | Equipment Manager | `src/equipments/equipment-manager.test.ts` | 38 |
 | Recipe Manager | `src/recipes/recipe-manager.test.ts` | 9 |
 | Motion-Light Recipe | `src/recipes/motion-light.test.ts` | 12 |
-| **Total** | **8 test files** | **160 tests** |
+| **Total** | **8 test files** | **164 tests** |
 
 ---
 
 ## Quick Start
 
 ```bash
-cp .env.example .env     # Edit MQTT_URL
 npm install
 npm run dev              # Start engine (port 3000)
 
@@ -381,4 +469,6 @@ npm run dev              # Start engine (port 3000)
 cd ui && npm install && npm run dev
 
 # Open http://localhost:5173
+# First run: create admin account
+# Then configure MQTT integration in Administration > Integrations
 ```
