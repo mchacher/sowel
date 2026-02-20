@@ -138,16 +138,8 @@ export type EquipmentType =
   | "light_dimmable"
   | "light_color"
   | "shutter"
-  | "thermostat"
-  | "lock"
-  | "alarm"
-  | "sensor"
-  | "motion_sensor"
-  | "contact_sensor"
-  | "media_player"
-  | "camera"
   | "switch"
-  | "generic";
+  | "sensor";
 
 export interface Equipment {
   id: string;

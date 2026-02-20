@@ -10,12 +10,8 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   light_dimmable: ["light_state", "light_brightness"],
   light_color: ["light_state", "light_brightness", "light_color"],
   shutter: ["shutter_position"],
-  thermostat: ["temperature"],
-  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
-  motion_sensor: ["motion"],
-  contact_sensor: ["contact_door", "contact_window"],
-  lock: ["lock_state"],
   switch: ["light_state"],
+  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
 };
 
 interface DeviceSelectorProps {
