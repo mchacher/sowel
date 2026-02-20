@@ -3,6 +3,7 @@ import type { EngineEvent } from "../types";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
+import { useZoneAggregation } from "./useZoneAggregation";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -58,6 +59,9 @@ function handleEvent(event: EngineEvent): void {
       break;
     case "zone.removed":
       useZones.getState().handleZoneRemoved(event.zoneId);
+      break;
+    case "zone.data.changed":
+      useZoneAggregation.getState().handleZoneDataChanged(event.zoneId, event.aggregatedData);
       break;
     case "equipment.created":
       useEquipments.getState().handleEquipmentCreated();

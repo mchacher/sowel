@@ -3,7 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, Home } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
+import { useZoneAggregation } from "../store/useZoneAggregation";
 import { ZoneEquipmentsView } from "../components/maison/ZoneEquipmentsView";
+import { ZoneAggregationHeader } from "../components/maison/ZoneAggregationHeader";
 import type { ZoneWithChildren } from "../types";
 
 export function MaisonPage() {
@@ -16,11 +18,14 @@ export function MaisonPage() {
   const equipmentsLoading = useEquipments((s) => s.loading);
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
   const executeOrder = useEquipments((s) => s.executeOrder);
+  const aggregationData = useZoneAggregation((s) => s.data);
+  const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
 
   useEffect(() => {
     fetchZones();
     fetchEquipments();
-  }, [fetchZones, fetchEquipments]);
+    fetchAggregation();
+  }, [fetchZones, fetchEquipments, fetchAggregation]);
 
   // If no zoneId in URL, redirect to first zone
   useEffect(() => {
@@ -85,6 +90,11 @@ export function MaisonPage() {
             : `${zoneEquipments.length} equipment${zoneEquipments.length !== 1 ? "s" : ""}`}
         </p>
       </div>
+
+      {/* Aggregated zone data */}
+      {zoneId && aggregationData[zoneId] && (
+        <ZoneAggregationHeader data={aggregationData[zoneId]} />
+      )}
 
       {/* Equipments grouped by type */}
       <ZoneEquipmentsView

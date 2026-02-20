@@ -1,6 +1,6 @@
 import type {
   Device, DeviceData, DeviceWithDetails,
-  ZoneWithChildren, Zone,
+  ZoneWithChildren, Zone, ZoneAggregatedData,
   Equipment, EquipmentType, EquipmentWithDetails,
   DataBinding, OrderBinding,
 } from "./types";
@@ -64,6 +64,10 @@ export async function getDeviceRawExpose(
 
 export async function getZones(): Promise<ZoneWithChildren[]> {
   return fetchJSON<ZoneWithChildren[]>(`${API_BASE}/zones`);
+}
+
+export async function getZoneAggregation(): Promise<Record<string, ZoneAggregatedData>> {
+  return fetchJSON<Record<string, ZoneAggregatedData>>(`${API_BASE}/zones/aggregation`);
 }
 
 export async function getZone(id: string): Promise<ZoneWithChildren> {
