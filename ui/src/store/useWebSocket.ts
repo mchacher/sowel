@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { EngineEvent } from "../types";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
+import { useEquipments } from "./useEquipments";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -58,14 +59,21 @@ function handleEvent(event: EngineEvent): void {
     case "zone.removed":
       useZones.getState().handleZoneRemoved(event.zoneId);
       break;
-    case "group.created":
-      useZones.getState().handleGroupCreated(event.group);
+    case "equipment.created":
+      useEquipments.getState().handleEquipmentCreated();
       break;
-    case "group.updated":
-      useZones.getState().handleGroupUpdated(event.group);
+    case "equipment.updated":
+      useEquipments.getState().handleEquipmentUpdated();
       break;
-    case "group.removed":
-      useZones.getState().handleGroupRemoved(event.groupId);
+    case "equipment.removed":
+      useEquipments.getState().handleEquipmentRemoved();
+      break;
+    case "equipment.data.changed":
+      useEquipments.getState().handleEquipmentDataChanged(
+        event.equipmentId,
+        event.alias,
+        event.value
+      );
       break;
     case "system.mqtt.connected":
       useWebSocket.setState({ mqttConnected: true });

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
-import type { Zone, ZoneWithChildren, EquipmentGroup } from "../shared/types.js";
+import type { Zone, ZoneWithChildren } from "../shared/types.js";
 
 interface CreateZoneInput {
   name: string;
@@ -50,14 +50,17 @@ export class ZoneManager {
       countChildren: this.db.prepare(
         "SELECT COUNT(*) as count FROM zones WHERE parent_id = ?",
       ),
-      countGroups: this.db.prepare(
-        "SELECT COUNT(*) as count FROM equipment_groups WHERE zone_id = ?",
+      countEquipments: this.db.prepare(
+        "SELECT COUNT(*) as count FROM equipments WHERE zone_id = ?",
       ),
-      getGroupsByZoneId: this.db.prepare(
-        "SELECT * FROM equipment_groups WHERE zone_id = ? ORDER BY display_order, name",
+      getSiblings: this.db.prepare(
+        "SELECT id, display_order FROM zones WHERE parent_id IS ? ORDER BY display_order, name",
       ),
-      getAllGroups: this.db.prepare(
-        "SELECT * FROM equipment_groups ORDER BY display_order, name",
+      getSiblingsNotNull: this.db.prepare(
+        "SELECT id, display_order FROM zones WHERE parent_id = ? ORDER BY display_order, name",
+      ),
+      updateDisplayOrder: this.db.prepare(
+        "UPDATE zones SET display_order = ?, updated_at = datetime('now') WHERE id = ?",
       ),
     };
   }
@@ -103,19 +106,10 @@ export class ZoneManager {
   }
 
   /**
-   * Returns all zones as a tree structure with children and groups.
+   * Returns all zones as a tree structure with children.
    */
   getTree(): ZoneWithChildren[] {
     const zones = this.getAll();
-    const groups = (this.stmts.getAllGroups.all() as GroupRow[]).map(rowToGroup);
-
-    // Index groups by zoneId
-    const groupsByZone = new Map<string, EquipmentGroup[]>();
-    for (const group of groups) {
-      const list = groupsByZone.get(group.zoneId) ?? [];
-      list.push(group);
-      groupsByZone.set(group.zoneId, list);
-    }
 
     // Build tree
     const nodeMap = new Map<string, ZoneWithChildren>();
@@ -123,7 +117,6 @@ export class ZoneManager {
       nodeMap.set(zone.id, {
         ...zone,
         children: [],
-        groups: groupsByZone.get(zone.id) ?? [],
       });
     }
 
@@ -140,14 +133,13 @@ export class ZoneManager {
   }
 
   /**
-   * Returns a single zone with its children and groups.
+   * Returns a single zone with its children.
    */
   getByIdWithChildren(id: string): ZoneWithChildren | null {
     const zone = this.getById(id);
     if (!zone) return null;
 
     const allZones = this.getAll();
-    const groups = (this.stmts.getGroupsByZoneId.all(id) as GroupRow[]).map(rowToGroup);
 
     // Get direct children
     const children: ZoneWithChildren[] = allZones
@@ -159,15 +151,12 @@ export class ZoneManager {
           .map((grandchild) => ({
             ...grandchild,
             children: [],
-            groups: (this.stmts.getGroupsByZoneId.all(grandchild.id) as GroupRow[]).map(rowToGroup),
           })),
-        groups: (this.stmts.getGroupsByZoneId.all(child.id) as GroupRow[]).map(rowToGroup),
       }));
 
     return {
       ...zone,
       children,
-      groups,
     };
   }
 
@@ -223,11 +212,11 @@ export class ZoneManager {
       );
     }
 
-    // Guard: no groups
-    const groupCount = (this.stmts.countGroups.get(id) as { count: number }).count;
-    if (groupCount > 0) {
+    // Guard: no equipments
+    const equipmentCount = (this.stmts.countEquipments.get(id) as { count: number }).count;
+    if (equipmentCount > 0) {
       throw new ZoneError(
-        `Cannot delete zone with ${groupCount} group${groupCount > 1 ? "s" : ""}. Remove them first.`,
+        `Cannot delete zone with ${equipmentCount} equipment${equipmentCount > 1 ? "s" : ""}. Remove or move them first.`,
         400,
       );
     }
@@ -235,6 +224,31 @@ export class ZoneManager {
     this.stmts.deleteZone.run(id);
     this.logger.info({ zoneId: id, name: existing.name }, "Zone deleted");
     this.eventBus.emit({ type: "zone.removed", zoneId: id, zoneName: existing.name });
+  }
+
+  /**
+   * Reorder zones within a parent. Pass an array of zone IDs in desired order.
+   */
+  reorderSiblings(parentId: string | null, orderedIds: string[]): void {
+    const siblings = parentId === null
+      ? this.stmts.getSiblings.all(null) as { id: string }[]
+      : this.stmts.getSiblingsNotNull.all(parentId) as { id: string }[];
+
+    const siblingIds = new Set(siblings.map((s) => s.id));
+
+    // Validate: all provided IDs must be siblings of this parent
+    for (const id of orderedIds) {
+      if (!siblingIds.has(id)) {
+        throw new ZoneError(`Zone ${id} is not a child of parent ${parentId ?? "root"}`, 400);
+      }
+    }
+
+    // Update display_order for each
+    for (let i = 0; i < orderedIds.length; i++) {
+      this.stmts.updateDisplayOrder.run(i, orderedIds[i]);
+    }
+
+    this.logger.info({ parentId, count: orderedIds.length }, "Zones reordered");
   }
 
   // ============================================================
@@ -303,26 +317,3 @@ function rowToZone(row: ZoneRow): Zone {
   };
 }
 
-interface GroupRow {
-  id: string;
-  name: string;
-  zone_id: string;
-  icon: string | null;
-  description: string | null;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-function rowToGroup(row: GroupRow): EquipmentGroup {
-  return {
-    id: row.id,
-    name: row.name,
-    zoneId: row.zone_id,
-    icon: row.icon ?? undefined,
-    description: row.description ?? undefined,
-    displayOrder: row.display_order,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
