@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
+import { toISOUtc } from "../core/database.js";
 
 /**
  * Generate a deterministic UUID-shaped ID from input parts.
@@ -519,9 +520,9 @@ function rowToDevice(row: DeviceRow): Device {
     zoneId: row.zone_id,
     source: row.source as Device["source"],
     status: row.status as Device["status"],
-    lastSeen: row.last_seen,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    lastSeen: toISOUtc(row.last_seen),
+    createdAt: toISOUtc(row.created_at),
+    updatedAt: toISOUtc(row.updated_at),
   };
 }
 
@@ -542,7 +543,7 @@ function rowToDeviceData(row: DeviceDataRow): DeviceData {
     category: row.category as DataCategory,
     value,
     unit: row.unit ?? undefined,
-    lastUpdated: row.last_updated,
+    lastUpdated: toISOUtc(row.last_updated),
   };
 }
 

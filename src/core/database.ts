@@ -24,6 +24,18 @@ export function openDatabase(dbPath: string, logger: Logger): Database.Database 
   return db;
 }
 
+/**
+ * SQLite CURRENT_TIMESTAMP stores UTC without timezone marker (e.g. "2026-02-20 14:30:00").
+ * JavaScript parses that as local time, causing offset errors.
+ * This helper appends 'Z' so Date correctly interprets it as UTC.
+ */
+export function toISOUtc(sqliteTimestamp: string): string;
+export function toISOUtc(sqliteTimestamp: string | null): string | null;
+export function toISOUtc(sqliteTimestamp: string | null): string | null {
+  if (!sqliteTimestamp) return null;
+  return sqliteTimestamp.endsWith("Z") ? sqliteTimestamp : `${sqliteTimestamp}Z`;
+}
+
 export function runMigrations(db: Database.Database, migrationsDir: string, logger: Logger): void {
   const log = logger.child({ module: "migrations" });
 

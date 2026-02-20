@@ -16,21 +16,25 @@ export class EventBus {
     this.emitter.emit("event", event);
   }
 
-  on(handler: (event: EngineEvent) => void): void {
-    this.emitter.on("event", (event: EngineEvent) => {
+  on(handler: (event: EngineEvent) => void): () => void {
+    const wrapped = (event: EngineEvent) => {
       try {
         handler(event);
       } catch (err) {
         this.logger.error({ err, eventType: event.type }, "Event handler error");
       }
-    });
+    };
+    this.emitter.on("event", wrapped);
+    return () => {
+      this.emitter.off("event", wrapped);
+    };
   }
 
   onType<T extends EngineEvent["type"]>(
     type: T,
     handler: (event: Extract<EngineEvent, { type: T }>) => void,
-  ): void {
-    this.on((event) => {
+  ): () => void {
+    return this.on((event) => {
       if (event.type === type) {
         handler(event as Extract<EngineEvent, { type: T }>);
       }

@@ -1,4 +1,18 @@
 /**
+ * Format a timestamp as hh:mm:ss (24h local time).
+ */
+export function formatTime(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
  * Format a timestamp as relative time ("2 min ago") or absolute ("Feb 16, 14:30").
  * Uses relative for timestamps less than 24h old, absolute otherwise.
  */

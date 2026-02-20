@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
+import { toISOUtc } from "../core/database.js";
 import type { Zone, ZoneWithChildren } from "../shared/types.js";
 
 interface CreateZoneInput {
@@ -312,8 +313,8 @@ function rowToZone(row: ZoneRow): Zone {
     icon: row.icon ?? undefined,
     description: row.description ?? undefined,
     displayOrder: row.display_order,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: toISOUtc(row.created_at),
+    updatedAt: toISOUtc(row.updated_at),
   };
 }
 
