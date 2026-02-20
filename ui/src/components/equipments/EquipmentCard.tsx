@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Lightbulb,
@@ -14,6 +15,9 @@ import {
   Camera,
   ToggleLeft,
   Box,
+  ChevronUp,
+  Square,
+  ChevronDown,
 } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
@@ -69,7 +73,10 @@ interface EquipmentCardProps {
 }
 
 export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps) {
+  const [executing, setExecuting] = useState(false);
+
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
+  const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "motion_sensor" || equipment.type === "contact_sensor";
 
   const stateBinding = equipment.dataBindings.find(
@@ -79,6 +86,16 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     ? stateBinding.value === true || stateBinding.value === "ON"
     : false;
 
+  // Shutter-specific data
+  const shutterPositionBinding = isShutter
+    ? equipment.dataBindings.find((db) => db.category === "shutter_position")
+    : null;
+  const shutterPosition = shutterPositionBinding && typeof shutterPositionBinding.value === "number"
+    ? shutterPositionBinding.value
+    : null;
+  const hasShutterState = isShutter && equipment.orderBindings.some((ob) => ob.alias === "state");
+  const shutterIsOpen = shutterPosition !== null && shutterPosition > 0;
+
   // Dynamic icon for sensors
   const iconElement = isSensor
     ? getSensorIcon(equipment.dataBindings)
@@ -86,11 +103,27 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
   const iconColor = isSensor
     ? getSensorIconColor(equipment.dataBindings)
-    : isLight && isOn
-      ? "bg-amber-400/15 text-amber-500"
-      : isOn
+    : isShutter
+      ? shutterIsOpen
         ? "bg-primary/10 text-primary"
-        : "bg-border-light text-text-tertiary";
+        : "bg-border-light text-text-tertiary"
+      : isLight && isOn
+        ? "bg-amber-400/15 text-amber-500"
+        : isOn
+          ? "bg-primary/10 text-primary"
+          : "bg-border-light text-text-tertiary";
+
+  const handleShutterCommand = async (command: "OPEN" | "STOP" | "CLOSE", e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (executing || !hasShutterState) return;
+    setExecuting(true);
+    try {
+      await onExecuteOrder(equipment.id, "state", command);
+    } finally {
+      setExecuting(false);
+    }
+  };
 
   // Sensor bindings for inline values
   const sensorBindings = isSensor ? getSensorBindings(equipment.dataBindings) : [];
@@ -160,13 +193,56 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         </span>
       )}
 
-      {/* Quick control */}
+      {/* Light quick control */}
       {isLight && equipment.enabled && (
         <LightControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact
         />
+      )}
+
+      {/* Shutter quick control */}
+      {isShutter && equipment.enabled && (
+        <div
+          className="flex items-center gap-2 flex-shrink-0"
+          onClick={(e) => e.preventDefault()}
+        >
+          {shutterPosition !== null && (
+            <span className="text-[13px] text-text-secondary tabular-nums w-8 text-right">
+              {shutterPosition}%
+            </span>
+          )}
+          {hasShutterState && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <button
+                onClick={(e) => handleShutterCommand("OPEN", e)}
+                disabled={executing}
+                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Ouvrir"
+              >
+                <ChevronUp size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={(e) => handleShutterCommand("STOP", e)}
+                disabled={executing}
+                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Stop"
+              >
+                <Square size={10} strokeWidth={2} />
+              </button>
+              <button
+                onClick={(e) => handleShutterCommand("CLOSE", e)}
+                disabled={executing}
+                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Fermer"
+              >
+                <ChevronDown size={14} strokeWidth={1.5} />
+              </button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
