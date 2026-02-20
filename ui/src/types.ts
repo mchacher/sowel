@@ -107,6 +107,18 @@ export interface ZoneWithChildren extends Zone {
   children: ZoneWithChildren[];
 }
 
+export interface ZoneAggregatedData {
+  temperature: number | null;
+  humidity: number | null;
+  motion: boolean;
+  openDoors: number;
+  openWindows: number;
+  waterLeak: boolean;
+  smoke: boolean;
+  lightsOn: number;
+  lightsTotal: number;
+}
+
 // ============================================================
 // Equipment
 // ============================================================
@@ -208,6 +220,7 @@ export type EngineEvent =
   | { type: "zone.created"; zone: Zone }
   | { type: "zone.updated"; zone: Zone }
   | { type: "zone.removed"; zoneId: string; zoneName: string }
+  | { type: "zone.data.changed"; zoneId: string; aggregatedData: ZoneAggregatedData }
   | { type: "equipment.created"; equipment: Equipment }
   | { type: "equipment.updated"; equipment: Equipment }
   | { type: "equipment.removed"; equipmentId: string; equipmentName: string }

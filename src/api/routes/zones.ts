@@ -1,18 +1,25 @@
 import type { FastifyInstance } from "fastify";
 import type { ZoneManager } from "../../zones/zone-manager.js";
+import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { Logger } from "../../core/logger.js";
 
 interface ZonesDeps {
   zoneManager: ZoneManager;
+  zoneAggregator: ZoneAggregator;
   logger: Logger;
 }
 
 export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void {
-  const { zoneManager } = deps;
+  const { zoneManager, zoneAggregator } = deps;
 
   // GET /api/v1/zones — List all zones as a tree
   app.get("/api/v1/zones", async () => {
     return zoneManager.getTree();
+  });
+
+  // GET /api/v1/zones/aggregation — Get aggregated data for all zones
+  app.get("/api/v1/zones/aggregation", async () => {
+    return zoneAggregator.getAll();
   });
 
   // GET /api/v1/zones/:id — Get zone with children
