@@ -71,14 +71,14 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       className={`
         flex items-center gap-3 px-4 py-3 bg-surface rounded-[10px] border
         transition-colors duration-150
-        ${isOn ? "border-primary/30 bg-primary-light/20" : "border-border"}
+        border-border
       `}
     >
       {/* Icon */}
       <div
         className={`
           flex-shrink-0 w-9 h-9 rounded-[6px] flex items-center justify-center
-          ${isOn ? "bg-primary/10 text-primary" : "bg-border-light text-text-tertiary"}
+          ${isLight && isOn ? "bg-amber-400/15 text-amber-500" : isOn ? "bg-primary/10 text-primary" : "bg-border-light text-text-tertiary"}
         `}
       >
         {TYPE_ICONS[equipment.type]}
