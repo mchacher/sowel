@@ -1,6 +1,6 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-19 — V0.1 done, V0.2 in progress
+> Updated: 2026-02-19 — V0.1, V0.2, V0.3 done
 
 ## Roadmap Changes
 
@@ -13,8 +13,8 @@
 | Version | Feature | Status |
 |---------|---------|--------|
 | **V0.1** | MQTT + Devices + **UI Scaffolding & Devices page** | ✅ Done |
-| **V0.2** | **Zones + Equipment Groups + UI Zones** (topology) | 🚧 In progress |
-| V0.3 | Equipments + Bindings + Orders + **UI Equipments** | — |
+| **V0.2** | **Zones + Equipment Groups + UI Zones** (topology) | ✅ Done |
+| **V0.3** | **Equipments + Bindings + Orders + UI Equipments** | ✅ Done |
 | V0.4 | **UI Polish & Real-time UX** (reconnection, dark mode, responsive, animations) | — |
 | V0.5 | Computed Data + Internal Rules | — |
 | V0.6 | History (InfluxDB) + Zone Aggregation Engine | — |
@@ -115,7 +115,99 @@ MQTT Broker (zigbee2mqtt)
 
 ### Tests
 
-51 unit tests — `npm test`
+51 unit tests (V0.1 scope)
+
+---
+
+## V0.2 — Zones + Equipment Groups + UI
+
+**Objective**: Define the spatial topology of the home — hierarchical zones and functional equipment groups.
+
+### What it does
+
+- Zone CRUD with hierarchical nesting (Home → Floor → Room)
+- Equipment Group CRUD within zones (e.g., "Volets Sud", "Éclairage Ambiance")
+- Circular reference detection for zone hierarchy
+- Delete guards (no children, no groups, no equipments)
+- Zone tree API endpoint
+- **Web UI**: Zone tree view, zone detail page, inline group management
+
+### Tests
+
+37 unit tests for ZoneManager and GroupManager
+
+---
+
+## V0.3 — Equipments + Bindings + Orders + UI
+
+**Objective**: Introduce the Equipment entity — the user-facing functional unit. Bind to Devices via DataBindings (read) and OrderBindings (write). Execute orders via MQTT. Focused on lighting (On/Off + Dimmers).
+
+### What it does
+
+- Equipment CRUD (name, type, zone, group, enabled)
+- 14 equipment types (light, dimmer, color_light, shutter, thermostat, etc.)
+- DataBinding: maps DeviceData to Equipment alias (state, brightness...)
+- OrderBinding: maps DeviceOrder to Equipment command (state, brightness...)
+- Multi-device dispatch: same alias → multiple DeviceOrders → parallel MQTT publish
+- Reactive pipeline: `device.data.updated` → lookup bindings → `equipment.data.changed`
+- Order execution: `POST /equipments/:id/orders/:alias` → resolve bindings → MQTT publish
+- Zone delete guard extended: zones with equipments cannot be deleted
+- WebSocket broadcasts all equipment events
+- **Web UI**: Equipment list page (grouped by zone), equipment detail page, create wizard with device selector, light toggle + brightness slider
+
+### UI Components
+
+| Component | Purpose |
+|-----------|---------|
+| EquipmentsPage | List all equipments grouped by zone, quick toggle |
+| EquipmentDetailPage | Full detail with bindings, controls, edit/delete |
+| EquipmentForm | Create/edit modal with 2-step wizard (info → device selection) |
+| DeviceSelector | Filtered device picker (by DataCategory per EquipmentType) |
+| EquipmentCard | Card with type icon, state, quick toggle |
+| LightControl | On/off toggle + brightness slider for lights/dimmers |
+
+### API Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/v1/equipments` | List all with bindings + data |
+| GET | `/api/v1/equipments/:id` | Detail with bindings + data |
+| POST | `/api/v1/equipments` | Create equipment |
+| PUT | `/api/v1/equipments/:id` | Update equipment |
+| DELETE | `/api/v1/equipments/:id` | Delete equipment (cascades bindings) |
+| POST | `/api/v1/equipments/:id/orders/:alias` | Execute order |
+| POST | `/api/v1/equipments/:id/data-bindings` | Add DataBinding |
+| DELETE | `/api/v1/equipments/:id/data-bindings/:bindingId` | Remove DataBinding |
+| POST | `/api/v1/equipments/:id/order-bindings` | Add OrderBinding |
+| DELETE | `/api/v1/equipments/:id/order-bindings/:bindingId` | Remove OrderBinding |
+
+### Event Bus Events
+
+| Event | When |
+|-------|------|
+| `equipment.created` | Equipment created |
+| `equipment.updated` | Equipment updated |
+| `equipment.removed` | Equipment deleted |
+| `equipment.data.changed` | Bound DeviceData value changed |
+| `equipment.order.executed` | Order dispatched to MQTT |
+
+### Files
+
+| Module | Files |
+|--------|-------|
+| Shared | `src/shared/types.ts` (Equipment, DataBinding, OrderBinding, EquipmentWithDetails) |
+| Equipments | `src/equipments/equipment-manager.ts` |
+| API | `src/api/routes/equipments.ts` |
+| DB | `migrations/003_equipments.sql` |
+| Tests | `src/equipments/equipment-manager.test.ts` (40 tests) |
+| **UI** | |
+| Store | `ui/src/store/useEquipments.ts` |
+| Pages | `ui/src/pages/EquipmentsPage.tsx`, `EquipmentDetailPage.tsx` |
+| Components | `ui/src/components/equipments/EquipmentCard.tsx`, `EquipmentForm.tsx`, `DeviceSelector.tsx`, `LightControl.tsx` |
+
+### Tests
+
+40 unit tests — Equipment CRUD, bindings, order execution, reactive pipeline, zone delete guard
 
 ### Quick Start
 

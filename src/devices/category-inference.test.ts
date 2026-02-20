@@ -73,12 +73,20 @@ describe("inferCategory", () => {
       expect(inferCategory("state", new Set(["state", "color_temp"]))).toBe("light_state");
     });
 
+    it("maps state to light_state when parent expose type is light (on/off only)", () => {
+      expect(inferCategory("state", new Set(["state"]), "light")).toBe("light_state");
+    });
+
     it("maps state to generic when device has no light properties", () => {
       expect(inferCategory("state", new Set(["state", "power"]))).toBe("generic");
     });
 
     it("maps state to generic for a switch (no brightness/color)", () => {
       expect(inferCategory("state", new Set(["state"]))).toBe("generic");
+    });
+
+    it("maps state to light_state for a switch expose type", () => {
+      expect(inferCategory("state", new Set(["state"]), "switch")).toBe("light_state");
     });
   });
 });

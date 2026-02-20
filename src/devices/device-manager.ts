@@ -1,4 +1,13 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+
+/**
+ * Generate a deterministic UUID-shaped ID from input parts.
+ * Same inputs always produce the same ID.
+ */
+function deterministicId(...parts: string[]): string {
+  const hex = createHash("sha256").update(parts.join(":")).digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
@@ -84,22 +93,40 @@ export class DeviceManager {
       findDeviceDataByKey: this.db.prepare<[string, string]>(
         "SELECT * FROM device_data WHERE device_id = ? AND key = ?",
       ),
+      findDeviceDataByDeviceAndKey: this.db.prepare<[string, string]>(
+        "SELECT * FROM device_data WHERE device_id = ? AND key = ?",
+      ),
       insertDeviceData: this.db.prepare(
         `INSERT INTO device_data (id, device_id, key, type, category, unit)
          VALUES (@id, @deviceId, @key, @type, @category, @unit)`,
       ),
+      updateDeviceDataDef: this.db.prepare(
+        "UPDATE device_data SET type = ?, category = ?, unit = ? WHERE id = ?",
+      ),
       updateDeviceDataValue: this.db.prepare(
         "UPDATE device_data SET value = ?, last_updated = datetime('now') WHERE id = ?",
       ),
-      deleteDeviceData: this.db.prepare(
-        "DELETE FROM device_data WHERE device_id = ?",
+      deleteDeviceDataById: this.db.prepare(
+        "DELETE FROM device_data WHERE id = ?",
+      ),
+      getDeviceDataIds: this.db.prepare(
+        "SELECT id, key FROM device_data WHERE device_id = ?",
+      ),
+      findDeviceOrderByDeviceAndKey: this.db.prepare<[string, string]>(
+        "SELECT * FROM device_orders WHERE device_id = ? AND key = ?",
       ),
       insertDeviceOrder: this.db.prepare(
         `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key, min_value, max_value, enum_values, unit)
          VALUES (@id, @deviceId, @key, @type, @mqttSetTopic, @payloadKey, @min, @max, @enumValues, @unit)`,
       ),
-      deleteDeviceOrders: this.db.prepare(
-        "DELETE FROM device_orders WHERE device_id = ?",
+      updateDeviceOrderDef: this.db.prepare(
+        "UPDATE device_orders SET type = ?, mqtt_set_topic = ?, payload_key = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
+      ),
+      deleteDeviceOrderById: this.db.prepare(
+        "DELETE FROM device_orders WHERE id = ?",
+      ),
+      getDeviceOrderIds: this.db.prepare(
+        "SELECT id, key FROM device_orders WHERE device_id = ?",
       ),
       countDevices: this.db.prepare("SELECT COUNT(*) as count FROM devices"),
       countByStatus: this.db.prepare(
@@ -148,34 +175,66 @@ export class DeviceManager {
         });
       }
 
-      // Refresh Data definitions: delete and re-create
-      this.stmts.deleteDeviceData.run(deviceId);
+      // Sync Data definitions: upsert by (device_id, key) to preserve stable IDs
+      const discoveredDataKeys = new Set(discovered.data.map((d) => d.key));
       for (const d of discovered.data) {
-        this.stmts.insertDeviceData.run({
-          id: randomUUID(),
-          deviceId,
-          key: d.key,
-          type: d.type,
-          category: d.category,
-          unit: d.unit ?? null,
-        });
+        const existingData = this.stmts.findDeviceDataByDeviceAndKey.get(deviceId, d.key) as
+          | { id: string } | undefined;
+        if (existingData) {
+          this.stmts.updateDeviceDataDef.run(d.type, d.category, d.unit ?? null, existingData.id);
+        } else {
+          this.stmts.insertDeviceData.run({
+            id: deterministicId(deviceId, "data", d.key),
+            deviceId,
+            key: d.key,
+            type: d.type,
+            category: d.category,
+            unit: d.unit ?? null,
+          });
+        }
+      }
+      // Remove stale data entries no longer exposed by the device
+      const existingDataRows = this.stmts.getDeviceDataIds.all(deviceId) as { id: string; key: string }[];
+      for (const row of existingDataRows) {
+        if (!discoveredDataKeys.has(row.key)) {
+          this.stmts.deleteDeviceDataById.run(row.id);
+        }
       }
 
-      // Refresh Orders definitions: delete and re-create
-      this.stmts.deleteDeviceOrders.run(deviceId);
+      // Sync Orders definitions: upsert by (device_id, key) to preserve stable IDs
+      const mqttSetTopic = `${baseTopic}/${discovered.friendlyName}/set`;
+      const discoveredOrderKeys = new Set(discovered.orders.map((o) => o.key));
       for (const o of discovered.orders) {
-        this.stmts.insertDeviceOrder.run({
-          id: randomUUID(),
-          deviceId,
-          key: o.key,
-          type: o.type,
-          mqttSetTopic: `${baseTopic}/${discovered.friendlyName}/set`,
-          payloadKey: o.payloadKey,
-          min: o.min ?? null,
-          max: o.max ?? null,
-          enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,
-          unit: o.unit ?? null,
-        });
+        const existingOrder = this.stmts.findDeviceOrderByDeviceAndKey.get(deviceId, o.key) as
+          | { id: string } | undefined;
+        if (existingOrder) {
+          this.stmts.updateDeviceOrderDef.run(
+            o.type, mqttSetTopic, o.payloadKey,
+            o.min ?? null, o.max ?? null,
+            o.enumValues ? JSON.stringify(o.enumValues) : null,
+            o.unit ?? null, existingOrder.id,
+          );
+        } else {
+          this.stmts.insertDeviceOrder.run({
+            id: deterministicId(deviceId, "order", o.key),
+            deviceId,
+            key: o.key,
+            type: o.type,
+            mqttSetTopic,
+            payloadKey: o.payloadKey,
+            min: o.min ?? null,
+            max: o.max ?? null,
+            enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,
+            unit: o.unit ?? null,
+          });
+        }
+      }
+      // Remove stale order entries no longer exposed by the device
+      const existingOrderRows = this.stmts.getDeviceOrderIds.all(deviceId) as { id: string; key: string }[];
+      for (const row of existingOrderRows) {
+        if (!discoveredOrderKeys.has(row.key)) {
+          this.stmts.deleteDeviceOrderById.run(row.id);
+        }
       }
     });
 

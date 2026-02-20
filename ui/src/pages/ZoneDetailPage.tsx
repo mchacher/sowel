@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useZones } from "../store/useZones";
 import { getZone } from "../api";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
-import { GroupList } from "../components/zones/GroupList";
 import {
   ArrowLeft,
   Loader2,
@@ -22,9 +21,6 @@ export function ZoneDetailPage() {
   const fetchZones = useZones((s) => s.fetchZones);
   const updateZone = useZones((s) => s.updateZone);
   const deleteZone = useZones((s) => s.deleteZone);
-  const createGroup = useZones((s) => s.createGroup);
-  const updateGroup = useZones((s) => s.updateGroup);
-  const deleteGroup = useZones((s) => s.deleteGroup);
 
   const [zone, setZone] = useState<ZoneWithChildren | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,11 +164,6 @@ export function ZoneDetailPage() {
                       {child.children.length} zone{child.children.length > 1 ? "s" : ""}
                     </span>
                   )}
-                  {child.groups.length > 0 && (
-                    <span className="text-[11px] text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
-                      {child.groups.length} group{child.groups.length > 1 ? "s" : ""}
-                    </span>
-                  )}
                 </div>
                 <ChevronRight size={16} strokeWidth={1.5} className="text-text-tertiary" />
               </Link>
@@ -180,16 +171,6 @@ export function ZoneDetailPage() {
           </div>
         </div>
       )}
-
-      {/* Groups section */}
-      <div className="bg-surface rounded-[10px] border border-border p-4">
-        <GroupList
-          groups={zone.groups}
-          onCreateGroup={async (data) => { await createGroup(zone.id, data); }}
-          onUpdateGroup={async (gid, data) => { await updateGroup(gid, data); }}
-          onDeleteGroup={async (gid) => { await deleteGroup(gid); }}
-        />
-      </div>
 
       {/* Edit zone modal */}
       {showEditForm && (

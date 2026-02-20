@@ -1,13 +1,10 @@
 import { create } from "zustand";
-import type { Zone, ZoneWithChildren, EquipmentGroup } from "../types";
+import type { Zone, ZoneWithChildren } from "../types";
 import {
   getZones,
   createZone as apiCreateZone,
   updateZone as apiUpdateZone,
   deleteZone as apiDeleteZone,
-  createGroup as apiCreateGroup,
-  updateGroup as apiUpdateGroup,
-  deleteGroup as apiDeleteGroup,
 } from "../api";
 
 interface ZonesState {
@@ -20,17 +17,11 @@ interface ZonesState {
   createZone: (data: { name: string; parentId?: string | null; icon?: string; description?: string }) => Promise<Zone>;
   updateZone: (id: string, updates: { name?: string; parentId?: string | null; icon?: string | null; description?: string | null }) => Promise<void>;
   deleteZone: (id: string) => Promise<void>;
-  createGroup: (zoneId: string, data: { name: string; icon?: string; description?: string }) => Promise<EquipmentGroup>;
-  updateGroup: (id: string, updates: { name?: string; icon?: string | null; description?: string | null }) => Promise<void>;
-  deleteGroup: (id: string) => Promise<void>;
 
   // WebSocket handlers
   handleZoneCreated: (zone: Zone) => void;
   handleZoneUpdated: (zone: Zone) => void;
   handleZoneRemoved: (zoneId: string) => void;
-  handleGroupCreated: (group: EquipmentGroup) => void;
-  handleGroupUpdated: (group: EquipmentGroup) => void;
-  handleGroupRemoved: (groupId: string) => void;
 }
 
 export const useZones = create<ZonesState>((set, get) => ({
@@ -68,27 +59,8 @@ export const useZones = create<ZonesState>((set, get) => ({
     await get().fetchZones();
   },
 
-  createGroup: async (zoneId, data) => {
-    const group = await apiCreateGroup(zoneId, data);
-    await get().fetchZones();
-    return group;
-  },
-
-  updateGroup: async (id, updates) => {
-    await apiUpdateGroup(id, updates);
-    await get().fetchZones();
-  },
-
-  deleteGroup: async (id) => {
-    await apiDeleteGroup(id);
-    await get().fetchZones();
-  },
-
   // WebSocket handlers — refetch tree on any change
   handleZoneCreated: () => { get().fetchZones(); },
   handleZoneUpdated: () => { get().fetchZones(); },
   handleZoneRemoved: () => { get().fetchZones(); },
-  handleGroupCreated: () => { get().fetchZones(); },
-  handleGroupUpdated: () => { get().fetchZones(); },
-  handleGroupRemoved: () => { get().fetchZones(); },
 }));
