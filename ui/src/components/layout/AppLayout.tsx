@@ -4,17 +4,23 @@ import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useDevices } from "../../store/useDevices";
+import { useZones } from "../../store/useZones";
+import { useEquipments } from "../../store/useEquipments";
 
 export function AppLayout() {
   const connect = useWebSocket((s) => s.connect);
   const disconnect = useWebSocket((s) => s.disconnect);
   const fetchDevices = useDevices((s) => s.fetchDevices);
+  const fetchZones = useZones((s) => s.fetchZones);
+  const fetchEquipments = useEquipments((s) => s.fetchEquipments);
 
   useEffect(() => {
     fetchDevices();
+    fetchZones();
+    fetchEquipments();
     connect();
     return () => disconnect();
-  }, [fetchDevices, connect, disconnect]);
+  }, [fetchDevices, fetchZones, fetchEquipments, connect, disconnect]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -54,10 +60,10 @@ export function AppLayout() {
 function MobileNav() {
   return (
     <nav className="flex md:hidden items-center justify-around h-[56px] border-t border-border bg-surface px-2">
-      <MobileNavLink to="/devices" label="Devices" active />
-      <MobileNavLink to="/" label="Dashboard" disabled />
-      <MobileNavLink to="/equipments" label="Equip." disabled />
-      <MobileNavLink to="/zones" label="Zones" disabled />
+      <MobileNavLink to="/maison" label="Maison" active />
+      <MobileNavLink to="/devices" label="Devices" />
+      <MobileNavLink to="/equipments" label="Equip." />
+      <MobileNavLink to="/zones" label="Zones" />
     </nav>
   );
 }
