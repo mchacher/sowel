@@ -4,6 +4,7 @@ import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
 import { useZoneAggregation } from "./useZoneAggregation";
+import { useRecipes } from "./useRecipes";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -78,6 +79,14 @@ function handleEvent(event: EngineEvent): void {
         event.alias,
         event.value
       );
+      break;
+    case "recipe.instance.created":
+    case "recipe.instance.removed":
+    case "recipe.instance.started":
+    case "recipe.instance.stopped":
+    case "recipe.instance.error":
+    case "recipe.instance.state.changed":
+      useRecipes.getState().handleInstanceChanged();
       break;
     case "system.mqtt.connected":
       useWebSocket.setState({ mqttConnected: true });

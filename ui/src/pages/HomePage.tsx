@@ -6,6 +6,7 @@ import { useEquipments } from "../store/useEquipments";
 import { useZoneAggregation } from "../store/useZoneAggregation";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationHeader } from "../components/home/ZoneAggregationHeader";
+import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import type { ZoneWithChildren } from "../types";
 
 export function HomePage() {
@@ -102,6 +103,13 @@ export function HomePage() {
         equipments={zoneEquipments}
         onExecuteOrder={executeOrder}
       />
+
+      {/* Recipes for this zone */}
+      {zoneId && (
+        <div className="mt-4">
+          <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
+        </div>
+      )}
     </div>
   );
 }

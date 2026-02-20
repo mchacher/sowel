@@ -1,6 +1,6 @@
 # Corbel — User Manual
 
-> Updated: 2026-02-20 — V0.7 (MQTT + Devices + Zones + Equipments + Sensors + Shutters + Zone Aggregation)
+> Updated: 2026-02-20 — V0.8 (MQTT + Devices + Zones + Equipments + Sensors + Shutters + Zone Aggregation + Recipes)
 
 ## What is Corbel?
 
@@ -209,13 +209,50 @@ curl http://localhost:3000/api/v1/zones/aggregation
 curl http://localhost:3000/api/v1/zones/<id>/aggregation
 ```
 
+### Recipes
+
+```bash
+# List available recipes
+curl http://localhost:3000/api/v1/recipes
+
+# Get recipe details (slots, description)
+curl http://localhost:3000/api/v1/recipes/motion-light
+
+# Create a motion-light instance
+curl -X POST http://localhost:3000/api/v1/recipe-instances \
+  -H "Content-Type: application/json" \
+  -d '{"recipeId": "motion-light", "params": {"zone": "<zone-id>", "light": "<equipment-id>", "timeout": "10m"}}'
+
+# List active instances
+curl http://localhost:3000/api/v1/recipe-instances
+
+# Get instance execution log
+curl http://localhost:3000/api/v1/recipe-instances/<id>/log
+
+# Delete an instance (stops it)
+curl -X DELETE http://localhost:3000/api/v1/recipe-instances/<id>
+```
+
+#### Available Recipes
+
+| Recipe | Description | Slots |
+|--------|-------------|-------|
+| **motion-light** | Auto-light on motion, off after timeout | zone, light, timeout (default 10m) |
+
+The motion-light recipe:
+- Turns light ON when motion is detected in the zone
+- Starts an extinction timer when motion stops
+- Turns light OFF when the timer expires
+- Handles manual turn-on: starts the timer if no motion is active
+- Handles manual turn-off: cancels any running timer
+
 ### WebSocket — Live Events
 
 ```bash
 websocat ws://localhost:3000/ws
 ```
 
-Events: `device.data.updated`, `device.status_changed`, `device.discovered`, `equipment.data.changed`, `equipment.order.executed`, `zone.aggregation.changed`
+Events: `device.data.updated`, `device.status_changed`, `device.discovered`, `equipment.data.changed`, `equipment.order.executed`, `zone.aggregation.changed`, `recipe.instance.created`, `recipe.instance.started`, `recipe.instance.stopped`, `recipe.instance.removed`, `recipe.instance.error`
 
 ---
 
@@ -223,8 +260,7 @@ Events: `device.data.updated`, `device.status_changed`, `device.discovered`, `eq
 
 | Version | Feature |
 |---------|---------|
-| **V0.8** | Computed Data — virtual Equipments that aggregate multiple Devices |
 | **V0.9** | Scenario Engine — trigger/condition/action automation |
-| **V0.10** | Recipes — reusable scenario templates |
+| **V0.10** | Computed Data — virtual Equipments that aggregate multiple Devices |
 | **V0.11** | History — InfluxDB time-series charts |
 | **V1.0+** | AI Assistant — natural language scenarios |

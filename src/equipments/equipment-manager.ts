@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { MqttConnector } from "../mqtt/mqtt-connector.js";
+import { toISOUtc } from "../core/database.js";
 import type {
   Equipment,
   EquipmentType,
@@ -503,8 +504,8 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     icon: row.icon ?? undefined,
     description: row.description ?? undefined,
     enabled: row.enabled === 1,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: toISOUtc(row.created_at),
+    updatedAt: toISOUtc(row.updated_at),
   };
 }
 
@@ -529,7 +530,7 @@ function rowToDataBindingWithValue(row: DataBindingJoinRow): DataBindingWithValu
     category: row.category as DataCategory,
     value,
     unit: row.unit ?? undefined,
-    lastUpdated: row.last_updated,
+    lastUpdated: toISOUtc(row.last_updated),
   };
 }
 

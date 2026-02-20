@@ -243,8 +243,57 @@ export type EngineEvent =
       orderAlias: string;
       value: unknown;
     }
+  // Recipe events
+  | { type: "recipe.instance.created"; instanceId: string; recipeId: string }
+  | { type: "recipe.instance.removed"; instanceId: string; recipeId: string }
+  | { type: "recipe.instance.started"; instanceId: string; recipeId: string }
+  | { type: "recipe.instance.stopped"; instanceId: string; recipeId: string }
+  | { type: "recipe.instance.error"; instanceId: string; recipeId: string; error: string }
+  | { type: "recipe.instance.state.changed"; instanceId: string; recipeId: string }
   | { type: "system.started" }
   | { type: "system.mqtt.connected" }
   | { type: "system.mqtt.disconnected" }
   | { type: "system.error"; error: string }
   | { type: "connected"; message: string; version: string };
+
+// ============================================================
+// Recipe
+// ============================================================
+
+export interface RecipeSlotDef {
+  id: string;
+  name: string;
+  description: string;
+  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean";
+  required: boolean;
+  defaultValue?: unknown;
+  constraints?: {
+    equipmentType?: EquipmentType;
+    min?: number;
+    max?: number;
+  };
+}
+
+export interface RecipeInfo {
+  id: string;
+  name: string;
+  description: string;
+  slots: RecipeSlotDef[];
+}
+
+export interface RecipeInstance {
+  id: string;
+  recipeId: string;
+  params: Record<string, unknown>;
+  enabled: boolean;
+  createdAt: string;
+  state: Record<string, unknown>;
+}
+
+export interface RecipeLogEntry {
+  id: number;
+  instanceId: string;
+  timestamp: string;
+  message: string;
+  level: "info" | "warn" | "error";
+}

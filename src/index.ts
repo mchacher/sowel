@@ -9,6 +9,8 @@ import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { Zigbee2MqttParser } from "./mqtt/parsers/zigbee2mqtt.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
+import { RecipeManager } from "./recipes/engine/recipe-manager.js";
+import { MotionLightRecipe } from "./recipes/motion-light.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -54,6 +56,10 @@ async function main() {
   // 6d. Create Zone Aggregator
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
 
+  // 6e. Create Recipe Manager
+  const recipeManager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, zoneAggregator, logger);
+  recipeManager.register(MotionLightRecipe);
+
   // 7. Create zigbee2mqtt parser
   const z2mParser = new Zigbee2MqttParser(
     config.z2m.baseTopic,
@@ -72,6 +78,7 @@ async function main() {
     zoneManager,
     zoneAggregator,
     equipmentManager,
+    recipeManager,
     eventBus,
     mqttConnector,
     logger,
@@ -84,13 +91,17 @@ async function main() {
     `Corbel API listening on http://${config.api.host}:${config.api.port}`,
   );
 
-  // 10. Emit system started event
+  // 10. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
+
+  // 11. Initialize recipe manager (restore persisted instances — after aggregation is ready)
+  recipeManager.init();
   logger.info("Corbel engine started successfully");
 
   // Graceful shutdown
   const shutdown = async () => {
     logger.info("Shutting down...");
+    recipeManager.stopAll();
     await server.close();
     await mqttConnector.disconnect();
     db.close();
