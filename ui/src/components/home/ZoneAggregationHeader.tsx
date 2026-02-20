@@ -90,7 +90,6 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
         key="shutters"
         icon={<ArrowUpDown size={14} strokeWidth={1.5} />}
         color={someOpen ? "text-primary" : "text-text-tertiary"}
-        active={someOpen}
       >
         {data.shuttersOpen}/{data.shuttersTotal}{positionSuffix}
       </Pill>,
