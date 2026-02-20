@@ -1,6 +1,6 @@
 # Corbel — Functional Specification
 
-> Version: 0.1 — February 2026
+> Version: 0.8 — February 2026
 > Author: Marc
 > Purpose: This document is the single source of truth for Claude Code to build the project.
 > **Corbel** — the invisible structure of your smart home.
@@ -194,15 +194,21 @@ The engine automatically computes aggregated Data for each Zone based on the Equ
 
 | Aggregated key | Type | Logic | Example |
 |---------------|------|-------|---------|
-| `motion` | boolean | `OR` of all motion-category Data in the Zone | true if any PIR detects motion |
-| `presence` | boolean | `OR` of motion + configurable timeout | true if motion detected in last N minutes |
 | `temperature` | number \| null | `AVG` of all temperature-category Data | average of 2 Aqara sensors |
 | `humidity` | number \| null | `AVG` of all humidity-category Data | — |
 | `luminosity` | number \| null | `AVG` of all luminosity-category Data | — |
+| `motion` | boolean | `OR` of all motion-category Data in the Zone | true if any PIR detects motion |
+| `motionSensors` | number | `COUNT` of motion sensors in the Zone | used to show Calme/Mouvement label |
+| `motionSince` | string \| null | ISO timestamp of last motion state change | used for relative duration display |
 | `lightsOn` | number | `COUNT` of light-type Equipments with state = on | 3 lights on out of 5 |
 | `lightsTotal` | number | `COUNT` of all light-type Equipments | — |
-| `openWindows` | number | `COUNT` of window contact sensors = open | — |
+| `shuttersOpen` | number | `COUNT` of shutter-type Equipments with position > 0 | 2 shutters open out of 3 |
+| `shuttersTotal` | number | `COUNT` of all shutter-type Equipments | — |
+| `averageShutterPosition` | number \| null | `AVG` of all shutter positions (0-100) | average position across all shutters |
 | `openDoors` | number | `COUNT` of door contact sensors = open | — |
+| `openWindows` | number | `COUNT` of window contact sensors = open | — |
+| `waterLeak` | boolean | `OR` of all water_leak sensors | true if any sensor detects water |
+| `smoke` | boolean | `OR` of all smoke sensors | true if any sensor detects smoke |
 
 The aggregation is **recursive**: a parent Zone aggregates its own Equipments plus all child Zones' aggregations.
 
@@ -368,9 +374,9 @@ interface Equipment {
 }
 
 type EquipmentType =
-  | "light"            // on/off light
-  | "dimmer"           // dimmable light
-  | "color_light"      // color-capable light
+  | "light_onoff"      // on/off light
+  | "light_dimmable"   // dimmable light
+  | "light_color"      // color-capable light
   | "shutter"          // cover, blind, shutter
   | "thermostat"       // heating/cooling control
   | "lock"             // door lock
@@ -469,8 +475,8 @@ interface InternalRule {
 
 | Equipment | Type | Zone | Devices used | Data | Orders |
 |-----------|------|------|-------------|------|--------|
-| Spots Salon | dimmer | Salon | Dimmer Zigbee #1 | state (bound), brightness (bound) | turn_on, turn_off, set_brightness |
-| Éclairage Cuisine | light | Cuisine | Relais #1, Relais #2 | state (computed: OR of both relays) | turn_on (dispatches to both), turn_off |
+| Spots Salon | light_dimmable | Salon | Dimmer Zigbee #1 | state (bound), brightness (bound) | turn_on, turn_off, set_brightness |
+| Éclairage Cuisine | light_onoff | Cuisine | Relais #1, Relais #2 | state (computed: OR of both relays) | turn_on (dispatches to both), turn_off |
 | Température Salon | sensor | Salon | Aqara Temp #1, Aqara Temp #2 | temperature (computed: AVG), humidity (computed: AVG) | — |
 | Détection Salon | motion_sensor | Salon | PIR #1, PIR #2, PIR #3 | motion (computed: OR of all 3) | — |
 | Volets Chambre | shutter | Chambre | Relais Volet | position (bound) | open, close, set_position |
@@ -1206,65 +1212,83 @@ corbel/
 
 ## 11. Development Roadmap
 
-### V0.1 — MQTT + Devices (foundation)
+> **Roadmap changes vs. original plan:**
+> 1. **Incremental UI** — each backend version ships its corresponding UI pages (not bundled in a single V0.4)
+> 2. **Topology first** — Zones implemented before Equipments, so users define spatial structure first
+> 3. **Equipment Groups removed** — replaced by automatic UI-level grouping by equipment type (Lights, Shutters, Sensors, etc.) in the Home view. No backend entity needed.
+> 4. **Version numbering** — adjusted to reflect actual implementation order
+
+### V0.1 — MQTT + Devices + UI ✅
 - MQTT connector (connect, subscribe, publish)
 - zigbee2mqtt parser: read `bridge/devices`, parse exposes, auto-create Devices with Data and Orders
 - Subscribe to device state topics, update DeviceData values in real-time
 - SQLite setup with migrations
-- Internal event bus
-- Basic logging
-- **Deliverable**: engine connects to MQTT, discovers devices, tracks state in memory + SQLite
+- Internal event bus, basic logging
+- REST API for Devices + Health
+- WebSocket: auto-reconnect, live updates
+- **UI**: React 18 + Vite + Tailwind + Zustand + React Router. Device list (sortable, filterable), device detail, collapsible sidebar, connection status, mobile bottom nav
+- **Deliverable**: engine connects to MQTT, discovers devices, tracks state, web UI to browse devices
 
-### V0.2 — Equipments + Bindings
-- Equipment CRUD
-- Data Bindings and Order Bindings (link Equipment to Device)
-- Order execution: Equipment Order → Device Order → MQTT publish
-- REST API for Devices and Equipments
-- **Deliverable**: user can create Equipments, bind them to Devices, execute Orders via API
+### V0.2 — Zones + UI ✅
+- Zone CRUD with hierarchical nesting (Home → Floor → Room)
+- Circular reference detection, delete guards
+- Zone tree API endpoint
+- **UI**: Zone tree view, zone detail page
+- **Deliverable**: spatial topology defined
 
-### V0.3 — Zones + Aggregation
-- Zone CRUD (tree structure)
-- Zone auto-aggregation engine (motion OR, temperature AVG, etc.)
-- Zone auto-orders (allOff, allLightsOff, allLightsOn)
-- REST API for Zones
-- **Deliverable**: Zones aggregate data from their Equipments automatically
+### V0.3 — Equipments + Bindings + Orders + UI ✅
+- Equipment CRUD (14 types, 8 UI-supported)
+- DataBinding / OrderBinding (link Equipment to Device Data/Orders)
+- Multi-device dispatch: same alias → multiple DeviceOrders → parallel MQTT publish
+- Reactive pipeline: `device.data.updated` → bindings → `equipment.data.changed`
+- Order execution: `POST /equipments/:id/orders/:alias` → MQTT publish
+- **UI**: Equipment list (grouped by zone), equipment detail, create wizard (2 steps: info → device selection), light toggle + brightness slider, equipment card with quick controls
+- **Deliverable**: Equipments created, bound to Devices, controllable via UI
 
-### V0.4 — UI + Real-time
-- React app scaffolding (Vite + Tailwind + Zustand)
-- WebSocket connection to engine
-- Dashboard: Zone tree view with aggregated data, Equipment cards with live state
-- Equipment detail page: Data values, Order buttons
-- Device list page
-- Zone management page
-- **Deliverable**: functional web UI showing live state and allowing control
+### V0.4 — UI Restructuring ✅
+- Sidebar reorganized: **Home** (daily use) + **Settings** (Devices, Equipments, Zones)
+- Home page with zone treeview navigation (Home > Floor > Room)
+- Clicking a zone shows its equipments grouped by type (Lights, Shutters, Sensors, Switches)
+- Equipment grouping is UI-only (automatic by `EquipmentType`, no backend entity)
+- CompactEquipmentCard with inline controls for lights and shutters
+- **Deliverable**: zone-centric daily dashboard
 
-### V0.5 — UI Restructuring + Computed Data
+### V0.5 — Sensor Equipment Support ✅
+- Sensor types fully supported: `sensor`, `motion_sensor`, `contact_sensor`
+- Auto-adaptive sensor UI: icon, color, and value display based on DataCategory
+- Multi-value sensor display (temperature + humidity on same card)
+- Battery level indicator with color-coded icon
+- Boolean sensor formatting (motion: Mouvement/Calme, contact: Ouverte/Fermée)
+- SensorDataPanel for equipment detail page
+- **Deliverable**: sensor equipments rendered with rich, adaptive UI
 
-#### UI Restructuring
-- Reorganize the sidebar into two sections:
-  - **Settings**: move the 3 existing pages (Devices, Equipments, Zones) into a settings/admin area — these are configuration pages, rarely accessed day-to-day
-  - **Maison** (Home): new primary section with a treeview showing the zone hierarchy (Maison > Étage > Pièce). This is the main daily-use view
-- Clicking a zone in the treeview shows its equipments in context, with live state and controls
-- Equipment grouping within zones (e.g., "Éclairages", "Volets")
-- Rename binding sections: "Data Bindings" → "Status", "Order Bindings" → "Commands"
+### V0.6 — Zone Aggregation Engine ✅
+- Bottom-up aggregation: leaf zones first, then parent chain
+- 15 aggregated fields: temperature, humidity, luminosity (AVG), motion (OR), motionSensors (COUNT), motionSince (timestamp), lightsOn/lightsTotal (COUNT), shuttersOpen/shuttersTotal (COUNT), averageShutterPosition (AVG), openDoors, openWindows (COUNT), waterLeak, smoke (OR)
+- Three-level cache (direct, merged, public) with incremental updates
+- Recursive: parent Zone merges its own data + all child Zone accumulators
+- Event-driven: recomputes on equipment.data.changed, zone CRUD, system.started
+- **UI**: ZoneAggregationHeader with pills (temperature, humidity, luminosity, motion with duration, lights count, shutter count + position, door/window alerts, water/smoke alerts)
+- Zustand store: `useZoneAggregation`
+- **Deliverable**: automatic zone status dashboard with real-time aggregation
 
-#### Computed Data
-- Expression parser and evaluator
+### V0.7 — Shutter Equipment Support ✅
+- Shutter controls: Open / Stop / Close buttons + position display
+- Position labels: "Fermé" (0%), "Ouvert" (100%), numeric % in between
+- ShutterControl component for equipment detail page
+- Shutter controls in EquipmentCard (equipment list) and CompactEquipmentCard (home view)
+- Zone aggregation: shuttersOpen/shuttersTotal/averageShutterPosition
+- 8 supported equipment types in creation form
+- **Deliverable**: full shutter control and aggregation
+
+### V0.8 — Computed Data + Internal Rules
+- Expression parser and evaluator (safe, no `eval`)
 - Computed Data on Equipments (OR, AVG, IF, etc.)
 - Internal Rules engine
 - Computed data editor in equipment detail
+- **Deliverable**: virtual Equipments that aggregate multiple Devices
 
-- **Deliverable**: restructured UI with zone-centric navigation + virtual Equipments that aggregate multiple Devices
-
-### V0.6 — History
-- InfluxDB integration
-- Write Data changes to InfluxDB
-- Retention policies and downsampling
-- API for historical queries
-- UI: time-series charts on Equipment and Zone pages
-- **Deliverable**: historical data visualization
-
-### V0.7 — Scenario Engine
+### V0.9 — Scenario Engine
 - Trigger evaluation engine (subscribe to event bus, evaluate trigger conditions)
 - Duration-based triggers ("no motion for 15 minutes")
 - Condition evaluation
@@ -1275,14 +1299,22 @@ corbel/
 - Execution log
 - **Deliverable**: working automation engine
 
-### V0.8 — Recipes
+### V0.10 — Recipes
 - Recipe data model and CRUD
 - Recipe instantiation (slot filling → Scenario creation)
 - Built-in recipes (auto-lights-off, night-mode, temperature-alert, etc.)
 - UI: Recipe catalog, slot-filling wizard with smart matching (suggest compatible Zones/Equipments for each slot)
 - **Deliverable**: reusable automation templates
 
-### V0.9 — Polish
+### V0.11 — History
+- InfluxDB integration
+- Write Data changes to InfluxDB
+- Retention policies and downsampling
+- API for historical queries
+- UI: time-series charts on Equipment and Zone pages
+- **Deliverable**: historical data visualization
+
+### V0.12 — Polish
 - Device availability tracking
 - Notification system (Telegram, webhooks)
 - Sunrise/sunset trigger support (requires GPS coordinates in config)
