@@ -17,6 +17,17 @@ import {
 } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
+import {
+  getSensorIcon,
+  getSensorIconColor,
+  getSensorBindings,
+  getBatteryBinding,
+  getBatteryIcon,
+  getBatteryColor,
+  formatSensorValue,
+  isBooleanSensorCategory,
+  formatBooleanSensor,
+} from "./sensorUtils";
 
 const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   light_onoff: <Lightbulb size={18} strokeWidth={1.5} />,
@@ -43,9 +54,9 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   thermostat: "Thermostat",
   lock: "Lock",
   alarm: "Alarm",
-  sensor: "Sensor",
-  motion_sensor: "Motion Sensor",
-  contact_sensor: "Contact Sensor",
+  sensor: "Capteur",
+  motion_sensor: "Capteur mouvement",
+  contact_sensor: "Capteur contact",
   media_player: "Media Player",
   camera: "Camera",
   switch: "Switch",
@@ -59,12 +70,32 @@ interface EquipmentCardProps {
 
 export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps) {
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
+  const isSensor = equipment.type === "sensor" || equipment.type === "motion_sensor" || equipment.type === "contact_sensor";
+
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state"
   );
   const isOn = stateBinding
     ? stateBinding.value === true || stateBinding.value === "ON"
     : false;
+
+  // Dynamic icon for sensors
+  const iconElement = isSensor
+    ? getSensorIcon(equipment.dataBindings)
+    : TYPE_ICONS[equipment.type];
+
+  const iconColor = isSensor
+    ? getSensorIconColor(equipment.dataBindings)
+    : isLight && isOn
+      ? "bg-amber-400/15 text-amber-500"
+      : isOn
+        ? "bg-primary/10 text-primary"
+        : "bg-border-light text-text-tertiary";
+
+  // Sensor bindings for inline values
+  const sensorBindings = isSensor ? getSensorBindings(equipment.dataBindings) : [];
+  const batteryBinding = isSensor ? getBatteryBinding(equipment.dataBindings) : null;
+  const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
 
   return (
     <div
@@ -78,10 +109,10 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       <div
         className={`
           flex-shrink-0 w-9 h-9 rounded-[6px] flex items-center justify-center
-          ${isLight && isOn ? "bg-amber-400/15 text-amber-500" : isOn ? "bg-primary/10 text-primary" : "bg-border-light text-text-tertiary"}
+          ${iconColor}
         `}
       >
-        {TYPE_ICONS[equipment.type]}
+        {iconElement}
       </div>
 
       {/* Info */}
@@ -94,6 +125,41 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         </div>
       </Link>
 
+      {/* Sensor values */}
+      {isSensor && sensorBindings.length > 0 && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {sensorBindings.map((b) => (
+            <span key={b.id} className="text-[13px] tabular-nums">
+              {isBooleanSensorCategory(b.category) ? (
+                <span
+                  className={`
+                    font-medium px-2 py-0.5 rounded-full text-[11px]
+                    ${isBooleanActive(b.category, b.value)
+                      ? "bg-amber-400/15 text-amber-500"
+                      : "bg-border-light text-text-tertiary"
+                    }
+                  `}
+                >
+                  {formatBooleanSensor(b.category, b.value)}
+                </span>
+              ) : (
+                <span className="text-text-secondary">
+                  {formatSensorValue(b.value, b.unit)}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Battery indicator for sensors */}
+      {isSensor && batteryBinding && (
+        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`Batterie : ${batteryLevel ?? "?"}%`}>
+          {getBatteryIcon(batteryLevel, 14, 1.5)}
+          <span className="text-[11px] tabular-nums">{batteryLevel !== null ? `${batteryLevel}%` : "?"}</span>
+        </span>
+      )}
+
       {/* Quick control */}
       {isLight && equipment.enabled && (
         <LightControl
@@ -104,6 +170,13 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       )}
     </div>
   );
+}
+
+function isBooleanActive(category: string, value: unknown): boolean {
+  if (category === "contact_door" || category === "contact_window") {
+    return value === false || value === "OFF";
+  }
+  return value === true || value === "ON";
 }
 
 export { TYPE_ICONS, TYPE_LABELS };
