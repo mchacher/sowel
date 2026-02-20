@@ -36,12 +36,18 @@ export function ZoneAggregationHeader({ data }: ZoneAggregationHeaderProps) {
     );
   }
 
-  // Motion (only shown when active)
-  if (data.motion) {
+  // Motion (shown when zone has motion sensors)
+  if (data.motionSensors > 0) {
     pills.push(
-      <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-amber-500" active>
-        Mouvement
-      </Pill>,
+      data.motion ? (
+        <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+          Mouvement
+        </Pill>
+      ) : (
+        <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-text-tertiary">
+          Calme
+        </Pill>
+      ),
     );
   }
 

@@ -111,6 +111,7 @@ describe("ZoneAggregator", () => {
         temperature: null,
         humidity: null,
         motion: false,
+        motionSensors: 0,
         openDoors: 0,
         openWindows: 0,
         waterLeak: false,
@@ -186,6 +187,7 @@ describe("ZoneAggregator", () => {
 
       const data = aggregator.getByZoneId(zone.id);
       expect(data?.motion).toBe(true);
+      expect(data?.motionSensors).toBe(2);
     });
 
     it("aggregates motion as OR (false if all inactive)", () => {
@@ -203,6 +205,7 @@ describe("ZoneAggregator", () => {
 
       const data = aggregator.getByZoneId(zone.id);
       expect(data?.motion).toBe(false);
+      expect(data?.motionSensors).toBe(1);
     });
 
     it("counts open doors from contact_door category", () => {
@@ -371,8 +374,11 @@ describe("ZoneAggregator", () => {
 
       // Parent has motion because Cuisine has motion
       expect(aggregator.getByZoneId(parent.id)?.motion).toBe(true);
+      expect(aggregator.getByZoneId(parent.id)?.motionSensors).toBe(2);
       expect(aggregator.getByZoneId(child1.id)?.motion).toBe(false);
+      expect(aggregator.getByZoneId(child1.id)?.motionSensors).toBe(1);
       expect(aggregator.getByZoneId(child2.id)?.motion).toBe(true);
+      expect(aggregator.getByZoneId(child2.id)?.motionSensors).toBe(1);
     });
 
     it("parent sums light counts from children", () => {
