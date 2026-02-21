@@ -134,6 +134,14 @@ export function getSensorCategoryLabel(category: DataCategory, t?: TFunction): s
   return CATEGORY_KEYS[category] ?? category;
 }
 
+/** Check if a boolean sensor value is in the "active" state (e.g. motion detected, contact open). */
+export function isBooleanActive(category: string, value: unknown): boolean {
+  if (category === "contact_door" || category === "contact_window") {
+    return value === false || value === "OFF"; // contact=false means open
+  }
+  return value === true || value === "ON";
+}
+
 /** Check if a category represents a boolean sensor (motion, contact, water_leak, smoke). */
 export function isBooleanSensorCategory(category: DataCategory): boolean {
   return ["motion", "contact_door", "contact_window", "water_leak", "smoke"].includes(category);

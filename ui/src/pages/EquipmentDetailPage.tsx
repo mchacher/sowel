@@ -10,6 +10,7 @@ import { ShutterControl } from "../components/equipments/ShutterControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
+import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import {
   ArrowLeft,
   Loader2,
@@ -123,12 +124,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
-  const isShutter = equipment.type === "shutter";
-  const isSensor = equipment.type === "sensor" || equipment.type === "button";
-  const actionBinding = equipment.type === "button"
-    ? equipment.dataBindings.find((b) => b.category === "action")
-    : null;
+  const { isLight, isShutter, isSensor, actionBinding } = useEquipmentState(equipment);
 
   return (
     <div className="p-6">
