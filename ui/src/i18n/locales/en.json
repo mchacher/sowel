@@ -162,6 +162,7 @@
   "equipments.type.shutter": "Shutter",
   "equipments.type.sensor": "Sensor",
   "equipments.type.switch": "Switch / Plug",
+  "equipments.type.button": "Button / Remote",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",

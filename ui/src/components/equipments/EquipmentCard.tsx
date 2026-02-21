@@ -8,6 +8,7 @@ import {
   ArrowUpDown,
   Gauge,
   ToggleLeft,
+  CircleDot,
   ChevronUp,
   Square,
   ChevronDown,
@@ -33,6 +34,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   shutter: <ArrowUpDown size={18} strokeWidth={1.5} />,
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
   sensor: <Gauge size={18} strokeWidth={1.5} />,
+  button: <CircleDot size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -42,6 +44,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   shutter: "equipments.type.shutter",
   switch: "equipments.type.switch",
   sensor: "equipments.type.sensor",
+  button: "equipments.type.button",
 };
 
 interface EquipmentCardProps {
@@ -55,7 +58,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
-  const isSensor = equipment.type === "sensor";
+  const isSensor = equipment.type === "sensor" || equipment.type === "button";
 
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state"

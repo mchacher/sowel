@@ -136,7 +136,8 @@ export type EquipmentType =
   | "light_color"
   | "shutter"
   | "switch"
-  | "sensor";
+  | "sensor"
+  | "button";
 
 export interface Equipment {
   id: string;
