@@ -331,9 +331,11 @@ export class DeviceManager {
 
       const serialized = JSON.stringify(value);
       const previous = dataRow.value;
+      const isAction = dataRow.category === "action";
 
-      // Only update and emit if value changed
-      if (serialized !== previous) {
+      // Always update action data (each press is a new event even with same value).
+      // For other categories, only update if value changed.
+      if (serialized !== previous || isAction) {
         this.stmts.updateDeviceDataValue.run(serialized, dataRow.id);
 
         this.eventBus.emit({
