@@ -1,12 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loader2, Home } from "lucide-react";
+import { Loader2, Home, ChevronDown } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
 import { useZoneAggregation } from "../store/useZoneAggregation";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
-import { ZoneAggregationHeader } from "../components/home/ZoneAggregationHeader";
+import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import type { ZoneWithChildren } from "../types";
 
@@ -77,9 +77,9 @@ export function HomePage() {
 
   return (
     <div className="p-6">
-      {/* Zone header */}
-      <div className="mb-6">
-        <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+      {/* Zone header + status bar */}
+      <div className="max-w-[720px] mb-5">
+        <h1 className="text-[22px] font-semibold text-text leading-[28px]">
           {currentZone.name}
         </h1>
         {currentZone.description && (
@@ -87,31 +87,29 @@ export function HomePage() {
             {currentZone.description}
           </p>
         )}
-        <p className="text-[13px] text-text-tertiary mt-0.5">
-          {zoneEquipments.length === 0
-            ? t("equipments.noEquipments")
-            : t("equipments.count", { count: zoneEquipments.length })}
-        </p>
+        {zoneId && aggregationData[zoneId] && (
+          <div className="mt-3">
+            <ZoneAggregationPills data={aggregationData[zoneId]} />
+          </div>
+        )}
       </div>
 
-      {/* Aggregated zone data */}
-      {zoneId && aggregationData[zoneId] && (
-        <ZoneAggregationHeader data={aggregationData[zoneId]} />
-      )}
+      {/* Sections: Equipments + Behaviors */}
+      <div className="max-w-[720px] space-y-6">
+        <CollapsibleSection title={t("equipments.title")} storageKey="section-equipments">
+          <ZoneEquipmentsView
+            zoneName={currentZone.name}
+            equipments={zoneEquipments}
+            onExecuteOrder={executeOrder}
+          />
+        </CollapsibleSection>
 
-      {/* Equipments grouped by type */}
-      <ZoneEquipmentsView
-        zoneName={currentZone.name}
-        equipments={zoneEquipments}
-        onExecuteOrder={executeOrder}
-      />
-
-      {/* Recipes for this zone */}
-      {zoneId && (
-        <div className="mt-4">
-          <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
-        </div>
-      )}
+        {zoneId && (
+          <CollapsibleSection title={t("behaviors.title")} storageKey="section-behaviors">
+            <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
+          </CollapsibleSection>
+        )}
+      </div>
     </div>
   );
 }
@@ -152,6 +150,47 @@ function ZoneNotFound() {
         {t("home.backToHome")}
       </button>
     </div>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  storageKey,
+  children,
+}: {
+  title: string;
+  storageKey: string;
+  children: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(storageKey) === "collapsed"; } catch { return false; }
+  });
+
+  const toggle = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(storageKey, next ? "collapsed" : "expanded"); } catch { /* ignore */ }
+      return next;
+    });
+  }, [storageKey]);
+
+  return (
+    <section>
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1.5 mb-2 group cursor-pointer"
+      >
+        <ChevronDown
+          size={14}
+          strokeWidth={2}
+          className={`text-text-tertiary transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
+        />
+        <h2 className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider group-hover:text-text transition-colors duration-150">
+          {title}
+        </h2>
+      </button>
+      {!collapsed && children}
+    </section>
   );
 }
 
