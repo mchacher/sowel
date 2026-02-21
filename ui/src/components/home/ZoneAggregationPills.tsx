@@ -26,7 +26,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Temperature
   if (data.temperature !== null) {
     pills.push(
-      <Pill key="temp" icon={<Thermometer size={14} strokeWidth={1.5} />} color="text-primary">
+      <Pill key="temp" icon={<Thermometer size={12} strokeWidth={1.5} />} color="text-primary">
         {data.temperature}°C
       </Pill>,
     );
@@ -35,7 +35,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Humidity
   if (data.humidity !== null) {
     pills.push(
-      <Pill key="hum" icon={<Droplets size={14} strokeWidth={1.5} />} color="text-primary">
+      <Pill key="hum" icon={<Droplets size={12} strokeWidth={1.5} />} color="text-primary">
         {data.humidity}%
       </Pill>,
     );
@@ -44,7 +44,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Luminosity
   if (data.luminosity !== null) {
     pills.push(
-      <Pill key="lux" icon={<Sun size={14} strokeWidth={1.5} />} color="text-primary">
+      <Pill key="lux" icon={<Sun size={12} strokeWidth={1.5} />} color="text-primary">
         {data.luminosity} lx
       </Pill>,
     );
@@ -56,11 +56,11 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
     const suffix = duration ? ` · ${duration}` : "";
     pills.push(
       data.motion ? (
-        <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+        <Pill key="motion" icon={<PersonStanding size={12} strokeWidth={1.5} />} color="text-amber-500" active>
           {label}{suffix}
         </Pill>
       ) : (
-        <Pill key="motion" icon={<PersonStanding size={14} strokeWidth={1.5} />} color="text-text-tertiary">
+        <Pill key="motion" icon={<PersonStanding size={12} strokeWidth={1.5} />} color="text-text-tertiary">
           {label}{suffix}
         </Pill>
       ),
@@ -73,7 +73,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
     pills.push(
       <Pill
         key="lights"
-        icon={<Lightbulb size={14} strokeWidth={1.5} />}
+        icon={<Lightbulb size={12} strokeWidth={1.5} />}
         color={isOn ? "text-amber-500" : "text-text-tertiary"}
         active={isOn}
       >
@@ -92,7 +92,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
     pills.push(
       <Pill
         key="shutters"
-        icon={<ArrowUpDown size={14} strokeWidth={1.5} />}
+        icon={<ArrowUpDown size={12} strokeWidth={1.5} />}
         color={someOpen ? "text-primary" : "text-text-tertiary"}
       >
         {data.shuttersOpen}/{data.shuttersTotal}{positionSuffix}
@@ -103,7 +103,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Open doors
   if (data.openDoors > 0) {
     pills.push(
-      <Pill key="doors" icon={<DoorOpen size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+      <Pill key="doors" icon={<DoorOpen size={12} strokeWidth={1.5} />} color="text-amber-500" active>
         {t("aggregation.open", { count: data.openDoors })}
       </Pill>,
     );
@@ -112,7 +112,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Open windows
   if (data.openWindows > 0) {
     pills.push(
-      <Pill key="windows" icon={<SquareStack size={14} strokeWidth={1.5} />} color="text-amber-500" active>
+      <Pill key="windows" icon={<SquareStack size={12} strokeWidth={1.5} />} color="text-amber-500" active>
         {t("aggregation.open", { count: data.openWindows })}
       </Pill>,
     );
@@ -121,7 +121,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Water leak alert
   if (data.waterLeak) {
     pills.push(
-      <Pill key="water" icon={<Droplet size={14} strokeWidth={1.5} />} color="text-error" alert>
+      <Pill key="water" icon={<Droplet size={12} strokeWidth={1.5} />} color="text-error" alert>
         {t("aggregation.waterLeak")}
       </Pill>,
     );
@@ -130,7 +130,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   // Smoke alert
   if (data.smoke) {
     pills.push(
-      <Pill key="smoke" icon={<Flame size={14} strokeWidth={1.5} />} color="text-error" alert>
+      <Pill key="smoke" icon={<Flame size={12} strokeWidth={1.5} />} color="text-error" alert>
         {t("aggregation.smoke")}
       </Pill>,
     );
@@ -139,7 +139,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   if (pills.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       {pills}
     </div>
   );
@@ -199,8 +199,8 @@ function Pill({ icon, color, active, alert, children }: PillProps) {
   return (
     <span
       className={`
-        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
-        text-[13px] font-medium tabular-nums
+        inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+        text-[12px] font-medium tabular-nums
         ${bg} ${color}
       `}
     >

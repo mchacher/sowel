@@ -104,7 +104,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   return (
     <div
       className={`
-        flex items-center gap-3 px-4 py-2.5
+        flex items-center gap-2.5 px-3 py-2
         transition-colors duration-150
         hover:bg-border-light/40
       `}
@@ -112,7 +112,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
       {/* Icon */}
       <div
         className={`
-          flex-shrink-0 w-8 h-8 rounded-[6px] flex items-center justify-center
+          flex-shrink-0 w-7 h-7 rounded-[5px] flex items-center justify-center
           ${iconColor}
         `}
       >

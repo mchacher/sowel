@@ -77,30 +77,31 @@ export function HomePage() {
 
   return (
     <div className="p-6">
-      {/* Zone header */}
-      <div className="mb-6">
-        <h1 className="text-[24px] font-semibold text-text leading-[32px]">
-          {currentZone.name}
-        </h1>
-        {currentZone.description && (
-          <p className="text-[13px] text-text-secondary mt-0.5">
-            {currentZone.description}
+      {/* Zone header — title left, aggregation pills right */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-5">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-semibold text-text leading-[28px]">
+            {currentZone.name}
+          </h1>
+          {currentZone.description && (
+            <p className="text-[13px] text-text-secondary mt-0.5">
+              {currentZone.description}
+            </p>
+          )}
+          <p className="text-[12px] text-text-tertiary mt-0.5">
+            {zoneEquipments.length === 0
+              ? t("equipments.noEquipments")
+              : t("equipments.count", { count: zoneEquipments.length })}
           </p>
-        )}
-        <p className="text-[13px] text-text-tertiary mt-0.5">
-          {zoneEquipments.length === 0
-            ? t("equipments.noEquipments")
-            : t("equipments.count", { count: zoneEquipments.length })}
-        </p>
-        {/* Aggregation pills inline */}
+        </div>
         {zoneId && aggregationData[zoneId] && (
           <ZoneAggregationPills data={aggregationData[zoneId]} />
         )}
       </div>
 
       {/* Two-column layout: Equipments (left) + Recipes (right) */}
-      <div className="flex flex-col sm:flex-row sm:gap-4 sm:items-start">
-        <div className="flex-1 min-w-0">
+      <div className="flex flex-col lg:flex-row lg:gap-4 lg:items-start">
+        <div className="flex-1 min-w-0 max-w-[720px]">
           <ZoneEquipmentsView
             zoneName={currentZone.name}
             equipments={zoneEquipments}
@@ -108,7 +109,7 @@ export function HomePage() {
           />
         </div>
         {zoneId && (
-          <div className="mt-4 sm:mt-0 w-full sm:w-[280px] sm:flex-shrink-0">
+          <div className="mt-4 lg:mt-0 w-full lg:w-[300px] lg:flex-shrink-0">
             <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
           </div>
         )}
