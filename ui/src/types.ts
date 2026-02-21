@@ -27,6 +27,7 @@ export type DataCategory =
   | "smoke"
   | "co2"
   | "voc"
+  | "action"
   | "generic";
 
 // ============================================================

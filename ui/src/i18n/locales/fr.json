@@ -211,6 +211,7 @@
   "category.voc": "COV",
   "category.water_leak": "Fuite d'eau",
   "category.smoke": "Fumée",
+  "category.action": "Action",
   "category.battery": "Batterie",
 
   "category.value.motion.detected": "Détecté",
