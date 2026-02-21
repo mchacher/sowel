@@ -46,10 +46,16 @@ export function ZoneEquipmentsView({
   })).filter((g) => g.equipments.length > 0);
 
   return (
-    <div className="space-y-4">
-      {grouped.map((group) => (
-        <div key={group.labelKey} className="rounded-[10px] border border-border bg-surface overflow-hidden">
-          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-light">
+    <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
+      {grouped.map((group, index) => (
+        <div key={group.labelKey}>
+          <div
+            className={`
+              flex items-center gap-1.5 px-4 py-2
+              border-b border-border-light bg-border-light/30
+              ${index > 0 ? "border-t border-border" : ""}
+            `}
+          >
             <span className="text-text-tertiary">{group.icon}</span>
             <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
               {t(group.labelKey)}
