@@ -13,13 +13,15 @@ interface EquipmentGroup {
   labelKey: string;
   types: EquipmentType[];
   icon: React.ReactNode;
+  headerBg: string;
+  iconColor: string;
 }
 
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} />, headerBg: "bg-amber-400/8", iconColor: "text-amber-500" },
+  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
+  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-info/6", iconColor: "text-info" },
+  { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
 ];
 
 interface ZoneEquipmentsViewProps {
@@ -52,11 +54,11 @@ export function ZoneEquipmentsView({
           <div
             className={`
               flex items-center gap-1.5 px-3 py-1.5
-              bg-border-light/30
+              ${group.headerBg}
               ${index > 0 ? "border-t border-border" : ""}
             `}
           >
-            <span className="text-text-tertiary">{group.icon}</span>
+            <span className={group.iconColor}>{group.icon}</span>
             <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
               {t(group.labelKey)}
             </span>

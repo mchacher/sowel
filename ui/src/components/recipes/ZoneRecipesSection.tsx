@@ -33,8 +33,8 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
 
   return (
     <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-border-light/30">
-        <span className="text-text-tertiary">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/8">
+        <span className="text-accent">
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
         <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
