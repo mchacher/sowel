@@ -75,6 +75,9 @@ export const PROPERTY_TO_CATEGORY: Record<string, DataCategory> = {
   // Air quality
   co2: "co2",
   voc: "voc",
+
+  // Button / remote action
+  action: "action",
 };
 
 // ============================================================
