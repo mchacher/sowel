@@ -1,3 +1,6 @@
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 import type { AppConfig } from "./shared/types.js";
 
@@ -21,17 +24,40 @@ function envInt(key: string, fallback: number): number {
   return parsed;
 }
 
+/**
+ * Resolve or auto-generate the JWT secret.
+ * Priority: JWT_SECRET env var > persisted file > generate new.
+ */
+function resolveJwtSecret(dataDir: string): string {
+  const fromEnv = process.env["JWT_SECRET"];
+  if (fromEnv) return fromEnv;
+
+  const secretPath = resolve(dataDir, ".jwt-secret");
+  if (existsSync(secretPath)) {
+    return readFileSync(secretPath, "utf-8").trim();
+  }
+
+  // First launch — generate and persist
+  mkdirSync(dataDir, { recursive: true });
+  const secret = randomBytes(32).toString("hex");
+  writeFileSync(secretPath, secret, { mode: 0o600 });
+  return secret;
+}
+
 export function loadConfig(): AppConfig {
+  const sqlitePath = env("SQLITE_PATH", "./data/corbel.db");
+  const dataDir = dirname(resolve(sqlitePath));
+
   return {
     sqlite: {
-      path: env("SQLITE_PATH", "./data/corbel.db"),
+      path: sqlitePath,
     },
     api: {
       port: envInt("API_PORT", 3000),
       host: env("API_HOST", "0.0.0.0"),
     },
     jwt: {
-      secret: env("JWT_SECRET", "corbel-dev-secret-change-me"),
+      secret: resolveJwtSecret(dataDir),
       accessTtl: envInt("JWT_ACCESS_TTL", 900),
       refreshTtl: envInt("JWT_REFRESH_TTL", 2592000),
     },
@@ -39,7 +65,7 @@ export function loadConfig(): AppConfig {
       level: env("LOG_LEVEL", "info"),
     },
     cors: {
-      origins: env("CORS_ORIGINS", "http://localhost:5173")
+      origins: env("CORS_ORIGINS", "*")
         .split(",")
         .map((s) => s.trim()),
     },
