@@ -1,0 +1,17 @@
+services:
+  corbel:
+    build: .
+    container_name: corbel
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - corbel-data:/app/data
+    # No .env needed — all settings have sensible defaults.
+    # Override with environment variables if needed:
+    # environment:
+    #   API_PORT: 3000
+    #   LOG_LEVEL: info
+
+volumes:
+  corbel-data:

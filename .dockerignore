@@ -1,0 +1,11 @@
+node_modules
+dist
+ui/node_modules
+ui/dist
+data
+.env
+.git
+.claude
+*.md
+!README.md
+specs
