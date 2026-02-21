@@ -99,19 +99,15 @@ export function HomePage() {
         )}
       </div>
 
-      {/* Two-column layout: Equipments (left) + Recipes (right) */}
-      <div className="flex flex-col lg:flex-row lg:gap-4 lg:items-start">
-        <div className="flex-1 min-w-0 max-w-[720px]">
-          <ZoneEquipmentsView
-            zoneName={currentZone.name}
-            equipments={zoneEquipments}
-            onExecuteOrder={executeOrder}
-          />
-        </div>
+      {/* Equipments + Recipes stacked, constrained width */}
+      <div className="max-w-[720px] space-y-4">
+        <ZoneEquipmentsView
+          zoneName={currentZone.name}
+          equipments={zoneEquipments}
+          onExecuteOrder={executeOrder}
+        />
         {zoneId && (
-          <div className="mt-4 lg:mt-0 w-full lg:w-[380px] lg:flex-shrink-0">
-            <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
-          </div>
+          <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
         )}
       </div>
     </div>
