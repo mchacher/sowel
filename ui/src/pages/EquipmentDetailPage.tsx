@@ -23,7 +23,9 @@ import {
   Cpu,
   ChevronDown,
   ChevronRight,
+  Clock,
 } from "lucide-react";
+import { formatRelativeTime } from "../lib/format";
 import type { EquipmentWithDetails } from "../types";
 
 export function EquipmentDetailPage() {
@@ -124,6 +126,9 @@ export function EquipmentDetailPage() {
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "button";
+  const actionBinding = equipment.type === "button"
+    ? equipment.dataBindings.find((b) => b.category === "action")
+    : null;
 
   return (
     <div className="p-6">
@@ -150,6 +155,15 @@ export function EquipmentDetailPage() {
                 <span className="text-warning ml-2">{t("common.disabled")}</span>
               )}
             </p>
+            {actionBinding && actionBinding.value != null && (
+              <div className="flex items-center gap-1.5 mt-1 text-[12px] text-text-tertiary">
+                <Clock size={12} strokeWidth={1.5} />
+                <span className="font-mono font-medium text-text-secondary">{String(actionBinding.value)}</span>
+                {actionBinding.lastUpdated && (
+                  <span>· {formatRelativeTime(actionBinding.lastUpdated)}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
