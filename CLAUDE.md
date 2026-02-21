@@ -161,4 +161,17 @@ V0.1 MQTT+Devices → V0.2 Equipments+Bindings → V0.3 Zones+Aggregation → V0
 
 ## Environment Variables
 
-Key config via `.env`: `SQLITE_PATH`, `API_PORT`, `API_HOST`, `JWT_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `LOG_LEVEL`, `CORS_ORIGINS`. MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.
+All settings are optional with sensible defaults — Corbel runs zero-config out of the box. Override via `.env` if needed:
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `SQLITE_PATH` | `./data/corbel.db` | SQLite database path |
+| `API_PORT` | `3000` | HTTP server port |
+| `API_HOST` | `0.0.0.0` | Bind address |
+| `JWT_SECRET` | auto-generated | Persisted in `data/.jwt-secret` on first launch |
+| `JWT_ACCESS_TTL` | `900` | Access token TTL in seconds (15 min) |
+| `JWT_REFRESH_TTL` | `2592000` | Refresh token TTL in seconds (30 days) |
+| `LOG_LEVEL` | `info` | Pino log level |
+| `CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+
+MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.
