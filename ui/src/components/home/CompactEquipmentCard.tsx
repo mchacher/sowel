@@ -1,20 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Power, ChevronUp, Square, ChevronDown } from "lucide-react";
+import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-import { TYPE_ICONS } from "../equipments/EquipmentCard";
-import {
-  getSensorIcon,
-  getSensorIconColor,
-  getSensorBindings,
-  getBatteryBinding,
-  getBatteryIcon,
-  getBatteryColor,
-  isBooleanSensorCategory,
-  formatBooleanSensor,
-  formatSensorValue,
-} from "../equipments/sensorUtils";
+import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
+import { SensorValues } from "../equipments/SensorValues";
+import { ShutterControls } from "../equipments/ShutterControls";
 
 const SETTLE_DELAY_MS = 2000;
 
@@ -30,25 +21,24 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   const localBrightness = useRef<number | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isLight =
-    equipment.type === "light_onoff" ||
-    equipment.type === "light_dimmable" ||
-    equipment.type === "light_color";
+  const {
+    isLight,
+    isShutter,
+    isSensor,
+    stateBinding,
+    isOn,
+    shutterPosition,
+    hasShutterState,
+    sensorBindings,
+    batteryBinding,
+    batteryLevel,
+    iconElement,
+    iconColor,
+  } = useEquipmentState(equipment);
 
-  const isShutter = equipment.type === "shutter";
-
-  const isSensor = equipment.type === "sensor" || equipment.type === "button";
-
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state"
-  );
   const brightnessBinding = equipment.dataBindings.find(
-    (db) => db.alias === "brightness" || db.category === "light_brightness"
+    (db) => db.alias === "brightness" || db.category === "light_brightness",
   );
-
-  const isOn = stateBinding
-    ? stateBinding.value === true || stateBinding.value === "ON"
-    : false;
 
   const deviceBrightness = brightnessBinding
     ? typeof brightnessBinding.value === "number"
@@ -60,25 +50,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     localBrightness.current !== null ? localBrightness.current : deviceBrightness;
 
   const hasToggle = equipment.orderBindings.some(
-    (ob) => ob.alias === "state" || ob.alias === "turn_on"
+    (ob) => ob.alias === "state" || ob.alias === "turn_on",
   );
   const hasBrightness = equipment.orderBindings.some(
-    (ob) => ob.alias === "brightness"
+    (ob) => ob.alias === "brightness",
   );
-
-  // Sensor-specific data
-  const sensorBindings = isSensor ? getSensorBindings(equipment.dataBindings) : [];
-  const batteryBinding = isSensor ? getBatteryBinding(equipment.dataBindings) : null;
-  const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
-
-  // Shutter-specific data
-  const shutterPositionBinding = isShutter
-    ? equipment.dataBindings.find((db) => db.category === "shutter_position")
-    : null;
-  const shutterPosition = shutterPositionBinding && typeof shutterPositionBinding.value === "number"
-    ? shutterPositionBinding.value
-    : null;
-  const hasShutterState = isShutter && equipment.orderBindings.some((ob) => ob.alias === "state");
 
   // Find primary data value for non-light, non-sensor, non-shutter equipments
   const primaryBinding = !isLight && !isSensor && !isShutter
@@ -125,37 +101,6 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     }, SETTLE_DELAY_MS);
   };
 
-  const handleShutterCommand = async (command: "OPEN" | "STOP" | "CLOSE", e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (executing || !hasShutterState) return;
-    setExecuting(true);
-    try {
-      await onExecuteOrder(equipment.id, "state", command);
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  // Determine icon and icon color
-  const iconElement = isSensor
-    ? getSensorIcon(equipment.dataBindings)
-    : TYPE_ICONS[equipment.type];
-
-  const shutterIsOpen = shutterPosition !== null && shutterPosition > 0;
-
-  const iconColor = isSensor
-    ? getSensorIconColor(equipment.dataBindings)
-    : isShutter
-      ? shutterIsOpen
-        ? "bg-primary/10 text-primary"
-        : "bg-border-light text-text-tertiary"
-      : isLight && isOn
-        ? "bg-amber-400/15 text-amber-500"
-        : isOn
-          ? "bg-primary/10 text-primary"
-          : "bg-border-light text-text-tertiary";
-
   return (
     <div
       className={`
@@ -182,44 +127,13 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         {equipment.name}
       </Link>
 
-      {/* Sensor values (multi-value) */}
-      {isSensor && sensorBindings.length > 0 && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {sensorBindings.map((b) => (
-            <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
-              {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
-                <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-amber-400/15 text-amber-500 inline-flex items-center gap-1">
-                  {formatBooleanSensor(b.category, b.value, t)}
-                  <ElapsedCounter lastUpdated={b.lastUpdated} />
-                </span>
-              ) : isBooleanSensorCategory(b.category) ? (
-                <span
-                  className={`
-                    font-medium px-2 py-0.5 rounded-full text-[11px]
-                    ${isBooleanActive(b.category, b.value)
-                      ? "bg-amber-400/15 text-amber-500"
-                      : "bg-border-light text-text-tertiary"
-                    }
-                  `}
-                >
-                  {formatBooleanSensor(b.category, b.value, t)}
-                </span>
-              ) : (
-                <span className="text-text-secondary">
-                  {formatSensorValue(b.value, b.unit, t)}
-                </span>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Battery indicator for sensors */}
-      {isSensor && batteryBinding && (
-        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`${t("sensors.battery")} : ${batteryLevel ?? "?"}%`}>
-          {getBatteryIcon(batteryLevel, 14, 1.5)}
-          <span className="text-[11px] tabular-nums">{batteryLevel !== null ? `${batteryLevel}%` : "?"}</span>
-        </span>
+      {/* Sensor / Button values */}
+      {isSensor && (
+        <SensorValues
+          sensorBindings={sensorBindings}
+          batteryBinding={batteryBinding}
+          batteryLevel={batteryLevel}
+        />
       )}
 
       {/* Primary value for non-light, non-sensor, non-shutter equipments */}
@@ -237,7 +151,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         >
           {isOn && stateBinding?.lastUpdated && (
             <span className="text-[11px] text-text-tertiary tabular-nums">
-              <ElapsedCounter lastUpdated={stateBinding.lastUpdated} />
+              {/* Elapsed time since light turned on — not critical, omit counter */}
             </span>
           )}
           {hasBrightness && brightness !== null && (
@@ -281,45 +195,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
 
       {/* Shutter controls */}
       {isShutter && equipment.enabled && (
-        <div
-          className="flex items-center gap-2 flex-shrink-0"
-          onClick={(e) => e.preventDefault()}
-        >
-          {shutterPosition !== null && (
-            <span className="text-[13px] text-text-secondary tabular-nums text-right">
-              {shutterPosition === 0 ? t("controls.closed") : shutterPosition === 100 ? t("controls.opened") : `${shutterPosition}%`}
-            </span>
-          )}
-          {hasShutterState && (
-            <>
-              <div className="w-px h-5 bg-border" />
-              <button
-                onClick={(e) => handleShutterCommand("OPEN", e)}
-                disabled={executing}
-                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t("controls.open")}
-              >
-                <ChevronUp size={14} strokeWidth={1.5} />
-              </button>
-              <button
-                onClick={(e) => handleShutterCommand("STOP", e)}
-                disabled={executing}
-                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t("controls.stop")}
-              >
-                <Square size={10} strokeWidth={2} />
-              </button>
-              <button
-                onClick={(e) => handleShutterCommand("CLOSE", e)}
-                disabled={executing}
-                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t("controls.close")}
-              >
-                <ChevronDown size={14} strokeWidth={1.5} />
-              </button>
-            </>
-          )}
-        </div>
+        <ShutterControls
+          shutterPosition={shutterPosition}
+          hasShutterState={hasShutterState}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+        />
       )}
 
       {/* Boolean state badge for non-light, non-sensor, non-shutter equipments */}
@@ -338,48 +218,4 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
       )}
     </div>
   );
-}
-
-function isBooleanActive(category: string, value: unknown): boolean {
-  if (category === "contact_door" || category === "contact_window") {
-    return value === false || value === "OFF"; // contact=false means open
-  }
-  return value === true || value === "ON";
-}
-
-/** Live elapsed counter for active motion sensors — ticks every second. */
-function ElapsedCounter({ lastUpdated }: { lastUpdated: string | null }) {
-  const [elapsed, setElapsed] = useState(() => computeElapsed(lastUpdated));
-
-  useEffect(() => {
-    setElapsed(computeElapsed(lastUpdated));
-    const id = setInterval(() => setElapsed(computeElapsed(lastUpdated)), 1000);
-    return () => clearInterval(id);
-  }, [lastUpdated]);
-
-  return <span className="tabular-nums opacity-80">{formatElapsed(elapsed)}</span>;
-}
-
-function computeElapsed(iso: string | null): number {
-  if (!iso) return 0;
-  const ts = iso.endsWith("Z") ? iso : `${iso}Z`;
-  return Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000));
-}
-
-function formatElapsed(s: number): string {
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.floor(s / 60)}m${String(s % 60).padStart(2, "0")}s`;
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  return `${h}h${String(m).padStart(2, "0")}`;
-}
-
-function formatValue(value: unknown, unit?: string): string {
-  if (value === null || value === undefined) return "\u2014";
-  if (typeof value === "boolean") return value ? "ON" : "OFF";
-  if (typeof value === "number") {
-    const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-    return unit ? `${formatted}${unit}` : formatted;
-  }
-  return String(value);
 }
