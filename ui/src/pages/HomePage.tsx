@@ -109,7 +109,7 @@ export function HomePage() {
           />
         </div>
         {zoneId && (
-          <div className="mt-4 lg:mt-0 w-full lg:w-[300px] lg:flex-shrink-0">
+          <div className="mt-4 lg:mt-0 w-full lg:w-[380px] lg:flex-shrink-0">
             <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
           </div>
         )}
