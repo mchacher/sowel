@@ -186,6 +186,7 @@ function isRelevantData(category: string, type: string): boolean {
     shutter: ["shutter_position"],
     switch: ["light_state"],
     sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
+    button: ["action", "battery"],
   };
   return map[type]?.includes(category) ?? false;
 }
@@ -197,6 +198,7 @@ function isRelevantOrder(key: string, type: string): boolean {
     light_color: ["state", "brightness", "color", "color_temp"],
     shutter: ["position", "state"],
     switch: ["state"],
+    button: [],
   };
   return map[type]?.includes(key) ?? false;
 }
