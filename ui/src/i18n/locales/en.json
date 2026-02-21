@@ -211,6 +211,7 @@
   "category.voc": "VOC",
   "category.water_leak": "Water leak",
   "category.smoke": "Smoke",
+  "category.action": "Action",
   "category.battery": "Battery",
 
   "category.value.motion.detected": "Detected",
