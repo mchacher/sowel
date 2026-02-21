@@ -37,7 +37,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
 
   const isShutter = equipment.type === "shutter";
 
-  const isSensor = equipment.type === "sensor";
+  const isSensor = equipment.type === "sensor" || equipment.type === "button";
 
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state"

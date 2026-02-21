@@ -11,7 +11,8 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   light_color: ["light_state", "light_brightness", "light_color"],
   shutter: ["shutter_position"],
   switch: ["light_state"],
-  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "action"],
+  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
+  button: ["action"],
 };
 
 interface DeviceSelectorProps {

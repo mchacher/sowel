@@ -123,7 +123,7 @@ export function EquipmentDetailPage() {
 
   const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
-  const isSensor = equipment.type === "sensor";
+  const isSensor = equipment.type === "sensor" || equipment.type === "button";
 
   return (
     <div className="p-6">

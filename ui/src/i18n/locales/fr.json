@@ -162,6 +162,7 @@
   "equipments.type.shutter": "Volet",
   "equipments.type.sensor": "Capteur",
   "equipments.type.switch": "Interrupteur / Prise",
+  "equipments.type.button": "Bouton / Télécommande",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
