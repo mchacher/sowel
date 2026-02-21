@@ -331,24 +331,22 @@ export class DeviceManager {
 
       const serialized = JSON.stringify(value);
       const previous = dataRow.value;
-      const isAction = dataRow.category === "action";
 
-      // Always update action data (each press is a new event even with same value).
-      // For other categories, only update if value changed.
-      if (serialized !== previous || isAction) {
-        this.stmts.updateDeviceDataValue.run(serialized, dataRow.id);
+      // Always update last_updated and emit event on every MQTT message,
+      // even if the value hasn't changed. This keeps timestamps fresh
+      // and prepares for future time-series historization.
+      this.stmts.updateDeviceDataValue.run(serialized, dataRow.id);
 
-        this.eventBus.emit({
-          type: "device.data.updated",
-          deviceId: device.id,
-          deviceName: device.name,
-          dataId: dataRow.id,
-          key,
-          value,
-          previous: previous !== null ? JSON.parse(previous) : null,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      this.eventBus.emit({
+        type: "device.data.updated",
+        deviceId: device.id,
+        deviceName: device.name,
+        dataId: dataRow.id,
+        key,
+        value,
+        previous: previous !== null ? JSON.parse(previous) : null,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
