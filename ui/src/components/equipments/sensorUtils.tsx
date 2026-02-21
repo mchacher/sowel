@@ -13,6 +13,7 @@ import {
   BatteryFull,
   BatteryMedium,
   BatteryLow,
+  CircleDot,
 } from "lucide-react";
 import type { DataBindingWithValue, DataCategory } from "../../types";
 
@@ -29,6 +30,7 @@ export const SENSOR_DATA_CATEGORIES: DataCategory[] = [
   "voc",
   "water_leak",
   "smoke",
+  "action",
   "battery",
 ];
 
@@ -37,6 +39,7 @@ const CATEGORY_PRIORITY: DataCategory[] = [
   "motion",
   "contact_door",
   "contact_window",
+  "action",
   "temperature",
   "humidity",
   "luminosity",
@@ -59,6 +62,7 @@ const CATEGORY_KEYS: Partial<Record<DataCategory, string>> = {
   voc: "category.voc",
   water_leak: "category.water_leak",
   smoke: "category.smoke",
+  action: "category.action",
   battery: "category.battery",
 };
 
@@ -89,6 +93,8 @@ function iconForCategory(category: DataCategory, value?: unknown): React.ReactNo
       return <Droplet size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "smoke":
       return <Flame size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+    case "action":
+      return <CircleDot size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "battery":
       return getBatteryIcon(typeof value === "number" ? value : null, ICON_SIZE, ICON_STROKE);
     default:
@@ -154,6 +160,9 @@ export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
   const primaryCat = getPrimarySensorCategory(bindings);
   if (primaryCat === "motion" && isMotionDetected(bindings)) {
     return "bg-amber-400/15 text-amber-500";
+  }
+  if (primaryCat === "action") {
+    return "bg-primary/10 text-primary";
   }
   if (
     (primaryCat === "contact_door" || primaryCat === "contact_window") &&
