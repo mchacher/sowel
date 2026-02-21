@@ -6,8 +6,7 @@ import { EquipmentCard } from "../components/equipments/EquipmentCard";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
 import type { EquipmentWithDetails, ZoneWithChildren } from "../types";
-import { getDevice } from "../api";
-import { addDataBinding, addOrderBinding } from "../api";
+import { autoCreateBindings } from "../components/equipments/bindingUtils";
 
 export function EquipmentsPage() {
   const { t } = useTranslation();
@@ -139,68 +138,6 @@ export function EquipmentsPage() {
       )}
     </div>
   );
-}
-
-/** Auto-create DataBindings and OrderBindings for selected devices. */
-async function autoCreateBindings(
-  equipmentId: string,
-  deviceIds: string[],
-  equipmentType: string,
-) {
-  for (const deviceId of deviceIds) {
-    try {
-      const device = await getDevice(deviceId);
-
-      // Create DataBindings for matching categories
-      for (const data of device.data) {
-        if (isRelevantData(data.category, equipmentType)) {
-          try {
-            await addDataBinding(equipmentId, { deviceDataId: data.id, alias: data.key });
-          } catch {
-            // Alias conflict — skip (e.g., multi-device with same key)
-          }
-        }
-      }
-
-      // Create OrderBindings for matching orders
-      for (const order of device.orders) {
-        if (isRelevantOrder(order.key, equipmentType)) {
-          try {
-            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias: order.key });
-          } catch {
-            // Already bound — ok for multi-device
-          }
-        }
-      }
-    } catch {
-      // Skip failed device
-    }
-  }
-}
-
-function isRelevantData(category: string, type: string): boolean {
-  const map: Record<string, string[]> = {
-    light_onoff: ["light_state"],
-    light_dimmable: ["light_state", "light_brightness"],
-    light_color: ["light_state", "light_brightness", "light_color", "light_color_temp"],
-    shutter: ["shutter_position"],
-    switch: ["light_state"],
-    sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
-    button: ["action", "battery"],
-  };
-  return map[type]?.includes(category) ?? false;
-}
-
-function isRelevantOrder(key: string, type: string): boolean {
-  const map: Record<string, string[]> = {
-    light_onoff: ["state"],
-    light_dimmable: ["state", "brightness"],
-    light_color: ["state", "brightness", "color", "color_temp"],
-    shutter: ["position", "state"],
-    switch: ["state"],
-    button: [],
-  };
-  return map[type]?.includes(key) ?? false;
 }
 
 function groupByZone(
