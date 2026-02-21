@@ -9,8 +9,10 @@ import { LightControl } from "../components/equipments/LightControl";
 import { ShutterControl } from "../components/equipments/ShutterControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
+import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
+import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";
 import {
   ArrowLeft,
   Loader2,
@@ -25,6 +27,8 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import { formatRelativeTime } from "../lib/format";
 import type { EquipmentWithDetails } from "../types";
@@ -53,6 +57,7 @@ export function EquipmentDetailPage() {
   const [showAddOrderBinding, setShowAddOrderBinding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showBindings, setShowBindings] = useState(false);
+  const [showChangeDevice, setShowChangeDevice] = useState(false);
 
   useEffect(() => {
     fetchZones();
@@ -209,7 +214,7 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Devices */}
-      <DevicesSection equipment={equipment} />
+      <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
       {/* Technical: Bindings (collapsible) */}
       <div className="bg-surface rounded-[10px] border border-border mb-6">
@@ -355,12 +360,24 @@ export function EquipmentDetailPage() {
           onClose={() => setShowAddOrderBinding(false)}
         />
       )}
+
+      {/* Change device modal */}
+      {showChangeDevice && (
+        <ChangeDeviceModal
+          equipment={equipment}
+          onDone={() => {
+            setShowChangeDevice(false);
+            fetchEquipments();
+          }}
+          onClose={() => setShowChangeDevice(false)}
+        />
+      )}
     </div>
   );
 }
 
 /** Group bindings by device and show a summary card per device. */
-function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
+function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWithDetails; onChangeDevice: () => void }) {
   const { t } = useTranslation();
   // Collect unique devices from all bindings
   const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[]; values: Record<string, { value: unknown; unit?: string }> }>();
@@ -388,10 +405,19 @@ function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
   if (devices.length === 0) {
     return (
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
-          <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          {t("equipments.devices")}
-        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
+            <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
+            {t("equipments.devices")}
+          </h3>
+          <button
+            onClick={onChangeDevice}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+          >
+            <Plus size={11} strokeWidth={1.5} />
+            {t("common.add")}
+          </button>
+        </div>
         <p className="text-[13px] text-text-tertiary">{t("equipments.noDevice")}</p>
       </div>
     );
@@ -399,10 +425,19 @@ function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
 
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-      <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-3">
-        <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        {t("equipments.devices")}
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
+          <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
+          {t("equipments.devices")}
+        </h3>
+        <button
+          onClick={onChangeDevice}
+          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+        >
+          <RefreshCw size={11} strokeWidth={1.5} />
+          {t("equipments.changeDevice")}
+        </button>
+      </div>
       <div className="space-y-2">
         {devices.map((dev) => (
           <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
@@ -424,6 +459,87 @@ function DevicesSection({ equipment }: { equipment: EquipmentWithDetails }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** Modal to select new devices and replace all bindings. */
+function ChangeDeviceModal({
+  equipment,
+  onDone,
+  onClose,
+}: {
+  equipment: EquipmentWithDetails;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    if (selectedDeviceIds.length === 0 || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      // Remove all existing bindings
+      await removeAllBindings(equipment.id, equipment.dataBindings, equipment.orderBindings);
+      // Create new bindings from selected devices
+      await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type);
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-light flex-shrink-0">
+          <h2 className="text-[16px] font-semibold text-text">{t("equipments.changeDevice")}</h2>
+          <button onClick={onClose} className="text-text-tertiary hover:text-text-secondary transition-colors">
+            <X size={18} strokeWidth={1.5} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto flex-1">
+          <p className="text-[13px] text-text-secondary mb-4">
+            {t("equipments.changeDeviceDescription")}
+          </p>
+          <DeviceSelector
+            equipmentType={equipment.type}
+            selectedDeviceIds={selectedDeviceIds}
+            onSelectionChange={setSelectedDeviceIds}
+          />
+          {error && <p className="text-[13px] text-error mt-3">{error}</p>}
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-border-light flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={selectedDeviceIds.length === 0 || saving}
+            className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? t("common.saving") : t("common.save")}
+          </button>
+        </div>
       </div>
     </div>
   );

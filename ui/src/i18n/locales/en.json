@@ -146,6 +146,8 @@
   "equipments.orderBindings": "Order Bindings",
   "equipments.noDevice": "No device associated.",
   "equipments.noBindings": "No bindings",
+  "equipments.changeDevice": "Change device",
+  "equipments.changeDeviceDescription": "Select new device(s) to bind. Existing bindings will be replaced.",
   "equipments.count_one": "{{count}} equipment",
   "equipments.count_other": "{{count}} equipments",
   "equipments.form.type": "Type",
