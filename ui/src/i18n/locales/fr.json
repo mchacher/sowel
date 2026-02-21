@@ -239,6 +239,8 @@
   "time.day": "j",
   "time.second": "s",
 
+  "behaviors.title": "Comportements",
+
   "recipes.title": "Recettes",
   "recipes.addRecipe": "Ajouter une recette",
   "recipes.chooseRecipe": "Choisir une recette",

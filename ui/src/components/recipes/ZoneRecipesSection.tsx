@@ -33,11 +33,11 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
 
   return (
     <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-light">
-        <span className="text-text-tertiary">
+      <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/8">
+        <span className="text-accent">
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
-        <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
+        <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
           {t("recipes.title")}
         </span>
         <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
@@ -61,13 +61,11 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
       )}
 
       {zoneInstances.length === 0 && !showForm && (
-        <div className="px-4 py-6 text-center">
-          <p className="text-[13px] text-text-tertiary">
-            {t("recipes.noActiveRecipes", { name: zoneName })}
-          </p>
+        <div className="flex items-center justify-center gap-2 px-4 py-3 text-[12px] text-text-tertiary">
+          <span>{t("recipes.noActiveRecipes", { name: zoneName })}</span>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-2 text-[13px] text-primary hover:text-primary-hover transition-colors duration-150"
+            className="text-primary hover:text-primary-hover transition-colors duration-150"
           >
             {t("recipes.addRecipe")}
           </button>

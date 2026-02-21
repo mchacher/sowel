@@ -13,13 +13,15 @@ interface EquipmentGroup {
   labelKey: string;
   types: EquipmentType[];
   icon: React.ReactNode;
+  headerBg: string;
+  iconColor: string;
 }
 
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} />, headerBg: "bg-amber-400/8", iconColor: "text-amber-500" },
+  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
+  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-info/6", iconColor: "text-info" },
+  { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
 ];
 
 interface ZoneEquipmentsViewProps {
@@ -46,12 +48,12 @@ export function ZoneEquipmentsView({
   })).filter((g) => g.equipments.length > 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {grouped.map((group) => (
         <div key={group.labelKey} className="rounded-[10px] border border-border bg-surface overflow-hidden">
-          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-light">
-            <span className="text-text-tertiary">{group.icon}</span>
-            <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider">
+          <div className={`flex items-center gap-1.5 px-3 py-1 ${group.headerBg}`}>
+            <span className={group.iconColor}>{group.icon}</span>
+            <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
               {t(group.labelKey)}
             </span>
             <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
