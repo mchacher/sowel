@@ -18,68 +18,70 @@ interface ZoneAggregationPillsProps {
   data: ZoneAggregatedData;
 }
 
+interface StatusItem {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  alert?: boolean;
+}
+
 export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
   const { t } = useTranslation();
-  const pills: React.ReactNode[] = [];
+  const items: StatusItem[] = [];
   const duration = useRelativeTime(data.motionSince, t);
 
   // Temperature
   if (data.temperature !== null) {
-    pills.push(
-      <Pill key="temp" icon={<Thermometer size={12} strokeWidth={1.5} />} color="text-primary">
-        {data.temperature}°C
-      </Pill>,
-    );
+    items.push({
+      key: "temp",
+      icon: <Thermometer size={14} strokeWidth={1.5} />,
+      label: `${data.temperature}°C`,
+      color: "text-primary",
+    });
   }
 
   // Humidity
   if (data.humidity !== null) {
-    pills.push(
-      <Pill key="hum" icon={<Droplets size={12} strokeWidth={1.5} />} color="text-primary">
-        {data.humidity}%
-      </Pill>,
-    );
+    items.push({
+      key: "hum",
+      icon: <Droplets size={14} strokeWidth={1.5} />,
+      label: `${data.humidity}%`,
+      color: "text-primary",
+    });
   }
 
   // Luminosity
   if (data.luminosity !== null) {
-    pills.push(
-      <Pill key="lux" icon={<Sun size={12} strokeWidth={1.5} />} color="text-primary">
-        {data.luminosity} lx
-      </Pill>,
-    );
+    items.push({
+      key: "lux",
+      icon: <Sun size={14} strokeWidth={1.5} />,
+      label: `${data.luminosity} lx`,
+      color: "text-primary",
+    });
   }
 
-  // Motion (shown when zone has motion sensors)
+  // Motion
   if (data.motionSensors > 0) {
     const label = data.motion ? t("aggregation.motion") : t("aggregation.calm");
     const suffix = duration ? ` · ${duration}` : "";
-    pills.push(
-      data.motion ? (
-        <Pill key="motion" icon={<PersonStanding size={12} strokeWidth={1.5} />} color="text-amber-500" active>
-          {label}{suffix}
-        </Pill>
-      ) : (
-        <Pill key="motion" icon={<PersonStanding size={12} strokeWidth={1.5} />} color="text-text-tertiary">
-          {label}{suffix}
-        </Pill>
-      ),
-    );
+    items.push({
+      key: "motion",
+      icon: <PersonStanding size={14} strokeWidth={1.5} />,
+      label: `${label}${suffix}`,
+      color: data.motion ? "text-amber-500" : "text-text-tertiary",
+    });
   }
 
   // Lights
   if (data.lightsTotal > 0) {
     const isOn = data.lightsOn > 0;
-    pills.push(
-      <Pill
-        key="lights"
-        icon={<Lightbulb size={12} strokeWidth={1.5} />}
-        color={isOn ? "text-amber-500" : "text-text-tertiary"}
-        active={isOn}
-      >
-        {data.lightsOn}/{data.lightsTotal}
-      </Pill>,
-    );
+    items.push({
+      key: "lights",
+      icon: <Lightbulb size={14} strokeWidth={1.5} />,
+      label: `${data.lightsOn}/${data.lightsTotal}`,
+      color: isOn ? "text-amber-500" : "text-text-tertiary",
+    });
   }
 
   // Shutters
@@ -89,58 +91,78 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
     const positionSuffix = pos !== null
       ? ` · ${pos === 0 ? "Fermé" : pos === 100 ? "Ouvert" : `${pos}%`}`
       : "";
-    pills.push(
-      <Pill
-        key="shutters"
-        icon={<ArrowUpDown size={12} strokeWidth={1.5} />}
-        color={someOpen ? "text-primary" : "text-text-tertiary"}
-      >
-        {data.shuttersOpen}/{data.shuttersTotal}{positionSuffix}
-      </Pill>,
-    );
+    items.push({
+      key: "shutters",
+      icon: <ArrowUpDown size={14} strokeWidth={1.5} />,
+      label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}`,
+      color: someOpen ? "text-primary" : "text-text-tertiary",
+    });
   }
 
   // Open doors
   if (data.openDoors > 0) {
-    pills.push(
-      <Pill key="doors" icon={<DoorOpen size={12} strokeWidth={1.5} />} color="text-amber-500" active>
-        {t("aggregation.open", { count: data.openDoors })}
-      </Pill>,
-    );
+    items.push({
+      key: "doors",
+      icon: <DoorOpen size={14} strokeWidth={1.5} />,
+      label: t("aggregation.open", { count: data.openDoors }),
+      color: "text-amber-500",
+    });
   }
 
   // Open windows
   if (data.openWindows > 0) {
-    pills.push(
-      <Pill key="windows" icon={<SquareStack size={12} strokeWidth={1.5} />} color="text-amber-500" active>
-        {t("aggregation.open", { count: data.openWindows })}
-      </Pill>,
-    );
+    items.push({
+      key: "windows",
+      icon: <SquareStack size={14} strokeWidth={1.5} />,
+      label: t("aggregation.open", { count: data.openWindows }),
+      color: "text-amber-500",
+    });
   }
 
   // Water leak alert
   if (data.waterLeak) {
-    pills.push(
-      <Pill key="water" icon={<Droplet size={12} strokeWidth={1.5} />} color="text-error" alert>
-        {t("aggregation.waterLeak")}
-      </Pill>,
-    );
+    items.push({
+      key: "water",
+      icon: <Droplet size={14} strokeWidth={1.5} />,
+      label: t("aggregation.waterLeak"),
+      color: "text-error",
+      alert: true,
+    });
   }
 
   // Smoke alert
   if (data.smoke) {
-    pills.push(
-      <Pill key="smoke" icon={<Flame size={12} strokeWidth={1.5} />} color="text-error" alert>
-        {t("aggregation.smoke")}
-      </Pill>,
-    );
+    items.push({
+      key: "smoke",
+      icon: <Flame size={14} strokeWidth={1.5} />,
+      label: t("aggregation.smoke"),
+      color: "text-error",
+      alert: true,
+    });
   }
 
-  if (pills.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {pills}
+    <div className="flex items-center rounded-[8px] border border-border bg-surface px-1 py-1 overflow-x-auto">
+      {items.map((item, index) => (
+        <div key={item.key} className="flex items-center">
+          {index > 0 && (
+            <div className="w-px h-4 bg-border mx-1 flex-shrink-0" />
+          )}
+          <div
+            className={`
+              flex items-center gap-1.5 px-2 py-0.5 rounded-[5px]
+              text-[13px] font-medium tabular-nums whitespace-nowrap
+              ${item.color}
+              ${item.alert ? "bg-error/8" : ""}
+            `}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -175,37 +197,4 @@ function formatDuration(since: string, t: (key: string) => string): string | nul
   }
   const days = Math.floor(hours / 24);
   return `${days}${t("time.day")}`;
-}
-
-// ============================================================
-// Pill component
-// ============================================================
-
-interface PillProps {
-  icon: React.ReactNode;
-  color: string;
-  active?: boolean;
-  alert?: boolean;
-  children: React.ReactNode;
-}
-
-function Pill({ icon, color, active, alert, children }: PillProps) {
-  const bg = alert
-    ? "bg-error/10"
-    : active
-      ? "bg-amber-400/10"
-      : "bg-border-light/60";
-
-  return (
-    <span
-      className={`
-        inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-        text-[12px] font-medium tabular-nums
-        ${bg} ${color}
-      `}
-    >
-      {icon}
-      {children}
-    </span>
-  );
 }
