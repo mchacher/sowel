@@ -158,7 +158,7 @@ describe("DeviceManager", () => {
       }
     });
 
-    it("does not emit event if value unchanged", () => {
+    it("emits event even if value unchanged (keeps last_updated fresh)", () => {
       manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
       manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
       events.length = 0;
@@ -166,7 +166,7 @@ describe("DeviceManager", () => {
       manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
 
       const dataEvents = events.filter((e) => e.type === "device.data.updated");
-      expect(dataEvents).toHaveLength(0);
+      expect(dataEvents).toHaveLength(1);
     });
 
     it("marks device as online when receiving data", () => {
