@@ -146,6 +146,8 @@
   "equipments.orderBindings": "Liaisons commandes",
   "equipments.noDevice": "Aucun appareil associé.",
   "equipments.noBindings": "Aucune liaison",
+  "equipments.changeDevice": "Changer d'appareil",
+  "equipments.changeDeviceDescription": "Sélectionnez le(s) nouvel(s) appareil(s) à associer. Les liaisons existantes seront remplacées.",
   "equipments.count_one": "{{count}} équipement",
   "equipments.count_other": "{{count}} équipements",
   "equipments.form.type": "Type",
@@ -162,6 +164,7 @@
   "equipments.type.shutter": "Volet",
   "equipments.type.sensor": "Capteur",
   "equipments.type.switch": "Interrupteur / Prise",
+  "equipments.type.button": "Bouton / Télécommande",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",

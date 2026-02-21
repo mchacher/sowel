@@ -3,7 +3,9 @@
  */
 export function formatTime(iso: string | null): string {
   if (!iso) return "—";
-  const date = new Date(iso);
+  // SQLite timestamps lack timezone suffix — treat as UTC
+  const normalized = iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`;
+  const date = new Date(normalized);
   return date.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -19,7 +21,9 @@ export function formatTime(iso: string | null): string {
 export function formatRelativeTime(iso: string | null): string {
   if (!iso) return "—";
 
-  const date = new Date(iso);
+  // SQLite timestamps lack timezone suffix — treat as UTC
+  const normalized = iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`;
+  const date = new Date(normalized);
   const now = Date.now();
   const diffMs = now - date.getTime();
 
