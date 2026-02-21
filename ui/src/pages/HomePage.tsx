@@ -6,7 +6,7 @@ import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
 import { useZoneAggregation } from "../store/useZoneAggregation";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
-import { ZoneAggregationHeader } from "../components/home/ZoneAggregationHeader";
+import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import type { ZoneWithChildren } from "../types";
 
@@ -92,26 +92,27 @@ export function HomePage() {
             ? t("equipments.noEquipments")
             : t("equipments.count", { count: zoneEquipments.length })}
         </p>
+        {/* Aggregation pills inline */}
+        {zoneId && aggregationData[zoneId] && (
+          <ZoneAggregationPills data={aggregationData[zoneId]} />
+        )}
       </div>
 
-      {/* Aggregated zone data */}
-      {zoneId && aggregationData[zoneId] && (
-        <ZoneAggregationHeader data={aggregationData[zoneId]} />
-      )}
-
-      {/* Equipments grouped by type */}
-      <ZoneEquipmentsView
-        zoneName={currentZone.name}
-        equipments={zoneEquipments}
-        onExecuteOrder={executeOrder}
-      />
-
-      {/* Recipes for this zone */}
-      {zoneId && (
-        <div className="mt-4">
-          <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
+      {/* Two-column layout: Equipments (left) + Recipes (right) */}
+      <div className="flex flex-col sm:flex-row sm:gap-4 sm:items-start">
+        <div className="flex-1 min-w-0">
+          <ZoneEquipmentsView
+            zoneName={currentZone.name}
+            equipments={zoneEquipments}
+            onExecuteOrder={executeOrder}
+          />
         </div>
-      )}
+        {zoneId && (
+          <div className="mt-4 sm:mt-0 w-full sm:w-[280px] sm:flex-shrink-0">
+            <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

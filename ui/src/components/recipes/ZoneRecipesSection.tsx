@@ -61,13 +61,11 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
       )}
 
       {zoneInstances.length === 0 && !showForm && (
-        <div className="px-4 py-6 text-center">
-          <p className="text-[13px] text-text-tertiary">
-            {t("recipes.noActiveRecipes", { name: zoneName })}
-          </p>
+        <div className="flex items-center justify-center gap-2 px-4 py-3 text-[12px] text-text-tertiary">
+          <span>{t("recipes.noActiveRecipes", { name: zoneName })}</span>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-2 text-[13px] text-primary hover:text-primary-hover transition-colors duration-150"
+            className="text-primary hover:text-primary-hover transition-colors duration-150"
           >
             {t("recipes.addRecipe")}
           </button>
