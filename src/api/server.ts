@@ -1,5 +1,8 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import type { Logger } from "../core/logger.js";
 import type { DeviceManager } from "../devices/device-manager.js";
@@ -76,6 +79,23 @@ export async function createServer(deps: ServerDeps) {
   registerBackupRoutes(app, { db, logger });
   registerSettingsRoutes(app, { settingsManager, mqttConnector, logger });
   registerWebSocket(app, { eventBus, authService, logger });
+
+  // Serve UI static files (production: ui/dist is copied alongside dist/)
+  const uiDir = resolve(import.meta.dirname ?? ".", "../ui-dist");
+  if (existsSync(uiDir)) {
+    await app.register(fastifyStatic, {
+      root: uiDir,
+      prefix: "/",
+      wildcard: false,
+    });
+
+    // SPA fallback: serve index.html for non-API routes
+    app.setNotFoundHandler((_req, reply) => {
+      reply.sendFile("index.html");
+    });
+
+    logger.info(`Serving UI from ${uiDir}`);
+  }
 
   return app;
 }
