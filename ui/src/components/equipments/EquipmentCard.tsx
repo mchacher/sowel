@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
@@ -8,23 +7,13 @@ import {
   ArrowUpDown,
   Gauge,
   ToggleLeft,
-  ChevronUp,
-  Square,
-  ChevronDown,
+  CircleDot,
 } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
-import {
-  getSensorIcon,
-  getSensorIconColor,
-  getSensorBindings,
-  getBatteryBinding,
-  getBatteryIcon,
-  getBatteryColor,
-  formatSensorValue,
-  isBooleanSensorCategory,
-  formatBooleanSensor,
-} from "./sensorUtils";
+import { SensorValues } from "./SensorValues";
+import { ShutterControls } from "./ShutterControls";
+import { useEquipmentState } from "./useEquipmentState";
 
 const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   light_onoff: <Lightbulb size={18} strokeWidth={1.5} />,
@@ -33,6 +22,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   shutter: <ArrowUpDown size={18} strokeWidth={1.5} />,
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
   sensor: <Gauge size={18} strokeWidth={1.5} />,
+  button: <CircleDot size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -42,6 +32,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   shutter: "equipments.type.shutter",
   switch: "equipments.type.switch",
   sensor: "equipments.type.sensor",
+  button: "equipments.type.button",
 };
 
 interface EquipmentCardProps {
@@ -51,62 +42,18 @@ interface EquipmentCardProps {
 
 export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps) {
   const { t } = useTranslation();
-  const [executing, setExecuting] = useState(false);
-
-  const isLight = equipment.type === "light_onoff" || equipment.type === "light_dimmable" || equipment.type === "light_color";
-  const isShutter = equipment.type === "shutter";
-  const isSensor = equipment.type === "sensor";
-
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state"
-  );
-  const isOn = stateBinding
-    ? stateBinding.value === true || stateBinding.value === "ON"
-    : false;
-
-  // Shutter-specific data
-  const shutterPositionBinding = isShutter
-    ? equipment.dataBindings.find((db) => db.category === "shutter_position")
-    : null;
-  const shutterPosition = shutterPositionBinding && typeof shutterPositionBinding.value === "number"
-    ? shutterPositionBinding.value
-    : null;
-  const hasShutterState = isShutter && equipment.orderBindings.some((ob) => ob.alias === "state");
-  const shutterIsOpen = shutterPosition !== null && shutterPosition > 0;
-
-  // Dynamic icon for sensors
-  const iconElement = isSensor
-    ? getSensorIcon(equipment.dataBindings)
-    : TYPE_ICONS[equipment.type];
-
-  const iconColor = isSensor
-    ? getSensorIconColor(equipment.dataBindings)
-    : isShutter
-      ? shutterIsOpen
-        ? "bg-primary/10 text-primary"
-        : "bg-border-light text-text-tertiary"
-      : isLight && isOn
-        ? "bg-amber-400/15 text-amber-500"
-        : isOn
-          ? "bg-primary/10 text-primary"
-          : "bg-border-light text-text-tertiary";
-
-  const handleShutterCommand = async (command: "OPEN" | "STOP" | "CLOSE", e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (executing || !hasShutterState) return;
-    setExecuting(true);
-    try {
-      await onExecuteOrder(equipment.id, "state", command);
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  // Sensor bindings for inline values
-  const sensorBindings = isSensor ? getSensorBindings(equipment.dataBindings) : [];
-  const batteryBinding = isSensor ? getBatteryBinding(equipment.dataBindings) : null;
-  const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
+  const {
+    isLight,
+    isShutter,
+    isSensor,
+    iconElement,
+    iconColor,
+    shutterPosition,
+    hasShutterState,
+    sensorBindings,
+    batteryBinding,
+    batteryLevel,
+  } = useEquipmentState(equipment);
 
   return (
     <div
@@ -136,39 +83,13 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         </div>
       </Link>
 
-      {/* Sensor values */}
-      {isSensor && sensorBindings.length > 0 && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {sensorBindings.map((b) => (
-            <span key={b.id} className="text-[13px] tabular-nums">
-              {isBooleanSensorCategory(b.category) ? (
-                <span
-                  className={`
-                    font-medium px-2 py-0.5 rounded-full text-[11px]
-                    ${isBooleanActive(b.category, b.value)
-                      ? "bg-amber-400/15 text-amber-500"
-                      : "bg-border-light text-text-tertiary"
-                    }
-                  `}
-                >
-                  {formatBooleanSensor(b.category, b.value, t)}
-                </span>
-              ) : (
-                <span className="text-text-secondary">
-                  {formatSensorValue(b.value, b.unit, t)}
-                </span>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Battery indicator for sensors */}
-      {isSensor && batteryBinding && (
-        <span className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`} title={`${t("sensors.battery")} : ${batteryLevel ?? "?"}%`}>
-          {getBatteryIcon(batteryLevel, 14, 1.5)}
-          <span className="text-[11px] tabular-nums">{batteryLevel !== null ? `${batteryLevel}%` : "?"}</span>
-        </span>
+      {/* Sensor / Button values */}
+      {isSensor && (
+        <SensorValues
+          sensorBindings={sensorBindings}
+          batteryBinding={batteryBinding}
+          batteryLevel={batteryLevel}
+        />
       )}
 
       {/* Light quick control */}
@@ -182,55 +103,14 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
       {/* Shutter quick control */}
       {isShutter && equipment.enabled && (
-        <div
-          className="flex items-center gap-2 flex-shrink-0"
-          onClick={(e) => e.preventDefault()}
-        >
-          {shutterPosition !== null && (
-            <span className="text-[13px] text-text-secondary tabular-nums text-right">
-              {shutterPosition === 0 ? t("controls.closed") : shutterPosition === 100 ? t("controls.opened") : `${shutterPosition}%`}
-            </span>
-          )}
-          {hasShutterState && (
-            <>
-              <div className="w-px h-5 bg-border" />
-              <button
-                onClick={(e) => handleShutterCommand("OPEN", e)}
-                disabled={executing}
-                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t("controls.open")}
-              >
-                <ChevronUp size={14} strokeWidth={1.5} />
-              </button>
-              <button
-                onClick={(e) => handleShutterCommand("STOP", e)}
-                disabled={executing}
-                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t("controls.stop")}
-              >
-                <Square size={10} strokeWidth={2} />
-              </button>
-              <button
-                onClick={(e) => handleShutterCommand("CLOSE", e)}
-                disabled={executing}
-                className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={t("controls.close")}
-              >
-                <ChevronDown size={14} strokeWidth={1.5} />
-              </button>
-            </>
-          )}
-        </div>
+        <ShutterControls
+          shutterPosition={shutterPosition}
+          hasShutterState={hasShutterState}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+        />
       )}
     </div>
   );
-}
-
-function isBooleanActive(category: string, value: unknown): boolean {
-  if (category === "contact_door" || category === "contact_window") {
-    return value === false || value === "OFF";
-  }
-  return value === true || value === "ON";
 }
 
 export { TYPE_ICONS, TYPE_LABELS };

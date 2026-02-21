@@ -19,7 +19,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.other", types: ["switch"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
 ];
 
 interface ZoneEquipmentsViewProps {

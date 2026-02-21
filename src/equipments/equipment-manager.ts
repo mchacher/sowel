@@ -21,7 +21,7 @@ import type {
 // ============================================================
 
 const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
-  "light_onoff", "light_dimmable", "light_color", "shutter", "switch", "sensor",
+  "light_onoff", "light_dimmable", "light_color", "shutter", "switch", "sensor", "button",
 ]);
 
 // ============================================================

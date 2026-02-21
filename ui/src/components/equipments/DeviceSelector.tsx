@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Radio, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Radio, Check, ChevronDown, ChevronUp, Search } from "lucide-react";
 import type { DataCategory, EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
 
@@ -11,7 +11,8 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   light_color: ["light_state", "light_brightness", "light_color"],
   shutter: ["shutter_position"],
   switch: ["light_state"],
-  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "action"],
+  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
+  button: ["action"],
 };
 
 interface DeviceSelectorProps {
@@ -33,6 +34,7 @@ export function DeviceSelector({
   const [loading, setLoading] = useState(true);
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -58,7 +60,11 @@ export function DeviceSelector({
       )
     : availableDevices;
 
-  const devices = showAll ? availableDevices : compatible;
+  const baseDevices = showAll ? availableDevices : compatible;
+  const filterLower = filter.toLowerCase();
+  const devices = filterLower
+    ? baseDevices.filter((d) => d.name.toLowerCase().includes(filterLower))
+    : baseDevices;
 
   const toggleDevice = (deviceId: string) => {
     if (selectedDeviceIds.includes(deviceId)) {
@@ -97,6 +103,18 @@ export function DeviceSelector({
           </button>
         </div>
       )}
+
+      {/* Filter by name */}
+      <div className="relative mb-2">
+        <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={t("devices.filterPlaceholder")}
+          className="w-full pl-8 pr-3 py-1.5 text-[12px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+        />
+      </div>
 
       {devices.length === 0 ? (
         <p className="text-[13px] text-text-tertiary py-4">
