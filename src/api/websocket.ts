@@ -57,6 +57,8 @@ function getDedupKey(event: EngineEvent): string | null {
       return `d:${event.deviceId}:${event.key}`;
     case "device.status_changed":
       return `ds:${event.deviceId}`;
+    case "device.heartbeat":
+      return `dh:${event.deviceId}`;
     case "equipment.data.changed":
       return `e:${event.equipmentId}:${event.alias}`;
     case "zone.data.changed":

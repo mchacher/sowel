@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { getEquipment } from "../api";
@@ -36,7 +37,7 @@ import type { EquipmentWithDetails } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentDetailPage() {
-  useWsSubscription(["equipments"]);
+  useWsSubscription(["equipments", "devices"]);
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -398,6 +399,7 @@ export function EquipmentDetailPage() {
 /** Group bindings by device and show a summary card per device. */
 function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWithDetails; onChangeDevice: () => void }) {
   const { t } = useTranslation();
+  const devicesStore = useDevices((s) => s.devices);
   // Collect unique devices from all bindings
   const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[] }>();
 
@@ -457,19 +459,27 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
         </button>
       </div>
       <div className="space-y-2">
-        {devices.map((dev) => (
-          <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
-            <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
+        {devices.map((dev) => {
+          const storeDevice = devicesStore[dev.deviceId];
+          const lastSeen = storeDevice?.lastSeen ?? null;
+          return (
+            <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
+              <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
+                <div className="flex items-center gap-1 text-[11px] text-text-tertiary mt-0.5">
+                  <Clock size={10} strokeWidth={1.5} />
+                  <span>{formatRelativeTime(lastSeen)}</span>
+                </div>
+              </div>
+              <span className="text-[11px] text-text-tertiary flex-shrink-0">
+                {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
+                {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
+                {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
+              </span>
             </div>
-            <span className="text-[11px] text-text-tertiary flex-shrink-0">
-              {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
-              {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
-              {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

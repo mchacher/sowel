@@ -23,6 +23,7 @@ interface DevicesState {
     value: unknown,
     timestamp: string
   ) => void;
+  updateDeviceHeartbeat: (deviceId: string, timestamp: string) => void;
   updateDeviceName: (deviceId: string, name: string) => Promise<void>;
 }
 
@@ -101,6 +102,16 @@ export const useDevices = create<DevicesState>((set, get) => ({
         : state.devices;
 
       return { devices, deviceData: { ...state.deviceData, [deviceId]: updated } };
+    });
+  },
+
+  updateDeviceHeartbeat: (deviceId, timestamp) => {
+    set((state) => {
+      const device = state.devices[deviceId];
+      if (!device) return state;
+      return {
+        devices: { ...state.devices, [deviceId]: { ...device, lastSeen: timestamp } },
+      };
     });
   },
 
