@@ -150,7 +150,7 @@ export function DeviceDetailPage() {
 
       {/* Info bar */}
       <div className="flex flex-wrap gap-4 mb-8 p-4 bg-surface rounded-[10px] border border-border">
-        <InfoItem label={t("devices.mqttName")} value={device.mqttName} mono />
+        <InfoItem label={t("devices.sourceId")} value={device.sourceDeviceId} mono />
         {!!device.ieeeAddress && (
           <InfoItem label={t("devices.ieeeAddress")} value={device.ieeeAddress} mono />
         )}
@@ -276,7 +276,7 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
             </td>
             <td className="py-2.5 px-3">
               <span className="font-mono text-[11px] text-text-tertiary truncate block max-w-[200px]">
-                {order.mqttSetTopic}
+                {(order.dispatchConfig?.topic as string) ?? "—"}
               </span>
             </td>
           </tr>

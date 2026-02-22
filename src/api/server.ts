@@ -10,7 +10,7 @@ import type { ZoneManager } from "../zones/zone-manager.js";
 import type { ZoneAggregator } from "../zones/zone-aggregator.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { EventBus } from "../core/event-bus.js";
-import type { MqttConnector } from "../mqtt/mqtt-connector.js";
+import type { IntegrationRegistry } from "../integrations/integration-registry.js";
 import type Database from "better-sqlite3";
 import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { ModeManager } from "../modes/mode-manager.js";
@@ -31,6 +31,7 @@ import { registerBackupRoutes } from "./routes/backup.js";
 import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerModeRoutes } from "./routes/modes.js";
 import { registerCalendarRoutes } from "./routes/calendar.js";
+import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -46,7 +47,7 @@ interface ServerDeps {
   authService: AuthService;
   settingsManager: SettingsManager;
   eventBus: EventBus;
-  mqttConnector: MqttConnector;
+  integrationRegistry: IntegrationRegistry;
   logger: Logger;
   corsOrigins: string[];
 }
@@ -65,7 +66,7 @@ export async function createServer(deps: ServerDeps) {
     authService,
     settingsManager,
     eventBus,
-    mqttConnector,
+    integrationRegistry,
     logger,
     corsOrigins,
   } = deps;
@@ -87,7 +88,7 @@ export async function createServer(deps: ServerDeps) {
   registerAuthMiddleware(app, { authService, userManager, logger });
 
   // Register routes
-  registerHealthRoutes(app, { deviceManager, mqttConnector, logger });
+  registerHealthRoutes(app, { deviceManager, integrationRegistry, logger });
   registerAuthRoutes(app, { authService, userManager, logger });
   registerMeRoutes(app, { authService, userManager, logger });
   registerUserRoutes(app, { userManager, logger });
@@ -98,7 +99,8 @@ export async function createServer(deps: ServerDeps) {
   registerModeRoutes(app, { modeManager, logger });
   registerCalendarRoutes(app, { calendarManager, logger });
   registerBackupRoutes(app, { db, logger });
-  registerSettingsRoutes(app, { settingsManager, mqttConnector, logger });
+  registerSettingsRoutes(app, { settingsManager, logger });
+  registerIntegrationRoutes(app, { integrationRegistry, settingsManager, logger });
   registerWebSocket(app, { eventBus, authService, logger });
 
   // Serve UI static files (production: ui/dist is copied alongside dist/)

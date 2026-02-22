@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { ZoneManager } from "../zones/zone-manager.js";
 import { ZoneAggregator } from "../zones/zone-aggregator.js";
 import { EquipmentManager } from "../equipments/equipment-manager.js";
+import { DeviceManager } from "../devices/device-manager.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import { RecipeManager } from "./engine/recipe-manager.js";
@@ -18,7 +19,14 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  const migrations = ["001_devices.sql", "002_zones.sql", "003_equipments.sql", "005_recipes.sql"];
+  const migrations = [
+    "001_devices.sql",
+    "002_zones.sql",
+    "003_equipments.sql",
+    "005_recipes.sql",
+    "007_settings.sql",
+    "011_integration_architecture.sql",
+  ];
   for (const file of migrations) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", "../../migrations", file),
@@ -42,9 +50,9 @@ function seedDevice(
   const deviceId = crypto.randomUUID();
   const name = opts.name ?? "Test Device";
   db.prepare(
-    `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status)
-     VALUES (?, ?, ?, ?, 'zigbee2mqtt', 'online')`,
-  ).run(deviceId, `z2m/${name}`, name, name);
+    `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
+     VALUES (?, ?, ?, ?, 'zigbee2mqtt', 'online', 'zigbee2mqtt', ?)`,
+  ).run(deviceId, `z2m/${name}`, name, name, name);
 
   const dataIds: string[] = [];
   for (const d of opts.dataKeys ?? []) {
@@ -60,9 +68,17 @@ function seedDevice(
   for (const o of opts.orderKeys ?? []) {
     const id = o.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, deviceId, o.key, o.type ?? "boolean", `z2m/${name}/set`, o.payloadKey ?? o.key);
+      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key, dispatch_config)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      deviceId,
+      o.key,
+      o.type ?? "boolean",
+      `z2m/${name}/set`,
+      o.payloadKey ?? o.key,
+      JSON.stringify({ topic: `z2m/${name}/set`, payloadKey: o.payloadKey ?? o.key }),
+    );
     orderIds.push(id);
   }
 
@@ -92,13 +108,31 @@ function createTestSetup(): TestSetup {
   const db = createTestDb();
   const eventBus = new EventBus(logger);
   const published: Array<{ topic: string; payload: string }> = [];
-  const mockMqtt = {
-    publish: (topic: string, payload: string) => published.push({ topic, payload }),
-    isConnected: () => true,
+  const mockIntegrationRegistry = {
+    getById: (id: string) => ({
+      id,
+      getStatus: () => "connected" as const,
+      executeOrder: async (
+        _device: any,
+        dispatchConfig: Record<string, unknown>,
+        value: unknown,
+      ) => {
+        const topic = dispatchConfig.topic as string;
+        const payloadKey = dispatchConfig.payloadKey as string;
+        published.push({ topic, payload: JSON.stringify({ [payloadKey]: value }) });
+      },
+    }),
   };
 
   const zoneManager = new ZoneManager(db, eventBus, logger);
-  const equipmentManager = new EquipmentManager(db, eventBus, mockMqtt as never, logger);
+  const deviceManager = new DeviceManager(db, eventBus, logger);
+  const equipmentManager = new EquipmentManager(
+    db,
+    eventBus,
+    mockIntegrationRegistry as any,
+    deviceManager,
+    logger,
+  );
   const aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
   const manager = new RecipeManager(
     db,

@@ -64,7 +64,7 @@ export function registerDeviceRoutes(app: FastifyInstance, deps: DevicesDeps): v
     return {
       deviceId: device.id,
       name: device.name,
-      mqttName: device.mqttName,
+      sourceDeviceId: device.sourceDeviceId,
       expose: rawExpose,
     };
   });
