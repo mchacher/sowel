@@ -159,7 +159,7 @@ export class MczBridge {
 
       this.logger.info("Requesting MCZ status (C|RecuperoInfo)...");
       this.socket!.on("rispondo", handler);
-      this.socket!.emit("chiedo", "C|RecuperoInfo");
+      this.emitChiedo("C|RecuperoInfo", 1);
     });
   }
 
@@ -177,7 +177,7 @@ export class MczBridge {
         : `C|WriteParametri|${commandId}|${value}`;
 
     this.logger.debug({ commandId, value, message }, "Sending MCZ command");
-    this.socket.emit("chiedo", message);
+    this.emitChiedo(message, 1);
   }
 
   isConnected(): boolean {
@@ -194,6 +194,22 @@ export class MczBridge {
       serialNumber: this.serialNumber,
       macAddress: this.macAddress,
       type: "Android-App",
+    });
+    // Protocol requires RecuperoParametri after join before other commands
+    this.emitChiedo("RecuperoParametri", 0);
+  }
+
+  /**
+   * Emit a "chiedo" request with the required JSON payload format.
+   * tipoChiamata: 0 = parameter read, 1 = info/command
+   */
+  private emitChiedo(richiesta: string, tipoChiamata: number): void {
+    if (!this.socket) return;
+    this.socket.emit("chiedo", {
+      serialNumber: this.serialNumber,
+      macAddress: this.macAddress,
+      tipoChiamata,
+      richiesta,
     });
   }
 }
