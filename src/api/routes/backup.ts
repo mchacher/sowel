@@ -21,6 +21,11 @@ const BACKUP_TABLES = [
   "api_tokens",
   "recipe_instances",
   "recipe_state",
+  "modes",
+  "zone_mode_impacts",
+  "calendar_profiles",
+  "calendar_slots",
+  "button_action_bindings",
 ] as const;
 
 // Reverse order for deletion (children first)

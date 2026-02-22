@@ -18,6 +18,7 @@ import type { CalendarManager } from "../modes/calendar-manager.js";
 import type { UserManager } from "../auth/user-manager.js";
 import type { AuthService } from "../auth/auth-service.js";
 import type { SettingsManager } from "../core/settings-manager.js";
+import type { ButtonActionManager } from "../buttons/button-action-manager.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -32,6 +33,7 @@ import { registerSettingsRoutes } from "./routes/settings.js";
 import { registerModeRoutes } from "./routes/modes.js";
 import { registerCalendarRoutes } from "./routes/calendar.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
+import { registerButtonActionRoutes } from "./routes/button-actions.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -46,6 +48,7 @@ interface ServerDeps {
   userManager: UserManager;
   authService: AuthService;
   settingsManager: SettingsManager;
+  buttonActionManager: ButtonActionManager;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logger: Logger;
@@ -65,6 +68,7 @@ export async function createServer(deps: ServerDeps) {
     userManager,
     authService,
     settingsManager,
+    buttonActionManager,
     eventBus,
     integrationRegistry,
     logger,
@@ -101,6 +105,7 @@ export async function createServer(deps: ServerDeps) {
   registerBackupRoutes(app, { db, logger });
   registerSettingsRoutes(app, { settingsManager, logger });
   registerIntegrationRoutes(app, { integrationRegistry, settingsManager, logger });
+  registerButtonActionRoutes(app, { buttonActionManager, logger });
   registerWebSocket(app, { eventBus, authService, logger });
 
   // Serve UI static files (production: ui/dist is copied alongside dist/)
