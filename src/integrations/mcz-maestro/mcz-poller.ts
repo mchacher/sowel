@@ -22,7 +22,7 @@ import {
   COMMAND_ID,
 } from "./mcz-types.js";
 
-const DEFAULT_POLL_INTERVAL_MS = 30_000; // 30 seconds
+const DEFAULT_POLL_INTERVAL_MS = 300_000; // 5 minutes
 const DEFAULT_ON_DEMAND_DELAY_MS = 5_000; // 5 seconds
 
 export class MczPoller {
