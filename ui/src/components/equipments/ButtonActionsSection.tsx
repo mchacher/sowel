@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, Trash2, Plus } from "lucide-react";
 import { getButtonActionBindings, addButtonActionBinding, removeButtonActionBinding } from "../../api";
@@ -22,30 +22,35 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
 
   const [bindings, setBindings] = useState<ButtonActionBinding[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const mountedRef = useRef(true);
 
-  const fetchBindings = useCallback(async () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    getButtonActionBindings(equipmentId)
+      .then((data) => { if (mountedRef.current) setBindings(data); })
+      .catch(() => { if (mountedRef.current) setBindings([]); });
+    fetchModes();
+    return () => { mountedRef.current = false; };
+  }, [equipmentId, fetchModes]);
+
+  const refreshBindings = async () => {
     try {
       const data = await getButtonActionBindings(equipmentId);
       setBindings(data);
     } catch {
-      setBindings([]);
+      /* ignore */
     }
-  }, [equipmentId]);
-
-  useEffect(() => {
-    fetchBindings();
-    fetchModes();
-  }, [fetchBindings, fetchModes]);
+  };
 
   const handleRemove = async (bindingId: string) => {
     await removeButtonActionBinding(equipmentId, bindingId);
-    await fetchBindings();
+    await refreshBindings();
   };
 
   const handleAdd = async (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => {
     await addButtonActionBinding(equipmentId, data);
     setShowAddForm(false);
-    await fetchBindings();
+    await refreshBindings();
   };
 
   // Group bindings by action value

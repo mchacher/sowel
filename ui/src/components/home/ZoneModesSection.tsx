@@ -73,7 +73,6 @@ function ModeRow({
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [applying, setApplying] = useState(false);
-  const equipments = useEquipments((s) => s.equipments);
 
   const impact = mode.impacts.find((imp) => imp.zoneId === zoneId);
   const actionCount = impact?.actions.length ?? 0;
