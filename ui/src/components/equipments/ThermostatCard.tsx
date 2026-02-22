@@ -15,6 +15,7 @@ import {
   Crosshair,
   Moon,
   Armchair,
+  Flame,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -50,6 +51,16 @@ const MODE_COLORS: Record<string, string> = {
   comfort: "bg-orange-500/10 text-orange-500 border-orange-500/30",
 };
 
+/** Color classes for stove state badge */
+function stoveStateColor(state: string): string {
+  if (state === "off" || state === "standby") return "text-text-tertiary bg-border-light";
+  if (state.startsWith("running") || state === "auto_eco") return "text-success bg-success/10";
+  if (state.startsWith("ignition") || state === "checking" || state === "stabilizing") return "text-orange-500 bg-orange-500/10";
+  if (state === "extinguishing" || state === "cooling" || state.startsWith("cleaning")) return "text-blue-500 bg-blue-500/10";
+  if (state.startsWith("error")) return "text-error bg-error/10";
+  return "text-text-tertiary bg-border-light";
+}
+
 export function ThermostatCard({ equipment, onExecuteOrder, compact }: ThermostatCardProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
@@ -80,8 +91,10 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const outsideTempBinding = equipment.dataBindings.find((b) => b.alias === "outsideTemperature");
   const fanSpeedBinding = equipment.dataBindings.find((b) => b.alias === "fanSpeed");
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
+  const stoveStateBinding = equipment.dataBindings.find((b) => b.alias === "stoveState");
 
   const isOn = "power" in optimistic ? optimistic.power === true : powerBinding?.value === true;
+  const stoveState = typeof stoveStateBinding?.value === "string" ? stoveStateBinding.value : null;
   const modeAlias = modeBinding?.alias ?? "operationMode";
   const currentMode = modeAlias in optimistic
     ? (optimistic[modeAlias] as string | null)
@@ -178,6 +191,14 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
           </button>
         )}
       </div>
+
+      {/* Stove state badge */}
+      {stoveState && (
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-medium ${stoveStateColor(stoveState)}`}>
+          <Flame size={12} strokeWidth={1.5} />
+          {t(`stove.state.${stoveState}`, stoveState)}
+        </div>
+      )}
 
       {/* Target temperature control */}
       {targetTempOrder && (
