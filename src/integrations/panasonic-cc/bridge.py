@@ -96,19 +96,22 @@ async def open_session(email, password, token_file):
 async def cmd_login(args):
     """Login and verify credentials."""
     async with open_session(args.email, args.password, args.token_file) as client:
-        devices = await client.get_devices()
+        # get_devices() is sync — returns cached PanasonicDeviceInfo list
+        device_infos = client.get_devices()
         return {
             "ok": True,
-            "deviceCount": len(devices) if devices else 0,
+            "deviceCount": len(device_infos) if device_infos else 0,
         }
 
 
 async def cmd_get_devices(args):
     """Get all devices with current status."""
     async with open_session(args.email, args.password, args.token_file) as client:
-        devices = await client.get_devices()
+        device_infos = client.get_devices()
         result_devices = []
-        for dev in (devices or []):
+        for info in (device_infos or []):
+            # get_device() is async — fetches live parameters from cloud
+            dev = await client.get_device(info)
             device_data = format_device(dev)
             result_devices.append(device_data)
         return {"ok": True, "devices": result_devices}
@@ -117,27 +120,26 @@ async def cmd_get_devices(args):
 async def cmd_get_device(args):
     """Get single device status by guid."""
     async with open_session(args.email, args.password, args.token_file) as client:
-        devices = await client.get_devices()
-        target = None
-        for dev in (devices or []):
-            if dev.id == args.id or getattr(dev.info, 'guid', None) == args.id:
-                target = dev
+        device_infos = client.get_devices()
+        target_info = None
+        for info in (device_infos or []):
+            if info.id == args.id or info.guid == args.id:
+                target_info = info
                 break
-        if not target:
+        if not target_info:
             return {"ok": False, "error": f"Device {args.id} not found"}
-        refreshed = await client.get_device(target.info)
-        return {"ok": True, "device": format_device(refreshed)}
+        dev = await client.get_device(target_info)
+        return {"ok": True, "device": format_device(dev)}
 
 
 async def cmd_control(args):
     """Send a control command to a device."""
     async with open_session(args.email, args.password, args.token_file) as client:
-        # Find device by id/guid
-        devices = await client.get_devices()
+        device_infos = client.get_devices()
         target_info = None
-        for dev in (devices or []):
-            if dev.id == args.id or getattr(dev.info, 'guid', None) == args.id:
-                target_info = dev.info
+        for info in (device_infos or []):
+            if info.id == args.id or info.guid == args.id:
+                target_info = info
                 break
         if not target_info:
             return {"ok": False, "error": f"Device {args.id} not found"}
