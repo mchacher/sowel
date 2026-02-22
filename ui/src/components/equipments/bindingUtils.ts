@@ -27,7 +27,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   shutter: ["position", "state"],
   switch: ["state"],
   button: [],
-  thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe"],
+  thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
 };
 
 export function isRelevantData(category: string, equipmentType: string): boolean {

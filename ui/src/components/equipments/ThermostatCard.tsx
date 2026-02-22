@@ -13,6 +13,8 @@ import {
   Leaf,
   Thermometer,
   Crosshair,
+  Moon,
+  Armchair,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -23,19 +25,29 @@ interface ThermostatCardProps {
 }
 
 const MODE_ICONS: Record<string, React.ReactNode> = {
+  // HVAC modes (Panasonic, etc.)
   auto: <Zap size={14} strokeWidth={1.5} />,
   cool: <Snowflake size={14} strokeWidth={1.5} />,
   heat: <Sun size={14} strokeWidth={1.5} />,
   dry: <Droplets size={14} strokeWidth={1.5} />,
   fan: <Fan size={14} strokeWidth={1.5} />,
+  // Stove profiles (MCZ, etc.)
+  dynamic: <Zap size={14} strokeWidth={1.5} />,
+  overnight: <Moon size={14} strokeWidth={1.5} />,
+  comfort: <Armchair size={14} strokeWidth={1.5} />,
 };
 
 const MODE_COLORS: Record<string, string> = {
+  // HVAC modes
   auto: "bg-primary/10 text-primary border-primary/30",
   cool: "bg-blue-500/10 text-blue-500 border-blue-500/30",
   heat: "bg-orange-500/10 text-orange-500 border-orange-500/30",
   dry: "bg-teal-500/10 text-teal-500 border-teal-500/30",
   fan: "bg-gray-500/10 text-gray-500 border-gray-500/30",
+  // Stove profiles
+  dynamic: "bg-primary/10 text-primary border-primary/30",
+  overnight: "bg-indigo-500/10 text-indigo-500 border-indigo-500/30",
+  comfort: "bg-orange-500/10 text-orange-500 border-orange-500/30",
 };
 
 export function ThermostatCard({ equipment, onExecuteOrder, compact }: ThermostatCardProps) {
@@ -61,7 +73,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
 
   // Read data bindings (with optimistic overlay)
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
-  const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode");
+  const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode")
+    ?? equipment.dataBindings.find((b) => b.alias === "profile");
   const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "targetTemperature");
   const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "insideTemperature");
   const outsideTempBinding = equipment.dataBindings.find((b) => b.alias === "outsideTemperature");
@@ -69,8 +82,9 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
 
   const isOn = "power" in optimistic ? optimistic.power === true : powerBinding?.value === true;
-  const currentMode = "operationMode" in optimistic
-    ? (optimistic.operationMode as string | null)
+  const modeAlias = modeBinding?.alias ?? "operationMode";
+  const currentMode = modeAlias in optimistic
+    ? (optimistic[modeAlias] as string | null)
     : typeof modeBinding?.value === "string" ? modeBinding.value : null;
   const targetTemp = "targetTemperature" in optimistic
     ? (optimistic.targetTemperature as number | null)
@@ -80,11 +94,15 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const fanSpeed = "fanSpeed" in optimistic
     ? (optimistic.fanSpeed as string | null)
     : typeof fanSpeedBinding?.value === "string" ? fanSpeedBinding.value : null;
-  const ecoMode = typeof ecoModeBinding?.value === "string" ? ecoModeBinding.value : null;
+  const ecoModeRaw = ecoModeBinding?.value;
+  const ecoMode = typeof ecoModeRaw === "string" ? ecoModeRaw
+    : typeof ecoModeRaw === "boolean" ? (ecoModeRaw ? "on" : null)
+    : null;
 
   // Order bindings (available controls)
   const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
-  const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode");
+  const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode")
+    ?? equipment.orderBindings.find((o) => o.alias === "profile");
   const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "targetTemperature");
   const fanSpeedOrder = equipment.orderBindings.find((o) => o.alias === "fanSpeed");
 
@@ -196,8 +214,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             {availableModes.map((mode) => (
               <button
                 key={mode}
-                onClick={() => exec("operationMode", mode)}
-                disabled={executing === "operationMode"}
+                onClick={() => exec(modeAlias, mode)}
+                disabled={executing === modeAlias}
                 className={`
                   flex items-center gap-1 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium border
                   transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
@@ -248,7 +266,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       {ecoMode && ecoMode !== "auto" && isOn && (
         <div className="flex items-center gap-1.5 text-[12px] text-success">
           <Leaf size={12} strokeWidth={1.5} />
-          {t(`thermostat.ecoModes.${ecoMode}`)}
+          {ecoMode === "on" ? t("thermostat.ecoMode") : t(`thermostat.ecoModes.${ecoMode}`)}
         </div>
       )}
     </div>

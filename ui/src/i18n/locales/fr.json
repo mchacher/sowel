@@ -428,6 +428,10 @@
   "thermostat.fanSpeeds.mid": "Moyen",
   "thermostat.fanSpeeds.highMid": "Fort",
   "thermostat.fanSpeeds.high": "Max",
+  "thermostat.modes.dynamic": "Dynamique",
+  "thermostat.modes.overnight": "Nuit",
+  "thermostat.modes.comfort": "Confort",
+  "thermostat.ecoMode": "Éco",
   "thermostat.ecoModes.powerful": "Puissant",
   "thermostat.ecoModes.quiet": "Silence",
 
