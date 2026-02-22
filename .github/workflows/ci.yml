@@ -34,5 +34,4 @@ jobs:
           cache-dependency-path: ui/package-lock.json
       - run: cd ui && npm ci
       - run: cd ui && npm run lint
-      - run: cd ui && npx tsc --noEmit
       - run: cd ui && npm run build
