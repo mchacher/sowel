@@ -435,6 +435,7 @@
   "thermostat.modes.dynamic": "Dynamique",
   "thermostat.modes.overnight": "Nuit",
   "thermostat.modes.comfort": "Confort",
+  "thermostat.resetAlarm": "Reset alarme",
   "thermostat.ecoMode": "Éco",
   "thermostat.ecoModes.powerful": "Puissant",
   "thermostat.ecoModes.quiet": "Silence",
