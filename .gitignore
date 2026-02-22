@@ -7,3 +7,4 @@ data/
 *.db-shm
 .DS_Store
 coverage/
+.venv/
