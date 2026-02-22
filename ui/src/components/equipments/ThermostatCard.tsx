@@ -16,6 +16,7 @@ import {
   Moon,
   Armchair,
   Flame,
+  AlertTriangle,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -114,6 +115,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
 
   // Order bindings (available controls)
   const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
+  const hasResetAlarmOrder = equipment.orderBindings.some((o) => o.alias === "resetAlarm");
   const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode")
     ?? equipment.orderBindings.find((o) => o.alias === "profile");
   const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "targetTemperature");
@@ -192,11 +194,23 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         )}
       </div>
 
-      {/* Stove state badge */}
+      {/* Stove state badge + reset alarm */}
       {stoveState && (
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-medium ${stoveStateColor(stoveState)}`}>
-          <Flame size={12} strokeWidth={1.5} />
-          {t(`stove.state.${stoveState}`, stoveState)}
+        <div className="flex items-center gap-2">
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-medium ${stoveStateColor(stoveState)}`}>
+            <Flame size={12} strokeWidth={1.5} />
+            {t(`stove.state.${stoveState}`, stoveState)}
+          </div>
+          {hasResetAlarmOrder && stoveState.startsWith("error") && (
+            <button
+              onClick={() => exec("resetAlarm", true)}
+              disabled={executing === "resetAlarm"}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-[12px] font-medium text-error bg-error/10 border border-error/30 hover:bg-error/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <AlertTriangle size={12} strokeWidth={1.5} />
+              {t("thermostat.resetAlarm")}
+            </button>
+          )}
         </div>
       )}
 
