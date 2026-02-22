@@ -327,6 +327,11 @@ export class DeviceManager {
 
     // A device sending data is online — update status and last_seen
     this.stmts.updateDeviceLastSeen.run(device.id);
+    this.eventBus.emit({
+      type: "device.heartbeat",
+      deviceId: device.id,
+      timestamp: new Date().toISOString(),
+    });
     if (device.status !== "online") {
       this.stmts.updateDeviceStatus.run("online", device.id);
       this.eventBus.emit({
