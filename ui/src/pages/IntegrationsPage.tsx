@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plug, Wifi, WifiOff, Play, Square, AlertTriangle } from "lucide-react";
+import { Loader2, Plug, Wifi, WifiOff, Play, Square, AlertTriangle, RefreshCw } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { getIntegrations, updateSettings, startIntegration, stopIntegration } from "../api";
+import { getIntegrations, updateSettings, startIntegration, stopIntegration, refreshIntegration } from "../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../types";
 
 export function IntegrationsPage() {
@@ -56,6 +56,7 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -112,6 +113,21 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
       setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setStarting(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setError("");
+    setRefreshing(true);
+    try {
+      await refreshIntegration(integration.id);
+      setSuccess(t("integrations.refreshed"));
+      setTimeout(() => setSuccess(""), 3000);
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -185,6 +201,16 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
           )}
           {isConnected ? t("integrations.stop") : t("integrations.start")}
         </button>
+        {isConnected && (
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            {t("integrations.refresh")}
+          </button>
+        )}
       </div>
     </section>
   );

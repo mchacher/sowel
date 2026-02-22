@@ -172,11 +172,11 @@
   "equipments.type.sensor": "Capteur",
   "equipments.type.switch": "Interrupteur / Prise",
   "equipments.type.button": "Bouton / Télécommande",
-  "equipments.type.thermostat": "Thermostat / Climatisation",
+  "equipments.type.thermostat": "Thermostat",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
-  "equipments.group.climate": "Climatisation",
+  "equipments.group.climate": "Thermostat",
   "equipments.group.sensors": "Capteurs",
   "equipments.group.other": "Autres",
 
@@ -205,6 +205,8 @@
   "controls.position": "Position",
   "controls.opened": "Ouvert",
   "controls.closed": "Fermé",
+  "controls.on": "Marche",
+  "controls.off": "Arrêt",
 
   "sensors.title": "Capteurs",
   "sensors.noData": "Aucune donnée capteur.",
@@ -380,6 +382,8 @@
   "integrations.saved": "Configuration enregistrée",
   "integrations.started": "Intégration démarrée",
   "integrations.stopped": "Intégration arrêtée",
+  "integrations.refresh": "Rafraîchir",
+  "integrations.refreshed": "Données actualisées",
 
   "calendar.title": "Calendrier",
   "calendar.subtitle": "Planifiez l'activation automatique des modes selon la semaine",

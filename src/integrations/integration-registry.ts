@@ -46,6 +46,12 @@ export interface IntegrationPlugin {
     dispatchConfig: Record<string, unknown>,
     value: unknown,
   ): Promise<void>;
+
+  /**
+   * Force a data refresh (e.g. re-poll cloud API).
+   * Optional — integrations that don't support it should return immediately.
+   */
+  refresh?(): Promise<void>;
 }
 
 // ============================================================

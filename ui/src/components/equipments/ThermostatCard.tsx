@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Power,
@@ -11,6 +11,8 @@ import {
   Fan,
   Zap,
   Leaf,
+  Thermometer,
+  Crosshair,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -40,7 +42,24 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
 
-  // Read data bindings
+  // Optimistic overrides — applied immediately, cleared when real data arrives
+  const [optimistic, setOptimistic] = useState<Record<string, unknown>>({});
+  const prevBindingsRef = useRef(equipment.dataBindings);
+
+  // Clear optimistic values when real data changes (WebSocket update)
+  useEffect(() => {
+    const prev = prevBindingsRef.current;
+    const changed = equipment.dataBindings.some((b) => {
+      const old = prev.find((p) => p.alias === b.alias);
+      return old && old.value !== b.value;
+    });
+    if (changed) {
+      setOptimistic({});
+    }
+    prevBindingsRef.current = equipment.dataBindings;
+  }, [equipment.dataBindings]);
+
+  // Read data bindings (with optimistic overlay)
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode");
   const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "targetTemperature");
@@ -49,12 +68,18 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const fanSpeedBinding = equipment.dataBindings.find((b) => b.alias === "fanSpeed");
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
 
-  const isOn = powerBinding?.value === true;
-  const currentMode = typeof modeBinding?.value === "string" ? modeBinding.value : null;
-  const targetTemp = typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
+  const isOn = "power" in optimistic ? optimistic.power === true : powerBinding?.value === true;
+  const currentMode = "operationMode" in optimistic
+    ? (optimistic.operationMode as string | null)
+    : typeof modeBinding?.value === "string" ? modeBinding.value : null;
+  const targetTemp = "targetTemperature" in optimistic
+    ? (optimistic.targetTemperature as number | null)
+    : typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
   const insideTemp = typeof insideTempBinding?.value === "number" ? insideTempBinding.value : null;
   const outsideTemp = typeof outsideTempBinding?.value === "number" ? outsideTempBinding.value : null;
-  const fanSpeed = typeof fanSpeedBinding?.value === "string" ? fanSpeedBinding.value : null;
+  const fanSpeed = "fanSpeed" in optimistic
+    ? (optimistic.fanSpeed as string | null)
+    : typeof fanSpeedBinding?.value === "string" ? fanSpeedBinding.value : null;
   const ecoMode = typeof ecoModeBinding?.value === "string" ? ecoModeBinding.value : null;
 
   // Order bindings (available controls)
@@ -68,9 +93,18 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
+    // Apply optimistic update immediately
+    setOptimistic((prev) => ({ ...prev, [alias]: value }));
     setExecuting(alias);
     try {
       await onExecuteOrder(alias, value);
+    } catch {
+      // Revert optimistic on error
+      setOptimistic((prev) => {
+        const next = { ...prev };
+        delete next[alias];
+        return next;
+      });
     } finally {
       setExecuting(null);
     }
@@ -80,12 +114,15 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
     return (
       <CompactThermostat
         isOn={isOn}
-        currentMode={currentMode}
         insideTemp={insideTemp}
         targetTemp={targetTemp}
         hasPowerOrder={hasPowerOrder}
+        hasTargetTempOrder={!!targetTempOrder}
+        targetMin={targetTempOrder?.min ?? 16}
+        targetMax={targetTempOrder?.max ?? 30}
         executing={executing}
         onTogglePower={() => exec("power", !isOn)}
+        onSetTarget={(v) => exec("targetTemperature", v)}
       />
     );
   }
@@ -221,43 +258,66 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
 /** Compact inline thermostat for dashboard lists */
 function CompactThermostat({
   isOn,
-  currentMode,
   insideTemp,
   targetTemp,
   hasPowerOrder,
+  hasTargetTempOrder,
+  targetMin,
+  targetMax,
   executing,
   onTogglePower,
+  onSetTarget,
 }: {
   isOn: boolean;
-  currentMode: string | null;
   insideTemp: number | null;
   targetTemp: number | null;
   hasPowerOrder: boolean;
+  hasTargetTempOrder: boolean;
+  targetMin: number;
+  targetMax: number;
   executing: string | null;
   onTogglePower: () => void;
+  onSetTarget: (value: number) => void;
 }) {
   const { t } = useTranslation();
 
   return (
     <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.preventDefault()}>
       {/* Current temp */}
-      <span className="text-[14px] font-semibold text-text tabular-nums font-mono">
-        {insideTemp !== null ? `${insideTemp.toFixed(1)}°` : "—"}
-      </span>
-
-      {/* Target temp */}
-      {isOn && targetTemp !== null && (
-        <span className="text-[11px] text-text-tertiary tabular-nums">
-          → {targetTemp.toFixed(1)}°
+      {insideTemp !== null && (
+        <span className="flex items-center gap-0.5 text-[12px] text-text-tertiary tabular-nums">
+          <Thermometer size={11} strokeWidth={1.5} />
+          {insideTemp.toFixed(1)}°
         </span>
       )}
 
-      {/* Mode badge */}
-      {isOn && currentMode && (
-        <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium ${MODE_COLORS[currentMode] ?? "bg-border-light text-text-tertiary"}`}>
-          {MODE_ICONS[currentMode]}
-          {t(`thermostat.modes.${currentMode}`)}
-        </span>
+      {/* Separator */}
+      {isOn && hasTargetTempOrder && targetTemp !== null && insideTemp !== null && (
+        <div className="w-px h-4 bg-border" />
+      )}
+
+      {/* Target temp with +/- controls */}
+      {isOn && hasTargetTempOrder && targetTemp !== null && (
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp - 0.5); }}
+            disabled={executing === "targetTemperature" || targetTemp <= targetMin}
+            className="p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ChevronDown size={12} strokeWidth={2} />
+          </button>
+          <span className="flex items-center gap-0.5 text-[14px] font-semibold text-text tabular-nums font-mono">
+            <Crosshair size={11} strokeWidth={1.5} className="text-text-secondary" />
+            {targetTemp.toFixed(1)}°
+          </span>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp + 0.5); }}
+            disabled={executing === "targetTemperature" || targetTemp >= targetMax}
+            className="p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ChevronUp size={12} strokeWidth={2} />
+          </button>
+        </div>
       )}
 
       {/* Power toggle */}

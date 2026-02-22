@@ -107,7 +107,7 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
         password,
         pollingIntervalMs,
       );
-      this.poller.start();
+      await this.poller.start();
 
       this.status = "connected";
       this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
@@ -154,6 +154,14 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
     if (this.poller) {
       this.poller.scheduleOnDemandPoll();
     }
+  }
+
+  async refresh(): Promise<void> {
+    if (!this.poller || this.status !== "connected") {
+      throw new Error("Panasonic CC integration not connected");
+    }
+    await this.poller.refresh();
+    this.logger.info("Panasonic CC manual refresh completed");
   }
 
   private getSetting(key: string): string | undefined {

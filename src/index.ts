@@ -63,8 +63,9 @@ async function main() {
   );
   integrationRegistry.register(panasonicCCIntegration);
 
-  // 8. Create Zone Manager
+  // 8. Create Zone Manager & ensure root zone exists
   const zoneManager = new ZoneManager(db, eventBus, logger);
+  zoneManager.ensureRootZone();
 
   // 9. Create Equipment Manager (uses IntegrationRegistry for order dispatch)
   const equipmentManager = new EquipmentManager(
