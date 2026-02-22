@@ -123,10 +123,21 @@ export class MczBridge {
 
       const handler = (data: unknown) => {
         try {
-          // The response could be a string or an object
-          const raw = typeof data === "string" ? data : JSON.stringify(data);
-          this.logger.debug(
-            { rawLength: raw.length, preview: raw.substring(0, 100) },
+          // MCZ cloud wraps the response in {"stringaRicevuta": "01|..."}
+          let raw: string;
+          if (typeof data === "object" && data !== null && "stringaRicevuta" in data) {
+            raw = (data as { stringaRicevuta: string }).stringaRicevuta;
+          } else if (typeof data === "string") {
+            raw = data;
+          } else {
+            this.logger.warn(
+              { dataType: typeof data },
+              "MCZ rispondo: unexpected format, skipping",
+            );
+            return;
+          }
+          this.logger.info(
+            { rawLength: raw.length, preview: raw.substring(0, 120) },
             "MCZ rispondo received",
           );
 
