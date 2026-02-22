@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { useDevices } from "../store/useDevices";
 import { DeviceList } from "../components/devices/DeviceList";
 import { Radio, Loader2, Search, X } from "lucide-react";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function DevicesPage() {
+  useWsSubscription(["devices"]);
   const { t } = useTranslation();
   const devices = useDevices((s) => s.devices);
   const deviceData = useDevices((s) => s.deviceData);

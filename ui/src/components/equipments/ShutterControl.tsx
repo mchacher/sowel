@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronUp, Square, ChevronDown } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+
+const SETTLE_DELAY_MS = 2000;
 
 interface ShutterControlProps {
   equipment: EquipmentWithDetails;
@@ -11,15 +13,22 @@ interface ShutterControlProps {
 export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
+  const localPosition = useRef<number | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [, forceRender] = useState(0);
 
   const positionBinding = equipment.dataBindings.find(
     (db) => db.category === "shutter_position"
   );
-  const position = positionBinding && typeof positionBinding.value === "number"
+  const devicePosition = positionBinding && typeof positionBinding.value === "number"
     ? positionBinding.value
     : null;
 
+  const position =
+    localPosition.current !== null ? localPosition.current : devicePosition;
+
   const hasState = equipment.orderBindings.some((ob) => ob.alias === "state");
+  const hasPositionOrder = equipment.orderBindings.some((ob) => ob.alias === "position");
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
     if (executing || !hasState) return;
@@ -31,18 +40,52 @@ export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProp
     }
   };
 
+  const handlePositionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    localPosition.current = Number(e.target.value);
+    forceRender((n) => n + 1);
+  };
+
+  const handlePositionCommit = async () => {
+    const commitValue = localPosition.current;
+    if (!hasPositionOrder || commitValue === null) return;
+    try {
+      await onExecuteOrder("position", commitValue);
+    } catch {
+      // Ignore
+    }
+    settleTimer.current = setTimeout(() => {
+      localPosition.current = null;
+      settleTimer.current = null;
+      forceRender((n) => n + 1);
+    }, SETTLE_DELAY_MS);
+  };
+
   return (
     <div className="space-y-3">
-      {/* Position display */}
+      {/* Position slider or display */}
       {position !== null && (
         <div className="flex items-center gap-3">
           <span className="text-[12px] text-text-tertiary w-16">{t("controls.position")}</span>
-          <div className="flex-1 h-1.5 bg-border-light rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-300"
-              style={{ width: `${position}%` }}
+          {hasPositionOrder ? (
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={position}
+              onChange={handlePositionChange}
+              onMouseUp={handlePositionCommit}
+              onTouchEnd={handlePositionCommit}
+              className="flex-1 accent-primary h-1.5"
             />
-          </div>
+          ) : (
+            <div className="flex-1 h-1.5 bg-border-light rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${position}%` }}
+              />
+            </div>
+          )}
           <span className="text-[12px] text-text-secondary w-auto text-right tabular-nums">
             {position === 0 ? t("controls.closed") : position === 100 ? t("controls.opened") : `${position}%`}
           </span>

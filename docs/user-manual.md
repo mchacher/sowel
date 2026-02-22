@@ -1,10 +1,182 @@
 # Corbel — User Manual
 
-> Updated: 2026-02-20 — Auth + i18n + Backup/Restore + Integrations
+> Updated: 2026-02-21 — V0.9 Modes & Calendar
 
-## What is Corbel?
+---
 
-Corbel is a home automation engine that uses MQTT as its only data source. It connects to zigbee2mqtt, discovers your Zigbee devices automatically, and lets you organize them into Equipments and Zones with real-time controls and aggregated status. Multi-user with JWT authentication and bilingual (French/English).
+## Why Corbel?
+
+Home automation platforms are powerful but complex. Home Assistant drowns users in YAML and flat entity lists. Jeedom buries features behind paid plugins. Both demand hours of configuration before anything works.
+
+Corbel takes the opposite approach: **structure first, simplicity always**.
+
+| | Home Assistant | Jeedom | **Corbel** |
+|---|---|---|---|
+| **Architecture** | Flat entity list (thousands of `sensor.`, `light.`, `switch.`...) | Nested objects & commands | **3 clear layers**: Device → Equipment → Zone |
+| **Device setup** | Integration + entity config per device | Plugin per protocol (often paid) | **Zero config** — auto-discovery from zigbee2mqtt |
+| **Room status** | Create template sensors manually for each aggregation | Write virtual devices + scenarios | **Automatic** — motion, temperature, lights count, all computed in real-time |
+| **Automations** | YAML automations or Node-RED (extra component) | Block-based scenario editor | **Recipes** — pre-built templates, just pick the zone and the light |
+| **Operating modes** | Manual: create `input_boolean` + automation per mode per room | Manual: virtual switches + scenarios | **Built-in Modes** — define once, configure per zone, activate by button or calendar |
+| **Scheduling** | External calendar or `time` triggers in each automation | Cron in each scenario | **Built-in Calendar** — weekly profiles, drag-and-drop mode scheduling |
+| **Stack** | Python + Docker Supervisor + add-ons + HACS | PHP + Apache + MySQL + plugins | **Node.js + SQLite** — single process, instant startup |
+
+### The key insight
+
+> A **Device** is what's on the network. An **Equipment** is what's in the room. The user thinks *"Spots Salon"*, not *"IKEA TRADFRI LED1837R5 0x00158D00062B1234"*.
+
+Corbel separates the physical (Device) from the functional (Equipment), then organizes everything spatially (Zone). This is what makes aggregation, recipes, and modes possible without any configuration.
+
+---
+
+## Core Concepts
+
+### 1. Devices — auto-discovered, never configured
+
+Devices are physical hardware on the MQTT network. Corbel subscribes to zigbee2mqtt and discovers everything automatically: sensors, lights, switches, shutters, buttons. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
+
+You never configure a Device. You just look at the list, and they're there.
+
+### 2. Equipments — the functional unit
+
+An Equipment is what the user actually interacts with. "Spots Salon" is an Equipment of type `light_dimmable`. It is **bound** to one or more Devices.
+
+**Why this matters**: a single "Spots Salon" Equipment can bind to 3 separate IKEA dimmer modules. One toggle turns all three on. One slider dims all three. The user doesn't care how many physical devices are behind it.
+
+| Equipment Type | What it controls | UI |
+|---|---|---|
+| Light (On/Off) | Simple on/off | Toggle |
+| Light (Dimmable) | Brightness control | Toggle + slider |
+| Light (Color) | Color-capable | Toggle + slider |
+| Shutter | Roller blind / cover | Open / Stop / Close + position |
+| Switch / Plug | On/off relay | State badge |
+| Sensor | Temperature, humidity, pressure, CO2... | Auto-adaptive value display |
+| Button / Remote | Physical button (for triggers) | — |
+
+### 3. Zones — the spatial structure
+
+Zones form a tree: `Maison → Étage 1 → Salon`. Each Equipment belongs to exactly one Zone.
+
+**Automatic aggregation**: Corbel computes real-time status for every zone:
+- **Temperature, humidity, luminosity** — averaged across all sensors in the zone
+- **Motion** — OR across all motion sensors (plus duration tracking)
+- **Lights on / total** — count of active lights
+- **Shutters open / total** — count + average position
+- **Door/window contacts** — open alerts
+- **Water leak, smoke** — immediate alerts
+
+This aggregation propagates upward: "Étage 1" automatically merges data from Salon, Cuisine, and Chambre. No configuration needed.
+
+### 4. Recipes — automation without code
+
+A Recipe is a pre-built automation template. Instead of writing rules from scratch, the user picks a Recipe and fills in the parameters.
+
+**Example — Motion Light**:
+- Pick a zone (Salon)
+- Pick a light (Spots Salon)
+- Set a timeout (10 minutes)
+
+That's it. Corbel handles all the edge cases: motion detected → light ON, motion stops → start timer, timer expires → light OFF, manual turn-on → start timer if no motion, manual turn-off → cancel timer.
+
+### 5. Modes — house-level operating states
+
+A Mode is a named operating profile for the entire home. Examples:
+- **Confort** — heating on, lights warm
+- **Cocoon** — dim lights, close shutters
+- **Absent** — all off, security active
+
+Each Mode defines **impacts per zone**: what happens in each room when the mode activates. An impact can be:
+- **Order**: send a command to an equipment (turn on a light, close a shutter)
+- **Recipe toggle**: enable or disable a recipe (stop the motion-light in the bedroom at night)
+
+Modes can be activated:
+- **Manually** from the UI (one tap)
+- **By event trigger** — a button press or sensor value (press the Cocoon button → activate Cocoon mode)
+- **By calendar** — weekly schedule (8:00 weekdays → activate Confort)
+
+### 6. Calendar — weekly mode scheduling
+
+The Calendar manages **weekly profiles** (e.g., "Travail", "Vacances"). Each profile contains **time slots**: a day + time + modes to activate.
+
+| Profile | Slot | |
+|---|---|---|
+| **Travail** | Lun–Ven 07:00 | Confort |
+| | Lun–Ven 09:00 | Absent |
+| | Lun–Ven 18:00 | Confort |
+| | Lun–Ven 22:30 | Cocoon |
+| **Vacances** | Every day 09:00 | Confort |
+| | Every day 23:00 | Cocoon |
+
+Switch between profiles with one tap. The active profile's slots run automatically.
+
+---
+
+## UI Guide
+
+### Home — the daily view
+
+The **Home** page is where you spend 95% of your time. The sidebar shows a zone tree. Click a zone to see:
+
+1. **Status header** — aggregated pills: temperature, humidity, motion status + duration, lights count, shutter status, alerts
+2. **Equipment groups** — automatically organized by type:
+   - **Lights**: inline toggle + brightness slider
+   - **Shutters**: Open / Stop / Close buttons + position
+   - **Sensors**: multi-value display with battery indicator
+3. **Behaviors** — two sections:
+   - **Recipes**: active recipe instances for this zone (add, delete, view logs)
+   - **Modes**: all defined modes with per-zone impact configuration, triggers, and activate/deactivate
+
+### Administration > Modes
+
+Create and manage global mode definitions:
+- Name, description
+- View all event triggers (which button activates this mode)
+- View all zone impacts (which zones are affected and how many actions)
+- Activate / deactivate
+
+### Administration > Calendar
+
+Manage weekly scheduling:
+- Switch between profiles (Travail, Vacances...)
+- Set the active profile
+- Add/remove time slots (days + time + modes to activate)
+
+### Administration > Equipments
+
+Create and bind equipments:
+1. Click "Add Equipment"
+2. Choose type, name, zone
+3. Select compatible devices to bind
+4. Done — the equipment appears in the Home view
+
+### Administration > Zones
+
+Build the spatial topology:
+- Create zones (Maison, Étage 1, Salon...)
+- Nest them (drag into hierarchy)
+- Zone tree appears in Home sidebar
+
+### Administration > Devices
+
+Browse auto-discovered hardware:
+- Sortable table (name, manufacturer, model, battery, LQI, last seen)
+- Click for detail: raw data, orders, expose viewer
+- Delete removes from Corbel only (re-discovered if still active)
+
+### Administration > Integrations
+
+Configure zigbee2mqtt connection:
+- MQTT broker URL, credentials, Z2M base topic
+- Connection status indicator
+- Save + reconnect without restarting
+
+### Settings
+
+- Profile: display name
+- Password change
+- Language: French / English
+- API tokens for external access
+- Backup / Restore (admin)
+- User management (admin)
 
 ---
 
@@ -40,153 +212,29 @@ CORS_ORIGINS=http://localhost:5173
 ### Start
 
 ```bash
-# Terminal 1 — Start the engine
+# Terminal 1 — Engine
 npm run dev
 
-# Terminal 2 — Start the UI
+# Terminal 2 — UI
 cd ui && npm install && npm run dev
 ```
 
-Then open **http://localhost:5173** in your browser.
+Open **http://localhost:5173**.
 
-### First Run
+### First run
 
-1. The **Setup page** appears — create your first admin account
-2. Log in with your credentials
-3. Go to **Administration > Integrations** to configure your MQTT broker and Zigbee2MQTT
-4. Once connected, devices are auto-discovered
-
-On startup, the engine will:
-1. Open SQLite database and run migrations
-2. Check if MQTT integration is configured (from Settings, not `.env`)
-3. If configured: connect to MQTT, subscribe to zigbee2mqtt topics, auto-discover devices
-4. If not configured: start without MQTT (configure it from the Integrations page)
-5. Start the REST API and WebSocket server
-
----
-
-## Concepts
-
-### Three-Layer Architecture
-
-| Layer | What | Example |
-|-------|------|---------|
-| **Device** | Physical hardware on the MQTT network (auto-discovered) | "Ikea Dimmer Module 0x1234" |
-| **Equipment** | User-facing functional unit (you create these) | "Spots Salon" |
-| **Zone** | Physical space in the home (nestable) | "Salon", "Cuisine", "Étage 1" |
-
-**Key insight**: a Device is what's on the network, an Equipment is what's in the room. The user thinks about "Spots Salon", not "Ikea Dimmer Module 0x1234".
-
-### Supported Equipment Types
-
-| Type | Description | UI Controls |
-|------|-------------|-------------|
-| Light (On/Off) | Simple on/off light | Toggle button |
-| Light (Dimmable) | Dimmable light | Toggle + brightness slider |
-| Light (Color) | Color-capable light | Toggle + brightness slider |
-| Shutter | Cover, blind, roller shutter | Open / Stop / Close buttons + position % |
-| Switch / Prise | On/off switch or plug | State badge |
-| Capteur | Generic sensor (temperature, humidity...) | Auto-adaptive value display |
-| Capteur mouvement | Motion detector | Motion/Calm status |
-| Capteur contact | Door/window contact sensor | Open/Closed status |
-
----
-
-## UI Guide
-
-### Home (daily view)
-
-The **Home** page is the primary daily-use view. The sidebar shows a zone treeview (Home > Floor > Room). Clicking a zone displays:
-
-1. **Zone Status Header** — aggregated pills showing:
-   - Temperature, humidity, luminosity (averages)
-   - Motion status with duration ("Mouvement · 5 min" or "Calme · 12 min")
-   - Lights on/total count
-   - Shutters open/total count with average position
-   - Door/window open alerts
-   - Water leak / smoke alerts
-
-2. **Equipment Groups** — equipments organized by type:
-   - **Lights**: inline toggle + brightness slider
-   - **Shutters**: inline Open/Stop/Close buttons + position (Fermé / Ouvert / %)
-   - **Sensors**: multi-value display with battery indicator
-   - **Switches**: state badge
-
-### Equipments (settings)
-
-The **Equipments** page lists all equipments grouped by zone. Each card shows:
-- Type icon (color changes based on state)
-- Equipment name (clickable → detail page)
-- Quick controls (light toggle, shutter buttons, sensor values)
-
-**Creating an equipment:**
-1. Click "Add Equipment"
-2. Choose type, name, and zone
-3. Click "Next: Select devices"
-4. Pick compatible devices to bind
-5. Click "Create"
-
-### Equipment Detail
-
-Shows full details for an equipment:
-- Data bindings (bound device values)
-- Order bindings (available commands)
-- Controls: light toggle/slider, shutter Open/Stop/Close + position bar, sensor data panel
-- Edit name/zone, delete equipment
-
-### Zones (settings)
-
-The **Zones** page manages the spatial topology:
-- Create/edit/delete zones
-- Nest zones (Home → Floor → Room)
-- View zone tree
-
-### Devices (settings)
-
-The **Devices** page shows all auto-discovered MQTT devices:
-- Sortable table (name, manufacturer, model, battery, LQI, last seen)
-- Filter by name
-- Click for detail: raw data, orders, expose viewer, inline name editor
-- **Delete button**: remove a device from Corbel's database (does not affect zigbee2mqtt — the device will be re-discovered if still active on the bridge)
-
-**Device lifecycle**:
-- Devices are auto-discovered from zigbee2mqtt `bridge/devices` messages
-- Devices reported as "offline" by z2m are automatically deleted from the DB
-- Devices no longer in the z2m bridge list are cleaned up automatically
-- Deleted devices are re-created if they come back online
-
-### Integrations (administration)
-
-The **Integrations** page configures external system connections:
-- **Zigbee2MQTT**: MQTT broker URL, username, password, client ID, Z2M base topic
-- Connection status indicator (green/red)
-- Save settings and reconnect without restarting the engine
-
-### Settings
-
-The **Settings** page provides:
-- **Profile**: update display name
-- **Password**: change password
-- **Language**: switch between French and English (preference saved per user)
-- **API Tokens**: create/revoke API tokens for external integrations
-- **Backup** (admin): export/import full Corbel configuration as JSON
-- **User Management** (admin): create/edit/delete users, assign roles
-
-### Authentication
-
-- **Login page**: username + password authentication
-- **Setup page**: appears on first run to create the admin account
-- Two roles:
-  - **Admin**: full access to all features
-  - **Standard**: can control equipments, view data, manage recipes — cannot manage devices, zones, users, or system settings
-- JWT access tokens (15min) + refresh tokens (30 days)
-- API tokens for headless/external access (`cbl_` prefix)
+1. **Setup page** appears — create your admin account
+2. Go to **Administration > Integrations** — configure your MQTT broker
+3. Devices appear automatically
+4. Go to **Administration > Zones** — create your home topology (Maison → Étage → Pièces)
+5. Go to **Administration > Equipments** — create equipments and bind them to devices
+6. Go to **Home** — enjoy your real-time dashboard
 
 ---
 
 ## REST API
 
-All API endpoints (except auth) require a Bearer token in the `Authorization` header:
+All endpoints (except auth) require a Bearer token:
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:3000/api/v1/...
 ```
@@ -202,53 +250,36 @@ curl -X POST http://localhost:3000/api/v1/auth/setup \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "secret", "displayName": "Admin"}'
 
-# Login
+# Login → { accessToken, refreshToken, user }
 curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "secret"}'
-# Returns: { accessToken, refreshToken, user }
-```
-
-### Health
-
-```bash
-curl http://localhost:3000/api/v1/health
 ```
 
 ### Devices
 
 ```bash
-# List all
-curl http://localhost:3000/api/v1/devices
-
-# Detail
-curl http://localhost:3000/api/v1/devices/<id>
-
-# Update name
+curl http://localhost:3000/api/v1/devices          # List all
+curl http://localhost:3000/api/v1/devices/<id>      # Detail
 curl -X PUT http://localhost:3000/api/v1/devices/<id> \
   -H "Content-Type: application/json" \
-  -d '{"name": "PIR Salon"}'
+  -d '{"name": "PIR Salon"}'                        # Rename
+curl -X DELETE http://localhost:3000/api/v1/devices/<id>  # Remove
 ```
 
 ### Zones
 
 ```bash
-# Zone tree
-curl http://localhost:3000/api/v1/zones/tree
-
-# Create zone
+curl http://localhost:3000/api/v1/zones/tree        # Zone tree
 curl -X POST http://localhost:3000/api/v1/zones \
   -H "Content-Type: application/json" \
-  -d '{"name": "Salon", "parentId": "<parent-zone-id>"}'
+  -d '{"name": "Salon", "parentId": "<parent-id>"}'
 ```
 
 ### Equipments
 
 ```bash
-# List all with bindings + data
-curl http://localhost:3000/api/v1/equipments
-
-# Create equipment
+curl http://localhost:3000/api/v1/equipments        # List all
 curl -X POST http://localhost:3000/api/v1/equipments \
   -H "Content-Type: application/json" \
   -d '{"name": "Spots Salon", "type": "light_dimmable", "zoneId": "<zone-id>"}'
@@ -257,97 +288,75 @@ curl -X POST http://localhost:3000/api/v1/equipments \
 curl -X POST http://localhost:3000/api/v1/equipments/<id>/orders/state \
   -H "Content-Type: application/json" \
   -d '{"value": "ON"}'
-
-# Execute shutter command
-curl -X POST http://localhost:3000/api/v1/equipments/<id>/orders/state \
-  -H "Content-Type: application/json" \
-  -d '{"value": "OPEN"}'
 ```
 
-### Zone Aggregation
+### Modes
 
 ```bash
-# Get all zone aggregations
-curl http://localhost:3000/api/v1/zones/aggregation
+curl http://localhost:3000/api/v1/modes             # List all modes
+curl http://localhost:3000/api/v1/modes/<id>        # Mode detail (with triggers + impacts)
 
-# Get aggregation for a specific zone
-curl http://localhost:3000/api/v1/zones/<id>/aggregation
+# Create a mode
+curl -X POST http://localhost:3000/api/v1/modes \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Cocoon", "description": "Cozy evening mode"}'
+
+# Activate / deactivate
+curl -X POST http://localhost:3000/api/v1/modes/<id>/activate
+curl -X POST http://localhost:3000/api/v1/modes/<id>/deactivate
+
+# Add event trigger (button press activates mode)
+curl -X POST http://localhost:3000/api/v1/modes/<id>/triggers \
+  -H "Content-Type: application/json" \
+  -d '{"equipmentId": "<button-id>", "alias": "action", "value": "toggle"}'
+
+# Set zone impact (what happens in this zone when mode activates)
+curl -X PUT http://localhost:3000/api/v1/modes/<id>/zones/<zone-id>/impact \
+  -H "Content-Type: application/json" \
+  -d '{"actions": [{"type": "order", "equipmentId": "<eq-id>", "orderAlias": "state", "value": "ON"}]}'
+```
+
+### Calendar
+
+```bash
+curl http://localhost:3000/api/v1/calendar/profiles           # List profiles
+curl http://localhost:3000/api/v1/calendar/active              # Active profile
+
+# Set active profile
+curl -X PUT http://localhost:3000/api/v1/calendar/active \
+  -H "Content-Type: application/json" \
+  -d '{"profileId": "<profile-id>"}'
+
+# Add time slot
+curl -X POST http://localhost:3000/api/v1/calendar/profiles/<id>/slots \
+  -H "Content-Type: application/json" \
+  -d '{"days": [1,2,3,4,5], "time": "08:00", "modeIds": ["<mode-id>"]}'
 ```
 
 ### Recipes
 
 ```bash
-# List available recipes
-curl http://localhost:3000/api/v1/recipes
-
-# Get recipe details (slots, description)
-curl http://localhost:3000/api/v1/recipes/motion-light
-
-# Create a motion-light instance
+curl http://localhost:3000/api/v1/recipes           # Available recipes
 curl -X POST http://localhost:3000/api/v1/recipe-instances \
   -H "Content-Type: application/json" \
-  -d '{"recipeId": "motion-light", "params": {"zone": "<zone-id>", "light": "<equipment-id>", "timeout": "10m"}}'
-
-# List active instances
-curl http://localhost:3000/api/v1/recipe-instances
-
-# Get instance execution log
-curl http://localhost:3000/api/v1/recipe-instances/<id>/log
-
-# Delete an instance (stops it)
-curl -X DELETE http://localhost:3000/api/v1/recipe-instances/<id>
+  -d '{"recipeId": "motion-light", "params": {"zone": "<zone-id>", "light": "<eq-id>", "timeout": "10m"}}'
 ```
 
-#### Available Recipes
-
-| Recipe | Description | Slots |
-|--------|-------------|-------|
-| **motion-light** | Auto-light on motion, off after timeout | zone, light, timeout (default 10m) |
-
-The motion-light recipe:
-- Turns light ON when motion is detected in the zone
-- Starts an extinction timer when motion stops
-- Turns light OFF when the timer expires
-- Handles manual turn-on: starts the timer if no motion is active
-- Handles manual turn-off: cancels any running timer
-
-### Settings & Integrations (admin)
+### Backup / Restore
 
 ```bash
-# Get all settings
-curl http://localhost:3000/api/v1/settings
-
-# Update MQTT integration settings
-curl -X PUT http://localhost:3000/api/v1/settings \
-  -H "Content-Type: application/json" \
-  -d '{"mqtt.url": "mqtt://192.168.0.45:1883", "mqtt.clientId": "corbel", "z2m.baseTopic": "zigbee2mqtt"}'
-
-# Reconnect MQTT with current settings
-curl -X POST http://localhost:3000/api/v1/settings/mqtt/reconnect
-
-# Check MQTT connection status
-curl http://localhost:3000/api/v1/settings/mqtt/status
-```
-
-### Backup & Restore (admin)
-
-```bash
-# Export full configuration
 curl http://localhost:3000/api/v1/backup -o corbel-backup.json
-
-# Import configuration (replaces all data)
 curl -X POST http://localhost:3000/api/v1/backup \
-  -H "Content-Type: application/json" \
-  -d @corbel-backup.json
+  -H "Content-Type: application/json" -d @corbel-backup.json
 ```
 
-### WebSocket — Live Events
+### WebSocket
 
 ```bash
 websocat ws://localhost:3000/ws
 ```
 
-Events: `device.data.updated`, `device.status_changed`, `device.discovered`, `equipment.data.changed`, `equipment.order.executed`, `zone.aggregation.changed`, `recipe.instance.created`, `recipe.instance.started`, `recipe.instance.stopped`, `recipe.instance.removed`, `recipe.instance.error`
+Events: `device.data.updated`, `device.discovered`, `equipment.data.changed`, `equipment.order.executed`, `zone.aggregation.changed`, `mode.activated`, `mode.deactivated`, `recipe.instance.*`, `calendar.profile.changed`
 
 ---
 
@@ -355,7 +364,6 @@ Events: `device.data.updated`, `device.status_changed`, `device.discovered`, `eq
 
 | Version | Feature |
 |---------|---------|
-| **V0.9** | Scenario Engine — trigger/condition/action automation |
-| **V0.10** | Computed Data — virtual Equipments that aggregate multiple Devices |
-| **V0.11** | History — InfluxDB time-series charts |
-| **V1.0+** | AI Assistant — natural language scenarios |
+| V0.10 | Computed Data — virtual data expressions (formulas across equipments) |
+| V0.11 | History — InfluxDB time-series with charts in UI |
+| V1.0+ | AI Assistant — natural language scenario creation |
