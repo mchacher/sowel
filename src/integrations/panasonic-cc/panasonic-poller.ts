@@ -46,10 +46,10 @@ export class PanasonicPoller {
     this.onDemandDelayMs = onDemandDelayMs;
   }
 
-  start(): void {
+  async start(): Promise<void> {
     this.logger.info({ intervalMs: this.pollIntervalMs }, "Starting Panasonic poller");
-    // Immediate first poll
-    this.poll();
+    // Immediate first poll — awaited so data is available at startup
+    await this.poll();
     // Regular polling
     this.interval = setInterval(() => this.poll(), this.pollIntervalMs);
   }
@@ -64,6 +64,11 @@ export class PanasonicPoller {
     }
     this.pendingTimers.clear();
     this.logger.info("Panasonic poller stopped");
+  }
+
+  /** Force an immediate poll (for manual refresh). */
+  async refresh(): Promise<void> {
+    await this.poll();
   }
 
   scheduleOnDemandPoll(delayMs?: number): void {
@@ -104,7 +109,7 @@ export class PanasonicPoller {
   }
 
   private updateDeviceData(bridgeDevice: BridgeDevice): void {
-    const sourceDeviceId = bridgeDevice.id;
+    const sourceDeviceId = bridgeDevice.name || bridgeDevice.id;
     const p = bridgeDevice.parameters;
 
     const payload: Record<string, unknown> = {};
@@ -221,7 +226,7 @@ function mapBridgeDeviceToDiscovered(bridgeDevice: BridgeDevice): DiscoveredDevi
   }
 
   return {
-    friendlyName: bridgeDevice.id,
+    friendlyName: bridgeDevice.name || bridgeDevice.id,
     manufacturer: "Panasonic",
     model: bridgeDevice.model || undefined,
     data,

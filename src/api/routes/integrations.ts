@@ -58,6 +58,40 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
     }
   });
 
+  // POST /api/v1/integrations/:id/refresh — Force a data refresh
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/integrations/:id/refresh",
+    async (request, reply) => {
+      if (!request.auth || request.auth.role !== "admin") {
+        return reply.code(403).send({ error: "Admin access required" });
+      }
+
+      const integration = integrationRegistry.getById(request.params.id);
+      if (!integration) {
+        return reply.code(404).send({ error: "Integration not found" });
+      }
+
+      if (!integration.refresh) {
+        return reply.code(400).send({ error: "Integration does not support refresh" });
+      }
+
+      if (integration.getStatus() !== "connected") {
+        return reply.code(400).send({ error: "Integration not connected" });
+      }
+
+      try {
+        await integration.refresh();
+        logger.info({ integrationId: integration.id }, "Integration refreshed via API");
+        return { success: true };
+      } catch (err) {
+        logger.error({ err, integrationId: integration.id }, "Failed to refresh integration");
+        return reply.code(500).send({
+          error: err instanceof Error ? err.message : "Refresh failed",
+        });
+      }
+    },
+  );
+
   // POST /api/v1/integrations/:id/stop — Stop an integration
   app.post<{ Params: { id: string } }>("/api/v1/integrations/:id/stop", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {

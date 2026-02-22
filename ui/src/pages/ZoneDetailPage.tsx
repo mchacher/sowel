@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { ZoneWithChildren } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+import { ROOT_ZONE_ID } from "../lib/constants";
 
 export function ZoneDetailPage() {
   useWsSubscription(["zones", "equipments"]);
@@ -132,14 +133,16 @@ export function ZoneDetailPage() {
             <Pencil size={14} strokeWidth={1.5} />
             {t("common.edit")}
           </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
-          >
-            <Trash2 size={14} strokeWidth={1.5} />
-            {deleting ? t("common.deleting") : t("common.delete")}
-          </button>
+          {zone.id !== ROOT_ZONE_ID && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+            >
+              <Trash2 size={14} strokeWidth={1.5} />
+              {deleting ? t("common.deleting") : t("common.delete")}
+            </button>
+          )}
         </div>
       </div>
 

@@ -8,7 +8,7 @@ import {
   Gauge,
   ToggleLeft,
   CircleDot,
-  AirVent,
+  Thermometer,
 } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
@@ -25,7 +25,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
   sensor: <Gauge size={18} strokeWidth={1.5} />,
   button: <CircleDot size={18} strokeWidth={1.5} />,
-  thermostat: <AirVent size={18} strokeWidth={1.5} />,
+  thermostat: <Thermometer size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {

@@ -172,7 +172,7 @@
   "equipments.type.sensor": "Sensor",
   "equipments.type.switch": "Switch / Plug",
   "equipments.type.button": "Button / Remote",
-  "equipments.type.thermostat": "Thermostat / AC",
+  "equipments.type.thermostat": "Thermostat",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",
@@ -205,6 +205,8 @@
   "controls.position": "Position",
   "controls.opened": "Open",
   "controls.closed": "Closed",
+  "controls.on": "On",
+  "controls.off": "Off",
 
   "sensors.title": "Sensors",
   "sensors.noData": "No sensor data.",
@@ -380,6 +382,8 @@
   "integrations.saved": "Configuration saved",
   "integrations.started": "Integration started",
   "integrations.stopped": "Integration stopped",
+  "integrations.refresh": "Refresh",
+  "integrations.refreshed": "Data refreshed",
 
   "calendar.title": "Calendar",
   "calendar.subtitle": "Schedule automatic mode activation throughout the week",
