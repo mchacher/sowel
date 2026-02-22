@@ -4,6 +4,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import { toISOUtc } from "../core/database.js";
 import type { Zone, ZoneWithChildren } from "../shared/types.js";
+import { ROOT_ZONE_ID } from "../shared/constants.js";
 
 interface CreateZoneInput {
   name: string;
@@ -61,7 +62,43 @@ export class ZoneManager {
       updateDisplayOrder: this.db.prepare(
         "UPDATE zones SET display_order = ?, updated_at = datetime('now') WHERE id = ?",
       ),
+      reparentOrphanZones: this.db.prepare(
+        "UPDATE zones SET parent_id = ? WHERE parent_id IS NULL AND id != ?",
+      ),
     };
+  }
+
+  // ============================================================
+  // Root zone bootstrap
+  // ============================================================
+
+  /**
+   * Ensures the root zone "Maison" exists.
+   * If it doesn't, creates it and reparents existing top-level zones under it.
+   */
+  ensureRootZone(): Zone {
+    const existing = this.stmts.getZoneById.get(ROOT_ZONE_ID) as ZoneRow | undefined;
+    if (existing) {
+      // Reparent any orphan top-level zones under root (safety net)
+      this.stmts.reparentOrphanZones.run(ROOT_ZONE_ID, ROOT_ZONE_ID);
+      return rowToZone(existing);
+    }
+
+    this.stmts.insertZone.run({
+      id: ROOT_ZONE_ID,
+      name: "Maison",
+      parentId: null,
+      icon: "home",
+      description: null,
+      displayOrder: 0,
+    });
+
+    // Reparent existing top-level zones under the new root
+    this.stmts.reparentOrphanZones.run(ROOT_ZONE_ID, ROOT_ZONE_ID);
+
+    const zone = this.getById(ROOT_ZONE_ID)!;
+    this.logger.info("Root zone 'Maison' created");
+    return zone;
   }
 
   // ============================================================
@@ -71,18 +108,20 @@ export class ZoneManager {
   create(input: CreateZoneInput): Zone {
     const id = randomUUID();
 
+    const parentId = input.parentId ?? null;
+
     // Validate parent exists if provided
-    if (input.parentId) {
-      const parent = this.stmts.getZoneById.get(input.parentId) as ZoneRow | undefined;
+    if (parentId) {
+      const parent = this.stmts.getZoneById.get(parentId) as ZoneRow | undefined;
       if (!parent) {
-        throw new ZoneError(`Parent zone not found: ${input.parentId}`, 404);
+        throw new ZoneError(`Parent zone not found: ${parentId}`, 404);
       }
     }
 
     this.stmts.insertZone.run({
       id,
       name: input.name,
-      parentId: input.parentId ?? null,
+      parentId,
       icon: input.icon ?? null,
       description: input.description ?? null,
       displayOrder: input.displayOrder ?? 0,
@@ -197,6 +236,10 @@ export class ZoneManager {
   }
 
   delete(id: string): void {
+    if (id === ROOT_ZONE_ID) {
+      throw new ZoneError("Cannot delete the root zone", 400);
+    }
+
     const existing = this.getById(id);
     if (!existing) {
       throw new ZoneError("Zone not found", 404);

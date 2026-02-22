@@ -6,6 +6,7 @@ import type { EquipmentWithDetails } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { SensorValues } from "../equipments/SensorValues";
 import { ShutterControls } from "../equipments/ShutterControls";
+import { ThermostatCard } from "../equipments/ThermostatCard";
 
 const SETTLE_DELAY_MS = 2000;
 
@@ -25,6 +26,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     isLight,
     isShutter,
     isSensor,
+    isThermostat,
     stateBinding,
     isOn,
     shutterPosition,
@@ -56,8 +58,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     (ob) => ob.alias === "brightness",
   );
 
-  // Find primary data value for non-light, non-sensor, non-shutter equipments
-  const primaryBinding = !isLight && !isSensor && !isShutter
+  // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat equipments
+  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -136,8 +138,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         />
       )}
 
-      {/* Primary value for non-light, non-sensor, non-shutter equipments */}
-      {primaryBinding && !isLight && !isSensor && !isShutter && (
+      {/* Primary value for other equipments */}
+      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -203,8 +205,17 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         />
       )}
 
+      {/* Thermostat controls */}
+      {isThermostat && equipment.enabled && (
+        <ThermostatCard
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
       {/* Boolean state badge for non-light, non-sensor, non-shutter equipments */}
-      {!isLight && !isSensor && !isShutter && stateBinding && (
+      {!isLight && !isSensor && !isShutter && !isThermostat && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0

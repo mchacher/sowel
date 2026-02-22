@@ -465,8 +465,8 @@ export class ZoneAggregator {
           break;
 
         case "shutter_position":
+          acc.shuttersTotal += 1;
           if (typeof value === "number") {
-            acc.shuttersTotal += 1;
             acc.shutterPositionSum += value;
             acc.shutterPositionCount += 1;
             if (value > 0) {

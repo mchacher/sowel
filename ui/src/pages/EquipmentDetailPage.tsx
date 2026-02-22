@@ -7,6 +7,7 @@ import { getEquipment } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
 import { ShutterControl } from "../components/equipments/ShutterControl";
+import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
@@ -66,7 +67,8 @@ export function EquipmentDetailPage() {
   }, [fetchZones]);
 
   // Must call hooks before any early returns
-  const equipmentState = useEquipmentState(equipment ?? ({} as EquipmentWithDetails));
+  const EMPTY: EquipmentWithDetails = { id: "", name: "", type: "sensor", zoneId: "", enabled: true, createdAt: "", updatedAt: "", dataBindings: [], orderBindings: [] };
+  const equipmentState = useEquipmentState(equipment ?? EMPTY);
 
   useEffect(() => {
     if (!id) return;
@@ -135,7 +137,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const { isLight, isShutter, isSensor, actionBinding } = equipmentState;
+  const { isLight, isShutter, isSensor, isThermostat, actionBinding } = equipmentState;
 
   return (
     <div className="p-6">
@@ -208,6 +210,17 @@ export function EquipmentDetailPage() {
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ShutterControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* Thermostat controls */}
+      {isThermostat && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <ThermostatCard
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />

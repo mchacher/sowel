@@ -15,6 +15,11 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   button: ["action"],
 };
 
+/** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
+const EQUIPMENT_TYPE_DATA_KEYS: Partial<Record<EquipmentType, string[]>> = {
+  thermostat: ["targetTemperature"],
+};
+
 interface DeviceSelectorProps {
   equipmentType: EquipmentType;
   selectedDeviceIds: string[];
@@ -54,11 +59,16 @@ export function DeviceSelector({
     : allDevices;
 
   const categories = EQUIPMENT_TYPE_CATEGORIES[equipmentType];
-  const compatible = categories && categories.length > 0
+  const requiredKeys = EQUIPMENT_TYPE_DATA_KEYS[equipmentType];
+  const compatible = requiredKeys
     ? availableDevices.filter((device) =>
-        device.data.some((d) => categories.includes(d.category))
+        device.data.some((d) => requiredKeys.includes(d.key))
       )
-    : availableDevices;
+    : categories && categories.length > 0
+      ? availableDevices.filter((device) =>
+          device.data.some((d) => categories.includes(d.category))
+        )
+      : availableDevices;
 
   const baseDevices = showAll ? availableDevices : compatible;
   const filterLower = filter.toLowerCase();

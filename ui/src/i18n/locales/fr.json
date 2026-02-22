@@ -56,6 +56,7 @@
   "common.noLogs": "Aucun log",
   "common.select": "Sélectionner...",
   "common.disabled": "Désactivé",
+  "common.all": "Tous",
 
   "status.online": "En ligne",
   "status.offline": "Hors ligne",
@@ -171,9 +172,11 @@
   "equipments.type.sensor": "Capteur",
   "equipments.type.switch": "Interrupteur / Prise",
   "equipments.type.button": "Bouton / Télécommande",
+  "equipments.type.thermostat": "Thermostat",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
+  "equipments.group.climate": "Thermostat",
   "equipments.group.sensors": "Capteurs",
   "equipments.group.other": "Autres",
 
@@ -202,6 +205,8 @@
   "controls.position": "Position",
   "controls.opened": "Ouvert",
   "controls.closed": "Fermé",
+  "controls.on": "Marche",
+  "controls.off": "Arrêt",
 
   "sensors.title": "Capteurs",
   "sensors.noData": "Aucune donnée capteur.",
@@ -377,6 +382,8 @@
   "integrations.saved": "Configuration enregistrée",
   "integrations.started": "Intégration démarrée",
   "integrations.stopped": "Intégration arrêtée",
+  "integrations.refresh": "Rafraîchir",
+  "integrations.refreshed": "Données actualisées",
 
   "calendar.title": "Calendrier",
   "calendar.subtitle": "Planifiez l'activation automatique des modes selon la semaine",
@@ -404,5 +411,23 @@
   "calendar.days.wed": "Mer",
   "calendar.days.thu": "Jeu",
   "calendar.days.fri": "Ven",
-  "calendar.days.sat": "Sam"
+  "calendar.days.sat": "Sam",
+
+  "thermostat.outside": "Extérieur",
+  "thermostat.target": "Consigne",
+  "thermostat.mode": "Mode",
+  "thermostat.fanSpeed": "Ventilation",
+  "thermostat.modes.auto": "Auto",
+  "thermostat.modes.cool": "Froid",
+  "thermostat.modes.heat": "Chaud",
+  "thermostat.modes.dry": "Déshumid.",
+  "thermostat.modes.fan": "Ventil.",
+  "thermostat.fanSpeeds.auto": "Auto",
+  "thermostat.fanSpeeds.low": "Min",
+  "thermostat.fanSpeeds.lowMid": "Faible",
+  "thermostat.fanSpeeds.mid": "Moyen",
+  "thermostat.fanSpeeds.highMid": "Fort",
+  "thermostat.fanSpeeds.high": "Max",
+  "thermostat.ecoModes.powerful": "Puissant",
+  "thermostat.ecoModes.quiet": "Silence"
 }

@@ -8,11 +8,13 @@ import {
   Gauge,
   ToggleLeft,
   CircleDot,
+  Thermometer,
 } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
 import { SensorValues } from "./SensorValues";
 import { ShutterControls } from "./ShutterControls";
+import { ThermostatCard } from "./ThermostatCard";
 import { useEquipmentState } from "./useEquipmentState";
 
 const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
@@ -23,6 +25,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
   sensor: <Gauge size={18} strokeWidth={1.5} />,
   button: <CircleDot size={18} strokeWidth={1.5} />,
+  thermostat: <Thermometer size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -33,6 +36,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   switch: "equipments.type.switch",
   sensor: "equipments.type.sensor",
   button: "equipments.type.button",
+  thermostat: "equipments.type.thermostat",
 };
 
 interface EquipmentCardProps {
@@ -46,6 +50,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     isLight,
     isShutter,
     isSensor,
+    isThermostat,
     iconElement,
     iconColor,
     shutterPosition,
@@ -108,6 +113,15 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
           hasShutterState={hasShutterState}
           hasPositionOrder={equipment.orderBindings.some((ob) => ob.alias === "position")}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+        />
+      )}
+
+      {/* Thermostat quick control */}
+      {isThermostat && equipment.enabled && (
+        <ThermostatCard
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
         />
       )}
     </div>

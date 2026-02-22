@@ -1,156 +1,232 @@
 # Architecture: V0.10b Panasonic Comfort Cloud Integration
 
-## Panasonic CC Integration Plugin
+## Design Decision: Python Bridge
+
+Instead of porting the Panasonic auth/API logic to TypeScript, we use the community-maintained Python library `aio-panasonic-comfort-cloud` (used by Home Assistant) via a CLI bridge script. This gives us:
+
+- **Community maintenance** — Auth flow, API headers, app version updates are handled by the HA community
+- **Zero auth complexity** — No OAuth2/PKCE, no HTML parsing, no cookie management in TypeScript
+- **Simple upgrade path** — `pip install --upgrade aio-panasonic-comfort-cloud` follows HA updates
+- **Trade-off** — Requires Python 3.10+ runtime on the host
+
+## File Structure
 
 ```
 src/integrations/panasonic-cc/
-├── index.ts                  # PanasonicCCIntegration implements IntegrationPlugin
-├── panasonic-client.ts       # HTTP client: auth, token management, API calls
-├── panasonic-discovery.ts    # Device group parsing, device model mapping
-├── panasonic-poller.ts       # Polling scheduler (regular + on-demand)
-└── panasonic-types.ts        # Panasonic API response types, enums
+├── index.ts              # PanasonicCCIntegration implements IntegrationPlugin
+├── panasonic-bridge.ts   # Spawns Python bridge, parses JSON output
+├── panasonic-poller.ts   # Polling scheduler (regular + on-demand)
+├── panasonic-types.ts    # TypeScript types for bridge JSON responses + enum mappings
+└── bridge.py             # Python CLI wrapper around aio-panasonic-comfort-cloud
 ```
 
-## Authentication Flow
+## Python Bridge (`bridge.py`)
 
-TypeScript port of the Auth0 PKCE flow from `aio-panasonic-comfort-cloud`:
+A thin CLI script that wraps `aio-panasonic-comfort-cloud`. Called via `child_process.execFile('python3', ['bridge.py', ...])`. All output is JSON to stdout.
 
-1. Generate PKCE params (code_verifier, code_challenge, state)
-2. GET `/authorize` → follow redirect chain
-3. POST `/usernamepassword/login` with credentials
-4. Parse HTML response for hidden form fields (wa, wresult, wctx)
-5. POST `/login/callback` → follow redirect → extract `code`
-6. POST `/oauth/token` → get `access_token` + `refresh_token`
-7. POST `accsmart.panasonic.com/auth/v2/login` → get ACC `clientId`
+### Commands
 
-### Token Storage
+```bash
+# Login + verify credentials (also discovers devices)
+python3 bridge.py login --email X --password Y --token-file /path/tokens.json
 
-Stored in SettingsManager:
+# Get all devices (groups + status)
+python3 bridge.py get_devices --email X --password Y --token-file /path/tokens.json
 
-- `integration.panasonic-cc.access_token`
-- `integration.panasonic-cc.refresh_token`
-- `integration.panasonic-cc.token_expires` (ISO timestamp)
-- `integration.panasonic-cc.acc_client_id`
-- `integration.panasonic-cc.scope`
+# Get single device status
+python3 bridge.py get_device --id GUID --email X --password Y --token-file /path/tokens.json
 
-### Token Refresh
-
-Before each API call, check if `access_token` is expired (decode JWT payload, compare `exp` field). If expired, call `POST /oauth/token` with `grant_type=refresh_token`. If refresh fails, re-authenticate with stored email/password.
-
-### API Key Computation
-
-Each request to `accsmart.panasonic.com` requires a computed `x-cfc-api-key` header:
-
-```
-timestamp = "YYYY-MM-DD HH:MM:SS"
-timestamp_ms = Date.parse(timestamp + " UTC").toString()
-input = "Comfort Cloud" + "521325fb2dd486bf4831b47644317fca" + timestamp_ms + "Bearer " + access_token
-api_key = SHA256(input).hex()
-result = api_key[0:9] + "cfc" + api_key[9:]
+# Send control command
+python3 bridge.py control --id GUID --param power --value 1 --email X --password Y --token-file /path/tokens.json
 ```
 
-## Data Model
+### Token Persistence
 
-### Panasonic Device → Corbel Device Mapping
+The Python `Session` class handles token storage natively via `--token-file`. Tokens are persisted between calls, avoiding re-authentication on every command. The file is stored in `data/panasonic-tokens.json`.
 
-Each AC unit in `/device/group` becomes a Corbel Device:
+### JSON Output Format
 
-| Corbel field     | Panasonic source                      |
-| ---------------- | ------------------------------------- |
-| `integrationId`  | `"panasonic_cc"`                      |
-| `sourceDeviceId` | `deviceHashGuid` or `MD5(deviceGuid)` |
-| `name`           | `deviceName`                          |
-| `manufacturer`   | `"Panasonic"`                         |
-| `model`          | `deviceModuleNumber`                  |
-| `source`         | `"panasonic_cc"`                      |
-| `ieeeAddress`    | _not applicable_                      |
+```json
+// get_devices response
+{
+  "ok": true,
+  "devices": [
+    {
+      "id": "CS-Z50VKEW_ABCDEF123",
+      "guid": "actual-device-guid",
+      "name": "Salon",
+      "group": "Maison",
+      "model": "CS-Z50VKEW",
+      "parameters": {
+        "power": true,
+        "mode": "cool",
+        "targetTemperature": 22.5,
+        "insideTemperature": 24,
+        "outsideTemperature": 32,
+        "fanSpeed": "auto",
+        "airSwingUD": "mid",
+        "airSwingLR": "mid",
+        "ecoMode": "auto",
+        "nanoe": "on"
+      },
+      "features": {
+        "nanoe": true,
+        "autoMode": true,
+        "heatMode": true,
+        "dryMode": true,
+        "coolMode": true,
+        "fanMode": true,
+        "airSwingLR": true
+      }
+    }
+  ]
+}
 
-### DeviceData exposed per AC unit
+// control response
+{
+  "ok": true
+}
 
-| key                  | type    | category    | unit | Panasonic source                                                       |
-| -------------------- | ------- | ----------- | ---- | ---------------------------------------------------------------------- |
-| `power`              | boolean | generic     | —    | `parameters.operate` (0→false, 1→true)                                 |
-| `operationMode`      | enum    | generic     | —    | `parameters.operationMode` → "auto"/"dry"/"cool"/"heat"/"fan"          |
-| `targetTemperature`  | number  | temperature | °C   | `parameters.temperatureSet` (126 → null)                               |
-| `insideTemperature`  | number  | temperature | °C   | `parameters.insideTemperature` (126 → null)                            |
-| `outsideTemperature` | number  | temperature | °C   | `parameters.outTemperature` (126 → null)                               |
-| `fanSpeed`           | enum    | generic     | —    | `parameters.fanSpeed` → "auto"/"low"/"low_mid"/"mid"/"high_mid"/"high" |
-| `airSwingUD`         | enum    | generic     | —    | `parameters.airSwingUD` → "auto"/"up"/"down"/"mid"/...                 |
-| `airSwingLR`         | enum    | generic     | —    | `parameters.airSwingLR` → "auto"/"right"/"left"/"mid"/...              |
-| `ecoMode`            | enum    | generic     | —    | `parameters.ecoMode` → "auto"/"powerful"/"quiet"                       |
-| `nanoe`              | enum    | generic     | —    | `parameters.nanoe` → "unavailable"/"off"/"on"/"modeG"/"all"            |
+// error response
+{
+  "ok": false,
+  "error": "Invalid credentials"
+}
+```
 
-### DeviceOrders exposed per AC unit
+The bridge script handles all enum conversions (numeric → string for output, string → numeric for control).
 
-| key                 | type    | dispatchConfig                                                                                    |
-| ------------------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `power`             | boolean | `{ "param": "operate" }`                                                                          |
-| `operationMode`     | enum    | `{ "param": "operationMode", "enumValues": ["auto","dry","cool","heat","fan"] }`                  |
-| `targetTemperature` | number  | `{ "param": "temperatureSet", "min": 16, "max": 30, "step": 0.5 }`                                |
-| `fanSpeed`          | enum    | `{ "param": "fanSpeed", "enumValues": ["auto","low","low_mid","mid","high_mid","high"] }`         |
-| `airSwingUD`        | enum    | `{ "param": "airSwingUD", "enumValues": ["auto","up","down","mid","up_mid","down_mid","swing"] }` |
-| `airSwingLR`        | enum    | `{ "param": "airSwingLR", "enumValues": ["auto","right","left","mid","right_mid","left_mid"] }`   |
-| `ecoMode`           | enum    | `{ "param": "ecoMode", "enumValues": ["auto","powerful","quiet"] }`                               |
-| `nanoe`             | enum    | `{ "param": "nanoe", "enumValues": ["off","on","modeG","all"] }`                                  |
+### Error Handling
 
-### Order Dispatch
+- Wrong credentials → `{"ok": false, "error": "Login failed: ..."}`
+- Network error → `{"ok": false, "error": "Connection error: ..."}`
+- Invalid temperature (126) → exposed as `null`
+- Script exits with code 0 even on errors (error in JSON), non-zero only for crashes
 
-`PanasonicCCIntegration.executeOrder(device, dispatchConfig, value)`:
+## TypeScript Integration
 
-1. Map string enum values back to Panasonic numeric codes
-2. Handle swing mode coordination (fanAutoMode)
-3. POST to `/deviceStatus/control` with `{ deviceGuid, parameters: { [param]: numericValue } }`
-4. Schedule on-demand poll after delay (10s default)
+### PanasonicBridge (`panasonic-bridge.ts`)
 
-## Polling Strategy
+Thin wrapper that spawns the Python script and parses JSON:
 
-### Regular Polling
+```ts
+class PanasonicBridge {
+  constructor(
+    private pythonPath: string, // default: "python3"
+    private bridgePath: string, // path to bridge.py
+    private tokenFile: string, // data/panasonic-tokens.json
+  ) {}
+
+  async getDevices(email: string, password: string): Promise<BridgeDevicesResponse>;
+  async getDevice(id: string, email: string, password: string): Promise<BridgeDeviceResponse>;
+  async control(
+    id: string,
+    param: string,
+    value: unknown,
+    email: string,
+    password: string,
+  ): Promise<void>;
+}
+```
+
+Each call spawns `python3 bridge.py <command> --args...`, reads stdout, parses JSON. Timeout: 30s per command.
+
+### PanasonicPoller (`panasonic-poller.ts`)
+
+Manages polling on the Node.js side:
 
 ```ts
 class PanasonicPoller {
   private interval: NodeJS.Timeout | null = null;
   private pollIntervalMs: number; // default 300_000 (5 min)
 
-  start(): void {
-    this.poll(); // Immediate first poll
-    this.interval = setInterval(() => this.poll(), this.pollIntervalMs);
-  }
-
-  stop(): void {
-    if (this.interval) clearInterval(this.interval);
-  }
-
-  async poll(): Promise<void> {
-    for (const device of devices) {
-      await this.pollDevice(device);
-      // Small delay between devices to avoid burst
-    }
-  }
-
-  // Called after an order is executed
-  scheduleOnDemandPoll(deviceGuid: string, delayMs: number = 10_000): void {
-    setTimeout(() => this.pollDevice(deviceGuid), delayMs);
-  }
+  start(): void; // Immediate first poll + setInterval
+  stop(): void; // clearInterval
+  scheduleOnDemandPoll(deviceGuid: string, delayMs?: number): void; // setTimeout after order
 }
 ```
 
-### Request Serialization
+On each poll cycle:
 
-A simple mutex (queue) ensures only one API request is in flight:
+1. Call `bridge.getDevices()` (single Python invocation returns all devices + status)
+2. For each device, map to Corbel `DiscoveredDevice` format
+3. Call `deviceManager.upsertFromDiscovery()` to update/create devices + data
+
+### PanasonicCCIntegration (`index.ts`)
 
 ```ts
-class RequestMutex {
-  private queue: Array<() => void> = [];
-  private locked = false;
+class PanasonicCCIntegration implements IntegrationPlugin {
+  readonly id = "panasonic_cc";
+  readonly name = "Panasonic Comfort Cloud";
+  readonly icon = "AirVent";
 
-  async acquire(): Promise<void> { ... }
-  release(): void { ... }
+  // Settings schema (UI form)
+  getSettingsSchema(): IntegrationSettingDef[] → email, password, polling_interval
+
+  // Start: validate credentials, discover devices, start polling
+  start(): Promise<void>
+
+  // Stop: stop polling
+  stop(): Promise<void>
+
+  // Execute order: call bridge.control(), schedule on-demand poll
+  executeOrder(device, dispatchConfig, value): Promise<void>
 }
 ```
 
-### Cached vs Live Fallback
+### Order Dispatch
 
-On poll, use cached endpoint (`/deviceStatus/now/{guid}`). If it fails, log warning and retry on next cycle. Live endpoint (`/deviceStatus/{guid}`) is not used by default (slower, more rate-limit prone).
+`executeOrder(device, dispatchConfig, value)`:
+
+1. Read `dispatchConfig.param` (e.g. `"operationMode"`)
+2. Read `dispatchConfig.guid` (the Panasonic device GUID)
+3. Call `bridge.control(guid, param, value, email, password)`
+4. Schedule on-demand poll after 10s delay
+
+## Data Model
+
+### Panasonic Device → Corbel Device Mapping
+
+Each AC unit becomes a Corbel Device:
+
+| Corbel field     | Source                         |
+| ---------------- | ------------------------------ |
+| `integrationId`  | `"panasonic_cc"`               |
+| `sourceDeviceId` | `device.id` from bridge output |
+| `name`           | `device.name`                  |
+| `manufacturer`   | `"Panasonic"`                  |
+| `model`          | `device.model`                 |
+| `source`         | `"panasonic_cc"`               |
+
+### DeviceData exposed per AC unit
+
+| key                  | type    | category    | unit | Bridge source                                     |
+| -------------------- | ------- | ----------- | ---- | ------------------------------------------------- |
+| `power`              | boolean | generic     | —    | `parameters.power`                                |
+| `operationMode`      | enum    | generic     | —    | `parameters.mode`                                 |
+| `targetTemperature`  | number  | temperature | °C   | `parameters.targetTemperature` (null if invalid)  |
+| `insideTemperature`  | number  | temperature | °C   | `parameters.insideTemperature` (null if invalid)  |
+| `outsideTemperature` | number  | temperature | °C   | `parameters.outsideTemperature` (null if invalid) |
+| `fanSpeed`           | enum    | generic     | —    | `parameters.fanSpeed`                             |
+| `airSwingUD`         | enum    | generic     | —    | `parameters.airSwingUD`                           |
+| `airSwingLR`         | enum    | generic     | —    | `parameters.airSwingLR`                           |
+| `ecoMode`            | enum    | generic     | —    | `parameters.ecoMode`                              |
+| `nanoe`              | enum    | generic     | —    | `parameters.nanoe`                                |
+
+### DeviceOrders exposed per AC unit
+
+| key                 | type    | dispatchConfig                                                                                |
+| ------------------- | ------- | --------------------------------------------------------------------------------------------- |
+| `power`             | boolean | `{ "param": "power", "guid": "<deviceGuid>" }`                                                |
+| `operationMode`     | enum    | `{ "param": "mode", "guid": "<deviceGuid>", "enumValues": [...] }`                            |
+| `targetTemperature` | number  | `{ "param": "targetTemperature", "guid": "<deviceGuid>", "min": 16, "max": 30, "step": 0.5 }` |
+| `fanSpeed`          | enum    | `{ "param": "fanSpeed", "guid": "<deviceGuid>", "enumValues": [...] }`                        |
+| `airSwingUD`        | enum    | `{ "param": "airSwingUD", "guid": "<deviceGuid>", "enumValues": [...] }`                      |
+| `airSwingLR`        | enum    | `{ "param": "airSwingLR", "guid": "<deviceGuid>", "enumValues": [...] }`                      |
+| `ecoMode`           | enum    | `{ "param": "ecoMode", "guid": "<deviceGuid>", "enumValues": [...] }`                         |
+| `nanoe`             | enum    | `{ "param": "nanoe", "guid": "<deviceGuid>", "enumValues": [...] }`                           |
+
+Available enum values are filtered per device based on `features` flags from the bridge.
 
 ## New EquipmentType: thermostat
 
@@ -192,13 +268,12 @@ New component `ThermostatCard` in `ui/src/components/equipments/`:
 
 ### IntegrationsPage
 
-Add `PanasonicCCCard` (rendered dynamically from integration registry):
+Rendered dynamically from integration registry (already working from V0.10a):
 
-- Email/password fields
+- Email/password fields (from settings schema)
 - Polling interval (number input, seconds)
 - Status indicator (connected/disconnected/error)
-- Device count after connection
-- Save / Connect / Disconnect buttons
+- Save / Start / Stop buttons
 
 ### EquipmentDetailPage
 
@@ -210,48 +285,50 @@ When `equipment.type === "thermostat"`, show a thermostat-specific detail view w
 
 ## API Changes
 
-No new REST endpoints beyond V0.10a's integration endpoints. The Panasonic integration uses the existing:
+No new REST endpoints beyond V0.10a's integration endpoints.
 
-- `GET /api/v1/integrations` → includes panasonic-cc status
-- `POST /api/v1/integrations/panasonic-cc/start`
-- `POST /api/v1/integrations/panasonic-cc/stop`
-- `PUT /api/v1/settings` → save panasonic-cc credentials + polling interval
+## Dependencies
 
-## Dependencies (npm)
+### Python (runtime)
 
-- `node-html-parser` — parse Auth0 HTML response for hidden form fields (lightweight, zero-dependency)
-- No need for cookie jar library — manual cookie extraction from response headers
+- `aio-panasonic-comfort-cloud` — Community-maintained Panasonic CC client (HA ecosystem)
+- Python 3.10+ on the host
+
+### npm
+
+- No new npm dependencies (removed `node-html-parser`)
 
 ## File Changes
 
-| File                                                   | Change                                                                |
-| ------------------------------------------------------ | --------------------------------------------------------------------- |
-| `src/integrations/panasonic-cc/index.ts`               | **New** — PanasonicCCIntegration                                      |
-| `src/integrations/panasonic-cc/panasonic-client.ts`    | **New** — Auth + API client                                           |
-| `src/integrations/panasonic-cc/panasonic-discovery.ts` | **New** — Device mapping                                              |
-| `src/integrations/panasonic-cc/panasonic-poller.ts`    | **New** — Polling scheduler                                           |
-| `src/integrations/panasonic-cc/panasonic-types.ts`     | **New** — API types + enums                                           |
-| `src/shared/types.ts`                                  | Add `"panasonic_cc"` to DeviceSource, `"thermostat"` to EquipmentType |
-| `src/equipments/equipment-manager.ts`                  | Add `"thermostat"` to VALID_EQUIPMENT_TYPES                           |
-| `src/index.ts`                                         | Register PanasonicCCIntegration in IntegrationRegistry                |
-| `ui/src/components/equipments/ThermostatCard.tsx`      | **New** — Thermostat widget                                           |
-| `ui/src/components/equipments/ThermostatControl.tsx`   | **New** — Temperature/mode/fan controls                               |
-| `ui/src/pages/EquipmentDetailPage.tsx`                 | Add thermostat-specific detail view                                   |
-| `ui/src/i18n/locales/fr.json`                          | Thermostat + Panasonic translations                                   |
-| `ui/src/i18n/locales/en.json`                          | Thermostat + Panasonic translations                                   |
-| `package.json`                                         | Add `node-html-parser` dependency                                     |
+| File                                                | Change                                          |
+| --------------------------------------------------- | ----------------------------------------------- |
+| `src/integrations/panasonic-cc/bridge.py`           | **New** — Python CLI bridge                     |
+| `src/integrations/panasonic-cc/index.ts`            | **New** — PanasonicCCIntegration                |
+| `src/integrations/panasonic-cc/panasonic-bridge.ts` | **New** — TS wrapper for Python bridge          |
+| `src/integrations/panasonic-cc/panasonic-poller.ts` | **New** — Polling scheduler                     |
+| `src/integrations/panasonic-cc/panasonic-types.ts`  | **New** — Bridge response types + enum mappings |
+| `src/shared/types.ts`                               | Add `"thermostat"` to EquipmentType             |
+| `src/equipments/equipment-manager.ts`               | Add `"thermostat"` to VALID_EQUIPMENT_TYPES     |
+| `src/index.ts`                                      | Register PanasonicCCIntegration                 |
+| `ui/src/components/equipments/ThermostatCard.tsx`   | **New** — Thermostat widget                     |
+| `ui/src/pages/EquipmentDetailPage.tsx`              | Add thermostat-specific detail view             |
+| `ui/src/i18n/locales/fr.json`                       | Thermostat translations                         |
+| `ui/src/i18n/locales/en.json`                       | Thermostat translations                         |
+| `requirements.txt`                                  | **New** — `aio-panasonic-comfort-cloud`         |
 
 ## Pipeline
 
 ```
-PanasonicCCIntegration
-  ├── PanasonicClient (auth + HTTP)
-  ├── PanasonicPoller (scheduled polling)
-  │    └── GET /deviceStatus/now/{guid}
-  │         └── DeviceManager.updateDeviceData(integrationId, sourceDeviceId, payload)
+PanasonicCCIntegration (TypeScript)
+  ├── PanasonicBridge (spawns Python bridge.py)
+  │    └── aio-panasonic-comfort-cloud (Python, community-maintained)
+  │         └── Panasonic Cloud API (OAuth2 + REST)
+  ├── PanasonicPoller (Node.js setInterval)
+  │    └── bridge.getDevices()
+  │         └── DeviceManager.upsertFromDiscovery()
   │              └── EventBus: "device.data.updated"
   │                   └── EquipmentManager → ZoneAggregator → Scenarios → WebSocket
   └── executeOrder(device, dispatchConfig, value)
-       ├── POST /deviceStatus/control
+       ├── bridge.control(guid, param, value)
        └── scheduleOnDemandPoll(device, 10s)
 ```
