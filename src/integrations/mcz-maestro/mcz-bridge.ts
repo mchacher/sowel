@@ -38,11 +38,15 @@ export class MczBridge {
 
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this.logger.error("MCZ cloud connection timeout after 15s");
         reject(new Error("MCZ cloud connection timeout"));
       }, REQUEST_TIMEOUT_MS);
 
+      this.logger.info({ url: MCZ_CLOUD_URL }, "Connecting to MCZ cloud...");
+
       this.socket = io(MCZ_CLOUD_URL, {
-        transports: ["websocket"],
+        // Let Socket.IO negotiate transport (polling first, then upgrade)
+        // The MCZ server is old and may not support direct WebSocket
         reconnection: true,
         reconnectionDelay: 5_000,
         reconnectionDelayMax: 30_000,
@@ -50,12 +54,8 @@ export class MczBridge {
       });
 
       this.socket.on("connect", () => {
-        this.logger.info("Connected to MCZ cloud, joining...");
-        this.socket!.emit("join", {
-          serialNumber: this.serialNumber,
-          macAddress: this.macAddress,
-          type: "Android-App",
-        });
+        this.logger.info({ socketId: this.socket?.id }, "Connected to MCZ cloud, joining...");
+        this.emitJoin();
         this.connected = true;
         clearTimeout(timeout);
         resolve();
@@ -73,14 +73,16 @@ export class MczBridge {
         this.connected = false;
       });
 
-      this.socket.on("reconnect", () => {
+      // socket.io-client v4: reconnect events are on the io manager
+      this.socket.io.on("reconnect", () => {
         this.logger.info("Reconnected to MCZ cloud, re-joining...");
-        this.socket!.emit("join", {
-          serialNumber: this.serialNumber,
-          macAddress: this.macAddress,
-          type: "Android-App",
-        });
+        this.emitJoin();
         this.connected = true;
+      });
+
+      // Log all incoming events for debugging
+      this.socket.onAny((event: string, ...args: unknown[]) => {
+        this.logger.debug({ event, argsLength: args.length }, "MCZ event received");
       });
     });
   }
@@ -109,25 +111,36 @@ export class MczBridge {
     return new Promise<MczStatusFrame>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.socket?.off("rispondo", handler);
+        this.logger.error("MCZ getStatus timeout — no INFO frame received in 15s");
         reject(new Error("MCZ getStatus timeout"));
       }, REQUEST_TIMEOUT_MS);
 
-      const handler = (data: string) => {
+      const handler = (data: unknown) => {
         try {
-          const registers = parseInfoFrame(data);
+          // The response could be a string or an object
+          const raw = typeof data === "string" ? data : JSON.stringify(data);
+          this.logger.debug(
+            { rawLength: raw.length, preview: raw.substring(0, 100) },
+            "MCZ rispondo received",
+          );
+
+          const registers = parseInfoFrame(raw);
           if (registers) {
             clearTimeout(timeout);
             this.socket?.off("rispondo", handler);
+            this.logger.debug({ registerCount: registers.length }, "MCZ INFO frame parsed");
             resolve(extractStatusFrame(registers));
           }
           // Ignore non-INFO frames (alarms, params, etc.) — keep waiting
         } catch (err) {
           clearTimeout(timeout);
           this.socket?.off("rispondo", handler);
+          this.logger.error({ err }, "MCZ rispondo parse error");
           reject(err);
         }
       };
 
+      this.logger.debug("Requesting MCZ status (C|RecuperoInfo)...");
       this.socket!.on("rispondo", handler);
       this.socket!.emit("chiedo", "C|RecuperoInfo");
     });
@@ -152,5 +165,18 @@ export class MczBridge {
 
   isConnected(): boolean {
     return this.connected;
+  }
+
+  private emitJoin(): void {
+    if (!this.socket) return;
+    this.logger.debug(
+      { serialNumber: this.serialNumber, macAddress: this.macAddress },
+      "Emitting MCZ join",
+    );
+    this.socket.emit("join", {
+      serialNumber: this.serialNumber,
+      macAddress: this.macAddress,
+      type: "Android-App",
+    });
   }
 }
