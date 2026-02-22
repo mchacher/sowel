@@ -73,6 +73,13 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
   }
 
   async start(): Promise<void> {
+    // Clean up previous state before (re)starting
+    if (this.poller) {
+      this.poller.stop();
+      this.poller = null;
+    }
+    this.bridge = null;
+
     if (!this.isConfigured()) {
       this.status = "not_configured";
       return;
