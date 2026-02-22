@@ -68,8 +68,8 @@ export class MczMaestroIntegration implements IntegrationPlugin {
         label: "Polling interval (seconds)",
         type: "number",
         required: false,
-        defaultValue: "30",
-        placeholder: "30",
+        defaultValue: "300",
+        placeholder: "300",
       },
     ];
   }
@@ -92,8 +92,8 @@ export class MczMaestroIntegration implements IntegrationPlugin {
 
     const serialNumber = this.getSetting("serial_number")!;
     const macAddress = this.getSetting("mac_address")!;
-    const pollingIntervalSec = parseInt(this.getSetting("polling_interval") ?? "30", 10);
-    const pollingIntervalMs = (isNaN(pollingIntervalSec) ? 30 : pollingIntervalSec) * 1000;
+    const pollingIntervalSec = parseInt(this.getSetting("polling_interval") ?? "300", 10);
+    const pollingIntervalMs = (isNaN(pollingIntervalSec) ? 300 : pollingIntervalSec) * 1000;
 
     try {
       this.bridge = new MczBridge(this.logger);
