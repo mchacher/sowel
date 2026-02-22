@@ -429,5 +429,27 @@
   "thermostat.fanSpeeds.highMid": "High-Mid",
   "thermostat.fanSpeeds.high": "High",
   "thermostat.ecoModes.powerful": "Powerful",
-  "thermostat.ecoModes.quiet": "Quiet"
+  "thermostat.ecoModes.quiet": "Quiet",
+
+  "stove.state.off": "Off",
+  "stove.state.checking": "Checking",
+  "stove.state.stabilizing": "Stabilizing",
+  "stove.state.running": "Running",
+  "stove.state.running_p1": "Power 1",
+  "stove.state.running_p2": "Power 2",
+  "stove.state.running_p3": "Power 3",
+  "stove.state.running_p4": "Power 4",
+  "stove.state.running_p5": "Power 5",
+  "stove.state.diagnostic": "Diagnostic",
+  "stove.state.shutdown": "Shutdown",
+  "stove.state.error": "Error",
+  "stove.profile.manual": "Manual",
+  "stove.profile.dynamic": "Dynamic",
+  "stove.profile.overnight": "Overnight",
+  "stove.profile.comfort": "Comfort",
+  "stove.pellet.inactive": "Inactive",
+  "stove.pellet.sufficient": "Sufficient",
+  "stove.pellet.almost_empty": "Almost empty",
+  "stove.sparkPlug.ok": "OK",
+  "stove.sparkPlug.worn": "Worn"
 }
