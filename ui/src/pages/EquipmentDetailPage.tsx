@@ -399,21 +399,20 @@ export function EquipmentDetailPage() {
 function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWithDetails; onChangeDevice: () => void }) {
   const { t } = useTranslation();
   // Collect unique devices from all bindings
-  const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[]; values: Record<string, { value: unknown; unit?: string }> }>();
+  const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[] }>();
 
   for (const db of equipment.dataBindings) {
     let entry = deviceMap.get(db.deviceId);
     if (!entry) {
-      entry = { deviceId: db.deviceId, deviceName: db.deviceName, dataKeys: [], orderKeys: [], values: {} };
+      entry = { deviceId: db.deviceId, deviceName: db.deviceName, dataKeys: [], orderKeys: [] };
       deviceMap.set(db.deviceId, entry);
     }
     entry.dataKeys.push(db.alias);
-    entry.values[db.alias] = { value: db.value, unit: db.unit };
   }
   for (const ob of equipment.orderBindings) {
     let entry = deviceMap.get(ob.deviceId);
     if (!entry) {
-      entry = { deviceId: ob.deviceId, deviceName: ob.deviceName, dataKeys: [], orderKeys: [], values: {} };
+      entry = { deviceId: ob.deviceId, deviceName: ob.deviceName, dataKeys: [], orderKeys: [] };
       deviceMap.set(ob.deviceId, entry);
     }
     entry.orderKeys.push(ob.alias);
@@ -460,22 +459,15 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
       <div className="space-y-2">
         {devices.map((dev) => (
           <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
+            <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
-              <div className="text-[11px] text-text-tertiary mt-0.5">
-                {[...new Set([...dev.dataKeys, ...dev.orderKeys])].join(", ")}
-              </div>
             </div>
-            <div className="flex items-center gap-3">
-              {Object.entries(dev.values).map(([key, { value, unit }]) => (
-                <div key={key} className="text-right">
-                  <div className="text-[14px] font-medium text-text font-mono">
-                    {value !== null && value !== undefined ? String(value) : "—"}
-                    {unit && <span className="text-[11px] text-text-tertiary ml-0.5">{unit}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <span className="text-[11px] text-text-tertiary flex-shrink-0">
+              {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
+              {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
+              {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
+            </span>
           </div>
         ))}
       </div>
