@@ -201,16 +201,25 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             <Flame size={12} strokeWidth={1.5} />
             {t(`stove.state.${stoveState}`, stoveState)}
           </div>
-          {hasResetAlarmOrder && stoveState.startsWith("error") && (
-            <button
-              onClick={() => exec("resetAlarm", true)}
-              disabled={executing === "resetAlarm"}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-[12px] font-medium text-error bg-error/10 border border-error/30 hover:bg-error/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <AlertTriangle size={12} strokeWidth={1.5} />
-              {t("thermostat.resetAlarm")}
-            </button>
-          )}
+          {hasResetAlarmOrder && (() => {
+            const hasAlarm = stoveState.startsWith("error");
+            return (
+              <button
+                onClick={() => hasAlarm && exec("resetAlarm", true)}
+                disabled={!hasAlarm || executing === "resetAlarm"}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-[12px] font-medium border transition-colors ${
+                  hasAlarm
+                    ? "text-error bg-error/10 border-error/30 hover:bg-error/20 cursor-pointer"
+                    : "text-text-tertiary bg-border-light/50 border-border cursor-default"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={hasAlarm ? undefined : t("thermostat.noAlarm")}
+              >
+                <AlertTriangle size={12} strokeWidth={1.5} />
+                {t("thermostat.resetAlarm")}
+                {!hasAlarm && <span className="text-[11px] opacity-60">· {t("thermostat.noAlarm")}</span>}
+              </button>
+            );
+          })()}
         </div>
       )}
 
