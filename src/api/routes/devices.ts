@@ -32,7 +32,9 @@ export function registerDeviceRoutes(app: FastifyInstance, deps: DevicesDeps): v
     const { name, zoneId } = request.body ?? {};
 
     if (name === undefined && zoneId === undefined) {
-      return reply.code(400).send({ error: "No update fields provided. Use 'name' and/or 'zoneId'." });
+      return reply
+        .code(400)
+        .send({ error: "No update fields provided. Use 'name' and/or 'zoneId'." });
     }
 
     const device = deviceManager.update(request.params.id, { name, zoneId });

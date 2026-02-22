@@ -29,14 +29,10 @@ export class CalendarManager {
 
   private prepareStatements() {
     return {
-      listProfiles: this.db.prepare(
-        `SELECT * FROM calendar_profiles ORDER BY built_in DESC, name`,
-      ),
+      listProfiles: this.db.prepare(`SELECT * FROM calendar_profiles ORDER BY built_in DESC, name`),
       getProfile: this.db.prepare(`SELECT * FROM calendar_profiles WHERE id = ?`),
       // Slots
-      listSlots: this.db.prepare(
-        `SELECT * FROM calendar_slots WHERE profile_id = ? ORDER BY time`,
-      ),
+      listSlots: this.db.prepare(`SELECT * FROM calendar_slots WHERE profile_id = ? ORDER BY time`),
       getSlot: this.db.prepare(`SELECT * FROM calendar_slots WHERE id = ?`),
       insertSlot: this.db.prepare(
         `INSERT INTO calendar_slots (id, profile_id, days, time, mode_ids) VALUES (?, ?, ?, ?, ?)`,
@@ -89,10 +85,7 @@ export class CalendarManager {
       profileId: profile.id,
       profileName: profile.name,
     });
-    this.log.info(
-      { profileId, profileName: profile.name },
-      "Active calendar profile changed",
-    );
+    this.log.info({ profileId, profileName: profile.name }, "Active calendar profile changed");
   }
 
   // ── Slots ─────────────────────────────────────────────────
@@ -102,23 +95,12 @@ export class CalendarManager {
     return rows.map(rowToSlot);
   }
 
-  addSlot(
-    profileId: string,
-    days: number[],
-    time: string,
-    modeIds: string[],
-  ): CalendarSlot {
+  addSlot(profileId: string, days: number[], time: string, modeIds: string[]): CalendarSlot {
     const row = this.stmts.getProfile.get(profileId) as CalendarProfileRow | undefined;
     if (!row) throw new CalendarError(`Profile not found: ${profileId}`, 404);
 
     const id = randomUUID();
-    this.stmts.insertSlot.run(
-      id,
-      profileId,
-      JSON.stringify(days),
-      time,
-      JSON.stringify(modeIds),
-    );
+    this.stmts.insertSlot.run(id, profileId, JSON.stringify(days), time, JSON.stringify(modeIds));
 
     this.log.info({ slotId: id, profileId, days, time, modeIds }, "Calendar slot added");
 
@@ -142,12 +124,7 @@ export class CalendarManager {
     const time = updates.time ?? existing.time;
     const modeIds = updates.modeIds ?? JSON.parse(existing.mode_ids);
 
-    this.stmts.updateSlot.run(
-      JSON.stringify(days),
-      time,
-      JSON.stringify(modeIds),
-      slotId,
-    );
+    this.stmts.updateSlot.run(JSON.stringify(days), time, JSON.stringify(modeIds), slotId);
 
     this.log.info({ slotId, days, time, modeIds }, "Calendar slot updated");
 
@@ -198,7 +175,10 @@ export class CalendarManager {
             try {
               this.modeManager.activateMode(modeId);
             } catch (err) {
-              this.log.warn({ err, modeId, slotId: slot.id }, "Failed to activate mode from calendar");
+              this.log.warn(
+                { err, modeId, slotId: slot.id },
+                "Failed to activate mode from calendar",
+              );
             }
           }
         });
@@ -208,10 +188,7 @@ export class CalendarManager {
       }
     }
 
-    this.log.info(
-      { profileId, jobCount: this.cronJobs.length },
-      "Calendar cron jobs scheduled",
-    );
+    this.log.info({ profileId, jobCount: this.cronJobs.length }, "Calendar cron jobs scheduled");
   }
 }
 

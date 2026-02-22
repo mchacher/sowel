@@ -27,7 +27,7 @@ export function ModesPage() {
     getActiveCalendar()
       .then(({ slots }) => setCalendarSlots(slots))
       .catch(() => setCalendarSlots([]));
-  }, [fetchModes]);
+  }, [fetchModes, t]);
 
   const handleCreate = async (data: { name: string; description?: string; icon?: string }) => {
     const mode = await createMode(data);

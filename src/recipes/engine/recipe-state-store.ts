@@ -16,19 +16,13 @@ export class RecipeStateStore {
 
   private prepareStatements() {
     return {
-      get: this.db.prepare(
-        "SELECT value FROM recipe_state WHERE instance_id = ? AND key = ?",
-      ),
+      get: this.db.prepare("SELECT value FROM recipe_state WHERE instance_id = ? AND key = ?"),
       set: this.db.prepare(
         `INSERT INTO recipe_state (instance_id, key, value) VALUES (?, ?, ?)
          ON CONFLICT(instance_id, key) DO UPDATE SET value = excluded.value`,
       ),
-      delete: this.db.prepare(
-        "DELETE FROM recipe_state WHERE instance_id = ? AND key = ?",
-      ),
-      clear: this.db.prepare(
-        "DELETE FROM recipe_state WHERE instance_id = ?",
-      ),
+      delete: this.db.prepare("DELETE FROM recipe_state WHERE instance_id = ? AND key = ?"),
+      clear: this.db.prepare("DELETE FROM recipe_state WHERE instance_id = ?"),
     };
   }
 

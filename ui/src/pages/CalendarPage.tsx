@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Calendar, Plus, Trash2, Loader2, Clock, X, Check } from "lucide-react";
 import { useCalendar } from "../store/useCalendar";
 import { useModes } from "../store/useModes";
-import type { CalendarSlot, CalendarProfile } from "../types";
+import type { CalendarSlot } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function CalendarPage() {
@@ -34,7 +34,7 @@ export function CalendarPage() {
   // Sync selected profile with active profile
   useEffect(() => {
     if (activeProfileId && !selectedProfileId) {
-      setSelectedProfileId(activeProfileId);
+      setSelectedProfileId(activeProfileId); // eslint-disable-line react-hooks/set-state-in-effect -- sync state from store
     }
   }, [activeProfileId, selectedProfileId]);
 

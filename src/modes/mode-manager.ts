@@ -47,9 +47,7 @@ export class ModeManager {
         `INSERT INTO mode_event_triggers (id, mode_id, equipment_id, alias, value) VALUES (?, ?, ?, ?, ?)`,
       ),
       deleteTrigger: this.db.prepare(`DELETE FROM mode_event_triggers WHERE id = ?`),
-      getTriggersByMode: this.db.prepare(
-        `SELECT * FROM mode_event_triggers WHERE mode_id = ?`,
-      ),
+      getTriggersByMode: this.db.prepare(`SELECT * FROM mode_event_triggers WHERE mode_id = ?`),
       listAllTriggers: this.db.prepare(`SELECT * FROM mode_event_triggers`),
       // Zone impacts
       upsertImpact: this.db.prepare(
@@ -61,12 +59,8 @@ export class ModeManager {
       deleteImpactByModeZone: this.db.prepare(
         `DELETE FROM zone_mode_impacts WHERE mode_id = ? AND zone_id = ?`,
       ),
-      getImpactsByMode: this.db.prepare(
-        `SELECT * FROM zone_mode_impacts WHERE mode_id = ?`,
-      ),
-      getImpactsByZone: this.db.prepare(
-        `SELECT * FROM zone_mode_impacts WHERE zone_id = ?`,
-      ),
+      getImpactsByMode: this.db.prepare(`SELECT * FROM zone_mode_impacts WHERE mode_id = ?`),
+      getImpactsByZone: this.db.prepare(`SELECT * FROM zone_mode_impacts WHERE zone_id = ?`),
     };
   }
 
@@ -77,11 +71,7 @@ export class ModeManager {
     this.eventBus.on((event) => {
       if (event.type === "equipment.data.changed") {
         try {
-          this.handleEquipmentDataChanged(
-            event.equipmentId,
-            event.alias,
-            event.value,
-          );
+          this.handleEquipmentDataChanged(event.equipmentId, event.alias, event.value);
         } catch (err) {
           this.log.error({ err }, "Error handling event trigger");
         }
@@ -91,18 +81,12 @@ export class ModeManager {
     const modes = this.listModes();
     const activeModes = modes.filter((m) => m.active);
     if (activeModes.length > 0) {
-      this.log.info(
-        { count: activeModes.length },
-        "Active modes restored from DB",
-      );
+      this.log.info({ count: activeModes.length }, "Active modes restored from DB");
     }
 
     const triggers = this.stmts.listAllTriggers.all() as ModeEventTriggerRow[];
     if (triggers.length > 0) {
-      this.log.info(
-        { count: triggers.length },
-        "Event triggers registered",
-      );
+      this.log.info({ count: triggers.length }, "Event triggers registered");
     }
   }
 
@@ -117,17 +101,14 @@ export class ModeManager {
     return mode;
   }
 
-  updateMode(
-    id: string,
-    updates: { name?: string; icon?: string; description?: string },
-  ): Mode {
+  updateMode(id: string, updates: { name?: string; icon?: string; description?: string }): Mode {
     const existing = this.getMode(id);
     if (!existing) throw new ModeError(`Mode not found: ${id}`, 404);
 
     this.stmts.updateMode.run(
       updates.name ?? existing.name,
-      updates.icon !== undefined ? updates.icon : existing.icon ?? null,
-      updates.description !== undefined ? updates.description : existing.description ?? null,
+      updates.icon !== undefined ? updates.icon : (existing.icon ?? null),
+      updates.description !== undefined ? updates.description : (existing.description ?? null),
       id,
     );
 
@@ -195,10 +176,7 @@ export class ModeManager {
     }
 
     this.eventBus.emit({ type: "mode.activated", modeId: id, modeName: mode.name });
-    this.log.info(
-      { modeId: id, name: mode.name, impactCount: impacts.length },
-      "Mode activated",
-    );
+    this.log.info({ modeId: id, name: mode.name, impactCount: impacts.length }, "Mode activated");
   }
 
   applyModeToZone(modeId: string, zoneId: string): void {
@@ -248,13 +226,14 @@ export class ModeManager {
   private executeAction(action: ZoneModeImpactAction, modeName: string): void {
     switch (action.type) {
       case "order":
-        this.equipmentManager.executeOrder(
-          action.equipmentId,
-          action.orderAlias,
-          action.value,
-        );
+        this.equipmentManager.executeOrder(action.equipmentId, action.orderAlias, action.value);
         this.log.debug(
-          { equipmentId: action.equipmentId, alias: action.orderAlias, value: action.value, modeName },
+          {
+            equipmentId: action.equipmentId,
+            alias: action.orderAlias,
+            value: action.value,
+            modeName,
+          },
           "Mode order executed",
         );
         break;
@@ -309,18 +288,11 @@ export class ModeManager {
     return rows.map(rowToEventTrigger);
   }
 
-  private handleEquipmentDataChanged(
-    equipmentId: string,
-    alias: string,
-    value: unknown,
-  ): void {
+  private handleEquipmentDataChanged(equipmentId: string, alias: string, value: unknown): void {
     const triggers = this.stmts.listAllTriggers.all() as ModeEventTriggerRow[];
 
     for (const trigger of triggers) {
-      if (
-        trigger.equipment_id === equipmentId &&
-        trigger.alias === alias
-      ) {
+      if (trigger.equipment_id === equipmentId && trigger.alias === alias) {
         const triggerValue = JSON.parse(trigger.value);
         if (triggerValue === value || JSON.stringify(triggerValue) === JSON.stringify(value)) {
           this.log.info(
@@ -335,11 +307,7 @@ export class ModeManager {
 
   // ── Zone Impacts ──────────────────────────────────────────
 
-  setZoneImpact(
-    modeId: string,
-    zoneId: string,
-    actions: ZoneModeImpactAction[],
-  ): ZoneModeImpact {
+  setZoneImpact(modeId: string, zoneId: string, actions: ZoneModeImpactAction[]): ZoneModeImpact {
     const mode = this.getMode(modeId);
     if (!mode) throw new ModeError(`Mode not found: ${modeId}`, 404);
 

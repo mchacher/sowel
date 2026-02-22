@@ -65,6 +65,9 @@ export function EquipmentDetailPage() {
     fetchZones();
   }, [fetchZones]);
 
+  // Must call hooks before any early returns
+  const equipmentState = useEquipmentState(equipment ?? ({} as EquipmentWithDetails));
+
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -91,6 +94,7 @@ export function EquipmentDetailPage() {
       });
 
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- equipment is set inside effect, adding it would cause infinite loop
   }, [id, equipments]); // Re-fetch when store updates
 
   if (loading) {
@@ -131,7 +135,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const { isLight, isShutter, isSensor, actionBinding } = useEquipmentState(equipment);
+  const { isLight, isShutter, isSensor, actionBinding } = equipmentState;
 
   return (
     <div className="p-6">

@@ -21,7 +21,13 @@ import type {
 // ============================================================
 
 const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
-  "light_onoff", "light_dimmable", "light_color", "shutter", "switch", "sensor", "button",
+  "light_onoff",
+  "light_dimmable",
+  "light_color",
+  "shutter",
+  "switch",
+  "sensor",
+  "button",
 ]);
 
 // ============================================================
@@ -266,7 +272,11 @@ export class EquipmentManager {
 
     this.stmts.deleteEquipment.run(id);
     this.logger.info({ equipmentId: id, name: existing.name }, "Equipment deleted");
-    this.eventBus.emit({ type: "equipment.removed", equipmentId: id, equipmentName: existing.name });
+    this.eventBus.emit({
+      type: "equipment.removed",
+      equipmentId: id,
+      equipmentName: existing.name,
+    });
   }
 
   countByZone(zoneId: string): number {
@@ -395,7 +405,10 @@ export class EquipmentManager {
       );
     }
 
-    this.logger.info({ equipmentId, alias, value, targets: bindings.length }, "Equipment order executed");
+    this.logger.info(
+      { equipmentId, alias, value, targets: bindings.length },
+      "Equipment order executed",
+    );
     this.eventBus.emit({ type: "equipment.order.executed", equipmentId, orderAlias: alias, value });
   }
 

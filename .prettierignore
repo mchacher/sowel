@@ -1,0 +1,8 @@
+dist
+node_modules
+ui/dist
+ui/node_modules
+data
+*.db
+package-lock.json
+ui/package-lock.json

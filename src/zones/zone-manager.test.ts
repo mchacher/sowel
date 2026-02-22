@@ -157,7 +157,6 @@ describe("ZoneManager", () => {
       const tree = manager.getTree();
       expect(tree).toHaveLength(2);
     });
-
   });
 
   // ============================================================

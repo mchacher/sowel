@@ -66,7 +66,14 @@ async function main() {
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
 
   // 6e. Create Recipe Manager
-  const recipeManager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, zoneAggregator, logger);
+  const recipeManager = new RecipeManager(
+    db,
+    eventBus,
+    equipmentManager,
+    zoneManager,
+    zoneAggregator,
+    logger,
+  );
   recipeManager.register(MotionLightRecipe);
 
   // 6f. Create Mode Manager + Calendar Manager
@@ -91,7 +98,9 @@ async function main() {
     await mqttConnector.connect();
     z2mParser.start();
   } else {
-    logger.info("MQTT integration not configured — configure it from Administration > Intégrations");
+    logger.info(
+      "MQTT integration not configured — configure it from Administration > Intégrations",
+    );
   }
 
   // 9. Start Fastify server

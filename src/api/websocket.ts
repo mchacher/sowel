@@ -13,7 +13,15 @@ interface WebSocketDeps {
 
 type WsTopic = "devices" | "equipments" | "zones" | "modes" | "recipes" | "calendar" | "system";
 
-const VALID_TOPICS = new Set<WsTopic>(["devices", "equipments", "zones", "modes", "recipes", "calendar", "system"]);
+const VALID_TOPICS = new Set<WsTopic>([
+  "devices",
+  "equipments",
+  "zones",
+  "modes",
+  "recipes",
+  "calendar",
+  "system",
+]);
 const BATCH_INTERVAL_MS = 200;
 
 interface ClientState {
@@ -25,13 +33,20 @@ interface ClientState {
 function getEventTopic(event: EngineEvent): WsTopic {
   const prefix = event.type.split(".")[0];
   switch (prefix) {
-    case "device": return "devices";
-    case "equipment": return "equipments";
-    case "zone": return "zones";
-    case "mode": return "modes";
-    case "recipe": return "recipes";
-    case "calendar": return "calendar";
-    default: return "system";
+    case "device":
+      return "devices";
+    case "equipment":
+      return "equipments";
+    case "zone":
+      return "zones";
+    case "mode":
+      return "modes";
+    case "recipe":
+      return "recipes";
+    case "calendar":
+      return "calendar";
+    default:
+      return "system";
   }
 }
 

@@ -19,17 +19,15 @@ export class SettingsManager {
 
   /** Get a single setting value, or undefined if not set. */
   get(key: string): string | undefined {
-    const row = this.db
-      .prepare("SELECT value FROM settings WHERE key = ?")
-      .get(key) as { value: string } | undefined;
+    const row = this.db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
+      | { value: string }
+      | undefined;
     return row?.value;
   }
 
   /** Get all settings as a key-value record. */
   getAll(): Record<string, string> {
-    const rows = this.db
-      .prepare("SELECT key, value FROM settings")
-      .all() as SettingRow[];
+    const rows = this.db.prepare("SELECT key, value FROM settings").all() as SettingRow[];
     const result: Record<string, string> = {};
     for (const row of rows) {
       result[row.key] = row.value;

@@ -21,9 +21,7 @@ export function inferCategory(
     if (parentExposeType === "light" || parentExposeType === "switch") return "light_state";
 
     // Fallback: check if sibling properties indicate a light device
-    const hasLightProperties = [...LIGHT_INDICATOR_PROPERTIES].some((p) =>
-      allProperties.has(p),
-    );
+    const hasLightProperties = [...LIGHT_INDICATOR_PROPERTIES].some((p) => allProperties.has(p));
     return hasLightProperties ? "light_state" : "generic";
   }
 

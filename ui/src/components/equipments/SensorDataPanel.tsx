@@ -7,7 +7,6 @@ import {
   getBatteryIcon,
   getBatteryColor,
   getSensorCategoryIcon,
-  getSensorCategoryLabel,
   isBooleanSensorCategory,
   formatBooleanSensor,
   formatSensorValue,

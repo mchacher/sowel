@@ -56,7 +56,9 @@ export class AuthService {
       ),
       deleteRefresh: db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?"),
       deleteUserRefreshTokens: db.prepare("DELETE FROM refresh_tokens WHERE user_id = ?"),
-      cleanExpiredRefresh: db.prepare("DELETE FROM refresh_tokens WHERE expires_at <= datetime('now')"),
+      cleanExpiredRefresh: db.prepare(
+        "DELETE FROM refresh_tokens WHERE expires_at <= datetime('now')",
+      ),
 
       insertApiToken: db.prepare(
         `INSERT INTO api_tokens (id, user_id, name, token_hash, expires_at)
@@ -142,12 +144,7 @@ export class AuthService {
     const refreshToken = randomBytes(32).toString("hex");
     const refreshHash = sha256(refreshToken);
 
-    this.stmts.insertRefresh.run(
-      randomUUID(),
-      user.id,
-      refreshHash,
-      this.config.refreshTtl,
-    );
+    this.stmts.insertRefresh.run(randomUUID(), user.id, refreshHash, this.config.refreshTtl);
 
     // Clean up expired refresh tokens periodically
     this.stmts.cleanExpiredRefresh.run();
@@ -164,7 +161,11 @@ export class AuthService {
   // API Token Management
   // ============================================================
 
-  createApiToken(userId: string, name: string, expiresAt: string | null): { token: string; id: string } {
+  createApiToken(
+    userId: string,
+    name: string,
+    expiresAt: string | null,
+  ): { token: string; id: string } {
     const id = randomUUID();
     const rawToken = `cbl_${randomBytes(32).toString("hex")}`;
     const tokenHash = sha256(rawToken);

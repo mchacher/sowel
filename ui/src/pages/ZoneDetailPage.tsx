@@ -22,7 +22,6 @@ export function ZoneDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const tree = useZones((s) => s.tree);
-  const fetchZones = useZones((s) => s.fetchZones);
   const updateZone = useZones((s) => s.updateZone);
   const deleteZone = useZones((s) => s.deleteZone);
 
@@ -36,7 +35,7 @@ export function ZoneDetailPage() {
     if (!id) return;
     let cancelled = false;
 
-    setLoading(true);
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- loading state before async fetch
     setError(null);
     getZone(id)
       .then((data) => {

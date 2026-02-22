@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { EventBus } from "./event-bus.js";
 import { createLogger } from "./logger.js";
 import type { EngineEvent } from "../shared/types.js";

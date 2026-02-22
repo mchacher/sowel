@@ -138,12 +138,9 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
   // ── Zone Impacts ────────────────────────────────────────
 
   // GET /api/v1/zones/:zoneId/mode-impacts
-  app.get<{ Params: { zoneId: string } }>(
-    "/api/v1/zones/:zoneId/mode-impacts",
-    async (request) => {
-      return modeManager.getImpactsByZone(request.params.zoneId);
-    },
-  );
+  app.get<{ Params: { zoneId: string } }>("/api/v1/zones/:zoneId/mode-impacts", async (request) => {
+    return modeManager.getImpactsByZone(request.params.zoneId);
+  });
 
   // PUT /api/v1/modes/:id/impacts/:zoneId
   app.put<{

@@ -147,6 +147,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
 }
 
 /** Flatten zone tree into a list with depth info (for parent dropdown) */
+// eslint-disable-next-line react-refresh/only-export-components -- utility co-located with ZoneForm
 export function flattenZoneTree(
   zones: ZoneWithChildren[],
   depth = 0,

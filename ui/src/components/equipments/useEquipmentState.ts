@@ -1,4 +1,4 @@
-import type { DataBindingWithValue, EquipmentWithDetails } from "../../types";
+import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "./EquipmentCard";
 import {
   getSensorIcon,

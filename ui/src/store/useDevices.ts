@@ -63,7 +63,9 @@ export const useDevices = create<DevicesState>((set, get) => ({
 
   removeDevice: (deviceId) => {
     set((state) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [deviceId]: _removed, ...devices } = state.devices;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [deviceId]: _removedData, ...deviceData } = state.deviceData;
       return { devices, deviceData };
     });

@@ -53,20 +53,14 @@ export class Zigbee2MqttParser {
 
   start(): void {
     // Subscribe to bridge/devices (retained message with full device list)
-    this.mqttConnector.subscribe(
-      `${this.baseTopic}/bridge/devices`,
-      (_topic, payload) => {
-        this.handleBridgeDevices(payload);
-      },
-    );
+    this.mqttConnector.subscribe(`${this.baseTopic}/bridge/devices`, (_topic, payload) => {
+      this.handleBridgeDevices(payload);
+    });
 
     // Subscribe to bridge/event (device join/leave)
-    this.mqttConnector.subscribe(
-      `${this.baseTopic}/bridge/event`,
-      (_topic, payload) => {
-        this.handleBridgeEvent(payload);
-      },
-    );
+    this.mqttConnector.subscribe(`${this.baseTopic}/bridge/event`, (_topic, payload) => {
+      this.handleBridgeEvent(payload);
+    });
 
     // Subscribe to device state messages
     this.mqttConnector.subscribe(`${this.baseTopic}/+`, (topic, payload) => {
@@ -74,12 +68,9 @@ export class Zigbee2MqttParser {
     });
 
     // Subscribe to device availability
-    this.mqttConnector.subscribe(
-      `${this.baseTopic}/+/availability`,
-      (topic, payload) => {
-        this.handleDeviceAvailability(topic, payload);
-      },
-    );
+    this.mqttConnector.subscribe(`${this.baseTopic}/+/availability`, (topic, payload) => {
+      this.handleDeviceAvailability(topic, payload);
+    });
 
     this.logger.info({ baseTopic: this.baseTopic }, "Zigbee2MQTT parser started");
   }
@@ -177,11 +168,7 @@ export class Zigbee2MqttParser {
       }
 
       if (status === "online" || status === "offline") {
-        this.deviceManager.updateDeviceStatus(
-          this.baseTopic,
-          deviceName,
-          status,
-        );
+        this.deviceManager.updateDeviceStatus(this.baseTopic, deviceName, status);
       }
     } catch (err) {
       this.logger.error({ err, topic }, "Failed to parse availability");
@@ -217,11 +204,15 @@ export class Zigbee2MqttParser {
   ): void {
     for (const expose of exposes) {
       // Composite/list exposes contain nested features
-      if (
-        (expose.type === "composite" || expose.type === "list") &&
-        expose.features
-      ) {
-        this.flattenExposes(expose.features, allProperties, data, orders, deviceName, parentExposeType);
+      if ((expose.type === "composite" || expose.type === "list") && expose.features) {
+        this.flattenExposes(
+          expose.features,
+          allProperties,
+          data,
+          orders,
+          deviceName,
+          parentExposeType,
+        );
         continue;
       }
 

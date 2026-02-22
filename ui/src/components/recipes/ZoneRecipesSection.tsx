@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Pencil, Check } from "lucide-react";
+import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Check } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails } from "../../types";
@@ -360,7 +360,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const [remaining, setRemaining] = useState(() => computeRemaining(expiresAt));
 
   useEffect(() => {
-    setRemaining(computeRemaining(expiresAt));
+    setRemaining(computeRemaining(expiresAt)); // eslint-disable-line react-hooks/set-state-in-effect -- sync initial remaining before starting interval
     const id = setInterval(() => setRemaining(computeRemaining(expiresAt)), 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
@@ -480,7 +480,7 @@ function AddRecipeForm({
         defaults[slot.id] = "";
       }
     }
-    setParams(defaults);
+    setParams(defaults); // eslint-disable-line react-hooks/set-state-in-effect -- sync defaults when recipe selection changes
     setError("");
   }, [selectedRecipeId, selectedRecipe, zoneId]);
 

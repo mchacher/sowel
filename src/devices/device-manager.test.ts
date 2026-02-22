@@ -62,7 +62,12 @@ describe("DeviceManager", () => {
       { key: "brightness", type: "number" as const, category: "light_brightness" as const },
     ],
     orders: [
-      { key: "state", type: "enum" as const, payloadKey: "state", enumValues: ["ON", "OFF", "TOGGLE"] },
+      {
+        key: "state",
+        type: "enum" as const,
+        payloadKey: "state",
+        enumValues: ["ON", "OFF", "TOGGLE"],
+      },
       { key: "brightness", type: "number" as const, payloadKey: "brightness", min: 0, max: 254 },
     ],
     rawExpose: [],
