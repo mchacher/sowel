@@ -11,7 +11,13 @@ import { registerModeRoutes } from "./modes.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of ["002_zones.sql", "010_modes.sql"]) {
+  for (const file of [
+    "001_devices.sql",
+    "002_zones.sql",
+    "003_equipments.sql",
+    "010_modes.sql",
+    "013_button_action_bindings.sql",
+  ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../../migrations/${file}`),
       "utf-8",
@@ -77,7 +83,6 @@ describe("Mode API routes", () => {
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body).toHaveLength(2);
-      expect(body[0]).toHaveProperty("eventTriggers");
       expect(body[0]).toHaveProperty("impacts");
     });
   });
@@ -225,68 +230,6 @@ describe("Mode API routes", () => {
         url: "/api/v1/modes/unknown/apply-to-zone/zone-1",
       });
       expect(res.statusCode).toBe(404);
-    });
-  });
-
-  // ── POST /api/v1/modes/:id/triggers ────────────────────
-
-  describe("POST /api/v1/modes/:id/triggers", () => {
-    it("adds an event trigger", async () => {
-      const mode = modeManager.createMode("Test");
-      const res = await app.inject({
-        method: "POST",
-        url: `/api/v1/modes/${mode.id}/triggers`,
-        payload: { equipmentId: "eq-btn-1", alias: "action", value: "single" },
-      });
-      expect(res.statusCode).toBe(201);
-      const body = res.json();
-      expect(body.equipmentId).toBe("eq-btn-1");
-      expect(body.alias).toBe("action");
-      expect(body.value).toBe("single");
-    });
-
-    it("returns 400 when equipmentId is missing", async () => {
-      const mode = modeManager.createMode("Test");
-      const res = await app.inject({
-        method: "POST",
-        url: `/api/v1/modes/${mode.id}/triggers`,
-        payload: { alias: "action", value: "single" },
-      });
-      expect(res.statusCode).toBe(400);
-    });
-
-    it("returns 400 when alias is missing", async () => {
-      const mode = modeManager.createMode("Test");
-      const res = await app.inject({
-        method: "POST",
-        url: `/api/v1/modes/${mode.id}/triggers`,
-        payload: { equipmentId: "eq-1", value: "single" },
-      });
-      expect(res.statusCode).toBe(400);
-    });
-
-    it("returns 404 for unknown mode", async () => {
-      const res = await app.inject({
-        method: "POST",
-        url: "/api/v1/modes/unknown/triggers",
-        payload: { equipmentId: "eq-1", alias: "action", value: "single" },
-      });
-      expect(res.statusCode).toBe(404);
-    });
-  });
-
-  // ── DELETE /api/v1/modes/:id/triggers/:triggerId ───────
-
-  describe("DELETE /api/v1/modes/:id/triggers/:triggerId", () => {
-    it("removes a trigger", async () => {
-      const mode = modeManager.createMode("Test");
-      const trigger = modeManager.addEventTrigger(mode.id, "eq-1", "action", "single");
-      const res = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/modes/${mode.id}/triggers/${trigger.id}`,
-      });
-      expect(res.statusCode).toBe(204);
-      expect(modeManager.getEventTriggers(mode.id)).toHaveLength(0);
     });
   });
 
