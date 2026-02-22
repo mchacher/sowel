@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Corbel — start/stop/restart helper
+# Usage: scripts/run [start|stop|restart|status]
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+BACKEND_PORT=3000
+UI_PORT=5173
+
+pid_on_port() {
+  lsof -ti :"$1" 2>/dev/null || true
+}
+
+stop_all() {
+  echo "Stopping Corbel processes..."
+
+  # Kill tsx watch (backend)
+  pids=$(pgrep -f "tsx watch src/index" 2>/dev/null || true)
+  if [ -n "$pids" ]; then
+    echo "$pids" | xargs kill 2>/dev/null || true
+  fi
+
+  # Kill backend on port
+  pid=$(pid_on_port $BACKEND_PORT)
+  if [ -n "$pid" ]; then
+    echo "$pid" | xargs kill 2>/dev/null || true
+  fi
+
+  # Kill vite dev server (UI)
+  pids=$(pgrep -f "node.*ui/node_modules/.bin/vite" 2>/dev/null || true)
+  if [ -n "$pids" ]; then
+    echo "$pids" | xargs kill 2>/dev/null || true
+  fi
+
+  # Kill esbuild (spawned by vite)
+  pids=$(pgrep -f "esbuild.*ui/node_modules" 2>/dev/null || true)
+  if [ -n "$pids" ]; then
+    echo "$pids" | xargs kill 2>/dev/null || true
+  fi
+
+  sleep 1
+  echo "All Corbel processes stopped."
+}
+
+start_backend() {
+  echo "Starting backend (port $BACKEND_PORT)..."
+  npm run dev &
+}
+
+start_ui() {
+  echo "Starting UI (port $UI_PORT)..."
+  (cd ui && npm run dev) &
+}
+
+show_status() {
+  echo "=== Corbel Status ==="
+  pid=$(pid_on_port $BACKEND_PORT)
+  if [ -n "$pid" ]; then
+    echo "Backend:  running (PID $pid, port $BACKEND_PORT)"
+  else
+    echo "Backend:  stopped"
+  fi
+
+  pid=$(pid_on_port $UI_PORT)
+  if [ -n "$pid" ]; then
+    echo "UI:       running (PID $pid, port $UI_PORT)"
+  else
+    echo "UI:       stopped"
+  fi
+}
+
+case "${1:-status}" in
+  start)
+    start_backend
+    start_ui
+    sleep 3
+    show_status
+    ;;
+  stop)
+    stop_all
+    ;;
+  restart)
+    stop_all
+    start_backend
+    start_ui
+    sleep 3
+    show_status
+    ;;
+  status)
+    show_status
+    ;;
+  *)
+    echo "Usage: scripts/run [start|stop|restart|status]"
+    exit 1
+    ;;
+esac

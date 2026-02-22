@@ -16,6 +16,7 @@ import { ModeManager } from "./modes/mode-manager.js";
 import { CalendarManager } from "./modes/calendar-manager.js";
 import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
+import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -54,8 +55,17 @@ async function main() {
   );
   integrationRegistry.register(zigbee2mqttIntegration);
 
-  // 8. Create Zone Manager
+  const panasonicCCIntegration = new PanasonicCCIntegration(
+    settingsManager,
+    deviceManager,
+    eventBus,
+    logger,
+  );
+  integrationRegistry.register(panasonicCCIntegration);
+
+  // 8. Create Zone Manager & ensure root zone exists
   const zoneManager = new ZoneManager(db, eventBus, logger);
+  zoneManager.ensureRootZone();
 
   // 9. Create Equipment Manager (uses IntegrationRegistry for order dispatch)
   const equipmentManager = new EquipmentManager(

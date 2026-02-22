@@ -16,6 +16,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   switch: ["light_state"],
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   button: ["action", "battery"],
+  thermostat: ["temperature", "generic"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -26,6 +27,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   shutter: ["position", "state"],
   switch: ["state"],
   button: [],
+  thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe"],
 };
 
 export function isRelevantData(category: string, equipmentType: string): boolean {

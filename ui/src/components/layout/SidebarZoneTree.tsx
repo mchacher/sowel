@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useParams } from "react-router-dom";
-import { ChevronRight, ChevronDown, Building2, Layers, DoorOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, Home, Layers, DoorOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ZoneWithChildren } from "../../types";
 import { useZones } from "../../store/useZones";
@@ -49,7 +49,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
   }, [zoneId, zone]);
 
   const icon = depth === 0
-    ? <Building2 size={15} strokeWidth={1.5} />
+    ? <Home size={15} strokeWidth={1.5} />
     : hasChildren
       ? <Layers size={15} strokeWidth={1.5} />
       : <DoorOpen size={15} strokeWidth={1.5} />;

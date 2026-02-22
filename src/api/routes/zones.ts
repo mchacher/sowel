@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { Logger } from "../../core/logger.js";
+import { ROOT_ZONE_ID } from "../../shared/constants.js";
 
 interface ZonesDeps {
   zoneManager: ZoneManager;
@@ -56,7 +57,7 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
     try {
       const zone = zoneManager.create({
         name: name.trim(),
-        parentId,
+        parentId: parentId || ROOT_ZONE_ID,
         icon,
         description,
         displayOrder,

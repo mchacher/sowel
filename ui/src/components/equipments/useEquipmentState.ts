@@ -15,14 +15,20 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "button";
+  const isThermostat = equipment.type === "thermostat";
 
   // State binding
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state",
   );
-  const isOn = stateBinding
-    ? stateBinding.value === true || stateBinding.value === "ON"
-    : false;
+  const powerBinding = isThermostat
+    ? equipment.dataBindings.find((db) => db.alias === "power")
+    : null;
+  const isOn = isThermostat
+    ? powerBinding?.value === true
+    : stateBinding
+      ? stateBinding.value === true || stateBinding.value === "ON"
+      : false;
 
   // Shutter
   const shutterPositionBinding = isShutter
@@ -59,20 +65,25 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
 
   const iconColor = isSensor
     ? getSensorIconColor(equipment.dataBindings)
-    : isShutter
-      ? shutterIsOpen
-        ? "bg-primary/10 text-primary"
+    : isThermostat
+      ? isOn
+        ? "bg-blue-500/10 text-blue-500"
         : "bg-border-light text-text-tertiary"
-      : isLight && isOn
-        ? "bg-amber-400/15 text-amber-500"
-        : isOn
+      : isShutter
+        ? shutterIsOpen
           ? "bg-primary/10 text-primary"
-          : "bg-border-light text-text-tertiary";
+          : "bg-border-light text-text-tertiary"
+        : isLight && isOn
+          ? "bg-amber-400/15 text-amber-500"
+          : isOn
+            ? "bg-primary/10 text-primary"
+            : "bg-border-light text-text-tertiary";
 
   return {
     isLight,
     isShutter,
     isSensor,
+    isThermostat,
     stateBinding,
     isOn,
     shutterPosition,

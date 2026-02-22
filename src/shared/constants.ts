@@ -1,6 +1,13 @@
 import type { DataCategory, DataType } from "./types.js";
 
 // ============================================================
+// Root Zone — "Maison" is the root of the zone hierarchy
+// ============================================================
+
+/** Well-known ID for the root zone "Maison". */
+export const ROOT_ZONE_ID = "00000000-0000-0000-0000-000000000001";
+
+// ============================================================
 // DataCategory inference from zigbee2mqtt expose property names
 // ============================================================
 

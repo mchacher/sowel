@@ -62,14 +62,6 @@ export function Sidebar() {
 
       {/* Maison section — scrollable */}
       <div className="flex-1 overflow-y-auto py-3 px-2">
-        {!collapsed && (
-          <div className="flex items-center gap-2 px-3 mb-2">
-            <Home size={14} strokeWidth={1.5} className="text-text-tertiary" />
-            <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
-              {t("nav.maison")}
-            </span>
-          </div>
-        )}
         {collapsed ? (
           <NavLink
             to="/home"
