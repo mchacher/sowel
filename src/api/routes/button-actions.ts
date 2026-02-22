@@ -46,6 +46,31 @@ export function registerButtonActionRoutes(
     return reply.code(201).send(binding);
   });
 
+  // PUT /api/v1/equipments/:id/action-bindings/:bindingId
+  app.put<{
+    Params: { id: string; bindingId: string };
+    Body: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> };
+  }>("/api/v1/equipments/:id/action-bindings/:bindingId", async (request, reply) => {
+    const { actionValue, effectType, config } = request.body ?? {};
+
+    if (!actionValue || !effectType) {
+      return reply.code(400).send({ error: "actionValue and effectType are required" });
+    }
+    if (!VALID_EFFECT_TYPES.includes(effectType)) {
+      return reply
+        .code(400)
+        .send({ error: `Invalid effectType. Must be one of: ${VALID_EFFECT_TYPES.join(", ")}` });
+    }
+
+    const binding = buttonActionManager.updateBinding(
+      request.params.bindingId,
+      actionValue,
+      effectType,
+      config ?? {},
+    );
+    return reply.send(binding);
+  });
+
   // DELETE /api/v1/equipments/:id/action-bindings/:bindingId
   app.delete<{ Params: { id: string; bindingId: string } }>(
     "/api/v1/equipments/:id/action-bindings/:bindingId",

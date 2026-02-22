@@ -624,6 +624,17 @@ export async function addButtonActionBinding(
   });
 }
 
+export async function updateButtonActionBinding(
+  equipmentId: string,
+  bindingId: string,
+  data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> },
+): Promise<ButtonActionBinding> {
+  return fetchJSON<ButtonActionBinding>(`${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function removeButtonActionBinding(equipmentId: string, bindingId: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`, {
     method: "DELETE",

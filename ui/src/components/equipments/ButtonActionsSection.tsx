@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Zap, Trash2, Plus } from "lucide-react";
-import { getButtonActionBindings, addButtonActionBinding, removeButtonActionBinding } from "../../api";
+import { Zap, Trash2, Plus, Pencil } from "lucide-react";
+import { getButtonActionBindings, addButtonActionBinding, updateButtonActionBinding, removeButtonActionBinding } from "../../api";
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
@@ -22,6 +22,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
 
   const [bindings, setBindings] = useState<ButtonActionBinding[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -50,6 +51,12 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
   const handleAdd = async (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => {
     await addButtonActionBinding(equipmentId, data);
     setShowAddForm(false);
+    await refreshBindings();
+  };
+
+  const handleEdit = async (bindingId: string, data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => {
+    await updateButtonActionBinding(equipmentId, bindingId, data);
+    setEditingId(null);
     await refreshBindings();
   };
 
@@ -121,23 +128,41 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
               {getActionLabel(actionValue)}
             </div>
             <div className="space-y-1.5">
-              {actionBindings.map((binding) => (
-                <div
-                  key={binding.id}
-                  className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
-                >
-                  <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
-                  <span className="text-[12px] text-text flex-1 truncate">
-                    {getEffectLabel(binding)}
-                  </span>
-                  <button
-                    onClick={() => handleRemove(binding.id)}
-                    className="p-1 text-text-tertiary hover:text-error transition-colors"
+              {actionBindings.map((binding) =>
+                editingId === binding.id ? (
+                  <AddEffectForm
+                    key={binding.id}
+                    modes={modes}
+                    equipments={equipments}
+                    instances={instances}
+                    initial={binding}
+                    onSubmit={async (data) => handleEdit(binding.id, data)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div
+                    key={binding.id}
+                    className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
                   >
-                    <Trash2 size={12} strokeWidth={1.5} />
-                  </button>
-                </div>
-              ))}
+                    <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+                    <span className="text-[12px] text-text flex-1 truncate">
+                      {getEffectLabel(binding)}
+                    </span>
+                    <button
+                      onClick={() => setEditingId(binding.id)}
+                      className="p-1 text-text-tertiary hover:text-primary transition-colors"
+                    >
+                      <Pencil size={12} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={() => handleRemove(binding.id)}
+                      className="p-1 text-text-tertiary hover:text-error transition-colors"
+                    >
+                      <Trash2 size={12} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ),
+              )}
             </div>
           </div>
         );
@@ -152,23 +177,41 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
               {actionValue}
             </div>
             <div className="space-y-1.5">
-              {actionBindings.map((binding) => (
-                <div
-                  key={binding.id}
-                  className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
-                >
-                  <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
-                  <span className="text-[12px] text-text flex-1 truncate">
-                    {getEffectLabel(binding)}
-                  </span>
-                  <button
-                    onClick={() => handleRemove(binding.id)}
-                    className="p-1 text-text-tertiary hover:text-error transition-colors"
+              {actionBindings.map((binding) =>
+                editingId === binding.id ? (
+                  <AddEffectForm
+                    key={binding.id}
+                    modes={modes}
+                    equipments={equipments}
+                    instances={instances}
+                    initial={binding}
+                    onSubmit={async (data) => handleEdit(binding.id, data)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div
+                    key={binding.id}
+                    className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
                   >
-                    <Trash2 size={12} strokeWidth={1.5} />
-                  </button>
-                </div>
-              ))}
+                    <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+                    <span className="text-[12px] text-text flex-1 truncate">
+                      {getEffectLabel(binding)}
+                    </span>
+                    <button
+                      onClick={() => setEditingId(binding.id)}
+                      className="p-1 text-text-tertiary hover:text-primary transition-colors"
+                    >
+                      <Pencil size={12} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={() => handleRemove(binding.id)}
+                      className="p-1 text-text-tertiary hover:text-error transition-colors"
+                    >
+                      <Trash2 size={12} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ),
+              )}
             </div>
           </div>
         ))}
@@ -190,32 +233,50 @@ function AddEffectForm({
   modes,
   equipments,
   instances,
+  initial,
   onSubmit,
   onCancel,
 }: {
   modes: { id: string; name: string; active: boolean }[];
   equipments: { id: string; name: string; type: string; orderBindings: { alias: string }[] }[];
   instances: { id: string; recipeId: string }[];
+  initial?: ButtonActionBinding;
   onSubmit: (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [actionValue, setActionValue] = useState("single");
-  const [effectType, setEffectType] = useState<ButtonEffectType>("mode_activate");
+  const [actionValue, setActionValue] = useState(initial?.actionValue ?? "single");
+  const [effectType, setEffectType] = useState<ButtonEffectType>(initial?.effectType ?? "mode_activate");
   const [saving, setSaving] = useState(false);
 
   // mode_activate
-  const [modeId, setModeId] = useState("");
+  const [modeId, setModeId] = useState(
+    initial?.effectType === "mode_activate" ? String(initial.config.modeId ?? "") : "",
+  );
   // mode_toggle
-  const [modeAId, setModeAId] = useState("");
-  const [modeBId, setModeBId] = useState("");
+  const [modeAId, setModeAId] = useState(
+    initial?.effectType === "mode_toggle" ? String(initial.config.modeAId ?? "") : "",
+  );
+  const [modeBId, setModeBId] = useState(
+    initial?.effectType === "mode_toggle" ? String(initial.config.modeBId ?? "") : "",
+  );
   // equipment_order
-  const [targetEquipmentId, setTargetEquipmentId] = useState("");
-  const [orderAlias, setOrderAlias] = useState("");
-  const [orderValue, setOrderValue] = useState("");
+  const [targetEquipmentId, setTargetEquipmentId] = useState(
+    initial?.effectType === "equipment_order" ? String(initial.config.equipmentId ?? "") : "",
+  );
+  const [orderAlias, setOrderAlias] = useState(
+    initial?.effectType === "equipment_order" ? String(initial.config.orderAlias ?? "") : "",
+  );
+  const [orderValue, setOrderValue] = useState(
+    initial?.effectType === "equipment_order" ? JSON.stringify(initial.config.value ?? "") : "",
+  );
   // recipe_toggle
-  const [instanceId, setInstanceId] = useState("");
-  const [enabled, setEnabled] = useState(true);
+  const [instanceId, setInstanceId] = useState(
+    initial?.effectType === "recipe_toggle" ? String(initial.config.instanceId ?? "") : "",
+  );
+  const [enabled, setEnabled] = useState(
+    initial?.effectType === "recipe_toggle" ? (initial.config.enabled as boolean) !== false : true,
+  );
 
   const canSubmit = () => {
     switch (effectType) {
@@ -452,7 +513,7 @@ function AddEffectForm({
           disabled={!canSubmit() || saving}
           className="px-3 py-1.5 bg-primary text-white text-[12px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
         >
-          {saving ? t("common.saving") : t("common.add")}
+          {saving ? t("common.saving") : initial ? t("common.save") : t("common.add")}
         </button>
         <button
           onClick={onCancel}
