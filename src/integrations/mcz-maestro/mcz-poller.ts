@@ -13,6 +13,7 @@ import type { MczBridge } from "./mcz-bridge.js";
 import {
   type MczStatusFrame,
   stoveStateToString,
+  isStoveActive,
   profileToString,
   pelletSensorToString,
   sparkPlugToString,
@@ -116,8 +117,7 @@ export class MczPoller {
     const sourceDeviceId = this.serialNumber;
 
     const stoveState = stoveStateToString(frame.stoveState);
-    const isOn =
-      stoveState !== "off" && !stoveState.startsWith("shutdown") && !stoveState.startsWith("error");
+    const isOn = isStoveActive(stoveState);
 
     const payload: Record<string, unknown> = {
       power: isOn,
@@ -150,7 +150,10 @@ function mapFrameToDiscovered(_serial: string, _frame: MczStatusFrame): Discover
     "running_p4",
     "running_p5",
     "diagnostic",
-    "shutdown_phase_1",
+    "extinguishing",
+    "cooling",
+    "standby",
+    "auto_eco",
   ];
 
   const data: DiscoveredDevice["data"] = [
