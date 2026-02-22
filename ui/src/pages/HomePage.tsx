@@ -8,9 +8,12 @@ import { useZoneAggregation } from "../store/useZoneAggregation";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
+import { ZoneModesSection } from "../components/home/ZoneModesSection";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 import type { ZoneWithChildren } from "../types";
 
 export function HomePage() {
+  useWsSubscription(["zones", "equipments", "modes", "recipes"]);
   const { t } = useTranslation();
   const { zoneId } = useParams();
   const navigate = useNavigate();
@@ -106,7 +109,10 @@ export function HomePage() {
 
         {zoneId && (
           <CollapsibleSection title={t("behaviors.title")} storageKey="section-behaviors">
-            <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
+            <div className="space-y-3">
+              <ZoneModesSection zoneId={zoneId} />
+              <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
+            </div>
           </CollapsibleSection>
         )}
       </div>

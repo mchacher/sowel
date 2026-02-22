@@ -5,6 +5,9 @@ import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
 import { useZoneAggregation } from "./useZoneAggregation";
 import { useRecipes } from "./useRecipes";
+import { useModes } from "./useModes";
+
+export type WsTopic = "devices" | "equipments" | "zones" | "modes" | "recipes" | "calendar" | "system";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -13,17 +16,21 @@ interface WebSocketState {
   mqttConnected: boolean;
   connect: () => void;
   disconnect: () => void;
+  subscribe: (topics: WsTopic[]) => void;
 }
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
+let currentTopics: WsTopic[] = ["system"];
 const MAX_RECONNECT_DELAY = 30_000;
 
 function getWsUrl(): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const token = localStorage.getItem("corbel_access_token");
-  const base = `${protocol}//${window.location.host}/ws`;
+  // In dev mode, connect directly to the backend to avoid Vite proxy EPIPE issues
+  const wsHost = import.meta.env.DEV ? "localhost:3000" : window.location.host;
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const base = `${protocol}//${wsHost}/ws`;
   return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 
@@ -31,6 +38,12 @@ function getReconnectDelay(): number {
   const base = 1000;
   const delay = Math.min(base * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
   return delay + Math.random() * 500; // jitter
+}
+
+function sendSubscribe(topics: WsTopic[]): void {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "subscribe", topics }));
+  }
 }
 
 function handleEvent(event: EngineEvent): void {
@@ -90,6 +103,17 @@ function handleEvent(event: EngineEvent): void {
     case "recipe.instance.state.changed":
       useRecipes.getState().handleInstanceChanged();
       break;
+    case "mode.created":
+    case "mode.updated":
+    case "mode.removed":
+      useModes.getState().handleModeEvent();
+      break;
+    case "mode.activated":
+      useModes.getState().handleModeActivated(event.modeId);
+      break;
+    case "mode.deactivated":
+      useModes.getState().handleModeDeactivated(event.modeId);
+      break;
     case "system.mqtt.connected":
       useWebSocket.setState({ mqttConnected: true });
       break;
@@ -115,6 +139,9 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       set({ status: "connected" });
       reconnectAttempts = 0;
 
+      // Re-send current subscriptions after (re)connect
+      sendSubscribe(currentTopics);
+
       // Fetch initial MQTT status from health endpoint
       fetch("/api/v1/health")
         .then((r) => r.json())
@@ -130,8 +157,12 @@ export const useWebSocket = create<WebSocketState>((set) => ({
 
     ws.onmessage = (msg) => {
       try {
-        const event = JSON.parse(msg.data as string) as EngineEvent;
-        handleEvent(event);
+        const data = JSON.parse(msg.data as string) as EngineEvent | EngineEvent[];
+        // Backend sends batched arrays
+        const events = Array.isArray(data) ? data : [data];
+        for (const event of events) {
+          handleEvent(event);
+        }
       } catch {
         // Ignore malformed messages
       }
@@ -162,5 +193,10 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       ws = null;
     }
     set({ status: "disconnected", mqttConnected: false });
+  },
+
+  subscribe: (topics) => {
+    currentTopics = topics;
+    sendSubscribe(topics);
   },
 }));

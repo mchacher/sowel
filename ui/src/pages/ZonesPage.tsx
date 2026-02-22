@@ -4,8 +4,10 @@ import { useZones } from "../store/useZones";
 import { ZoneTree } from "../components/zones/ZoneTree";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
 import { Home, Loader2, Plus } from "lucide-react";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function ZonesPage() {
+  useWsSubscription(["zones"]);
   const { t } = useTranslation();
   const tree = useZones((s) => s.tree);
   const loading = useZones((s) => s.loading);

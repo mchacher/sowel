@@ -84,6 +84,9 @@ export class RecipeManager {
       updateInstanceParams: this.db.prepare(
         "UPDATE recipe_instances SET params = ? WHERE id = ?",
       ),
+      setInstanceEnabled: this.db.prepare(
+        "UPDATE recipe_instances SET enabled = ? WHERE id = ?",
+      ),
       getState: this.db.prepare(
         "SELECT key, value FROM recipe_state WHERE instance_id = ?",
       ),
@@ -282,6 +285,44 @@ export class RecipeManager {
 
     this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance updated");
     return instance;
+  }
+
+  enableInstance(instanceId: string): void {
+    const row = this.stmts.getInstanceById.get(instanceId) as InstanceRow | undefined;
+    if (!row) throw new RecipeError("Instance not found", 404);
+    if (row.enabled === 1) return;
+
+    this.stmts.setInstanceEnabled.run(1, instanceId);
+    const instance = rowToInstance({ ...row, enabled: 1 });
+
+    const registered = this.registry.get(row.recipe_id);
+    if (registered) {
+      try {
+        const recipe = registered.create();
+        this.startInstance(recipe, instance);
+      } catch (err) {
+        this.logger.error({ err, instanceId }, "Failed to start recipe after enable");
+      }
+    }
+
+    this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance enabled");
+    this.eventBus.emit({ type: "recipe.instance.started", instanceId, recipeId: row.recipe_id });
+  }
+
+  disableInstance(instanceId: string): void {
+    const row = this.stmts.getInstanceById.get(instanceId) as InstanceRow | undefined;
+    if (!row) throw new RecipeError("Instance not found", 404);
+    if (row.enabled === 0) return;
+
+    this.stopInstance(instanceId);
+    this.stmts.setInstanceEnabled.run(0, instanceId);
+
+    this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance disabled");
+    this.eventBus.emit({ type: "recipe.instance.stopped", instanceId, recipeId: row.recipe_id });
+  }
+
+  updateInstanceParams(instanceId: string, params: Record<string, unknown>): void {
+    this.updateInstance(instanceId, params);
   }
 
   getLog(instanceId: string, limit = 50): RecipeLogEntry[] {

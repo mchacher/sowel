@@ -32,8 +32,10 @@ import {
 } from "lucide-react";
 import { formatRelativeTime } from "../lib/format";
 import type { EquipmentWithDetails } from "../types";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentDetailPage() {
+  useWsSubscription(["equipments"]);
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

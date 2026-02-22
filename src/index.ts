@@ -14,6 +14,8 @@ import { MotionLightRecipe } from "./recipes/motion-light.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
+import { ModeManager } from "./modes/mode-manager.js";
+import { CalendarManager } from "./modes/calendar-manager.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -67,7 +69,11 @@ async function main() {
   const recipeManager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, zoneAggregator, logger);
   recipeManager.register(MotionLightRecipe);
 
-  // 6f. Create Auth modules
+  // 6f. Create Mode Manager + Calendar Manager
+  const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);
+  const calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
+
+  // 6g. Create Auth modules
   const userManager = new UserManager(db, logger);
   const authService = new AuthService(db, userManager, config.jwt, logger);
 
@@ -96,6 +102,8 @@ async function main() {
     zoneAggregator,
     equipmentManager,
     recipeManager,
+    modeManager,
+    calendarManager,
     userManager,
     authService,
     settingsManager,
@@ -116,6 +124,10 @@ async function main() {
 
   // 11. Initialize recipe manager (restore persisted instances — after aggregation is ready)
   recipeManager.init();
+
+  // 12. Initialize mode manager and calendar (event triggers + cron scheduling)
+  modeManager.init();
+  calendarManager.init();
 
   if (!userManager.hasUsers()) {
     logger.info("No users found — setup required. Navigate to the UI to create the first admin.");

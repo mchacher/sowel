@@ -198,6 +198,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
         <ShutterControls
           shutterPosition={shutterPosition}
           hasShutterState={hasShutterState}
+          hasPositionOrder={equipment.orderBindings.some((ob) => ob.alias === "position")}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
         />
       )}

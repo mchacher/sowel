@@ -1,6 +1,6 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-20 — V0.1 through V0.8 done, Auth + i18n, Backup/Restore + Integrations
+> Updated: 2026-02-21 — V0.1 through V0.9 done, Auth + i18n, Backup/Restore + Integrations
 
 ## Roadmap Changes
 
@@ -23,7 +23,7 @@
 | **V0.8** | Recipe Engine + Motion-Light Recipe | ✅ Done |
 | **Auth** | Multi-user JWT auth + i18n (FR/EN) + Settings page | ✅ Done |
 | **Infra** | Backup/Restore + Integrations page + Device cleanup | ✅ Done |
-| V0.9 | Scenario Engine | — |
+| **V0.9** | Modes + Calendar (house-level operating states + weekly scheduling) | ✅ Done |
 | V0.10 | Computed Data | — |
 | V0.11 | History (InfluxDB) | — |
 | V0.12 | Polish | — |
@@ -440,6 +440,94 @@
 | Devices | `src/devices/device-manager.ts` (removeStaleDevices, offline=delete) |
 | Parser | `src/mqtt/parsers/zigbee2mqtt.ts` (DB-based stale cleanup) |
 | UI | `ui/src/pages/IntegrationsPage.tsx`, `ui/src/pages/SettingsPage.tsx` (backup section) |
+
+---
+
+## V0.9 — Modes + Calendar
+
+**Objective**: House-level operating modes with per-zone impacts, event triggers, and weekly calendar scheduling.
+
+### What it does
+
+- **Modes**: Named operating profiles (Confort, Cocoon, Absent...) that change equipment behavior and recipe state per zone
+- **Zone impacts**: Each mode defines actions per zone — order commands, recipe enable/disable
+- **Event triggers**: Equipment data changes (button press, sensor value) auto-activate modes
+- **Calendar**: Weekly profiles with time slots that activate modes on schedule
+- **croner** for cron-based slot scheduling (lightweight ESM-compatible)
+- Full UI: admin pages (Modes list, Mode detail, Calendar) + inline Behaviors config per zone
+
+### Mode Impact Actions
+
+| Action Type | Description | Example |
+|---|---|---|
+| `order` | Send a command to an equipment | Turn on Spots Salon |
+| `recipe_toggle` | Enable or disable a recipe instance | Disable motion-light at night |
+| `recipe_params` | Change recipe parameters | Set timeout to 30min |
+
+### Mode Activation Methods
+
+| Method | How |
+|---|---|
+| Manual | Toggle from UI (Modes page or Behaviors section) |
+| Event trigger | Equipment data change (button press: `action = "toggle"`) |
+| Calendar | Time slot in active weekly profile |
+
+### API Endpoints
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/v1/modes` | List all modes with details |
+| GET | `/api/v1/modes/:id` | Mode detail (triggers + impacts) |
+| POST | `/api/v1/modes` | Create mode |
+| PUT | `/api/v1/modes/:id` | Update mode |
+| DELETE | `/api/v1/modes/:id` | Delete mode |
+| POST | `/api/v1/modes/:id/activate` | Activate mode |
+| POST | `/api/v1/modes/:id/deactivate` | Deactivate mode |
+| POST | `/api/v1/modes/:id/triggers` | Add event trigger |
+| DELETE | `/api/v1/modes/:id/triggers/:triggerId` | Remove trigger |
+| GET | `/api/v1/modes/:id/zones/:zoneId/impact` | Get zone impact |
+| PUT | `/api/v1/modes/:id/zones/:zoneId/impact` | Set zone impact |
+| DELETE | `/api/v1/modes/:id/zones/:zoneId/impact` | Remove zone impact |
+| GET | `/api/v1/calendar/profiles` | List profiles |
+| GET | `/api/v1/calendar/active` | Active profile |
+| PUT | `/api/v1/calendar/active` | Set active profile |
+| GET | `/api/v1/calendar/profiles/:id/slots` | List slots |
+| POST | `/api/v1/calendar/profiles/:id/slots` | Add slot |
+| PUT | `/api/v1/calendar/slots/:id` | Update slot |
+| DELETE | `/api/v1/calendar/slots/:id` | Delete slot |
+
+### Event Bus Events
+
+| Event | When |
+|---|---|
+| `mode.created` | Mode created |
+| `mode.updated` | Mode updated |
+| `mode.removed` | Mode deleted |
+| `mode.activated` | Mode activated (impacts executed) |
+| `mode.deactivated` | Mode deactivated |
+| `calendar.profile.changed` | Active profile switched |
+
+### UI Pages
+
+| Page | Purpose |
+|---|---|
+| ModesPage | Admin list of all modes + create modal |
+| ModeDetailPage | Detail view: triggers, zone impacts, edit/delete, activate/deactivate |
+| CalendarPage | Weekly profiles + time slots management |
+| ZoneModesSection | Inline mode config in Home > Behaviors: impacts, triggers, toggle |
+
+### Files
+
+| Module | Files |
+|---|---|
+| Types | `src/shared/types.ts` (Mode, ModeEventTrigger, ZoneModeImpact, CalendarProfile, CalendarSlot) |
+| DB | `migrations/008_modes.sql` |
+| Backend | `src/modes/mode-manager.ts`, `src/modes/calendar-manager.ts` |
+| API | `src/api/routes/modes.ts`, `src/api/routes/calendar.ts` |
+| UI Store | `ui/src/store/useModes.ts`, `ui/src/store/useCalendar.ts` |
+| UI Pages | `ui/src/pages/ModesPage.tsx`, `ui/src/pages/ModeDetailPage.tsx`, `ui/src/pages/CalendarPage.tsx` |
+| UI Components | `ui/src/components/modes/ModeForm.tsx`, `ui/src/components/home/ZoneModesSection.tsx` |
+| i18n | 40+ keys in `fr.json` + `en.json` (modes.*, calendar.*) |
 
 ---
 
