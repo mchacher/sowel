@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Logger } from "../../core/logger.js";
@@ -14,6 +15,17 @@ const BRIDGE_TIMEOUT_MS = 30_000;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_BRIDGE_PATH = resolve(__dirname, "bridge.py");
 
+/** Resolve the Python path: prefer .venv in project root, fall back to system python3. */
+function resolveDefaultPython(): string {
+  // __dirname is src/integrations/panasonic-cc (or dist equivalent)
+  const projectRoot = resolve(__dirname, "..", "..", "..");
+  const venvPython = resolve(projectRoot, ".venv", "bin", "python3");
+  if (existsSync(venvPython)) {
+    return venvPython;
+  }
+  return "python3";
+}
+
 export class PanasonicBridge {
   private pythonPath: string;
   private bridgePath: string;
@@ -23,7 +35,7 @@ export class PanasonicBridge {
   constructor(
     tokenFile: string,
     logger: Logger,
-    pythonPath = "python3",
+    pythonPath = resolveDefaultPython(),
     bridgePath = DEFAULT_BRIDGE_PATH,
   ) {
     this.pythonPath = pythonPath;
