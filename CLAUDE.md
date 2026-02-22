@@ -26,13 +26,13 @@ MQTT message → MQTT Connector → Device Manager (updates DeviceData)
 
 ### Key Domain Concepts
 
-| Term | Role |
-|------|------|
-| **Device** | Physical MQTT hardware, auto-discovered. Exposes raw Data and Orders. |
-| **Equipment** | User-facing functional unit. Binds to one or more Devices. Can have computed Data and dispatched Orders. |
-| **Zone** | Spatial grouping (nestable). Auto-aggregates Equipment Data (motion=OR, temperature=AVG, lightsOn=COUNT, etc.). |
-| **Scenario** | Automation rule: trigger(s) → condition(s) → action(s). |
-| **Recipe** | Reusable Scenario template with typed parameter slots. |
+| Term          | Role                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Device**    | Physical MQTT hardware, auto-discovered. Exposes raw Data and Orders.                                           |
+| **Equipment** | User-facing functional unit. Binds to one or more Devices. Can have computed Data and dispatched Orders.        |
+| **Zone**      | Spatial grouping (nestable). Auto-aggregates Equipment Data (motion=OR, temperature=AVG, lightsOn=COUNT, etc.). |
+| **Scenario**  | Automation rule: trigger(s) → condition(s) → action(s).                                                         |
+| **Recipe**    | Reusable Scenario template with typed parameter slots.                                                          |
 
 ### Tech Stack
 
@@ -163,15 +163,15 @@ V0.1 MQTT+Devices → V0.2 Equipments+Bindings → V0.3 Zones+Aggregation → V0
 
 All settings are optional with sensible defaults — Corbel runs zero-config out of the box. Override via `.env` if needed:
 
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `SQLITE_PATH` | `./data/corbel.db` | SQLite database path |
-| `API_PORT` | `3000` | HTTP server port |
-| `API_HOST` | `0.0.0.0` | Bind address |
-| `JWT_SECRET` | auto-generated | Persisted in `data/.jwt-secret` on first launch |
-| `JWT_ACCESS_TTL` | `900` | Access token TTL in seconds (15 min) |
-| `JWT_REFRESH_TTL` | `2592000` | Refresh token TTL in seconds (30 days) |
-| `LOG_LEVEL` | `info` | Pino log level |
-| `CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+| Variable          | Default            | Notes                                           |
+| ----------------- | ------------------ | ----------------------------------------------- |
+| `SQLITE_PATH`     | `./data/corbel.db` | SQLite database path                            |
+| `API_PORT`        | `3000`             | HTTP server port                                |
+| `API_HOST`        | `0.0.0.0`          | Bind address                                    |
+| `JWT_SECRET`      | auto-generated     | Persisted in `data/.jwt-secret` on first launch |
+| `JWT_ACCESS_TTL`  | `900`              | Access token TTL in seconds (15 min)            |
+| `JWT_REFRESH_TTL` | `2592000`          | Refresh token TTL in seconds (30 days)          |
+| `LOG_LEVEL`       | `info`             | Pino log level                                  |
+| `CORS_ORIGINS`    | `*`                | Comma-separated allowed origins                 |
 
 MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.

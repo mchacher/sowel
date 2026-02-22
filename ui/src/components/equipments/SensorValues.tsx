@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { DataBindingWithValue } from "../../types";
 import {
@@ -86,13 +86,13 @@ export function SensorValues({
  * the component unmounts (motion stops) and remounts (motion resumes).
  */
 function ElapsedCounter({ lastUpdated, lockOrigin }: { lastUpdated: string | null; lockOrigin?: boolean }) {
-  const originRef = useRef(lastUpdated);
-  const origin = lockOrigin ? originRef.current : lastUpdated;
+  const [lockedOrigin] = useState(lastUpdated);
+  const origin = lockOrigin ? lockedOrigin : lastUpdated;
 
   const [elapsed, setElapsed] = useState(() => computeElapsed(origin));
 
   useEffect(() => {
-    setElapsed(computeElapsed(origin));
+    setElapsed(computeElapsed(origin)); // eslint-disable-line react-hooks/set-state-in-effect -- sync initial elapsed before starting interval
     const id = setInterval(() => setElapsed(computeElapsed(origin)), 1000);
     return () => clearInterval(id);
   }, [origin]);

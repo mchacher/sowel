@@ -82,15 +82,14 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
 
 function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
   return {
-    temperature: acc.temperatureCount > 0
-      ? Math.round((acc.temperatureSum / acc.temperatureCount) * 10) / 10
-      : null,
-    humidity: acc.humidityCount > 0
-      ? Math.round((acc.humiditySum / acc.humidityCount) * 10) / 10
-      : null,
-    luminosity: acc.luminosityCount > 0
-      ? Math.round(acc.luminositySum / acc.luminosityCount)
-      : null,
+    temperature:
+      acc.temperatureCount > 0
+        ? Math.round((acc.temperatureSum / acc.temperatureCount) * 10) / 10
+        : null,
+    humidity:
+      acc.humidityCount > 0 ? Math.round((acc.humiditySum / acc.humidityCount) * 10) / 10 : null,
+    luminosity:
+      acc.luminosityCount > 0 ? Math.round(acc.luminositySum / acc.luminosityCount) : null,
     motion: acc.motion,
     motionSensors: acc.motionSensors,
     motionSince: null, // Set separately — not accumulated
@@ -102,9 +101,10 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     lightsTotal: acc.lightsTotal,
     shuttersOpen: acc.shuttersOpen,
     shuttersTotal: acc.shuttersTotal,
-    averageShutterPosition: acc.shutterPositionCount > 0
-      ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
-      : null,
+    averageShutterPosition:
+      acc.shutterPositionCount > 0
+        ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
+        : null,
   };
 }
 
@@ -368,7 +368,10 @@ export class ZoneAggregator {
           zoneId: currentId,
           aggregatedData: newPublic,
         });
-        this.logger.debug({ zoneId: currentId, aggregatedData: newPublic }, "Zone aggregation updated");
+        this.logger.debug(
+          { zoneId: currentId, aggregatedData: newPublic },
+          "Zone aggregation updated",
+        );
       } else {
         // Even if aggregation data is unchanged, update cache with motionSince
         this.publicCache.set(currentId, newPublic);

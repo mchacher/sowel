@@ -53,9 +53,21 @@ interface ServerDeps {
 
 export async function createServer(deps: ServerDeps) {
   const {
-    db, deviceManager, zoneManager, zoneAggregator, equipmentManager, recipeManager,
-    modeManager, calendarManager,
-    userManager, authService, settingsManager, eventBus, mqttConnector, logger, corsOrigins,
+    db,
+    deviceManager,
+    zoneManager,
+    zoneAggregator,
+    equipmentManager,
+    recipeManager,
+    modeManager,
+    calendarManager,
+    userManager,
+    authService,
+    settingsManager,
+    eventBus,
+    mqttConnector,
+    logger,
+    corsOrigins,
   } = deps;
 
   const app = Fastify({

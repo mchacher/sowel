@@ -54,7 +54,13 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
     }
 
     try {
-      const zone = zoneManager.create({ name: name.trim(), parentId, icon, description, displayOrder });
+      const zone = zoneManager.create({
+        name: name.trim(),
+        parentId,
+        icon,
+        description,
+        displayOrder,
+      });
       return reply.code(201).send(zone);
     } catch (err) {
       return handleZoneError(err, reply);
@@ -83,7 +89,11 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
       }
       body.name = body.name.trim();
     }
-    if (body.description !== undefined && body.description !== null && body.description.length > 500) {
+    if (
+      body.description !== undefined &&
+      body.description !== null &&
+      body.description.length > 500
+    ) {
       return reply.code(400).send({ error: "Description must be 500 characters or less" });
     }
 
@@ -109,23 +119,27 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
   });
 
   // PUT /api/v1/zones/reorder — Reorder sibling zones
-  app.put<{ Body: { parentId: string | null; orderedIds: string[] } }>("/api/v1/zones/reorder", async (request, reply) => {
-    try {
-      const { parentId, orderedIds } = request.body;
-      zoneManager.reorderSiblings(parentId, orderedIds);
-      return reply.code(204).send();
-    } catch (err) {
-      return handleZoneError(err, reply);
-    }
-  });
-
+  app.put<{ Body: { parentId: string | null; orderedIds: string[] } }>(
+    "/api/v1/zones/reorder",
+    async (request, reply) => {
+      try {
+        const { parentId, orderedIds } = request.body;
+        zoneManager.reorderSiblings(parentId, orderedIds);
+        return reply.code(204).send();
+      } catch (err) {
+        return handleZoneError(err, reply);
+      }
+    },
+  );
 }
 
-function handleZoneError(err: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) {
+function handleZoneError(
+  err: unknown,
+  reply: { code: (n: number) => { send: (b: unknown) => unknown } },
+) {
   if (err && typeof err === "object" && "status" in err && "message" in err) {
     const zoneErr = err as { status: number; message: string };
     return reply.code(zoneErr.status).send({ error: zoneErr.message });
   }
   throw err;
 }
-

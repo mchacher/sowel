@@ -42,12 +42,9 @@ export function registerCalendarRoutes(app: FastifyInstance, deps: CalendarDeps)
   });
 
   // GET /api/v1/calendar/profiles/:id/slots
-  app.get<{ Params: { id: string } }>(
-    "/api/v1/calendar/profiles/:id/slots",
-    async (request) => {
-      return calendarManager.listSlots(request.params.id);
-    },
-  );
+  app.get<{ Params: { id: string } }>("/api/v1/calendar/profiles/:id/slots", async (request) => {
+    return calendarManager.listSlots(request.params.id);
+  });
 
   // POST /api/v1/calendar/profiles/:id/slots
   app.post<{
@@ -90,7 +87,8 @@ export function registerCalendarRoutes(app: FastifyInstance, deps: CalendarDeps)
         calendarManager.removeSlot(request.params.slotId);
         return reply.code(204).send();
       } catch (err) {
-        if (err instanceof CalendarError) return reply.code(err.status).send({ error: err.message });
+        if (err instanceof CalendarError)
+          return reply.code(err.status).send({ error: err.message });
         throw err;
       }
     },

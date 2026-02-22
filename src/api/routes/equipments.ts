@@ -55,7 +55,13 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     }
 
     try {
-      const equipment = equipmentManager.create({ name: name.trim(), type, zoneId, icon, description });
+      const equipment = equipmentManager.create({
+        name: name.trim(),
+        type,
+        zoneId,
+        icon,
+        description,
+      });
       return reply.code(201).send(equipment);
     } catch (err) {
       return handleEquipmentError(reply, err);
@@ -148,7 +154,11 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     }
 
     try {
-      const binding = equipmentManager.addDataBinding(request.params.id, deviceDataId, alias.trim());
+      const binding = equipmentManager.addDataBinding(
+        request.params.id,
+        deviceDataId,
+        alias.trim(),
+      );
       return reply.code(201).send(binding);
     } catch (err) {
       return handleEquipmentError(reply, err);
@@ -186,7 +196,11 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     }
 
     try {
-      const binding = equipmentManager.addOrderBinding(request.params.id, deviceOrderId, alias.trim());
+      const binding = equipmentManager.addOrderBinding(
+        request.params.id,
+        deviceOrderId,
+        alias.trim(),
+      );
       return reply.code(201).send(binding);
     } catch (err) {
       return handleEquipmentError(reply, err);
@@ -206,7 +220,10 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   });
 }
 
-function handleEquipmentError(reply: { code: (c: number) => { send: (b: unknown) => unknown } }, err: unknown) {
+function handleEquipmentError(
+  reply: { code: (c: number) => { send: (b: unknown) => unknown } },
+  err: unknown,
+) {
   if (err instanceof EquipmentError) {
     return reply.code(err.status).send({ error: err.message });
   }

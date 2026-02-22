@@ -95,7 +95,7 @@ export function Sidebar() {
             <NavLink
               to="/modes"
               end
-              className={({ isActive }) => `flex items-center gap-2 px-3 mb-2 group`}
+              className={() => `flex items-center gap-2 px-3 mb-2 group`}
             >
               {({ isActive }) => (
                 <>

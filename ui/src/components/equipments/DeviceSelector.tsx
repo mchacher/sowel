@@ -37,7 +37,7 @@ export function DeviceSelector({
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- loading state before async fetch
     getDevices()
       .then((all) => {
         setAllDevices(all);

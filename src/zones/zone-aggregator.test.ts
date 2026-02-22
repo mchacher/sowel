@@ -156,9 +156,7 @@ describe("ZoneAggregator", () => {
 
       const dev = seedDevice(db, {
         name: "TH1",
-        dataKeys: [
-          { key: "humidity", type: "number", category: "humidity", value: "45" },
-        ],
+        dataKeys: [{ key: "humidity", type: "number", category: "humidity", value: "45" }],
       });
 
       const eq = equipmentManager.create({ name: "Sensor", type: "sensor", zoneId: zone.id });
@@ -228,10 +226,18 @@ describe("ZoneAggregator", () => {
         dataKeys: [{ key: "contact", type: "boolean", category: "contact_door", value: "true" }],
       });
 
-      const eq1 = equipmentManager.create({ name: "Porte entrée", type: "sensor", zoneId: zone.id });
+      const eq1 = equipmentManager.create({
+        name: "Porte entrée",
+        type: "sensor",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "contact");
 
-      const eq2 = equipmentManager.create({ name: "Porte garage", type: "sensor", zoneId: zone.id });
+      const eq2 = equipmentManager.create({
+        name: "Porte garage",
+        type: "sensor",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "contact");
 
       aggregator.computeAll();
@@ -282,7 +288,11 @@ describe("ZoneAggregator", () => {
         dataKeys: [{ key: "smoke", type: "boolean", category: "smoke", value: "false" }],
       });
 
-      const eq = equipmentManager.create({ name: "Détecteur fumée", type: "sensor", zoneId: zone.id });
+      const eq = equipmentManager.create({
+        name: "Détecteur fumée",
+        type: "sensor",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "smoke");
 
       aggregator.computeAll();
@@ -310,13 +320,25 @@ describe("ZoneAggregator", () => {
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
       });
 
-      const eq1 = equipmentManager.create({ name: "Volet Salon", type: "shutter", zoneId: zone.id });
+      const eq1 = equipmentManager.create({
+        name: "Volet Salon",
+        type: "shutter",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "position");
 
-      const eq2 = equipmentManager.create({ name: "Volet Chambre", type: "shutter", zoneId: zone.id });
+      const eq2 = equipmentManager.create({
+        name: "Volet Chambre",
+        type: "shutter",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "position");
 
-      const eq3 = equipmentManager.create({ name: "Volet Bureau", type: "shutter", zoneId: zone.id });
+      const eq3 = equipmentManager.create({
+        name: "Volet Bureau",
+        type: "shutter",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eq3.id, dev3.dataIds[0], "position");
 
       aggregator.computeAll();
@@ -350,12 +372,16 @@ describe("ZoneAggregator", () => {
 
       const dev1 = seedDevice(db, {
         name: "Light1",
-        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") }],
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") },
+        ],
         orderKeys: [{ key: "state", payloadKey: "state" }],
       });
       const dev2 = seedDevice(db, {
         name: "Light2",
-        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") }],
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+        ],
         orderKeys: [{ key: "state", payloadKey: "state" }],
       });
 
@@ -388,7 +414,11 @@ describe("ZoneAggregator", () => {
         name: "TempSalon",
         dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "20" }],
       });
-      const eq1 = equipmentManager.create({ name: "Temp Salon", type: "sensor", zoneId: child1.id });
+      const eq1 = equipmentManager.create({
+        name: "Temp Salon",
+        type: "sensor",
+        zoneId: child1.id,
+      });
       equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "temperature");
 
       // Cuisine: temperature 22
@@ -396,7 +426,11 @@ describe("ZoneAggregator", () => {
         name: "TempCuisine",
         dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "22" }],
       });
-      const eq2 = equipmentManager.create({ name: "Temp Cuisine", type: "sensor", zoneId: child2.id });
+      const eq2 = equipmentManager.create({
+        name: "Temp Cuisine",
+        type: "sensor",
+        zoneId: child2.id,
+      });
       equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "temperature");
 
       aggregator.computeAll();
@@ -428,7 +462,11 @@ describe("ZoneAggregator", () => {
         name: "PIRCuisine",
         dataKeys: [{ key: "occupancy", type: "boolean", category: "motion", value: "true" }],
       });
-      const eq2 = equipmentManager.create({ name: "PIR Cuisine", type: "sensor", zoneId: child2.id });
+      const eq2 = equipmentManager.create({
+        name: "PIR Cuisine",
+        type: "sensor",
+        zoneId: child2.id,
+      });
       equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "occupancy");
 
       aggregator.computeAll();
@@ -452,7 +490,11 @@ describe("ZoneAggregator", () => {
         name: "Shutter1",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "100" }],
       });
-      const eq1 = equipmentManager.create({ name: "Volet Salon", type: "shutter", zoneId: child1.id });
+      const eq1 = equipmentManager.create({
+        name: "Volet Salon",
+        type: "shutter",
+        zoneId: child1.id,
+      });
       equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "position");
 
       // Chambre: shutter at 0 (closed)
@@ -460,7 +502,11 @@ describe("ZoneAggregator", () => {
         name: "Shutter2",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "0" }],
       });
-      const eq2 = equipmentManager.create({ name: "Volet Chambre", type: "shutter", zoneId: child2.id });
+      const eq2 = equipmentManager.create({
+        name: "Volet Chambre",
+        type: "shutter",
+        zoneId: child2.id,
+      });
       equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "position");
 
       aggregator.computeAll();
@@ -482,17 +528,29 @@ describe("ZoneAggregator", () => {
       // Salon: 1 light on
       const dev1 = seedDevice(db, {
         name: "Light1",
-        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") }],
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") },
+        ],
       });
-      const eq1 = equipmentManager.create({ name: "Spots Salon", type: "light_onoff", zoneId: child1.id });
+      const eq1 = equipmentManager.create({
+        name: "Spots Salon",
+        type: "light_onoff",
+        zoneId: child1.id,
+      });
       equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "state");
 
       // Cuisine: 1 light off
       const dev2 = seedDevice(db, {
         name: "Light2",
-        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") }],
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+        ],
       });
-      const eq2 = equipmentManager.create({ name: "Plafonnier Cuisine", type: "light_onoff", zoneId: child2.id });
+      const eq2 = equipmentManager.create({
+        name: "Plafonnier Cuisine",
+        type: "light_onoff",
+        zoneId: child2.id,
+      });
       equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "state");
 
       aggregator.computeAll();
@@ -669,7 +727,14 @@ describe("ZoneAggregator", () => {
       });
       const dev2 = seedDevice(db, {
         name: "Temp2",
-        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: null as unknown as string }],
+        dataKeys: [
+          {
+            key: "temperature",
+            type: "number",
+            category: "temperature",
+            value: null as unknown as string,
+          },
+        ],
       });
 
       const eq1 = equipmentManager.create({ name: "Sensor 1", type: "sensor", zoneId: zone.id });
@@ -710,13 +775,19 @@ describe("ZoneAggregator", () => {
       });
       const devLight = seedDevice(db, {
         name: "Light1",
-        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") }],
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") },
+        ],
       });
 
       const eqTemp = equipmentManager.create({ name: "Temp", type: "sensor", zoneId: zone.id });
       equipmentManager.addDataBinding(eqTemp.id, devTemp.dataIds[0], "temperature");
 
-      const eqLight = equipmentManager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
+      const eqLight = equipmentManager.create({
+        name: "Spots",
+        type: "light_onoff",
+        zoneId: zone.id,
+      });
       equipmentManager.addDataBinding(eqLight.id, devLight.dataIds[0], "state");
 
       aggregator.computeAll();

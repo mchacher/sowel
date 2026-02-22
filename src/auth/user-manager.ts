@@ -98,7 +98,10 @@ export class UserManager {
     return rows.map(rowToUser);
   }
 
-  updateUser(id: string, input: { displayName: string; role: UserRole; enabled: boolean }): User | null {
+  updateUser(
+    id: string,
+    input: { displayName: string; role: UserRole; enabled: boolean },
+  ): User | null {
     this.stmts.update.run({
       id,
       displayName: input.displayName,

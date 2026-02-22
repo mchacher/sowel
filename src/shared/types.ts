@@ -34,12 +34,7 @@ export type DataCategory =
 // Device
 // ============================================================
 
-export type DeviceSource =
-  | "zigbee2mqtt"
-  | "tasmota"
-  | "esphome"
-  | "shelly"
-  | "custom_mqtt";
+export type DeviceSource = "zigbee2mqtt" | "tasmota" | "esphome" | "shelly" | "custom_mqtt";
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 

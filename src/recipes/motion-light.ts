@@ -14,10 +14,14 @@ function parseDuration(value: unknown): number {
 
   const num = parseInt(match[1], 10);
   switch (match[2]) {
-    case "s": return num * 1000;
-    case "m": return num * 60 * 1000;
-    case "h": return num * 60 * 60 * 1000;
-    default: throw new Error(`Invalid duration unit: ${match[2]}`);
+    case "s":
+      return num * 1000;
+    case "m":
+      return num * 60 * 1000;
+    case "h":
+      return num * 60 * 60 * 1000;
+    default:
+      throw new Error(`Invalid duration unit: ${match[2]}`);
   }
 }
 
@@ -34,7 +38,8 @@ function formatDuration(ms: number): string {
 export class MotionLightRecipe extends Recipe {
   readonly id = "motion-light";
   readonly name = "Motion Light";
-  readonly description = "Turns on the light when motion is detected, turns off after a timeout with no motion. Also handles manual on/off.";
+  readonly description =
+    "Turns on the light when motion is detected, turns off after a timeout with no motion. Also handles manual on/off.";
   readonly slots: RecipeSlotDef[] = [
     {
       id: "zone",
@@ -122,7 +127,6 @@ export class MotionLightRecipe extends Recipe {
       this.onLightChanged(event.value);
     });
     this.unsubs.push(unsubLight);
-
   }
 
   stop(): void {
@@ -190,7 +194,10 @@ export class MotionLightRecipe extends Recipe {
       this.ctx.equipmentManager.executeOrder(this.lightId, "state", "ON");
       this.ctx.log("Motion detected — light turned on");
     } catch (err) {
-      this.ctx.log(`Error turning on light: ${err instanceof Error ? err.message : String(err)}`, "error");
+      this.ctx.log(
+        `Error turning on light: ${err instanceof Error ? err.message : String(err)}`,
+        "error",
+      );
     }
   }
 
@@ -199,7 +206,10 @@ export class MotionLightRecipe extends Recipe {
       this.ctx.equipmentManager.executeOrder(this.lightId, "state", "OFF");
       this.ctx.log(`No motion for ${formatDuration(this.timeoutMs)} — light turned off`);
     } catch (err) {
-      this.ctx.log(`Error turning off light: ${err instanceof Error ? err.message : String(err)}`, "error");
+      this.ctx.log(
+        `Error turning off light: ${err instanceof Error ? err.message : String(err)}`,
+        "error",
+      );
     }
   }
 

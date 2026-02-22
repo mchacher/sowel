@@ -56,7 +56,10 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
     logger.info("Configuration exported");
 
     return reply
-      .header("Content-Disposition", `attachment; filename="corbel-backup-${new Date().toISOString().slice(0, 10)}.json"`)
+      .header(
+        "Content-Disposition",
+        `attachment; filename="corbel-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+      )
       .send(payload);
   });
 

@@ -146,9 +146,7 @@ describe("CalendarManager", () => {
     });
 
     it("throws when adding slot to non-existent profile", () => {
-      expect(() =>
-        calendarManager.addSlot("nope", [1], "08:00", ["m"]),
-      ).toThrow(CalendarError);
+      expect(() => calendarManager.addSlot("nope", [1], "08:00", ["m"])).toThrow(CalendarError);
     });
 
     it("updates a slot (days only)", () => {
@@ -186,9 +184,7 @@ describe("CalendarManager", () => {
     });
 
     it("throws when updating non-existent slot", () => {
-      expect(() =>
-        calendarManager.updateSlot("nope", { time: "10:00" }),
-      ).toThrow(CalendarError);
+      expect(() => calendarManager.updateSlot("nope", { time: "10:00" })).toThrow(CalendarError);
     });
 
     it("removes a slot", () => {
@@ -210,7 +206,11 @@ describe("CalendarManager", () => {
     });
 
     it("supports multiple mode IDs per slot", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2], "07:00", ["mode-a", "mode-b", "mode-c"]);
+      const slot = calendarManager.addSlot("travail", [1, 2], "07:00", [
+        "mode-a",
+        "mode-b",
+        "mode-c",
+      ]);
       expect(slot.modeIds).toEqual(["mode-a", "mode-b", "mode-c"]);
       const fetched = calendarManager.listSlots("travail");
       expect(fetched[0].modeIds).toEqual(["mode-a", "mode-b", "mode-c"]);

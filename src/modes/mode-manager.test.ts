@@ -69,7 +69,10 @@ describe("ModeManager", () => {
       expect(mode.active).toBe(false);
       expect(mode.id).toBeTruthy();
       expect(events).toContainEqual(
-        expect.objectContaining({ type: "mode.created", mode: expect.objectContaining({ name: "Cocoon" }) }),
+        expect.objectContaining({
+          type: "mode.created",
+          mode: expect.objectContaining({ name: "Cocoon" }),
+        }),
       );
     });
 
@@ -105,9 +108,7 @@ describe("ModeManager", () => {
       const updated = manager.updateMode(created.id, { name: "New Name", description: "desc" });
       expect(updated.name).toBe("New Name");
       expect(updated.description).toBe("desc");
-      expect(events).toContainEqual(
-        expect.objectContaining({ type: "mode.updated" }),
-      );
+      expect(events).toContainEqual(expect.objectContaining({ type: "mode.updated" }));
     });
 
     it("throws when updating a non-existent mode", () => {
@@ -238,9 +239,7 @@ describe("ModeManager", () => {
     });
 
     it("throws when setting impact on non-existent mode", () => {
-      expect(() =>
-        manager.setZoneImpact("nope", zoneId, []),
-      ).toThrow(ModeError);
+      expect(() => manager.setZoneImpact("nope", zoneId, [])).toThrow(ModeError);
     });
 
     it("executes order impacts on activation", () => {
@@ -299,15 +298,11 @@ describe("ModeManager", () => {
     });
 
     it("throws when no impacts for zone", () => {
-      expect(() =>
-        manager.applyModeToZone(modeId, "zone-unknown"),
-      ).toThrow(ModeError);
+      expect(() => manager.applyModeToZone(modeId, "zone-unknown")).toThrow(ModeError);
     });
 
     it("throws for non-existent mode", () => {
-      expect(() =>
-        manager.applyModeToZone("nope", zone1),
-      ).toThrow(ModeError);
+      expect(() => manager.applyModeToZone("nope", zone1)).toThrow(ModeError);
     });
   });
 
@@ -343,9 +338,7 @@ describe("ModeManager", () => {
     });
 
     it("throws when adding trigger to non-existent mode", () => {
-      expect(() =>
-        manager.addEventTrigger("nope", "eq-1", "action", "single"),
-      ).toThrow(ModeError);
+      expect(() => manager.addEventTrigger("nope", "eq-1", "action", "single")).toThrow(ModeError);
     });
 
     it("activates mode when equipment data matches trigger", () => {
@@ -448,7 +441,9 @@ describe("ModeManager", () => {
       manager.deleteMode(mode.id);
 
       // Verify via direct DB queries
-      const triggers = db.prepare("SELECT * FROM mode_event_triggers WHERE mode_id = ?").all(mode.id);
+      const triggers = db
+        .prepare("SELECT * FROM mode_event_triggers WHERE mode_id = ?")
+        .all(mode.id);
       const impacts = db.prepare("SELECT * FROM zone_mode_impacts WHERE mode_id = ?").all(mode.id);
       expect(triggers).toHaveLength(0);
       expect(impacts).toHaveLength(0);

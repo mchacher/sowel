@@ -8,7 +8,7 @@ import { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { RecipeManager, RecipeError } from "./recipe-manager.js";
-import { Recipe, type RecipeContext } from "./recipe.js";
+import { Recipe } from "./recipe.js";
 import type { RecipeSlotDef, EngineEvent } from "../../shared/types.js";
 
 // ============================================================
@@ -34,44 +34,6 @@ const mockMqtt = {
   publish: () => {},
   isConnected: () => true,
 };
-
-function seedDevice(
-  db: Database.Database,
-  opts: {
-    name?: string;
-    dataKeys?: { id?: string; key: string; type?: string; category?: string; value?: string }[];
-    orderKeys?: { id?: string; key: string; type?: string; payloadKey?: string }[];
-  } = {},
-) {
-  const deviceId = crypto.randomUUID();
-  const name = opts.name ?? "Test Device";
-  db.prepare(
-    `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status)
-     VALUES (?, ?, ?, ?, 'zigbee2mqtt', 'online')`,
-  ).run(deviceId, `z2m/${name}`, name, name);
-
-  const dataIds: string[] = [];
-  for (const d of opts.dataKeys ?? []) {
-    const id = d.id ?? crypto.randomUUID();
-    db.prepare(
-      `INSERT INTO device_data (id, device_id, key, type, category, value)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, deviceId, d.key, d.type ?? "boolean", d.category ?? "generic", d.value ?? null);
-    dataIds.push(id);
-  }
-
-  const orderIds: string[] = [];
-  for (const o of opts.orderKeys ?? []) {
-    const id = o.id ?? crypto.randomUUID();
-    db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, deviceId, o.key, o.type ?? "boolean", `z2m/${name}/set`, o.payloadKey ?? o.key);
-    orderIds.push(id);
-  }
-
-  return { deviceId, dataIds, orderIds };
-}
 
 // ============================================================
 // Test recipe — minimal implementation
@@ -224,7 +186,14 @@ describe("RecipeManager", () => {
 
     // Create a new manager to simulate restart
     manager.stopAll();
-    const newManager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, aggregator, logger);
+    const newManager = new RecipeManager(
+      db,
+      eventBus,
+      equipmentManager,
+      zoneManager,
+      aggregator,
+      logger,
+    );
     newManager.register(TestRecipe);
     newManager.init();
 

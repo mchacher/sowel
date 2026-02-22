@@ -100,7 +100,14 @@ function createTestSetup(): TestSetup {
   const zoneManager = new ZoneManager(db, eventBus, logger);
   const equipmentManager = new EquipmentManager(db, eventBus, mockMqtt as never, logger);
   const aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
-  const manager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, aggregator, logger);
+  const manager = new RecipeManager(
+    db,
+    eventBus,
+    equipmentManager,
+    zoneManager,
+    aggregator,
+    logger,
+  );
   manager.register(MotionLightRecipe);
 
   // Create zone
@@ -117,10 +124,16 @@ function createTestSetup(): TestSetup {
   // Create light device + equipment with both data and order bindings
   const lightDevice = seedDevice(db, {
     name: "Spots Salon",
-    dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") }],
+    dataKeys: [
+      { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+    ],
     orderKeys: [{ key: "state", type: "boolean", payloadKey: "state" }],
   });
-  const lightEq = equipmentManager.create({ name: "Spots Salon", type: "light_onoff", zoneId: zone.id });
+  const lightEq = equipmentManager.create({
+    name: "Spots Salon",
+    type: "light_onoff",
+    zoneId: zone.id,
+  });
   equipmentManager.addDataBinding(lightEq.id, lightDevice.dataIds[0], "state");
   equipmentManager.addOrderBinding(lightEq.id, lightDevice.orderIds[0], "state");
 
@@ -148,10 +161,9 @@ function createTestSetup(): TestSetup {
 
 function simulateMotion(setup: TestSetup, active: boolean): void {
   // Update DB
-  setup.db.prepare("UPDATE device_data SET value = ? WHERE id = ?").run(
-    JSON.stringify(active),
-    setup.pirDataId,
-  );
+  setup.db
+    .prepare("UPDATE device_data SET value = ? WHERE id = ?")
+    .run(JSON.stringify(active), setup.pirDataId);
   // Trigger reactive pipeline
   setup.eventBus.emit({
     type: "device.data.updated",
@@ -166,10 +178,9 @@ function simulateMotion(setup: TestSetup, active: boolean): void {
 }
 
 function simulateLightState(setup: TestSetup, state: "ON" | "OFF"): void {
-  setup.db.prepare("UPDATE device_data SET value = ? WHERE id = ?").run(
-    JSON.stringify(state),
-    setup.lightDataId,
-  );
+  setup.db
+    .prepare("UPDATE device_data SET value = ? WHERE id = ?")
+    .run(JSON.stringify(state), setup.lightDataId);
   setup.eventBus.emit({
     type: "device.data.updated",
     deviceId: "light-device",
@@ -210,13 +221,21 @@ describe("MotionLightRecipe", () => {
 
   it("validates zone exists", () => {
     expect(() =>
-      setup.manager.createInstance("motion-light", { zone: "nonexistent", light: setup.lightId, timeout: "10m" }),
+      setup.manager.createInstance("motion-light", {
+        zone: "nonexistent",
+        light: setup.lightId,
+        timeout: "10m",
+      }),
     ).toThrow("Invalid params");
   });
 
   it("validates light exists and has state order", () => {
     expect(() =>
-      setup.manager.createInstance("motion-light", { zone: setup.zoneId, light: "nonexistent", timeout: "10m" }),
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        light: "nonexistent",
+        timeout: "10m",
+      }),
     ).toThrow("Invalid params");
   });
 
@@ -386,10 +405,16 @@ describe("MotionLightRecipe", () => {
     // Create a light in the empty zone
     const lightDevice = seedDevice(setup.db, {
       name: "Light2",
-      dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") }],
+      dataKeys: [
+        { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+      ],
       orderKeys: [{ key: "state", type: "boolean", payloadKey: "state" }],
     });
-    const lightEq = setup.equipmentManager.create({ name: "Light2", type: "light_onoff", zoneId: emptyZone.id });
+    const lightEq = setup.equipmentManager.create({
+      name: "Light2",
+      type: "light_onoff",
+      zoneId: emptyZone.id,
+    });
     setup.equipmentManager.addDataBinding(lightEq.id, lightDevice.dataIds[0], "state");
     setup.equipmentManager.addOrderBinding(lightEq.id, lightDevice.orderIds[0], "state");
     setup.aggregator.computeAll();
@@ -413,9 +438,15 @@ describe("MotionLightRecipe", () => {
     // Create a light without order binding
     const lightDevice = seedDevice(setup.db, {
       name: "Light No Order",
-      dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") }],
+      dataKeys: [
+        { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+      ],
     });
-    const lightEq = setup.equipmentManager.create({ name: "Light No Order", type: "light_onoff", zoneId: setup.zoneId });
+    const lightEq = setup.equipmentManager.create({
+      name: "Light No Order",
+      type: "light_onoff",
+      zoneId: setup.zoneId,
+    });
     setup.equipmentManager.addDataBinding(lightEq.id, lightDevice.dataIds[0], "state");
 
     expect(() =>

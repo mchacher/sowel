@@ -48,9 +48,7 @@ export class ZoneManager {
          updated_at = datetime('now') WHERE id = @id`,
       ),
       deleteZone: this.db.prepare("DELETE FROM zones WHERE id = ?"),
-      countChildren: this.db.prepare(
-        "SELECT COUNT(*) as count FROM zones WHERE parent_id = ?",
-      ),
+      countChildren: this.db.prepare("SELECT COUNT(*) as count FROM zones WHERE parent_id = ?"),
       countEquipments: this.db.prepare(
         "SELECT COUNT(*) as count FROM equipments WHERE zone_id = ?",
       ),
@@ -231,9 +229,10 @@ export class ZoneManager {
    * Reorder zones within a parent. Pass an array of zone IDs in desired order.
    */
   reorderSiblings(parentId: string | null, orderedIds: string[]): void {
-    const siblings = parentId === null
-      ? this.stmts.getSiblings.all(null) as { id: string }[]
-      : this.stmts.getSiblingsNotNull.all(parentId) as { id: string }[];
+    const siblings =
+      parentId === null
+        ? (this.stmts.getSiblings.all(null) as { id: string }[])
+        : (this.stmts.getSiblingsNotNull.all(parentId) as { id: string }[]);
 
     const siblingIds = new Set(siblings.map((s) => s.id));
 
@@ -317,4 +316,3 @@ function rowToZone(row: ZoneRow): Zone {
     updatedAt: toISOUtc(row.updated_at),
   };
 }
-

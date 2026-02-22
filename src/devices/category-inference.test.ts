@@ -118,9 +118,7 @@ describe("collectProperties", () => {
   });
 
   it("handles exposes without property", () => {
-    const exposes: Z2MExpose[] = [
-      { type: "binary", access: 1 },
-    ];
+    const exposes: Z2MExpose[] = [{ type: "binary", access: 1 }];
     expect(collectProperties(exposes)).toEqual(new Set());
   });
 });

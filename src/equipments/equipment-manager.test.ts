@@ -78,7 +78,10 @@ describe("EquipmentManager", () => {
   let manager: EquipmentManager;
   let events: EngineEvent[];
   let mockPublished: { topic: string; payload: string }[];
-  let mockMqtt: { publish: (topic: string, payload: string | Buffer) => void; isConnected: () => boolean };
+  let mockMqtt: {
+    publish: (topic: string, payload: string | Buffer) => void;
+    isConnected: () => boolean;
+  };
 
   beforeEach(() => {
     db = createTestDb();
@@ -137,7 +140,6 @@ describe("EquipmentManager", () => {
         manager.create({ name: "Test", type: "light_onoff", zoneId: "non-existent" });
       }).toThrow(EquipmentError);
     });
-
   });
 
   describe("getById", () => {
@@ -535,9 +537,7 @@ describe("EquipmentManager", () => {
       const eq = manager.create({ name: "Spots", type: "light_dimmable", zoneId: zone.id });
       const { dataIds, orderIds } = seedDevice(db, {
         name: "Variateur",
-        dataKeys: [
-          { key: "state", category: "light_state", value: JSON.stringify("ON") },
-        ],
+        dataKeys: [{ key: "state", category: "light_state", value: JSON.stringify("ON") }],
         orderKeys: [{ key: "state" }],
       });
       manager.addDataBinding(eq.id, dataIds[0], "state");

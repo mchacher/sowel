@@ -44,7 +44,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
   // Auto-expand when a child is active
   useEffect(() => {
     if (zoneId && hasZoneInTree(zone, zoneId)) {
-      setExpanded(true);
+      setExpanded(true); // eslint-disable-line react-hooks/set-state-in-effect -- sync expand on route change
     }
   }, [zoneId, zone]);
 

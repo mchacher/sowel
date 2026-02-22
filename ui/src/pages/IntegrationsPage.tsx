@@ -61,6 +61,7 @@ function Zigbee2mqttCard() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load only on mount
   useEffect(() => { load(); }, []);
 
   // Check if any field has changed

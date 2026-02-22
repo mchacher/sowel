@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Layers, Trash2, Pencil,
   ToggleRight, ToggleLeft, Zap, MapPin, Plus, X,
-  ChevronUp, ChevronDown, Lightbulb, ArrowUpDown, Power, Clock,
+  Lightbulb, ArrowUpDown, Power, Clock,
 } from "lucide-react";
 import { getMode, addModeTrigger, removeModeTrigger, getActiveCalendar } from "../api";
 import { useModes } from "../store/useModes";

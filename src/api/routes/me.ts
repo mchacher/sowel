@@ -72,9 +72,7 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
       return reply.code(400).send({ error: "Password must be at least 6 characters" });
     }
 
-    const user = userManager.getByUsername(
-      userManager.getById(request.auth.userId)!.username,
-    );
+    const user = userManager.getByUsername(userManager.getById(request.auth.userId)!.username);
     if (!user) return reply.code(404).send({ error: "User not found" });
 
     const valid = await userManager.verifyPassword(user.passwordHash, currentPassword);
