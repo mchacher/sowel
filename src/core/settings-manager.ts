@@ -75,29 +75,29 @@ export class SettingsManager {
 
   /** Returns true if MQTT integration has been configured from the UI. */
   isMqttConfigured(): boolean {
-    return this.get("mqtt.url") !== undefined;
+    return this.get("integration.zigbee2mqtt.mqtt_url") !== undefined;
   }
 
-  /** Get MQTT connection config from settings. */
+  /** Get MQTT connection config from settings (used by Zigbee2MQTT integration). */
   getMqttConfig(): {
     url: string;
     username?: string;
     password?: string;
     clientId: string;
   } {
-    const settings = this.getByPrefix("mqtt.");
+    const prefix = "integration.zigbee2mqtt.";
     return {
-      url: settings["mqtt.url"] ?? "mqtt://localhost:1883",
-      username: settings["mqtt.username"] || undefined,
-      password: settings["mqtt.password"] || undefined,
-      clientId: settings["mqtt.clientId"] ?? "corbel",
+      url: this.get(`${prefix}mqtt_url`) ?? "mqtt://localhost:1883",
+      username: this.get(`${prefix}mqtt_username`) || undefined,
+      password: this.get(`${prefix}mqtt_password`) || undefined,
+      clientId: this.get(`${prefix}mqtt_client_id`) ?? "corbel",
     };
   }
 
   /** Get Zigbee2mqtt config from settings. */
   getZ2mConfig(): { baseTopic: string } {
     return {
-      baseTopic: this.get("z2m.baseTopic") ?? "zigbee2mqtt",
+      baseTopic: this.get("integration.zigbee2mqtt.base_topic") ?? "zigbee2mqtt",
     };
   }
 }

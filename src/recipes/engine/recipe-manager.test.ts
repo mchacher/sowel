@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { ZoneManager } from "../../zones/zone-manager.js";
 import { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import { EquipmentManager } from "../../equipments/equipment-manager.js";
+import { DeviceManager } from "../../devices/device-manager.js";
 import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { RecipeManager, RecipeError } from "./recipe-manager.js";
@@ -18,7 +19,14 @@ import type { RecipeSlotDef, EngineEvent } from "../../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  const migrations = ["001_devices.sql", "002_zones.sql", "003_equipments.sql", "005_recipes.sql"];
+  const migrations = [
+    "001_devices.sql",
+    "002_zones.sql",
+    "003_equipments.sql",
+    "005_recipes.sql",
+    "007_settings.sql",
+    "011_integration_architecture.sql",
+  ];
   for (const file of migrations) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", "../../../migrations", file),
@@ -30,10 +38,6 @@ function createTestDb(): Database.Database {
 }
 
 const logger = createLogger("silent");
-const mockMqtt = {
-  publish: () => {},
-  isConnected: () => true,
-};
 
 // ============================================================
 // Test recipe — minimal implementation
@@ -86,7 +90,15 @@ describe("RecipeManager", () => {
     db = createTestDb();
     eventBus = new EventBus(logger);
     zoneManager = new ZoneManager(db, eventBus, logger);
-    equipmentManager = new EquipmentManager(db, eventBus, mockMqtt as never, logger);
+    const mockIntegrationRegistry = { getById: () => undefined };
+    const deviceManager = new DeviceManager(db, eventBus, logger);
+    equipmentManager = new EquipmentManager(
+      db,
+      eventBus,
+      mockIntegrationRegistry as any,
+      deviceManager,
+      logger,
+    );
     aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
     manager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, aggregator, logger);
     events = [];

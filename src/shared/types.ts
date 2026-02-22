@@ -34,14 +34,20 @@ export type DataCategory =
 // Device
 // ============================================================
 
-export type DeviceSource = "zigbee2mqtt" | "tasmota" | "esphome" | "shelly" | "custom_mqtt";
+export type DeviceSource =
+  | "zigbee2mqtt"
+  | "tasmota"
+  | "esphome"
+  | "shelly"
+  | "custom_mqtt"
+  | "panasonic_cc";
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
 export interface Device {
   id: string;
-  mqttBaseTopic: string;
-  mqttName: string;
+  integrationId: string;
+  sourceDeviceId: string;
   name: string;
   manufacturer?: string;
   model?: string;
@@ -71,8 +77,7 @@ export interface DeviceOrder {
   deviceId: string;
   key: string;
   type: DataType;
-  mqttSetTopic: string;
-  payloadKey: string;
+  dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -180,8 +185,7 @@ export interface OrderBindingWithDetails extends OrderBinding {
   deviceName: string;
   key: string;
   type: DataType;
-  mqttSetTopic: string;
-  payloadKey: string;
+  dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -405,8 +409,8 @@ export type EngineEvent =
   | { type: "calendar.profile.changed"; profileId: string; profileName: string }
   // System events
   | { type: "system.started" }
-  | { type: "system.mqtt.connected" }
-  | { type: "system.mqtt.disconnected" }
+  | { type: "system.integration.connected"; integrationId: string }
+  | { type: "system.integration.disconnected"; integrationId: string }
   | { type: "system.error"; error: string };
 
 // ============================================================
@@ -447,6 +451,31 @@ export interface Z2MExpose {
 export interface Z2MBridgeEvent {
   type: string;
   data: Record<string, unknown>;
+}
+
+// ============================================================
+// Integration Plugin
+// ============================================================
+
+export type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "error";
+
+export interface IntegrationSettingDef {
+  key: string;
+  label: string;
+  type: "text" | "password" | "number";
+  required: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+}
+
+export interface IntegrationInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  status: IntegrationStatus;
+  settings: IntegrationSettingDef[];
+  configured: boolean;
 }
 
 // ============================================================
