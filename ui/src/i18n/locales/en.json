@@ -56,6 +56,7 @@
   "common.noLogs": "No logs",
   "common.select": "Select...",
   "common.disabled": "Disabled",
+  "common.all": "All",
 
   "status.online": "Online",
   "status.offline": "Offline",
