@@ -6,7 +6,13 @@ import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import { MczBridge } from "./mcz-bridge.js";
 import { MczPoller } from "./mcz-poller.js";
-import { COMMAND_ID, profileToRaw, RESET_ALARM_VALUE } from "./mcz-types.js";
+import {
+  COMMAND_ID,
+  profileToRaw,
+  RESET_ALARM_VALUE,
+  POWER_ON_VALUE,
+  POWER_OFF_VALUE,
+} from "./mcz-types.js";
 
 const SETTINGS_PREFIX = "integration.mcz_maestro.";
 
@@ -152,6 +158,9 @@ export class MczMaestroIntegration implements IntegrationPlugin {
     let rawValue: number;
 
     switch (commandId) {
+      case COMMAND_ID.POWER:
+        rawValue = value === true ? POWER_ON_VALUE : POWER_OFF_VALUE;
+        break;
       case COMMAND_ID.TARGET_TEMPERATURE:
         // Protocol expects value × 2
         rawValue = Math.round((value as number) * 2);

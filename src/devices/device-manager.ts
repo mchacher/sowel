@@ -84,6 +84,9 @@ export class DeviceManager {
       updateDeviceStatus: this.db.prepare(
         "UPDATE devices SET status = ?, last_seen = datetime('now'), updated_at = datetime('now') WHERE id = ?",
       ),
+      updateDeviceLastSeen: this.db.prepare(
+        "UPDATE devices SET last_seen = datetime('now') WHERE id = ?",
+      ),
       deleteDevice: this.db.prepare("DELETE FROM devices WHERE id = ?"),
       getAllDevices: this.db.prepare("SELECT * FROM devices ORDER BY name"),
       getDeviceById: this.db.prepare("SELECT * FROM devices WHERE id = ?"),
@@ -323,6 +326,7 @@ export class DeviceManager {
     if (!device) return;
 
     // A device sending data is online — update status and last_seen
+    this.stmts.updateDeviceLastSeen.run(device.id);
     if (device.status !== "online") {
       this.stmts.updateDeviceStatus.run("online", device.id);
       this.eventBus.emit({

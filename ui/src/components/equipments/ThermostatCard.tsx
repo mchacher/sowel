@@ -180,7 +180,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       </div>
 
       {/* Target temperature control */}
-      {targetTempOrder && isOn && (
+      {targetTempOrder && (
         <div className="flex items-center gap-3">
           <span className="text-[12px] text-text-tertiary">{t("thermostat.target")}</span>
           <div className="flex items-center gap-1">
@@ -207,7 +207,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       )}
 
       {/* Mode selector */}
-      {availableModes.length > 0 && isOn && (
+      {availableModes.length > 0 && (
         <div className="space-y-1.5">
           <span className="text-[12px] text-text-tertiary">{t("thermostat.mode")}</span>
           <div className="flex gap-1.5 flex-wrap">
@@ -234,7 +234,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       )}
 
       {/* Fan speed */}
-      {availableFanSpeeds.length > 0 && isOn && (
+      {availableFanSpeeds.length > 0 && (
         <div className="space-y-1.5">
           <span className="text-[12px] text-text-tertiary flex items-center gap-1">
             <Wind size={12} strokeWidth={1.5} />
@@ -263,7 +263,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       )}
 
       {/* Eco mode indicator */}
-      {ecoMode && ecoMode !== "auto" && isOn && (
+      {ecoMode && ecoMode !== "auto" && (
         <div className="flex items-center gap-1.5 text-[12px] text-success">
           <Leaf size={12} strokeWidth={1.5} />
           {ecoMode === "on" ? t("thermostat.ecoMode") : t(`thermostat.ecoModes.${ecoMode}`)}

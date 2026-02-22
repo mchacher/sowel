@@ -193,6 +193,11 @@ function mapFrameToDiscovered(_serial: string, _frame: MczStatusFrame): Discover
 
   const orders: DiscoveredDevice["orders"] = [
     {
+      key: "power",
+      type: "boolean" as DataType,
+      dispatchConfig: { commandId: COMMAND_ID.POWER },
+    },
+    {
       key: "targetTemperature",
       type: "number" as DataType,
       dispatchConfig: { commandId: COMMAND_ID.TARGET_TEMPERATURE },
