@@ -90,6 +90,38 @@ export function registerRecipeRoutes(app: FastifyInstance, deps: RecipesDeps): v
     }
   });
 
+  // POST /api/v1/recipe-instances/:id/enable — Enable instance
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/recipe-instances/:id/enable",
+    async (request, reply) => {
+      try {
+        recipeManager.enableInstance(request.params.id);
+        return { success: true };
+      } catch (err) {
+        if (err instanceof RecipeError) {
+          return reply.code(err.status).send({ error: err.message });
+        }
+        throw err;
+      }
+    },
+  );
+
+  // POST /api/v1/recipe-instances/:id/disable — Disable instance
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/recipe-instances/:id/disable",
+    async (request, reply) => {
+      try {
+        recipeManager.disableInstance(request.params.id);
+        return { success: true };
+      } catch (err) {
+        if (err instanceof RecipeError) {
+          return reply.code(err.status).send({ error: err.message });
+        }
+        throw err;
+      }
+    },
+  );
+
   // GET /api/v1/recipe-instances/:id/log — Get execution log
   app.get<{
     Params: { id: string };

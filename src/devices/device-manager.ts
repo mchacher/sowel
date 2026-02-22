@@ -17,13 +17,14 @@ import type {
   DeviceData,
   DeviceOrder,
   DeviceWithDetails,
+  DeviceSource,
   DataType,
   DataCategory,
 } from "../shared/types.js";
 import { PROPERTY_TO_CATEGORY } from "../shared/constants.js";
 
-interface DiscoveredDevice {
-  ieeeAddress: string;
+export interface DiscoveredDevice {
+  ieeeAddress?: string;
   friendlyName: string;
   manufacturer?: string;
   model?: string;
@@ -36,13 +37,13 @@ interface DiscoveredDevice {
   orders: {
     key: string;
     type: DataType;
-    payloadKey: string;
+    dispatchConfig: Record<string, unknown>;
     min?: number;
     max?: number;
     enumValues?: string[];
     unit?: string;
   }[];
-  rawExpose: unknown;
+  rawExpose?: unknown;
 }
 
 export class DeviceManager {
@@ -62,12 +63,12 @@ export class DeviceManager {
 
   private prepareStatements() {
     return {
-      findDeviceByMqtt: this.db.prepare<[string, string]>(
-        "SELECT * FROM devices WHERE mqtt_base_topic = ? AND mqtt_name = ?",
+      findDeviceBySource: this.db.prepare<[string, string]>(
+        "SELECT * FROM devices WHERE integration_id = ? AND source_device_id = ?",
       ),
       insertDevice: this.db.prepare(
-        `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, manufacturer, model, ieee_address, source, status, raw_expose)
-         VALUES (@id, @mqttBaseTopic, @mqttName, @name, @manufacturer, @model, @ieeeAddress, @source, @status, @rawExpose)`,
+        `INSERT INTO devices (id, integration_id, source_device_id, name, manufacturer, model, ieee_address, source, status, raw_expose)
+         VALUES (@id, @integrationId, @sourceDeviceId, @name, @manufacturer, @model, @ieeeAddress, @source, @status, @rawExpose)`,
       ),
       updateDeviceDiscovery: this.db.prepare(
         `UPDATE devices SET name = @name, manufacturer = @manufacturer, model = @model,
@@ -112,11 +113,11 @@ export class DeviceManager {
         "SELECT * FROM device_orders WHERE device_id = ? AND key = ?",
       ),
       insertDeviceOrder: this.db.prepare(
-        `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key, min_value, max_value, enum_values, unit)
-         VALUES (@id, @deviceId, @key, @type, @mqttSetTopic, @payloadKey, @min, @max, @enumValues, @unit)`,
+        `INSERT INTO device_orders (id, device_id, key, type, dispatch_config, min_value, max_value, enum_values, unit)
+         VALUES (@id, @deviceId, @key, @type, @dispatchConfig, @min, @max, @enumValues, @unit)`,
       ),
       updateDeviceOrderDef: this.db.prepare(
-        "UPDATE device_orders SET type = ?, mqtt_set_topic = ?, payload_key = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
+        "UPDATE device_orders SET type = ?, dispatch_config = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
       ),
       deleteDeviceOrderById: this.db.prepare("DELETE FROM device_orders WHERE id = ?"),
       getDeviceOrderIds: this.db.prepare("SELECT id, key FROM device_orders WHERE device_id = ?"),
@@ -128,12 +129,16 @@ export class DeviceManager {
   }
 
   /**
-   * Upsert a device from auto-discovery (zigbee2mqtt bridge/devices).
+   * Upsert a device from integration discovery.
    * Creates the device if new, updates metadata if existing.
    * Always refreshes Data and Orders definitions.
    */
-  upsertFromDiscovery(baseTopic: string, discovered: DiscoveredDevice): void {
-    const existing = this.stmts.findDeviceByMqtt.get(baseTopic, discovered.friendlyName) as
+  upsertFromDiscovery(
+    integrationId: string,
+    source: DeviceSource,
+    discovered: DiscoveredDevice,
+  ): void {
+    const existing = this.stmts.findDeviceBySource.get(integrationId, discovered.friendlyName) as
       | DeviceRow
       | undefined;
 
@@ -147,22 +152,22 @@ export class DeviceManager {
           name: existing.name, // Keep existing name
           manufacturer: discovered.manufacturer ?? null,
           model: discovered.model ?? null,
-          ieeeAddress: discovered.ieeeAddress,
-          rawExpose: JSON.stringify(discovered.rawExpose),
+          ieeeAddress: discovered.ieeeAddress ?? null,
+          rawExpose: discovered.rawExpose ? JSON.stringify(discovered.rawExpose) : null,
         });
       } else {
         // Insert new device
         this.stmts.insertDevice.run({
           id: deviceId,
-          mqttBaseTopic: baseTopic,
-          mqttName: discovered.friendlyName,
+          integrationId,
+          sourceDeviceId: discovered.friendlyName,
           name: discovered.friendlyName, // Default name = friendly name
           manufacturer: discovered.manufacturer ?? null,
           model: discovered.model ?? null,
-          ieeeAddress: discovered.ieeeAddress,
-          source: "zigbee2mqtt",
+          ieeeAddress: discovered.ieeeAddress ?? null,
+          source,
           status: "unknown",
-          rawExpose: JSON.stringify(discovered.rawExpose),
+          rawExpose: discovered.rawExpose ? JSON.stringify(discovered.rawExpose) : null,
         });
       }
 
@@ -197,7 +202,6 @@ export class DeviceManager {
       }
 
       // Sync Orders definitions: upsert by (device_id, key) to preserve stable IDs
-      const mqttSetTopic = `${baseTopic}/${discovered.friendlyName}/set`;
       const discoveredOrderKeys = new Set(discovered.orders.map((o) => o.key));
       for (const o of discovered.orders) {
         const existingOrder = this.stmts.findDeviceOrderByDeviceAndKey.get(deviceId, o.key) as
@@ -206,8 +210,7 @@ export class DeviceManager {
         if (existingOrder) {
           this.stmts.updateDeviceOrderDef.run(
             o.type,
-            mqttSetTopic,
-            o.payloadKey,
+            JSON.stringify(o.dispatchConfig),
             o.min ?? null,
             o.max ?? null,
             o.enumValues ? JSON.stringify(o.enumValues) : null,
@@ -220,8 +223,7 @@ export class DeviceManager {
             deviceId,
             key: o.key,
             type: o.type,
-            mqttSetTopic,
-            payloadKey: o.payloadKey,
+            dispatchConfig: JSON.stringify(o.dispatchConfig),
             min: o.min ?? null,
             max: o.max ?? null,
             enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,
@@ -261,15 +263,17 @@ export class DeviceManager {
   }
 
   /**
-   * Remove a device from DB when it disappears from bridge/devices.
+   * Remove a device from DB when it disappears from an integration.
    */
-  markRemoved(baseTopic: string, mqttName: string): void {
-    const existing = this.stmts.findDeviceByMqtt.get(baseTopic, mqttName) as DeviceRow | undefined;
+  markRemoved(integrationId: string, sourceDeviceId: string): void {
+    const existing = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
+      | DeviceRow
+      | undefined;
     if (existing) {
       this.stmts.deleteDevice.run(existing.id);
       this.logger.warn(
-        { deviceId: existing.id, name: mqttName },
-        "Device removed from bridge — deleted from DB",
+        { deviceId: existing.id, name: sourceDeviceId },
+        "Device removed — deleted from DB",
       );
       this.eventBus.emit({
         type: "device.removed",
@@ -280,20 +284,20 @@ export class DeviceManager {
   }
 
   /**
-   * Remove all devices for a baseTopic that are NOT in the active set.
-   * Called after processing bridge/devices to clean up stale DB entries.
+   * Remove all devices for an integration that are NOT in the active set.
+   * Called after processing device discovery to clean up stale DB entries.
    */
-  removeStaleDevices(baseTopic: string, activeNames: Set<string>): void {
+  removeStaleDevices(integrationId: string, activeDeviceIds: Set<string>): void {
     const allDevices = this.db
-      .prepare("SELECT id, mqtt_name, name FROM devices WHERE mqtt_base_topic = ?")
-      .all(baseTopic) as { id: string; mqtt_name: string; name: string }[];
+      .prepare("SELECT id, source_device_id, name FROM devices WHERE integration_id = ?")
+      .all(integrationId) as { id: string; source_device_id: string; name: string }[];
 
     for (const device of allDevices) {
-      if (!activeNames.has(device.mqtt_name)) {
+      if (!activeDeviceIds.has(device.source_device_id)) {
         this.stmts.deleteDevice.run(device.id);
         this.logger.warn(
-          { deviceId: device.id, name: device.mqtt_name },
-          "Stale device cleaned up — not in bridge device list",
+          { deviceId: device.id, name: device.source_device_id },
+          "Stale device cleaned up — not in integration device list",
         );
         this.eventBus.emit({
           type: "device.removed",
@@ -305,11 +309,17 @@ export class DeviceManager {
   }
 
   /**
-   * Update device data values from an incoming MQTT state message.
-   * Only emits events when values actually change.
+   * Update device data values from an incoming data payload.
+   * Emits events for each data change.
    */
-  updateDeviceData(baseTopic: string, mqttName: string, payload: Record<string, unknown>): void {
-    const device = this.stmts.findDeviceByMqtt.get(baseTopic, mqttName) as DeviceRow | undefined;
+  updateDeviceData(
+    integrationId: string,
+    sourceDeviceId: string,
+    payload: Record<string, unknown>,
+  ): void {
+    const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
+      | DeviceRow
+      | undefined;
     if (!device) return;
 
     // A device sending data is online — update status and last_seen
@@ -355,7 +365,7 @@ export class DeviceManager {
         });
         this.logger.info(
           { deviceId: device.id, key, category },
-          "Auto-created device_data from MQTT payload",
+          "Auto-created device_data from payload",
         );
         dataRow = this.stmts.findDeviceDataByKey.get(device.id, key) as DeviceDataRow | undefined;
         if (!dataRow) continue;
@@ -364,9 +374,6 @@ export class DeviceManager {
       const serialized = JSON.stringify(value);
       const previous = dataRow.value;
 
-      // Always update last_updated and emit event on every MQTT message,
-      // even if the value hasn't changed. This keeps timestamps fresh
-      // and prepares for future time-series historization.
       this.stmts.updateDeviceDataValue.run(serialized, dataRow.id);
 
       this.eventBus.emit({
@@ -385,22 +392,38 @@ export class DeviceManager {
   /**
    * Update device status.
    * "online" → update status in DB.
-   * "offline" → delete device from DB (will be re-created on next bridge/devices if still present).
+   * "offline" → delete device from DB (will be re-created on next discovery if still present).
    */
-  updateDeviceStatus(baseTopic: string, mqttName: string, status: "online" | "offline"): void {
-    const device = this.stmts.findDeviceByMqtt.get(baseTopic, mqttName) as DeviceRow | undefined;
+  updateDeviceStatus(
+    integrationId: string,
+    sourceDeviceId: string,
+    status: "online" | "offline",
+  ): void {
+    const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
+      | DeviceRow
+      | undefined;
     if (!device) return;
 
     if (status === "offline") {
       this.stmts.deleteDevice.run(device.id);
-      this.logger.info({ deviceId: device.id, name: mqttName }, "Device offline — deleted from DB");
-      this.eventBus.emit({ type: "device.removed", deviceId: device.id, deviceName: device.name });
+      this.logger.info(
+        { deviceId: device.id, name: sourceDeviceId },
+        "Device offline — deleted from DB",
+      );
+      this.eventBus.emit({
+        type: "device.removed",
+        deviceId: device.id,
+        deviceName: device.name,
+      });
       return;
     }
 
     if (device.status !== status) {
       this.stmts.updateDeviceStatus.run(status, device.id);
-      this.logger.debug({ deviceId: device.id, name: mqttName, status }, "Device status changed");
+      this.logger.debug(
+        { deviceId: device.id, name: sourceDeviceId, status },
+        "Device status changed",
+      );
       this.eventBus.emit({
         type: "device.status_changed",
         deviceId: device.id,
@@ -525,8 +548,8 @@ export class DeviceManager {
 
 interface DeviceRow {
   id: string;
-  mqtt_base_topic: string;
-  mqtt_name: string;
+  integration_id: string;
+  source_device_id: string;
   name: string;
   manufacturer: string | null;
   model: string | null;
@@ -556,8 +579,7 @@ interface DeviceOrderRow {
   device_id: string;
   key: string;
   type: string;
-  mqtt_set_topic: string;
-  payload_key: string;
+  dispatch_config: string;
   min_value: number | null;
   max_value: number | null;
   enum_values: string | null;
@@ -567,8 +589,8 @@ interface DeviceOrderRow {
 function rowToDevice(row: DeviceRow): Device {
   return {
     id: row.id,
-    mqttBaseTopic: row.mqtt_base_topic,
-    mqttName: row.mqtt_name,
+    integrationId: row.integration_id,
+    sourceDeviceId: row.source_device_id,
     name: row.name,
     manufacturer: row.manufacturer ?? undefined,
     model: row.model ?? undefined,
@@ -612,13 +634,20 @@ function rowToDeviceOrder(row: DeviceOrderRow): DeviceOrder {
       enumValues = undefined;
     }
   }
+  let dispatchConfig: Record<string, unknown> = {};
+  if (row.dispatch_config) {
+    try {
+      dispatchConfig = JSON.parse(row.dispatch_config);
+    } catch {
+      dispatchConfig = {};
+    }
+  }
   return {
     id: row.id,
     deviceId: row.device_id,
     key: row.key,
     type: row.type as DataType,
-    mqttSetTopic: row.mqtt_set_topic,
-    payloadKey: row.payload_key,
+    dispatchConfig,
     min: row.min_value ?? undefined,
     max: row.max_value ?? undefined,
     enumValues,

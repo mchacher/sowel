@@ -10,11 +10,13 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  const migration = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/001_devices.sql"),
-    "utf-8",
-  );
-  db.exec(migration);
+  for (const file of ["001_devices.sql", "007_settings.sql", "011_integration_architecture.sql"]) {
+    const sql = readFileSync(
+      resolve(import.meta.dirname ?? ".", "../../migrations", file),
+      "utf-8",
+    );
+    db.exec(sql);
+  }
   return db;
 }
 
@@ -65,17 +67,23 @@ describe("DeviceManager", () => {
       {
         key: "state",
         type: "enum" as const,
-        payloadKey: "state",
+        dispatchConfig: { topic: "zigbee2mqtt/salon_lampe/set", payloadKey: "state" },
         enumValues: ["ON", "OFF", "TOGGLE"],
       },
-      { key: "brightness", type: "number" as const, payloadKey: "brightness", min: 0, max: 254 },
+      {
+        key: "brightness",
+        type: "number" as const,
+        dispatchConfig: { topic: "zigbee2mqtt/salon_lampe/set", payloadKey: "brightness" },
+        min: 0,
+        max: 254,
+      },
     ],
     rawExpose: [],
   };
 
   describe("upsertFromDiscovery", () => {
     it("creates a new device", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
 
       const devices = manager.getAll();
       expect(devices).toHaveLength(1);
@@ -86,7 +94,7 @@ describe("DeviceManager", () => {
     });
 
     it("creates device data", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
 
       const devices = manager.getAll();
       const data = manager.getDeviceData(devices[0].id);
@@ -97,7 +105,7 @@ describe("DeviceManager", () => {
     });
 
     it("creates device orders", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
 
       const devices = manager.getAll();
       const orders = manager.getDeviceOrders(devices[0].id);
@@ -108,7 +116,7 @@ describe("DeviceManager", () => {
     });
 
     it("emits device.discovered event", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
 
       const discovered = events.find((e) => e.type === "device.discovered");
       expect(discovered).toBeDefined();
@@ -118,26 +126,26 @@ describe("DeviceManager", () => {
     });
 
     it("does not emit device.discovered on re-discovery", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
 
       expect(events.filter((e) => e.type === "device.discovered")).toHaveLength(0);
     });
 
     it("preserves existing device name on re-discovery", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       const device = manager.getAll()[0];
       manager.update(device.id, { name: "PIR Salon" });
 
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       expect(manager.getById(device.id)?.name).toBe("PIR Salon");
     });
   });
 
   describe("updateDeviceData", () => {
     it("updates data values and emits events", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.updateDeviceData("zigbee2mqtt", "salon_pir", {
@@ -150,7 +158,7 @@ describe("DeviceManager", () => {
     });
 
     it("includes deviceName in events", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
@@ -164,7 +172,7 @@ describe("DeviceManager", () => {
     });
 
     it("emits event even if value unchanged (keeps last_updated fresh)", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       manager.updateDeviceData("zigbee2mqtt", "salon_pir", { occupancy: true });
       events.length = 0;
 
@@ -175,7 +183,7 @@ describe("DeviceManager", () => {
     });
 
     it("marks device as online when receiving data", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       const device = manager.getAll()[0];
       expect(device.status).toBe("unknown");
 
@@ -188,7 +196,7 @@ describe("DeviceManager", () => {
     });
 
     it("ignores unknown properties", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.updateDeviceData("zigbee2mqtt", "salon_pir", { unknown_field: 42 });
@@ -206,7 +214,7 @@ describe("DeviceManager", () => {
 
   describe("updateDeviceStatus", () => {
     it("updates status to online and emits event", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
@@ -222,7 +230,7 @@ describe("DeviceManager", () => {
     });
 
     it("deletes device on offline status", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "offline");
@@ -232,7 +240,7 @@ describe("DeviceManager", () => {
     });
 
     it("does not emit event if status unchanged", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
       events.length = 0;
 
@@ -243,8 +251,8 @@ describe("DeviceManager", () => {
 
   describe("CRUD", () => {
     it("getAll returns all devices sorted by name", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
 
       const devices = manager.getAll();
       expect(devices).toHaveLength(2);
@@ -254,7 +262,7 @@ describe("DeviceManager", () => {
     });
 
     it("getByIdWithDetails includes data and orders", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
       const id = manager.getAll()[0].id;
 
       const detail = manager.getByIdWithDetails(id);
@@ -264,7 +272,7 @@ describe("DeviceManager", () => {
     });
 
     it("update changes name", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       const id = manager.getAll()[0].id;
 
       const updated = manager.update(id, { name: "PIR Salon" });
@@ -272,7 +280,7 @@ describe("DeviceManager", () => {
     });
 
     it("update changes zoneId", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       const id = manager.getAll()[0].id;
 
       const updated = manager.update(id, { zoneId: "zone-123" });
@@ -280,7 +288,7 @@ describe("DeviceManager", () => {
     });
 
     it("delete removes device and emits event", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       const id = manager.getAll()[0].id;
       events.length = 0;
 
@@ -301,7 +309,7 @@ describe("DeviceManager", () => {
 
   describe("markRemoved", () => {
     it("deletes device from DB and emits event", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.markRemoved("zigbee2mqtt", "salon_pir");
@@ -313,8 +321,8 @@ describe("DeviceManager", () => {
 
   describe("removeStaleDevices", () => {
     it("deletes devices not in active set", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
       events.length = 0;
 
       // Only salon_lampe is active — salon_pir should be removed
@@ -327,8 +335,8 @@ describe("DeviceManager", () => {
     });
 
     it("does nothing when all devices are active", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
       events.length = 0;
 
       manager.removeStaleDevices("zigbee2mqtt", new Set(["salon_pir", "salon_lampe"]));
@@ -338,7 +346,7 @@ describe("DeviceManager", () => {
     });
 
     it("only affects devices with matching baseTopic", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       // Different baseTopic — should not touch zigbee2mqtt devices
@@ -352,13 +360,13 @@ describe("DeviceManager", () => {
   describe("counts", () => {
     it("getDeviceCount returns total", () => {
       expect(manager.getDeviceCount()).toBe(0);
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       expect(manager.getDeviceCount()).toBe(1);
     });
 
     it("getStatusCounts groups by status", () => {
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleDevice);
-      manager.upsertFromDiscovery("zigbee2mqtt", sampleLight);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
       manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "online");
 
       const counts = manager.getStatusCounts();

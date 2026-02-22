@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { EquipmentManager, EquipmentError } from "./equipment-manager.js";
+import { DeviceManager } from "../devices/device-manager.js";
 import { ZoneManager } from "../zones/zone-manager.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
@@ -23,9 +24,19 @@ function createTestDb(): Database.Database {
     resolve(import.meta.dirname ?? ".", "../../migrations/003_equipments.sql"),
     "utf-8",
   );
+  const migration7 = readFileSync(
+    resolve(import.meta.dirname ?? ".", "../../migrations/007_settings.sql"),
+    "utf-8",
+  );
+  const migration11 = readFileSync(
+    resolve(import.meta.dirname ?? ".", "../../migrations/011_integration_architecture.sql"),
+    "utf-8",
+  );
   db.exec(migration1);
   db.exec(migration2);
   db.exec(migration3);
+  db.exec(migration7);
+  db.exec(migration11);
   return db;
 }
 
@@ -44,9 +55,9 @@ function seedDevice(
   const deviceId = opts.deviceId ?? crypto.randomUUID();
   const name = opts.name ?? "Test Device";
   db.prepare(
-    `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status)
-     VALUES (?, ?, ?, ?, 'zigbee2mqtt', 'online')`,
-  ).run(deviceId, `z2m/${name}`, name, name);
+    `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
+     VALUES (?, ?, ?, ?, 'zigbee2mqtt', 'online', 'zigbee2mqtt', ?)`,
+  ).run(deviceId, `z2m/${name}`, name, name, name);
 
   const dataIds: string[] = [];
   for (const d of opts.dataKeys ?? []) {
@@ -62,9 +73,17 @@ function seedDevice(
   for (const o of opts.orderKeys ?? []) {
     const id = o.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, deviceId, o.key, o.type ?? "boolean", `z2m/${name}/set`, o.payloadKey ?? o.key);
+      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key, dispatch_config)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      deviceId,
+      o.key,
+      o.type ?? "boolean",
+      `z2m/${name}/set`,
+      o.payloadKey ?? o.key,
+      JSON.stringify({ topic: `z2m/${name}/set`, payloadKey: o.payloadKey ?? o.key }),
+    );
     orderIds.push(id);
   }
 
@@ -78,23 +97,36 @@ describe("EquipmentManager", () => {
   let manager: EquipmentManager;
   let events: EngineEvent[];
   let mockPublished: { topic: string; payload: string }[];
-  let mockMqtt: {
-    publish: (topic: string, payload: string | Buffer) => void;
-    isConnected: () => boolean;
-  };
+  let deviceManager: DeviceManager;
 
   beforeEach(() => {
     db = createTestDb();
     eventBus = new EventBus(logger);
     zoneManager = new ZoneManager(db, eventBus, logger);
     mockPublished = [];
-    mockMqtt = {
-      publish: (topic: string, payload: string | Buffer) => {
-        mockPublished.push({ topic, payload: payload.toString() });
-      },
-      isConnected: () => true,
+    deviceManager = new DeviceManager(db, eventBus, logger);
+    const mockIntegrationRegistry = {
+      getById: (id: string) => ({
+        id,
+        getStatus: () => "connected" as const,
+        executeOrder: async (
+          _device: any,
+          dispatchConfig: Record<string, unknown>,
+          value: unknown,
+        ) => {
+          const topic = dispatchConfig.topic as string;
+          const payloadKey = dispatchConfig.payloadKey as string;
+          mockPublished.push({ topic, payload: JSON.stringify({ [payloadKey]: value }) });
+        },
+      }),
     };
-    manager = new EquipmentManager(db, eventBus, mockMqtt as never, logger);
+    manager = new EquipmentManager(
+      db,
+      eventBus,
+      mockIntegrationRegistry as any,
+      deviceManager,
+      logger,
+    );
     events = [];
     eventBus.on((event) => events.push(event));
   });
@@ -460,16 +492,28 @@ describe("EquipmentManager", () => {
       }).toThrow(/not found/i);
     });
 
-    it("throws when MQTT not connected", () => {
-      mockMqtt.isConnected = () => false;
+    it("throws when integration not found", () => {
+      // Create a manager with a registry that returns undefined (no integration)
+      const emptyRegistry = { getById: () => undefined };
+      const noIntegrationManager = new EquipmentManager(
+        db,
+        eventBus,
+        emptyRegistry as any,
+        deviceManager,
+        logger,
+      );
       const zone = zoneManager.create({ name: "Salon" });
-      const eq = manager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
+      const eq = noIntegrationManager.create({
+        name: "Spots",
+        type: "light_onoff",
+        zoneId: zone.id,
+      });
       const { orderIds } = seedDevice(db, { orderKeys: [{ key: "state" }] });
-      manager.addOrderBinding(eq.id, orderIds[0], "state");
+      noIntegrationManager.addOrderBinding(eq.id, orderIds[0], "state");
 
       expect(() => {
-        manager.executeOrder(eq.id, "state", "ON");
-      }).toThrow(/MQTT/i);
+        noIntegrationManager.executeOrder(eq.id, "state", "ON");
+      }).toThrow(/integration/i);
     });
   });
 

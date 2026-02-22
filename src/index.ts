@@ -3,11 +3,9 @@ import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
 import { openDatabase, runMigrations } from "./core/database.js";
 import { EventBus } from "./core/event-bus.js";
-import { MqttConnector } from "./mqtt/mqtt-connector.js";
 import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
-import { Zigbee2MqttParser } from "./mqtt/parsers/zigbee2mqtt.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { MotionLightRecipe } from "./recipes/motion-light.js";
@@ -16,6 +14,8 @@ import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { ModeManager } from "./modes/mode-manager.js";
 import { CalendarManager } from "./modes/calendar-manager.js";
+import { IntegrationRegistry } from "./integrations/integration-registry.js";
+import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -40,32 +40,36 @@ async function main() {
   // 5. Create Event Bus
   const eventBus = new EventBus(logger);
 
-  // 6. Create MQTT Connector (settings come from DB, configured via UI)
-  const mqttConfig = settingsManager.getMqttConfig();
-  const mqttConnector = new MqttConnector(
-    mqttConfig.url,
-    {
-      username: mqttConfig.username,
-      password: mqttConfig.password,
-      clientId: mqttConfig.clientId,
-    },
-    eventBus,
-    logger,
-  );
-
   // 6. Create Device Manager
   const deviceManager = new DeviceManager(db, eventBus, logger);
 
-  // 6b. Create Zone Manager
+  // 7. Create Integration Registry and register plugins
+  const integrationRegistry = new IntegrationRegistry(logger);
+
+  const zigbee2mqttIntegration = new Zigbee2MqttIntegration(
+    settingsManager,
+    deviceManager,
+    eventBus,
+    logger,
+  );
+  integrationRegistry.register(zigbee2mqttIntegration);
+
+  // 8. Create Zone Manager
   const zoneManager = new ZoneManager(db, eventBus, logger);
 
-  // 6c. Create Equipment Manager
-  const equipmentManager = new EquipmentManager(db, eventBus, mqttConnector, logger);
+  // 9. Create Equipment Manager (uses IntegrationRegistry for order dispatch)
+  const equipmentManager = new EquipmentManager(
+    db,
+    eventBus,
+    integrationRegistry,
+    deviceManager,
+    logger,
+  );
 
-  // 6d. Create Zone Aggregator
+  // 10. Create Zone Aggregator
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
 
-  // 6e. Create Recipe Manager
+  // 11. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
     eventBus,
@@ -76,34 +80,18 @@ async function main() {
   );
   recipeManager.register(MotionLightRecipe);
 
-  // 6f. Create Mode Manager + Calendar Manager
+  // 12. Create Mode Manager + Calendar Manager
   const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);
   const calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
 
-  // 6g. Create Auth modules
+  // 13. Create Auth modules
   const userManager = new UserManager(db, logger);
   const authService = new AuthService(db, userManager, config.jwt, logger);
 
-  // 7. Create zigbee2mqtt parser
-  const z2mConfig = settingsManager.getZ2mConfig();
-  const z2mParser = new Zigbee2MqttParser(
-    z2mConfig.baseTopic,
-    mqttConnector,
-    deviceManager,
-    logger,
-  );
+  // 14. Start all configured integrations
+  await integrationRegistry.startAll();
 
-  // 8. Connect to MQTT and start parser (only if integration is configured)
-  if (settingsManager.isMqttConfigured()) {
-    await mqttConnector.connect();
-    z2mParser.start();
-  } else {
-    logger.info(
-      "MQTT integration not configured — configure it from Administration > Intégrations",
-    );
-  }
-
-  // 9. Start Fastify server
+  // 15. Start Fastify server
   const server = await createServer({
     db,
     deviceManager,
@@ -117,7 +105,7 @@ async function main() {
     authService,
     settingsManager,
     eventBus,
-    mqttConnector,
+    integrationRegistry,
     logger,
     corsOrigins: config.cors.origins,
   });
@@ -128,13 +116,13 @@ async function main() {
     `Corbel API listening on http://${config.api.host}:${config.api.port}`,
   );
 
-  // 10. Emit system started event (triggers zone aggregation compute)
+  // 16. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
 
-  // 11. Initialize recipe manager (restore persisted instances — after aggregation is ready)
+  // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
   recipeManager.init();
 
-  // 12. Initialize mode manager and calendar (event triggers + cron scheduling)
+  // 18. Initialize mode manager and calendar (event triggers + cron scheduling)
   modeManager.init();
   calendarManager.init();
 
@@ -149,7 +137,7 @@ async function main() {
     logger.info("Shutting down...");
     recipeManager.stopAll();
     await server.close();
-    await mqttConnector.disconnect();
+    await integrationRegistry.stopAll();
     db.close();
     logger.info("Shutdown complete");
     process.exit(0);

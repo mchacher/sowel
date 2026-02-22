@@ -169,13 +169,16 @@ export function ModeDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleToggle}
-            className={`px-3 py-2 text-[13px] font-medium rounded-[6px] transition-colors duration-150 ${
-              mode.active
-                ? "bg-primary/10 text-primary hover:bg-primary/20"
-                : "bg-border-light text-text-secondary hover:bg-border"
-            }`}
+            className="relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer"
+            style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
+            title={mode.active ? t("modes.deactivate") : t("modes.activate")}
+            role="switch"
+            aria-checked={mode.active}
           >
-            {mode.active ? t("modes.deactivate") : t("modes.activate")}
+            <span
+              className="absolute top-[3px] left-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200"
+              style={{ transform: mode.active ? "translateX(18px)" : "translateX(0)" }}
+            />
           </button>
           <button
             onClick={() => setShowEditForm(true)}

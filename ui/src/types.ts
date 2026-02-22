@@ -39,14 +39,15 @@ export type DeviceSource =
   | "tasmota"
   | "esphome"
   | "shelly"
-  | "custom_mqtt";
+  | "custom_mqtt"
+  | "panasonic_cc";
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
 export interface Device {
   id: string;
-  mqttBaseTopic: string;
-  mqttName: string;
+  integrationId: string;
+  sourceDeviceId: string;
   name: string;
   manufacturer?: string;
   model?: string;
@@ -76,8 +77,7 @@ export interface DeviceOrder {
   deviceId: string;
   key: string;
   type: DataType;
-  mqttSetTopic: string;
-  payloadKey: string;
+  dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -181,8 +181,7 @@ export interface OrderBindingWithDetails extends OrderBinding {
   deviceName: string;
   key: string;
   type: DataType;
-  mqttSetTopic: string;
-  payloadKey: string;
+  dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -254,8 +253,8 @@ export type EngineEvent =
   | { type: "calendar.profile.changed"; profileId: string; profileName: string }
   // System events
   | { type: "system.started" }
-  | { type: "system.mqtt.connected" }
-  | { type: "system.mqtt.disconnected" }
+  | { type: "system.integration.connected"; integrationId: string }
+  | { type: "system.integration.disconnected"; integrationId: string }
   | { type: "system.error"; error: string }
   | { type: "connected"; message: string; version: string };
 
@@ -394,4 +393,30 @@ export interface CalendarSlot {
   days: number[];
   time: string;
   modeIds: string[];
+}
+
+// ============================================================
+// Integration
+// ============================================================
+
+export type IntegrationStatus = "connected" | "disconnected" | "error" | "not_configured";
+
+export interface IntegrationSettingDef {
+  key: string;
+  label: string;
+  type: "text" | "password" | "number";
+  required: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+}
+
+export interface IntegrationInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  status: IntegrationStatus;
+  configured: boolean;
+  settings: IntegrationSettingDef[];
+  settingValues: Record<string, string>;
 }

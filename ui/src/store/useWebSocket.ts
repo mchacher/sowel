@@ -13,7 +13,7 @@ type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 interface WebSocketState {
   status: ConnectionStatus;
-  mqttConnected: boolean;
+  integrationStatuses: Record<string, string>;
   connect: () => void;
   disconnect: () => void;
   subscribe: (topics: WsTopic[]) => void;
@@ -114,18 +114,22 @@ function handleEvent(event: EngineEvent): void {
     case "mode.deactivated":
       useModes.getState().handleModeDeactivated(event.modeId);
       break;
-    case "system.mqtt.connected":
-      useWebSocket.setState({ mqttConnected: true });
+    case "system.integration.connected":
+      useWebSocket.setState((s) => ({
+        integrationStatuses: { ...s.integrationStatuses, [event.integrationId]: "connected" },
+      }));
       break;
-    case "system.mqtt.disconnected":
-      useWebSocket.setState({ mqttConnected: false });
+    case "system.integration.disconnected":
+      useWebSocket.setState((s) => ({
+        integrationStatuses: { ...s.integrationStatuses, [event.integrationId]: "disconnected" },
+      }));
       break;
   }
 }
 
 export const useWebSocket = create<WebSocketState>((set) => ({
   status: "disconnected",
-  mqttConnected: false,
+  integrationStatuses: {},
 
   connect: () => {
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) {
@@ -142,12 +146,16 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       // Re-send current subscriptions after (re)connect
       sendSubscribe(currentTopics);
 
-      // Fetch initial MQTT status from health endpoint
+      // Fetch initial integration statuses from health endpoint
       fetch("/api/v1/health")
         .then((r) => r.json())
-        .then((data: { mqtt?: { connected?: boolean } }) => {
-          if (data.mqtt?.connected !== undefined) {
-            set({ mqttConnected: data.mqtt.connected });
+        .then((data: { integrations?: Record<string, { status: string }> }) => {
+          if (data.integrations) {
+            const statuses: Record<string, string> = {};
+            for (const [id, info] of Object.entries(data.integrations)) {
+              statuses[id] = info.status;
+            }
+            set({ integrationStatuses: statuses });
           }
         })
         .catch(() => {
@@ -192,7 +200,7 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       ws.close();
       ws = null;
     }
-    set({ status: "disconnected", mqttConnected: false });
+    set({ status: "disconnected", integrationStatuses: {} });
   },
 
   subscribe: (topics) => {

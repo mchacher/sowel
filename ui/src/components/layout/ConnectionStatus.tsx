@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 export function ConnectionStatus() {
   const { t } = useTranslation();
   const status = useWebSocket((s) => s.status);
-  const mqttConnected = useWebSocket((s) => s.mqttConnected);
+  const integrationStatuses = useWebSocket((s) => s.integrationStatuses);
 
   if (status === "disconnected") {
     return (
@@ -25,12 +25,16 @@ export function ConnectionStatus() {
     );
   }
 
-  // status === "connected"
-  if (!mqttConnected) {
+  // status === "connected" — check if any integration has issues
+  const hasDisconnected = Object.values(integrationStatuses).some(
+    (s) => s === "disconnected" || s === "error",
+  );
+
+  if (hasDisconnected) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning">
         <AlertTriangle size={14} strokeWidth={1.5} />
-        <span className="text-[12px] font-medium">{t("status.mqttDisconnected")}</span>
+        <span className="text-[12px] font-medium">{t("status.integrationWarning")}</span>
       </div>
     );
   }
