@@ -241,7 +241,7 @@ function RecipeInstanceRow({
             </div>
           )}
         </button>
-        {instance.state?.timerExpiresAt && (
+        {!!instance.state?.timerExpiresAt && (
           <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
         )}
         <button

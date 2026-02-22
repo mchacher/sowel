@@ -151,7 +151,7 @@ export function DeviceDetailPage() {
       {/* Info bar */}
       <div className="flex flex-wrap gap-4 mb-8 p-4 bg-surface rounded-[10px] border border-border">
         <InfoItem label={t("devices.mqttName")} value={device.mqttName} mono />
-        {device.ieeeAddress && (
+        {!!device.ieeeAddress && (
           <InfoItem label={t("devices.ieeeAddress")} value={device.ieeeAddress} mono />
         )}
         <InfoItem label={t("devices.lastSeen")} value={formatRelativeTime(device.lastSeen)} />
@@ -181,7 +181,7 @@ export function DeviceDetailPage() {
       )}
 
       {/* Raw expose section */}
-      {rawExpose && (
+      {!!rawExpose && (
         <section className="mb-8">
           <button
             onClick={() => setShowRaw(!showRaw)}
