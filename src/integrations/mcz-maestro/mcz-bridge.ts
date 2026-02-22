@@ -80,9 +80,15 @@ export class MczBridge {
         this.connected = true;
       });
 
-      // Log all incoming events for debugging
+      // Log ALL incoming events at info level for diagnostics
       this.socket.onAny((event: string, ...args: unknown[]) => {
-        this.logger.debug({ event, argsLength: args.length }, "MCZ event received");
+        const preview =
+          args.length > 0 && typeof args[0] === "string"
+            ? args[0].substring(0, 120)
+            : args.length > 0
+              ? JSON.stringify(args[0]).substring(0, 120)
+              : "(no args)";
+        this.logger.info({ event, preview }, "MCZ event received");
       });
     });
   }
@@ -140,7 +146,7 @@ export class MczBridge {
         }
       };
 
-      this.logger.debug("Requesting MCZ status (C|RecuperoInfo)...");
+      this.logger.info("Requesting MCZ status (C|RecuperoInfo)...");
       this.socket!.on("rispondo", handler);
       this.socket!.emit("chiedo", "C|RecuperoInfo");
     });
@@ -169,7 +175,7 @@ export class MczBridge {
 
   private emitJoin(): void {
     if (!this.socket) return;
-    this.logger.debug(
+    this.logger.info(
       { serialNumber: this.serialNumber, macAddress: this.macAddress },
       "Emitting MCZ join",
     );
