@@ -153,6 +153,9 @@ export const FRAME_TYPE = {
 /**
  * Parse a pipe-delimited hex response frame into an array of integer values.
  * Returns null if the frame is not a valid INFO frame.
+ *
+ * The returned array keeps the type code at index 0 so that register indices
+ * match the Jeedom / maestrogateway reference numbering (1-based data).
  */
 export function parseInfoFrame(raw: string): number[] | null {
   const parts = raw.split("|");
@@ -161,8 +164,8 @@ export function parseInfoFrame(raw: string): number[] | null {
   const frameType = parts[0];
   if (frameType !== FRAME_TYPE.INFO) return null;
 
-  // Convert hex strings to integers (skip the type field)
-  return parts.slice(1).map((hex) => parseInt(hex, 16));
+  // Keep the full array — REGISTER_INDEX constants use the original frame positions
+  return parts.map((hex) => parseInt(hex, 16));
 }
 
 /**
