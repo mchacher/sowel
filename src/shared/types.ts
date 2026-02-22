@@ -141,7 +141,8 @@ export type EquipmentType =
   | "shutter"
   | "switch"
   | "sensor"
-  | "button";
+  | "button"
+  | "thermostat";
 
 export interface Equipment {
   id: string;

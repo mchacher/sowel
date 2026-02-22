@@ -171,9 +171,11 @@
   "equipments.type.sensor": "Sensor",
   "equipments.type.switch": "Switch / Plug",
   "equipments.type.button": "Button / Remote",
+  "equipments.type.thermostat": "Thermostat / AC",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",
+  "equipments.group.climate": "Climate",
   "equipments.group.sensors": "Sensors",
   "equipments.group.other": "Other",
 
@@ -404,5 +406,23 @@
   "calendar.days.wed": "Wed",
   "calendar.days.thu": "Thu",
   "calendar.days.fri": "Fri",
-  "calendar.days.sat": "Sat"
+  "calendar.days.sat": "Sat",
+
+  "thermostat.outside": "Outside",
+  "thermostat.target": "Target",
+  "thermostat.mode": "Mode",
+  "thermostat.fanSpeed": "Fan speed",
+  "thermostat.modes.auto": "Auto",
+  "thermostat.modes.cool": "Cool",
+  "thermostat.modes.heat": "Heat",
+  "thermostat.modes.dry": "Dry",
+  "thermostat.modes.fan": "Fan",
+  "thermostat.fanSpeeds.auto": "Auto",
+  "thermostat.fanSpeeds.low": "Low",
+  "thermostat.fanSpeeds.lowMid": "Low-Mid",
+  "thermostat.fanSpeeds.mid": "Mid",
+  "thermostat.fanSpeeds.highMid": "High-Mid",
+  "thermostat.fanSpeeds.high": "High",
+  "thermostat.ecoModes.powerful": "Powerful",
+  "thermostat.ecoModes.quiet": "Quiet"
 }
