@@ -122,7 +122,7 @@ export class MczPoller {
     const payload: Record<string, unknown> = {
       power: isOn,
       stoveState: stoveState,
-      ambientTemperature: frame.ambientTemperature,
+      insideTemperature: frame.ambientTemperature,
       targetTemperature: frame.targetTemperature,
       profile: profileToString(frame.profile),
       ecoMode: frame.ecoMode === 1,
@@ -161,7 +161,7 @@ function mapFrameToDiscovered(_serial: string, _frame: MczStatusFrame): Discover
       category: "generic" as DataCategory,
     },
     {
-      key: "ambientTemperature",
+      key: "insideTemperature",
       type: "number" as DataType,
       category: "temperature" as DataCategory,
       unit: "°C",
