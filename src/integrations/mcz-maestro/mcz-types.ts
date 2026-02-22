@@ -69,9 +69,39 @@ export function stoveStateToString(raw: number): string {
   if (raw >= 11 && raw <= 15) return `running_p${raw - 10}`;
   if (raw === 30) return "diagnostic";
   if (raw === 31) return "running";
-  if (raw >= 40 && raw <= 49) return `shutdown_phase_${raw - 39}`;
+  if (raw === 40) return "extinguishing";
+  if (raw === 41) return "cooling";
+  if (raw === 42) return "cleaning_low";
+  if (raw === 43) return "cleaning_high";
+  if (raw === 44) return "unlocking_screw";
+  if (raw === 45) return "auto_eco";
+  if (raw === 46) return "standby";
+  if (raw === 48) return "diagnostic_2";
+  if (raw === 49) return "loading_auger";
   if (raw >= 50 && raw <= 69) return `error_A${String(raw - 49).padStart(2, "0")}`;
   return `unknown_${raw}`;
+}
+
+/**
+ * Returns true if the stove is physically active (fans running, heat present).
+ * Matches maestrogateway's onoroff field.
+ * States 1-15, 31, 40-43 = active (ON)
+ * States 0, 30, 44-49, 50-69 = inactive (OFF)
+ */
+export function isStoveActive(stoveState: string): boolean {
+  const offStates = [
+    "off",
+    "diagnostic",
+    "diagnostic_2",
+    "unlocking_screw",
+    "auto_eco",
+    "standby",
+    "loading_auger",
+  ];
+  if (offStates.includes(stoveState)) return false;
+  if (stoveState.startsWith("error_")) return false;
+  if (stoveState.startsWith("unknown_")) return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
