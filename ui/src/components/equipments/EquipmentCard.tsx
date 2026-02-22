@@ -106,6 +106,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         <ShutterControls
           shutterPosition={shutterPosition}
           hasShutterState={hasShutterState}
+          hasPositionOrder={equipment.orderBindings.some((ob) => ob.alias === "position")}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
         />
       )}

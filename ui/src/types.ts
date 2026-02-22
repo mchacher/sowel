@@ -244,6 +244,15 @@ export type EngineEvent =
   | { type: "recipe.instance.stopped"; instanceId: string; recipeId: string }
   | { type: "recipe.instance.error"; instanceId: string; recipeId: string; error: string }
   | { type: "recipe.instance.state.changed"; instanceId: string; recipeId: string }
+  // Mode events
+  | { type: "mode.created"; mode: Mode }
+  | { type: "mode.updated"; mode: Mode }
+  | { type: "mode.removed"; modeId: string; modeName: string }
+  | { type: "mode.activated"; modeId: string; modeName: string }
+  | { type: "mode.deactivated"; modeId: string; modeName: string }
+  // Calendar events
+  | { type: "calendar.profile.changed"; profileId: string; profileName: string }
+  // System events
   | { type: "system.started" }
   | { type: "system.mqtt.connected" }
   | { type: "system.mqtt.disconnected" }
@@ -327,4 +336,62 @@ export interface AuthTokens {
   refreshToken: string;
   expiresIn: number;
   user: User;
+}
+
+// ============================================================
+// Mode
+// ============================================================
+
+export interface Mode {
+  id: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModeWithDetails extends Mode {
+  eventTriggers: ModeEventTrigger[];
+  impacts: ZoneModeImpact[];
+}
+
+export interface ModeEventTrigger {
+  id: string;
+  modeId: string;
+  equipmentId: string;
+  alias: string;
+  value: unknown;
+}
+
+export type ZoneModeImpactAction =
+  | { type: "order"; equipmentId: string; orderAlias: string; value: unknown }
+  | { type: "recipe_toggle"; instanceId: string; enabled: boolean }
+  | { type: "recipe_params"; instanceId: string; params: Record<string, unknown> };
+
+export interface ZoneModeImpact {
+  id: string;
+  modeId: string;
+  zoneId: string;
+  actions: ZoneModeImpactAction[];
+}
+
+// ============================================================
+// Calendar
+// ============================================================
+
+export interface CalendarProfile {
+  id: string;
+  name: string;
+  builtIn: boolean;
+  createdAt: string;
+}
+
+export interface CalendarSlot {
+  id: string;
+  profileId: string;
+  days: number[];
+  time: string;
+  modeIds: string[];
 }

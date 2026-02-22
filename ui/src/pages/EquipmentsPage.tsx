@@ -7,8 +7,10 @@ import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
 import type { EquipmentWithDetails, ZoneWithChildren } from "../types";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentsPage() {
+  useWsSubscription(["equipments"]);
   const { t } = useTranslation();
   const equipments = useEquipments((s) => s.equipments);
   const loading = useEquipments((s) => s.loading);

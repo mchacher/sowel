@@ -13,6 +13,8 @@ import type { EventBus } from "../core/event-bus.js";
 import type { MqttConnector } from "../mqtt/mqtt-connector.js";
 import type Database from "better-sqlite3";
 import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
+import type { ModeManager } from "../modes/mode-manager.js";
+import type { CalendarManager } from "../modes/calendar-manager.js";
 import type { UserManager } from "../auth/user-manager.js";
 import type { AuthService } from "../auth/auth-service.js";
 import type { SettingsManager } from "../core/settings-manager.js";
@@ -27,6 +29,8 @@ import { registerMeRoutes } from "./routes/me.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerBackupRoutes } from "./routes/backup.js";
 import { registerSettingsRoutes } from "./routes/settings.js";
+import { registerModeRoutes } from "./routes/modes.js";
+import { registerCalendarRoutes } from "./routes/calendar.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -36,6 +40,8 @@ interface ServerDeps {
   zoneAggregator: ZoneAggregator;
   equipmentManager: EquipmentManager;
   recipeManager: RecipeManager;
+  modeManager: ModeManager;
+  calendarManager: CalendarManager;
   userManager: UserManager;
   authService: AuthService;
   settingsManager: SettingsManager;
@@ -48,6 +54,7 @@ interface ServerDeps {
 export async function createServer(deps: ServerDeps) {
   const {
     db, deviceManager, zoneManager, zoneAggregator, equipmentManager, recipeManager,
+    modeManager, calendarManager,
     userManager, authService, settingsManager, eventBus, mqttConnector, logger, corsOrigins,
   } = deps;
 
@@ -76,6 +83,8 @@ export async function createServer(deps: ServerDeps) {
   registerZoneRoutes(app, { zoneManager, zoneAggregator, logger });
   registerEquipmentRoutes(app, { equipmentManager, logger });
   registerRecipeRoutes(app, { recipeManager, logger });
+  registerModeRoutes(app, { modeManager, logger });
+  registerCalendarRoutes(app, { calendarManager, logger });
   registerBackupRoutes(app, { db, logger });
   registerSettingsRoutes(app, { settingsManager, mqttConnector, logger });
   registerWebSocket(app, { eventBus, authService, logger });

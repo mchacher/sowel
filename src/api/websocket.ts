@@ -3,6 +3,7 @@ import type { WebSocket } from "ws";
 import type { EventBus } from "../core/event-bus.js";
 import type { AuthService } from "../auth/auth-service.js";
 import type { Logger } from "../core/logger.js";
+import type { EngineEvent } from "../shared/types.js";
 
 interface WebSocketDeps {
   eventBus: EventBus;
@@ -10,20 +11,96 @@ interface WebSocketDeps {
   logger: Logger;
 }
 
+type WsTopic = "devices" | "equipments" | "zones" | "modes" | "recipes" | "calendar" | "system";
+
+const VALID_TOPICS = new Set<WsTopic>(["devices", "equipments", "zones", "modes", "recipes", "calendar", "system"]);
+const BATCH_INTERVAL_MS = 200;
+
+interface ClientState {
+  socket: WebSocket;
+  topics: Set<WsTopic>;
+  pending: EngineEvent[];
+}
+
+function getEventTopic(event: EngineEvent): WsTopic {
+  const prefix = event.type.split(".")[0];
+  switch (prefix) {
+    case "device": return "devices";
+    case "equipment": return "equipments";
+    case "zone": return "zones";
+    case "mode": return "modes";
+    case "recipe": return "recipes";
+    case "calendar": return "calendar";
+    default: return "system";
+  }
+}
+
+/** Returns a dedup key for high-frequency data events, null for structural events */
+function getDedupKey(event: EngineEvent): string | null {
+  switch (event.type) {
+    case "device.data.updated":
+      return `d:${event.deviceId}:${event.key}`;
+    case "device.status_changed":
+      return `ds:${event.deviceId}`;
+    case "equipment.data.changed":
+      return `e:${event.equipmentId}:${event.alias}`;
+    case "zone.data.changed":
+      return `z:${event.zoneId}`;
+    default:
+      return null;
+  }
+}
+
+function deduplicateEvents(events: EngineEvent[]): EngineEvent[] {
+  // Walk backwards: keep only the LAST occurrence of each dedup key
+  const seen = new Set<string>();
+  const result: EngineEvent[] = [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const key = getDedupKey(events[i]);
+    if (key) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    result.push(events[i]);
+  }
+  result.reverse();
+  return result;
+}
+
 export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): void {
   const { eventBus, authService, logger: baseLogger } = deps;
   const logger = baseLogger.child({ module: "websocket" });
-  const clients = new Set<WebSocket>();
+  const clients = new Map<WebSocket, ClientState>();
 
-  // Listen for all engine events and broadcast to connected clients
+  // Batch flush: every BATCH_INTERVAL_MS, send accumulated events per client
+  const batchTimer = setInterval(() => {
+    for (const [, state] of clients) {
+      if (state.pending.length === 0) continue;
+      if (state.socket.readyState !== 1) {
+        state.pending.length = 0;
+        continue;
+      }
+
+      const deduped = deduplicateEvents(state.pending);
+      state.pending.length = 0;
+
+      try {
+        state.socket.send(JSON.stringify(deduped));
+      } catch {
+        // Socket may have closed between check and send
+      }
+    }
+  }, BATCH_INTERVAL_MS);
+
+  // Listen for all engine events and enqueue for subscribed clients
   eventBus.on((event) => {
     if (clients.size === 0) return;
 
-    const message = JSON.stringify(event);
-    for (const client of clients) {
-      if (client.readyState === 1) {
-        // WebSocket.OPEN
-        client.send(message);
+    const topic = getEventTopic(event);
+
+    for (const [, state] of clients) {
+      if (state.topics.has(topic)) {
+        state.pending.push(event);
       }
     }
   });
@@ -49,11 +126,30 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
         return;
       }
     }
-    // If no token in query, accept connection (auth can be sent as first message)
-    // For backward compatibility during development, we allow unauthenticated connections
 
-    clients.add(socket);
+    // Default subscription: system events only
+    const state: ClientState = { socket, topics: new Set(["system"]), pending: [] };
+    clients.set(socket, state);
     logger.info({ clients: clients.size }, "WebSocket client connected");
+
+    // Handle incoming messages (subscribe commands)
+    socket.on("message", (raw) => {
+      try {
+        const msg = JSON.parse(String(raw)) as { type?: string; topics?: string[] };
+        if (msg.type === "subscribe" && Array.isArray(msg.topics)) {
+          const newTopics = new Set<WsTopic>(["system"]); // system always included
+          for (const t of msg.topics) {
+            if (VALID_TOPICS.has(t as WsTopic)) {
+              newTopics.add(t as WsTopic);
+            }
+          }
+          state.topics = newTopics;
+          logger.debug({ topics: [...newTopics] }, "Client subscribed");
+        }
+      } catch {
+        // Ignore malformed messages
+      }
+    });
 
     socket.on("close", () => {
       clients.delete(socket);
@@ -73,5 +169,10 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
         version: "0.1.0",
       }),
     );
+  });
+
+  // Cleanup on server close
+  app.addHook("onClose", () => {
+    clearInterval(batchTimer);
   });
 }

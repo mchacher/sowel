@@ -14,8 +14,10 @@ import {
   FolderOpen,
 } from "lucide-react";
 import type { ZoneWithChildren } from "../types";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function ZoneDetailPage() {
+  useWsSubscription(["zones", "equipments"]);
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
