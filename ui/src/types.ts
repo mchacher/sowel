@@ -40,7 +40,8 @@ export type DeviceSource =
   | "esphome"
   | "shelly"
   | "custom_mqtt"
-  | "panasonic_cc";
+  | "panasonic_cc"
+  | "mcz_maestro";
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
