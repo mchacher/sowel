@@ -310,6 +310,8 @@
   "recipes.deleteSuggestion": "Delete an existing recipe to free up a light.",
   "recipes.allLightsManagedShort": "All lights in this zone are already managed",
   "recipes.slotRequired": "{{name}} is required",
+  "recipes.enable": "Enable recipe",
+  "recipes.disable": "Disable recipe",
 
   "home.welcome": "Welcome to Home",
   "home.noZones": "Create your first zone in Settings > Home Topology to get started.",

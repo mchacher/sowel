@@ -310,6 +310,8 @@
   "recipes.deleteSuggestion": "Supprimez une recette existante pour libérer une lumière.",
   "recipes.allLightsManagedShort": "Toutes les lumières de cette zone sont déjà gérées",
   "recipes.slotRequired": "{{name}} est requis",
+  "recipes.enable": "Activer la recette",
+  "recipes.disable": "Désactiver la recette",
 
   "home.welcome": "Bienvenue",
   "home.noZones": "Créez votre première zone dans Réglages > Topologie pour commencer.",

@@ -411,6 +411,14 @@ export async function deleteRecipeInstance(instanceId: string): Promise<void> {
   });
 }
 
+export async function enableRecipeInstance(instanceId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/recipe-instances/${instanceId}/enable`, { method: "POST" });
+}
+
+export async function disableRecipeInstance(instanceId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/recipe-instances/${instanceId}/disable`, { method: "POST" });
+}
+
 export async function getRecipeInstanceLog(
   instanceId: string,
   limit = 50,

@@ -186,23 +186,19 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
           )}
         </div>
       </div>
-      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-        mode.active
-          ? "text-primary bg-primary/10"
-          : "text-text-tertiary bg-border-light"
-      }`}>
-        {mode.active ? t("modes.active") : t("modes.inactive")}
-      </span>
       <button
         onClick={handleToggle}
         disabled={toggling}
-        className={`text-[11px] font-medium px-2.5 py-1 rounded-[6px] flex-shrink-0 border transition-colors duration-150 disabled:opacity-50 ${
-          mode.active
-            ? "text-text-secondary border-border hover:bg-border-light"
-            : "text-primary border-primary/30 hover:bg-primary/10"
-        }`}
+        className="relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
+        style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
+        title={mode.active ? t("modes.deactivate") : t("modes.activate")}
+        role="switch"
+        aria-checked={mode.active}
       >
-        {mode.active ? t("modes.deactivate") : t("modes.activate")}
+        <span
+          className="absolute top-[3px] left-[3px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
+          style={{ transform: mode.active ? "translateX(16px)" : "translateX(0)" }}
+        />
       </button>
     </div>
   );

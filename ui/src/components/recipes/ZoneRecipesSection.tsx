@@ -99,12 +99,15 @@ function RecipeInstanceRow({
   const { t } = useTranslation();
   const deleteInstance = useRecipes((s) => s.deleteInstance);
   const updateInstance = useRecipes((s) => s.updateInstance);
+  const enableInstance = useRecipes((s) => s.enableInstance);
+  const disableInstance = useRecipes((s) => s.disableInstance);
   const getLog = useRecipes((s) => s.getLog);
   const allInstances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
   const [showLog, setShowLog] = useState(false);
   const [logs, setLogs] = useState<RecipeLogEntry[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editParams, setEditParams] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -120,6 +123,21 @@ function RecipeInstanceRow({
       await deleteInstance(instance.id);
     } catch {
       setDeleting(false);
+    }
+  };
+
+  const handleToggleEnabled = async () => {
+    setToggling(true);
+    try {
+      if (instance.enabled) {
+        await disableInstance(instance.id);
+      } else {
+        await enableInstance(instance.id);
+      }
+    } catch {
+      // ignore — store refresh will reflect actual state
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -222,10 +240,10 @@ function RecipeInstanceRow({
   }, [instance.params, recipe, equipments]);
 
   return (
-    <div>
+    <div className={instance.enabled ? "" : "opacity-50"}>
       <div className="flex items-center gap-3 px-4 py-2.5">
-        <div className="w-7 h-7 rounded-[6px] bg-accent/10 flex items-center justify-center flex-shrink-0">
-          <ChefHat size={14} strokeWidth={1.5} className="text-accent" />
+        <div className={`w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0 ${instance.enabled ? "bg-accent/10" : "bg-border-light"}`}>
+          <ChefHat size={14} strokeWidth={1.5} className={instance.enabled ? "text-accent" : "text-text-tertiary"} />
         </div>
         <button
           onClick={handleStartEdit}
@@ -241,9 +259,23 @@ function RecipeInstanceRow({
             </div>
           )}
         </button>
-        {!!instance.state?.timerExpiresAt && (
+        {!!instance.state?.timerExpiresAt && instance.enabled && (
           <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
         )}
+        <button
+          onClick={handleToggleEnabled}
+          disabled={toggling}
+          className="relative w-8 h-[18px] rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
+          style={{ backgroundColor: instance.enabled ? "var(--color-primary)" : "var(--color-border)" }}
+          title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
+          role="switch"
+          aria-checked={instance.enabled}
+        >
+          <span
+            className="absolute top-[2px] left-[2px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
+            style={{ transform: instance.enabled ? "translateX(14px)" : "translateX(0)" }}
+          />
+        </button>
         <button
           onClick={handleShowLog}
           className="p-1.5 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
