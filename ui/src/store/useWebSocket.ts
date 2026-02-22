@@ -67,6 +67,9 @@ function handleEvent(event: EngineEvent): void {
         event.timestamp
       );
       break;
+    case "device.heartbeat":
+      devices.updateDeviceHeartbeat(event.deviceId, event.timestamp);
+      break;
     case "zone.created":
       useZones.getState().handleZoneCreated(event.zone);
       break;

@@ -372,6 +372,11 @@ export type EngineEvent =
       previous: unknown;
       timestamp: string;
     }
+  | {
+      type: "device.heartbeat";
+      deviceId: string;
+      timestamp: string;
+    }
   // Zone events
   | { type: "zone.created"; zone: Zone }
   | { type: "zone.updated"; zone: Zone }
