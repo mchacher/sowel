@@ -17,6 +17,7 @@ import { CalendarManager } from "./modes/calendar-manager.js";
 import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
 import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
+import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -62,6 +63,14 @@ async function main() {
     logger,
   );
   integrationRegistry.register(panasonicCCIntegration);
+
+  const mczMaestroIntegration = new MczMaestroIntegration(
+    settingsManager,
+    deviceManager,
+    eventBus,
+    logger,
+  );
+  integrationRegistry.register(mczMaestroIntegration);
 
   // 8. Create Zone Manager & ensure root zone exists
   const zoneManager = new ZoneManager(db, eventBus, logger);
