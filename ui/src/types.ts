@@ -355,16 +355,22 @@ export interface Mode {
 }
 
 export interface ModeWithDetails extends Mode {
-  eventTriggers: ModeEventTrigger[];
   impacts: ZoneModeImpact[];
 }
 
-export interface ModeEventTrigger {
+export type ButtonEffectType =
+  | "mode_activate"
+  | "mode_toggle"
+  | "equipment_order"
+  | "recipe_toggle";
+
+export interface ButtonActionBinding {
   id: string;
-  modeId: string;
   equipmentId: string;
-  alias: string;
-  value: unknown;
+  actionValue: string;
+  effectType: ButtonEffectType;
+  config: Record<string, unknown>;
+  createdAt: string;
 }
 
 export type ZoneModeImpactAction =
