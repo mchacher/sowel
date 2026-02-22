@@ -127,17 +127,13 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
 
   // Count total actions across all zone impacts
   const totalActions = mode.impacts.reduce((sum, imp) => sum + imp.actions.length, 0);
-  const triggerCount = mode.eventTriggers.length;
 
   // Find next scheduled slot for this mode
   const modeSlots = calendarSlots.filter((s) => s.modeIds.includes(mode.id));
   const nextSlot = modeSlots.length > 0 ? modeSlots.sort((a, b) => a.time.localeCompare(b.time))[0] : null;
 
-  // Build summary parts
-  const parts: string[] = [];
-  if (totalActions > 0) parts.push(t("modes.actionCount", { count: totalActions }));
-  if (triggerCount > 0) parts.push(t("modes.triggerCount", { count: triggerCount }));
-  const summary = parts.length > 0 ? parts.join(", ") : undefined;
+  // Build summary
+  const summary = totalActions > 0 ? t("modes.actionCount", { count: totalActions }) : undefined;
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
