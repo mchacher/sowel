@@ -16,8 +16,10 @@ import { useDevices } from "../store/useDevices";
 import { DeviceNameEditor } from "../components/devices/DeviceNameEditor";
 import { DeviceDataTable } from "../components/devices/DeviceDataTable";
 import { formatRelativeTime, sourceLabel } from "../lib/format";
+import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function DeviceDetailPage() {
+  useWsSubscription(["devices"]);
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

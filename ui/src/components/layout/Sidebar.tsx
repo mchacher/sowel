@@ -9,10 +9,13 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
+  Layers,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarZoneTree } from "./SidebarZoneTree";
+import { SidebarModeList } from "./SidebarModeList";
 import { useAuth } from "../../store/useAuth";
 
 interface NavItem {
@@ -25,6 +28,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: "/devices", label: "nav.devices", icon: <Radio size={18} strokeWidth={1.5} /> },
   { to: "/equipments", label: "nav.equipments", icon: <Box size={18} strokeWidth={1.5} /> },
   { to: "/zones", label: "nav.zones", icon: <Map size={18} strokeWidth={1.5} /> },
+  { to: "/calendar", label: "nav.calendar", icon: <Calendar size={18} strokeWidth={1.5} /> },
   { to: "/integrations", label: "nav.integrations", icon: <Plug size={18} strokeWidth={1.5} /> },
 ];
 
@@ -84,6 +88,44 @@ export function Sidebar() {
         ) : (
           <SidebarZoneTree collapsed={collapsed} />
         )}
+
+        {/* Modes section */}
+        <div className="mt-3 pt-2 border-t border-border-light">
+          {!collapsed && (
+            <NavLink
+              to="/modes"
+              end
+              className={({ isActive }) => `flex items-center gap-2 px-3 mb-2 group`}
+            >
+              {({ isActive }) => (
+                <>
+                  <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-tertiary group-hover:text-primary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-tertiary group-hover:text-primary"}`}>
+                    {t("nav.modes")}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          )}
+          {collapsed ? (
+            <NavLink
+              to="/modes"
+              className={({ isActive }) => `
+                flex items-center justify-center px-3 py-2.5 rounded-[6px]
+                transition-colors duration-150 ease-out
+                ${isActive
+                  ? "bg-primary-light text-primary font-medium"
+                  : "text-text-secondary hover:bg-border-light hover:text-text"
+                }
+              `}
+              title={t("nav.modes")}
+            >
+              <Layers size={20} strokeWidth={1.5} />
+            </NavLink>
+          ) : (
+            <SidebarModeList collapsed={collapsed} />
+          )}
+        </div>
       </div>
 
       {/* Administration section — admin only */}
