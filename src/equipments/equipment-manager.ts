@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
-import type { MqttConnector } from "../mqtt/mqtt-connector.js";
+import type { IntegrationRegistry } from "../integrations/integration-registry.js";
+import type { DeviceManager } from "../devices/device-manager.js";
 import { toISOUtc } from "../core/database.js";
 import type {
   Equipment,
@@ -59,18 +60,21 @@ export class EquipmentManager {
   private db: Database.Database;
   private logger: Logger;
   private eventBus: EventBus;
-  private mqttConnector: MqttConnector;
+  private integrationRegistry: IntegrationRegistry;
+  private deviceManager: DeviceManager;
   private stmts: ReturnType<typeof this.prepareStatements>;
 
   constructor(
     db: Database.Database,
     eventBus: EventBus,
-    mqttConnector: MqttConnector,
+    integrationRegistry: IntegrationRegistry,
+    deviceManager: DeviceManager,
     logger: Logger,
   ) {
     this.db = db;
     this.eventBus = eventBus;
-    this.mqttConnector = mqttConnector;
+    this.integrationRegistry = integrationRegistry;
+    this.deviceManager = deviceManager;
     this.logger = logger.child({ module: "equipment-manager" });
     this.stmts = this.prepareStatements();
 
@@ -144,7 +148,7 @@ export class EquipmentManager {
       getOrderBindingsWithDetails: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.mqtt_set_topic, do2.payload_key, do2.min_value, do2.max_value,
+                do2.dispatch_config, do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -154,7 +158,7 @@ export class EquipmentManager {
       getOrderBindingsByAlias: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.mqtt_set_topic, do2.payload_key, do2.min_value, do2.max_value,
+                do2.dispatch_config, do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -381,9 +385,6 @@ export class EquipmentManager {
     if (!equipment.enabled) {
       throw new EquipmentError("Equipment is disabled", 400);
     }
-    if (!this.mqttConnector.isConnected()) {
-      throw new EquipmentError("MQTT broker not connected", 503);
-    }
 
     const bindings = this.stmts.getOrderBindingsByAlias.all(
       equipmentId,
@@ -394,14 +395,42 @@ export class EquipmentManager {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
     }
 
-    // Dispatch to all bound device orders
+    // Dispatch to all bound device orders via their integration plugins
     for (const binding of bindings) {
-      const payload: Record<string, unknown> = {};
-      payload[binding.payload_key] = value;
-      this.mqttConnector.publish(binding.mqtt_set_topic, JSON.stringify(payload));
+      const device = this.deviceManager.getById(binding.device_id);
+      if (!device) {
+        this.logger.warn({ deviceId: binding.device_id }, "Device not found for order dispatch");
+        continue;
+      }
+
+      const integration = this.integrationRegistry.getById(device.integrationId);
+      if (!integration) {
+        throw new EquipmentError(`Integration not found: ${device.integrationId}`, 503);
+      }
+
+      if (integration.getStatus() !== "connected") {
+        throw new EquipmentError(`Integration ${device.integrationId} not connected`, 503);
+      }
+
+      let dispatchConfig: Record<string, unknown> = {};
+      if (binding.dispatch_config) {
+        try {
+          dispatchConfig = JSON.parse(binding.dispatch_config);
+        } catch {
+          dispatchConfig = {};
+        }
+      }
+
+      integration.executeOrder(device, dispatchConfig, value).catch((err) => {
+        this.logger.error(
+          { err, equipmentId, alias, deviceId: device.id },
+          "Integration order dispatch failed",
+        );
+      });
+
       this.logger.debug(
-        { equipmentId, alias, topic: binding.mqtt_set_topic, payload },
-        "Order dispatched to MQTT",
+        { equipmentId, alias, integrationId: device.integrationId, deviceId: device.id },
+        "Order dispatched to integration",
       );
     }
 
@@ -498,8 +527,7 @@ interface OrderBindingJoinRow {
   device_name: string;
   key: string;
   type: string;
-  mqtt_set_topic: string;
-  payload_key: string;
+  dispatch_config: string;
   min_value: number | null;
   max_value: number | null;
   enum_values: string | null;
@@ -554,6 +582,14 @@ function rowToOrderBindingWithDetails(row: OrderBindingJoinRow): OrderBindingWit
       enumValues = undefined;
     }
   }
+  let dispatchConfig: Record<string, unknown> = {};
+  if (row.dispatch_config) {
+    try {
+      dispatchConfig = JSON.parse(row.dispatch_config);
+    } catch {
+      dispatchConfig = {};
+    }
+  }
   return {
     id: row.id,
     equipmentId: row.equipment_id,
@@ -563,8 +599,7 @@ function rowToOrderBindingWithDetails(row: OrderBindingJoinRow): OrderBindingWit
     deviceName: row.device_name,
     key: row.key,
     type: row.type as DataType,
-    mqttSetTopic: row.mqtt_set_topic,
-    payloadKey: row.payload_key,
+    dispatchConfig,
     min: row.min_value ?? undefined,
     max: row.max_value ?? undefined,
     enumValues,

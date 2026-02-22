@@ -46,7 +46,7 @@ export class MqttConnector {
 
       this.client.on("connect", () => {
         this.logger.info("MQTT connected");
-        this.eventBus.emit({ type: "system.mqtt.connected" });
+        this.eventBus.emit({ type: "system.integration.connected", integrationId: "zigbee2mqtt" });
         doResolve();
       });
 
@@ -56,12 +56,18 @@ export class MqttConnector {
 
       this.client.on("disconnect", () => {
         this.logger.warn("MQTT disconnected");
-        this.eventBus.emit({ type: "system.mqtt.disconnected" });
+        this.eventBus.emit({
+          type: "system.integration.disconnected",
+          integrationId: "zigbee2mqtt",
+        });
       });
 
       this.client.on("offline", () => {
         this.logger.warn("MQTT offline");
-        this.eventBus.emit({ type: "system.mqtt.disconnected" });
+        this.eventBus.emit({
+          type: "system.integration.disconnected",
+          integrationId: "zigbee2mqtt",
+        });
       });
 
       this.client.on("error", (err) => {

@@ -16,7 +16,7 @@ interface ParsedData {
 interface ParsedOrder {
   key: string;
   type: DataType;
-  payloadKey: string;
+  dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -91,7 +91,7 @@ export class Zigbee2MqttParser {
         currentNames.add(z2mDevice.friendly_name);
         const parsed = this.parseZ2MDevice(z2mDevice);
         if (parsed) {
-          this.deviceManager.upsertFromDiscovery(this.baseTopic, parsed);
+          this.deviceManager.upsertFromDiscovery(this.baseTopic, "zigbee2mqtt", parsed);
         }
       }
 
@@ -244,7 +244,10 @@ export class Zigbee2MqttParser {
         orders.push({
           key: expose.property,
           type: dataType,
-          payloadKey: expose.property,
+          dispatchConfig: {
+            topic: `${this.baseTopic}/${deviceName}/set`,
+            payloadKey: expose.property,
+          },
           min: expose.value_min,
           max: expose.value_max,
           enumValues: expose.values,

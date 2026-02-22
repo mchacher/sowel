@@ -8,6 +8,7 @@ import type {
   Mode, ModeWithDetails, ModeEventTrigger,
   ZoneModeImpact, ZoneModeImpactAction,
   CalendarProfile, CalendarSlot,
+  IntegrationInfo,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -222,7 +223,7 @@ export async function deleteDevice(id: string): Promise<void> {
 
 export async function getDeviceRawExpose(
   id: string
-): Promise<{ deviceId: string; name: string; mqttName: string; expose: unknown }> {
+): Promise<{ deviceId: string; name: string; sourceDeviceId: string; expose: unknown }> {
   return fetchJSON(`${API_BASE}/devices/${id}/raw`);
 }
 
@@ -410,6 +411,14 @@ export async function deleteRecipeInstance(instanceId: string): Promise<void> {
   });
 }
 
+export async function enableRecipeInstance(instanceId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/recipe-instances/${instanceId}/enable`, { method: "POST" });
+}
+
+export async function disableRecipeInstance(instanceId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/recipe-instances/${instanceId}/disable`, { method: "POST" });
+}
+
 export async function getRecipeInstanceLog(
   instanceId: string,
   limit = 50,
@@ -432,14 +441,20 @@ export async function updateSettings(entries: Record<string, string>): Promise<{
   });
 }
 
-export async function reconnectMqtt(): Promise<{ success: boolean; connected: boolean }> {
-  return fetchJSON(`${API_BASE}/settings/mqtt/reconnect`, {
-    method: "POST",
-  });
+// ============================================================
+// Integrations (admin)
+// ============================================================
+
+export async function getIntegrations(): Promise<IntegrationInfo[]> {
+  return fetchJSON<IntegrationInfo[]>(`${API_BASE}/integrations`);
 }
 
-export async function getMqttStatus(): Promise<{ connected: boolean }> {
-  return fetchJSON(`${API_BASE}/settings/mqtt/status`);
+export async function startIntegration(id: string): Promise<{ success: boolean; status: string }> {
+  return fetchJSON(`${API_BASE}/integrations/${id}/start`, { method: "POST" });
+}
+
+export async function stopIntegration(id: string): Promise<{ success: boolean; status: string }> {
+  return fetchJSON(`${API_BASE}/integrations/${id}/stop`, { method: "POST" });
 }
 
 // ============================================================

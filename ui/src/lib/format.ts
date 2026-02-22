@@ -118,6 +118,7 @@ export function sourceLabel(source: string): string {
     esphome: "ESPHome",
     shelly: "Shelly",
     custom_mqtt: "MQTT",
+    panasonic_cc: "Panasonic",
   };
   return labels[source] ?? source;
 }
