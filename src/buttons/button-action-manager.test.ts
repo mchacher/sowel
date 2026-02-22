@@ -112,6 +112,29 @@ describe("ButtonActionManager", () => {
       expect(manager.getBindingsByEquipment(eqId)).toHaveLength(0);
     });
 
+    it("updates a binding", () => {
+      const binding = manager.addBinding(eqId, "single", "mode_activate", { modeId: "mode-1" });
+      const updated = manager.updateBinding(binding.id, "double", "equipment_order", {
+        equipmentId: "eq-light-1",
+        orderAlias: "state",
+        value: "ON",
+      });
+      expect(updated.id).toBe(binding.id);
+      expect(updated.actionValue).toBe("double");
+      expect(updated.effectType).toBe("equipment_order");
+      expect(updated.config).toEqual({
+        equipmentId: "eq-light-1",
+        orderAlias: "state",
+        value: "ON",
+      });
+    });
+
+    it("throws when updating non-existent binding", () => {
+      expect(() =>
+        manager.updateBinding("non-existent", "single", "mode_activate", { modeId: "m1" }),
+      ).toThrow("Binding non-existent not found");
+    });
+
     it("returns empty array for equipment with no bindings", () => {
       expect(manager.getBindingsByEquipment("eq-unknown")).toHaveLength(0);
     });

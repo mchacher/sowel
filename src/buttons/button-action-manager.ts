@@ -30,6 +30,9 @@ export class ButtonActionManager {
         `INSERT INTO button_action_bindings (id, equipment_id, action_value, effect_type, config)
          VALUES (?, ?, ?, ?, ?)`,
       ),
+      update: this.db.prepare(
+        `UPDATE button_action_bindings SET action_value = ?, effect_type = ?, config = ? WHERE id = ?`,
+      ),
       delete: this.db.prepare(`DELETE FROM button_action_bindings WHERE id = ?`),
       getByEquipment: this.db.prepare(
         `SELECT * FROM button_action_bindings WHERE equipment_id = ? ORDER BY created_at`,
@@ -75,6 +78,22 @@ export class ButtonActionManager {
     const row = this.db
       .prepare(`SELECT * FROM button_action_bindings WHERE id = ?`)
       .get(id) as ButtonActionBindingRow;
+    return rowToBinding(row);
+  }
+
+  updateBinding(
+    bindingId: string,
+    actionValue: string,
+    effectType: ButtonEffectType,
+    config: Record<string, unknown>,
+  ): ButtonActionBinding {
+    this.stmts.update.run(actionValue, effectType, JSON.stringify(config), bindingId);
+    this.log.info({ bindingId, actionValue, effectType }, "Button action binding updated");
+
+    const row = this.db
+      .prepare(`SELECT * FROM button_action_bindings WHERE id = ?`)
+      .get(bindingId) as ButtonActionBindingRow | undefined;
+    if (!row) throw new Error(`Binding ${bindingId} not found`);
     return rowToBinding(row);
   }
 
