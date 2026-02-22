@@ -56,6 +56,7 @@
   "common.noLogs": "Aucun log",
   "common.select": "Sélectionner...",
   "common.disabled": "Désactivé",
+  "common.all": "Tous",
 
   "status.online": "En ligne",
   "status.offline": "Hors ligne",

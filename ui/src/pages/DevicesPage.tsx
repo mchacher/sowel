@@ -1,9 +1,21 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useDevices } from "../store/useDevices";
 import { DeviceList } from "../components/devices/DeviceList";
 import { Radio, Loader2, Search, X } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+
+/** Labels for integration tabs. */
+const INTEGRATION_LABELS: Record<string, string> = {
+  zigbee2mqtt: "Zigbee2MQTT",
+  panasonic_cc: "Panasonic CC",
+  tasmota: "Tasmota",
+  esphome: "ESPHome",
+  shelly: "Shelly",
+  custom_mqtt: "MQTT",
+};
+
+const ALL_TAB = "__all__";
 
 export function DevicesPage() {
   useWsSubscription(["devices"]);
@@ -13,28 +25,46 @@ export function DevicesPage() {
   const loading = useDevices((s) => s.loading);
   const error = useDevices((s) => s.error);
   const [filter, setFilter] = useState("");
+  const [activeTab, setActiveTab] = useState(ALL_TAB);
 
   const deviceList = Object.values(devices);
-  const onlineCount = deviceList.filter((d) => d.status === "online").length;
+
+  // Build tabs from actual integrations present in device list
+  const tabs = useMemo(() => {
+    const integrationIds = new Set(deviceList.map((d) => d.integrationId));
+    return Array.from(integrationIds)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+  }, [deviceList]);
+
+  // If active tab no longer exists (e.g. integration removed), fall back to all
+  const resolvedTab = activeTab === ALL_TAB || tabs.includes(activeTab) ? activeTab : ALL_TAB;
+
+  // Filter by tab then by search
+  const tabFiltered = resolvedTab === ALL_TAB
+    ? deviceList
+    : deviceList.filter((d) => d.integrationId === resolvedTab);
 
   const filtered = filter
-    ? deviceList.filter((d) =>
+    ? tabFiltered.filter((d) =>
         d.name.toLowerCase().includes(filter.toLowerCase())
       )
-    : deviceList;
+    : tabFiltered;
+
+  const onlineCount = tabFiltered.filter((d) => d.status === "online").length;
 
   return (
     <div className="p-6">
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-[24px] font-semibold text-text leading-[32px]">
             {t("devices.title")}
           </h1>
           <p className="text-[13px] text-text-secondary mt-0.5">
-            {deviceList.length === 0
+            {tabFiltered.length === 0
               ? t("devices.waitingDiscovery")
-              : t("devices.subtitle", { count: deviceList.length, online: onlineCount })}
+              : t("devices.subtitle", { count: tabFiltered.length, online: onlineCount })}
           </p>
         </div>
 
@@ -66,11 +96,35 @@ export function DevicesPage() {
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
             <Radio size={16} strokeWidth={1.5} />
             <span className="text-[13px] font-medium">
-              {filter ? `${filtered.length}/${deviceList.length}` : deviceList.length}
+              {filter ? `${filtered.length}/${tabFiltered.length}` : tabFiltered.length}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Integration tabs */}
+      {tabs.length > 1 && (
+        <div className="flex items-center gap-1 mb-4 border-b border-border">
+          <TabButton
+            label={t("common.all")}
+            count={deviceList.length}
+            active={resolvedTab === ALL_TAB}
+            onClick={() => setActiveTab(ALL_TAB)}
+          />
+          {tabs.map((integrationId) => {
+            const count = deviceList.filter((d) => d.integrationId === integrationId).length;
+            return (
+              <TabButton
+                key={integrationId}
+                label={INTEGRATION_LABELS[integrationId] ?? integrationId}
+                count={count}
+                active={resolvedTab === integrationId}
+                onClick={() => setActiveTab(integrationId)}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (
@@ -83,6 +137,37 @@ export function DevicesPage() {
         <DeviceList devices={filtered} deviceData={deviceData} />
       )}
     </div>
+  );
+}
+
+function TabButton({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        px-3 py-2 text-[13px] font-medium transition-colors duration-150
+        border-b-2 -mb-px cursor-pointer
+        ${active
+          ? "border-primary text-primary"
+          : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
+        }
+      `}
+    >
+      {label}
+      <span className={`ml-1.5 text-[11px] tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}>
+        {count}
+      </span>
+    </button>
   );
 }
 
