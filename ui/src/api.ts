@@ -5,8 +5,9 @@ import type {
   DataBinding, OrderBinding,
   RecipeInfo, RecipeInstance, RecipeLogEntry,
   User, UserPreferences, ApiToken, AuthTokens,
-  Mode, ModeWithDetails, ModeEventTrigger,
+  Mode, ModeWithDetails,
   ZoneModeImpact, ZoneModeImpactAction,
+  ButtonActionBinding, ButtonEffectType,
   CalendarProfile, CalendarSlot,
   IntegrationInfo,
 } from "./types";
@@ -531,22 +532,6 @@ export async function deleteMode(id: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/modes/${id}`, { method: "DELETE" });
 }
 
-export async function addModeTrigger(
-  modeId: string,
-  data: { equipmentId: string; alias: string; value: unknown },
-): Promise<ModeEventTrigger> {
-  return fetchJSON<ModeEventTrigger>(`${API_BASE}/modes/${modeId}/triggers`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-export async function removeModeTrigger(modeId: string, triggerId: string): Promise<void> {
-  return fetchJSON<void>(`${API_BASE}/modes/${modeId}/triggers/${triggerId}`, {
-    method: "DELETE",
-  });
-}
-
 export async function getZoneModeImpacts(zoneId: string): Promise<ZoneModeImpact[]> {
   return fetchJSON<ZoneModeImpact[]>(`${API_BASE}/zones/${zoneId}/mode-impacts`);
 }
@@ -619,4 +604,28 @@ export async function updateCalendarSlot(
 
 export async function deleteCalendarSlot(slotId: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/calendar/slots/${slotId}`, { method: "DELETE" });
+}
+
+// ============================================================
+// Button Action Bindings
+// ============================================================
+
+export async function getButtonActionBindings(equipmentId: string): Promise<ButtonActionBinding[]> {
+  return fetchJSON<ButtonActionBinding[]>(`${API_BASE}/equipments/${equipmentId}/action-bindings`);
+}
+
+export async function addButtonActionBinding(
+  equipmentId: string,
+  data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> },
+): Promise<ButtonActionBinding> {
+  return fetchJSON<ButtonActionBinding>(`${API_BASE}/equipments/${equipmentId}/action-bindings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeButtonActionBinding(equipmentId: string, bindingId: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`, {
+    method: "DELETE",
+  });
 }
