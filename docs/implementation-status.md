@@ -1,6 +1,6 @@
 # Corbel — Implementation Status
 
-> Updated: 2026-02-21 — V0.1 through V0.9 done, Auth + i18n, Backup/Restore + Integrations
+> Updated: 2026-02-22 — V0.1 through V0.10c done, Auth + i18n, Backup/Restore + Integrations
 
 ## Roadmap Changes
 
@@ -11,23 +11,26 @@
 
 ## Versions
 
-| Version | Feature | Status |
-|---------|---------|--------|
-| **V0.1** | MQTT + Devices + UI Scaffolding & Devices page | ✅ Done |
-| **V0.2** | Zones + UI Zones (topology) | ✅ Done |
-| **V0.3** | Equipments + Bindings + Orders + UI Equipments | ✅ Done |
-| **V0.4** | UI Restructuring (Home view, zone navigation) | ✅ Done |
-| **V0.5** | Sensor Equipment Support (adaptive UI) | ✅ Done |
-| **V0.6** | Zone Aggregation Engine (real-time status) | ✅ Done |
-| **V0.7** | Shutter Equipment Support (controls + aggregation) | ✅ Done |
-| **V0.8** | Recipe Engine + Motion-Light Recipe | ✅ Done |
-| **Auth** | Multi-user JWT auth + i18n (FR/EN) + Settings page | ✅ Done |
-| **Infra** | Backup/Restore + Integrations page + Device cleanup | ✅ Done |
-| **V0.9** | Modes + Calendar (house-level operating states + weekly scheduling) | ✅ Done |
-| V0.10 | Computed Data | — |
-| V0.11 | History (InfluxDB) | — |
-| V0.12 | Polish | — |
-| V1.0+ | AI Assistant | — |
+| Version    | Feature                                                             | Status  |
+| ---------- | ------------------------------------------------------------------- | ------- |
+| **V0.1**   | MQTT + Devices + UI Scaffolding & Devices page                      | ✅ Done |
+| **V0.2**   | Zones + UI Zones (topology)                                         | ✅ Done |
+| **V0.3**   | Equipments + Bindings + Orders + UI Equipments                      | ✅ Done |
+| **V0.4**   | UI Restructuring (Home view, zone navigation)                       | ✅ Done |
+| **V0.5**   | Sensor Equipment Support (adaptive UI)                              | ✅ Done |
+| **V0.6**   | Zone Aggregation Engine (real-time status)                          | ✅ Done |
+| **V0.7**   | Shutter Equipment Support (controls + aggregation)                  | ✅ Done |
+| **V0.8**   | Recipe Engine + Motion-Light Recipe                                 | ✅ Done |
+| **Auth**   | Multi-user JWT auth + i18n (FR/EN) + Settings page                  | ✅ Done |
+| **Infra**  | Backup/Restore + Integrations page + Device cleanup                 | ✅ Done |
+| **V0.9**   | Modes + Calendar (house-level operating states + weekly scheduling) | ✅ Done |
+| **V0.10a** | Integration Plugin Architecture (multi-source device management)    | ✅ Done |
+| **V0.10b** | Panasonic Comfort Cloud Integration (AC units)                      | ✅ Done |
+| **V0.10c** | MCZ Maestro Integration (pellet stoves)                             | ✅ Done |
+| V0.11      | Computed Data                                                       | —       |
+| V0.12      | History (InfluxDB)                                                  | —       |
+| V0.13      | Polish                                                              | —       |
+| V1.0+      | AI Assistant                                                        | —       |
 
 ---
 
@@ -49,60 +52,60 @@
 
 ### UI (React)
 
-| Feature | Detail |
-|---------|--------|
-| Tech stack | React 18 + Vite + Tailwind v4 + Zustand + React Router v6 |
-| Design system | Inter + JetBrains Mono fonts, Corbel color palette, Lucide icons |
-| Devices list | Sortable table (name, manufacturer, model, source, battery, LQI, last seen), filter by name |
-| Device detail | Data table, Orders list, raw expose viewer, inline name editor |
-| Layout | Collapsible sidebar, connection status indicator, mobile bottom nav |
-| WebSocket | Auto-reconnect with exponential backoff, live updates for all device events |
-| State hydration | Devices fetched from API on startup, MQTT status from `/api/v1/health` |
+| Feature         | Detail                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| Tech stack      | React 18 + Vite + Tailwind v4 + Zustand + React Router v6                                   |
+| Design system   | Inter + JetBrains Mono fonts, Corbel color palette, Lucide icons                            |
+| Devices list    | Sortable table (name, manufacturer, model, source, battery, LQI, last seen), filter by name |
+| Device detail   | Data table, Orders list, raw expose viewer, inline name editor                              |
+| Layout          | Collapsible sidebar, connection status indicator, mobile bottom nav                         |
+| WebSocket       | Auto-reconnect with exponential backoff, live updates for all device events                 |
+| State hydration | Devices fetched from API on startup, MQTT status from `/api/v1/health`                      |
 
 ### API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/health` | Engine status (MQTT, device count, uptime) |
-| GET | `/api/v1/devices` | List all devices with current data |
-| GET | `/api/v1/devices/:id` | Device detail with Data + Orders |
-| PUT | `/api/v1/devices/:id` | Update device name or zoneId |
-| DELETE | `/api/v1/devices/:id` | Remove device |
-| GET | `/api/v1/devices/:id/raw` | Raw zigbee2mqtt expose data |
-| WS | `/ws` | WebSocket — broadcasts all engine events |
+| Method | Route                     | Description                                |
+| ------ | ------------------------- | ------------------------------------------ |
+| GET    | `/api/v1/health`          | Engine status (MQTT, device count, uptime) |
+| GET    | `/api/v1/devices`         | List all devices with current data         |
+| GET    | `/api/v1/devices/:id`     | Device detail with Data + Orders           |
+| PUT    | `/api/v1/devices/:id`     | Update device name or zoneId               |
+| DELETE | `/api/v1/devices/:id`     | Remove device                              |
+| GET    | `/api/v1/devices/:id/raw` | Raw zigbee2mqtt expose data                |
+| WS     | `/ws`                     | WebSocket — broadcasts all engine events   |
 
 ### Event Bus Events
 
-| Event | When |
-|-------|------|
-| `device.discovered` | New device found in zigbee2mqtt |
-| `device.removed` | Device disappeared or deleted |
-| `device.status_changed` | Device goes online/offline |
-| `device.data.updated` | A device property value changes |
-| `system.started` | Engine boot complete |
-| `system.mqtt.connected` | MQTT broker connected |
-| `system.mqtt.disconnected` | MQTT broker disconnected |
+| Event                      | When                            |
+| -------------------------- | ------------------------------- |
+| `device.discovered`        | New device found in zigbee2mqtt |
+| `device.removed`           | Device disappeared or deleted   |
+| `device.status_changed`    | Device goes online/offline      |
+| `device.data.updated`      | A device property value changes |
+| `system.started`           | Engine boot complete            |
+| `system.mqtt.connected`    | MQTT broker connected           |
+| `system.mqtt.disconnected` | MQTT broker disconnected        |
 
 ### Files
 
-| Module | Files |
-|--------|-------|
-| Shared | `src/shared/types.ts`, `src/shared/constants.ts` |
-| Core | `src/config.ts`, `src/core/logger.ts`, `src/core/event-bus.ts`, `src/core/database.ts` |
-| MQTT | `src/mqtt/mqtt-connector.ts`, `src/mqtt/parsers/zigbee2mqtt.ts` |
-| Devices | `src/devices/device-manager.ts`, `src/devices/category-inference.ts` |
-| API | `src/api/server.ts`, `src/api/websocket.ts`, `src/api/routes/devices.ts`, `src/api/routes/health.ts` |
-| Entry | `src/index.ts` |
-| DB | `migrations/001_devices.sql` |
-| Tests | `src/devices/category-inference.test.ts`, `src/devices/device-manager.test.ts`, `src/core/event-bus.test.ts` |
-| **UI** | |
-| App | `ui/src/App.tsx`, `ui/src/main.tsx` |
-| Stores | `ui/src/store/useDevices.ts`, `ui/src/store/useWebSocket.ts` |
-| Layout | `ui/src/components/layout/AppLayout.tsx`, `Sidebar.tsx`, `ConnectionStatus.tsx` |
-| Devices | `ui/src/components/devices/DeviceList.tsx`, `DeviceDataTable.tsx`, `DeviceNameEditor.tsx` |
-| Pages | `ui/src/pages/DevicesPage.tsx`, `ui/src/pages/DeviceDetailPage.tsx` |
-| Helpers | `ui/src/api.ts`, `ui/src/lib/format.ts`, `ui/src/types.ts` |
-| Config | `ui/vite.config.ts`, `ui/src/index.css` (Tailwind theme) |
+| Module  | Files                                                                                                        |
+| ------- | ------------------------------------------------------------------------------------------------------------ |
+| Shared  | `src/shared/types.ts`, `src/shared/constants.ts`                                                             |
+| Core    | `src/config.ts`, `src/core/logger.ts`, `src/core/event-bus.ts`, `src/core/database.ts`                       |
+| MQTT    | `src/mqtt/mqtt-connector.ts`, `src/mqtt/parsers/zigbee2mqtt.ts`                                              |
+| Devices | `src/devices/device-manager.ts`, `src/devices/category-inference.ts`                                         |
+| API     | `src/api/server.ts`, `src/api/websocket.ts`, `src/api/routes/devices.ts`, `src/api/routes/health.ts`         |
+| Entry   | `src/index.ts`                                                                                               |
+| DB      | `migrations/001_devices.sql`                                                                                 |
+| Tests   | `src/devices/category-inference.test.ts`, `src/devices/device-manager.test.ts`, `src/core/event-bus.test.ts` |
+| **UI**  |                                                                                                              |
+| App     | `ui/src/App.tsx`, `ui/src/main.tsx`                                                                          |
+| Stores  | `ui/src/store/useDevices.ts`, `ui/src/store/useWebSocket.ts`                                                 |
+| Layout  | `ui/src/components/layout/AppLayout.tsx`, `Sidebar.tsx`, `ConnectionStatus.tsx`                              |
+| Devices | `ui/src/components/devices/DeviceList.tsx`, `DeviceDataTable.tsx`, `DeviceNameEditor.tsx`                    |
+| Pages   | `ui/src/pages/DevicesPage.tsx`, `ui/src/pages/DeviceDetailPage.tsx`                                          |
+| Helpers | `ui/src/api.ts`, `ui/src/lib/format.ts`, `ui/src/types.ts`                                                   |
+| Config  | `ui/vite.config.ts`, `ui/src/index.css` (Tailwind theme)                                                     |
 
 ### Tests
 
@@ -147,39 +150,39 @@
 
 ### UI Components
 
-| Component | Purpose |
-|-----------|---------|
-| EquipmentsPage | List all equipments grouped by zone, quick controls |
-| EquipmentDetailPage | Full detail with bindings, controls, edit/delete |
-| EquipmentForm | Create/edit modal with 2-step wizard (info → device selection) |
-| DeviceSelector | Filtered device picker (by DataCategory per EquipmentType) |
-| EquipmentCard | Card with type icon, state, quick toggle + shutter controls |
-| LightControl | On/off toggle + brightness slider for lights/dimmers |
+| Component           | Purpose                                                        |
+| ------------------- | -------------------------------------------------------------- |
+| EquipmentsPage      | List all equipments grouped by zone, quick controls            |
+| EquipmentDetailPage | Full detail with bindings, controls, edit/delete               |
+| EquipmentForm       | Create/edit modal with 2-step wizard (info → device selection) |
+| DeviceSelector      | Filtered device picker (by DataCategory per EquipmentType)     |
+| EquipmentCard       | Card with type icon, state, quick toggle + shutter controls    |
+| LightControl        | On/off toggle + brightness slider for lights/dimmers           |
 
 ### API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/equipments` | List all with bindings + data |
-| GET | `/api/v1/equipments/:id` | Detail with bindings + data |
-| POST | `/api/v1/equipments` | Create equipment |
-| PUT | `/api/v1/equipments/:id` | Update equipment |
-| DELETE | `/api/v1/equipments/:id` | Delete equipment (cascades bindings) |
-| POST | `/api/v1/equipments/:id/orders/:alias` | Execute order |
-| POST | `/api/v1/equipments/:id/data-bindings` | Add DataBinding |
-| DELETE | `/api/v1/equipments/:id/data-bindings/:bindingId` | Remove DataBinding |
-| POST | `/api/v1/equipments/:id/order-bindings` | Add OrderBinding |
-| DELETE | `/api/v1/equipments/:id/order-bindings/:bindingId` | Remove OrderBinding |
+| Method | Route                                              | Description                          |
+| ------ | -------------------------------------------------- | ------------------------------------ |
+| GET    | `/api/v1/equipments`                               | List all with bindings + data        |
+| GET    | `/api/v1/equipments/:id`                           | Detail with bindings + data          |
+| POST   | `/api/v1/equipments`                               | Create equipment                     |
+| PUT    | `/api/v1/equipments/:id`                           | Update equipment                     |
+| DELETE | `/api/v1/equipments/:id`                           | Delete equipment (cascades bindings) |
+| POST   | `/api/v1/equipments/:id/orders/:alias`             | Execute order                        |
+| POST   | `/api/v1/equipments/:id/data-bindings`             | Add DataBinding                      |
+| DELETE | `/api/v1/equipments/:id/data-bindings/:bindingId`  | Remove DataBinding                   |
+| POST   | `/api/v1/equipments/:id/order-bindings`            | Add OrderBinding                     |
+| DELETE | `/api/v1/equipments/:id/order-bindings/:bindingId` | Remove OrderBinding                  |
 
 ### Event Bus Events
 
-| Event | When |
-|-------|------|
-| `equipment.created` | Equipment created |
-| `equipment.updated` | Equipment updated |
-| `equipment.removed` | Equipment deleted |
-| `equipment.data.changed` | Bound DeviceData value changed |
-| `equipment.order.executed` | Order dispatched to MQTT |
+| Event                      | When                           |
+| -------------------------- | ------------------------------ |
+| `equipment.created`        | Equipment created              |
+| `equipment.updated`        | Equipment updated              |
+| `equipment.removed`        | Equipment deleted              |
+| `equipment.data.changed`   | Bound DeviceData value changed |
+| `equipment.order.executed` | Order dispatched to MQTT       |
 
 ### Tests
 
@@ -204,12 +207,12 @@
 
 ### UI Components
 
-| Component | Purpose |
-|-----------|---------|
-| HomePage | Zone-centric daily dashboard |
-| SidebarZoneTree | Zone treeview in sidebar |
-| ZoneEquipmentsView | Equipment list within a zone, grouped by type |
-| CompactEquipmentCard | Compact card with inline quick controls |
+| Component            | Purpose                                       |
+| -------------------- | --------------------------------------------- |
+| HomePage             | Zone-centric daily dashboard                  |
+| SidebarZoneTree      | Zone treeview in sidebar                      |
+| ZoneEquipmentsView   | Equipment list within a zone, grouped by type |
+| CompactEquipmentCard | Compact card with inline quick controls       |
 
 ---
 
@@ -228,9 +231,9 @@
 
 ### UI Components
 
-| Component | Purpose |
-|-----------|---------|
-| SensorDataPanel | Full sensor data display for detail page |
+| Component       | Purpose                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| SensorDataPanel | Full sensor data display for detail page                                                                           |
 | sensorUtils.tsx | Shared utilities: getSensorIcon, getSensorIconColor, getSensorBindings, getBatteryBinding, formatSensorValue, etc. |
 
 ---
@@ -256,19 +259,19 @@
 
 ### UI Components
 
-| Component | Purpose |
-|-----------|---------|
+| Component             | Purpose                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | ZoneAggregationHeader | Status pills: temperature, humidity, luminosity, motion+duration, lights count, shutter count+position, door/window alerts, water/smoke alerts |
 
 ### Files
 
-| Module | Files |
-|--------|-------|
-| Backend | `src/zones/zone-aggregator.ts` |
-| API | Zone aggregation endpoint in `src/api/routes/zones.ts` |
-| UI Store | `ui/src/store/useZoneAggregation.ts` |
-| UI Component | `ui/src/components/home/ZoneAggregationHeader.tsx` |
-| Tests | `src/zones/zone-aggregator.test.ts` (25 tests) |
+| Module       | Files                                                  |
+| ------------ | ------------------------------------------------------ |
+| Backend      | `src/zones/zone-aggregator.ts`                         |
+| API          | Zone aggregation endpoint in `src/api/routes/zones.ts` |
+| UI Store     | `ui/src/store/useZoneAggregation.ts`                   |
+| UI Component | `ui/src/components/home/ZoneAggregationHeader.tsx`     |
+| Tests        | `src/zones/zone-aggregator.test.ts` (25 tests)         |
 
 ---
 
@@ -288,12 +291,12 @@
 
 ### UI Components
 
-| Component | Purpose |
-|-----------|---------|
-| ShutterControl | Full Open/Stop/Close buttons + position bar for detail page |
-| EquipmentCard | Updated with inline shutter controls |
-| CompactEquipmentCard | Updated with inline shutter controls |
-| ZoneAggregationHeader | Added shutter aggregation pill |
+| Component             | Purpose                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| ShutterControl        | Full Open/Stop/Close buttons + position bar for detail page |
+| EquipmentCard         | Updated with inline shutter controls                        |
+| CompactEquipmentCard  | Updated with inline shutter controls                        |
+| ZoneAggregationHeader | Added shutter aggregation pill                              |
 
 ---
 
@@ -323,36 +326,36 @@
 
 ### API Endpoints
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/v1/recipes` | List available recipe definitions |
-| GET | `/api/v1/recipes/:recipeId` | Get recipe definition with slots |
-| GET | `/api/v1/recipe-instances` | List all active instances |
-| POST | `/api/v1/recipe-instances` | Create instance `{ recipeId, params }` |
-| DELETE | `/api/v1/recipe-instances/:id` | Stop and delete instance |
-| GET | `/api/v1/recipe-instances/:id/log` | Get execution log (`?limit=50`) |
+| Method | Route                              | Description                            |
+| ------ | ---------------------------------- | -------------------------------------- |
+| GET    | `/api/v1/recipes`                  | List available recipe definitions      |
+| GET    | `/api/v1/recipes/:recipeId`        | Get recipe definition with slots       |
+| GET    | `/api/v1/recipe-instances`         | List all active instances              |
+| POST   | `/api/v1/recipe-instances`         | Create instance `{ recipeId, params }` |
+| DELETE | `/api/v1/recipe-instances/:id`     | Stop and delete instance               |
+| GET    | `/api/v1/recipe-instances/:id/log` | Get execution log (`?limit=50`)        |
 
 ### Event Bus Events
 
-| Event | When |
-|-------|------|
+| Event                     | When             |
+| ------------------------- | ---------------- |
 | `recipe.instance.created` | Instance created |
 | `recipe.instance.started` | Instance started |
 | `recipe.instance.stopped` | Instance stopped |
 | `recipe.instance.removed` | Instance deleted |
-| `recipe.instance.error` | Instance error |
+| `recipe.instance.error`   | Instance error   |
 
 ### Files
 
-| Module | Files |
-|--------|-------|
-| Types | `src/shared/types.ts` (RecipeSlotDef, RecipeInfo, RecipeInstance, RecipeLogEntry, recipe events) |
-| DB | `migrations/005_recipes.sql` |
-| Core | `src/core/event-bus.ts` (unsubscribe support) |
-| Recipes | `src/recipes/recipe.ts`, `recipe-manager.ts`, `recipe-state-store.ts`, `motion-light.ts` |
-| API | `src/api/routes/recipes.ts` |
-| Integration | `src/api/server.ts`, `src/index.ts` |
-| Tests | `src/recipes/recipe-manager.test.ts` (9), `src/recipes/motion-light.test.ts` (12) |
+| Module      | Files                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Types       | `src/shared/types.ts` (RecipeSlotDef, RecipeInfo, RecipeInstance, RecipeLogEntry, recipe events) |
+| DB          | `migrations/005_recipes.sql`                                                                     |
+| Core        | `src/core/event-bus.ts` (unsubscribe support)                                                    |
+| Recipes     | `src/recipes/recipe.ts`, `recipe-manager.ts`, `recipe-state-store.ts`, `motion-light.ts`         |
+| API         | `src/api/routes/recipes.ts`                                                                      |
+| Integration | `src/api/server.ts`, `src/index.ts`                                                              |
+| Tests       | `src/recipes/recipe-manager.test.ts` (9), `src/recipes/motion-light.test.ts` (12)                |
 
 ---
 
@@ -374,31 +377,31 @@
 
 ### API Endpoints
 
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| GET | `/api/v1/auth/status` | None | Returns `{ setupRequired }` |
-| POST | `/api/v1/auth/setup` | None (first-run) | Create first admin |
-| POST | `/api/v1/auth/login` | None | Returns access + refresh tokens |
-| POST | `/api/v1/auth/refresh` | Refresh token | Rotate tokens |
-| POST | `/api/v1/auth/logout` | Refresh token | Revoke refresh token |
-| GET | `/api/v1/me` | Any | Current user profile |
-| PUT | `/api/v1/me` | Any | Update display name |
-| PUT | `/api/v1/me/preferences` | Any | Update preferences |
-| PUT | `/api/v1/me/password` | Any | Change password |
-| GET/POST/DELETE | `/api/v1/me/tokens` | Any | API token CRUD |
-| GET/POST/PUT/DELETE | `/api/v1/users` | Admin | User management |
+| Method              | Route                    | Auth             | Description                     |
+| ------------------- | ------------------------ | ---------------- | ------------------------------- |
+| GET                 | `/api/v1/auth/status`    | None             | Returns `{ setupRequired }`     |
+| POST                | `/api/v1/auth/setup`     | None (first-run) | Create first admin              |
+| POST                | `/api/v1/auth/login`     | None             | Returns access + refresh tokens |
+| POST                | `/api/v1/auth/refresh`   | Refresh token    | Rotate tokens                   |
+| POST                | `/api/v1/auth/logout`    | Refresh token    | Revoke refresh token            |
+| GET                 | `/api/v1/me`             | Any              | Current user profile            |
+| PUT                 | `/api/v1/me`             | Any              | Update display name             |
+| PUT                 | `/api/v1/me/preferences` | Any              | Update preferences              |
+| PUT                 | `/api/v1/me/password`    | Any              | Change password                 |
+| GET/POST/DELETE     | `/api/v1/me/tokens`      | Any              | API token CRUD                  |
+| GET/POST/PUT/DELETE | `/api/v1/users`          | Admin            | User management                 |
 
 ### Files
 
-| Module | Files |
-|--------|-------|
-| DB | `migrations/006_users.sql` |
-| Auth | `src/auth/user-manager.ts`, `src/auth/auth-service.ts`, `src/auth/auth-middleware.ts` |
-| API | `src/api/routes/auth.ts`, `src/api/routes/me.ts`, `src/api/routes/users.ts` |
-| UI Store | `ui/src/store/useAuth.ts` |
+| Module   | Files                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------- |
+| DB       | `migrations/006_users.sql`                                                                  |
+| Auth     | `src/auth/user-manager.ts`, `src/auth/auth-service.ts`, `src/auth/auth-middleware.ts`       |
+| API      | `src/api/routes/auth.ts`, `src/api/routes/me.ts`, `src/api/routes/users.ts`                 |
+| UI Store | `ui/src/store/useAuth.ts`                                                                   |
 | UI Pages | `ui/src/pages/LoginPage.tsx`, `ui/src/pages/SetupPage.tsx`, `ui/src/pages/SettingsPage.tsx` |
-| UI Auth | `ui/src/components/auth/ProtectedRoute.tsx` |
-| i18n | `ui/src/i18n/index.ts`, `ui/src/i18n/locales/fr.json`, `ui/src/i18n/locales/en.json` |
+| UI Auth  | `ui/src/components/auth/ProtectedRoute.tsx`                                                 |
+| i18n     | `ui/src/i18n/index.ts`, `ui/src/i18n/locales/fr.json`, `ui/src/i18n/locales/en.json`        |
 
 ---
 
@@ -420,26 +423,26 @@
 
 ### API Endpoints
 
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| GET | `/api/v1/settings` | Admin | Get all settings |
-| PUT | `/api/v1/settings` | Admin | Update settings |
-| POST | `/api/v1/settings/mqtt/reconnect` | Admin | Reconnect MQTT with current settings |
-| GET | `/api/v1/settings/mqtt/status` | Admin | MQTT connection status |
-| GET | `/api/v1/backup` | Admin | Export full config as JSON |
-| POST | `/api/v1/backup` | Admin | Import config from JSON |
+| Method | Route                             | Auth  | Description                          |
+| ------ | --------------------------------- | ----- | ------------------------------------ |
+| GET    | `/api/v1/settings`                | Admin | Get all settings                     |
+| PUT    | `/api/v1/settings`                | Admin | Update settings                      |
+| POST   | `/api/v1/settings/mqtt/reconnect` | Admin | Reconnect MQTT with current settings |
+| GET    | `/api/v1/settings/mqtt/status`    | Admin | MQTT connection status               |
+| GET    | `/api/v1/backup`                  | Admin | Export full config as JSON           |
+| POST   | `/api/v1/backup`                  | Admin | Import config from JSON              |
 
 ### Files
 
-| Module | Files |
-|--------|-------|
-| DB | `migrations/007_settings.sql` |
-| Core | `src/core/settings-manager.ts` |
-| MQTT | `src/mqtt/mqtt-connector.ts` (reconnect method) |
-| API | `src/api/routes/settings.ts`, `src/api/routes/backup.ts` |
-| Devices | `src/devices/device-manager.ts` (removeStaleDevices, offline=delete) |
-| Parser | `src/mqtt/parsers/zigbee2mqtt.ts` (DB-based stale cleanup) |
-| UI | `ui/src/pages/IntegrationsPage.tsx`, `ui/src/pages/SettingsPage.tsx` (backup section) |
+| Module  | Files                                                                                 |
+| ------- | ------------------------------------------------------------------------------------- |
+| DB      | `migrations/007_settings.sql`                                                         |
+| Core    | `src/core/settings-manager.ts`                                                        |
+| MQTT    | `src/mqtt/mqtt-connector.ts` (reconnect method)                                       |
+| API     | `src/api/routes/settings.ts`, `src/api/routes/backup.ts`                              |
+| Devices | `src/devices/device-manager.ts` (removeStaleDevices, offline=delete)                  |
+| Parser  | `src/mqtt/parsers/zigbee2mqtt.ts` (DB-based stale cleanup)                            |
+| UI      | `ui/src/pages/IntegrationsPage.tsx`, `ui/src/pages/SettingsPage.tsx` (backup section) |
 
 ---
 
@@ -458,92 +461,197 @@
 
 ### Mode Impact Actions
 
-| Action Type | Description | Example |
-|---|---|---|
-| `order` | Send a command to an equipment | Turn on Spots Salon |
+| Action Type     | Description                         | Example                       |
+| --------------- | ----------------------------------- | ----------------------------- |
+| `order`         | Send a command to an equipment      | Turn on Spots Salon           |
 | `recipe_toggle` | Enable or disable a recipe instance | Disable motion-light at night |
-| `recipe_params` | Change recipe parameters | Set timeout to 30min |
+| `recipe_params` | Change recipe parameters            | Set timeout to 30min          |
 
 ### Mode Activation Methods
 
-| Method | How |
-|---|---|
-| Manual | Toggle from UI (Modes page or Behaviors section) |
+| Method        | How                                                       |
+| ------------- | --------------------------------------------------------- |
+| Manual        | Toggle from UI (Modes page or Behaviors section)          |
 | Event trigger | Equipment data change (button press: `action = "toggle"`) |
-| Calendar | Time slot in active weekly profile |
+| Calendar      | Time slot in active weekly profile                        |
 
 ### API Endpoints
 
-| Method | Route | Description |
-|---|---|---|
-| GET | `/api/v1/modes` | List all modes with details |
-| GET | `/api/v1/modes/:id` | Mode detail (triggers + impacts) |
-| POST | `/api/v1/modes` | Create mode |
-| PUT | `/api/v1/modes/:id` | Update mode |
-| DELETE | `/api/v1/modes/:id` | Delete mode |
-| POST | `/api/v1/modes/:id/activate` | Activate mode |
-| POST | `/api/v1/modes/:id/deactivate` | Deactivate mode |
-| POST | `/api/v1/modes/:id/triggers` | Add event trigger |
-| DELETE | `/api/v1/modes/:id/triggers/:triggerId` | Remove trigger |
-| GET | `/api/v1/modes/:id/zones/:zoneId/impact` | Get zone impact |
-| PUT | `/api/v1/modes/:id/zones/:zoneId/impact` | Set zone impact |
-| DELETE | `/api/v1/modes/:id/zones/:zoneId/impact` | Remove zone impact |
-| GET | `/api/v1/calendar/profiles` | List profiles |
-| GET | `/api/v1/calendar/active` | Active profile |
-| PUT | `/api/v1/calendar/active` | Set active profile |
-| GET | `/api/v1/calendar/profiles/:id/slots` | List slots |
-| POST | `/api/v1/calendar/profiles/:id/slots` | Add slot |
-| PUT | `/api/v1/calendar/slots/:id` | Update slot |
-| DELETE | `/api/v1/calendar/slots/:id` | Delete slot |
+| Method | Route                                    | Description                      |
+| ------ | ---------------------------------------- | -------------------------------- |
+| GET    | `/api/v1/modes`                          | List all modes with details      |
+| GET    | `/api/v1/modes/:id`                      | Mode detail (triggers + impacts) |
+| POST   | `/api/v1/modes`                          | Create mode                      |
+| PUT    | `/api/v1/modes/:id`                      | Update mode                      |
+| DELETE | `/api/v1/modes/:id`                      | Delete mode                      |
+| POST   | `/api/v1/modes/:id/activate`             | Activate mode                    |
+| POST   | `/api/v1/modes/:id/deactivate`           | Deactivate mode                  |
+| POST   | `/api/v1/modes/:id/triggers`             | Add event trigger                |
+| DELETE | `/api/v1/modes/:id/triggers/:triggerId`  | Remove trigger                   |
+| GET    | `/api/v1/modes/:id/zones/:zoneId/impact` | Get zone impact                  |
+| PUT    | `/api/v1/modes/:id/zones/:zoneId/impact` | Set zone impact                  |
+| DELETE | `/api/v1/modes/:id/zones/:zoneId/impact` | Remove zone impact               |
+| GET    | `/api/v1/calendar/profiles`              | List profiles                    |
+| GET    | `/api/v1/calendar/active`                | Active profile                   |
+| PUT    | `/api/v1/calendar/active`                | Set active profile               |
+| GET    | `/api/v1/calendar/profiles/:id/slots`    | List slots                       |
+| POST   | `/api/v1/calendar/profiles/:id/slots`    | Add slot                         |
+| PUT    | `/api/v1/calendar/slots/:id`             | Update slot                      |
+| DELETE | `/api/v1/calendar/slots/:id`             | Delete slot                      |
 
 ### Event Bus Events
 
-| Event | When |
-|---|---|
-| `mode.created` | Mode created |
-| `mode.updated` | Mode updated |
-| `mode.removed` | Mode deleted |
-| `mode.activated` | Mode activated (impacts executed) |
-| `mode.deactivated` | Mode deactivated |
-| `calendar.profile.changed` | Active profile switched |
+| Event                      | When                              |
+| -------------------------- | --------------------------------- |
+| `mode.created`             | Mode created                      |
+| `mode.updated`             | Mode updated                      |
+| `mode.removed`             | Mode deleted                      |
+| `mode.activated`           | Mode activated (impacts executed) |
+| `mode.deactivated`         | Mode deactivated                  |
+| `calendar.profile.changed` | Active profile switched           |
 
 ### UI Pages
 
-| Page | Purpose |
-|---|---|
-| ModesPage | Admin list of all modes + create modal |
-| ModeDetailPage | Detail view: triggers, zone impacts, edit/delete, activate/deactivate |
-| CalendarPage | Weekly profiles + time slots management |
-| ZoneModesSection | Inline mode config in Home > Behaviors: impacts, triggers, toggle |
+| Page             | Purpose                                                               |
+| ---------------- | --------------------------------------------------------------------- |
+| ModesPage        | Admin list of all modes + create modal                                |
+| ModeDetailPage   | Detail view: triggers, zone impacts, edit/delete, activate/deactivate |
+| CalendarPage     | Weekly profiles + time slots management                               |
+| ZoneModesSection | Inline mode config in Home > Behaviors: impacts, triggers, toggle     |
 
 ### Files
 
-| Module | Files |
-|---|---|
-| Types | `src/shared/types.ts` (Mode, ModeEventTrigger, ZoneModeImpact, CalendarProfile, CalendarSlot) |
-| DB | `migrations/008_modes.sql` |
-| Backend | `src/modes/mode-manager.ts`, `src/modes/calendar-manager.ts` |
-| API | `src/api/routes/modes.ts`, `src/api/routes/calendar.ts` |
-| UI Store | `ui/src/store/useModes.ts`, `ui/src/store/useCalendar.ts` |
-| UI Pages | `ui/src/pages/ModesPage.tsx`, `ui/src/pages/ModeDetailPage.tsx`, `ui/src/pages/CalendarPage.tsx` |
-| UI Components | `ui/src/components/modes/ModeForm.tsx`, `ui/src/components/home/ZoneModesSection.tsx` |
-| i18n | 40+ keys in `fr.json` + `en.json` (modes.*, calendar.*) |
+| Module        | Files                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| Types         | `src/shared/types.ts` (Mode, ModeEventTrigger, ZoneModeImpact, CalendarProfile, CalendarSlot)    |
+| DB            | `migrations/008_modes.sql`                                                                       |
+| Backend       | `src/modes/mode-manager.ts`, `src/modes/calendar-manager.ts`                                     |
+| API           | `src/api/routes/modes.ts`, `src/api/routes/calendar.ts`                                          |
+| UI Store      | `ui/src/store/useModes.ts`, `ui/src/store/useCalendar.ts`                                        |
+| UI Pages      | `ui/src/pages/ModesPage.tsx`, `ui/src/pages/ModeDetailPage.tsx`, `ui/src/pages/CalendarPage.tsx` |
+| UI Components | `ui/src/components/modes/ModeForm.tsx`, `ui/src/components/home/ZoneModesSection.tsx`            |
+| i18n          | 40+ keys in `fr.json` + `en.json` (modes._, calendar._)                                          |
+
+---
+
+## V0.10a — Integration Plugin Architecture
+
+**Objective**: Replace hardcoded Zigbee2MQTT/MQTT with a generic plugin system supporting multiple device sources.
+
+### What it does
+
+- **IntegrationPlugin interface**: `id`, `name`, `description`, `icon`, `getStatus()`, `isConfigured()`, `getSettingsSchema()`, `start()`, `stop()`, `executeOrder()`, `refresh()`
+- **IntegrationRegistry**: registers plugins, starts/stops all, routes order execution to correct plugin
+- **Zigbee2MQTT refactored** as an IntegrationPlugin (wraps existing MqttConnector + parser)
+- **Dynamic settings**: each plugin declares its settings schema, stored in `settings` table
+- **Order dispatch**: Equipment order execution resolves the device's source → calls the correct plugin's `executeOrder()`
+- **Integrations API + UI**: lists all registered plugins with status, settings form, connect/disconnect
+
+### API Endpoints
+
+| Method | Route                                 | Description                                  |
+| ------ | ------------------------------------- | -------------------------------------------- |
+| GET    | `/api/v1/integrations`                | List all integrations with status + settings |
+| PUT    | `/api/v1/integrations/:id/settings`   | Update integration settings                  |
+| POST   | `/api/v1/integrations/:id/connect`    | Start/connect integration                    |
+| POST   | `/api/v1/integrations/:id/disconnect` | Stop/disconnect integration                  |
+
+### Files
+
+| Module     | Files                                                                               |
+| ---------- | ----------------------------------------------------------------------------------- |
+| Core       | `src/integrations/integration-registry.ts` (IntegrationPlugin interface + registry) |
+| Z2M Plugin | `src/integrations/zigbee2mqtt/index.ts`                                             |
+| API        | `src/api/routes/integrations.ts`                                                    |
+| UI         | `ui/src/pages/IntegrationsPage.tsx` (refactored for plugin system)                  |
+
+---
+
+## V0.10b — Panasonic Comfort Cloud Integration
+
+**Objective**: Control Panasonic AC units via the Comfort Cloud API.
+
+### What it does
+
+- **PanasonicCCIntegration** implements IntegrationPlugin
+- **Cloud API bridge**: authenticates with Panasonic cloud, fetches device list and state
+- **Polling**: periodic state refresh (configurable interval, default 300s)
+- **Device discovery**: AC units appear as Corbel Devices with source `panasonic_cc`
+- **DeviceData**: temperature (indoor/outdoor), operating mode, fan speed, power state, eco mode
+- **DeviceOrders**: set temperature, mode, fan speed, power on/off
+- **Thermostat equipment type**: full UI support with mode selector, temperature controls, fan speed
+
+### Settings
+
+| Key             | Description                                |
+| --------------- | ------------------------------------------ |
+| `username`      | Panasonic Comfort Cloud account email      |
+| `password`      | Panasonic Comfort Cloud account password   |
+| `poll_interval` | Polling interval in seconds (default: 300) |
+
+### Files
+
+| Module | Files                                               |
+| ------ | --------------------------------------------------- |
+| Plugin | `src/integrations/panasonic-cc/index.ts`            |
+| Bridge | `src/integrations/panasonic-cc/panasonic-bridge.ts` |
+| Poller | `src/integrations/panasonic-cc/panasonic-poller.ts` |
+| Types  | `src/integrations/panasonic-cc/panasonic-types.ts`  |
+| UI     | `ui/src/components/equipments/ThermostatCard.tsx`   |
+
+---
+
+## V0.10c — MCZ Maestro Integration
+
+**Objective**: Control MCZ pellet stoves via the Maestro cloud/socket protocol.
+
+### What it does
+
+- **MczMaestroIntegration** implements IntegrationPlugin
+- **Socket.IO bridge**: connects to MCZ cloud via socket.io, authenticates, receives real-time state
+- **Polling**: periodic state refresh (configurable interval, default 300s)
+- **Device discovery**: stoves appear as Corbel Devices with source `mcz_maestro`
+- **DeviceData**: ambient temperature, smoke temperature, water temperature, stove state, power level, fan speeds, eco mode, chrono mode, alarms
+- **DeviceOrders**: set temperature, power on/off, power level, eco mode, chrono mode, silent mode, reset alarm
+- **Thermostat equipment type**: reused ThermostatCard with MCZ-specific stove state badge + reset alarm button
+
+### Settings
+
+| Key             | Description                                |
+| --------------- | ------------------------------------------ |
+| `username`      | MCZ Maestro account email                  |
+| `password`      | MCZ Maestro account password               |
+| `poll_interval` | Polling interval in seconds (default: 300) |
+
+### Files
+
+| Module | Files                                        |
+| ------ | -------------------------------------------- |
+| Plugin | `src/integrations/mcz-maestro/index.ts`      |
+| Bridge | `src/integrations/mcz-maestro/mcz-bridge.ts` |
+| Poller | `src/integrations/mcz-maestro/mcz-poller.ts` |
+| Types  | `src/integrations/mcz-maestro/mcz-types.ts`  |
+| DB     | `migrations/012_mcz_maestro.sql`             |
 
 ---
 
 ## Test Summary
 
-| Module | File | Tests |
-|--------|------|-------|
-| Event Bus | `src/core/event-bus.test.ts` | 5 |
-| Category Inference | `src/devices/category-inference.test.ts` | 24 |
-| Device Manager | `src/devices/device-manager.test.ts` | 28 |
-| Zone Manager | `src/zones/zone-manager.test.ts` | 23 |
-| Zone Aggregator | `src/zones/zone-aggregator.test.ts` | 25 |
-| Equipment Manager | `src/equipments/equipment-manager.test.ts` | 38 |
-| Recipe Manager | `src/recipes/recipe-manager.test.ts` | 9 |
-| Motion-Light Recipe | `src/recipes/motion-light.test.ts` | 12 |
-| **Total** | **8 test files** | **164 tests** |
+| Module              | File                                        | Tests         |
+| ------------------- | ------------------------------------------- | ------------- |
+| Event Bus           | `src/core/event-bus.test.ts`                | 5             |
+| Category Inference  | `src/devices/category-inference.test.ts`    | 24            |
+| Device Manager      | `src/devices/device-manager.test.ts`        | 28            |
+| Zone Manager        | `src/zones/zone-manager.test.ts`            | 23            |
+| Zone Aggregator     | `src/zones/zone-aggregator.test.ts`         | 25            |
+| Equipment Manager   | `src/equipments/equipment-manager.test.ts`  | 38            |
+| Recipe Manager      | `src/recipes/engine/recipe-manager.test.ts` | 9             |
+| Motion-Light Recipe | `src/recipes/motion-light.test.ts`          | 12            |
+| Mode Manager        | `src/modes/mode-manager.test.ts`            | 39            |
+| Calendar Manager    | `src/modes/calendar-manager.test.ts`        | 25            |
+| Modes API           | `src/api/routes/modes.test.ts`              | 27            |
+| Calendar API        | `src/api/routes/calendar.test.ts`           | 18            |
+| **Total**           | **12 test files**                           | **273 tests** |
 
 ---
 

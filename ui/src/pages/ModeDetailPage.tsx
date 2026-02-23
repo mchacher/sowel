@@ -3,16 +3,16 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Layers, Trash2, Pencil,
-  ToggleRight, ToggleLeft, Zap, MapPin, Plus, X,
+  ToggleRight, ToggleLeft, MapPin,
   Lightbulb, ArrowUpDown, Power, Clock,
 } from "lucide-react";
-import { getMode, addModeTrigger, removeModeTrigger, getActiveCalendar } from "../api";
+import { getMode, getActiveCalendar } from "../api";
 import { useModes } from "../store/useModes";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
 import { ModeForm } from "../components/modes/ModeForm";
-import type { ModeWithDetails, ModeEventTrigger, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot } from "../types";
+import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function ModeDetailPage() {
@@ -34,7 +34,6 @@ export function ModeDetailPage() {
   const [mode, setMode] = useState<ModeWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [showAddTrigger, setShowAddTrigger] = useState(false);
   const [calendarSlots, setCalendarSlots] = useState<CalendarSlot[]>([]);
 
   const fetchMode = useCallback(async () => {
@@ -78,19 +77,6 @@ export function ModeDetailPage() {
   const handleEdit = async (data: { name: string; description?: string }) => {
     if (!mode) return;
     await updateMode(mode.id, data);
-    await fetchMode();
-  };
-
-  const handleRemoveTrigger = async (triggerId: string) => {
-    if (!mode) return;
-    await removeModeTrigger(mode.id, triggerId);
-    await fetchMode();
-  };
-
-  const handleAddTrigger = async (data: { equipmentId: string; alias: string; value: unknown }) => {
-    if (!mode) return;
-    await addModeTrigger(mode.id, data);
-    setShowAddTrigger(false);
     await fetchMode();
   };
 
@@ -144,7 +130,7 @@ export function ModeDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-8 max-w-[720px]">
         <div className="flex items-center gap-4">
           <div
             className={`w-12 h-12 rounded-[10px] flex items-center justify-center ${
@@ -198,47 +184,6 @@ export function ModeDetailPage() {
       </div>
 
       <div className="space-y-6 max-w-[720px]">
-        {/* Event triggers section */}
-        <section className="bg-surface rounded-[10px] border border-border p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[14px] font-semibold text-text flex items-center gap-2">
-              <Zap size={16} strokeWidth={1.5} className="text-accent" />
-              {t("modes.triggers")}
-            </h2>
-            <button
-              onClick={() => setShowAddTrigger(!showAddTrigger)}
-              className="p-1.5 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-            >
-              {showAddTrigger ? <X size={14} strokeWidth={1.5} /> : <Plus size={14} strokeWidth={1.5} />}
-            </button>
-          </div>
-
-          {mode.eventTriggers.length === 0 && !showAddTrigger && (
-            <p className="text-[13px] text-text-tertiary">{t("modes.noTriggers")}</p>
-          )}
-
-          {mode.eventTriggers.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {mode.eventTriggers.map((trigger) => (
-                <TriggerRow
-                  key={trigger.id}
-                  trigger={trigger}
-                  equipments={equipments}
-                  onRemove={() => handleRemoveTrigger(trigger.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {showAddTrigger && (
-            <AddTriggerForm
-              equipments={equipments}
-              onSubmit={handleAddTrigger}
-              onCancel={() => setShowAddTrigger(false)}
-            />
-          )}
-        </section>
-
         {/* Calendar schedule section */}
         <CalendarScheduleSection
           modeId={mode.id}
@@ -302,134 +247,6 @@ export function ModeDetailPage() {
           onClose={() => setShowEditForm(false)}
         />
       )}
-    </div>
-  );
-}
-
-function TriggerRow({
-  trigger,
-  equipments,
-  onRemove,
-}: {
-  trigger: ModeEventTrigger;
-  equipments: EquipmentWithDetails[];
-  onRemove: () => void;
-}) {
-  const equipment = equipments.find((eq) => eq.id === trigger.equipmentId);
-
-  return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border">
-      <Zap size={14} strokeWidth={1.5} className="text-accent flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <span className="text-[13px] text-text">
-          {equipment?.name ?? trigger.equipmentId}
-        </span>
-        <span className="text-[11px] text-text-tertiary ml-2">
-          {trigger.alias} = {JSON.stringify(trigger.value)}
-        </span>
-      </div>
-      <button
-        onClick={onRemove}
-        className="p-1 text-text-tertiary hover:text-error transition-colors"
-      >
-        <Trash2 size={12} strokeWidth={1.5} />
-      </button>
-    </div>
-  );
-}
-
-const BUTTON_ACTIONS = ["single", "double", "hold"] as const;
-
-function AddTriggerForm({
-  equipments,
-  onSubmit,
-  onCancel,
-}: {
-  equipments: EquipmentWithDetails[];
-  onSubmit: (data: { equipmentId: string; alias: string; value: unknown }) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const [equipmentId, setEquipmentId] = useState("");
-  const [value, setValue] = useState<string>("single");
-  const [saving, setSaving] = useState(false);
-
-  // Only button-type equipments
-  const triggerEquipments = equipments.filter((eq) => eq.type === "button");
-
-  const handleSubmit = async () => {
-    if (!equipmentId || !value) return;
-    setSaving(true);
-    try {
-      await onSubmit({ equipmentId, alias: "action", value });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3 space-y-3">
-      {/* Equipment selector */}
-      <div>
-        <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-          {t("equipments.title")}
-        </label>
-        <select
-          value={equipmentId}
-          onChange={(e) => setEquipmentId(e.target.value)}
-          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
-        >
-          <option value="">{t("common.select")}</option>
-          {triggerEquipments.map((eq) => (
-            <option key={eq.id} value={eq.id}>{eq.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Action type (single / double / hold) */}
-      {equipmentId && (
-        <div>
-          <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-            {t("modes.triggerAction")}
-          </label>
-          <div className="inline-flex">
-            {BUTTON_ACTIONS.map((action, i) => (
-              <button
-                key={action}
-                onClick={() => setValue(action)}
-                className={`inline-flex items-center justify-center px-3 py-1.5 text-[12px] font-medium transition-all cursor-pointer border border-border-light ${
-                  i === 0 ? "rounded-l-[4px]" : ""
-                } ${i === BUTTON_ACTIONS.length - 1 ? "rounded-r-[4px]" : ""} ${
-                  i > 0 ? "border-l-0" : ""
-                } ${
-                  value === action
-                    ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
-                    : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
-                }`}
-              >
-                {action}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleSubmit}
-          disabled={!equipmentId || !value || saving}
-          className="px-3 py-1.5 bg-primary text-white text-[12px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
-        >
-          {t("common.add")}
-        </button>
-        <button
-          onClick={onCancel}
-          className="px-3 py-1.5 bg-border-light text-text-secondary text-[12px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
-        >
-          {t("common.cancel")}
-        </button>
-      </div>
     </div>
   );
 }

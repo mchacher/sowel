@@ -4,7 +4,7 @@ import { ToggleLeft, ToggleRight, Settings, Trash2, X, Pencil, Check, ChevronUp,
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
-import { setModeImpact, removeModeImpact, addModeTrigger, removeModeTrigger, applyModeToZone } from "../../api";
+import { setModeImpact, removeModeImpact, applyModeToZone } from "../../api";
 import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
 
 interface ZoneModesSectionProps {
@@ -73,21 +73,10 @@ function ModeRow({
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [applying, setApplying] = useState(false);
-  const equipments = useEquipments((s) => s.equipments);
 
   const impact = mode.impacts.find((imp) => imp.zoneId === zoneId);
   const actionCount = impact?.actions.length ?? 0;
   const hasImpacts = actionCount > 0;
-
-  // Count triggers that belong to equipments in this zone
-  const zoneEquipmentIds = useMemo(
-    () => new Set(equipments.filter((eq) => eq.zoneId === zoneId).map((eq) => eq.id)),
-    [equipments, zoneId]
-  );
-  const triggerCount = useMemo(
-    () => mode.eventTriggers.filter((tr) => zoneEquipmentIds.has(tr.equipmentId)).length,
-    [mode.eventTriggers, zoneEquipmentIds]
-  );
 
   const handleApply = async () => {
     if (applying || !hasImpacts) return;
@@ -118,12 +107,8 @@ function ModeRow({
             {mode.name}
           </div>
           <div className="text-[11px] text-text-tertiary truncate">
-            {actionCount > 0 || triggerCount > 0 ? (
-              <>
-                {actionCount > 0 && t("modes.actionCount", { count: actionCount })}
-                {actionCount > 0 && triggerCount > 0 && ", "}
-                {triggerCount > 0 && t("modes.triggerCount", { count: triggerCount })}
-              </>
+            {actionCount > 0 ? (
+              t("modes.actionCount", { count: actionCount })
             ) : (
               t("modes.noImpacts")
             )}
@@ -177,7 +162,6 @@ function ImpactEditor({
   const equipments = useEquipments((s) => s.equipments);
   const instances = useRecipes((s) => s.instances);
   const [showAddAction, setShowAddAction] = useState(false);
-  const [showAddTrigger, setShowAddTrigger] = useState(false);
   const [pendingActions, setPendingActions] = useState<ZoneModeImpactAction[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -192,15 +176,6 @@ function ImpactEditor({
   const zoneInstances = useMemo(
     () => instances.filter((inst) => inst.params.zone === zoneId),
     [instances, zoneId]
-  );
-
-  // Triggers for this mode that involve equipments in this zone
-  const zoneTriggers = useMemo(
-    () =>
-      mode.eventTriggers.filter((tr) =>
-        zoneEquipments.some((eq) => eq.id === tr.equipmentId)
-      ),
-    [mode.eventTriggers, zoneEquipments]
   );
 
   const handleRemoveAction = async (actionIndex: number) => {
@@ -240,17 +215,6 @@ function ImpactEditor({
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleRemoveTrigger = async (triggerId: string) => {
-    await removeModeTrigger(mode.id, triggerId);
-    onRefresh();
-  };
-
-  const handleAddTrigger = async (data: { equipmentId: string; alias: string; value: unknown }) => {
-    await addModeTrigger(mode.id, data);
-    setShowAddTrigger(false);
-    onRefresh();
   };
 
   const hasPending = pendingActions.length > 0;
@@ -336,49 +300,6 @@ function ImpactEditor({
                 {t("common.cancel")}
               </button>
             </div>
-          )}
-        </div>
-
-        {/* Triggers section */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
-              {t("modes.triggers")}
-            </span>
-            <button
-              onClick={() => setShowAddTrigger(!showAddTrigger)}
-              className="text-[11px] text-primary hover:text-primary-hover transition-colors"
-            >
-              {showAddTrigger ? t("common.cancel") : t("modes.addTrigger")}
-            </button>
-          </div>
-
-          {zoneTriggers.length > 0 && (
-            <div className="space-y-1.5 mb-2">
-              {zoneTriggers.map((trigger) => (
-                <div key={trigger.id} className="flex items-center gap-2 px-2 py-1.5 bg-surface rounded-[4px] border border-border-light">
-                  <span className="text-[11px] text-text flex-1 truncate">
-                    {zoneEquipments.find((eq) => eq.id === trigger.equipmentId)?.name ?? trigger.equipmentId}
-                    <span className="text-text-tertiary ml-1">{trigger.alias} = {JSON.stringify(trigger.value)}</span>
-                  </span>
-                  <button onClick={() => handleRemoveTrigger(trigger.id)} className="text-text-tertiary hover:text-error">
-                    <Trash2 size={10} strokeWidth={1.5} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {zoneTriggers.length === 0 && !showAddTrigger && (
-            <p className="text-[11px] text-text-tertiary mb-2">{t("modes.noTriggers")}</p>
-          )}
-
-          {showAddTrigger && (
-            <AddTriggerInline
-              equipments={zoneEquipments}
-              onSubmit={handleAddTrigger}
-              onCancel={() => setShowAddTrigger(false)}
-            />
           )}
         </div>
       </div>
@@ -936,80 +857,3 @@ function AddActionForm({
   );
 }
 
-const BUTTON_ACTIONS = ["single", "double", "hold"] as const;
-
-function AddTriggerInline({
-  equipments,
-  onSubmit,
-  onCancel,
-}: {
-  equipments: EquipmentWithDetails[];
-  onSubmit: (data: { equipmentId: string; alias: string; value: unknown }) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const [equipmentId, setEquipmentId] = useState("");
-  const [value, setValue] = useState<string>("single");
-  const [saving, setSaving] = useState(false);
-
-  // Only button-type equipments
-  const buttonEquipments = equipments.filter((eq) => eq.type === "button");
-
-  const handleSubmit = async () => {
-    if (!equipmentId || !value) return;
-    setSaving(true);
-    try {
-      await onSubmit({ equipmentId, alias: "action", value });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2 bg-surface rounded-[4px] border border-border-light p-2">
-      <select
-        value={equipmentId}
-        onChange={(e) => setEquipmentId(e.target.value)}
-        className="w-full px-2 py-1 text-[11px] bg-surface border border-border rounded-[4px] text-text"
-      >
-        <option value="">{t("modes.form.selectEquipment")}</option>
-        {buttonEquipments.map((eq) => (
-          <option key={eq.id} value={eq.id}>{eq.name}</option>
-        ))}
-      </select>
-      {equipmentId && (
-        <div className="inline-flex">
-          {BUTTON_ACTIONS.map((action, i) => (
-            <button
-              key={action}
-              onClick={() => setValue(action)}
-              className={`inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-border-light ${
-                i === 0 ? "rounded-l-[4px]" : ""
-              } ${i === BUTTON_ACTIONS.length - 1 ? "rounded-r-[4px]" : ""} ${
-                i > 0 ? "border-l-0" : ""
-              } ${
-                value === action
-                  ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
-                  : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
-              }`}
-            >
-              {action}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-1.5">
-        <button
-          onClick={handleSubmit}
-          disabled={!equipmentId || !value || saving}
-          className="px-2 py-1 bg-primary text-white text-[11px] font-medium rounded-[4px] disabled:opacity-50"
-        >
-          {t("common.add")}
-        </button>
-        <button onClick={onCancel} className="px-2 py-1 bg-border-light text-text-secondary text-[11px] rounded-[4px]">
-          {t("common.cancel")}
-        </button>
-      </div>
-    </div>
-  );
-}

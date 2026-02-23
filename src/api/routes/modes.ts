@@ -105,36 +105,6 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
     },
   );
 
-  // ── Event Triggers ──────────────────────────────────────
-
-  // POST /api/v1/modes/:id/triggers
-  app.post<{
-    Params: { id: string };
-    Body: { equipmentId: string; alias: string; value: unknown };
-  }>("/api/v1/modes/:id/triggers", async (request, reply) => {
-    const { equipmentId, alias, value } = request.body ?? {};
-    if (!equipmentId || !alias) {
-      return reply.code(400).send({ error: "equipmentId and alias are required" });
-    }
-
-    try {
-      const trigger = modeManager.addEventTrigger(request.params.id, equipmentId, alias, value);
-      return reply.code(201).send(trigger);
-    } catch (err) {
-      if (err instanceof ModeError) return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
-
-  // DELETE /api/v1/modes/:id/triggers/:triggerId
-  app.delete<{ Params: { id: string; triggerId: string } }>(
-    "/api/v1/modes/:id/triggers/:triggerId",
-    async (request, reply) => {
-      modeManager.removeEventTrigger(request.params.triggerId);
-      return reply.code(204).send();
-    },
-  );
-
   // ── Zone Impacts ────────────────────────────────────────
 
   // GET /api/v1/zones/:zoneId/mode-impacts

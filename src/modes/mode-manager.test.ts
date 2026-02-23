@@ -11,7 +11,13 @@ function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
   // Load required migrations
-  for (const file of ["002_zones.sql", "010_modes.sql"]) {
+  for (const file of [
+    "001_devices.sql",
+    "002_zones.sql",
+    "003_equipments.sql",
+    "010_modes.sql",
+    "013_button_action_bindings.sql",
+  ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),
       "utf-8",
@@ -306,108 +312,14 @@ describe("ModeManager", () => {
     });
   });
 
-  // ── Event Triggers ─────────────────────────────────────────
-
-  describe("event triggers", () => {
-    let modeId: string;
-
-    beforeEach(() => {
-      modeId = manager.createMode("Trigger Test").id;
-    });
-
-    it("adds an event trigger", () => {
-      const trigger = manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      expect(trigger.id).toBeTruthy();
-      expect(trigger.modeId).toBe(modeId);
-      expect(trigger.equipmentId).toBe("eq-btn-1");
-      expect(trigger.alias).toBe("action");
-      expect(trigger.value).toBe("single");
-    });
-
-    it("lists triggers for a mode", () => {
-      manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      manager.addEventTrigger(modeId, "eq-btn-2", "action", "double");
-      const triggers = manager.getEventTriggers(modeId);
-      expect(triggers).toHaveLength(2);
-    });
-
-    it("removes a trigger", () => {
-      const trigger = manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      manager.removeEventTrigger(trigger.id);
-      expect(manager.getEventTriggers(modeId)).toHaveLength(0);
-    });
-
-    it("throws when adding trigger to non-existent mode", () => {
-      expect(() => manager.addEventTrigger("nope", "eq-1", "action", "single")).toThrow(ModeError);
-    });
-
-    it("activates mode when equipment data matches trigger", () => {
-      manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      manager.init();
-
-      // Simulate equipment.data.changed event
-      eventBus.emit({
-        type: "equipment.data.changed",
-        equipmentId: "eq-btn-1",
-        alias: "action",
-        value: "single",
-      });
-
-      expect(manager.getMode(modeId)!.active).toBe(true);
-    });
-
-    it("does not activate on non-matching value", () => {
-      manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      manager.init();
-
-      eventBus.emit({
-        type: "equipment.data.changed",
-        equipmentId: "eq-btn-1",
-        alias: "action",
-        value: "double",
-      });
-
-      expect(manager.getMode(modeId)!.active).toBe(false);
-    });
-
-    it("does not activate on non-matching alias", () => {
-      manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      manager.init();
-
-      eventBus.emit({
-        type: "equipment.data.changed",
-        equipmentId: "eq-btn-1",
-        alias: "battery",
-        value: "single",
-      });
-
-      expect(manager.getMode(modeId)!.active).toBe(false);
-    });
-
-    it("does not activate on non-matching equipment", () => {
-      manager.addEventTrigger(modeId, "eq-btn-1", "action", "single");
-      manager.init();
-
-      eventBus.emit({
-        type: "equipment.data.changed",
-        equipmentId: "eq-btn-other",
-        alias: "action",
-        value: "single",
-      });
-
-      expect(manager.getMode(modeId)!.active).toBe(false);
-    });
-  });
-
   // ── ModeWithDetails ────────────────────────────────────────
 
   describe("getModeWithDetails", () => {
-    it("returns mode with triggers and impacts", () => {
+    it("returns mode with impacts", () => {
       const zoneId = "zone-1";
       db.prepare("INSERT INTO zones (id, name) VALUES (?, ?)").run(zoneId, "Salon");
 
       const mode = manager.createMode("Full", "sun", "Full detail");
-      manager.addEventTrigger(mode.id, "eq-1", "action", "single");
       manager.setZoneImpact(mode.id, zoneId, [
         { type: "order", equipmentId: "eq-2", orderAlias: "state", value: "ON" },
       ]);
@@ -415,7 +327,6 @@ describe("ModeManager", () => {
       const details = manager.getModeWithDetails(mode.id);
       expect(details).toBeTruthy();
       expect(details!.name).toBe("Full");
-      expect(details!.eventTriggers).toHaveLength(1);
       expect(details!.impacts).toHaveLength(1);
       expect(details!.impacts[0].actions).toHaveLength(1);
     });
@@ -428,24 +339,18 @@ describe("ModeManager", () => {
   // ── Cascade delete ─────────────────────────────────────────
 
   describe("cascade delete", () => {
-    it("deletes triggers and impacts when mode is deleted", () => {
+    it("deletes impacts when mode is deleted", () => {
       const zoneId = "zone-1";
       db.prepare("INSERT INTO zones (id, name) VALUES (?, ?)").run(zoneId, "Salon");
 
       const mode = manager.createMode("ToDelete");
-      manager.addEventTrigger(mode.id, "eq-1", "action", "single");
       manager.setZoneImpact(mode.id, zoneId, [
         { type: "order", equipmentId: "eq-2", orderAlias: "state", value: "ON" },
       ]);
 
       manager.deleteMode(mode.id);
 
-      // Verify via direct DB queries
-      const triggers = db
-        .prepare("SELECT * FROM mode_event_triggers WHERE mode_id = ?")
-        .all(mode.id);
       const impacts = db.prepare("SELECT * FROM zone_mode_impacts WHERE mode_id = ?").all(mode.id);
-      expect(triggers).toHaveLength(0);
       expect(impacts).toHaveLength(0);
     });
   });

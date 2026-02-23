@@ -14,6 +14,7 @@ import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { ModeManager } from "./modes/mode-manager.js";
 import { CalendarManager } from "./modes/calendar-manager.js";
+import { ButtonActionManager } from "./buttons/button-action-manager.js";
 import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
 import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
@@ -103,6 +104,16 @@ async function main() {
   const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);
   const calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
 
+  // 12b. Create Button Action Manager
+  const buttonActionManager = new ButtonActionManager(
+    db,
+    eventBus,
+    equipmentManager,
+    modeManager,
+    recipeManager,
+    logger,
+  );
+
   // 13. Create Auth modules
   const userManager = new UserManager(db, logger);
   const authService = new AuthService(db, userManager, config.jwt, logger);
@@ -123,6 +134,7 @@ async function main() {
     userManager,
     authService,
     settingsManager,
+    buttonActionManager,
     eventBus,
     integrationRegistry,
     logger,
@@ -141,9 +153,10 @@ async function main() {
   // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
   recipeManager.init();
 
-  // 18. Initialize mode manager and calendar (event triggers + cron scheduling)
+  // 18. Initialize mode manager, calendar, and button actions
   modeManager.init();
   calendarManager.init();
+  buttonActionManager.init();
 
   if (!userManager.hasUsers()) {
     logger.info("No users found — setup required. Navigate to the UI to create the first admin.");
