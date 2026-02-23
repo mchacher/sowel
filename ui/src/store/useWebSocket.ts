@@ -28,7 +28,7 @@ const MAX_RECONNECT_DELAY = 30_000;
 function getWsUrl(): string {
   const token = localStorage.getItem("corbel_access_token");
   // In dev mode, connect directly to the backend to avoid Vite proxy EPIPE issues
-  const wsHost = import.meta.env.DEV ? "localhost:3000" : window.location.host;
+  const wsHost = import.meta.env.DEV ? `${window.location.hostname}:3000` : window.location.host;
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const base = `${protocol}//${wsHost}/ws`;
   return token ? `${base}?token=${encodeURIComponent(token)}` : base;
