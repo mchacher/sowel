@@ -1,5 +1,6 @@
 import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "./EquipmentCard";
+import { ShutterIcon } from "../icons/ShutterIcons";
 import {
   getSensorIcon,
   getSensorIconColor,
@@ -61,7 +62,9 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   // Icon
   const iconElement: React.ReactNode = isSensor
     ? getSensorIcon(equipment.dataBindings)
-    : TYPE_ICONS[equipment.type];
+    : isShutter
+      ? ShutterIcon({ size: 18, strokeWidth: 1.5, position: shutterPosition })
+      : TYPE_ICONS[equipment.type];
 
   const iconColor = isSensor
     ? getSensorIconColor(equipment.dataBindings)
