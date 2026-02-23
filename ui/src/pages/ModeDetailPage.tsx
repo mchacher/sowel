@@ -130,7 +130,7 @@ export function ModeDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-8 max-w-[720px]">
         <div className="flex items-center gap-4">
           <div
             className={`w-12 h-12 rounded-[10px] flex items-center justify-center ${
