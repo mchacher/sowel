@@ -41,7 +41,8 @@ export type DeviceSource =
   | "shelly"
   | "custom_mqtt"
   | "panasonic_cc"
-  | "mcz_maestro";
+  | "mcz_maestro"
+  | "netatmo_hc";
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
