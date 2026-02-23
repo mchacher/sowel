@@ -10,8 +10,8 @@ import {
   SquareStack,
   Droplet,
   Flame,
-  ArrowUpDown,
 } from "lucide-react";
+import { ShutterIcon } from "../icons/ShutterIcons";
 import type { ZoneAggregatedData } from "../../types";
 
 interface ZoneAggregationPillsProps {
@@ -93,7 +93,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       : "";
     items.push({
       key: "shutters",
-      icon: <ArrowUpDown size={14} strokeWidth={1.5} />,
+      icon: <ShutterIcon size={14} strokeWidth={1.5} position={pos} />,
       label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}`,
       color: someOpen ? "text-primary" : "text-text-tertiary",
     });

@@ -4,8 +4,9 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Layers, Trash2, Pencil,
   ToggleRight, ToggleLeft, MapPin,
-  Lightbulb, ArrowUpDown, Power, Clock,
+  Lightbulb, Power, Clock,
 } from "lucide-react";
+import { ShutterClosedIcon } from "../components/icons/ShutterIcons";
 import { getMode, getActiveCalendar } from "../api";
 import { useModes } from "../store/useModes";
 import { useEquipments } from "../store/useEquipments";
@@ -270,7 +271,7 @@ function ImpactActionRow({
     let detail = `${action.orderAlias} = ${JSON.stringify(action.value)}`;
 
     if (eq?.type === "shutter") {
-      icon = <ArrowUpDown size={12} strokeWidth={1.5} />;
+      icon = <ShutterClosedIcon size={12} strokeWidth={1.5} />;
       if (action.orderAlias === "state" && action.value === "OPEN") {
         detail = t("controls.open");
       } else if (action.orderAlias === "state" && action.value === "CLOSE") {

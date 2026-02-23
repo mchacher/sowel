@@ -4,12 +4,12 @@ import {
   Lightbulb,
   SunDim,
   Palette,
-  ArrowUpDown,
   Gauge,
   ToggleLeft,
   CircleDot,
   Thermometer,
 } from "lucide-react";
+import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
 import { SensorValues } from "./SensorValues";
@@ -21,7 +21,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   light_onoff: <Lightbulb size={18} strokeWidth={1.5} />,
   light_dimmable: <SunDim size={18} strokeWidth={1.5} />,
   light_color: <Palette size={18} strokeWidth={1.5} />,
-  shutter: <ArrowUpDown size={18} strokeWidth={1.5} />,
+  shutter: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
   sensor: <Gauge size={18} strokeWidth={1.5} />,
   button: <CircleDot size={18} strokeWidth={1.5} />,

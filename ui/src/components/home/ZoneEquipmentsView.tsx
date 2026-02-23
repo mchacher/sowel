@@ -1,11 +1,11 @@
 import {
   Box,
   Lightbulb,
-  ArrowUpDown,
   Gauge,
   ToggleRight,
   Thermometer,
 } from "lucide-react";
+import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { useTranslation } from "react-i18next";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
@@ -20,7 +20,7 @@ interface EquipmentGroup {
 
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} />, headerBg: "bg-amber-400/8", iconColor: "text-amber-500" },
-  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ArrowUpDown size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
+  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ShutterClosedIcon size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.climate", types: ["thermostat"], icon: <Thermometer size={14} strokeWidth={1.5} />, headerBg: "bg-blue-500/6", iconColor: "text-blue-500" },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-info/6", iconColor: "text-info" },
   { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
