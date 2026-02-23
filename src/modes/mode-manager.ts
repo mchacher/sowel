@@ -7,7 +7,6 @@ import type { Logger } from "../core/logger.js";
 import { toISOUtc } from "../core/database.js";
 import type {
   Mode,
-  ModeEventTrigger,
   ModeWithDetails,
   ZoneModeImpact,
   ZoneModeImpactAction,
@@ -42,13 +41,6 @@ export class ModeManager {
       setActive: this.db.prepare(
         `UPDATE modes SET active = ?, updated_at = datetime('now') WHERE id = ?`,
       ),
-      // Event triggers
-      insertTrigger: this.db.prepare(
-        `INSERT INTO mode_event_triggers (id, mode_id, equipment_id, alias, value) VALUES (?, ?, ?, ?, ?)`,
-      ),
-      deleteTrigger: this.db.prepare(`DELETE FROM mode_event_triggers WHERE id = ?`),
-      getTriggersByMode: this.db.prepare(`SELECT * FROM mode_event_triggers WHERE mode_id = ?`),
-      listAllTriggers: this.db.prepare(`SELECT * FROM mode_event_triggers`),
       // Zone impacts
       upsertImpact: this.db.prepare(
         `INSERT INTO zone_mode_impacts (id, mode_id, zone_id, actions)
@@ -67,26 +59,10 @@ export class ModeManager {
   // ── Init ──────────────────────────────────────────────────
 
   init(): void {
-    // Listen for equipment data changes to match event triggers
-    this.eventBus.on((event) => {
-      if (event.type === "equipment.data.changed") {
-        try {
-          this.handleEquipmentDataChanged(event.equipmentId, event.alias, event.value);
-        } catch (err) {
-          this.log.error({ err }, "Error handling event trigger");
-        }
-      }
-    });
-
     const modes = this.listModes();
     const activeModes = modes.filter((m) => m.active);
     if (activeModes.length > 0) {
       this.log.info({ count: activeModes.length }, "Active modes restored from DB");
-    }
-
-    const triggers = this.stmts.listAllTriggers.all() as ModeEventTriggerRow[];
-    if (triggers.length > 0) {
-      this.log.info({ count: triggers.length }, "Event triggers registered");
     }
   }
 
@@ -137,7 +113,6 @@ export class ModeManager {
     if (!mode) return null;
     return {
       ...mode,
-      eventTriggers: this.getEventTriggers(mode.id),
       impacts: this.getImpactsByMode(mode.id),
     };
   }
@@ -150,7 +125,6 @@ export class ModeManager {
   listModesWithDetails(): ModeWithDetails[] {
     return this.listModes().map((mode) => ({
       ...mode,
-      eventTriggers: this.getEventTriggers(mode.id),
       impacts: this.getImpactsByMode(mode.id),
     }));
   }
@@ -260,51 +234,6 @@ export class ModeManager {
     }
   }
 
-  // ── Event Triggers ────────────────────────────────────────
-
-  addEventTrigger(
-    modeId: string,
-    equipmentId: string,
-    alias: string,
-    value: unknown,
-  ): ModeEventTrigger {
-    const mode = this.getMode(modeId);
-    if (!mode) throw new ModeError(`Mode not found: ${modeId}`, 404);
-
-    const id = randomUUID();
-    this.stmts.insertTrigger.run(id, modeId, equipmentId, alias, JSON.stringify(value));
-    this.log.info({ triggerId: id, modeId, equipmentId, alias }, "Event trigger added");
-
-    return { id, modeId, equipmentId, alias, value };
-  }
-
-  removeEventTrigger(triggerId: string): void {
-    this.stmts.deleteTrigger.run(triggerId);
-    this.log.info({ triggerId }, "Event trigger removed");
-  }
-
-  getEventTriggers(modeId: string): ModeEventTrigger[] {
-    const rows = this.stmts.getTriggersByMode.all(modeId) as ModeEventTriggerRow[];
-    return rows.map(rowToEventTrigger);
-  }
-
-  private handleEquipmentDataChanged(equipmentId: string, alias: string, value: unknown): void {
-    const triggers = this.stmts.listAllTriggers.all() as ModeEventTriggerRow[];
-
-    for (const trigger of triggers) {
-      if (trigger.equipment_id === equipmentId && trigger.alias === alias) {
-        const triggerValue = JSON.parse(trigger.value);
-        if (triggerValue === value || JSON.stringify(triggerValue) === JSON.stringify(value)) {
-          this.log.info(
-            { modeId: trigger.mode_id, triggerId: trigger.id, equipmentId, alias, value },
-            "Event trigger matched — activating mode",
-          );
-          this.activateMode(trigger.mode_id);
-        }
-      }
-    }
-  }
-
   // ── Zone Impacts ──────────────────────────────────────────
 
   setZoneImpact(modeId: string, zoneId: string, actions: ZoneModeImpactAction[]): ZoneModeImpact {
@@ -355,24 +284,6 @@ function rowToMode(row: ModeRow): Mode {
     active: row.active === 1,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
-  };
-}
-
-interface ModeEventTriggerRow {
-  id: string;
-  mode_id: string;
-  equipment_id: string;
-  alias: string;
-  value: string;
-}
-
-function rowToEventTrigger(row: ModeEventTriggerRow): ModeEventTrigger {
-  return {
-    id: row.id,
-    modeId: row.mode_id,
-    equipmentId: row.equipment_id,
-    alias: row.alias,
-    value: JSON.parse(row.value),
   };
 }
 

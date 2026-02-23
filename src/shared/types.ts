@@ -254,14 +254,6 @@ export interface Mode {
   updatedAt: string;
 }
 
-export interface ModeEventTrigger {
-  id: string;
-  modeId: string;
-  equipmentId: string;
-  alias: string;
-  value: unknown;
-}
-
 export type ZoneModeImpactAction =
   | {
       type: "order";
@@ -288,8 +280,26 @@ export interface ZoneModeImpact {
 }
 
 export interface ModeWithDetails extends Mode {
-  eventTriggers: ModeEventTrigger[];
   impacts: ZoneModeImpact[];
+}
+
+// ============================================================
+// Button Action Bindings
+// ============================================================
+
+export type ButtonEffectType =
+  | "mode_activate"
+  | "mode_toggle"
+  | "equipment_order"
+  | "recipe_toggle";
+
+export interface ButtonActionBinding {
+  id: string;
+  equipmentId: string;
+  actionValue: string;
+  effectType: ButtonEffectType;
+  config: Record<string, unknown>;
+  createdAt: string;
 }
 
 // ============================================================

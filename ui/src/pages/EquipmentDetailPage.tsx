@@ -15,6 +15,7 @@ import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";
+import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import {
   ArrowLeft,
   Loader2,
@@ -231,6 +232,11 @@ export function EquipmentDetailPage() {
       {/* Sensor data */}
       {isSensor && (
         <SensorDataPanel bindings={equipment.dataBindings} />
+      )}
+
+      {/* Button actions */}
+      {equipment.type === "button" && (
+        <ButtonActionsSection equipmentId={equipment.id} />
       )}
 
       {/* Devices */}
