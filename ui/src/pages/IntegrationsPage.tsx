@@ -168,7 +168,7 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
             </span>
           </div>
           {isConnected && integration.polling && (
-            <PollCountdown polling={integration.polling} />
+            <PollCountdown polling={integration.polling} onExpired={onRefresh} />
           )}
         </div>
       </div>
@@ -225,21 +225,30 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
   );
 }
 
-function PollCountdown({ polling }: { polling: { lastPollAt: string; intervalMs: number } }) {
+function PollCountdown({ polling, onExpired }: { polling: { lastPollAt: string; intervalMs: number }; onExpired: () => void }) {
   const [remaining, setRemaining] = useState(() => {
     const next = new Date(polling.lastPollAt).getTime() + polling.intervalMs;
     return Math.max(0, Math.round((next - Date.now()) / 1000));
   });
 
   useEffect(() => {
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const tick = () => {
       const next = new Date(polling.lastPollAt).getTime() + polling.intervalMs;
-      setRemaining(Math.max(0, Math.round((next - Date.now()) / 1000)));
+      const secs = Math.max(0, Math.round((next - Date.now()) / 1000));
+      setRemaining(secs);
+      if (secs === 0 && !refreshTimer) {
+        // Re-fetch data 3s after expiry to get updated lastPollAt
+        refreshTimer = setTimeout(onExpired, 3000);
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [polling.lastPollAt, polling.intervalMs]);
+    return () => {
+      clearInterval(id);
+      if (refreshTimer) clearTimeout(refreshTimer);
+    };
+  }, [polling.lastPollAt, polling.intervalMs, onExpired]);
 
   const min = Math.floor(remaining / 60);
   const sec = remaining % 60;
