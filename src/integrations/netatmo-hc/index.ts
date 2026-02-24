@@ -11,10 +11,28 @@ import { NetatmoPoller } from "./netatmo-poller.js";
 const SETTINGS_PREFIX = "integration.netatmo_hc.";
 const DEFAULT_DATA_DIR = resolve(process.cwd(), "data");
 
+/** Boolean params expected by Netatmo setstate API. */
+const BOOLEAN_PARAMS = new Set(["on"]);
+/** Numeric params expected by Netatmo setstate API. */
+const NUMERIC_PARAMS = new Set(["brightness", "target_position"]);
+
+/** Coerce Corbel order value to the type Netatmo API expects. */
+function coerceValue(param: string, value: unknown): unknown {
+  if (BOOLEAN_PARAMS.has(param)) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") return value.toUpperCase() === "ON" || value === "true";
+    return Boolean(value);
+  }
+  if (NUMERIC_PARAMS.has(param)) {
+    return typeof value === "number" ? value : Number(value);
+  }
+  return value;
+}
+
 export class NetatmoHCIntegration implements IntegrationPlugin {
   readonly id = "netatmo_hc";
-  readonly name = "Netatmo Home+Control";
-  readonly description = "Legrand Home+Control devices via Netatmo Connect API";
+  readonly name = "Legrand Home+Control";
+  readonly description = "Netatmo Connect API integration";
   readonly icon = "PlugZap";
 
   private logger: Logger;
@@ -177,23 +195,30 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     const homeId = dispatchConfig.homeId as string;
     const moduleId = dispatchConfig.moduleId as string;
     const param = dispatchConfig.param as string;
+    const bridge = dispatchConfig.bridge as string | undefined;
 
     if (!homeId || !moduleId || !param) {
       throw new Error("Invalid dispatch config: missing homeId, moduleId, or param");
     }
 
+    // Coerce value to the type expected by Netatmo API
+    const apiValue = coerceValue(param, value);
+
+    const modulePayload: Record<string, unknown> = { id: moduleId, [param]: apiValue };
+    if (bridge) modulePayload.bridge = bridge;
+
     await this.bridge.setState({
       home: {
         id: homeId,
-        modules: [{ id: moduleId, [param]: value }],
+        modules: [modulePayload],
       },
     });
 
     this.logger.info({ moduleId, param, value }, "Netatmo order executed");
 
-    // Schedule on-demand poll to confirm the change
+    // Rapid-poll status until the expected state is confirmed (or 10s timeout)
     if (this.poller) {
-      this.poller.scheduleOnDemandPoll();
+      this.poller.scheduleOnDemandPoll({ moduleId, param, value: apiValue });
     }
   }
 

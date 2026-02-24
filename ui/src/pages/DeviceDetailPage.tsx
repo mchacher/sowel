@@ -43,7 +43,7 @@ export function DeviceDetailPage() {
     setDeleting(true);
     try {
       await deleteDevice(id);
-      navigate("/devices");
+      navigate(-1);
     } catch {
       setDeleting(false);
     }
@@ -86,7 +86,7 @@ export function DeviceDetailPage() {
     return (
       <div className="p-6">
         <button
-          onClick={() => navigate("/devices")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
@@ -107,7 +107,7 @@ export function DeviceDetailPage() {
     <div className="p-6 max-w-[960px]">
       {/* Back navigation */}
       <button
-        onClick={() => navigate("/devices")}
+        onClick={() => navigate(-1)}
         className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
       >
         <ArrowLeft size={16} strokeWidth={1.5} />
