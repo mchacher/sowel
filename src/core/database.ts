@@ -3,14 +3,14 @@ import { readFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Logger } from "./logger.js";
 
-export function openDatabase(dbPath: string, logger: Logger): Database.Database {
-  const log = logger.child({ module: "database" });
+export function openDatabase(dbPath: string, parentLogger: Logger): Database.Database {
+  const logger = parentLogger.child({ module: "database" });
 
   // Ensure data directory exists
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
-    log.info({ dir }, "Created data directory");
+    logger.info({ dir }, "Created data directory");
   }
 
   const db = new Database(dbPath);
@@ -19,7 +19,7 @@ export function openDatabase(dbPath: string, logger: Logger): Database.Database 
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
-  log.info({ path: dbPath }, "SQLite database opened");
+  logger.info({ path: dbPath }, "SQLite database opened");
 
   return db;
 }
@@ -36,8 +36,12 @@ export function toISOUtc(sqliteTimestamp: string | null): string | null {
   return sqliteTimestamp.endsWith("Z") ? sqliteTimestamp : `${sqliteTimestamp}Z`;
 }
 
-export function runMigrations(db: Database.Database, migrationsDir: string, logger: Logger): void {
-  const log = logger.child({ module: "migrations" });
+export function runMigrations(
+  db: Database.Database,
+  migrationsDir: string,
+  parentLogger: Logger,
+): void {
+  const logger = parentLogger.child({ module: "migrations" });
 
   // Create migrations tracking table
   db.exec(`
@@ -57,7 +61,7 @@ export function runMigrations(db: Database.Database, migrationsDir: string, logg
 
   // Read migration files, sorted alphabetically
   if (!existsSync(migrationsDir)) {
-    log.warn({ dir: migrationsDir }, "Migrations directory does not exist");
+    logger.warn({ dir: migrationsDir }, "Migrations directory does not exist");
     return;
   }
 
@@ -67,7 +71,7 @@ export function runMigrations(db: Database.Database, migrationsDir: string, logg
 
   for (const file of files) {
     if (applied.has(file)) {
-      log.debug({ migration: file }, "Already applied, skipping");
+      logger.debug({ migration: file }, "Already applied, skipping");
       continue;
     }
 
@@ -79,6 +83,6 @@ export function runMigrations(db: Database.Database, migrationsDir: string, logg
     });
 
     runMigration();
-    log.info({ migration: file }, "Migration applied");
+    logger.info({ migration: file }, "Migration applied");
   }
 }

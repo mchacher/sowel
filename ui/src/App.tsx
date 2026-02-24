@@ -15,6 +15,7 @@ import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { ModesPage } from "./pages/ModesPage";
 import { ModeDetailPage } from "./pages/ModeDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { LogsPage } from "./pages/LogsPage";
 
 export default function App() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/logs" element={<LogsPage />} />
 
           {/* Default redirect to Maison */}
           <Route path="*" element={<Navigate to="/home" replace />} />

@@ -13,7 +13,7 @@ import type {
 } from "../shared/types.js";
 
 export class ModeManager {
-  private readonly log;
+  private readonly logger;
   private readonly stmts;
 
   constructor(
@@ -23,7 +23,7 @@ export class ModeManager {
     private readonly recipeManager: RecipeManager,
     logger: Logger,
   ) {
-    this.log = logger.child({ module: "mode-manager" });
+    this.logger = logger.child({ module: "mode-manager" });
     this.stmts = this.prepareStatements();
   }
 
@@ -62,7 +62,7 @@ export class ModeManager {
     const modes = this.listModes();
     const activeModes = modes.filter((m) => m.active);
     if (activeModes.length > 0) {
-      this.log.info({ count: activeModes.length }, "Active modes restored from DB");
+      this.logger.info({ count: activeModes.length }, "Active modes restored from DB");
     }
   }
 
@@ -73,7 +73,7 @@ export class ModeManager {
     this.stmts.insertMode.run(id, name, icon ?? null, description ?? null);
     const mode = this.getMode(id)!;
     this.eventBus.emit({ type: "mode.created", mode });
-    this.log.info({ modeId: id, name }, "Mode created");
+    this.logger.info({ modeId: id, name }, "Mode created");
     return mode;
   }
 
@@ -90,7 +90,7 @@ export class ModeManager {
 
     const mode = this.getMode(id)!;
     this.eventBus.emit({ type: "mode.updated", mode });
-    this.log.info({ modeId: id }, "Mode updated");
+    this.logger.info({ modeId: id }, "Mode updated");
     return mode;
   }
 
@@ -100,7 +100,7 @@ export class ModeManager {
 
     this.stmts.deleteMode.run(id);
     this.eventBus.emit({ type: "mode.removed", modeId: id, modeName: existing.name });
-    this.log.info({ modeId: id, name: existing.name }, "Mode deleted");
+    this.logger.info({ modeId: id, name: existing.name }, "Mode deleted");
   }
 
   getMode(id: string): Mode | null {
@@ -136,7 +136,7 @@ export class ModeManager {
     if (!mode) throw new ModeError(`Mode not found: ${id}`, 404);
 
     if (mode.active) {
-      this.log.info({ modeId: id, name: mode.name }, "Mode already active, skipping");
+      this.logger.info({ modeId: id, name: mode.name }, "Mode already active, skipping");
       return;
     }
 
@@ -150,7 +150,10 @@ export class ModeManager {
     }
 
     this.eventBus.emit({ type: "mode.activated", modeId: id, modeName: mode.name });
-    this.log.info({ modeId: id, name: mode.name, impactCount: impacts.length }, "Mode activated");
+    this.logger.info(
+      { modeId: id, name: mode.name, impactCount: impacts.length },
+      "Mode activated",
+    );
   }
 
   applyModeToZone(modeId: string, zoneId: string): void {
@@ -164,7 +167,7 @@ export class ModeManager {
     }
 
     this.executeImpact(zoneImpact, mode.name);
-    this.log.info(
+    this.logger.info(
       { modeId, zoneId, actionCount: zoneImpact.actions.length, modeName: mode.name },
       "Mode applied to zone (local)",
     );
@@ -175,13 +178,13 @@ export class ModeManager {
     if (!mode) throw new ModeError(`Mode not found: ${id}`, 404);
 
     if (!mode.active) {
-      this.log.info({ modeId: id, name: mode.name }, "Mode already inactive, skipping");
+      this.logger.info({ modeId: id, name: mode.name }, "Mode already inactive, skipping");
       return;
     }
 
     this.stmts.setActive.run(0, id);
     this.eventBus.emit({ type: "mode.deactivated", modeId: id, modeName: mode.name });
-    this.log.info({ modeId: id, name: mode.name }, "Mode deactivated");
+    this.logger.info({ modeId: id, name: mode.name }, "Mode deactivated");
   }
 
   private executeImpact(impact: ZoneModeImpact, modeName: string): void {
@@ -189,7 +192,7 @@ export class ModeManager {
       try {
         this.executeAction(action, modeName);
       } catch (err) {
-        this.log.warn(
+        this.logger.warn(
           { err, action, zoneId: impact.zoneId, modeName },
           "Failed to execute mode impact action",
         );
@@ -201,7 +204,7 @@ export class ModeManager {
     switch (action.type) {
       case "order":
         this.equipmentManager.executeOrder(action.equipmentId, action.orderAlias, action.value);
-        this.log.debug(
+        this.logger.debug(
           {
             equipmentId: action.equipmentId,
             alias: action.orderAlias,
@@ -218,7 +221,7 @@ export class ModeManager {
         } else {
           this.recipeManager.disableInstance(action.instanceId);
         }
-        this.log.debug(
+        this.logger.debug(
           { instanceId: action.instanceId, enabled: action.enabled, modeName },
           "Mode recipe toggle executed",
         );
@@ -226,7 +229,7 @@ export class ModeManager {
 
       case "recipe_params":
         this.recipeManager.updateInstanceParams(action.instanceId, action.params);
-        this.log.debug(
+        this.logger.debug(
           { instanceId: action.instanceId, params: action.params, modeName },
           "Mode recipe params updated",
         );
@@ -242,14 +245,14 @@ export class ModeManager {
 
     const id = randomUUID();
     this.stmts.upsertImpact.run(id, modeId, zoneId, JSON.stringify(actions));
-    this.log.info({ modeId, zoneId, actionCount: actions.length }, "Zone impact set");
+    this.logger.info({ modeId, zoneId, actionCount: actions.length }, "Zone impact set");
 
     return { id, modeId, zoneId, actions };
   }
 
   removeZoneImpact(modeId: string, zoneId: string): void {
     this.stmts.deleteImpactByModeZone.run(modeId, zoneId);
-    this.log.info({ modeId, zoneId }, "Zone impact removed");
+    this.logger.info({ modeId, zoneId }, "Zone impact removed");
   }
 
   getImpactsByMode(modeId: string): ZoneModeImpact[] {

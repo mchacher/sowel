@@ -293,10 +293,70 @@ Follow this strict order to avoid broken dependencies:
 | MQTT never throws  | All MQTT handlers wrapped in try/catch with logging      |
 | Events never throw | All event handlers wrapped in try/catch with logging     |
 | SQLite synchronous | Use `better-sqlite3` sync API, WAL mode                  |
-| Pino logging       | Use Fastify's pino logger, structured JSON               |
+| Pino logging       | Use structured pino logger, follow log level strategy    |
+| No console.\*      | Never use `console.log/error/warn` — always pino logger  |
 | Tailwind only      | No custom CSS files in UI, utility classes only          |
 | CSS variables      | Use design system tokens from tailwind.config.js         |
 | Lucide icons       | Use lucide-react for all icons                           |
+
+### 3.4 Logging Rules (MANDATORY)
+
+Every new module or feature MUST follow the logging strategy defined in `CLAUDE.md § Logging`.
+
+#### Logger Setup
+
+```typescript
+// In a class — create child logger with module context
+constructor(deps: { logger: Logger }) {
+  this.logger = deps.logger.child({ module: "my-module" });
+}
+
+// In a standalone function
+const logger = parentLogger.child({ module: "my-module" });
+```
+
+- Property name: `this.logger` in classes, `logger` in functions. Never `this.log` or `log`.
+
+#### Level Assignment Checklist
+
+When adding log calls, verify each one against this table:
+
+| Level     | Use for                                            | NOT for                                       |
+| --------- | -------------------------------------------------- | --------------------------------------------- |
+| **fatal** | Process crash, unrecoverable state                 | Recoverable errors                            |
+| **error** | Operation failed, needs attention                  | Expected failures (e.g., 404, invalid input)  |
+| **warn**  | Self-recovered issue, degradation signal           | Normal operations, business events            |
+| **info**  | One log per business operation (CRUD, connect)     | Per-item details, per-message, per-data-point |
+| **debug** | Troubleshooting details, step-by-step trace        | Hot-path data that fires every second         |
+| **trace** | Every event emission, every MQTT msg, every update | Anything that should be visible in production |
+
+#### Structured Context
+
+```typescript
+// GOOD — structured context as first arg, message as second
+logger.info({ deviceId, status }, "Device status changed");
+logger.error({ err, integrationId }, "Poll failed");
+
+// BAD — string interpolation
+logger.info(`Device ${deviceId} changed to ${status}`);
+logger.error(`Poll failed: ${err.message}`);
+```
+
+#### Domain-Specific Guidelines
+
+| Domain       | info                                   | debug                                | trace                     |
+| ------------ | -------------------------------------- | ------------------------------------ | ------------------------- |
+| MQTT         | Connected/disconnected/reconnecting    | Topic subscribed, publish result     | Every message received    |
+| Devices      | Discovered, removed, status changed    | Data auto-created, category inferred | Every data point update   |
+| Equipments   | CRUD, order dispatched                 | Binding evaluation, computed result  | Every binding re-eval     |
+| Zones        | CRUD, aggregation summary              | Individual fields computed           | Every aggregation trigger |
+| Modes        | Activated/deactivated, CRUD            | Each impact action executed          | —                         |
+| Recipes      | Instance CRUD, enabled/disabled        | Execution steps, trigger evaluation  | —                         |
+| Integrations | Started/stopped, poll completed        | Poll cycle details, API call results | Raw API responses         |
+| Auth         | Login, token created, password changed | JWT validation, middleware decisions | —                         |
+| API          | Server listening                       | Request handling details             | Every request/response    |
+| WebSocket    | Client connected/disconnected          | Topic subscription                   | Every frame               |
+| Event Bus    | —                                      | —                                    | Every event emitted       |
 
 ---
 

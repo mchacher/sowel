@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Layers,
   Calendar,
+  ScrollText,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,6 +32,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: "/zones", label: "nav.zones", icon: <Map size={18} strokeWidth={1.5} /> },
   { to: "/calendar", label: "nav.calendar", icon: <Calendar size={18} strokeWidth={1.5} /> },
   { to: "/integrations", label: "nav.integrations", icon: <Plug size={18} strokeWidth={1.5} /> },
+  { to: "/logs", label: "nav.logs", icon: <ScrollText size={18} strokeWidth={1.5} /> },
 ];
 
 export function Sidebar() {
