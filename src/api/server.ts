@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import type { Logger } from "../core/logger.js";
@@ -87,6 +88,12 @@ export async function createServer(deps: ServerDeps) {
   await app.register(cors, {
     origin: corsOrigins,
     methods: ["GET", "PUT", "POST", "DELETE", "OPTIONS"],
+  });
+
+  // Rate limiting (global: 100 req/min per IP)
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: "1 minute",
   });
 
   // WebSocket
