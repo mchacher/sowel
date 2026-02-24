@@ -414,7 +414,7 @@ export type IntegrationStatus = "connected" | "disconnected" | "error" | "not_co
 export interface IntegrationSettingDef {
   key: string;
   label: string;
-  type: "text" | "password" | "number";
+  type: "text" | "password" | "number" | "boolean";
   required: boolean;
   placeholder?: string;
   defaultValue?: string;

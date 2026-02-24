@@ -79,8 +79,12 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
     setSaving(true);
     try {
       // Build settings entries with integration prefix
+      // Skip password fields that haven't been changed (still showing mask)
+      const PASSWORD_MASK = "••••••••";
       const entries: Record<string, string> = {};
       for (const [key, value] of Object.entries(values)) {
+        const setting = integration.settings.find((s) => s.key === key);
+        if (setting?.type === "password" && value === PASSWORD_MASK) continue;
         entries[`integration.${integration.id}.${key}`] = value;
       }
       await updateSettings(entries);
@@ -225,6 +229,30 @@ function SettingField({
   value: string;
   onChange: (val: string) => void;
 }) {
+  if (setting.type === "boolean") {
+    const checked = value === "true";
+    return (
+      <div className="flex items-center gap-3 py-1">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(checked ? "false" : "true")}
+          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+            checked ? "bg-primary" : "bg-border"
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+              checked ? "translate-x-4" : "translate-x-0"
+            }`}
+          />
+        </button>
+        <span className="text-[13px] text-text">{setting.label}</span>
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">

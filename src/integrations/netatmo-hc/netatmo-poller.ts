@@ -14,6 +14,9 @@ import {
   mapModuleToDiscovered,
   extractStatusPayload,
   METER_TYPES,
+  mapWeatherStationToDiscovered,
+  mapWeatherModuleToDiscovered,
+  extractWeatherPayload,
 } from "./netatmo-types.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 300_000; // 5 min
@@ -39,6 +42,12 @@ export class NetatmoPoller {
   private moduleNames = new Map<string, string>();
   /** Energy meters: moduleId → { bridge, friendlyName } */
   private energyMeters = new Map<string, { bridge: string; friendlyName: string }>();
+  /** Weather station friendly names tracked for stale device removal. */
+  private weatherNames = new Set<string>();
+  /** Enable Home+Control device polling (homesdata / homestatus). */
+  private enableHomeControl: boolean;
+  /** Enable weather station polling (read_station scope). */
+  private enableWeather: boolean;
 
   constructor(
     bridge: NetatmoBridge,
@@ -46,23 +55,27 @@ export class NetatmoPoller {
     homeId: string,
     logger: Logger,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
+    enableHomeControl = true,
+    enableWeather = false,
   ) {
     this.bridge = bridge;
     this.deviceManager = deviceManager;
     this.homeId = homeId;
-    this.logger = logger.child({ module: "netatmo-poller" });
+    this.logger = logger.child({ module: "legrand-hc-poller" });
     this.pollIntervalMs = pollIntervalMs;
+    this.enableHomeControl = enableHomeControl;
+    this.enableWeather = enableWeather;
   }
 
   async start(): Promise<void> {
     this.logger.info(
       { homeId: this.homeId, intervalMs: this.pollIntervalMs },
-      "Starting Netatmo poller",
+      "Starting Legrand H+C poller",
     );
     // Immediate first poll (awaited — data available at startup)
     await this.poll();
     this.interval = setInterval(() => {
-      this.poll().catch((err) => this.logger.error({ err }, "Netatmo poll failed"));
+      this.poll().catch((err) => this.logger.error({ err }, "Legrand H+C poll failed"));
     }, this.pollIntervalMs);
   }
 
@@ -72,7 +85,7 @@ export class NetatmoPoller {
       this.interval = null;
     }
     this.stopRapidPoll();
-    this.logger.info("Netatmo poller stopped");
+    this.logger.info("Legrand H+C poller stopped");
   }
 
   async refresh(): Promise<void> {
@@ -97,9 +110,9 @@ export class NetatmoPoller {
         .catch((err) => {
           const msg = err instanceof Error ? err.message : String(err);
           if (msg.includes("429")) {
-            this.logger.debug("Netatmo rapid poll skipped (rate-limited), will retry next tick");
+            this.logger.debug("Legrand H+C rapid poll skipped (rate-limited)");
           } else {
-            this.logger.error({ err }, "Netatmo rapid poll failed");
+            this.logger.error({ err }, "Legrand H+C rapid poll failed");
           }
         })
         .finally(() => {
@@ -140,16 +153,23 @@ export class NetatmoPoller {
     this.polling = true;
 
     try {
-      // 1. Discover modules
-      await this.discoverModules();
+      // Home+Control: discover, status, energy meters
+      if (this.enableHomeControl) {
+        try {
+          await this.discoverModules();
+          await this.pollStatus();
+          await this.pollEnergyMeters();
+        } catch (err) {
+          this.logger.error({ err }, "Home+Control poll failed");
+        }
+      }
 
-      // 2. Poll status
-      await this.pollStatus();
-
-      // 3. Poll energy meters (getMeasure)
-      await this.pollEnergyMeters();
+      // Weather station (independent from Home+Control)
+      if (this.enableWeather) {
+        await this.pollWeatherStation();
+      }
     } catch (err) {
-      this.logger.error({ err }, "Netatmo poll cycle failed");
+      this.logger.error({ err }, "Legrand H+C poll cycle failed");
     } finally {
       this.polling = false;
     }
@@ -166,11 +186,11 @@ export class NetatmoPoller {
     const modules = home.modules ?? [];
     this.logger.info(
       { homeId: this.homeId, homeName: home.name, moduleCount: modules.length },
-      "Netatmo discovery: scanning home",
+      "Legrand H+C discovery: scanning home",
     );
 
     if (modules.length === 0) {
-      this.logger.warn("Netatmo discovery: no modules found in home — check API response");
+      this.logger.warn("Legrand H+C discovery: no modules found — check API response");
       return;
     }
 
@@ -207,8 +227,13 @@ export class NetatmoPoller {
 
     this.logger.info(
       { total: modules.length, supported, skipped: modules.length - supported },
-      "Netatmo discovery complete",
+      "Legrand H+C discovery complete",
     );
+
+    // Add weather names to active set so they don't get removed
+    for (const name of this.weatherNames) {
+      activeIds.add(name);
+    }
 
     // Remove stale devices that no longer exist
     this.deviceManager.removeStaleDevices("netatmo_hc", activeIds);
@@ -239,8 +264,67 @@ export class NetatmoPoller {
       }
     }
 
-    this.logger.info({ updated, total: modules.length }, "Netatmo status poll complete");
+    this.logger.info({ updated, total: modules.length }, "Legrand H+C status poll complete");
     return confirmed;
+  }
+
+  /** Discover and poll weather station data via getstationsdata. */
+  private async pollWeatherStation(): Promise<void> {
+    try {
+      const stationsData = await this.bridge.getStationsData();
+      const devices = stationsData.body.devices;
+
+      if (devices.length === 0) {
+        this.logger.debug("No weather stations found");
+        return;
+      }
+
+      this.weatherNames.clear();
+
+      for (const station of devices) {
+        // Discover + update base station (NAMain)
+        const baseName = station.module_name || station.station_name;
+        const baseDiscovered = mapWeatherStationToDiscovered(station);
+        this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", baseDiscovered);
+        this.weatherNames.add(baseName);
+
+        // Update base station data
+        const basePayload = extractWeatherPayload(station.dashboard_data, station.type);
+        if (Object.keys(basePayload).length > 0) {
+          this.deviceManager.updateDeviceData("netatmo_hc", baseName, basePayload);
+        }
+
+        // Discover + update each sub-module
+        for (const mod of station.modules ?? []) {
+          const modName = mod.module_name || mod._id;
+          const modDiscovered = mapWeatherModuleToDiscovered(mod);
+          this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", modDiscovered);
+          this.weatherNames.add(modName);
+
+          // Update module data
+          if (mod.dashboard_data) {
+            const modPayload = extractWeatherPayload(mod.dashboard_data, mod.type);
+            if (Object.keys(modPayload).length > 0) {
+              this.deviceManager.updateDeviceData("netatmo_hc", modName, modPayload);
+            }
+          }
+
+          // Update battery level
+          if (mod.battery_percent !== undefined) {
+            this.deviceManager.updateDeviceData("netatmo_hc", modName, {
+              battery: mod.battery_percent,
+            });
+          }
+        }
+      }
+
+      this.logger.info(
+        { stationCount: devices.length, weatherDevices: this.weatherNames.size },
+        "Weather station poll complete",
+      );
+    } catch (err) {
+      this.logger.warn({ err }, "Weather station poll failed");
+    }
   }
 
   /** Fetch cumulative energy for each energy meter via getMeasure. */
