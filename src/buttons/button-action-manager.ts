@@ -9,7 +9,7 @@ import { toISOUtc } from "../core/database.js";
 import type { ButtonActionBinding, ButtonEffectType } from "../shared/types.js";
 
 export class ButtonActionManager {
-  private readonly log;
+  private readonly logger;
   private readonly stmts;
 
   constructor(
@@ -20,7 +20,7 @@ export class ButtonActionManager {
     private readonly recipeManager: RecipeManager,
     logger: Logger,
   ) {
-    this.log = logger.child({ module: "button-action-manager" });
+    this.logger = logger.child({ module: "button-action-manager" });
     this.stmts = this.prepareStatements();
   }
 
@@ -49,14 +49,17 @@ export class ButtonActionManager {
         try {
           this.handleActionEvent(event.equipmentId, event.value);
         } catch (err) {
-          this.log.error({ err, equipmentId: event.equipmentId }, "Error handling button action");
+          this.logger.error(
+            { err, equipmentId: event.equipmentId },
+            "Error handling button action",
+          );
         }
       }
     });
 
     const bindings = this.stmts.listAll.all() as ButtonActionBindingRow[];
     if (bindings.length > 0) {
-      this.log.info({ count: bindings.length }, "Button action bindings loaded");
+      this.logger.info({ count: bindings.length }, "Button action bindings loaded");
     }
   }
 
@@ -70,7 +73,7 @@ export class ButtonActionManager {
   ): ButtonActionBinding {
     const id = randomUUID();
     this.stmts.insert.run(id, equipmentId, actionValue, effectType, JSON.stringify(config));
-    this.log.info(
+    this.logger.info(
       { bindingId: id, equipmentId, actionValue, effectType },
       "Button action binding added",
     );
@@ -88,7 +91,7 @@ export class ButtonActionManager {
     config: Record<string, unknown>,
   ): ButtonActionBinding {
     this.stmts.update.run(actionValue, effectType, JSON.stringify(config), bindingId);
-    this.log.info({ bindingId, actionValue, effectType }, "Button action binding updated");
+    this.logger.info({ bindingId, actionValue, effectType }, "Button action binding updated");
 
     const row = this.db
       .prepare(`SELECT * FROM button_action_bindings WHERE id = ?`)
@@ -99,7 +102,7 @@ export class ButtonActionManager {
 
   removeBinding(bindingId: string): void {
     this.stmts.delete.run(bindingId);
-    this.log.info({ bindingId }, "Button action binding removed");
+    this.logger.info({ bindingId }, "Button action binding removed");
   }
 
   getBindingsByEquipment(equipmentId: string): ButtonActionBinding[] {
@@ -117,7 +120,7 @@ export class ButtonActionManager {
       if (row.action_value !== actionValue) continue;
 
       const config = JSON.parse(row.config) as Record<string, unknown>;
-      this.log.info(
+      this.logger.info(
         { bindingId: row.id, equipmentId, actionValue, effectType: row.effect_type },
         "Button action binding matched",
       );
@@ -125,7 +128,7 @@ export class ButtonActionManager {
       try {
         this.executeEffect(row.effect_type as ButtonEffectType, config);
       } catch (err) {
-        this.log.warn(
+        this.logger.warn(
           { err, bindingId: row.id, effectType: row.effect_type },
           "Failed to execute button action effect",
         );

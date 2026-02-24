@@ -10,6 +10,7 @@ import type {
   ButtonActionBinding, ButtonEffectType,
   CalendarProfile, CalendarSlot,
   IntegrationInfo,
+  LogsResponse, LogLevel,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -638,5 +639,37 @@ export async function updateButtonActionBinding(
 export async function removeButtonActionBinding(equipmentId: string, bindingId: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`, {
     method: "DELETE",
+  });
+}
+
+// ============================================================
+// Logs (admin)
+// ============================================================
+
+export async function fetchLogs(params?: {
+  limit?: number;
+  level?: string;
+  module?: string;
+  search?: string;
+  since?: string;
+}): Promise<LogsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.level) query.set("level", params.level);
+  if (params?.module) query.set("module", params.module);
+  if (params?.search) query.set("search", params.search);
+  if (params?.since) query.set("since", params.since);
+  const qs = query.toString();
+  return fetchJSON<LogsResponse>(`${API_BASE}/logs${qs ? `?${qs}` : ""}`);
+}
+
+export async function getLogLevel(): Promise<{ level: string }> {
+  return fetchJSON<{ level: string }>(`${API_BASE}/logs/level`);
+}
+
+export async function setLogLevel(level: LogLevel): Promise<{ level: string; previous: string }> {
+  return fetchJSON(`${API_BASE}/logs/level`, {
+    method: "PUT",
+    body: JSON.stringify({ level }),
   });
 }

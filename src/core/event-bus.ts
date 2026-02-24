@@ -12,7 +12,7 @@ export class EventBus {
   }
 
   emit(event: EngineEvent): void {
-    this.logger.debug({ eventType: event.type }, "Event emitted");
+    this.logger.trace({ eventType: event.type }, "Event emitted");
     this.emitter.emit("event", event);
   }
 

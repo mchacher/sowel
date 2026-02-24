@@ -2,16 +2,26 @@ import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "ws";
 import type { EventBus } from "../core/event-bus.js";
 import type { AuthService } from "../auth/auth-service.js";
+import type { LogRingBuffer } from "../core/log-buffer.js";
 import type { Logger } from "../core/logger.js";
 import type { EngineEvent } from "../shared/types.js";
 
 interface WebSocketDeps {
   eventBus: EventBus;
   authService: AuthService;
+  logBuffer: LogRingBuffer;
   logger: Logger;
 }
 
-type WsTopic = "devices" | "equipments" | "zones" | "modes" | "recipes" | "calendar" | "system";
+type WsTopic =
+  | "devices"
+  | "equipments"
+  | "zones"
+  | "modes"
+  | "recipes"
+  | "calendar"
+  | "system"
+  | "logs";
 
 const VALID_TOPICS = new Set<WsTopic>([
   "devices",
@@ -21,6 +31,7 @@ const VALID_TOPICS = new Set<WsTopic>([
   "recipes",
   "calendar",
   "system",
+  "logs",
 ]);
 const BATCH_INTERVAL_MS = 200;
 
@@ -28,6 +39,7 @@ interface ClientState {
   socket: WebSocket;
   topics: Set<WsTopic>;
   pending: EngineEvent[];
+  logUnsubscribe?: () => void;
 }
 
 function getEventTopic(event: EngineEvent): WsTopic {
@@ -85,7 +97,7 @@ function deduplicateEvents(events: EngineEvent[]): EngineEvent[] {
 }
 
 export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): void {
-  const { eventBus, authService, logger: baseLogger } = deps;
+  const { eventBus, authService, logBuffer, logger: baseLogger } = deps;
   const logger = baseLogger.child({ module: "websocket" });
   const clients = new Map<WebSocket, ClientState>();
 
@@ -121,6 +133,32 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
       }
     }
   });
+
+  /** Subscribe a client to log streaming via ring buffer */
+  function subscribeToLogs(state: ClientState): void {
+    // Unsubscribe previous if any
+    if (state.logUnsubscribe) {
+      state.logUnsubscribe();
+      state.logUnsubscribe = undefined;
+    }
+
+    state.logUnsubscribe = logBuffer.subscribe((entry) => {
+      if (state.socket.readyState !== 1) return;
+      try {
+        state.socket.send(JSON.stringify({ type: "log.entry", ...entry }));
+      } catch {
+        // Socket may have closed
+      }
+    });
+  }
+
+  /** Unsubscribe a client from log streaming */
+  function unsubscribeFromLogs(state: ClientState): void {
+    if (state.logUnsubscribe) {
+      state.logUnsubscribe();
+      state.logUnsubscribe = undefined;
+    }
+  }
 
   app.get("/ws", { websocket: true }, (socket, request) => {
     // Auth via query param: ws://host/ws?token=xxx
@@ -160,6 +198,16 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
               newTopics.add(t as WsTopic);
             }
           }
+
+          // Handle logs topic subscription/unsubscription
+          const hadLogs = state.topics.has("logs");
+          const wantsLogs = newTopics.has("logs");
+          if (!hadLogs && wantsLogs) {
+            subscribeToLogs(state);
+          } else if (hadLogs && !wantsLogs) {
+            unsubscribeFromLogs(state);
+          }
+
           state.topics = newTopics;
           logger.debug({ topics: [...newTopics] }, "Client subscribed");
         }
@@ -169,12 +217,14 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
     });
 
     socket.on("close", () => {
+      unsubscribeFromLogs(state);
       clients.delete(socket);
       logger.info({ clients: clients.size }, "WebSocket client disconnected");
     });
 
     socket.on("error", (err) => {
       logger.error({ err }, "WebSocket error");
+      unsubscribeFromLogs(state);
       clients.delete(socket);
     });
 

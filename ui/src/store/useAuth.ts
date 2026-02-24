@@ -17,6 +17,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setupRequired: boolean | null; // null = loading
   loading: boolean;
+  accessToken: string | null;
 
   // Actions
   checkStatus: () => Promise<void>;
@@ -35,12 +36,14 @@ function saveTokens(accessToken: string, refreshToken: string): void {
   localStorage.setItem(STORAGE_KEY_ACCESS, accessToken);
   localStorage.setItem(STORAGE_KEY_REFRESH, refreshToken);
   setAccessToken(accessToken);
+  useAuth.setState({ accessToken });
 }
 
 function clearTokens(): void {
   localStorage.removeItem(STORAGE_KEY_ACCESS);
   localStorage.removeItem(STORAGE_KEY_REFRESH);
   setAccessToken(null);
+  useAuth.setState({ accessToken: null });
 }
 
 function getStoredRefreshToken(): string | null {
@@ -67,6 +70,7 @@ export const useAuth = create<AuthState>((set, get) => {
     isAuthenticated: false,
     setupRequired: null,
     loading: true,
+    accessToken: storedToken,
 
     checkStatus: async () => {
       set({ loading: true });

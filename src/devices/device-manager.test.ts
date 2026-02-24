@@ -20,7 +20,7 @@ function createTestDb(): Database.Database {
   return db;
 }
 
-const logger = createLogger("silent");
+const logger = createLogger("silent").logger;
 
 describe("DeviceManager", () => {
   let db: Database.Database;

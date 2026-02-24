@@ -27,7 +27,7 @@ function createTestDb(): Database.Database {
   return db;
 }
 
-const logger = createLogger("silent");
+const logger = createLogger("silent").logger;
 
 // Minimal mocks for EquipmentManager and RecipeManager
 function createMockEquipmentManager() {
