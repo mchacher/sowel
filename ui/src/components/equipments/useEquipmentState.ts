@@ -5,7 +5,6 @@ import {
   getSensorIcon,
   getSensorIconColor,
   getSensorBindings,
-  getBatteryBinding,
   getAllBatteryBindings,
 } from "./sensorUtils";
 
