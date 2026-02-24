@@ -1,9 +1,8 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-
-const SETTLE_DELAY_MS = 2000;
+import { useSliderOverride } from "../../hooks/useSliderOverride";
 
 interface LightControlProps {
   equipment: EquipmentWithDetails;
@@ -14,9 +13,7 @@ interface LightControlProps {
 export function LightControl({ equipment, onExecuteOrder, compact }: LightControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
-  const [, forceRender] = useState(0);
-  const localValue = useRef<number | null>(null);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slider = useSliderOverride();
 
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state"
@@ -35,10 +32,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
       : null
     : null;
 
-  // While local override is active (dragging or settling), show local value
-  const brightness = localValue.current !== null
-    ? localValue.current
-    : deviceBrightness;
+  const brightness = slider.displayValue(deviceBrightness);
 
   const toggleBinding = equipment.orderBindings.find(
     (ob) => ob.type === "boolean"
@@ -48,7 +42,9 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
     (ob) => ob.type === "number" && (ob.alias === "brightness" || ob.key === "brightness")
   );
 
-  const handleToggle = async () => {
+  const handleToggle = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (executing || !toggleBinding) return;
     setExecuting(true);
     try {
@@ -63,27 +59,8 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
     }
   };
 
-  const handleBrightnessChange = (newValue: number) => {
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    localValue.current = newValue;
-    forceRender((n) => n + 1);
-  };
-
-  const handleBrightnessCommit = async () => {
-    const commitValue = localValue.current;
-    if (!hasBrightness || commitValue === null) return;
-    try {
-      await onExecuteOrder("brightness", commitValue);
-    } catch {
-      // Ignore
-    }
-    // Keep showing target value until device settles
-    settleTimer.current = setTimeout(() => {
-      localValue.current = null;
-      settleTimer.current = null;
-      forceRender((n) => n + 1);
-    }, SETTLE_DELAY_MS);
-  };
+  const handleBrightnessCommit = () =>
+    slider.onCommit((v) => onExecuteOrder("brightness", v));
 
   if (compact) {
     return (
@@ -95,10 +72,11 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
               min={0}
               max={254}
               value={brightness}
-              onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+              onChange={(e) => slider.onChange(Number(e.target.value))}
               onMouseUp={handleBrightnessCommit}
               onTouchEnd={handleBrightnessCommit}
-              className="w-[80px] accent-active h-1"
+              onClick={(e) => e.stopPropagation()}
+              className="w-[80px] accent-primary h-1"
             />
             <span className="text-[11px] text-text-tertiary w-7 text-right tabular-nums">
               {Math.round((brightness / 254) * 100)}%
@@ -112,7 +90,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
           className={`
             p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
             ${isOn
-              ? "bg-active text-white hover:bg-active/80"
+              ? "bg-primary text-white hover:bg-primary-hover"
               : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
             }
             disabled:opacity-50 disabled:cursor-not-allowed
@@ -136,7 +114,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
             transition-colors duration-150
             ${isOn
-              ? "bg-active text-white hover:bg-active/80"
+              ? "bg-primary text-white hover:bg-primary-hover"
               : "bg-border-light text-text-secondary hover:bg-border hover:text-text"
             }
             disabled:opacity-50
@@ -156,10 +134,10 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             min={0}
             max={254}
             value={brightness}
-            onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+            onChange={(e) => slider.onChange(Number(e.target.value))}
             onMouseUp={handleBrightnessCommit}
             onTouchEnd={handleBrightnessCommit}
-            className="flex-1 accent-active h-1.5"
+            className="flex-1 accent-primary h-1.5"
           />
           <span className="text-[12px] text-text-secondary w-10 text-right">
             {Math.round((brightness / 254) * 100)}%
