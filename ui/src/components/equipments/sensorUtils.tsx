@@ -185,7 +185,7 @@ export function isContactOpen(bindings: DataBindingWithValue[]): boolean {
 export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
   const primaryCat = getPrimarySensorCategory(bindings);
   if (primaryCat === "motion" && isMotionDetected(bindings)) {
-    return "bg-amber-400/15 text-amber-500";
+    return "bg-active/15 text-active-text";
   }
   if (primaryCat === "action") {
     return "bg-primary/10 text-primary";
@@ -194,7 +194,7 @@ export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
     (primaryCat === "contact_door" || primaryCat === "contact_window") &&
     isContactOpen(bindings)
   ) {
-    return "bg-amber-400/15 text-amber-500";
+    return "bg-active/15 text-active-text";
   }
   return "bg-border-light text-text-tertiary";
 }

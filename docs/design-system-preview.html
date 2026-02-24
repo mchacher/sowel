@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Winch Design System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1A4F6E;
+    --primary-hover: #13405A;
+    --primary-light: #E6F0F6;
+    --accent: #D4963F;
+    --accent-hover: #BB8232;
+    --active: #EAB308;
+    --active-text: #A16207;
+    --success: #3D8B6E;
+    --warning: #C88B3A;
+    --error: #C0453A;
+    --bg: #F8FAFB;
+    --surface: #FFFFFF;
+    --text: #1A1A1A;
+    --text-secondary: #6B7280;
+    --text-tertiary: #9CA3AF;
+    --border: #E1E6EA;
+    --border-light: #EDF0F3;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; color: var(--text); background: var(--bg); padding: 32px; line-height: 1.5; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 32px 0 16px; color: var(--text); }
+  h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+  .grid { display: grid; gap: 24px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+
+  /* Color swatches */
+  .swatch-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .swatch { width: 120px; }
+  .swatch-color { width: 100%; height: 48px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 6px; }
+  .swatch-label { font-size: 12px; font-weight: 600; color: var(--text); }
+  .swatch-hex { font-size: 11px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; }
+
+  /* Section headers */
+  .section-header { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 10px 10px 0 0; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); }
+  .section-body { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+  .section-row { padding: 10px 16px; font-size: 13px; border-top: 1px solid var(--border-light); color: var(--text-secondary); }
+  .section-row:first-child { border-top: none; }
+
+  /* Pills */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 5px; font-size: 13px; font-weight: 500; }
+  .pill-bar { display: flex; align-items: center; gap: 0; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .pill-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+
+  /* Toggle */
+  .toggle { width: 36px; height: 20px; border-radius: 10px; position: relative; cursor: pointer; transition: background 0.2s; }
+  .toggle-knob { width: 16px; height: 16px; border-radius: 50%; background: white; position: absolute; top: 2px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+  /* Slider */
+  .slider-track { width: 200px; height: 4px; border-radius: 2px; background: var(--border); position: relative; }
+  .slider-fill { height: 100%; border-radius: 2px; }
+  .slider-thumb { width: 16px; height: 16px; border-radius: 50%; position: absolute; top: -6px; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+  /* Logo */
+  .logo-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .logo-label { font-size: 11px; color: var(--text-tertiary); }
+
+  /* Alerts */
+  .alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 8px; border-left: 3px solid; }
+
+  /* Mono values */
+  .mono { font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="40" height="40" fill="none">
+    <rect width="32" height="32" rx="7" fill="#1A4F6E"/>
+    <circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/>
+    <circle cx="16" cy="16" r="2" fill="white"/>
+    <line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="23.5" cy="10.5" r="2" fill="white"/>
+  </svg>
+  <h1>Winch Design System</h1>
+</div>
+<p class="subtitle">One turn. Full control. &mdash; Home automation engine</p>
+
+<!-- ============================== COLORS ============================== -->
+<h2>Colors</h2>
+
+<h3>Core Palette</h3>
+<div class="swatch-row">
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--primary);"></div>
+    <div class="swatch-label">Primary</div>
+    <div class="swatch-hex">#1A4F6E</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--primary-hover);"></div>
+    <div class="swatch-label">Primary Hover</div>
+    <div class="swatch-hex">#13405A</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--primary-light);"></div>
+    <div class="swatch-label">Primary Light</div>
+    <div class="swatch-hex">#E6F0F6</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--accent);"></div>
+    <div class="swatch-label">Accent</div>
+    <div class="swatch-hex">#D4963F</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--accent-hover);"></div>
+    <div class="swatch-label">Accent Hover</div>
+    <div class="swatch-hex">#BB8232</div>
+  </div>
+</div>
+
+<h3>Semantic Colors</h3>
+<div class="swatch-row">
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--active);"></div>
+    <div class="swatch-label">Active / ON</div>
+    <div class="swatch-hex">#EAB308</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--active-text);"></div>
+    <div class="swatch-label">Active Text</div>
+    <div class="swatch-hex">#A16207</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--success);"></div>
+    <div class="swatch-label">Success</div>
+    <div class="swatch-hex">#3D8B6E</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--warning);"></div>
+    <div class="swatch-label">Warning</div>
+    <div class="swatch-hex">#C88B3A</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--error);"></div>
+    <div class="swatch-label">Error</div>
+    <div class="swatch-hex">#C0453A</div>
+  </div>
+</div>
+
+<h3>Neutrals</h3>
+<div class="swatch-row">
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--bg); border: 1px solid var(--border);"></div>
+    <div class="swatch-label">Background</div>
+    <div class="swatch-hex">#F8FAFB</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--surface); border: 1px solid var(--border);"></div>
+    <div class="swatch-label">Surface</div>
+    <div class="swatch-hex">#FFFFFF</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--text);"></div>
+    <div class="swatch-label">Text</div>
+    <div class="swatch-hex">#1A1A1A</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--text-secondary);"></div>
+    <div class="swatch-label">Text Secondary</div>
+    <div class="swatch-hex">#6B7280</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--text-tertiary);"></div>
+    <div class="swatch-label">Text Tertiary</div>
+    <div class="swatch-hex">#9CA3AF</div>
+  </div>
+  <div class="swatch">
+    <div class="swatch-color" style="background: var(--border);"></div>
+    <div class="swatch-label">Border</div>
+    <div class="swatch-hex">#E1E6EA</div>
+  </div>
+</div>
+
+<!-- ============================== TYPOGRAPHY ============================== -->
+<h2>Typography</h2>
+<div class="card" style="margin-bottom: 24px;">
+  <div style="margin-bottom: 16px;">
+    <span style="font-size: 28px; font-weight: 600;" class="mono">21.5<span style="font-size: 14px; color: var(--text-tertiary); font-weight: 400;">°C</span></span>
+    <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 12px;">Data value (28px, JetBrains Mono)</span>
+  </div>
+  <div style="margin-bottom: 16px;">
+    <span style="font-size: 20px; font-weight: 600;" class="mono">65<span style="font-size: 13px; color: var(--text-tertiary); font-weight: 400;">%</span></span>
+    <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 12px;">Data medium (20px)</span>
+  </div>
+  <div style="margin-bottom: 8px; font-size: 14px;">Body text at 14px using Inter font family.</div>
+  <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500;">Label &mdash; 11px uppercase tracking</div>
+</div>
+
+<!-- ============================== SECTION HEADERS ============================== -->
+<h2>Section Headers (Zone Cards)</h2>
+<div class="grid grid-2">
+  <div>
+    <div class="section-body">
+      <div class="section-header" style="background: rgba(234,179,8,0.08);">
+        <span style="color: var(--active-text);">&#9728;</span> Lights <span style="margin-left: auto;">3</span>
+      </div>
+      <div class="section-row">Spots Salon &mdash; ON</div>
+      <div class="section-row">Lampe Bureau &mdash; OFF</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background: rgba(26,79,110,0.06);">
+        <span style="color: var(--primary);">&#9632;</span> Shutters <span style="margin-left: auto;">2</span>
+      </div>
+      <div class="section-row">Volet Salon &mdash; 75%</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background: rgba(192,69,58,0.06);">
+        <span style="color: var(--error);">&#9832;</span> Climate <span style="margin-left: auto;">1</span>
+      </div>
+      <div class="section-row">Pompe chaleur &mdash; 21.5°C</div>
+    </div>
+  </div>
+  <div>
+    <div class="section-body">
+      <div class="section-header" style="background: rgba(26,79,110,0.06);">
+        <span style="color: var(--primary);">&#9673;</span> Sensors <span style="margin-left: auto;">4</span>
+      </div>
+      <div class="section-row">Capteur Salon &mdash; 22.1°C / 45%</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background: rgba(61,139,110,0.08);">
+        <span style="color: var(--success);">&#9881;</span> Modes <span style="margin-left: auto;">2 active</span>
+      </div>
+      <div class="section-row">Mode Nuit &mdash; Active</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background: rgba(212,150,63,0.08);">
+        <span style="color: var(--accent);">&#9733;</span> Recipes <span style="margin-left: auto;">1</span>
+      </div>
+      <div class="section-row">Auto-off &mdash; Spots Salon</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== AGGREGATION PILLS ============================== -->
+<h2>Aggregation Pills</h2>
+<div class="card">
+  <div class="pill-bar">
+    <div class="pill" style="color: var(--primary);">&#9832; 21.5°C</div>
+    <div class="pill-sep"></div>
+    <div class="pill" style="color: var(--primary);">&#128167; 45%</div>
+    <div class="pill-sep"></div>
+    <div class="pill" style="color: var(--active-text);">&#9899; Motion &middot; 5min</div>
+    <div class="pill-sep"></div>
+    <div class="pill" style="color: var(--active-text);">&#128161; 2/3</div>
+    <div class="pill-sep"></div>
+    <div class="pill" style="color: var(--primary);">&#9632; 1/2</div>
+    <div class="pill-sep"></div>
+    <div class="pill" style="color: var(--active-text);">&#128682; 1 open</div>
+  </div>
+</div>
+
+<!-- ============================== CONTROLS ============================== -->
+<h2>Controls</h2>
+<div class="grid grid-3">
+  <div class="card">
+    <h3>Buttons</h3>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="btn btn-primary">Save</button>
+      <button class="btn btn-outline">Cancel</button>
+      <button class="btn" style="background: var(--error); color: white;">Delete</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Toggles</h3>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      <div>
+        <div class="toggle" style="background: var(--primary);"><div class="toggle-knob" style="left: 18px;"></div></div>
+        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">Primary ON</div>
+      </div>
+      <div>
+        <div class="toggle" style="background: var(--border);"><div class="toggle-knob" style="left: 2px;"></div></div>
+        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">OFF</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Sliders</h3>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div>
+        <div class="slider-track">
+          <div class="slider-fill" style="width: 65%; background: var(--primary);"></div>
+          <div class="slider-thumb" style="left: calc(65% - 8px); background: var(--primary);"></div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">Primary slider</div>
+      </div>
+      <div>
+        <div class="slider-track">
+          <div class="slider-fill" style="width: 80%; background: var(--active);"></div>
+          <div class="slider-thumb" style="left: calc(80% - 8px); background: var(--active);"></div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">Active slider (brightness)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== BADGES ============================== -->
+<h2>Status Badges</h2>
+<div class="card">
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+    <span class="badge" style="background: rgba(61,139,110,0.1); color: var(--success);">&#10003; Connected</span>
+    <span class="badge" style="background: rgba(192,69,58,0.1); color: var(--error);">&#9888; Error</span>
+    <span class="badge" style="background: rgba(200,139,58,0.1); color: var(--warning);">&#9888; Ignition</span>
+    <span class="badge" style="background: rgba(234,179,8,0.14); color: var(--active-text);">&#128161; ON</span>
+    <span class="badge" style="background: rgba(26,79,110,0.1); color: var(--primary);">&#10148; Running</span>
+    <span class="badge" style="background: var(--border-light); color: var(--text-tertiary);">Inactive</span>
+  </div>
+</div>
+
+<!-- ============================== ALERTS ============================== -->
+<h2>Alerts</h2>
+<div style="max-width: 500px;">
+  <div class="alert" style="background: rgba(61,139,110,0.08); border-color: var(--success); color: var(--success);">
+    Token created successfully. Copy it now.
+  </div>
+  <div class="alert" style="background: rgba(200,139,58,0.08); border-color: var(--warning); color: var(--warning);">
+    Integration restarted with new settings.
+  </div>
+  <div class="alert" style="background: rgba(192,69,58,0.08); border-color: var(--error); color: var(--error);">
+    Connection failed. Check your credentials.
+  </div>
+</div>
+
+<!-- ============================== THERMOSTAT MODES ============================== -->
+<h2>Thermostat Modes</h2>
+<div class="card">
+  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+    <span class="badge" style="background: rgba(26,79,110,0.1); color: var(--primary); border: 1px solid rgba(26,79,110,0.3);">&#9889; Auto</span>
+    <span class="badge" style="background: rgba(26,79,110,0.1); color: var(--primary); border: 1px solid rgba(26,79,110,0.3);">&#10052; Cool</span>
+    <span class="badge" style="background: rgba(192,69,58,0.1); color: var(--error); border: 1px solid rgba(192,69,58,0.3);">&#9728; Heat</span>
+    <span class="badge" style="background: rgba(61,139,110,0.1); color: var(--success); border: 1px solid rgba(61,139,110,0.3);">&#128167; Dry</span>
+    <span class="badge" style="background: rgba(156,163,175,0.1); color: var(--text-secondary); border: 1px solid rgba(156,163,175,0.3);">&#127744; Fan</span>
+    <span class="badge" style="background: rgba(200,139,58,0.1); color: var(--warning); border: 1px solid rgba(200,139,58,0.3);">&#128715; Comfort</span>
+  </div>
+</div>
+
+<!-- ============================== LOGO ============================== -->
+<h2>Logo</h2>
+<div class="card">
+  <div class="logo-row">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+      <rect width="32" height="32" rx="7" fill="#1A4F6E"/>
+      <circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/>
+      <circle cx="16" cy="16" r="2" fill="white"/>
+      <line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="23.5" cy="10.5" r="2" fill="white"/>
+    </svg>
+    <span class="logo-label">32px (sidebar)</span>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="48" height="48" fill="none">
+      <rect width="32" height="32" rx="7" fill="#1A4F6E"/>
+      <circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/>
+      <circle cx="16" cy="16" r="2" fill="white"/>
+      <line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="23.5" cy="10.5" r="2" fill="white"/>
+    </svg>
+    <span class="logo-label">48px (login)</span>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64" fill="none">
+      <rect width="32" height="32" rx="7" fill="#1A4F6E"/>
+      <circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/>
+      <circle cx="16" cy="16" r="2" fill="white"/>
+      <line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="23.5" cy="10.5" r="2" fill="white"/>
+    </svg>
+    <span class="logo-label">64px (large)</span>
+  </div>
+</div>
+
+<!-- ============================== RADIUS ============================== -->
+<h2>Border Radius</h2>
+<div style="display: flex; gap: 16px; align-items: end;">
+  <div style="text-align: center;">
+    <div style="width: 60px; height: 36px; background: var(--primary); border-radius: 6px;"></div>
+    <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">6px (btn)</div>
+  </div>
+  <div style="text-align: center;">
+    <div style="width: 80px; height: 60px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;"></div>
+    <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">10px (card)</div>
+  </div>
+  <div style="text-align: center;">
+    <div style="width: 100px; height: 70px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;"></div>
+    <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">14px (modal)</div>
+  </div>
+</div>
+
+</body>
+</html>

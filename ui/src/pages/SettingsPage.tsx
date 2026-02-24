@@ -277,7 +277,7 @@ function ChangePasswordSection() {
             />
           </div>
           {error && <p className="text-[13px] text-error">{error}</p>}
-          {success && <p className="text-[13px] text-green-600">{t("settings.passwordChanged")}</p>}
+          {success && <p className="text-[13px] text-success">{t("settings.passwordChanged")}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleSubmit}
@@ -354,8 +354,8 @@ function ApiTokensSection() {
       <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.apiTokens")}</h2>
 
       {newTokenValue && (
-        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-[6px]">
-          <p className="text-[12px] text-green-800 dark:text-green-300 mb-2">{t("settings.tokenCreated")}</p>
+        <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-[6px]">
+          <p className="text-[12px] text-success mb-2">{t("settings.tokenCreated")}</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-[12px] font-mono bg-background px-2 py-1 rounded border border-border break-all">
               {newTokenValue}
@@ -405,7 +405,7 @@ function ApiTokensSection() {
               </div>
               <button
                 onClick={() => handleRevoke(token.id)}
-                className="text-[12px] text-error hover:text-red-700 font-medium cursor-pointer"
+                className="text-[12px] text-error hover:text-error/80 font-medium cursor-pointer"
               >
                 {t("settings.revokeToken")}
               </button>
@@ -589,8 +589,8 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                   disabled={u.id === currentUserId}
                   className={`text-[11px] px-2 py-0.5 rounded font-medium cursor-pointer ${
                     u.enabled
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      ? "bg-success/10 text-success"
+                      : "bg-error/10 text-error"
                   } ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {u.enabled ? t("settings.enabled") : t("common.disabled")}
@@ -670,7 +670,7 @@ function BackupSection() {
       <p className="text-[12px] text-text-tertiary mb-4">{t("settings.backupDescription")}</p>
 
       {error && <p className="mb-3 text-[13px] text-error">{error}</p>}
-      {success && <p className="mb-3 text-[13px] text-green-600 dark:text-green-400">{success}</p>}
+      {success && <p className="mb-3 text-[13px] text-success">{success}</p>}
 
       <div className="flex items-center gap-2">
         <button

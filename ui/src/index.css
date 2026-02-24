@@ -9,25 +9,25 @@
    ============================================================ */
 
 @theme {
-  /* Colors — Light mode */
-  --color-primary: #1B6B5A;
-  --color-primary-light: #E8F4F0;
-  --color-primary-hover: #155A4A;
-  --color-accent: #D4873F;
-  --color-accent-hover: #BE7535;
-  --color-background: #FAFAF8;
+  /* Colors — Light mode (Ocean palette) */
+  --color-primary: #1A4F6E;
+  --color-primary-light: #E6F0F6;
+  --color-primary-hover: #13405A;
+  --color-accent: #D4963F;
+  --color-accent-hover: #BB8232;
+  --color-background: #F8FAFB;
   --color-surface: #FFFFFF;
   --color-surface-raised: #FFFFFF;
   --color-text: #1A1A1A;
   --color-text-secondary: #6B7280;
   --color-text-tertiary: #9CA3AF;
-  --color-border: #E5E5E3;
-  --color-border-light: #F0F0EE;
-  --color-success: #22A06B;
-  --color-warning: #D4873F;
-  --color-error: #C9372C;
-  --color-info: #2563EB;
-  --color-motion: #2563EB;
+  --color-border: #E1E6EA;
+  --color-border-light: #EDF0F3;
+  --color-active: #EAB308;
+  --color-active-text: #A16207;
+  --color-success: #3D8B6E;
+  --color-warning: #C88B3A;
+  --color-error: #C0453A;
 
   /* Typography */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;

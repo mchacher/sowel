@@ -367,7 +367,7 @@ function RecipeInstanceRow({
                         log.level === "error"
                           ? "text-error"
                           : log.level === "warn"
-                            ? "text-amber-500"
+                            ? "text-warning"
                             : "text-text-secondary"
                       }
                     >
