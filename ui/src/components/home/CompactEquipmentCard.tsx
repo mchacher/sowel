@@ -177,7 +177,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 onMouseUp={handleBrightnessCommit}
                 onTouchEnd={handleBrightnessCommit}
                 onClick={(e) => e.stopPropagation()}
-                className="w-[60px] accent-primary h-1"
+                className="w-[60px] accent-active h-1"
               />
               <span className="text-[11px] text-text-tertiary w-6 text-right tabular-nums">
                 {Math.round((brightness / 254) * 100)}%
@@ -192,7 +192,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               className={`
                 p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer
                 ${isOn
-                  ? "bg-primary text-white hover:bg-primary-hover"
+                  ? "bg-active text-white hover:bg-active/80"
                   : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
                 }
                 disabled:opacity-50 disabled:cursor-not-allowed
