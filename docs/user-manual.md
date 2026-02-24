@@ -1,6 +1,6 @@
 # Winch — User Manual
 
-> Updated: 2026-02-21 — V0.9 Modes & Calendar
+> Updated: 2026-02-24 — V0.11 Logging
 
 ---
 
@@ -13,7 +13,7 @@ Winch takes the opposite approach: **structure first, simplicity always**.
 |                     | Home Assistant                                                    | Jeedom                               | **Winch**                                                                            |
 | ------------------- | ----------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
 | **Architecture**    | Flat entity list (thousands of `sensor.`, `light.`, `switch.`...) | Nested objects & commands            | **3 clear layers**: Device → Equipment → Zone                                        |
-| **Device setup**    | Integration + entity config per device                            | Plugin per protocol (often paid)     | **Zero config** — auto-discovery from zigbee2mqtt                                    |
+| **Device setup**    | Integration + entity config per device                            | Plugin per protocol (often paid)     | **Zero config** — auto-discovery from configured integrations                        |
 | **Room status**     | Create template sensors manually for each aggregation             | Write virtual devices + scenarios    | **Automatic** — motion, temperature, lights count, all computed in real-time         |
 | **Automations**     | YAML automations or Node-RED (extra component)                    | Block-based scenario editor          | **Recipes** — pre-built templates, just pick the zone and the light                  |
 | **Operating modes** | Manual: create `input_boolean` + automation per mode per room     | Manual: virtual switches + scenarios | **Built-in Modes** — define once, configure per zone, activate by button or calendar |
@@ -32,7 +32,7 @@ Winch separates the physical (Device) from the functional (Equipment), then orga
 
 ### 1. Devices — auto-discovered, never configured
 
-Devices are physical hardware on the MQTT network. Winch subscribes to zigbee2mqtt and discovers everything automatically: sensors, lights, switches, shutters, buttons. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
+Devices are physical hardware discovered from configured integrations (Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, Netatmo Home Control, etc.). Winch discovers everything automatically: sensors, lights, switches, shutters, buttons, thermostats. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
 
 You never configure a Device. You just look at the list, and they're there.
 
@@ -174,11 +174,12 @@ Browse auto-discovered hardware:
 
 ### Administration > Integrations
 
-Configure zigbee2mqtt connection:
+Configure device source connections:
 
-- MQTT broker URL, credentials, Z2M base topic
-- Connection status indicator
-- Save + reconnect without restarting
+- Each integration has its own settings (MQTT URL, cloud credentials, polling intervals, etc.)
+- Connection status indicator per integration
+- Connect / disconnect without restarting the engine
+- Supported: Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, Netatmo Home Control
 
 ### Settings
 
@@ -196,7 +197,7 @@ Configure zigbee2mqtt connection:
 ### Prerequisites
 
 - Node.js 20+
-- An MQTT broker with zigbee2mqtt running
+- At least one supported integration (e.g. Zigbee2MQTT with an MQTT broker, Panasonic CC account, etc.)
 
 ### Installation
 
@@ -218,7 +219,7 @@ LOG_LEVEL=info
 CORS_ORIGINS=http://localhost:5173
 ```
 
-> **Note**: MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.
+> **Note**: Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI (Administration > Integrations), not from `.env`.
 
 ### Start
 
@@ -235,8 +236,8 @@ Open **http://localhost:5173**.
 ### First run
 
 1. **Setup page** appears — create your admin account
-2. Go to **Administration > Integrations** — configure your MQTT broker
-3. Devices appear automatically
+2. Go to **Administration > Integrations** — configure your device sources (Zigbee2MQTT, cloud accounts, etc.)
+3. Devices appear automatically from connected integrations
 4. Go to **Administration > Zones** — create your home topology (Maison → Étage → Pièces)
 5. Go to **Administration > Equipments** — create equipments and bind them to devices
 6. Go to **Home** — enjoy your real-time dashboard
@@ -351,7 +352,7 @@ curl -X POST http://localhost:3000/api/v1/calendar/profiles/<id>/slots \
 curl http://localhost:3000/api/v1/recipes           # Available recipes
 curl -X POST http://localhost:3000/api/v1/recipe-instances \
   -H "Content-Type: application/json" \
-  -d '{"recipeId": "motion-light", "params": {"zone": "<zone-id>", "light": "<eq-id>", "timeout": "10m"}}'
+  -d '{"recipeId": "motion-light", "params": {"zone": "<zone-id>", "lights": ["<eq-id-1>", "<eq-id-2>"], "timeout": "10m"}}'
 ```
 
 ### Backup / Restore
@@ -376,6 +377,6 @@ Events: `device.data.updated`, `device.discovered`, `equipment.data.changed`, `e
 
 | Version | Feature                                                               |
 | ------- | --------------------------------------------------------------------- |
-| V0.10   | Computed Data — virtual data expressions (formulas across equipments) |
-| V0.11   | History — InfluxDB time-series with charts in UI                      |
+| V0.12   | Computed Data — virtual data expressions (formulas across equipments) |
+| V0.13   | History — InfluxDB time-series with charts in UI                      |
 | V1.0+   | AI Assistant — natural language scenario creation                     |

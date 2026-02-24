@@ -23,7 +23,7 @@ Winch separates concerns into three distinct layers:
 │  Binds to one or more physical Devices                       │
 ├─────────────────────────────────────────────────────────────┤
 │  LAYER 3 — PHYSICAL (Devices)                                │
-│  Hardware on the MQTT network                                │
+│  Hardware discovered from integrations                       │
 │  Auto-discovered, raw data and commands                      │
 │  Never directly manipulated by the end user                  │
 └─────────────────────────────────────────────────────────────┘
@@ -260,14 +260,14 @@ interface Equipment {
 
 ### 5.2 Equipment vs Device
 
-|                      | Device                           | Equipment                        |
-| -------------------- | -------------------------------- | -------------------------------- |
-| **Nature**           | Physical hardware                | Functional abstraction           |
-| **Discovery**        | Auto-discovered from MQTT        | Manually created by user         |
-| **Identity**         | IEEE address, MQTT topic         | User-chosen name                 |
-| **Location**         | Where physically installed       | Where functionally used          |
-| **Cardinality**      | 1 Device → N Equipments possible | 1 Equipment → N Devices possible |
-| **User interaction** | Never (technical layer)          | Always (primary interface)       |
+|                      | Device                            | Equipment                        |
+| -------------------- | --------------------------------- | -------------------------------- |
+| **Nature**           | Physical hardware                 | Functional abstraction           |
+| **Discovery**        | Auto-discovered from integrations | Manually created by user         |
+| **Identity**         | Integration-specific ID           | User-chosen name                 |
+| **Location**         | Where physically installed        | Where functionally used          |
+| **Cardinality**      | 1 Device → N Equipments possible  | 1 Equipment → N Devices possible |
+| **User interaction** | Never (technical layer)           | Always (primary interface)       |
 
 **Examples:**
 
@@ -295,7 +295,7 @@ interface DataBinding {
 ### 6.2 How It Works
 
 ```
-Device "Variateur Z2M #1"
+Device "Variateur #1"
 ├── DeviceData: key="state", value="ON"        ←─┐
 ├── DeviceData: key="brightness", value=180    ←──┼── DataBinding
 └── DeviceData: key="linkquality", value=85       │
@@ -349,8 +349,8 @@ When an Equipment Order is executed:
 User clicks "Turn On" on Equipment "Spots Salon"
   → API: POST /equipments/:id/orders/turn_on { value: true }
     → Equipment Manager finds OrderBinding alias="turn_on"
-      → Resolves to DeviceOrder (mqttSetTopic, payloadKey)
-        → MQTT publish: zigbee2mqtt/variateur_1/set {"state": "ON"}
+      → Resolves to DeviceOrder
+        → Integration Plugin dispatches command to device
 ```
 
 ### 7.3 Multi-Device Dispatch
@@ -383,23 +383,23 @@ CREATE TABLE order_bindings (
 
 ## 8. Device (Layer 3 — Physical)
 
-Devices are auto-discovered from MQTT. They are documented here for completeness — see V0.1 implementation for details.
+Devices are auto-discovered from configured integrations (Zigbee2MQTT, Panasonic CC, MCZ Maestro, Netatmo HC, etc.). They are documented here for completeness.
 
 ### 8.1 Interface
 
 ```typescript
 interface Device {
   id: string; // UUID v4
-  mqttBaseTopic: string; // "zigbee2mqtt/0x00158d0001a2b3c4"
-  mqttName: string; // "0x00158d0001a2b3c4" or friendly_name
+  mqttBaseTopic: string; // Integration-specific topic or identifier
+  mqttName: string; // Integration-specific name or ID
   name: string; // User-editable display name
-  manufacturer?: string; // "Aqara", "IKEA", "Sonoff"
-  model?: string; // "MCCGQ11LM"
-  ieeeAddress?: string; // Zigbee IEEE address
-  source: DeviceSource; // "zigbee2mqtt" | "tasmota" | "esphome" | ...
+  manufacturer?: string; // "Aqara", "IKEA", "Panasonic", "MCZ"
+  model?: string; // "MCCGQ11LM", "CS-Z25VKEW", etc.
+  ieeeAddress?: string; // Hardware address (Zigbee IEEE, serial, etc.)
+  source: DeviceSource; // "zigbee2mqtt" | "panasonic_cc" | "mcz_maestro" | "netatmo_hc" | ...
   status: DeviceStatus; // "online" | "offline" | "unknown"
   lastSeen: string | null; // ISO 8601
-  rawExpose?: unknown; // Raw zigbee2mqtt expose definition
+  rawExpose?: unknown; // Raw integration-specific metadata
   createdAt: string;
   updatedAt: string;
 }
@@ -490,13 +490,10 @@ zone.<zoneId>.<key>                    → Zone aggregated Data
 The complete event-driven pipeline:
 
 ```
-MQTT message arrives
+Integration event (MQTT message, cloud API poll, etc.)
   │
   ▼
-MQTT Connector (receives raw message)
-  │
-  ▼
-Parser (zigbee2mqtt / tasmota / esphome)
+Integration Plugin (receives + parses)
   │
   ▼
 Device Manager (updates DeviceData)
@@ -524,7 +521,7 @@ Scenario Engine (V0.7)
   ├── Checks conditions
   ├── Executes actions
   │
-  ├──▶ Actions may dispatch Equipment/Zone Orders → MQTT publish
+  ├──▶ Actions may dispatch Equipment/Zone Orders → Integration Plugin → device
   │
   ▼
 WebSocket Server
@@ -612,7 +609,7 @@ CREATE TABLE devices (
   manufacturer TEXT,
   model TEXT,
   ieee_address TEXT,
-  source TEXT NOT NULL DEFAULT 'zigbee2mqtt',
+  source TEXT NOT NULL,  -- integration source: 'zigbee2mqtt', 'panasonic_cc', 'mcz_maestro', 'netatmo_hc', ...
   status TEXT NOT NULL DEFAULT 'unknown',
   last_seen DATETIME,
   raw_expose JSON,
