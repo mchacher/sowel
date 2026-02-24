@@ -30,7 +30,7 @@ export interface IntegrationPlugin {
   getSettingsSchema(): IntegrationSettingDef[];
 
   /** Start the integration (connect, subscribe, start polling, etc.) */
-  start(): Promise<void>;
+  start(options?: { pollOffset?: number }): Promise<void>;
 
   /** Stop the integration gracefully */
   stop(): Promise<void>;
@@ -105,14 +105,20 @@ export class IntegrationRegistry {
   }
 
   async startAll(): Promise<void> {
+    const STAGGER_MS = 5_000;
+    let pollerIndex = 0;
+
     for (const plugin of this.plugins.values()) {
       if (plugin.isConfigured()) {
+        const isPolling = typeof plugin.getPollingInfo === "function";
+        const pollOffset = isPolling ? pollerIndex * STAGGER_MS : undefined;
         try {
-          await plugin.start();
+          await plugin.start({ pollOffset });
           this.logger.info({ integrationId: plugin.id }, "Integration started");
         } catch (err) {
           this.logger.error({ err, integrationId: plugin.id }, "Failed to start integration");
         }
+        if (isPolling) pollerIndex++;
       } else {
         this.logger.info(
           { integrationId: plugin.id },
