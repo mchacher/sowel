@@ -4,7 +4,13 @@ import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRigh
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails } from "../../types";
+import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
+
+function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
+  const types = Array.isArray(constraint) ? constraint : [constraint];
+  return types.some((t) => t === eqType);
+}
 
 interface ZoneRecipesSectionProps {
   zoneId: string;
@@ -154,7 +160,8 @@ function RecipeInstanceRow({
   const handleStartEdit = () => {
     const params: Record<string, string> = {};
     for (const [key, val] of Object.entries(instance.params)) {
-      params[key] = String(val ?? "");
+      // Store array values as comma-separated for the form
+      params[key] = Array.isArray(val) ? val.join(",") : String(val ?? "");
     }
     setEditParams(params);
     setEditError("");
@@ -179,7 +186,12 @@ function RecipeInstanceRow({
         setSaving(false);
         return;
       }
-      finalParams[slot.id] = value;
+      // Convert comma-separated string back to array for list slots
+      if (slot.list && value) {
+        finalParams[slot.id] = value.split(",").filter(Boolean);
+      } else {
+        finalParams[slot.id] = value;
+      }
     }
 
     try {
@@ -197,8 +209,13 @@ function RecipeInstanceRow({
     const ids = new Set<string>();
     for (const inst of allInstances) {
       if (inst.id === instance.id) continue;
-      if (inst.params.zone === zoneId && typeof inst.params.light === "string") {
-        ids.add(inst.params.light);
+      if (inst.params.zone !== zoneId) continue;
+      // Support both legacy "light" (string) and new "lights" (array)
+      if (typeof inst.params.light === "string") ids.add(inst.params.light);
+      if (Array.isArray(inst.params.lights)) {
+        for (const id of inst.params.lights) {
+          if (typeof id === "string") ids.add(id);
+        }
       }
     }
     return ids;
@@ -209,13 +226,9 @@ function RecipeInstanceRow({
     if (!slot) return [];
     return equipments.filter((eq) => {
       if (eq.zoneId !== zoneId) return false;
-      if (slot.type === "equipment" && usedLightIds.has(eq.id)) return false;
+      if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
-        const constraintType = slot.constraints.equipmentType;
-        if (constraintType === "light_onoff") {
-          return eq.type === "light_onoff" || eq.type === "light_dimmable" || eq.type === "light_color";
-        }
-        return eq.type === constraintType;
+        return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
       }
       return true;
     });
@@ -229,7 +242,12 @@ function RecipeInstanceRow({
       if (slot.id === "zone") continue;
       const val = instance.params[slot.id];
       if (val === undefined || val === null) continue;
-      if (slot.type === "equipment") {
+      if (slot.type === "equipment" && Array.isArray(val)) {
+        const names = val
+          .map((id: string) => equipments.find((e) => e.id === id)?.name ?? id)
+          .join(", ");
+        parts.push(names);
+      } else if (slot.type === "equipment") {
         const eq = equipments.find((e) => e.id === val);
         parts.push(eq?.name ?? String(val));
       } else {
@@ -304,7 +322,30 @@ function RecipeInstanceRow({
                   <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
                     {slot.name}
                   </label>
-                  {slot.type === "equipment" ? (
+                  {slot.type === "equipment" && slot.list ? (
+                    <div className="space-y-1">
+                      {getEquipmentOptions(slot.id).map((eq) => {
+                        const selected = (editParams[slot.id] ?? "").split(",").filter(Boolean);
+                        const checked = selected.includes(eq.id);
+                        return (
+                          <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const next = checked
+                                  ? selected.filter((id) => id !== eq.id)
+                                  : [...selected, eq.id];
+                                setEditParams({ ...editParams, [slot.id]: next.join(",") });
+                              }}
+                              className="accent-primary"
+                            />
+                            {eq.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : slot.type === "equipment" ? (
                     <select
                       value={editParams[slot.id] ?? ""}
                       onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
@@ -452,8 +493,12 @@ function AddRecipeForm({
   const usedLightIds = useMemo(() => {
     const ids = new Set<string>();
     for (const inst of instances) {
-      if (inst.params.zone === zoneId && typeof inst.params.light === "string") {
-        ids.add(inst.params.light);
+      if (inst.params.zone !== zoneId) continue;
+      if (typeof inst.params.light === "string") ids.add(inst.params.light);
+      if (Array.isArray(inst.params.lights)) {
+        for (const id of inst.params.lights) {
+          if (typeof id === "string") ids.add(id);
+        }
       }
     }
     return ids;
@@ -465,14 +510,9 @@ function AddRecipeForm({
     if (!slot) return [];
     return equipments.filter((eq) => {
       if (eq.zoneId !== zoneId) return false;
-      if (slot.type === "equipment" && usedLightIds.has(eq.id)) return false;
+      if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
-        const eqType = eq.type;
-        const constraintType = slot.constraints.equipmentType;
-        if (constraintType === "light_onoff") {
-          return eqType === "light_onoff" || eqType === "light_dimmable" || eqType === "light_color";
-        }
-        return eqType === constraintType;
+        return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
       }
       return true;
     });
@@ -484,13 +524,9 @@ function AddRecipeForm({
       if (slot.type !== "equipment") continue;
       const available = equipments.filter((eq) => {
         if (eq.zoneId !== zoneId) return false;
-        if (usedLightIds.has(eq.id)) return false;
+        if (!slot.list && usedLightIds.has(eq.id)) return false;
         if (slot.constraints?.equipmentType) {
-          const constraintType = slot.constraints.equipmentType;
-          if (constraintType === "light_onoff") {
-            return eq.type === "light_onoff" || eq.type === "light_dimmable" || eq.type === "light_color";
-          }
-          return eq.type === constraintType;
+          return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
         }
         return true;
       });
@@ -540,7 +576,11 @@ function AddRecipeForm({
         setSubmitting(false);
         return;
       }
-      finalParams[slot.id] = value;
+      if (slot.list && value) {
+        finalParams[slot.id] = value.split(",").filter(Boolean);
+      } else {
+        finalParams[slot.id] = value;
+      }
     }
 
     try {
@@ -658,7 +698,30 @@ function AddRecipeForm({
                 <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
                   {slot.name}
                 </label>
-                {slot.type === "equipment" ? (
+                {slot.type === "equipment" && slot.list ? (
+                  <div className="space-y-1">
+                    {getEquipmentOptions(slot.id).map((eq) => {
+                      const selected = (params[slot.id] ?? "").split(",").filter(Boolean);
+                      const checked = selected.includes(eq.id);
+                      return (
+                        <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? selected.filter((id) => id !== eq.id)
+                                : [...selected, eq.id];
+                              setParams({ ...params, [slot.id]: next.join(",") });
+                            }}
+                            className="accent-primary"
+                          />
+                          {eq.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : slot.type === "equipment" ? (
                   <select
                     value={params[slot.id] ?? ""}
                     onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
