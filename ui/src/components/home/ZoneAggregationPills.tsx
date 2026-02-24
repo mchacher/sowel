@@ -69,7 +69,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       key: "motion",
       icon: <PersonStanding size={14} strokeWidth={1.5} />,
       label: `${label}${suffix}`,
-      color: data.motion ? "text-amber-500" : "text-text-tertiary",
+      color: data.motion ? "text-active-text" : "text-text-tertiary",
     });
   }
 
@@ -80,7 +80,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       key: "lights",
       icon: <Lightbulb size={14} strokeWidth={1.5} />,
       label: `${data.lightsOn}/${data.lightsTotal}`,
-      color: isOn ? "text-amber-500" : "text-text-tertiary",
+      color: isOn ? "text-active-text" : "text-text-tertiary",
     });
   }
 
@@ -105,7 +105,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       key: "doors",
       icon: <DoorOpen size={14} strokeWidth={1.5} />,
       label: t("aggregation.open", { count: data.openDoors }),
-      color: "text-amber-500",
+      color: "text-active-text",
     });
   }
 
@@ -115,7 +115,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       key: "windows",
       icon: <SquareStack size={14} strokeWidth={1.5} />,
       label: t("aggregation.open", { count: data.openWindows }),
-      color: "text-amber-500",
+      color: "text-active-text",
     });
   }
 

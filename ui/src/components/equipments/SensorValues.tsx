@@ -45,7 +45,7 @@ export function SensorValues({
           {sensorBindings.map((b) => (
             <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
-                <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-amber-400/15 text-amber-500 inline-flex items-center gap-1">
+                <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-active/15 text-active-text inline-flex items-center gap-1">
                   {formatBooleanSensor(b.category, b.value, t)}
                   <ElapsedCounter lastUpdated={b.lastUpdated} lockOrigin />
                 </span>
@@ -59,7 +59,7 @@ export function SensorValues({
                   className={`
                     font-medium px-2 py-0.5 rounded-full text-[11px]
                     ${isBooleanActive(b.category, b.value)
-                      ? "bg-amber-400/15 text-amber-500"
+                      ? "bg-active/15 text-active-text"
                       : "bg-border-light text-text-tertiary"
                     }
                   `}

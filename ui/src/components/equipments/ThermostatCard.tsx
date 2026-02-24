@@ -42,22 +42,22 @@ const MODE_ICONS: Record<string, React.ReactNode> = {
 const MODE_COLORS: Record<string, string> = {
   // HVAC modes
   auto: "bg-primary/10 text-primary border-primary/30",
-  cool: "bg-blue-500/10 text-blue-500 border-blue-500/30",
-  heat: "bg-orange-500/10 text-orange-500 border-orange-500/30",
-  dry: "bg-teal-500/10 text-teal-500 border-teal-500/30",
-  fan: "bg-gray-500/10 text-gray-500 border-gray-500/30",
+  cool: "bg-primary/10 text-primary border-primary/30",
+  heat: "bg-error/10 text-error border-error/30",
+  dry: "bg-success/10 text-success border-success/30",
+  fan: "bg-text-tertiary/10 text-text-secondary border-text-tertiary/30",
   // Stove profiles
   dynamic: "bg-primary/10 text-primary border-primary/30",
-  overnight: "bg-indigo-500/10 text-indigo-500 border-indigo-500/30",
-  comfort: "bg-orange-500/10 text-orange-500 border-orange-500/30",
+  overnight: "bg-primary/10 text-primary border-primary/30",
+  comfort: "bg-warning/10 text-warning border-warning/30",
 };
 
 /** Color classes for stove state badge */
 function stoveStateColor(state: string): string {
   if (state === "off" || state === "standby") return "text-text-tertiary bg-border-light";
   if (state.startsWith("running") || state === "auto_eco") return "text-success bg-success/10";
-  if (state.startsWith("ignition") || state === "checking" || state === "stabilizing") return "text-orange-500 bg-orange-500/10";
-  if (state === "extinguishing" || state === "cooling" || state.startsWith("cleaning")) return "text-blue-500 bg-blue-500/10";
+  if (state.startsWith("ignition") || state === "checking" || state === "stabilizing") return "text-warning bg-warning/10";
+  if (state === "extinguishing" || state === "cooling" || state.startsWith("cleaning")) return "text-primary bg-primary/10";
   if (state.startsWith("error")) return "text-error bg-error/10";
   return "text-text-tertiary bg-border-light";
 }

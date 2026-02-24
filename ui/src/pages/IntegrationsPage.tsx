@@ -148,8 +148,8 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900/30 rounded-[6px] flex items-center justify-center">
-            <IconComponent size={16} className="text-yellow-600 dark:text-yellow-400" />
+          <div className="w-8 h-8 bg-accent/10 rounded-[6px] flex items-center justify-center">
+            <IconComponent size={16} className="text-accent" />
           </div>
           <div>
             <h2 className="text-[14px] font-semibold text-text">{integration.name}</h2>
@@ -159,17 +159,17 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-1.5">
             {isConnected ? (
-              <Wifi size={14} className="text-green-500" />
+              <Wifi size={14} className="text-success" />
             ) : isError ? (
-              <AlertTriangle size={14} className="text-red-500" />
+              <AlertTriangle size={14} className="text-error" />
             ) : (
               <WifiOff size={14} className="text-text-tertiary" />
             )}
             <span className={`text-[11px] font-medium ${
               isConnected
-                ? "text-green-600 dark:text-green-400"
+                ? "text-success"
                 : isError
-                  ? "text-red-600 dark:text-red-400"
+                  ? "text-error"
                   : "text-text-tertiary"
             }`}>
               {t(`status.${integration.status === "not_configured" ? "disconnected" : integration.status}`)}
@@ -195,7 +195,7 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
 
       {/* Error / Success */}
       {error && <p className="mt-3 text-[13px] text-error">{error}</p>}
-      {success && <p className="mt-3 text-[13px] text-green-600 dark:text-green-400">{success}</p>}
+      {success && <p className="mt-3 text-[13px] text-success">{success}</p>}
 
       {/* Actions */}
       <div className="flex items-center gap-2 mt-4">
