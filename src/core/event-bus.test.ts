@@ -3,7 +3,7 @@ import { EventBus } from "./event-bus.js";
 import { createLogger } from "./logger.js";
 import type { EngineEvent } from "../shared/types.js";
 
-const logger = createLogger("silent");
+const logger = createLogger("silent").logger;
 
 describe("EventBus", () => {
   it("emits events to handlers", () => {

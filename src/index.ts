@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
+import { LogRingBuffer } from "./core/log-buffer.js";
 import { openDatabase, runMigrations } from "./core/database.js";
 import { EventBus } from "./core/event-bus.js";
 import { DeviceManager } from "./devices/device-manager.js";
@@ -26,8 +27,10 @@ async function main() {
   // 1. Load configuration
   const config = loadConfig();
 
-  // 2. Initialize logger
-  const logger = createLogger(config.log.level);
+  // 2. Initialize logger with ring buffer for UI log viewer
+  const logBuffer = new LogRingBuffer();
+  const logHandle = createLogger(config.log.level, logBuffer);
+  const logger = logHandle.logger;
   logger.info("Winch engine starting...");
 
   // 3. Open SQLite database and run migrations
@@ -146,6 +149,7 @@ async function main() {
     buttonActionManager,
     eventBus,
     integrationRegistry,
+    logBuffer,
     logger,
     corsOrigins: config.cors.origins,
   });
@@ -176,11 +180,13 @@ async function main() {
   // Graceful shutdown
   const shutdown = async () => {
     logger.info("Shutting down...");
+    calendarManager.stopAll();
     recipeManager.stopAll();
     await server.close();
     await integrationRegistry.stopAll();
     db.close();
     logger.info("Shutdown complete");
+    await logHandle.close();
     process.exit(0);
   };
 
@@ -189,6 +195,13 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Fatal error:", err);
+  // Use stderr JSON as last resort — logger may not be initialized yet
+  const entry = {
+    level: "fatal",
+    time: new Date().toISOString(),
+    msg: "Fatal error",
+    err: String(err),
+  };
+  process.stderr.write(JSON.stringify(entry) + "\n");
   process.exit(1);
 });

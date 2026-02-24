@@ -23,7 +23,7 @@ function createTestDb(): Database.Database {
   return db;
 }
 
-const logger = createLogger("silent");
+const logger = createLogger("silent").logger;
 
 function createMockEquipmentManager() {
   return { executeOrder: vi.fn() } as any;

@@ -40,7 +40,7 @@ function createTestDb(): Database.Database {
   return db;
 }
 
-const logger = createLogger("silent");
+const logger = createLogger("silent").logger;
 
 // Helper to seed a device with data and orders
 function seedDevice(
