@@ -27,6 +27,9 @@ export type DataCategory =
   | "smoke"
   | "co2"
   | "voc"
+  | "noise"
+  | "rain"
+  | "wind"
   | "action"
   | "generic";
 
@@ -480,7 +483,7 @@ export type IntegrationStatus = "connected" | "disconnected" | "not_configured" 
 export interface IntegrationSettingDef {
   key: string;
   label: string;
-  type: "text" | "password" | "number";
+  type: "text" | "password" | "number" | "boolean";
   required: boolean;
   placeholder?: string;
   defaultValue?: string;

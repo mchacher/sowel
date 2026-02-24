@@ -103,6 +103,9 @@ export function categoryLabel(category: string): string {
     smoke: "Smoke",
     co2: "CO₂",
     voc: "VOC",
+    noise: "Noise",
+    rain: "Rain",
+    wind: "Wind",
     generic: "Generic",
   };
   return labels[category] ?? category;

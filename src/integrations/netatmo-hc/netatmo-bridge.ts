@@ -14,6 +14,7 @@ import type {
   NetatmoHomeStatusResponse,
   NetatmoGetMeasureResponse,
   NetatmoSetStateRequest,
+  NetatmoStationsDataResponse,
 } from "./netatmo-types.js";
 
 const BASE_URL = "https://api.netatmo.com";
@@ -39,7 +40,7 @@ export class NetatmoBridge {
     dataDir: string,
     onRefreshTokenUpdated?: (newToken: string) => void,
   ) {
-    this.logger = logger.child({ module: "netatmo-bridge" });
+    this.logger = logger.child({ module: "legrand-hc-bridge" });
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.refreshToken = refreshToken;
@@ -101,7 +102,7 @@ export class NetatmoBridge {
       this.onRefreshTokenUpdated(data.refresh_token);
     }
 
-    this.logger.info({ expiresIn: data.expires_in }, "Netatmo access token refreshed");
+    this.logger.info({ expiresIn: data.expires_in }, "Legrand H+C access token refreshed");
   }
 
   private scheduleRefresh(): void {
@@ -172,7 +173,7 @@ export class NetatmoBridge {
         }),
       );
     } catch (err) {
-      this.logger.error({ err }, "Failed to persist Netatmo tokens");
+      this.logger.error({ err }, "Failed to persist Legrand H+C tokens");
     }
   }
 
@@ -187,7 +188,7 @@ export class NetatmoBridge {
       const moduleTypes = (home.modules ?? []).map((m) => m.type);
       this.logger.info(
         { homeId: home.id, homeName: home.name, moduleCount: moduleTypes.length, moduleTypes },
-        "Netatmo raw homesdata",
+        "Legrand H+C raw homesdata",
       );
     }
     return data;
@@ -197,6 +198,10 @@ export class NetatmoBridge {
     return this.apiGet<NetatmoHomeStatusResponse>(
       `/api/homestatus?home_id=${encodeURIComponent(homeId)}`,
     );
+  }
+
+  async getStationsData(): Promise<NetatmoStationsDataResponse> {
+    return this.apiGet<NetatmoStationsDataResponse>("/api/getstationsdata");
   }
 
   async getMeasure(

@@ -52,7 +52,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     this.settingsManager = settingsManager;
     this.deviceManager = deviceManager;
     this.eventBus = eventBus;
-    this.logger = logger.child({ module: "integration-netatmo-hc" });
+    this.logger = logger.child({ module: "legrand-hc" });
   }
 
   getStatus(): IntegrationStatus {
@@ -98,6 +98,20 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         defaultValue: "300",
         placeholder: "300",
       },
+      {
+        key: "enable_home_control",
+        label: "Enable Home+Control devices",
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+      },
+      {
+        key: "enable_weather",
+        label: "Enable Weather Station",
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+      },
     ];
   }
 
@@ -122,6 +136,8 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     const refreshToken = this.getSetting("refresh_token")!;
     const pollingIntervalSec = parseInt(this.getSetting("polling_interval") ?? "300", 10);
     const pollingIntervalMs = (isNaN(pollingIntervalSec) ? 300 : pollingIntervalSec) * 1000;
+    const enableHomeControl = this.getSetting("enable_home_control") !== "false"; // default true
+    const enableWeather = this.getSetting("enable_weather") === "true";
 
     try {
       // Create bridge with token rotation callback
@@ -139,16 +155,19 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
 
       // Authenticate (refresh token → get access token)
       await this.bridge.authenticate();
-      this.logger.info("Netatmo authentication successful");
+      this.logger.info("Legrand H+C authentication successful");
 
-      // Discover home ID (use first home)
-      const homesData = await this.bridge.getHomesData();
-      const homes = homesData.body.homes;
-      if (homes.length === 0) {
-        throw new Error("No homes found in Netatmo account");
+      // Discover home ID (use first home) — needed for Home+Control
+      let homeId = "";
+      if (enableHomeControl) {
+        const homesData = await this.bridge.getHomesData();
+        const homes = homesData.body.homes;
+        if (homes.length === 0) {
+          throw new Error("No homes found in Legrand H+C account");
+        }
+        homeId = homes[0].id;
+        this.logger.info({ homeId, homeName: homes[0].name }, "Using Legrand H+C home");
       }
-      const homeId = homes[0].id;
-      this.logger.info({ homeId, homeName: homes[0].name }, "Using Netatmo home");
 
       // Start polling
       this.poller = new NetatmoPoller(
@@ -157,15 +176,17 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         homeId,
         this.logger,
         pollingIntervalMs,
+        enableHomeControl,
+        enableWeather,
       );
       await this.poller.start();
 
       this.status = "connected";
       this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
-      this.logger.info({ pollingIntervalMs }, "Netatmo Home+Control integration started");
+      this.logger.info({ pollingIntervalMs }, "Legrand H+C integration started");
     } catch (err) {
       this.status = "error";
-      this.logger.error({ err }, "Failed to start Netatmo Home+Control integration");
+      this.logger.error({ err }, "Failed to start Legrand H+C integration");
     }
   }
 
@@ -180,7 +201,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     }
     this.status = "disconnected";
     this.eventBus.emit({ type: "system.integration.disconnected", integrationId: this.id });
-    this.logger.info("Netatmo Home+Control integration stopped");
+    this.logger.info("Legrand H+C integration stopped");
   }
 
   async executeOrder(
@@ -189,7 +210,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     value: unknown,
   ): Promise<void> {
     if (!this.bridge || this.status !== "connected") {
-      throw new Error("Netatmo Home+Control integration not connected");
+      throw new Error("Legrand H+C integration not connected");
     }
 
     const homeId = dispatchConfig.homeId as string;
@@ -214,7 +235,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
       },
     });
 
-    this.logger.info({ moduleId, param, value }, "Netatmo order executed");
+    this.logger.info({ moduleId, param, value }, "Legrand H+C order executed");
 
     // Rapid-poll status until the expected state is confirmed (or 10s timeout)
     if (this.poller) {
@@ -224,10 +245,10 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
 
   async refresh(): Promise<void> {
     if (!this.poller || this.status !== "connected") {
-      throw new Error("Netatmo Home+Control integration not connected");
+      throw new Error("Legrand H+C integration not connected");
     }
     await this.poller.refresh();
-    this.logger.info("Netatmo Home+Control manual refresh completed");
+    this.logger.info("Legrand H+C manual refresh completed");
   }
 
   private getSetting(key: string): string | undefined {
