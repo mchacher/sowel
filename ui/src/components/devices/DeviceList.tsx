@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Device, DeviceData } from "../../types";
-import { formatRelativeTime, sourceLabel } from "../../lib/format";
+import { sourceLabel } from "../../lib/format";
+import { RelativeTime } from "../RelativeTime";
 import {
   Radio,
   Battery,
@@ -16,6 +17,8 @@ import {
 interface DeviceListProps {
   devices: Device[];
   deviceData: Record<string, DeviceData[]>;
+  /** Active integration tab (null = all devices). Controls which columns are shown. */
+  activeTab: string | null;
 }
 
 type SortKey =
@@ -89,11 +92,14 @@ function compareSortKey(
   }
 }
 
-export function DeviceList({ devices, deviceData }: DeviceListProps) {
+export function DeviceList({ devices, deviceData, activeTab }: DeviceListProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const showSource = activeTab === null;
+  const showRadioColumns = activeTab === null || activeTab === "zigbee2mqtt";
 
   if (devices.length === 0) {
     return <EmptyState />;
@@ -151,33 +157,39 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
               align="left"
               className="hidden md:table-cell"
             />
-            <SortHeader
-              label={t("devices.col.source")}
-              sortKey="source"
-              currentKey={sortKey}
-              currentDir={sortDir}
-              onSort={handleSort}
-              align="left"
-              className="hidden sm:table-cell"
-            />
-            <SortHeader
-              label={t("devices.col.battery")}
-              sortKey="battery"
-              currentKey={sortKey}
-              currentDir={sortDir}
-              onSort={handleSort}
-              align="center"
-              className="hidden md:table-cell"
-            />
-            <SortHeader
-              label={t("devices.col.lqi")}
-              sortKey="lqi"
-              currentKey={sortKey}
-              currentDir={sortDir}
-              onSort={handleSort}
-              align="center"
-              className="hidden lg:table-cell"
-            />
+            {showSource && (
+              <SortHeader
+                label={t("devices.col.source")}
+                sortKey="source"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={handleSort}
+                align="left"
+                className="hidden sm:table-cell"
+              />
+            )}
+            {showRadioColumns && (
+              <SortHeader
+                label={t("devices.col.battery")}
+                sortKey="battery"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={handleSort}
+                align="center"
+                className="hidden md:table-cell"
+              />
+            )}
+            {showRadioColumns && (
+              <SortHeader
+                label={t("devices.col.lqi")}
+                sortKey="lqi"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={handleSort}
+                align="center"
+                className="hidden lg:table-cell"
+              />
+            )}
             <SortHeader
               label={t("devices.col.lastSeen")}
               sortKey="lastSeen"
@@ -225,20 +237,26 @@ export function DeviceList({ devices, deviceData }: DeviceListProps) {
                     {device.model ?? "—"}
                   </span>
                 </td>
-                <td className="py-2.5 px-3 hidden sm:table-cell">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-border-light text-[10px] font-semibold text-text-secondary uppercase tracking-wide">
-                    {sourceLabel(device.source)}
-                  </span>
-                </td>
-                <td className="py-2.5 px-3 text-center hidden md:table-cell">
-                  <BatteryCell value={battery?.value} />
-                </td>
-                <td className="py-2.5 px-3 text-center hidden lg:table-cell">
-                  <LqiCell value={lqi?.value} />
-                </td>
+                {showSource && (
+                  <td className="py-2.5 px-3 hidden sm:table-cell">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-border-light text-[10px] font-semibold text-text-secondary uppercase tracking-wide">
+                      {sourceLabel(device.source)}
+                    </span>
+                  </td>
+                )}
+                {showRadioColumns && (
+                  <td className="py-2.5 px-3 text-center hidden md:table-cell">
+                    <BatteryCell value={battery?.value} />
+                  </td>
+                )}
+                {showRadioColumns && (
+                  <td className="py-2.5 px-3 text-center hidden lg:table-cell">
+                    <LqiCell value={lqi?.value} />
+                  </td>
+                )}
                 <td className="py-2.5 px-3 text-right hidden sm:table-cell">
                   <span className="text-[11px] text-text-tertiary">
-                    {formatRelativeTime(device.lastSeen)}
+                    <RelativeTime iso={device.lastSeen} />
                   </span>
                 </td>
               </tr>

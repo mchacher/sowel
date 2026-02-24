@@ -27,6 +27,8 @@ export class PanasonicPoller {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private polling = false;
+  private lastPollAt: string | null = null;
+  private staggerTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     bridge: PanasonicBridge,
@@ -46,18 +48,29 @@ export class PanasonicPoller {
     this.onDemandDelayMs = onDemandDelayMs;
   }
 
-  async start(): Promise<void> {
-    this.logger.info({ intervalMs: this.pollIntervalMs }, "Starting Panasonic poller");
+  async start(pollOffset = 0): Promise<void> {
+    this.logger.info({ intervalMs: this.pollIntervalMs, pollOffset }, "Starting Panasonic poller");
     // Immediate first poll — awaited so data is available at startup
     await this.poll();
-    // Regular polling
-    this.interval = setInterval(() => this.poll(), this.pollIntervalMs);
+    // Stagger recurring polls by pollOffset
+    const startInterval = () => {
+      this.interval = setInterval(() => this.poll(), this.pollIntervalMs);
+    };
+    if (pollOffset > 0) {
+      this.staggerTimeout = setTimeout(startInterval, pollOffset);
+    } else {
+      startInterval();
+    }
   }
 
   stop(): void {
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
+    }
+    if (this.staggerTimeout) {
+      clearTimeout(this.staggerTimeout);
+      this.staggerTimeout = null;
     }
     for (const timer of this.pendingTimers) {
       clearTimeout(timer);
@@ -69,6 +82,11 @@ export class PanasonicPoller {
   /** Force an immediate poll (for manual refresh). */
   async refresh(): Promise<void> {
     await this.poll();
+  }
+
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    if (!this.lastPollAt) return null;
+    return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
   }
 
   scheduleOnDemandPoll(delayMs?: number): void {
@@ -89,6 +107,7 @@ export class PanasonicPoller {
     this.polling = true;
 
     try {
+      this.lastPollAt = new Date().toISOString();
       this.logger.debug("Polling Panasonic devices...");
       const response = await this.bridge.getDevices(this.email, this.password);
 

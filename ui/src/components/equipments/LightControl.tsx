@@ -40,23 +40,23 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
     ? localValue.current
     : deviceBrightness;
 
-  const hasToggle = equipment.orderBindings.some(
-    (ob) => ob.alias === "state" || ob.alias === "turn_on"
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean"
   );
+  const hasToggle = !!toggleBinding;
   const hasBrightness = equipment.orderBindings.some(
-    (ob) => ob.alias === "brightness"
+    (ob) => ob.type === "number" && (ob.alias === "brightness" || ob.key === "brightness")
   );
 
   const handleToggle = async () => {
-    if (executing || !hasToggle) return;
+    if (executing || !toggleBinding) return;
     setExecuting(true);
     try {
-      const alias = equipment.orderBindings.find(
-        (ob) => ob.alias === "state"
-      )
-        ? "state"
-        : "turn_on";
-      const value = isOn ? (alias === "state" ? "OFF" : false) : (alias === "state" ? "ON" : true);
+      const alias = toggleBinding.alias;
+      // Boolean orders use true/false; "state" alias uses "ON"/"OFF" strings (Z2M convention)
+      const value = toggleBinding.type === "boolean" && alias !== "state"
+        ? !isOn
+        : (isOn ? "OFF" : "ON");
       await onExecuteOrder(alias, value);
     } finally {
       setExecuting(false);

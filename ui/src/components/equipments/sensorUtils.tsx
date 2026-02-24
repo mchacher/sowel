@@ -7,6 +7,9 @@ import {
   DoorOpen,
   DoorClosed,
   Wind,
+  Cloud,
+  CloudRain,
+  Volume2,
   Droplet,
   Flame,
   PersonStanding,
@@ -28,6 +31,9 @@ export const SENSOR_DATA_CATEGORIES: DataCategory[] = [
   "contact_window",
   "co2",
   "voc",
+  "wind",
+  "rain",
+  "noise",
   "water_leak",
   "smoke",
   "action",
@@ -44,6 +50,9 @@ const CATEGORY_PRIORITY: DataCategory[] = [
   "humidity",
   "luminosity",
   "pressure",
+  "wind",
+  "rain",
+  "noise",
   "co2",
   "voc",
   "water_leak",
@@ -62,6 +71,9 @@ const CATEGORY_KEYS: Partial<Record<DataCategory, string>> = {
   voc: "category.voc",
   water_leak: "category.water_leak",
   smoke: "category.smoke",
+  wind: "category.wind",
+  rain: "category.rain",
+  noise: "category.noise",
   action: "category.action",
   battery: "category.battery",
 };
@@ -88,7 +100,13 @@ function iconForCategory(category: DataCategory, value?: unknown): React.ReactNo
         : <DoorClosed size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "co2":
     case "voc":
+      return <Cloud size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+    case "wind":
       return <Wind size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+    case "rain":
+      return <CloudRain size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+    case "noise":
+      return <Volume2 size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "water_leak":
       return <Droplet size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "smoke":
@@ -231,9 +249,14 @@ export function getSensorBindings(bindings: DataBindingWithValue[]): DataBinding
   return bindings.filter((b) => SENSOR_DATA_CATEGORIES.includes(b.category) && b.category !== "battery");
 }
 
-/** Get the battery binding from an equipment's data bindings. */
+/** Get the first battery binding from an equipment's data bindings. */
 export function getBatteryBinding(bindings: DataBindingWithValue[]): DataBindingWithValue | null {
   return bindings.find((b) => b.category === "battery") ?? null;
+}
+
+/** Get all battery bindings (one per physical module). */
+export function getAllBatteryBindings(bindings: DataBindingWithValue[]): DataBindingWithValue[] {
+  return bindings.filter((b) => b.category === "battery");
 }
 
 /** Get the appropriate battery icon based on level. */

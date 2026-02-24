@@ -13,6 +13,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "sensor", labelKey: "equipments.type.sensor" },
   { value: "button", labelKey: "equipments.type.button" },
   { value: "thermostat", labelKey: "equipments.type.thermostat" },
+  { value: "weather", labelKey: "equipments.type.weather" },
 ];
 
 interface EquipmentFormProps {

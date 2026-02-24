@@ -14,20 +14,22 @@ const RELEVANT_DATA: Record<string, string[]> = {
   light_color: ["light_state", "light_brightness", "light_color", "light_color_temp"],
   shutter: ["shutter_position"],
   switch: ["light_state"],
-  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
+  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   button: ["action", "battery"],
   thermostat: ["temperature", "generic"],
+  weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise", "battery"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
 const RELEVANT_ORDERS: Record<string, string[]> = {
-  light_onoff: ["state"],
-  light_dimmable: ["state", "brightness"],
-  light_color: ["state", "brightness", "color", "color_temp"],
-  shutter: ["position", "state"],
-  switch: ["state"],
+  light_onoff: ["state", "on"],
+  light_dimmable: ["state", "on", "brightness"],
+  light_color: ["state", "on", "brightness", "color", "color_temp"],
+  shutter: ["position", "state", "target_position"],
+  switch: ["state", "on"],
   button: [],
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
+  weather: [],
 };
 
 export function isRelevantData(category: string, equipmentType: string): boolean {
@@ -44,14 +46,19 @@ export async function autoCreateBindings(
   deviceIds: string[],
   equipmentType: string,
 ): Promise<void> {
+  const usedDataAliases = new Set<string>();
+  const usedOrderAliases = new Set<string>();
+
   for (const deviceId of deviceIds) {
     try {
       const device = await getDevice(deviceId);
 
       for (const data of device.data) {
         if (isRelevantData(data.category, equipmentType)) {
+          const alias = uniqueAlias(data.key, usedDataAliases);
           try {
-            await addDataBinding(equipmentId, { deviceDataId: data.id, alias: data.key });
+            await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
+            usedDataAliases.add(alias);
           } catch {
             // Alias conflict — skip
           }
@@ -60,8 +67,10 @@ export async function autoCreateBindings(
 
       for (const order of device.orders) {
         if (isRelevantOrder(order.key, equipmentType)) {
+          const alias = uniqueAlias(order.key, usedOrderAliases);
           try {
-            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias: order.key });
+            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
+            usedOrderAliases.add(alias);
           } catch {
             // Already bound — skip
           }
@@ -71,6 +80,14 @@ export async function autoCreateBindings(
       // Skip failed device
     }
   }
+}
+
+/** Return a unique alias: "battery", "battery_2", "battery_3", etc. */
+function uniqueAlias(base: string, used: Set<string>): string {
+  if (!used.has(base)) return base;
+  let n = 2;
+  while (used.has(`${base}_${n}`)) n++;
+  return `${base}_${n}`;
 }
 
 /** Remove all existing bindings from an equipment. */

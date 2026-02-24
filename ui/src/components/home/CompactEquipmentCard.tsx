@@ -13,9 +13,10 @@ const SETTLE_DELAY_MS = 2000;
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
+  zoneName?: string;
 }
 
-export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquipmentCardProps) {
+export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const [, forceRender] = useState(0);
@@ -32,8 +33,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
     shutterPosition,
     hasShutterState,
     sensorBindings,
-    batteryBinding,
-    batteryLevel,
+    batteryBindings,
     iconElement,
     iconColor,
   } = useEquipmentState(equipment);
@@ -51,11 +51,12 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   const brightness =
     localBrightness.current !== null ? localBrightness.current : deviceBrightness;
 
-  const hasToggle = equipment.orderBindings.some(
-    (ob) => ob.alias === "state" || ob.alias === "turn_on",
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean",
   );
+  const hasToggle = !!toggleBinding;
   const hasBrightness = equipment.orderBindings.some(
-    (ob) => ob.alias === "brightness",
+    (ob) => ob.type === "number" && (ob.alias === "brightness" || ob.key === "brightness"),
   );
 
   // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat equipments
@@ -66,15 +67,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (executing || !hasToggle) return;
+    if (executing || !toggleBinding) return;
     setExecuting(true);
     try {
-      const alias = equipment.orderBindings.find((ob) => ob.alias === "state")
-        ? "state"
-        : "turn_on";
-      const value = isOn
-        ? alias === "state" ? "OFF" : false
-        : alias === "state" ? "ON" : true;
+      const alias = toggleBinding.alias;
+      // Boolean orders use true/false; "state" alias uses "ON"/"OFF" strings (Z2M convention)
+      const value = alias === "state"
+        ? (isOn ? "OFF" : "ON")
+        : !isOn;
       await onExecuteOrder(equipment.id, alias, value);
     } finally {
       setExecuting(false);
@@ -124,6 +124,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
       {/* Name — links to detail */}
       <Link
         to={`/equipments/${equipment.id}`}
+        state={zoneName ? { fromZone: zoneName } : undefined}
         className="flex-1 min-w-0 text-[13px] font-medium text-text truncate hover:text-primary transition-colors"
       >
         {equipment.name}
@@ -132,9 +133,18 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
       {/* Sensor / Button values */}
       {isSensor && (
         <SensorValues
-          sensorBindings={sensorBindings}
-          batteryBinding={batteryBinding}
-          batteryLevel={batteryLevel}
+          sensorBindings={
+            equipment.type === "weather"
+              ? sensorBindings
+                  .filter((b) =>
+                    b.key === "temperature" || b.key === "sum_rain_24" || b.key === "wind_strength"
+                  )
+                  .map((b) =>
+                    b.key === "sum_rain_24" ? { ...b, unit: "mm/24h" } : b
+                  )
+              : sensorBindings
+          }
+          batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
         />
       )}
 

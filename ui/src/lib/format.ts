@@ -26,9 +26,14 @@ export function formatRelativeTime(iso: string | null): string {
   const date = new Date(normalized);
   const now = Date.now();
   const diffMs = now - date.getTime();
+  const diffS = Math.floor(diffMs / 1000);
 
-  if (diffMs < 0) return "just now";
-  if (diffMs < 60_000) return "just now";
+  if (diffS < 0) return "< 5s ago";
+  if (diffS < 5) return "< 5s ago";
+  if (diffS < 15) return "< 15s ago";
+  if (diffS < 30) return "< 30s ago";
+  if (diffS < 45) return "< 45s ago";
+  if (diffS < 60) return "< 1 min ago";
   if (diffMs < 3_600_000) {
     const mins = Math.floor(diffMs / 60_000);
     return `${mins} min ago`;
@@ -103,6 +108,9 @@ export function categoryLabel(category: string): string {
     smoke: "Smoke",
     co2: "CO₂",
     voc: "VOC",
+    noise: "Noise",
+    rain: "Rain",
+    wind: "Wind",
     generic: "Generic",
   };
   return labels[category] ?? category;
@@ -119,6 +127,8 @@ export function sourceLabel(source: string): string {
     shelly: "Shelly",
     custom_mqtt: "MQTT",
     panasonic_cc: "Panasonic",
+    mcz_maestro: "MCZ",
+    netatmo_hc: "Legrand",
   };
   return labels[source] ?? source;
 }

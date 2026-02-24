@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
 import { DeviceList } from "../components/devices/DeviceList";
 import { Radio, Loader2, Search, X } from "lucide-react";
@@ -9,6 +10,8 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 const INTEGRATION_LABELS: Record<string, string> = {
   zigbee2mqtt: "Zigbee2MQTT",
   panasonic_cc: "Panasonic CC",
+  mcz_maestro: "MCZ Maestro",
+  netatmo_hc: "Legrand H+C",
   tasmota: "Tasmota",
   esphome: "ESPHome",
   shelly: "Shelly",
@@ -24,8 +27,24 @@ export function DevicesPage() {
   const deviceData = useDevices((s) => s.deviceData);
   const loading = useDevices((s) => s.loading);
   const error = useDevices((s) => s.error);
-  const [filter, setFilter] = useState("");
-  const [activeTab, setActiveTab] = useState(ALL_TAB);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = searchParams.get("q") ?? "";
+  const activeTab = searchParams.get("tab") ?? ALL_TAB;
+
+  const setFilter = (q: string) => {
+    setSearchParams((prev) => {
+      if (q) prev.set("q", q);
+      else prev.delete("q");
+      return prev;
+    }, { replace: true });
+  };
+  const setActiveTab = (tab: string) => {
+    setSearchParams((prev) => {
+      if (tab === ALL_TAB) prev.delete("tab");
+      else prev.set("tab", tab);
+      return prev;
+    }, { replace: true });
+  };
 
   const deviceList = Object.values(devices);
 
@@ -134,7 +153,7 @@ export function DevicesPage() {
       ) : error ? (
         <ErrorState error={error} />
       ) : (
-        <DeviceList devices={filtered} deviceData={deviceData} />
+        <DeviceList devices={filtered} deviceData={deviceData} activeTab={resolvedTab === ALL_TAB ? null : resolvedTab} />
       )}
     </div>
   );

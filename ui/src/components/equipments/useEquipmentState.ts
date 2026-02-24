@@ -5,7 +5,7 @@ import {
   getSensorIcon,
   getSensorIconColor,
   getSensorBindings,
-  getBatteryBinding,
+  getAllBatteryBindings,
 } from "./sensorUtils";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
@@ -15,7 +15,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     equipment.type === "light_dimmable" ||
     equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
-  const isSensor = equipment.type === "sensor" || equipment.type === "button";
+  const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
   const isThermostat = equipment.type === "thermostat";
 
   // State binding
@@ -47,9 +47,10 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const sensorBindings = isSensor
     ? getSensorBindings(equipment.dataBindings)
     : [];
-  const batteryBinding = isSensor
-    ? getBatteryBinding(equipment.dataBindings)
-    : null;
+  const batteryBindings = isSensor
+    ? getAllBatteryBindings(equipment.dataBindings)
+    : [];
+  const batteryBinding = batteryBindings[0] ?? null;
   const batteryLevel =
     batteryBinding && typeof batteryBinding.value === "number"
       ? batteryBinding.value
@@ -93,6 +94,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     hasShutterState,
     shutterIsOpen,
     sensorBindings,
+    batteryBindings,
     batteryBinding,
     batteryLevel,
     actionBinding,

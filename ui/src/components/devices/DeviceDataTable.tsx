@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { DeviceData } from "../../types";
-import { formatDataValue, formatRelativeTime, categoryLabel } from "../../lib/format";
+import { formatDataValue, categoryLabel } from "../../lib/format";
+import { RelativeTime } from "../RelativeTime";
 
 interface DeviceDataTableProps {
   data: DeviceData[];
@@ -59,7 +60,7 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
               </td>
               <td className="py-2.5 px-3 text-right">
                 <span className="text-[12px] text-text-tertiary">
-                  {formatRelativeTime(d.lastUpdated)}
+                  <RelativeTime iso={d.lastUpdated} />
                 </span>
               </td>
             </tr>

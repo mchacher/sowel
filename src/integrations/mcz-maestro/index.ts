@@ -80,7 +80,7 @@ export class MczMaestroIntegration implements IntegrationPlugin {
     ];
   }
 
-  async start(): Promise<void> {
+  async start(options?: { pollOffset?: number }): Promise<void> {
     // Clean up previous state before (re)starting
     if (this.poller) {
       this.poller.stop();
@@ -116,7 +116,7 @@ export class MczMaestroIntegration implements IntegrationPlugin {
         serialNumber,
         pollingIntervalMs,
       );
-      await this.poller.start();
+      await this.poller.start(options?.pollOffset ?? 0);
 
       this.status = "connected";
       this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
@@ -193,6 +193,10 @@ export class MczMaestroIntegration implements IntegrationPlugin {
     }
     await this.poller.refresh();
     this.logger.info("MCZ Maestro manual refresh completed");
+  }
+
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    return this.poller?.getPollingInfo() ?? null;
   }
 
   private getSetting(key: string): string | undefined {
