@@ -36,6 +36,7 @@ export class MczPoller {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private polling = false;
+  private lastPollAt: string | null = null;
 
   constructor(
     bridge: MczBridge,
@@ -77,6 +78,11 @@ export class MczPoller {
     await this.poll();
   }
 
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    if (!this.lastPollAt) return null;
+    return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
+  }
+
   scheduleOnDemandPoll(delayMs?: number): void {
     const delay = delayMs ?? this.onDemandDelayMs;
     this.logger.debug({ delayMs: delay }, "Scheduling on-demand MCZ poll");
@@ -105,6 +111,7 @@ export class MczPoller {
       // Update data values
       this.updateDeviceData(frame);
 
+      this.lastPollAt = new Date().toISOString();
       this.logger.debug({ frame }, "MCZ poll complete");
     } catch (err) {
       this.logger.error({ err }, "MCZ poll failed");

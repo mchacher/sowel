@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plug, Wifi, WifiOff, Play, Square, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, Plug, Wifi, WifiOff, Play, Square, AlertTriangle, RefreshCw, Timer } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { getIntegrations, updateSettings, startIntegration, stopIntegration, refreshIntegration } from "../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../types";
@@ -148,23 +148,28 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
             <p className="text-[11px] text-text-tertiary">{integration.description}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {isConnected ? (
-            <Wifi size={14} className="text-green-500" />
-          ) : isError ? (
-            <AlertTriangle size={14} className="text-red-500" />
-          ) : (
-            <WifiOff size={14} className="text-text-tertiary" />
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5">
+            {isConnected ? (
+              <Wifi size={14} className="text-green-500" />
+            ) : isError ? (
+              <AlertTriangle size={14} className="text-red-500" />
+            ) : (
+              <WifiOff size={14} className="text-text-tertiary" />
+            )}
+            <span className={`text-[11px] font-medium ${
+              isConnected
+                ? "text-green-600 dark:text-green-400"
+                : isError
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-text-tertiary"
+            }`}>
+              {t(`status.${integration.status === "not_configured" ? "disconnected" : integration.status}`)}
+            </span>
+          </div>
+          {isConnected && integration.polling && (
+            <PollCountdown polling={integration.polling} />
           )}
-          <span className={`text-[11px] font-medium ${
-            isConnected
-              ? "text-green-600 dark:text-green-400"
-              : isError
-                ? "text-red-600 dark:text-red-400"
-                : "text-text-tertiary"
-          }`}>
-            {t(`status.${integration.status === "not_configured" ? "disconnected" : integration.status}`)}
-          </span>
         </div>
       </div>
 
@@ -217,6 +222,34 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
         )}
       </div>
     </section>
+  );
+}
+
+function PollCountdown({ polling }: { polling: { lastPollAt: string; intervalMs: number } }) {
+  const [remaining, setRemaining] = useState(() => {
+    const next = new Date(polling.lastPollAt).getTime() + polling.intervalMs;
+    return Math.max(0, Math.round((next - Date.now()) / 1000));
+  });
+
+  useEffect(() => {
+    const tick = () => {
+      const next = new Date(polling.lastPollAt).getTime() + polling.intervalMs;
+      setRemaining(Math.max(0, Math.round((next - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [polling.lastPollAt, polling.intervalMs]);
+
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  const label = min > 0 ? `${min}m ${sec.toString().padStart(2, "0")}s` : `${sec}s`;
+
+  return (
+    <div className="flex items-center gap-1 text-[11px] text-text-tertiary">
+      <Timer size={12} />
+      <span>{label}</span>
+    </div>
   );
 }
 

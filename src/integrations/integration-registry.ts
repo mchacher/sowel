@@ -52,6 +52,12 @@ export interface IntegrationPlugin {
    * Optional — integrations that don't support it should return immediately.
    */
   refresh?(): Promise<void>;
+
+  /**
+   * Return polling timing info (last poll timestamp + interval).
+   * Optional — only for polling-based integrations.
+   */
+  getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
 }
 
 // ============================================================
@@ -83,15 +89,19 @@ export class IntegrationRegistry {
   }
 
   getAllInfo(): IntegrationInfo[] {
-    return this.getAll().map((plugin) => ({
-      id: plugin.id,
-      name: plugin.name,
-      description: plugin.description,
-      icon: plugin.icon,
-      status: plugin.getStatus(),
-      settings: plugin.getSettingsSchema(),
-      configured: plugin.isConfigured(),
-    }));
+    return this.getAll().map((plugin) => {
+      const polling = plugin.getPollingInfo?.() ?? undefined;
+      return {
+        id: plugin.id,
+        name: plugin.name,
+        description: plugin.description,
+        icon: plugin.icon,
+        status: plugin.getStatus(),
+        settings: plugin.getSettingsSchema(),
+        configured: plugin.isConfigured(),
+        polling,
+      };
+    });
   }
 
   async startAll(): Promise<void> {

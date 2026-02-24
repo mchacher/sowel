@@ -164,6 +164,10 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
     this.logger.info("Panasonic CC manual refresh completed");
   }
 
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    return this.poller?.getPollingInfo() ?? null;
+  }
+
   private getSetting(key: string): string | undefined {
     return this.settingsManager.get(`${SETTINGS_PREFIX}${key}`);
   }
