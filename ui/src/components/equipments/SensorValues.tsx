@@ -13,16 +13,29 @@ import { computeElapsed, formatElapsed } from "./useEquipmentState";
 
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
-  batteryBinding: DataBindingWithValue | null;
-  batteryLevel: number | null;
+  batteryBindings: DataBindingWithValue[];
 }
 
 export function SensorValues({
   sensorBindings,
-  batteryBinding,
-  batteryLevel,
+  batteryBindings,
 }: SensorValuesProps) {
   const { t } = useTranslation();
+
+  // Find lowest battery level for the compact indicator
+  const minBattery = batteryBindings.reduce<number | null>((min, b) => {
+    const lvl = typeof b.value === "number" ? b.value : null;
+    if (lvl === null) return min;
+    return min === null ? lvl : Math.min(min, lvl);
+  }, null);
+
+  // Build tooltip with all battery levels
+  const batteryTooltip = batteryBindings
+    .map((b) => {
+      const lvl = typeof b.value === "number" ? b.value : null;
+      return `${b.deviceName}: ${lvl !== null ? `${lvl}%` : "?"}`;
+    })
+    .join("\n");
 
   return (
     <>
@@ -63,15 +76,15 @@ export function SensorValues({
         </div>
       )}
 
-      {/* Battery indicator */}
-      {batteryBinding && (
+      {/* Battery indicator — shows lowest level, tooltip lists all */}
+      {batteryBindings.length > 0 && (
         <span
-          className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(batteryLevel)}`}
-          title={`${t("sensors.battery")} : ${batteryLevel ?? "?"}%`}
+          className={`flex items-center gap-0.5 flex-shrink-0 ${getBatteryColor(minBattery)}`}
+          title={batteryBindings.length > 1 ? batteryTooltip : `${t("sensors.battery")} : ${minBattery ?? "?"}%`}
         >
-          {getBatteryIcon(batteryLevel, 14, 1.5)}
+          {getBatteryIcon(minBattery, 14, 1.5)}
           <span className="text-[11px] tabular-nums">
-            {batteryLevel !== null ? `${batteryLevel}%` : "?"}
+            {minBattery !== null ? `${minBattery}%` : "?"}
           </span>
         </span>
       )}

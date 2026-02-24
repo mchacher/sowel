@@ -8,6 +8,7 @@ import {
   ToggleLeft,
   CircleDot,
   Thermometer,
+  CloudSun,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
@@ -26,6 +27,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   sensor: <Gauge size={18} strokeWidth={1.5} />,
   button: <CircleDot size={18} strokeWidth={1.5} />,
   thermostat: <Thermometer size={18} strokeWidth={1.5} />,
+  weather: <CloudSun size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -37,6 +39,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   sensor: "equipments.type.sensor",
   button: "equipments.type.button",
   thermostat: "equipments.type.thermostat",
+  weather: "equipments.type.weather",
 };
 
 interface EquipmentCardProps {
@@ -56,8 +59,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     shutterPosition,
     hasShutterState,
     sensorBindings,
-    batteryBinding,
-    batteryLevel,
+    batteryBindings,
   } = useEquipmentState(equipment);
 
   return (
@@ -92,8 +94,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       {isSensor && (
         <SensorValues
           sensorBindings={sensorBindings}
-          batteryBinding={batteryBinding}
-          batteryLevel={batteryLevel}
+          batteryBindings={batteryBindings}
         />
       )}
 

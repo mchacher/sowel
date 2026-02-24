@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plug, Wifi, WifiOff, Play, Square, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, Plug, Wifi, WifiOff, Play, Square, AlertTriangle, RefreshCw, Timer } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { getIntegrations, updateSettings, startIntegration, stopIntegration, refreshIntegration } from "../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../types";
@@ -79,13 +79,25 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
     setSaving(true);
     try {
       // Build settings entries with integration prefix
+      // Skip password fields that haven't been changed (still showing mask)
+      const PASSWORD_MASK = "••••••••";
       const entries: Record<string, string> = {};
       for (const [key, value] of Object.entries(values)) {
+        const setting = integration.settings.find((s) => s.key === key);
+        if (setting?.type === "password" && value === PASSWORD_MASK) continue;
         entries[`integration.${integration.id}.${key}`] = value;
       }
       await updateSettings(entries);
       setDirty(false);
-      setSuccess(t("integrations.saved"));
+
+      // Restart integration if connected so new settings take effect
+      if (isConnected) {
+        await stopIntegration(integration.id);
+        await startIntegration(integration.id);
+        setSuccess(t("integrations.savedRestarted"));
+      } else {
+        setSuccess(t("integrations.saved"));
+      }
       setTimeout(() => setSuccess(""), 3000);
       onRefresh();
     } catch (err) {
@@ -144,23 +156,28 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
             <p className="text-[11px] text-text-tertiary">{integration.description}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {isConnected ? (
-            <Wifi size={14} className="text-green-500" />
-          ) : isError ? (
-            <AlertTriangle size={14} className="text-red-500" />
-          ) : (
-            <WifiOff size={14} className="text-text-tertiary" />
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5">
+            {isConnected ? (
+              <Wifi size={14} className="text-green-500" />
+            ) : isError ? (
+              <AlertTriangle size={14} className="text-red-500" />
+            ) : (
+              <WifiOff size={14} className="text-text-tertiary" />
+            )}
+            <span className={`text-[11px] font-medium ${
+              isConnected
+                ? "text-green-600 dark:text-green-400"
+                : isError
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-text-tertiary"
+            }`}>
+              {t(`status.${integration.status === "not_configured" ? "disconnected" : integration.status}`)}
+            </span>
+          </div>
+          {isConnected && integration.polling && (
+            <PollCountdown polling={integration.polling} onExpired={onRefresh} />
           )}
-          <span className={`text-[11px] font-medium ${
-            isConnected
-              ? "text-green-600 dark:text-green-400"
-              : isError
-                ? "text-red-600 dark:text-red-400"
-                : "text-text-tertiary"
-          }`}>
-            {t(`status.${integration.status === "not_configured" ? "disconnected" : integration.status}`)}
-          </span>
         </div>
       </div>
 
@@ -216,6 +233,43 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
   );
 }
 
+function PollCountdown({ polling, onExpired }: { polling: { lastPollAt: string; intervalMs: number }; onExpired: () => void }) {
+  const [remaining, setRemaining] = useState(() => {
+    const next = new Date(polling.lastPollAt).getTime() + polling.intervalMs;
+    return Math.max(0, Math.round((next - Date.now()) / 1000));
+  });
+
+  useEffect(() => {
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const tick = () => {
+      const next = new Date(polling.lastPollAt).getTime() + polling.intervalMs;
+      const secs = Math.max(0, Math.round((next - Date.now()) / 1000));
+      setRemaining(secs);
+      if (secs === 0 && !refreshTimer) {
+        // Re-fetch data 3s after expiry to get updated lastPollAt
+        refreshTimer = setTimeout(onExpired, 3000);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => {
+      clearInterval(id);
+      if (refreshTimer) clearTimeout(refreshTimer);
+    };
+  }, [polling.lastPollAt, polling.intervalMs, onExpired]);
+
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  const label = min > 0 ? `${min}m ${sec.toString().padStart(2, "0")}s` : `${sec}s`;
+
+  return (
+    <div className="flex items-center gap-1 text-[11px] text-text-tertiary">
+      <Timer size={12} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
 function SettingField({
   setting,
   value,
@@ -225,6 +279,30 @@ function SettingField({
   value: string;
   onChange: (val: string) => void;
 }) {
+  if (setting.type === "boolean") {
+    const checked = value === "true";
+    return (
+      <div className="flex items-center gap-3 py-1">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(checked ? "false" : "true")}
+          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+            checked ? "bg-primary" : "bg-border"
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+              checked ? "translate-x-4" : "translate-x-0"
+            }`}
+          />
+        </button>
+        <span className="text-[13px] text-text">{setting.label}</span>
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">

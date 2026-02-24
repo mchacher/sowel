@@ -36,6 +36,8 @@ export class MczPoller {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private polling = false;
+  private lastPollAt: string | null = null;
+  private staggerTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     bridge: MczBridge,
@@ -53,18 +55,29 @@ export class MczPoller {
     this.onDemandDelayMs = onDemandDelayMs;
   }
 
-  async start(): Promise<void> {
-    this.logger.info({ intervalMs: this.pollIntervalMs }, "Starting MCZ poller");
+  async start(pollOffset = 0): Promise<void> {
+    this.logger.info({ intervalMs: this.pollIntervalMs, pollOffset }, "Starting MCZ poller");
     // Immediate first poll — awaited so data is available at startup
     await this.poll();
-    // Regular polling
-    this.interval = setInterval(() => this.poll(), this.pollIntervalMs);
+    // Stagger recurring polls by pollOffset
+    const startInterval = () => {
+      this.interval = setInterval(() => this.poll(), this.pollIntervalMs);
+    };
+    if (pollOffset > 0) {
+      this.staggerTimeout = setTimeout(startInterval, pollOffset);
+    } else {
+      startInterval();
+    }
   }
 
   stop(): void {
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
+    }
+    if (this.staggerTimeout) {
+      clearTimeout(this.staggerTimeout);
+      this.staggerTimeout = null;
     }
     for (const timer of this.pendingTimers) {
       clearTimeout(timer);
@@ -75,6 +88,11 @@ export class MczPoller {
 
   async refresh(): Promise<void> {
     await this.poll();
+  }
+
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    if (!this.lastPollAt) return null;
+    return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
   }
 
   scheduleOnDemandPoll(delayMs?: number): void {
@@ -95,6 +113,7 @@ export class MczPoller {
     this.polling = true;
 
     try {
+      this.lastPollAt = new Date().toISOString();
       this.logger.debug("Polling MCZ stove...");
       const frame = await this.bridge.getStatus();
 

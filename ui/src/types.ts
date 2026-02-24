@@ -27,6 +27,9 @@ export type DataCategory =
   | "smoke"
   | "co2"
   | "voc"
+  | "noise"
+  | "rain"
+  | "wind"
   | "action"
   | "generic";
 
@@ -41,7 +44,8 @@ export type DeviceSource =
   | "shelly"
   | "custom_mqtt"
   | "panasonic_cc"
-  | "mcz_maestro";
+  | "mcz_maestro"
+  | "netatmo_hc";
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
@@ -139,7 +143,8 @@ export type EquipmentType =
   | "switch"
   | "sensor"
   | "button"
-  | "thermostat";
+  | "thermostat"
+  | "weather";
 
 export interface Equipment {
   id: string;
@@ -413,7 +418,7 @@ export type IntegrationStatus = "connected" | "disconnected" | "error" | "not_co
 export interface IntegrationSettingDef {
   key: string;
   label: string;
-  type: "text" | "password" | "number";
+  type: "text" | "password" | "number" | "boolean";
   required: boolean;
   placeholder?: string;
   defaultValue?: string;
@@ -428,4 +433,5 @@ export interface IntegrationInfo {
   configured: boolean;
   settings: IntegrationSettingDef[];
   settingValues: Record<string, string>;
+  polling?: { lastPollAt: string; intervalMs: number };
 }

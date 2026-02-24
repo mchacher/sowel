@@ -389,6 +389,7 @@ export class ZoneAggregator {
     const acc = emptyAccumulator();
 
     for (const equipment of equipments) {
+      if (equipment.type === "weather") continue; // Exclude weather from zone aggregation
       const bindings = this.equipmentManager.getDataBindingsWithValues(equipment.id);
       this.accumulateBindings(acc, bindings);
     }
