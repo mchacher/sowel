@@ -1,12 +1,12 @@
 services:
-  corbel:
+  winch:
     build: .
-    container_name: corbel
+    container_name: winch
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
-      - corbel-data:/app/data
+      - winch-data:/app/data
     # No .env needed — all settings have sensible defaults.
     # Override with environment variables if needed:
     # environment:
@@ -14,4 +14,4 @@ services:
     #   LOG_LEVEL: info
 
 volumes:
-  corbel-data:
+  winch-data:

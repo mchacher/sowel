@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Corbel** is a home automation engine that uses MQTT as its sole data source (zigbee2mqtt, Tasmota, ESPHome). It separates physical **Devices** (auto-discovered from MQTT) from user-facing **Equipments** (functional units like "Spots Salon"), provides automatic **Zone** aggregation, a **Scenario** engine with reusable **Recipe** templates, and exposes a reactive web UI.
+**Winch** is a home automation engine that uses MQTT as its sole data source (zigbee2mqtt, Tasmota, ESPHome). It separates physical **Devices** (auto-discovered from MQTT) from user-facing **Equipments** (functional units like "Spots Salon"), provides automatic **Zone** aggregation, a **Scenario** engine with reusable **Recipe** templates, and exposes a reactive web UI.
 
-The full specification is in [corbel-spec.md](corbel-spec.md) — it is the single source of truth. It is a living document that evolves alongside feature development; always re-read the relevant sections before implementing a milestone.
+The full specification is in [winch-spec.md](winch-spec.md) — it is the single source of truth. It is a living document that evolves alongside feature development; always re-read the relevant sections before implementing a milestone.
 
 ## Architecture
 
@@ -45,7 +45,7 @@ MQTT message → MQTT Connector → Device Manager (updates DeviceData)
 ### Project Structure
 
 ```
-corbel/
+winch/
 ├── src/
 │   ├── index.ts                 # Entry point
 │   ├── config.ts                # Env config loading
@@ -129,7 +129,7 @@ npm test -- --grep "pattern"  # Run specific tests
 ### Authentication
 
 - bcrypt (cost 12) for passwords, `jsonwebtoken` (HS256) for JWT
-- API tokens: `cbl_` prefix, SHA-256 hash stored, generated via `crypto.randomBytes(32)`
+- API tokens: `wch_` prefix (legacy `cbl_` also accepted), SHA-256 hash stored, generated via `crypto.randomBytes(32)`
 - Auth middleware: try JWT decode first, then API token lookup
 - Roles: admin > user > viewer (hierarchical permissions)
 
@@ -161,17 +161,17 @@ V0.1 MQTT+Devices → V0.2 Equipments+Bindings → V0.3 Zones+Aggregation → V0
 
 ## Environment Variables
 
-All settings are optional with sensible defaults — Corbel runs zero-config out of the box. Override via `.env` if needed:
+All settings are optional with sensible defaults — Winch runs zero-config out of the box. Override via `.env` if needed:
 
-| Variable          | Default            | Notes                                           |
-| ----------------- | ------------------ | ----------------------------------------------- |
-| `SQLITE_PATH`     | `./data/corbel.db` | SQLite database path                            |
-| `API_PORT`        | `3000`             | HTTP server port                                |
-| `API_HOST`        | `0.0.0.0`          | Bind address                                    |
-| `JWT_SECRET`      | auto-generated     | Persisted in `data/.jwt-secret` on first launch |
-| `JWT_ACCESS_TTL`  | `900`              | Access token TTL in seconds (15 min)            |
-| `JWT_REFRESH_TTL` | `2592000`          | Refresh token TTL in seconds (30 days)          |
-| `LOG_LEVEL`       | `info`             | Pino log level                                  |
-| `CORS_ORIGINS`    | `*`                | Comma-separated allowed origins                 |
+| Variable          | Default           | Notes                                           |
+| ----------------- | ----------------- | ----------------------------------------------- |
+| `SQLITE_PATH`     | `./data/winch.db` | SQLite database path                            |
+| `API_PORT`        | `3000`            | HTTP server port                                |
+| `API_HOST`        | `0.0.0.0`         | Bind address                                    |
+| `JWT_SECRET`      | auto-generated    | Persisted in `data/.jwt-secret` on first launch |
+| `JWT_ACCESS_TTL`  | `900`             | Access token TTL in seconds (15 min)            |
+| `JWT_REFRESH_TTL` | `2592000`         | Refresh token TTL in seconds (30 days)          |
+| `LOG_LEVEL`       | `info`            | Pino log level                                  |
+| `CORS_ORIGINS`    | `*`               | Comma-separated allowed origins                 |
 
 MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.

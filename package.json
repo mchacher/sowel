@@ -1,7 +1,7 @@
 {
-  "name": "corbel",
+  "name": "winch",
   "version": "0.1.0",
-  "description": "Corbel — Home automation engine powered by MQTT",
+  "description": "Winch — Home automation engine powered by MQTT",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

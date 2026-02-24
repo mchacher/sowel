@@ -149,7 +149,7 @@ export class PanasonicPoller {
 }
 
 /**
- * Map a bridge device to a Corbel DiscoveredDevice for upsert.
+ * Map a bridge device to a Winch DiscoveredDevice for upsert.
  */
 function mapBridgeDeviceToDiscovered(bridgeDevice: BridgeDevice): DiscoveredDevice {
   const features = bridgeDevice.features;

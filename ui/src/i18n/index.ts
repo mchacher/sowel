@@ -18,7 +18,7 @@ i18n
     },
     detection: {
       order: ["localStorage", "navigator"],
-      lookupLocalStorage: "corbel_language",
+      lookupLocalStorage: "winch_language",
     },
   });
 
