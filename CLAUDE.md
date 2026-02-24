@@ -147,8 +147,8 @@ npm test -- --grep "pattern"  # Run specific tests
 ## Design System
 
 - **Font:** Inter (body), JetBrains Mono (values/logs)
-- **Primary color:** `#1B6B5A` (light) / `#3DBDA0` (dark)
-- **Accent color:** `#D4873F` (light) / `#E9A55C` (dark)
+- **Primary color:** `#1A4F6E` (ocean blue) — hover: `#13405A`, light: `#E6F0F6`
+- **Accent color:** `#D4963F` (amber) — hover: `#BB8232`
 - **Spacing base unit:** 4px
 - **Border radius:** 6px (buttons), 10px (cards), 14px (modals)
 - **Body font size:** 14px (dense dashboard), Data values: 28px (readable at a glance)

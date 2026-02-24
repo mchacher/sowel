@@ -20,11 +20,11 @@ interface EquipmentGroup {
 }
 
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} />, headerBg: "bg-amber-400/8", iconColor: "text-amber-500" },
+  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} />, headerBg: "bg-active/8", iconColor: "text-active-text" },
   { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ShutterClosedIcon size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
-  { labelKey: "equipments.group.climate", types: ["thermostat"], icon: <Thermometer size={14} strokeWidth={1.5} />, headerBg: "bg-blue-500/6", iconColor: "text-blue-500" },
-  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-info/6", iconColor: "text-info" },
-  { labelKey: "equipments.group.weather", types: ["weather"], icon: <CloudSun size={14} strokeWidth={1.5} />, headerBg: "bg-orange-400/8", iconColor: "text-orange-500" },
+  { labelKey: "equipments.group.climate", types: ["thermostat"], icon: <Thermometer size={14} strokeWidth={1.5} />, headerBg: "bg-error/6", iconColor: "text-error" },
+  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
+  { labelKey: "equipments.group.weather", types: ["weather"], icon: <CloudSun size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
 ];
 

@@ -33,8 +33,8 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
 
   return (
     <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/8">
-        <span className="text-primary">
+      <div className="flex items-center gap-1.5 px-3 py-1 bg-success/8">
+        <span className="text-success">
           <ToggleRight size={14} strokeWidth={1.5} />
         </span>
         <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">

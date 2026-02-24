@@ -59,11 +59,11 @@ function getKindIcon(kind: DeviceKind) {
 function getKindColor(kind: DeviceKind): string {
   switch (kind) {
     case "wind":
-      return "text-sky-500 bg-sky-500/10";
+      return "text-primary bg-primary/10";
     case "rain":
-      return "text-blue-500 bg-blue-500/10";
+      return "text-primary bg-primary/10";
     default:
-      return "text-orange-500 bg-orange-500/10";
+      return "text-accent bg-accent/10";
   }
 }
 
