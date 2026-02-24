@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
@@ -10,6 +10,7 @@ import { LightControl } from "../components/equipments/LightControl";
 import { ShutterControl } from "../components/equipments/ShutterControl";
 import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
+import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
@@ -33,7 +34,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { formatRelativeTime } from "../lib/format";
+import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
@@ -42,6 +43,8 @@ export function EquipmentDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromZone = (location.state as { fromZone?: string } | null)?.fromZone;
   const equipments = useEquipments((s) => s.equipments);
   const updateEquipment = useEquipments((s) => s.updateEquipment);
   const deleteEquipment = useEquipments((s) => s.deleteEquipment);
@@ -112,10 +115,17 @@ export function EquipmentDetailPage() {
   if (error || !equipment) {
     return (
       <div className="p-6">
-        <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
-          <ArrowLeft size={14} strokeWidth={1.5} />
-          {t("equipments.backToEquipments")}
-        </Link>
+        {fromZone ? (
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+            <ArrowLeft size={14} strokeWidth={1.5} />
+            {t("equipments.backToZone", { name: fromZone })}
+          </button>
+        ) : (
+          <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+            <ArrowLeft size={14} strokeWidth={1.5} />
+            {t("equipments.backToEquipments")}
+          </Link>
+        )}
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Box size={28} strokeWidth={1.5} className="text-error" />
@@ -144,10 +154,17 @@ export function EquipmentDetailPage() {
   return (
     <div className="p-6">
       {/* Back link */}
-      <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
-        <ArrowLeft size={14} strokeWidth={1.5} />
-        {t("equipments.backToEquipments")}
-      </Link>
+      {fromZone ? (
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+          <ArrowLeft size={14} strokeWidth={1.5} />
+          {t("equipments.backToZone", { name: fromZone })}
+        </button>
+      ) : (
+        <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+          <ArrowLeft size={14} strokeWidth={1.5} />
+          {t("equipments.backToEquipments")}
+        </Link>
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
@@ -171,7 +188,7 @@ export function EquipmentDetailPage() {
                 <Clock size={12} strokeWidth={1.5} />
                 <span className="font-mono font-medium text-text-secondary">{String(actionBinding.value)}</span>
                 {actionBinding.lastUpdated && (
-                  <span>· {formatRelativeTime(actionBinding.lastUpdated)}</span>
+                  <span>· <RelativeTime iso={actionBinding.lastUpdated} /></span>
                 )}
               </div>
             )}
@@ -229,10 +246,12 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
-      {/* Sensor data */}
-      {isSensor && (
+      {/* Sensor / Weather data */}
+      {equipment.type === "weather" ? (
+        <WeatherPanel bindings={equipment.dataBindings} />
+      ) : isSensor ? (
         <SensorDataPanel bindings={equipment.dataBindings} />
-      )}
+      ) : null}
 
       {/* Button actions */}
       {equipment.type === "button" && (
@@ -475,7 +494,7 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
                 <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
                 <div className="flex items-center gap-1 text-[11px] text-text-tertiary mt-0.5">
                   <Clock size={10} strokeWidth={1.5} />
-                  <span>{formatRelativeTime(lastSeen)}</span>
+                  <span><RelativeTime iso={lastSeen} /></span>
                 </div>
               </div>
               <span className="text-[11px] text-text-tertiary flex-shrink-0">

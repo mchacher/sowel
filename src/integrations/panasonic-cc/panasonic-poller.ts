@@ -107,6 +107,7 @@ export class PanasonicPoller {
     this.polling = true;
 
     try {
+      this.lastPollAt = new Date().toISOString();
       this.logger.debug("Polling Panasonic devices...");
       const response = await this.bridge.getDevices(this.email, this.password);
 
@@ -118,7 +119,6 @@ export class PanasonicPoller {
         this.updateDeviceData(device);
       }
 
-      this.lastPollAt = new Date().toISOString();
       this.logger.debug({ deviceCount: response.devices.length }, "Panasonic poll complete");
     } catch (err) {
       this.logger.error({ err }, "Panasonic poll failed");

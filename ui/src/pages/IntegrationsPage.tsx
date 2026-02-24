@@ -89,7 +89,15 @@ function IntegrationCard({ integration, onRefresh }: { integration: IntegrationI
       }
       await updateSettings(entries);
       setDirty(false);
-      setSuccess(t("integrations.saved"));
+
+      // Restart integration if connected so new settings take effect
+      if (isConnected) {
+        await stopIntegration(integration.id);
+        await startIntegration(integration.id);
+        setSuccess(t("integrations.savedRestarted"));
+      } else {
+        setSuccess(t("integrations.saved"));
+      }
       setTimeout(() => setSuccess(""), 3000);
       onRefresh();
     } catch (err) {

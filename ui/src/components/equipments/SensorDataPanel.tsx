@@ -3,7 +3,7 @@ import { Gauge } from "lucide-react";
 import type { DataBindingWithValue, DataCategory } from "../../types";
 import {
   getSensorBindings,
-  getBatteryBinding,
+  getAllBatteryBindings,
   getBatteryIcon,
   getBatteryColor,
   getSensorCategoryIcon,
@@ -19,10 +19,9 @@ interface SensorDataPanelProps {
 export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
   const { t } = useTranslation();
   const sensorBindings = getSensorBindings(bindings);
-  const batteryBinding = getBatteryBinding(bindings);
-  const batteryLevel = batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
+  const batteryBindings = getAllBatteryBindings(bindings);
 
-  if (sensorBindings.length === 0 && !batteryBinding) {
+  if (sensorBindings.length === 0 && batteryBindings.length === 0) {
     return (
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
         <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
@@ -56,9 +55,16 @@ export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
             bindings={categoryBindings}
           />
         ))}
-        {batteryBinding && (
-          <BatteryRow level={batteryLevel} />
-        )}
+        {batteryBindings.map((b) => {
+          const level = typeof b.value === "number" ? b.value : null;
+          return (
+            <BatteryRow
+              key={b.id}
+              level={level}
+              deviceName={batteryBindings.length > 1 ? b.deviceName : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -167,7 +173,7 @@ function NumericSensorValues({ bindings }: { bindings: DataBindingWithValue[] })
   );
 }
 
-function BatteryRow({ level }: { level: number | null }) {
+function BatteryRow({ level, deviceName }: { level: number | null; deviceName?: string }) {
   const { t } = useTranslation();
   const color = getBatteryColor(level);
   return (
@@ -177,6 +183,9 @@ function BatteryRow({ level }: { level: number | null }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-medium text-text-secondary">{t("sensors.battery")}</div>
+        {deviceName && (
+          <div className="text-[11px] text-text-tertiary truncate">{deviceName}</div>
+        )}
       </div>
       <div className="flex items-baseline gap-1 flex-shrink-0">
         <span className={`text-[22px] font-semibold font-mono leading-none ${color}`}>

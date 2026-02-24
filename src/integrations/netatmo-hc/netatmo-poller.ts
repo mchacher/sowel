@@ -172,22 +172,46 @@ export class NetatmoPoller {
     this.polling = true;
 
     try {
-      // Home+Control: discover, status, energy meters
-      if (this.enableHomeControl) {
-        try {
-          await this.discoverModules();
-          await this.pollStatus();
-          await this.pollEnergyMeters();
-        } catch (err) {
-          this.logger.error({ err }, "Home+Control poll failed");
-        }
-      }
-
-      // Weather station (independent from Home+Control)
-      if (this.enableWeather) {
-        await this.pollWeatherStation();
-      }
       this.lastPollAt = new Date().toISOString();
+      const t0 = Date.now();
+
+      // Phase 1: independent discovery calls in parallel
+      const phase1: Promise<void>[] = [];
+      if (this.enableHomeControl) {
+        phase1.push(
+          this.discoverModules().catch((err) =>
+            this.logger.error({ err }, "Home+Control discovery failed"),
+          ),
+        );
+      }
+      if (this.enableWeather) {
+        phase1.push(
+          this.pollWeatherStation().catch((err) =>
+            this.logger.warn({ err }, "Weather station poll failed (phase 1)"),
+          ),
+        );
+      }
+      await Promise.all(phase1);
+      const t1 = Date.now();
+
+      // Phase 2: status + energy (depend on discovery results)
+      if (this.enableHomeControl) {
+        const phase2: Promise<unknown>[] = [
+          this.pollStatus().catch((err) =>
+            this.logger.error({ err }, "Home+Control status poll failed"),
+          ),
+          this.pollEnergyMeters().catch((err) =>
+            this.logger.warn({ err }, "Energy meters poll failed"),
+          ),
+        ];
+        await Promise.all(phase2);
+      }
+      const t2 = Date.now();
+
+      this.logger.debug(
+        { phase1Ms: t1 - t0, phase2Ms: t2 - t1, totalMs: t2 - t0 },
+        "Legrand H+C poll timing",
+      );
     } catch (err) {
       this.logger.error({ err }, "Legrand H+C poll cycle failed");
     } finally {
@@ -274,8 +298,7 @@ export class NetatmoPoller {
       if (!friendlyName) continue; // Not a supported/discovered module
 
       const payload = extractStatusPayload(mod);
-      if (Object.keys(payload).length === 0) continue;
-
+      // Always call to refresh lastSeen even if payload is empty
       this.deviceManager.updateDeviceData("netatmo_hc", friendlyName, payload);
       updated++;
 
@@ -308,11 +331,9 @@ export class NetatmoPoller {
         this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", baseDiscovered);
         this.weatherNames.add(baseName);
 
-        // Update base station data
+        // Update base station data (always call to refresh lastSeen)
         const basePayload = extractWeatherPayload(station.dashboard_data, station.type);
-        if (Object.keys(basePayload).length > 0) {
-          this.deviceManager.updateDeviceData("netatmo_hc", baseName, basePayload);
-        }
+        this.deviceManager.updateDeviceData("netatmo_hc", baseName, basePayload);
 
         // Discover + update each sub-module
         for (const mod of station.modules ?? []) {
@@ -321,20 +342,15 @@ export class NetatmoPoller {
           this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", modDiscovered);
           this.weatherNames.add(modName);
 
-          // Update module data
-          if (mod.dashboard_data) {
-            const modPayload = extractWeatherPayload(mod.dashboard_data, mod.type);
-            if (Object.keys(modPayload).length > 0) {
-              this.deviceManager.updateDeviceData("netatmo_hc", modName, modPayload);
-            }
-          }
-
-          // Update battery level
+          // Build combined payload: sensor data + battery
+          const modPayload: Record<string, unknown> = mod.dashboard_data
+            ? extractWeatherPayload(mod.dashboard_data, mod.type)
+            : {};
           if (mod.battery_percent !== undefined) {
-            this.deviceManager.updateDeviceData("netatmo_hc", modName, {
-              battery: mod.battery_percent,
-            });
+            modPayload.battery = mod.battery_percent;
           }
+          // Always call to refresh lastSeen even if payload is empty
+          this.deviceManager.updateDeviceData("netatmo_hc", modName, modPayload);
         }
       }
 
