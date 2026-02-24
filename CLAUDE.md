@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Winch** is a home automation engine that uses MQTT as its sole data source (zigbee2mqtt, Tasmota, ESPHome). It separates physical **Devices** (auto-discovered from MQTT) from user-facing **Equipments** (functional units like "Spots Salon"), provides automatic **Zone** aggregation, a **Scenario** engine with reusable **Recipe** templates, and exposes a reactive web UI.
+**Winch** is a home automation engine with a plugin-based integration architecture. It supports multiple device sources (Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, and more via the IntegrationPlugin interface). It separates physical **Devices** (auto-discovered from integrations) from user-facing **Equipments** (functional units like "Spots Salon"), provides automatic **Zone** aggregation, a **Scenario** engine with reusable **Recipe** templates, and exposes a reactive web UI.
 
 The full specification is in [winch-spec.md](winch-spec.md) — it is the single source of truth. It is a living document that evolves alongside feature development; always re-read the relevant sections before implementing a milestone.
 
@@ -13,22 +13,24 @@ The full specification is in [winch-spec.md](winch-spec.md) — it is the single
 ### Reactive Pipeline (core data flow)
 
 ```
-MQTT message → MQTT Connector → Device Manager (updates DeviceData)
-  → Event Bus: "device.data.updated"
-    → Equipment Manager (re-evaluates bindings + computed Data)
-      → Event Bus: "equipment.data.changed"
-        → Zone Manager (re-evaluates aggregations)
-          → Event Bus: "zone.data.changed"
-            → Scenario Engine (evaluates triggers → conditions → actions)
-              → Actions may emit Orders → MQTT publish
-        → WebSocket pushes to UI clients
+Integration message (MQTT, cloud API poll, etc.)
+  → Integration Plugin (receives + parses)
+    → Device Manager (updates DeviceData)
+      → Event Bus: "device.data.updated"
+        → Equipment Manager (re-evaluates bindings + computed Data)
+          → Event Bus: "equipment.data.changed"
+            → Zone Manager (re-evaluates aggregations)
+              → Event Bus: "zone.data.changed"
+                → Scenario Engine (evaluates triggers → conditions → actions)
+                  → Actions may emit Orders → Integration Plugin → device
+            → WebSocket pushes to UI clients
 ```
 
 ### Key Domain Concepts
 
 | Term          | Role                                                                                                            |
 | ------------- | --------------------------------------------------------------------------------------------------------------- |
-| **Device**    | Physical MQTT hardware, auto-discovered. Exposes raw Data and Orders.                                           |
+| **Device**    | Physical hardware, auto-discovered from integrations. Exposes raw Data and Orders.                              |
 | **Equipment** | User-facing functional unit. Binds to one or more Devices. Can have computed Data and dispatched Orders.        |
 | **Zone**      | Spatial grouping (nestable). Auto-aggregates Equipment Data (motion=OR, temperature=AVG, lightsOn=COUNT, etc.). |
 | **Scenario**  | Automation rule: trigger(s) → condition(s) → action(s).                                                         |
@@ -36,11 +38,11 @@ MQTT message → MQTT Connector → Device Manager (updates DeviceData)
 
 ### Tech Stack
 
-**Backend:** Node.js 20+ / TypeScript (strict) / Fastify / mqtt.js / SQLite (better-sqlite3) / InfluxDB 2.x / ws (WebSocket)
+**Backend:** Node.js 20+ / TypeScript (strict) / Fastify / SQLite (better-sqlite3) / InfluxDB 2.x / ws (WebSocket) / mqtt.js (for MQTT integrations)
 
 **Frontend:** React 18+ / TypeScript / Vite / Tailwind CSS / Zustand / Lucide React
 
-**Infrastructure:** Docker + docker-compose / Mosquitto MQTT broker (external) / PM2
+**Infrastructure:** Docker + docker-compose / PM2
 
 ### Project Structure
 
@@ -50,7 +52,7 @@ winch/
 │   ├── index.ts                 # Entry point
 │   ├── config.ts                # Env config loading
 │   ├── core/                    # event-bus, database (SQLite), influx, logger
-│   ├── mqtt/                    # MQTT connector + parsers (zigbee2mqtt, tasmota, generic)
+│   ├── integrations/            # Integration plugins (zigbee2mqtt, panasonic-cc, mcz-maestro, ...)
 │   ├── devices/                 # Device manager, auto-discovery, category inference
 │   ├── equipments/              # Equipment manager, bindings, computed engine, order dispatcher
 │   ├── zones/                   # Zone manager, auto-aggregation engine
@@ -108,12 +110,14 @@ npm test -- --grep "pattern"  # Run specific tests
 - Run migrations on startup
 - Use transactions for batch operations
 
-### MQTT
+### Integrations
 
-- `mqtt.js` with `connectAsync` for async/await
-- Always handle reconnection gracefully
-- Parse payloads as JSON with try/catch fallback to raw string
-- Message handlers must never throw — wrap in try/catch with logging
+- Plugin-based architecture: each device source implements `IntegrationPlugin`
+- Plugins register with `IntegrationRegistry` which manages lifecycle (start/stop/reconnect)
+- MQTT-based integrations use `mqtt.js` with `connectAsync` for async/await
+- Cloud-based integrations use polling with configurable intervals
+- All message/event handlers must never throw — wrap in try/catch with logging
+- Settings stored in SQLite `settings` table, configurable from UI
 
 ### Event Bus
 
@@ -202,7 +206,7 @@ Structured JSON logging via pino (Fastify default) with multistream: ring buffer
 
 ## Development Roadmap
 
-V0.1 MQTT+Devices → V0.2 Equipments+Bindings → V0.3 Zones+Aggregation → V0.4 UI+Realtime → V0.5 Computed Data → V0.6 History (InfluxDB) → V0.7 Scenario Engine → V0.8 Recipes → V0.9 Polish → V1.0+ AI Assistant
+V0.1 Devices → V0.2 Zones → V0.3 Equipments+Bindings → V0.4 UI Home → V0.5 Sensors → V0.6 Zone Aggregation → V0.7 Shutters → V0.8 Recipes → V0.9 Modes+Calendar → V0.10 Integration Plugins (Z2M, Panasonic CC, MCZ Maestro, Netatmo HC) → V0.11 Logging → V0.12 Computed Data → V0.13 History (InfluxDB) → V1.0+ AI Assistant
 
 ## Environment Variables
 
@@ -219,4 +223,4 @@ All settings are optional with sensible defaults — Winch runs zero-config out 
 | `LOG_LEVEL`       | `info`            | Pino log level                                  |
 | `CORS_ORIGINS`    | `*`               | Comma-separated allowed origins                 |
 
-MQTT and Zigbee2MQTT settings are configured from the UI (Administration > Integrations), not from `.env`.
+Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI (Administration > Integrations), not from `.env`.

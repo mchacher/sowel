@@ -241,7 +241,7 @@ function RecipeInstanceRow({
     for (const slot of recipe.slots) {
       if (slot.id === "zone") continue;
       const val = instance.params[slot.id];
-      if (val === undefined || val === null) continue;
+      if (val === undefined || val === null || val === "") continue;
       if (slot.type === "equipment" && Array.isArray(val)) {
         const names = val
           .map((id: string) => equipments.find((e) => e.id === id)?.name ?? id)
@@ -251,7 +251,7 @@ function RecipeInstanceRow({
         const eq = equipments.find((e) => e.id === val);
         parts.push(eq?.name ?? String(val));
       } else {
-        parts.push(String(val));
+        parts.push(`${slot.name}: ${String(val)}`);
       }
     }
     return parts.join(" · ");
