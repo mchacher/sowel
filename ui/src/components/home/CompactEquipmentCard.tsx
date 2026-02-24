@@ -51,11 +51,12 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   const brightness =
     localBrightness.current !== null ? localBrightness.current : deviceBrightness;
 
-  const hasToggle = equipment.orderBindings.some(
-    (ob) => ob.alias === "state" || ob.alias === "turn_on",
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean",
   );
+  const hasToggle = !!toggleBinding;
   const hasBrightness = equipment.orderBindings.some(
-    (ob) => ob.alias === "brightness",
+    (ob) => ob.type === "number" && (ob.alias === "brightness" || ob.key === "brightness"),
   );
 
   // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat equipments
@@ -66,15 +67,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder }: CompactEquip
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (executing || !hasToggle) return;
+    if (executing || !toggleBinding) return;
     setExecuting(true);
     try {
-      const alias = equipment.orderBindings.find((ob) => ob.alias === "state")
-        ? "state"
-        : "turn_on";
-      const value = isOn
-        ? alias === "state" ? "OFF" : false
-        : alias === "state" ? "ON" : true;
+      const alias = toggleBinding.alias;
+      // Boolean orders use true/false; "state" alias uses "ON"/"OFF" strings (Z2M convention)
+      const value = alias === "state"
+        ? (isOn ? "OFF" : "ON")
+        : !isOn;
       await onExecuteOrder(equipment.id, alias, value);
     } finally {
       setExecuting(false);

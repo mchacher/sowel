@@ -63,6 +63,11 @@ export interface NetatmoModuleStatus {
   firmware_revision?: number;
 }
 
+export interface NetatmoGetMeasureResponse {
+  body: Record<string, (number | null)[]>;
+  status: string;
+}
+
 export interface NetatmoSetStateRequest {
   home: {
     id: string;
@@ -101,7 +106,7 @@ const SHUTTER_TYPES = new Set([
 ]);
 
 /** Module types that are energy meters */
-const METER_TYPES = new Set([
+export const METER_TYPES = new Set([
   "NLPC", // DIN energy meter
   "NLE", // Ecometer
 ]);
@@ -146,10 +151,15 @@ interface OrderDef {
 export function mapModuleToDiscovered(mod: NetatmoModule, homeId: string): DiscoveredDevice {
   const data: DataDef[] = [];
   const orders: OrderDef[] = [];
-  const dc = (param: string) => ({ homeId, moduleId: mod.id, param });
+  const dc = (param: string) => ({
+    homeId,
+    moduleId: mod.id,
+    param,
+    ...(mod.bridge ? { bridge: mod.bridge } : {}),
+  });
 
   if (SWITCHABLE_TYPES.has(mod.type)) {
-    data.push({ key: "on", type: "boolean", category: "generic" });
+    data.push({ key: "on", type: "boolean", category: "light_state" });
     orders.push({ key: "on", type: "boolean", dispatchConfig: dc("on") });
   } else if (DIMMER_TYPES.has(mod.type)) {
     data.push({ key: "on", type: "boolean", category: "light_state" });

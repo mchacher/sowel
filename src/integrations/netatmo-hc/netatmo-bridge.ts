@@ -12,6 +12,7 @@ import type {
   NetatmoTokenResponse,
   NetatmoHomesDataResponse,
   NetatmoHomeStatusResponse,
+  NetatmoGetMeasureResponse,
   NetatmoSetStateRequest,
 } from "./netatmo-types.js";
 
@@ -180,13 +181,42 @@ export class NetatmoBridge {
   // ============================================================
 
   async getHomesData(): Promise<NetatmoHomesDataResponse> {
-    return this.apiGet<NetatmoHomesDataResponse>("/api/homesdata");
+    const data = await this.apiGet<NetatmoHomesDataResponse>("/api/homesdata");
+    // Temporary debug: log raw response structure
+    for (const home of data.body.homes) {
+      const moduleTypes = (home.modules ?? []).map((m) => m.type);
+      this.logger.info(
+        { homeId: home.id, homeName: home.name, moduleCount: moduleTypes.length, moduleTypes },
+        "Netatmo raw homesdata",
+      );
+    }
+    return data;
   }
 
   async getHomeStatus(homeId: string): Promise<NetatmoHomeStatusResponse> {
     return this.apiGet<NetatmoHomeStatusResponse>(
       `/api/homestatus?home_id=${encodeURIComponent(homeId)}`,
     );
+  }
+
+  async getMeasure(
+    deviceId: string,
+    moduleId: string,
+    type: string,
+    scale: string,
+    dateBegin?: number,
+  ): Promise<NetatmoGetMeasureResponse> {
+    const params = new URLSearchParams({
+      device_id: deviceId,
+      module_id: moduleId,
+      type,
+      scale,
+      optimize: "false",
+    });
+    if (dateBegin !== undefined) {
+      params.set("date_begin", String(dateBegin));
+    }
+    return this.apiGet<NetatmoGetMeasureResponse>(`/api/getmeasure?${params.toString()}`);
   }
 
   async setState(request: NetatmoSetStateRequest): Promise<void> {

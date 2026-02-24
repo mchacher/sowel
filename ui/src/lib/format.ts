@@ -119,6 +119,8 @@ export function sourceLabel(source: string): string {
     shelly: "Shelly",
     custom_mqtt: "MQTT",
     panasonic_cc: "Panasonic",
+    mcz_maestro: "MCZ",
+    netatmo_hc: "Legrand",
   };
   return labels[source] ?? source;
 }

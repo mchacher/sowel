@@ -21,11 +21,11 @@ const RELEVANT_DATA: Record<string, string[]> = {
 
 /** Maps equipment types to relevant order keys for auto-binding. */
 const RELEVANT_ORDERS: Record<string, string[]> = {
-  light_onoff: ["state"],
-  light_dimmable: ["state", "brightness"],
-  light_color: ["state", "brightness", "color", "color_temp"],
-  shutter: ["position", "state"],
-  switch: ["state"],
+  light_onoff: ["state", "on"],
+  light_dimmable: ["state", "on", "brightness"],
+  light_color: ["state", "on", "brightness", "color", "color_temp"],
+  shutter: ["position", "state", "target_position"],
+  switch: ["state", "on"],
   button: [],
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
 };
