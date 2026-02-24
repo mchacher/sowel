@@ -1,30 +1,30 @@
-# Corbel — User Manual
+# Winch — User Manual
 
 > Updated: 2026-02-21 — V0.9 Modes & Calendar
 
 ---
 
-## Why Corbel?
+## Why Winch?
 
 Home automation platforms are powerful but complex. Home Assistant drowns users in YAML and flat entity lists. Jeedom buries features behind paid plugins. Both demand hours of configuration before anything works.
 
-Corbel takes the opposite approach: **structure first, simplicity always**.
+Winch takes the opposite approach: **structure first, simplicity always**.
 
-| | Home Assistant | Jeedom | **Corbel** |
-|---|---|---|---|
-| **Architecture** | Flat entity list (thousands of `sensor.`, `light.`, `switch.`...) | Nested objects & commands | **3 clear layers**: Device → Equipment → Zone |
-| **Device setup** | Integration + entity config per device | Plugin per protocol (often paid) | **Zero config** — auto-discovery from zigbee2mqtt |
-| **Room status** | Create template sensors manually for each aggregation | Write virtual devices + scenarios | **Automatic** — motion, temperature, lights count, all computed in real-time |
-| **Automations** | YAML automations or Node-RED (extra component) | Block-based scenario editor | **Recipes** — pre-built templates, just pick the zone and the light |
-| **Operating modes** | Manual: create `input_boolean` + automation per mode per room | Manual: virtual switches + scenarios | **Built-in Modes** — define once, configure per zone, activate by button or calendar |
-| **Scheduling** | External calendar or `time` triggers in each automation | Cron in each scenario | **Built-in Calendar** — weekly profiles, drag-and-drop mode scheduling |
-| **Stack** | Python + Docker Supervisor + add-ons + HACS | PHP + Apache + MySQL + plugins | **Node.js + SQLite** — single process, instant startup |
+|                     | Home Assistant                                                    | Jeedom                               | **Winch**                                                                            |
+| ------------------- | ----------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| **Architecture**    | Flat entity list (thousands of `sensor.`, `light.`, `switch.`...) | Nested objects & commands            | **3 clear layers**: Device → Equipment → Zone                                        |
+| **Device setup**    | Integration + entity config per device                            | Plugin per protocol (often paid)     | **Zero config** — auto-discovery from zigbee2mqtt                                    |
+| **Room status**     | Create template sensors manually for each aggregation             | Write virtual devices + scenarios    | **Automatic** — motion, temperature, lights count, all computed in real-time         |
+| **Automations**     | YAML automations or Node-RED (extra component)                    | Block-based scenario editor          | **Recipes** — pre-built templates, just pick the zone and the light                  |
+| **Operating modes** | Manual: create `input_boolean` + automation per mode per room     | Manual: virtual switches + scenarios | **Built-in Modes** — define once, configure per zone, activate by button or calendar |
+| **Scheduling**      | External calendar or `time` triggers in each automation           | Cron in each scenario                | **Built-in Calendar** — weekly profiles, drag-and-drop mode scheduling               |
+| **Stack**           | Python + Docker Supervisor + add-ons + HACS                       | PHP + Apache + MySQL + plugins       | **Node.js + SQLite** — single process, instant startup                               |
 
 ### The key insight
 
-> A **Device** is what's on the network. An **Equipment** is what's in the room. The user thinks *"Spots Salon"*, not *"IKEA TRADFRI LED1837R5 0x00158D00062B1234"*.
+> A **Device** is what's on the network. An **Equipment** is what's in the room. The user thinks _"Spots Salon"_, not _"IKEA TRADFRI LED1837R5 0x00158D00062B1234"_.
 
-Corbel separates the physical (Device) from the functional (Equipment), then organizes everything spatially (Zone). This is what makes aggregation, recipes, and modes possible without any configuration.
+Winch separates the physical (Device) from the functional (Equipment), then organizes everything spatially (Zone). This is what makes aggregation, recipes, and modes possible without any configuration.
 
 ---
 
@@ -32,7 +32,7 @@ Corbel separates the physical (Device) from the functional (Equipment), then org
 
 ### 1. Devices — auto-discovered, never configured
 
-Devices are physical hardware on the MQTT network. Corbel subscribes to zigbee2mqtt and discovers everything automatically: sensors, lights, switches, shutters, buttons. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
+Devices are physical hardware on the MQTT network. Winch subscribes to zigbee2mqtt and discovers everything automatically: sensors, lights, switches, shutters, buttons. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
 
 You never configure a Device. You just look at the list, and they're there.
 
@@ -42,21 +42,22 @@ An Equipment is what the user actually interacts with. "Spots Salon" is an Equip
 
 **Why this matters**: a single "Spots Salon" Equipment can bind to 3 separate IKEA dimmer modules. One toggle turns all three on. One slider dims all three. The user doesn't care how many physical devices are behind it.
 
-| Equipment Type | What it controls | UI |
-|---|---|---|
-| Light (On/Off) | Simple on/off | Toggle |
-| Light (Dimmable) | Brightness control | Toggle + slider |
-| Light (Color) | Color-capable | Toggle + slider |
-| Shutter | Roller blind / cover | Open / Stop / Close + position |
-| Switch / Plug | On/off relay | State badge |
-| Sensor | Temperature, humidity, pressure, CO2... | Auto-adaptive value display |
-| Button / Remote | Physical button (for triggers) | — |
+| Equipment Type   | What it controls                        | UI                             |
+| ---------------- | --------------------------------------- | ------------------------------ |
+| Light (On/Off)   | Simple on/off                           | Toggle                         |
+| Light (Dimmable) | Brightness control                      | Toggle + slider                |
+| Light (Color)    | Color-capable                           | Toggle + slider                |
+| Shutter          | Roller blind / cover                    | Open / Stop / Close + position |
+| Switch / Plug    | On/off relay                            | State badge                    |
+| Sensor           | Temperature, humidity, pressure, CO2... | Auto-adaptive value display    |
+| Button / Remote  | Physical button (for triggers)          | —                              |
 
 ### 3. Zones — the spatial structure
 
 Zones form a tree: `Maison → Étage 1 → Salon`. Each Equipment belongs to exactly one Zone.
 
-**Automatic aggregation**: Corbel computes real-time status for every zone:
+**Automatic aggregation**: Winch computes real-time status for every zone:
+
 - **Temperature, humidity, luminosity** — averaged across all sensors in the zone
 - **Motion** — OR across all motion sensors (plus duration tracking)
 - **Lights on / total** — count of active lights
@@ -71,24 +72,28 @@ This aggregation propagates upward: "Étage 1" automatically merges data from Sa
 A Recipe is a pre-built automation template. Instead of writing rules from scratch, the user picks a Recipe and fills in the parameters.
 
 **Example — Motion Light**:
+
 - Pick a zone (Salon)
 - Pick a light (Spots Salon)
 - Set a timeout (10 minutes)
 
-That's it. Corbel handles all the edge cases: motion detected → light ON, motion stops → start timer, timer expires → light OFF, manual turn-on → start timer if no motion, manual turn-off → cancel timer.
+That's it. Winch handles all the edge cases: motion detected → light ON, motion stops → start timer, timer expires → light OFF, manual turn-on → start timer if no motion, manual turn-off → cancel timer.
 
 ### 5. Modes — house-level operating states
 
 A Mode is a named operating profile for the entire home. Examples:
+
 - **Confort** — heating on, lights warm
 - **Cocoon** — dim lights, close shutters
 - **Absent** — all off, security active
 
 Each Mode defines **impacts per zone**: what happens in each room when the mode activates. An impact can be:
+
 - **Order**: send a command to an equipment (turn on a light, close a shutter)
 - **Recipe toggle**: enable or disable a recipe (stop the motion-light in the bedroom at night)
 
 Modes can be activated:
+
 - **Manually** from the UI (one tap)
 - **By event trigger** — a button press or sensor value (press the Cocoon button → activate Cocoon mode)
 - **By calendar** — weekly schedule (8:00 weekdays → activate Confort)
@@ -97,14 +102,14 @@ Modes can be activated:
 
 The Calendar manages **weekly profiles** (e.g., "Travail", "Vacances"). Each profile contains **time slots**: a day + time + modes to activate.
 
-| Profile | Slot | |
-|---|---|---|
-| **Travail** | Lun–Ven 07:00 | Confort |
-| | Lun–Ven 09:00 | Absent |
-| | Lun–Ven 18:00 | Confort |
-| | Lun–Ven 22:30 | Cocoon |
+| Profile      | Slot            |         |
+| ------------ | --------------- | ------- |
+| **Travail**  | Lun–Ven 07:00   | Confort |
+|              | Lun–Ven 09:00   | Absent  |
+|              | Lun–Ven 18:00   | Confort |
+|              | Lun–Ven 22:30   | Cocoon  |
 | **Vacances** | Every day 09:00 | Confort |
-| | Every day 23:00 | Cocoon |
+|              | Every day 23:00 | Cocoon  |
 
 Switch between profiles with one tap. The active profile's slots run automatically.
 
@@ -128,6 +133,7 @@ The **Home** page is where you spend 95% of your time. The sidebar shows a zone 
 ### Administration > Modes
 
 Create and manage global mode definitions:
+
 - Name, description
 - View all event triggers (which button activates this mode)
 - View all zone impacts (which zones are affected and how many actions)
@@ -136,6 +142,7 @@ Create and manage global mode definitions:
 ### Administration > Calendar
 
 Manage weekly scheduling:
+
 - Switch between profiles (Travail, Vacances...)
 - Set the active profile
 - Add/remove time slots (days + time + modes to activate)
@@ -143,6 +150,7 @@ Manage weekly scheduling:
 ### Administration > Equipments
 
 Create and bind equipments:
+
 1. Click "Add Equipment"
 2. Choose type, name, zone
 3. Select compatible devices to bind
@@ -151,6 +159,7 @@ Create and bind equipments:
 ### Administration > Zones
 
 Build the spatial topology:
+
 - Create zones (Maison, Étage 1, Salon...)
 - Nest them (drag into hierarchy)
 - Zone tree appears in Home sidebar
@@ -158,13 +167,15 @@ Build the spatial topology:
 ### Administration > Devices
 
 Browse auto-discovered hardware:
+
 - Sortable table (name, manufacturer, model, battery, LQI, last seen)
 - Click for detail: raw data, orders, expose viewer
-- Delete removes from Corbel only (re-discovered if still active)
+- Delete removes from Winch only (re-discovered if still active)
 
 ### Administration > Integrations
 
 Configure zigbee2mqtt connection:
+
 - MQTT broker URL, credentials, Z2M base topic
 - Connection status indicator
 - Save + reconnect without restarting
@@ -191,7 +202,7 @@ Configure zigbee2mqtt connection:
 
 ```bash
 git clone <repo>
-cd corbel
+cd winch
 npm install
 ```
 
@@ -200,7 +211,7 @@ npm install
 Optionally edit `.env` for engine settings:
 
 ```env
-SQLITE_PATH=./data/corbel.db
+SQLITE_PATH=./data/winch.db
 API_PORT=3000
 JWT_SECRET=your-secret-here
 LOG_LEVEL=info
@@ -235,6 +246,7 @@ Open **http://localhost:5173**.
 ## REST API
 
 All endpoints (except auth) require a Bearer token:
+
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:3000/api/v1/...
 ```
@@ -345,9 +357,9 @@ curl -X POST http://localhost:3000/api/v1/recipe-instances \
 ### Backup / Restore
 
 ```bash
-curl http://localhost:3000/api/v1/backup -o corbel-backup.json
+curl http://localhost:3000/api/v1/backup -o winch-backup.json
 curl -X POST http://localhost:3000/api/v1/backup \
-  -H "Content-Type: application/json" -d @corbel-backup.json
+  -H "Content-Type: application/json" -d @winch-backup.json
 ```
 
 ### WebSocket
@@ -362,8 +374,8 @@ Events: `device.data.updated`, `device.discovered`, `equipment.data.changed`, `e
 
 ## What's Next
 
-| Version | Feature |
-|---------|---------|
-| V0.10 | Computed Data — virtual data expressions (formulas across equipments) |
-| V0.11 | History — InfluxDB time-series with charts in UI |
-| V1.0+ | AI Assistant — natural language scenario creation |
+| Version | Feature                                                               |
+| ------- | --------------------------------------------------------------------- |
+| V0.10   | Computed Data — virtual data expressions (formulas across equipments) |
+| V0.11   | History — InfluxDB time-series with charts in UI                      |
+| V1.0+   | AI Assistant — natural language scenario creation                     |

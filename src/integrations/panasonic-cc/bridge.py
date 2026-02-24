@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Corbel — Panasonic Comfort Cloud bridge.
+Winch — Panasonic Comfort Cloud bridge.
 Thin CLI wrapper around aio-panasonic-comfort-cloud.
 Called by Node.js via child_process.execFile.
 All output is JSON to stdout.
@@ -222,7 +222,7 @@ def format_device(dev):
 # ============================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Panasonic Comfort Cloud bridge for Corbel")
+    parser = argparse.ArgumentParser(description="Panasonic Comfort Cloud bridge for Winch")
     parser.add_argument("command", choices=["login", "get_devices", "get_device", "control"])
     parser.add_argument("--email", required=True)
     parser.add_argument("--password", required=True)

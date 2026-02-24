@@ -12,17 +12,17 @@ This is part of the new incremental UI strategy: each backend version ships its 
 
 ## Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Auth | None | Auth module not yet implemented; open access for now |
-| Dark mode | Deferred | Will be added later; Tailwind config prepared with `class` strategy |
-| Routing | React Router v6 | URL-based navigation (/devices, /devices/:id), bookmarkable |
-| Device editing | Included | User can rename a device from the UI (PUT /api/v1/devices/:id) |
+| Decision       | Choice          | Rationale                                                           |
+| -------------- | --------------- | ------------------------------------------------------------------- |
+| Auth           | None            | Auth module not yet implemented; open access for now                |
+| Dark mode      | Deferred        | Will be added later; Tailwind config prepared with `class` strategy |
+| Routing        | React Router v6 | URL-based navigation (/devices, /devices/:id), bookmarkable         |
+| Device editing | Included        | User can rename a device from the UI (PUT /api/v1/devices/:id)      |
 
 ## Acceptance Criteria
 
 - [ ] `ui/` directory contains a working React + Vite + TypeScript project
-- [ ] Tailwind CSS configured with the Corbel design system tokens (light mode)
+- [ ] Tailwind CSS configured with the Winch design system tokens (light mode)
 - [ ] Zustand WebSocket store connects to `ws://host:port/ws` and dispatches events
 - [ ] Zustand device store hydrates from `GET /api/v1/devices` on startup
 - [ ] Device store updates in real-time from WebSocket events (device.discovered, device.removed, device.status_changed, device.data.updated)

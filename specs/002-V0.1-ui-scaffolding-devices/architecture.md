@@ -2,16 +2,16 @@
 
 ## Tech Stack
 
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| Framework | React | 18+ |
-| Build tool | Vite | 5+ |
-| Language | TypeScript | strict mode |
-| Styling | Tailwind CSS | 3+ |
-| State | Zustand | 4+ |
-| Routing | React Router | 6+ |
-| Icons | Lucide React | latest |
-| Fonts | Inter + JetBrains Mono | via Google Fonts or @fontsource |
+| Component  | Technology             | Version                         |
+| ---------- | ---------------------- | ------------------------------- |
+| Framework  | React                  | 18+                             |
+| Build tool | Vite                   | 5+                              |
+| Language   | TypeScript             | strict mode                     |
+| Styling    | Tailwind CSS           | 3+                              |
+| State      | Zustand                | 4+                              |
+| Routing    | React Router           | 6+                              |
+| Icons      | Lucide React           | latest                          |
+| Fonts      | Inter + JetBrains Mono | via Google Fonts or @fontsource |
 
 ## Data Flow
 
@@ -49,24 +49,24 @@ These types will be imported or duplicated in the UI project. Strategy: create a
 
 ## Event Bus Events Consumed (via WebSocket)
 
-| Event | UI Action |
-|-------|-----------|
-| `device.discovered` | Add device to store |
-| `device.removed` | Remove device from store |
-| `device.status_changed` | Update device status in store |
-| `device.data.updated` | Update specific data value in store |
-| `system.mqtt.connected` | Update connection indicator |
-| `system.mqtt.disconnected` | Update connection indicator |
+| Event                      | UI Action                           |
+| -------------------------- | ----------------------------------- |
+| `device.discovered`        | Add device to store                 |
+| `device.removed`           | Remove device from store            |
+| `device.status_changed`    | Update device status in store       |
+| `device.data.updated`      | Update specific data value in store |
+| `system.mqtt.connected`    | Update connection indicator         |
+| `system.mqtt.disconnected` | Update connection indicator         |
 
 ## API Endpoints Consumed
 
-| Method | Endpoint | Usage |
-|--------|----------|-------|
-| GET | `/api/v1/devices` | Hydrate device list on startup |
-| GET | `/api/v1/devices/:id` | Fetch full device detail (data + orders) |
-| PUT | `/api/v1/devices/:id` | Update device name |
-| GET | `/api/v1/devices/:id/raw` | Fetch raw z2m expose data |
-| GET | `/api/v1/health` | Check backend is alive (optional) |
+| Method | Endpoint                  | Usage                                    |
+| ------ | ------------------------- | ---------------------------------------- |
+| GET    | `/api/v1/devices`         | Hydrate device list on startup           |
+| GET    | `/api/v1/devices/:id`     | Fetch full device detail (data + orders) |
+| PUT    | `/api/v1/devices/:id`     | Update device name                       |
+| GET    | `/api/v1/devices/:id/raw` | Fetch raw z2m expose data                |
+| GET    | `/api/v1/health`          | Check backend is alive (optional)        |
 
 ## File Structure
 
@@ -109,8 +109,8 @@ ui/
 
 ```typescript
 interface DevicesState {
-  devices: Map<string, Device>;           // indexed by id
-  deviceData: Map<string, DeviceData[]>;  // indexed by deviceId
+  devices: Map<string, Device>; // indexed by id
+  deviceData: Map<string, DeviceData[]>; // indexed by deviceId
   loading: boolean;
   error: string | null;
 
@@ -128,7 +128,7 @@ interface DevicesState {
 
 ```typescript
 interface WebSocketState {
-  status: 'connecting' | 'connected' | 'disconnected';
+  status: "connecting" | "connected" | "disconnected";
   mqttConnected: boolean;
 
   // Actions
@@ -138,6 +138,7 @@ interface WebSocketState {
 ```
 
 The WebSocket store internally dispatches events to useDevices:
+
 - On `device.discovered` → `useDevices.getState().addDevice(event.device)`
 - On `device.data.updated` → `useDevices.getState().updateDeviceData(...)`
 - etc.
@@ -149,9 +150,9 @@ The WebSocket store internally dispatches events to useDevices:
 export default defineConfig({
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
-      '/ws': {
-        target: 'ws://localhost:3000',
+      "/api": "http://localhost:3000",
+      "/ws": {
+        target: "ws://localhost:3000",
         ws: true,
       },
     },
@@ -164,17 +165,20 @@ This allows the UI dev server (port 5173) to proxy API and WS calls to the backe
 ## UI Components Detail
 
 ### AppLayout
+
 - Left sidebar (collapsible on mobile) with navigation links
-- Top header bar with app name "Corbel" and connection status indicator
+- Top header bar with app name "Winch" and connection status indicator
 - Main content area with `<Outlet/>` for routed pages
 
 ### DeviceCard
+
 - Displays: device name, source badge (zigbee2mqtt/tasmota), status dot (green/red/gray)
 - Shows 1-2 key data values (e.g., temperature, state)
 - Last seen as relative time ("2 min ago")
 - Clickable → navigates to /devices/:id
 
 ### DeviceDetailPage
+
 - Header: device name (editable) + status badge + source + model/manufacturer
 - Section "Data": table of all DeviceData (key, category, value, unit, last updated)
 - Section "Orders": list of available DeviceOrders (key, type, range/enum)
@@ -182,6 +186,7 @@ This allows the UI dev server (port 5173) to proxy API and WS calls to the backe
 - Back button → /devices
 
 ### ConnectionStatus
+
 - Small indicator in the header
 - Green dot + "Connected" when WS is connected AND MQTT is connected
 - Orange dot + "WS connected, MQTT disconnected"

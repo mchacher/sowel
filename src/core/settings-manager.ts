@@ -90,7 +90,7 @@ export class SettingsManager {
       url: this.get(`${prefix}mqtt_url`) ?? "mqtt://localhost:1883",
       username: this.get(`${prefix}mqtt_username`) || undefined,
       password: this.get(`${prefix}mqtt_password`) || undefined,
-      clientId: this.get(`${prefix}mqtt_client_id`) ?? "corbel",
+      clientId: this.get(`${prefix}mqtt_client_id`) ?? "winch",
     };
   }
 

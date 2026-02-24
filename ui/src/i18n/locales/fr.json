@@ -1,5 +1,5 @@
 {
-  "app.name": "Corbel",
+  "app.name": "Winch",
 
   "nav.home": "Maison",
   "nav.devices": "Appareils",
@@ -104,7 +104,7 @@
   "devices.col.updated": "Mis à jour",
   "devices.col.range": "Plage / Valeurs",
   "devices.col.topic": "Topic",
-  "devices.deleteConfirm": "Supprimer cet appareil de Corbel ? Il sera redécouvert automatiquement s'il est toujours actif sur le bridge.",
+  "devices.deleteConfirm": "Supprimer cet appareil de Winch ? Il sera redécouvert automatiquement s'il est toujours actif sur le bridge.",
 
   "zones.title": "Topologie",
   "zones.subtitle": "Définissez la topologie de votre maison",
@@ -379,11 +379,11 @@
   "settings.cannotDeleteSelf": "Vous ne pouvez pas supprimer votre propre compte",
 
   "settings.backup": "Sauvegarde / Restauration",
-  "settings.backupDescription": "Exportez ou importez la configuration complète de Corbel (zones, appareils, équipements, utilisateurs, recettes, intégrations).",
+  "settings.backupDescription": "Exportez ou importez la configuration complète de Winch (zones, appareils, équipements, utilisateurs, recettes, intégrations).",
   "settings.exportBackup": "Exporter",
   "settings.importBackup": "Importer",
   "settings.backupExported": "Sauvegarde exportée avec succès",
-  "settings.backupImported": "Sauvegarde importée avec succès. Redémarrez Corbel pour appliquer les changements.",
+  "settings.backupImported": "Sauvegarde importée avec succès. Redémarrez Winch pour appliquer les changements.",
 
   "nav.integrations": "Intégrations",
 
