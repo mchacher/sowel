@@ -27,6 +27,9 @@ export type DataCategory =
   | "smoke"
   | "co2"
   | "voc"
+  | "noise"
+  | "rain"
+  | "wind"
   | "action"
   | "generic";
 
@@ -140,7 +143,8 @@ export type EquipmentType =
   | "switch"
   | "sensor"
   | "button"
-  | "thermostat";
+  | "thermostat"
+  | "weather";
 
 export interface Equipment {
   id: string;

@@ -83,6 +83,20 @@ export const PROPERTY_TO_CATEGORY: Record<string, DataCategory> = {
   co2: "co2",
   voc: "voc",
 
+  // Noise
+  noise: "noise",
+
+  // Wind
+  wind_strength: "wind",
+  wind_angle: "wind",
+  gust_strength: "wind",
+  gust_angle: "wind",
+
+  // Rain
+  rain: "rain",
+  sum_rain_1: "rain",
+  sum_rain_24: "rain",
+
   // Button / remote action
   action: "action",
 };

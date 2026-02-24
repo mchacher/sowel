@@ -15,7 +15,8 @@ import { getDevice, getDeviceRawExpose, deleteDevice } from "../api";
 import { useDevices } from "../store/useDevices";
 import { DeviceNameEditor } from "../components/devices/DeviceNameEditor";
 import { DeviceDataTable } from "../components/devices/DeviceDataTable";
-import { formatRelativeTime, sourceLabel } from "../lib/format";
+import { sourceLabel } from "../lib/format";
+import { RelativeTime } from "../components/RelativeTime";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function DeviceDetailPage() {
@@ -154,8 +155,8 @@ export function DeviceDetailPage() {
         {!!device.ieeeAddress && (
           <InfoItem label={t("devices.ieeeAddress")} value={device.ieeeAddress} mono />
         )}
-        <InfoItem label={t("devices.lastSeen")} value={formatRelativeTime(device.lastSeen)} />
-        <InfoItem label={t("devices.created")} value={formatRelativeTime(device.createdAt)} />
+        <InfoItem label={t("devices.lastSeen")} value={<RelativeTime iso={device.lastSeen} />} />
+        <InfoItem label={t("devices.created")} value={<RelativeTime iso={device.createdAt} />} />
       </div>
 
       {/* Data section */}
@@ -223,7 +224,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function InfoItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoItem({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-[120px]">
       <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">

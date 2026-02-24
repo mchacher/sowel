@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Device, DeviceData } from "../../types";
-import { formatRelativeTime, sourceLabel } from "../../lib/format";
+import { sourceLabel } from "../../lib/format";
+import { RelativeTime } from "../RelativeTime";
 import {
   Radio,
   Battery,
@@ -255,7 +256,7 @@ export function DeviceList({ devices, deviceData, activeTab }: DeviceListProps) 
                 )}
                 <td className="py-2.5 px-3 text-right hidden sm:table-cell">
                   <span className="text-[11px] text-text-tertiary">
-                    {formatRelativeTime(device.lastSeen)}
+                    <RelativeTime iso={device.lastSeen} />
                   </span>
                 </td>
               </tr>

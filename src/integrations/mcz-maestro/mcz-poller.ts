@@ -113,6 +113,7 @@ export class MczPoller {
     this.polling = true;
 
     try {
+      this.lastPollAt = new Date().toISOString();
       this.logger.debug("Polling MCZ stove...");
       const frame = await this.bridge.getStatus();
 
@@ -123,7 +124,6 @@ export class MczPoller {
       // Update data values
       this.updateDeviceData(frame);
 
-      this.lastPollAt = new Date().toISOString();
       this.logger.debug({ frame }, "MCZ poll complete");
     } catch (err) {
       this.logger.error({ err }, "MCZ poll failed");
