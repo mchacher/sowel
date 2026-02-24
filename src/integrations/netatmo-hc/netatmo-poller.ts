@@ -37,6 +37,7 @@ export class NetatmoPoller {
   private rapidStopTimeout: ReturnType<typeof setTimeout> | null = null;
   private polling = false;
   private rapidPolling = false;
+  private lastPollAt: string | null = null;
 
   /** Map of moduleId → friendlyName, built during discovery. */
   private moduleNames = new Map<string, string>();
@@ -90,6 +91,11 @@ export class NetatmoPoller {
 
   async refresh(): Promise<void> {
     await this.poll();
+  }
+
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    if (!this.lastPollAt) return null;
+    return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
   }
 
   /** Rapid status polling after an order: first at 1s, then every 1s, stops on confirmation or 10s timeout. */
@@ -168,6 +174,7 @@ export class NetatmoPoller {
       if (this.enableWeather) {
         await this.pollWeatherStation();
       }
+      this.lastPollAt = new Date().toISOString();
     } catch (err) {
       this.logger.error({ err }, "Legrand H+C poll cycle failed");
     } finally {

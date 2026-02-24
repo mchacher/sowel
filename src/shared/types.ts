@@ -497,6 +497,7 @@ export interface IntegrationInfo {
   status: IntegrationStatus;
   settings: IntegrationSettingDef[];
   configured: boolean;
+  polling?: { lastPollAt: string; intervalMs: number };
 }
 
 // ============================================================

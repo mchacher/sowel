@@ -429,4 +429,5 @@ export interface IntegrationInfo {
   configured: boolean;
   settings: IntegrationSettingDef[];
   settingValues: Record<string, string>;
+  polling?: { lastPollAt: string; intervalMs: number };
 }

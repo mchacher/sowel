@@ -195,6 +195,10 @@ export class MczMaestroIntegration implements IntegrationPlugin {
     this.logger.info("MCZ Maestro manual refresh completed");
   }
 
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    return this.poller?.getPollingInfo() ?? null;
+  }
+
   private getSetting(key: string): string | undefined {
     return this.settingsManager.get(`${SETTINGS_PREFIX}${key}`);
   }

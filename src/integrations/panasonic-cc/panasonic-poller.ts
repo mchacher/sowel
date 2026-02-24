@@ -27,6 +27,7 @@ export class PanasonicPoller {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private polling = false;
+  private lastPollAt: string | null = null;
 
   constructor(
     bridge: PanasonicBridge,
@@ -71,6 +72,11 @@ export class PanasonicPoller {
     await this.poll();
   }
 
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    if (!this.lastPollAt) return null;
+    return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
+  }
+
   scheduleOnDemandPoll(delayMs?: number): void {
     const delay = delayMs ?? this.onDemandDelayMs;
     this.logger.debug({ delayMs: delay }, "Scheduling on-demand poll");
@@ -100,6 +106,7 @@ export class PanasonicPoller {
         this.updateDeviceData(device);
       }
 
+      this.lastPollAt = new Date().toISOString();
       this.logger.debug({ deviceCount: response.devices.length }, "Panasonic poll complete");
     } catch (err) {
       this.logger.error({ err }, "Panasonic poll failed");
