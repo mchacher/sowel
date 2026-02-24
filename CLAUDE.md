@@ -142,7 +142,52 @@ npm test -- --grep "pattern"  # Run specific tests
 
 ### Logging
 
-- Structured JSON logging via pino (Fastify default)
+Structured JSON logging via pino (Fastify default) with multistream: ring buffer (UI), pino-pretty (dev), JSON stdout + pino-roll files (prod).
+
+#### Log Level Strategy
+
+| Level     | Purpose                                             | Production visible | Examples                                                                     |
+| --------- | --------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------- |
+| **fatal** | Process about to crash, unrecoverable               | Yes                | Uncaught exception, database corruption                                      |
+| **error** | Operation failed, engine continues. Needs attention | Yes                | Integration poll failed, order dispatch error, recipe execution error        |
+| **warn**  | Unexpected situation, handled gracefully            | Yes                | MQTT reconnecting, device offline, token refresh retry, stale device cleanup |
+| **info**  | Significant business events — one per operation     | Yes                | Engine start/stop, device discovered/removed, equipment CRUD, mode activated |
+| **debug** | Operational detail for troubleshooting              | No (dev/UI only)   | Binding evaluation, aggregation steps, migration applied, config loaded      |
+| **trace** | High-volume hot-path data, deep debugging only      | No (dev/UI only)   | Every event bus emission, every MQTT message, every data point update        |
+
+#### Level Assignment Rules
+
+- **info = admin dashboard**: an operator reading info logs should understand _what happened_ without drowning. One log per business operation, not per item processed.
+- **debug = developer session**: detailed enough to trace a specific problem. One human can read these for a module during a debug session.
+- **trace = replay mode**: enables reproducing exact state transitions. High volume, never on in production.
+- **error always includes `{ err }`**: pass the Error object as structured context, e.g. `logger.error({ err }, "Poll failed")`.
+- **warn = self-recovering**: the system handled it, but repeated warnings signal degradation.
+- **Never use `console.log/error/warn`**: always use the structured pino logger. Console calls bypass the ring buffer, file rotation, and redaction.
+
+#### What Goes Where (by domain)
+
+| Domain           | info                                        | debug                                    | trace                       |
+| ---------------- | ------------------------------------------- | ---------------------------------------- | --------------------------- |
+| **MQTT**         | Connected, disconnected, reconnecting       | Subscribed to topic, publish result      | Every message received      |
+| **Devices**      | Discovered, removed, status changed         | Data auto-created, category inferred     | Every data point update     |
+| **Equipments**   | CRUD, order dispatched                      | Binding evaluation, computed data result | Every binding re-evaluation |
+| **Zones**        | CRUD, aggregation summary                   | Individual aggregation fields computed   | Every aggregation trigger   |
+| **Modes**        | Activated, deactivated, CRUD                | Each impact action executed              | —                           |
+| **Recipes**      | Instance created/deleted, enabled/disabled  | Execution steps, trigger evaluation      | —                           |
+| **Integrations** | Started, stopped, connected, poll completed | Poll cycle details, API call results     | Raw API responses           |
+| **Auth**         | User login, token created, password changed | JWT validation, middleware decisions     | —                           |
+| **API**          | Server listening, route registered          | Request handling details                 | Every request/response      |
+| **WebSocket**    | Client connected/disconnected               | Topic subscription, message sent         | Every frame                 |
+| **Event Bus**    | —                                           | —                                        | Every event emitted         |
+| **Database**     | DB opened, migration applied                | Query execution, schema changes          | —                           |
+
+#### Logger Conventions
+
+- **Property name**: use `this.logger` in classes, `logger` in standalone functions. Never `this.log`, `log`, or `console`.
+- **Child loggers**: every module creates a child logger with `{ module: "module-name" }` for filtering.
+- **Structured context**: pass data as first argument object, message as second: `logger.info({ deviceId, status }, "Device status changed")`.
+- **Sensitive data**: automatically redacted by pino config (passwords, tokens, secrets, API keys). Never log credentials manually.
+- **No string interpolation in messages**: use `logger.info({ count }, "Devices discovered")` not `logger.info("Discovered ${count} devices")`.
 
 ## Design System
 

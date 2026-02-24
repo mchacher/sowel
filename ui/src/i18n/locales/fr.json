@@ -386,6 +386,7 @@
   "settings.backupImported": "Sauvegarde importée avec succès. Redémarrez Winch pour appliquer les changements.",
 
   "nav.integrations": "Intégrations",
+  "nav.logs": "Logs",
 
   "integrations.title": "Intégrations",
   "integrations.subtitle": "Configurez les connexions avec vos systèmes domotiques.",
@@ -505,5 +506,20 @@
   "stove.pellet.sufficient": "Suffisant",
   "stove.pellet.almost_empty": "Presque vide",
   "stove.sparkPlug.ok": "OK",
-  "stove.sparkPlug.worn": "Usée"
+  "stove.sparkPlug.worn": "Usée",
+
+  "logs.title": "Logs moteur",
+  "logs.subtitle": "Visualisation des logs moteur en temps réel",
+  "logs.live": "Direct",
+  "logs.paused": "Pause",
+  "logs.clear": "Vider",
+  "logs.noEntries": "Aucune entrée de log",
+  "logs.level": "Niveau",
+  "logs.module": "Module",
+  "logs.search": "Rechercher...",
+  "logs.allLevels": "Tous les niveaux",
+  "logs.allModules": "Tous les modules",
+  "logs.entries": "{{count}} entrées",
+  "logs.engineLevel": "Niveau moteur",
+  "logs.levelChanged": "Niveau de log changé à {{level}}"
 }

@@ -5,6 +5,7 @@ import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import type { Logger } from "../core/logger.js";
+import type { LogRingBuffer } from "../core/log-buffer.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { ZoneManager } from "../zones/zone-manager.js";
 import type { ZoneAggregator } from "../zones/zone-aggregator.js";
@@ -34,6 +35,7 @@ import { registerModeRoutes } from "./routes/modes.js";
 import { registerCalendarRoutes } from "./routes/calendar.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerButtonActionRoutes } from "./routes/button-actions.js";
+import { registerLogRoutes } from "./routes/logs.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -51,6 +53,7 @@ interface ServerDeps {
   buttonActionManager: ButtonActionManager;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
+  logBuffer: LogRingBuffer;
   logger: Logger;
   corsOrigins: string[];
 }
@@ -71,12 +74,13 @@ export async function createServer(deps: ServerDeps) {
     buttonActionManager,
     eventBus,
     integrationRegistry,
+    logBuffer,
     logger,
     corsOrigins,
   } = deps;
 
   const app = Fastify({
-    logger: false, // We use our own pino logger
+    logger: false,
   });
 
   // CORS
@@ -106,7 +110,8 @@ export async function createServer(deps: ServerDeps) {
   registerSettingsRoutes(app, { settingsManager, logger });
   registerIntegrationRoutes(app, { integrationRegistry, settingsManager, logger });
   registerButtonActionRoutes(app, { buttonActionManager, logger });
-  registerWebSocket(app, { eventBus, authService, logger });
+  registerLogRoutes(app, { logBuffer, logger });
+  registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 
   // Serve UI static files (production: ui/dist is copied alongside dist/)
   const uiDir = resolve(import.meta.dirname ?? ".", "../ui-dist");

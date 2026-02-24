@@ -12,7 +12,7 @@ const ACTIVE_PROFILE_KEY = "calendar.activeProfileId";
 const DEFAULT_PROFILE_ID = "travail";
 
 export class CalendarManager {
-  private readonly log;
+  private readonly logger;
   private readonly stmts;
   private cronJobs: Cron[] = [];
 
@@ -23,7 +23,7 @@ export class CalendarManager {
     private readonly modeManager: ModeManager,
     logger: Logger,
   ) {
-    this.log = logger.child({ module: "calendar-manager" });
+    this.logger = logger.child({ module: "calendar-manager" });
     this.stmts = this.prepareStatements();
   }
 
@@ -49,7 +49,7 @@ export class CalendarManager {
   init(): void {
     const profile = this.getActiveProfile();
     this.scheduleProfile(profile.id);
-    this.log.info(
+    this.logger.info(
       { profileId: profile.id, profileName: profile.name },
       "Calendar initialized with active profile",
     );
@@ -85,7 +85,7 @@ export class CalendarManager {
       profileId: profile.id,
       profileName: profile.name,
     });
-    this.log.info({ profileId, profileName: profile.name }, "Active calendar profile changed");
+    this.logger.info({ profileId, profileName: profile.name }, "Active calendar profile changed");
   }
 
   // ── Slots ─────────────────────────────────────────────────
@@ -102,7 +102,7 @@ export class CalendarManager {
     const id = randomUUID();
     this.stmts.insertSlot.run(id, profileId, JSON.stringify(days), time, JSON.stringify(modeIds));
 
-    this.log.info({ slotId: id, profileId, days, time, modeIds }, "Calendar slot added");
+    this.logger.info({ slotId: id, profileId, days, time, modeIds }, "Calendar slot added");
 
     // Reschedule if this is the active profile
     const activeProfile = this.getActiveProfile();
@@ -126,7 +126,7 @@ export class CalendarManager {
 
     this.stmts.updateSlot.run(JSON.stringify(days), time, JSON.stringify(modeIds), slotId);
 
-    this.log.info({ slotId, days, time, modeIds }, "Calendar slot updated");
+    this.logger.info({ slotId, days, time, modeIds }, "Calendar slot updated");
 
     // Reschedule if this is the active profile
     const activeProfile = this.getActiveProfile();
@@ -142,13 +142,21 @@ export class CalendarManager {
     if (!existing) throw new CalendarError(`Slot not found: ${slotId}`, 404);
 
     this.stmts.deleteSlot.run(slotId);
-    this.log.info({ slotId }, "Calendar slot removed");
+    this.logger.info({ slotId }, "Calendar slot removed");
 
     // Reschedule if this is the active profile
     const activeProfile = this.getActiveProfile();
     if (activeProfile.id === existing.profile_id) {
       this.scheduleProfile(existing.profile_id);
     }
+  }
+
+  /** Stop all cron jobs (used during graceful shutdown). */
+  stopAll(): void {
+    for (const job of this.cronJobs) {
+      job.stop();
+    }
+    this.cronJobs = [];
   }
 
   // ── Scheduling ────────────────────────────────────────────
@@ -167,7 +175,7 @@ export class CalendarManager {
       const cronExpr = buildCronExpression(slot.time, slot.days);
       try {
         const job = new Cron(cronExpr, () => {
-          this.log.info(
+          this.logger.info(
             { slotId: slot.id, time: slot.time, modeIds: slot.modeIds },
             "Calendar slot fired",
           );
@@ -175,7 +183,7 @@ export class CalendarManager {
             try {
               this.modeManager.activateMode(modeId);
             } catch (err) {
-              this.log.warn(
+              this.logger.warn(
                 { err, modeId, slotId: slot.id },
                 "Failed to activate mode from calendar",
               );
@@ -184,11 +192,11 @@ export class CalendarManager {
         });
         this.cronJobs.push(job);
       } catch (err) {
-        this.log.error({ err, slotId: slot.id, cronExpr }, "Failed to schedule calendar slot");
+        this.logger.error({ err, slotId: slot.id, cronExpr }, "Failed to schedule calendar slot");
       }
     }
 
-    this.log.info({ profileId, jobCount: this.cronJobs.length }, "Calendar cron jobs scheduled");
+    this.logger.info({ profileId, jobCount: this.cronJobs.length }, "Calendar cron jobs scheduled");
   }
 }
 

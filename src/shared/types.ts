@@ -502,6 +502,20 @@ export interface IntegrationInfo {
 }
 
 // ============================================================
+// Logging
+// ============================================================
+
+export type LogLevel = "debug" | "info" | "warn" | "error" | "fatal" | "silent";
+
+export interface LogEntry {
+  level: string;
+  time: string;
+  module?: string;
+  msg: string;
+  [key: string]: unknown;
+}
+
+// ============================================================
 // Config
 // ============================================================
 

@@ -37,7 +37,7 @@ function createTestDb(): Database.Database {
   return db;
 }
 
-const logger = createLogger("silent");
+const logger = createLogger("silent").logger;
 
 function seedDevice(
   db: Database.Database,
