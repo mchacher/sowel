@@ -49,7 +49,7 @@ export function SettingsPage() {
             language={user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")}
             onLanguageChange={async (lang) => {
               i18n.changeLanguage(lang);
-              localStorage.setItem("corbel_language", lang);
+              localStorage.setItem("winch_language", lang);
               if (user) {
                 await updatePreferences({ ...user.preferences, language: lang });
               }
@@ -634,7 +634,7 @@ function BackupSection() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `corbel-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `winch-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       setSuccess(t("settings.backupExported"));

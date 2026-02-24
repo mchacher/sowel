@@ -167,7 +167,7 @@ export class AuthService {
     expiresAt: string | null,
   ): { token: string; id: string } {
     const id = randomUUID();
-    const rawToken = `cbl_${randomBytes(32).toString("hex")}`;
+    const rawToken = `wch_${randomBytes(32).toString("hex")}`;
     const tokenHash = sha256(rawToken);
 
     this.stmts.insertApiToken.run({

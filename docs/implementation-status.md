@@ -1,4 +1,4 @@
-# Corbel — Implementation Status
+# Winch — Implementation Status
 
 > Updated: 2026-02-22 — V0.1 through V0.10c done, Auth + i18n, Backup/Restore + Integrations
 
@@ -55,7 +55,7 @@
 | Feature         | Detail                                                                                      |
 | --------------- | ------------------------------------------------------------------------------------------- |
 | Tech stack      | React 18 + Vite + Tailwind v4 + Zustand + React Router v6                                   |
-| Design system   | Inter + JetBrains Mono fonts, Corbel color palette, Lucide icons                            |
+| Design system   | Inter + JetBrains Mono fonts, Winch color palette, Lucide icons                             |
 | Devices list    | Sortable table (name, manufacturer, model, source, battery, LQI, last seen), filter by name |
 | Device detail   | Data table, Orders list, raw expose viewer, inline name editor                              |
 | Layout          | Collapsible sidebar, connection status indicator, mobile bottom nav                         |
@@ -366,7 +366,7 @@
 ### What it does
 
 - JWT authentication (access + refresh tokens) with bcrypt password hashing
-- API token support (`cbl_` prefix, SHA-256 hashed)
+- API token support (`wch_` prefix, SHA-256 hashed)
 - Two roles: `admin` (full access) and `standard` (control equipments, view data, manage recipes — cannot manage devices, zones, users, or system settings)
 - First-run setup flow: create first admin user
 - Auth middleware on all API routes (whitelist: status, setup, login, refresh, health)
@@ -415,11 +415,11 @@
 - **Integrations page**: Admin UI to configure Zigbee2MQTT connection (MQTT URL, credentials, client ID, Z2M base topic), with connection status and reconnect button
 - **MQTT reconnect**: Change integration settings from UI and reconnect without engine restart
 - **Conditional MQTT startup**: Engine starts without MQTT if integration not yet configured (`isMqttConfigured()` check)
-- **Backup/restore**: Export/import full Corbel configuration as JSON (all config tables in dependency order)
+- **Backup/restore**: Export/import full Winch configuration as JSON (all config tables in dependency order)
 - **Backup UI**: Export/Import buttons in Settings page (admin only)
 - **Device auto-cleanup**: Offline devices are automatically deleted from DB when z2m sends availability "offline"
 - **Stale device cleanup**: On every `bridge/devices` message, devices in DB not in the bridge list are deleted
-- **Manual device delete**: Delete button on device detail page (Corbel DB only, does not touch z2m)
+- **Manual device delete**: Delete button on device detail page (Winch DB only, does not touch z2m)
 
 ### API Endpoints
 
@@ -576,7 +576,7 @@
 - **PanasonicCCIntegration** implements IntegrationPlugin
 - **Cloud API bridge**: authenticates with Panasonic cloud, fetches device list and state
 - **Polling**: periodic state refresh (configurable interval, default 300s)
-- **Device discovery**: AC units appear as Corbel Devices with source `panasonic_cc`
+- **Device discovery**: AC units appear as Winch Devices with source `panasonic_cc`
 - **DeviceData**: temperature (indoor/outdoor), operating mode, fan speed, power state, eco mode
 - **DeviceOrders**: set temperature, mode, fan speed, power on/off
 - **Thermostat equipment type**: full UI support with mode selector, temperature controls, fan speed
@@ -610,7 +610,7 @@
 - **MczMaestroIntegration** implements IntegrationPlugin
 - **Socket.IO bridge**: connects to MCZ cloud via socket.io, authenticates, receives real-time state
 - **Polling**: periodic state refresh (configurable interval, default 300s)
-- **Device discovery**: stoves appear as Corbel Devices with source `mcz_maestro`
+- **Device discovery**: stoves appear as Winch Devices with source `mcz_maestro`
 - **DeviceData**: ambient temperature, smoke temperature, water temperature, stove state, power level, fan speeds, eco mode, chrono mode, alarms
 - **DeviceOrders**: set temperature, power on/off, power level, eco mode, chrono mode, silent mode, reset alarm
 - **Thermostat equipment type**: reused ThermostatCard with MCZ-specific stove state badge + reset alarm button

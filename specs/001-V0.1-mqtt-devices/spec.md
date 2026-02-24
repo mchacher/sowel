@@ -2,7 +2,7 @@
 
 ## Summary
 
-The foundational milestone of Corbel. The engine connects to an MQTT broker (zigbee2mqtt), auto-discovers all Zigbee devices, parses their capabilities (Data and Orders), tracks their state in real-time, and persists everything in SQLite. A REST API and WebSocket endpoint expose device data for testing and future UI integration.
+The foundational milestone of Winch. The engine connects to an MQTT broker (zigbee2mqtt), auto-discovers all Zigbee devices, parses their capabilities (Data and Orders), tracks their state in real-time, and persists everything in SQLite. A REST API and WebSocket endpoint expose device data for testing and future UI integration.
 
 ## Reference
 
