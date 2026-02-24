@@ -1,15 +1,15 @@
-# Corbel — Functional Specification
+# Winch — Functional Specification
 
 > Version: 0.8 — February 2026
 > Author: Marc
 > Purpose: This document is the single source of truth for Claude Code to build the project.
-> **Corbel** — the invisible structure of your smart home.
+> **Winch** — the invisible structure of your smart home.
 
 ---
 
 ## 1. Vision
 
-**Corbel** is a modern, lightweight home automation engine that:
+**Winch** is a modern, lightweight home automation engine that:
 
 - Uses **MQTT as its only data source** (zigbee2mqtt, tasmota, ESPHome, or any MQTT-publishing device)
 - Separates **physical devices** (what's on the network) from **functional equipments** (how the user lives their home)
@@ -1118,7 +1118,7 @@ Downsampling is handled by InfluxDB continuous queries / tasks.
 ## 10. Project Structure
 
 ```
-corbel/
+winch/
 ├── docker-compose.yml              # Engine + InfluxDB
 ├── package.json
 ├── tsconfig.json
@@ -1381,20 +1381,20 @@ corbel/
 ### V0.10b — Panasonic Comfort Cloud Integration
 
 - `PanasonicCCIntegration` plugin (cloud API bridge + polling)
-- Auto-discovery of AC units as Corbel Devices (source: `panasonic_cc`)
+- Auto-discovery of AC units as Winch Devices (source: `panasonic_cc`)
 - Data: indoor/outdoor temperature, operating mode, fan speed, power state
 - Orders: set temperature, mode, fan speed, power on/off
 - `thermostat` equipment type with full UI (ThermostatCard)
-- **Deliverable**: Panasonic AC control from Corbel
+- **Deliverable**: Panasonic AC control from Winch
 
 ### V0.10c — MCZ Maestro Integration
 
 - `MczMaestroIntegration` plugin (Socket.IO cloud bridge + polling)
-- Auto-discovery of pellet stoves as Corbel Devices (source: `mcz_maestro`)
+- Auto-discovery of pellet stoves as Winch Devices (source: `mcz_maestro`)
 - Data: ambient/smoke/water temperature, stove state, power level, fan speeds, alarms
 - Orders: set temperature, power on/off, power level, eco/chrono/silent mode, reset alarm
 - Stove state badge on ThermostatCard + always-visible reset alarm button
-- **Deliverable**: MCZ pellet stove control from Corbel
+- **Deliverable**: MCZ pellet stove control from Winch
 
 ### V0.11 — History
 
@@ -1464,19 +1464,19 @@ The engine is configured via environment variables (`.env` file):
 MQTT_URL=mqtt://localhost:1883
 MQTT_USERNAME=
 MQTT_PASSWORD=
-MQTT_CLIENT_ID=corbel
+MQTT_CLIENT_ID=winch
 
 # Zigbee2MQTT
 Z2M_BASE_TOPIC=zigbee2mqtt
 
 # Database
-SQLITE_PATH=./data/corbel.db
+SQLITE_PATH=./data/winch.db
 
 # InfluxDB
 INFLUX_URL=http://localhost:8086
 INFLUX_TOKEN=my-token
-INFLUX_ORG=corbel
-INFLUX_BUCKET=corbel
+INFLUX_ORG=winch
+INFLUX_BUCKET=winch
 
 # Server
 API_PORT=3000
@@ -1599,16 +1599,16 @@ POST /api/v1/auth/logout
 # Create via API (requires admin role)
 POST /api/v1/auth/tokens
   Body: { "name": "iPhone Marc", "scopes": ["*"], "expiresAt": null }
-  Response: { "token": "cbl_xxxxxxxxxxxx", "id": "..." }
+  Response: { "token": "wch_xxxxxxxxxxxx", "id": "..." }
   # The raw token is returned ONCE at creation. Store it securely.
 
 # Usage: pass as Bearer token or as query param (for WebSocket)
-Authorization: Bearer cbl_xxxxxxxxxxxx
+Authorization: Bearer wch_xxxxxxxxxxxx
 # or
-ws://host:3000/ws?token=cbl_xxxxxxxxxxxx
+ws://host:3000/ws?token=wch_xxxxxxxxxxxx
 ```
 
-- Token prefix: `cbl_` (corbel) for easy identification
+- Token prefix: `wch_` (winch) for easy identification
 - Scopes: `["*"]` (all), `["read"]` (view only), `["read", "control"]` (view + execute orders), `["read", "control", "admin"]` (everything)
 - Tokens can be revoked individually
 
@@ -1618,7 +1618,7 @@ WebSocket connections must authenticate on connect:
 
 ```
 // Option A: token as query parameter
-ws://host:3000/ws?token=cbl_xxxxxxxxxxxx
+ws://host:3000/ws?token=wch_xxxxxxxxxxxx
 
 // Option B: token in first message after connect
 → Client sends: { "type": "auth", "token": "eyJ..." }
@@ -1795,7 +1795,7 @@ The engine itself runs HTTP (no TLS). For remote access (mobile app outside loca
 The engine must:
 
 - Trust `X-Forwarded-For`, `X-Forwarded-Proto` headers (configurable: `TRUST_PROXY=true`)
-- Work correctly behind a path prefix (e.g. `/corbel/api/v1/...`) if needed
+- Work correctly behind a path prefix (e.g. `/winch/api/v1/...`) if needed
 - Support CORS with configurable allowed origins (for web and mobile WebView)
 
 ```env
@@ -1828,7 +1828,7 @@ This ensures the engine is never exposed without authentication.
 
 ### 14.1 Overview
 
-Corbel integrates an optional AI assistant that allows users to interact with their home in natural language. The AI layer is **provider-agnostic** — it can use Claude API, OpenAI API, or a local model via Ollama.
+Winch integrates an optional AI assistant that allows users to interact with their home in natural language. The AI layer is **provider-agnostic** — it can use Claude API, OpenAI API, or a local model via Ollama.
 
 The AI is never autonomous — it always proposes, the user confirms.
 
@@ -1937,7 +1937,7 @@ User says: _"Éteins les lumières du salon si personne depuis 10 minutes après
 System prompt template:
 
 ```
-You are the AI assistant for Corbel, a home automation engine.
+You are the AI assistant for Winch, a home automation engine.
 
 The user wants to create an automation scenario. Based on their request and the home context below, generate a valid Scenario JSON object.
 
@@ -1979,7 +1979,7 @@ User says: _"Quelle est la température du salon ?"_ or _"Combien de lumières s
 System prompt:
 
 ```
-You are the AI assistant for Corbel. Answer the user's question about their home based on the current state.
+You are the AI assistant for Winch. Answer the user's question about their home based on the current state.
 Answer in the same language as the user. Be concise.
 
 CURRENT HOME STATE:
@@ -1995,7 +1995,7 @@ User says: _"Éteins tout dans le salon"_ or _"Mets la lumière de la chambre à
 System prompt:
 
 ```
-You are the AI assistant for Corbel. The user wants to perform an action on their home.
+You are the AI assistant for Winch. The user wants to perform an action on their home.
 Generate a JSON array of actions to execute.
 
 Respond ONLY with a JSON array of action objects:
@@ -2023,7 +2023,7 @@ This is triggered by the engine periodically (e.g. weekly) or on-demand. The eng
 System prompt:
 
 ```
-You are the AI assistant for Corbel. Analyze the user's home setup and suggest useful automation scenarios they might want.
+You are the AI assistant for Winch. Analyze the user's home setup and suggest useful automation scenarios they might want.
 
 Consider:
 - Equipments that exist but are not used in any scenario
@@ -2082,14 +2082,14 @@ The AI assistant appears as a **chat panel** accessible from any page (floating 
 
 ```
 ┌──────────────────────────────────┐
-│  🤖 Corbel Assistant             │
+│  🤖 Winch Assistant             │
 ├──────────────────────────────────┤
 │                                  │
 │  User: Éteins tout dans le       │
 │  salon si personne pendant       │
 │  10 minutes le soir              │
 │                                  │
-│  Corbel: J'ai préparé ce         │
+│  Winch: J'ai préparé ce         │
 │  scénario:                       │
 │  ┌────────────────────────────┐  │
 │  │ Extinction salon            │  │
@@ -2118,9 +2118,9 @@ For execute_action intents, the confirmation shows the list of actions about to 
 
 ### 14.1 Brand Identity
 
-**Corbel** — the invisible structure of your smart home.
+**Winch** — the invisible structure of your smart home.
 
-The design language draws from the corbel: structural elegance, hidden strength, clean lines. The beauty of architecture that holds everything together invisibly. The UI should feel warm but precise, calm but informative. Not dark-tech aggressive, not corporate cold.
+The design language draws from the winch: structural elegance, hidden strength, clean lines. The beauty of architecture that holds everything together invisibly. The UI should feel warm but precise, calm but informative. Not dark-tech aggressive, not corporate cold.
 
 ### 14.2 Color Palette
 
@@ -2197,7 +2197,7 @@ Single font family for consistency. Inter is geometric, modern, highly legible o
 
 ### 14.4 Logo
 
-Concept: a stylized corbel bracket — a supportive architectural element in profile, suggesting hidden structural strength.
+Concept: a stylized winch bracket — a supportive architectural element in profile, suggesting hidden structural strength.
 
 ```
         ┌───────┐
@@ -2219,7 +2219,7 @@ Execution:
 Variants:
 
 - **Icon only**: the square with cutout (used as favicon, app icon)
-- **Wordmark**: icon + "Corbel" in Inter Semibold, spaced generously
+- **Wordmark**: icon + "Winch" in Inter Semibold, spaced generously
 - **Monochrome**: single color version for dark/light backgrounds
 
 ### 14.5 Spacing & Layout
@@ -2398,7 +2398,7 @@ module.exports = {
 - API keys must be stored encrypted in SQLite (AES-256-GCM, encryption key derived from JWT_SECRET)
 - Always validate LLM JSON output with a strict schema validator before accepting
 - Set temperature low (0.1-0.2) for structured output (scenario creation, actions), higher (0.7) for conversational answers
-- Implement a timeout on LLM calls (30s default) — if the provider is down, the rest of Corbel must keep working
+- Implement a timeout on LLM calls (30s default) — if the provider is down, the rest of Winch must keep working
 - The AI feature is entirely optional — if `provider: "none"`, all AI routes return 404 and UI hides AI elements
 - For Ollama: use the `/api/generate` endpoint with `format: "json"` for structured output
 - Context builder must be efficient — cache the context and invalidate only when zones/equipments change, not on every data update
@@ -2408,7 +2408,7 @@ module.exports = {
 
 - Use `bcrypt` for password hashing (cost factor 12)
 - Use `jsonwebtoken` for JWT (HS256, secret from env)
-- API tokens: generate with `crypto.randomBytes(32).toString('hex')`, prefix with `cbl_`, store SHA-256 hash only
+- API tokens: generate with `crypto.randomBytes(32).toString('hex')`, prefix with `wch_`, store SHA-256 hash only
 - Auth middleware: check `Authorization: Bearer <token>` header. Try JWT decode first, if it fails try API token lookup.
 - Fastify `onRequest` hook for auth, with route whitelist for public endpoints (`/auth/login`, `/auth/setup`)
 - Role-based authorization: use a `requireRole(minRole)` decorator on routes

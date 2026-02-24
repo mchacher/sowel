@@ -2,12 +2,12 @@
 
 ## Summary
 
-Implement the spatial topology layer of Corbel. Users can define hierarchical Zones (Home → Floor → Room) and Equipment Groups within Zones. This establishes the structure into which Equipments will be placed in V0.3.
+Implement the spatial topology layer of Winch. Users can define hierarchical Zones (Home → Floor → Room) and Equipment Groups within Zones. This establishes the structure into which Equipments will be placed in V0.3.
 
 ## Reference
 
 - Data model: [docs/data-model.md](../../docs/data-model.md) — §3 Zone, §4 Equipment Group
-- Spec: [docs/corbel-spec.md](../../docs/corbel-spec.md) — §5.4 Zone, §7.5 Zone API
+- Spec: [docs/winch-spec.md](../../docs/winch-spec.md) — §5.4 Zone, §7.5 Zone API
 
 ## Acceptance Criteria
 

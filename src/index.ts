@@ -28,7 +28,7 @@ async function main() {
 
   // 2. Initialize logger
   const logger = createLogger(config.log.level);
-  logger.info("Corbel engine starting...");
+  logger.info("Winch engine starting...");
 
   // 3. Open SQLite database and run migrations
   const db = openDatabase(config.sqlite.path, logger);
@@ -153,7 +153,7 @@ async function main() {
   await server.listen({ port: config.api.port, host: config.api.host });
   logger.info(
     { port: config.api.port, host: config.api.host },
-    `Corbel API listening on http://${config.api.host}:${config.api.port}`,
+    `Winch API listening on http://${config.api.host}:${config.api.port}`,
   );
 
   // 16. Emit system started event (triggers zone aggregation compute)
@@ -171,7 +171,7 @@ async function main() {
     logger.info("No users found — setup required. Navigate to the UI to create the first admin.");
   }
 
-  logger.info("Corbel engine started successfully");
+  logger.info("Winch engine started successfully");
 
   // Graceful shutdown
   const shutdown = async () => {

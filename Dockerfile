@@ -40,7 +40,7 @@ COPY recipes/ recipes/
 VOLUME /app/data
 
 ENV NODE_ENV=production
-ENV SQLITE_PATH=/app/data/corbel.db
+ENV SQLITE_PATH=/app/data/winch.db
 
 EXPOSE 3000
 

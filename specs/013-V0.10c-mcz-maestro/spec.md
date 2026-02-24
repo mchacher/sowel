@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add a native TypeScript integration for MCZ pellet stoves equipped with the Maestro controller. Communication happens via the MCZ cloud (Socket.IO to `app.mcz.it:9000`), authenticated with the stove's serial number and MAC address. The integration polls stove data periodically and exposes it as a Corbel Device with thermostat-type Equipment bindings.
+Add a native TypeScript integration for MCZ pellet stoves equipped with the Maestro controller. Communication happens via the MCZ cloud (Socket.IO to `app.mcz.it:9000`), authenticated with the stove's serial number and MAC address. The integration polls stove data periodically and exposes it as a Winch Device with thermostat-type Equipment bindings.
 
 ## Reference
 
@@ -43,7 +43,7 @@ Add a native TypeScript integration for MCZ pellet stoves equipped with the Maes
 
 - [ ] MCZ integration appears in Administration > Integrations
 - [ ] Configuring serial + MAC and starting connects to MCZ cloud via Socket.IO
-- [ ] Stove appears as a Device in Corbel with all 8 data points
+- [ ] Stove appears as a Device in Winch with all 8 data points
 - [ ] Data is polled every N seconds (configurable, default 30s)
 - [ ] Creating an Equipment of type "thermostat" and binding to MCZ device works
 - [ ] Orders (targetTemperature, profile, ecoMode, resetAlarm) execute correctly

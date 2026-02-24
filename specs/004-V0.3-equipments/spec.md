@@ -9,11 +9,12 @@ V0.3 builds the **generic Equipment infrastructure** but focuses on **lighting**
 ## Reference
 
 - Data model: `docs/data-model.md` — sections 5, 6, 7
-- Spec: `docs/corbel-spec.md` — Equipment, Binding, Order concepts
+- Spec: `docs/winch-spec.md` — Equipment, Binding, Order concepts
 
 ## Acceptance Criteria
 
 ### Equipment CRUD
+
 - [ ] User can create an Equipment (name, type, zoneId, groupId, description)
 - [ ] User can list all Equipments
 - [ ] User can get a single Equipment with its bindings and current data values
@@ -22,12 +23,14 @@ V0.3 builds the **generic Equipment infrastructure** but focuses on **lighting**
 - [ ] Equipment `type` is validated against the EquipmentType union
 
 ### DataBinding
+
 - [ ] User can add a DataBinding to an Equipment (maps a DeviceData to an alias)
 - [ ] User can remove a DataBinding from an Equipment
 - [ ] DataBindings are returned with Equipment details (including current value from DeviceData)
 - [ ] `UNIQUE(equipment_id, alias)` constraint enforced
 
 ### OrderBinding
+
 - [ ] User can add an OrderBinding to an Equipment (maps a DeviceOrder to an alias)
 - [ ] User can remove an OrderBinding from an Equipment
 - [ ] OrderBindings are returned with Equipment details
@@ -35,28 +38,33 @@ V0.3 builds the **generic Equipment infrastructure** but focuses on **lighting**
 - [ ] `UNIQUE(equipment_id, alias, device_order_id)` constraint enforced
 
 ### Order Execution
+
 - [ ] User can execute an Equipment order via `POST /equipments/:id/orders/:alias`
 - [ ] Order resolves all OrderBindings for that alias and publishes MQTT messages in parallel
 - [ ] Order execution emits `equipment.order.executed` event
 - [ ] Error handling: equipment not found, alias not found, MQTT not connected
 
 ### Reactive Pipeline (device.data.updated -> equipment)
+
 - [ ] When a DeviceData changes (via MQTT), the Equipment Manager updates bound Equipment data
 - [ ] `equipment.data.changed` event is emitted with equipmentId, alias, value, previous
 - [ ] WebSocket broadcasts `equipment.data.changed` to connected UI clients
 
 ### Smart Device Filtering (UI)
+
 - [ ] When creating a light Equipment, only devices with `light_state` DataCategory are shown
 - [ ] Device filter is driven by a mapping: EquipmentType -> required DataCategories
 - [ ] Devices are fetched with their data so the UI can filter client-side
 
 ### Multi-Device Aggregation (simple)
+
 - [ ] When an Equipment has multiple DataBindings with the same alias from different devices:
   - Boolean values: OR aggregation (any ON = Equipment ON)
   - Number values: AVG aggregation (average brightness)
 - [ ] This is simple auto-aggregation, not the full expression engine (deferred to V0.5)
 
 ### UI
+
 - [ ] Equipments page: list all equipments grouped by zone
 - [ ] Equipment detail page: show bindings, current data, execute orders
 - [ ] Create Equipment form: select type, zone, group, then select compatible devices
@@ -67,6 +75,7 @@ V0.3 builds the **generic Equipment infrastructure** but focuses on **lighting**
 ## Scope
 
 ### In Scope
+
 - Generic Equipment/DataBinding/OrderBinding infrastructure
 - Equipment CRUD (API + UI)
 - DataBinding and OrderBinding management
@@ -78,6 +87,7 @@ V0.3 builds the **generic Equipment infrastructure** but focuses on **lighting**
 - WebSocket events for equipment changes
 
 ### Out of Scope (deferred)
+
 - Full expression engine for ComputedData (V0.5)
 - Zone aggregation engine (V0.3+ / V0.4)
 - Zone auto-orders (allLightsOff, etc.) (V0.3+)

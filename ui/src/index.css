@@ -5,7 +5,7 @@
 @import "@fontsource/jetbrains-mono/400.css";
 
 /* ============================================================
-   Corbel Design System — Tailwind v4 Theme
+   Winch Design System — Tailwind v4 Theme
    ============================================================ */
 
 @theme {
@@ -33,7 +33,7 @@
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Font sizes — Corbel specific */
+  /* Font sizes — Winch specific */
   --font-size-data-lg: 28px;
   --font-size-data-md: 20px;
 
