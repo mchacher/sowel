@@ -214,9 +214,10 @@ export interface RecipeSlotDef {
   description: string;
   type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean";
   required: boolean;
+  list?: boolean;
   defaultValue?: unknown;
   constraints?: {
-    equipmentType?: EquipmentType;
+    equipmentType?: EquipmentType | EquipmentType[];
     min?: number;
     max?: number;
   };
