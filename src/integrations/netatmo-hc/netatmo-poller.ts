@@ -38,6 +38,7 @@ export class NetatmoPoller {
   private polling = false;
   private rapidPolling = false;
   private lastPollAt: string | null = null;
+  private staggerTimeout: ReturnType<typeof setTimeout> | null = null;
 
   /** Map of moduleId → friendlyName, built during discovery. */
   private moduleNames = new Map<string, string>();
@@ -68,22 +69,34 @@ export class NetatmoPoller {
     this.enableWeather = enableWeather;
   }
 
-  async start(): Promise<void> {
+  async start(pollOffset = 0): Promise<void> {
     this.logger.info(
-      { homeId: this.homeId, intervalMs: this.pollIntervalMs },
+      { homeId: this.homeId, intervalMs: this.pollIntervalMs, pollOffset },
       "Starting Legrand H+C poller",
     );
     // Immediate first poll (awaited — data available at startup)
     await this.poll();
-    this.interval = setInterval(() => {
-      this.poll().catch((err) => this.logger.error({ err }, "Legrand H+C poll failed"));
-    }, this.pollIntervalMs);
+    // Stagger recurring polls by pollOffset so integrations don't all fire at once
+    const startInterval = () => {
+      this.interval = setInterval(() => {
+        this.poll().catch((err) => this.logger.error({ err }, "Legrand H+C poll failed"));
+      }, this.pollIntervalMs);
+    };
+    if (pollOffset > 0) {
+      this.staggerTimeout = setTimeout(startInterval, pollOffset);
+    } else {
+      startInterval();
+    }
   }
 
   stop(): void {
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
+    }
+    if (this.staggerTimeout) {
+      clearTimeout(this.staggerTimeout);
+      this.staggerTimeout = null;
     }
     this.stopRapidPoll();
     this.logger.info("Legrand H+C poller stopped");

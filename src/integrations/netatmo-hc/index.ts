@@ -115,7 +115,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     ];
   }
 
-  async start(): Promise<void> {
+  async start(options?: { pollOffset?: number }): Promise<void> {
     // Clean up previous state before (re)starting
     if (this.poller) {
       this.poller.stop();
@@ -179,7 +179,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         enableHomeControl,
         enableWeather,
       );
-      await this.poller.start();
+      await this.poller.start(options?.pollOffset ?? 0);
 
       this.status = "connected";
       this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
