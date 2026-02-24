@@ -9,6 +9,7 @@ import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
 import { useAuth } from "../../store/useAuth";
 import { LogOut, User } from "lucide-react";
+import { WinchLogo } from "./WinchLogo";
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -42,9 +43,7 @@ export function AppLayout() {
           <div className="flex items-center gap-4">
             {/* Mobile logo */}
             <div className="flex md:hidden items-center gap-2">
-              <div className="w-7 h-7 bg-primary rounded-[5px] flex items-center justify-center">
-                <span className="text-white font-semibold text-xs">C</span>
-              </div>
+              <WinchLogo size={28} />
               <span className="font-semibold text-[15px] text-text">{t("app.name")}</span>
             </div>
           </div>

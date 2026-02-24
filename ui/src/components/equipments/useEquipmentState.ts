@@ -71,14 +71,14 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     ? getSensorIconColor(equipment.dataBindings)
     : isThermostat
       ? isOn
-        ? "bg-blue-500/10 text-blue-500"
+        ? "bg-error/10 text-error"
         : "bg-border-light text-text-tertiary"
       : isShutter
         ? shutterIsOpen
           ? "bg-primary/10 text-primary"
           : "bg-border-light text-text-tertiary"
         : isLight && isOn
-          ? "bg-amber-400/15 text-amber-500"
+          ? "bg-active/15 text-active-text"
           : isOn
             ? "bg-primary/10 text-primary"
             : "bg-border-light text-text-tertiary";
