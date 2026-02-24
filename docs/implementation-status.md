@@ -1,6 +1,6 @@
 # Winch — Implementation Status
 
-> Updated: 2026-02-22 — V0.1 through V0.10c done, Auth + i18n, Backup/Restore + Integrations
+> Updated: 2026-02-24 — V0.1 through V0.11 done, Auth + i18n, Backup/Restore + Integrations
 
 ## Roadmap Changes
 
@@ -27,24 +27,26 @@
 | **V0.10a** | Integration Plugin Architecture (multi-source device management)    | ✅ Done |
 | **V0.10b** | Panasonic Comfort Cloud Integration (AC units)                      | ✅ Done |
 | **V0.10c** | MCZ Maestro Integration (pellet stoves)                             | ✅ Done |
-| V0.11      | Computed Data                                                       | —       |
-| V0.12      | History (InfluxDB)                                                  | —       |
-| V0.13      | Polish                                                              | —       |
+| **V0.10d** | Netatmo Home Control Integration (weather, thermostat, cameras)     | ✅ Done |
+| **V0.11**  | Structured Logging (pino multistream, ring buffer, UI LogsPage)     | ✅ Done |
+| **V0.8b**  | Motion-Light Enhancements (multi-light, lux, impulse, failsafe)     | ✅ Done |
+| V0.12      | Computed Data                                                       | —       |
+| V0.13      | History (InfluxDB)                                                  | —       |
 | V1.0+      | AI Assistant                                                        | —       |
 
 ---
 
 ## V0.1 — MQTT + Devices + UI
 
-**Objective**: Connect to zigbee2mqtt, auto-discover all Zigbee devices, track their state in real-time, persist in SQLite. Provide a web UI to browse devices.
+**Objective**: Connect to device integrations, auto-discover devices, track their state in real-time, persist in SQLite. Provide a web UI to browse devices.
 
 ### What it does
 
-- Connects to an MQTT broker and subscribes to zigbee2mqtt topics
-- Auto-discovers devices from `zigbee2mqtt/bridge/devices` (parses exposes)
+- Connects to configured integrations (initially Zigbee2MQTT, later expanded to cloud APIs)
+- Auto-discovers devices and parses their capabilities
 - Creates DeviceData (readable properties) and DeviceOrders (writable properties) for each device
 - Infers DataCategory from property names (occupancy→motion, temperature→temperature, brightness→light_brightness, etc.)
-- Tracks device state in real-time via MQTT state messages
+- Tracks device state in real-time via integration events
 - Marks devices online when they send data
 - Persists everything in SQLite (WAL mode)
 - Broadcasts all events via WebSocket
@@ -71,20 +73,20 @@
 | GET    | `/api/v1/devices/:id`     | Device detail with Data + Orders           |
 | PUT    | `/api/v1/devices/:id`     | Update device name or zoneId               |
 | DELETE | `/api/v1/devices/:id`     | Remove device                              |
-| GET    | `/api/v1/devices/:id/raw` | Raw zigbee2mqtt expose data                |
+| GET    | `/api/v1/devices/:id/raw` | Raw integration-specific expose data       |
 | WS     | `/ws`                     | WebSocket — broadcasts all engine events   |
 
 ### Event Bus Events
 
-| Event                      | When                            |
-| -------------------------- | ------------------------------- |
-| `device.discovered`        | New device found in zigbee2mqtt |
-| `device.removed`           | Device disappeared or deleted   |
-| `device.status_changed`    | Device goes online/offline      |
-| `device.data.updated`      | A device property value changes |
-| `system.started`           | Engine boot complete            |
-| `system.mqtt.connected`    | MQTT broker connected           |
-| `system.mqtt.disconnected` | MQTT broker disconnected        |
+| Event                      | When                             |
+| -------------------------- | -------------------------------- |
+| `device.discovered`        | New device found via integration |
+| `device.removed`           | Device disappeared or deleted    |
+| `device.status_changed`    | Device goes online/offline       |
+| `device.data.updated`      | A device property value changes  |
+| `system.started`           | Engine boot complete             |
+| `system.mqtt.connected`    | MQTT broker connected            |
+| `system.mqtt.disconnected` | MQTT broker disconnected         |
 
 ### Files
 
@@ -355,7 +357,7 @@
 | Recipes     | `src/recipes/recipe.ts`, `recipe-manager.ts`, `recipe-state-store.ts`, `motion-light.ts`         |
 | API         | `src/api/routes/recipes.ts`                                                                      |
 | Integration | `src/api/server.ts`, `src/index.ts`                                                              |
-| Tests       | `src/recipes/recipe-manager.test.ts` (9), `src/recipes/motion-light.test.ts` (12)                |
+| Tests       | `src/recipes/engine/recipe-manager.test.ts` (9), `src/recipes/motion-light.test.ts` (26)         |
 
 ---
 
@@ -411,15 +413,15 @@
 
 ### What it does
 
-- **Settings table**: SQLite key-value store (`settings`) for integration configuration (replaces `.env` for MQTT/Z2M)
-- **Integrations page**: Admin UI to configure Zigbee2MQTT connection (MQTT URL, credentials, client ID, Z2M base topic), with connection status and reconnect button
-- **MQTT reconnect**: Change integration settings from UI and reconnect without engine restart
-- **Conditional MQTT startup**: Engine starts without MQTT if integration not yet configured (`isMqttConfigured()` check)
+- **Settings table**: SQLite key-value store (`settings`) for integration configuration
+- **Integrations page**: Admin UI to configure integrations (connection settings, credentials, polling intervals), with status and connect/disconnect buttons
+- **Dynamic reconnect**: Change integration settings from UI and reconnect without engine restart
+- **Conditional startup**: Engine starts without integrations if none are yet configured
 - **Backup/restore**: Export/import full Winch configuration as JSON (all config tables in dependency order)
 - **Backup UI**: Export/Import buttons in Settings page (admin only)
-- **Device auto-cleanup**: Offline devices are automatically deleted from DB when z2m sends availability "offline"
-- **Stale device cleanup**: On every `bridge/devices` message, devices in DB not in the bridge list are deleted
-- **Manual device delete**: Delete button on device detail page (Winch DB only, does not touch z2m)
+- **Device auto-cleanup**: Offline devices are automatically cleaned up based on integration events
+- **Stale device cleanup**: Devices in DB not seen by the integration are removed
+- **Manual device delete**: Delete button on device detail page (Winch DB only)
 
 ### API Endpoints
 
@@ -635,6 +637,78 @@
 
 ---
 
+## V0.10d — Netatmo Home Control Integration
+
+**Objective**: Control Netatmo devices (weather station, thermostat, cameras) via the Netatmo Connect API.
+
+### What it does
+
+- **NetatmoHCIntegration** implements IntegrationPlugin
+- **OAuth2 authentication**: token-based auth with automatic refresh
+- **Polling**: periodic state refresh (configurable interval, default 300s)
+- **Device discovery**: Netatmo devices appear as Winch Devices with source `netatmo_hc`
+- **DeviceData**: temperature, humidity, CO2, noise, pressure, rain, wind, battery, WiFi signal
+- **DeviceOrders**: thermostat setpoint, mode changes
+
+### Files
+
+| Module | Files                                           |
+| ------ | ----------------------------------------------- |
+| Plugin | `src/integrations/netatmo-hc/index.ts`          |
+| Bridge | `src/integrations/netatmo-hc/netatmo-bridge.ts` |
+| Poller | `src/integrations/netatmo-hc/netatmo-poller.ts` |
+| Types  | `src/integrations/netatmo-hc/netatmo-types.ts`  |
+
+---
+
+## V0.11 — Structured Logging
+
+**Objective**: Production-grade structured logging with pino multistream, ring buffer for UI access, and a real-time LogsPage.
+
+### What it does
+
+- **Pino multistream**: ring buffer (in-memory for UI), pino-pretty (dev), JSON stdout + pino-roll file rotation (prod)
+- **Ring buffer API**: `GET /api/v1/logs` with query params (level, module, search, limit, offset)
+- **WebSocket streaming**: real-time log push to connected UI clients
+- **LogsPage**: filterable log viewer with level badges, module chips, auto-scroll, live/pause toggle
+- **Log level strategy**: fatal/error/warn/info for production, debug/trace for dev/UI
+
+### Files
+
+| Module | Files                                           |
+| ------ | ----------------------------------------------- |
+| Core   | `src/core/logger.ts` (multistream, ring buffer) |
+| API    | `src/api/routes/logs.ts`                        |
+| WS     | `src/api/websocket.ts` (log streaming)          |
+| UI     | `ui/src/pages/LogsPage.tsx`                     |
+
+---
+
+## V0.8b — Motion-Light Recipe Enhancements
+
+**Objective**: Improve motion-light recipe with multi-light support, lux threshold, motion impulse reset, and failsafe max-on duration.
+
+### What it does
+
+- **Multi-light support**: `lights` slot accepts a list of equipment IDs (replaces single `light`)
+- **Lux threshold**: optional — blocks light-on when zone luminosity exceeds threshold
+- **Impulse timer reset**: every motion=true event restarts the off-timer (handles PIR impulse sensors)
+- **Failsafe max-on duration**: optional — forces lights off after max duration regardless of motion
+- **Backward compatibility**: existing instances with `light` param auto-migrated to `lights` array
+- **RecipeSlotDef updated**: `list?: boolean` flag, `EquipmentType[]` constraint support
+
+### Files
+
+| Module | Files                                                             |
+| ------ | ----------------------------------------------------------------- |
+| Types  | `src/shared/types.ts` (RecipeSlotDef: list, array constraint)     |
+| Recipe | `src/recipes/motion-light.ts` (full rewrite)                      |
+| Tests  | `src/recipes/motion-light.test.ts` (26 tests, 14 new)             |
+| UI     | `ui/src/components/recipes/ZoneRecipesSection.tsx` (multi-select) |
+| UI     | `ui/src/types.ts` (RecipeSlotDef update)                          |
+
+---
+
 ## Test Summary
 
 | Module              | File                                        | Tests         |
@@ -646,12 +720,12 @@
 | Zone Aggregator     | `src/zones/zone-aggregator.test.ts`         | 25            |
 | Equipment Manager   | `src/equipments/equipment-manager.test.ts`  | 38            |
 | Recipe Manager      | `src/recipes/engine/recipe-manager.test.ts` | 9             |
-| Motion-Light Recipe | `src/recipes/motion-light.test.ts`          | 12            |
+| Motion-Light Recipe | `src/recipes/motion-light.test.ts`          | 26            |
 | Mode Manager        | `src/modes/mode-manager.test.ts`            | 39            |
 | Calendar Manager    | `src/modes/calendar-manager.test.ts`        | 25            |
 | Modes API           | `src/api/routes/modes.test.ts`              | 27            |
 | Calendar API        | `src/api/routes/calendar.test.ts`           | 18            |
-| **Total**           | **12 test files**                           | **273 tests** |
+| **Total**           | **12 test files**                           | **290 tests** |
 
 ---
 
@@ -666,5 +740,5 @@ cd ui && npm install && npm run dev
 
 # Open http://localhost:5173
 # First run: create admin account
-# Then configure MQTT integration in Administration > Integrations
+# Then configure your integrations in Administration > Integrations
 ```
