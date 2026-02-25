@@ -378,15 +378,16 @@
   "settings.deleteUserConfirm": "Delete user \"{{name}}\"?",
   "settings.cannotDeleteSelf": "Cannot delete your own account",
 
-  "settings.backup": "Backup / Restore",
-  "settings.backupDescription": "Export or import the full Winch configuration (zones, devices, equipments, users, recipes, integrations).",
-  "settings.exportBackup": "Export",
-  "settings.importBackup": "Import",
-  "settings.backupExported": "Backup exported successfully",
-  "settings.backupImported": "Backup imported successfully. Restart Winch to apply changes.",
+  "backup.title": "Backup / Restore",
+  "backup.description": "Export or import the full Winch configuration (zones, devices, equipments, users, recipes, integrations).",
+  "backup.export": "Export",
+  "backup.import": "Import",
+  "backup.exported": "Backup exported successfully",
+  "backup.imported": "Backup imported successfully. Reloading...",
 
   "nav.integrations": "Integrations",
   "nav.logs": "Logs",
+  "nav.backup": "Backup",
 
   "integrations.title": "Integrations",
   "integrations.subtitle": "Configure connections with your home automation systems.",

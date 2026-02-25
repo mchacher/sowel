@@ -17,6 +17,7 @@ import { ModesPage } from "./pages/ModesPage";
 import { ModeDetailPage } from "./pages/ModeDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { LogsPage } from "./pages/LogsPage";
+import { BackupPage } from "./pages/BackupPage";
 
 export default function App() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/logs" element={<LogsPage />} />
+          <Route path="/backup" element={<BackupPage />} />
 
           {/* Default redirect to Maison */}
           <Route path="*" element={<Navigate to="/home" replace />} />
