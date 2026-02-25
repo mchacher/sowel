@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plus, Trash2, Copy, Check, Eye, EyeOff, Settings, Download, Upload } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Check, Eye, EyeOff, Settings } from "lucide-react";
 import { useAuth } from "../store/useAuth";
 import {
   updateMe,
@@ -12,8 +12,6 @@ import {
   createUser,
   updateUser,
   deleteUser,
-  exportBackup,
-  importBackup,
 } from "../api";
 import type { ApiToken, User, UserRole } from "../types";
 
@@ -63,7 +61,6 @@ export function SettingsPage() {
         <div className="space-y-6">
           <ApiTokensSection />
           {isAdmin && <UserManagementSection currentUserId={user?.id ?? ""} />}
-          {isAdmin && <BackupSection />}
         </div>
       </div>
     </div>
@@ -613,90 +610,3 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
   );
 }
 
-// ============================================================
-// Backup / Restore (admin only)
-// ============================================================
-
-function BackupSection() {
-  const { t } = useTranslation();
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleExport = async () => {
-    setError("");
-    setSuccess("");
-    setExporting(true);
-    try {
-      const blob = await exportBackup();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `winch-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setSuccess(t("settings.backupExported"));
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError("");
-    setSuccess("");
-    setImporting(true);
-    try {
-      await importBackup(file);
-      setSuccess(t("settings.backupImported"));
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
-      <h2 className="text-[14px] font-semibold text-text mb-2">{t("settings.backup")}</h2>
-      <p className="text-[12px] text-text-tertiary mb-4">{t("settings.backupDescription")}</p>
-
-      {error && <p className="mb-3 text-[13px] text-error">{error}</p>}
-      {success && <p className="mb-3 text-[13px] text-success">{success}</p>}
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
-        >
-          <Download size={14} />
-          {exporting ? t("common.loading") : t("settings.exportBackup")}
-        </button>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={importing}
-          className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
-        >
-          <Upload size={14} />
-          {importing ? t("common.loading") : t("settings.importBackup")}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          onChange={handleImport}
-          className="hidden"
-        />
-      </div>
-    </section>
-  );
-}
