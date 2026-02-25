@@ -5,18 +5,7 @@ import { useDevices } from "../store/useDevices";
 import { DeviceList } from "../components/devices/DeviceList";
 import { Radio, Loader2, Search, X } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
-
-/** Labels for integration tabs. */
-const INTEGRATION_LABELS: Record<string, string> = {
-  zigbee2mqtt: "Zigbee2MQTT",
-  panasonic_cc: "Panasonic CC",
-  mcz_maestro: "MCZ Maestro",
-  netatmo_hc: "Legrand H+C",
-  tasmota: "Tasmota",
-  esphome: "ESPHome",
-  shelly: "Shelly",
-  custom_mqtt: "MQTT",
-};
+import { INTEGRATION_LABELS } from "../constants";
 
 const ALL_TAB = "__all__";
 
@@ -32,18 +21,24 @@ export function DevicesPage() {
   const activeTab = searchParams.get("tab") ?? ALL_TAB;
 
   const setFilter = (q: string) => {
-    setSearchParams((prev) => {
-      if (q) prev.set("q", q);
-      else prev.delete("q");
-      return prev;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        if (q) prev.set("q", q);
+        else prev.delete("q");
+        return prev;
+      },
+      { replace: true },
+    );
   };
   const setActiveTab = (tab: string) => {
-    setSearchParams((prev) => {
-      if (tab === ALL_TAB) prev.delete("tab");
-      else prev.set("tab", tab);
-      return prev;
-    }, { replace: true });
+    setSearchParams(
+      (prev) => {
+        if (tab === ALL_TAB) prev.delete("tab");
+        else prev.set("tab", tab);
+        return prev;
+      },
+      { replace: true },
+    );
   };
 
   const deviceList = Object.values(devices);
@@ -60,14 +55,13 @@ export function DevicesPage() {
   const resolvedTab = activeTab === ALL_TAB || tabs.includes(activeTab) ? activeTab : ALL_TAB;
 
   // Filter by tab then by search
-  const tabFiltered = resolvedTab === ALL_TAB
-    ? deviceList
-    : deviceList.filter((d) => d.integrationId === resolvedTab);
+  const tabFiltered =
+    resolvedTab === ALL_TAB
+      ? deviceList
+      : deviceList.filter((d) => d.integrationId === resolvedTab);
 
   const filtered = filter
-    ? tabFiltered.filter((d) =>
-        d.name.toLowerCase().includes(filter.toLowerCase())
-      )
+    ? tabFiltered.filter((d) => d.name.toLowerCase().includes(filter.toLowerCase()))
     : tabFiltered;
 
   const onlineCount = tabFiltered.filter((d) => d.status === "online").length;
@@ -153,7 +147,11 @@ export function DevicesPage() {
       ) : error ? (
         <ErrorState error={error} />
       ) : (
-        <DeviceList devices={filtered} deviceData={deviceData} activeTab={resolvedTab === ALL_TAB ? null : resolvedTab} />
+        <DeviceList
+          devices={filtered}
+          deviceData={deviceData}
+          activeTab={resolvedTab === ALL_TAB ? null : resolvedTab}
+        />
       )}
     </div>
   );
@@ -176,14 +174,17 @@ function TabButton({
       className={`
         px-3 py-2 text-[13px] font-medium transition-colors duration-150
         border-b-2 -mb-px cursor-pointer
-        ${active
-          ? "border-primary text-primary"
-          : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
+        ${
+          active
+            ? "border-primary text-primary"
+            : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
         }
       `}
     >
       {label}
-      <span className={`ml-1.5 text-[11px] tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}>
+      <span
+        className={`ml-1.5 text-[11px] tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}
+      >
         {count}
       </span>
     </button>
@@ -200,9 +201,7 @@ function ErrorState({ error }: { error: string }) {
         <Radio size={28} strokeWidth={1.5} className="text-error" />
       </div>
       <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.error.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
-        {error}
-      </p>
+      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchDevices()}
         className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"

@@ -1,14 +1,11 @@
-import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { SensorValues } from "../equipments/SensorValues";
-import { ShutterControls } from "../equipments/ShutterControls";
+import { LightControl } from "../equipments/LightControl";
+import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
-
-const SETTLE_DELAY_MS = 2000;
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -18,10 +15,6 @@ interface CompactEquipmentCardProps {
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
   const { t } = useTranslation();
-  const [executing, setExecuting] = useState(false);
-  const [, forceRender] = useState(0);
-  const localBrightness = useRef<number | null>(null);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     isLight,
@@ -30,78 +23,16 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isThermostat,
     stateBinding,
     isOn,
-    shutterPosition,
-    hasShutterState,
     sensorBindings,
     batteryBindings,
     iconElement,
     iconColor,
   } = useEquipmentState(equipment);
 
-  const brightnessBinding = equipment.dataBindings.find(
-    (db) => db.alias === "brightness" || db.category === "light_brightness",
-  );
-
-  const deviceBrightness = brightnessBinding
-    ? typeof brightnessBinding.value === "number"
-      ? brightnessBinding.value
-      : null
-    : null;
-
-  const brightness =
-    localBrightness.current !== null ? localBrightness.current : deviceBrightness;
-
-  const toggleBinding = equipment.orderBindings.find(
-    (ob) => ob.type === "boolean",
-  );
-  const hasToggle = !!toggleBinding;
-  const hasBrightness = equipment.orderBindings.some(
-    (ob) => ob.type === "number" && (ob.alias === "brightness" || ob.key === "brightness"),
-  );
-
   // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat equipments
   const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat
     ? equipment.dataBindings[0] ?? null
     : null;
-
-  const handleToggle = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (executing || !toggleBinding) return;
-    setExecuting(true);
-    try {
-      const alias = toggleBinding.alias;
-      // Boolean orders use true/false; "state" alias uses "ON"/"OFF" strings (Z2M convention)
-      const value = alias === "state"
-        ? (isOn ? "OFF" : "ON")
-        : !isOn;
-      await onExecuteOrder(equipment.id, alias, value);
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  const handleBrightnessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    localBrightness.current = Number(e.target.value);
-    forceRender((n) => n + 1);
-  };
-
-  const handleBrightnessCommit = async () => {
-    const commitValue = localBrightness.current;
-    if (!hasBrightness || commitValue === null) return;
-    try {
-      await onExecuteOrder(equipment.id, "brightness", commitValue);
-    } catch {
-      // Ignore
-    }
-    settleTimer.current = setTimeout(() => {
-      localBrightness.current = null;
-      settleTimer.current = null;
-      forceRender((n) => n + 1);
-    }, SETTLE_DELAY_MS);
-  };
 
   return (
     <div
@@ -157,61 +88,19 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
       {/* Light controls */}
       {isLight && equipment.enabled && (
-        <div
-          className="flex items-center gap-2 flex-shrink-0"
-          onClick={(e) => e.preventDefault()}
-        >
-          {isOn && stateBinding?.lastUpdated && (
-            <span className="text-[11px] text-text-tertiary tabular-nums">
-              {/* Elapsed time since light turned on — not critical, omit counter */}
-            </span>
-          )}
-          {hasBrightness && brightness !== null && (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="range"
-                min={0}
-                max={254}
-                value={brightness}
-                onChange={handleBrightnessChange}
-                onMouseUp={handleBrightnessCommit}
-                onTouchEnd={handleBrightnessCommit}
-                onClick={(e) => e.stopPropagation()}
-                className="w-[60px] accent-active h-1"
-              />
-              <span className="text-[11px] text-text-tertiary w-6 text-right tabular-nums">
-                {Math.round((brightness / 254) * 100)}%
-              </span>
-            </div>
-          )}
-          <div className="w-px h-5 bg-border" />
-          {hasToggle && (
-            <button
-              onClick={handleToggle}
-              disabled={executing}
-              className={`
-                p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer
-                ${isOn
-                  ? "bg-active text-white hover:bg-active/80"
-                  : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
-                }
-                disabled:opacity-50 disabled:cursor-not-allowed
-              `}
-              title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
-            >
-              <Power size={14} strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
+        <LightControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
       )}
 
       {/* Shutter controls */}
       {isShutter && equipment.enabled && (
-        <ShutterControls
-          shutterPosition={shutterPosition}
-          hasShutterState={hasShutterState}
-          hasPositionOrder={equipment.orderBindings.some((ob) => ob.alias === "position")}
+        <ShutterControl
+          equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
         />
       )}
 

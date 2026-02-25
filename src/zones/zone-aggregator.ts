@@ -169,6 +169,7 @@ export class ZoneAggregator {
   private eventBus: EventBus;
   private zoneManager: ZoneManager;
   private equipmentManager: EquipmentManager;
+  private unsubscribe: (() => void) | null = null;
 
   // Cache: per-zone accumulators and public data
   private directCache = new Map<string, Accumulator>();
@@ -187,6 +188,11 @@ export class ZoneAggregator {
     this.logger = logger.child({ module: "zone-aggregator" });
 
     this.setupEventListeners();
+  }
+
+  destroy(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
   }
 
   // ============================================================
@@ -271,7 +277,7 @@ export class ZoneAggregator {
   // ============================================================
 
   private setupEventListeners(): void {
-    this.eventBus.on((event) => {
+    this.unsubscribe = this.eventBus.on((event) => {
       try {
         switch (event.type) {
           case "equipment.data.changed":
@@ -282,8 +288,7 @@ export class ZoneAggregator {
             this.handleEquipmentChanged(event.equipment.zoneId);
             break;
           case "equipment.removed":
-            // On removal, recompute all (we don't know which zone it was in)
-            this.computeAll();
+            this.recomputeZoneChain(event.zoneId);
             break;
           case "zone.created":
           case "zone.updated":

@@ -177,14 +177,34 @@ async function main() {
 
   logger.info("Winch engine started successfully");
 
-  // Graceful shutdown
+  // Graceful shutdown — each step is isolated so one failure doesn't block the rest
   const shutdown = async () => {
     logger.info("Shutting down...");
-    calendarManager.stopAll();
-    recipeManager.stopAll();
-    await server.close();
-    await integrationRegistry.stopAll();
-    db.close();
+    try {
+      calendarManager.stopAll();
+    } catch (err) {
+      logger.error({ err }, "Error stopping calendar manager");
+    }
+    try {
+      recipeManager.stopAll();
+    } catch (err) {
+      logger.error({ err }, "Error stopping recipe manager");
+    }
+    try {
+      await server.close();
+    } catch (err) {
+      logger.error({ err }, "Error closing HTTP server");
+    }
+    try {
+      await integrationRegistry.stopAll();
+    } catch (err) {
+      logger.error({ err }, "Error stopping integrations");
+    }
+    try {
+      db.close();
+    } catch (err) {
+      logger.error({ err }, "Error closing database");
+    }
     logger.info("Shutdown complete");
     await logHandle.close();
     process.exit(0);

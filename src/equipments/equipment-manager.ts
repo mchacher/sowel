@@ -65,6 +65,7 @@ export class EquipmentManager {
   private integrationRegistry: IntegrationRegistry;
   private deviceManager: DeviceManager;
   private stmts: ReturnType<typeof this.prepareStatements>;
+  private unsubscribe: (() => void) | null = null;
 
   constructor(
     db: Database.Database,
@@ -81,7 +82,7 @@ export class EquipmentManager {
     this.stmts = this.prepareStatements();
 
     // Listen for device data changes to propagate to equipment bindings
-    this.eventBus.on((event) => {
+    this.unsubscribe = this.eventBus.on((event) => {
       if (event.type === "device.data.updated") {
         try {
           this.handleDeviceDataUpdated(event.dataId, event.value, event.previous);
@@ -90,6 +91,11 @@ export class EquipmentManager {
         }
       }
     });
+  }
+
+  destroy(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
   }
 
   private prepareStatements() {
@@ -282,6 +288,7 @@ export class EquipmentManager {
       type: "equipment.removed",
       equipmentId: id,
       equipmentName: existing.name,
+      zoneId: existing.zoneId,
     });
   }
 

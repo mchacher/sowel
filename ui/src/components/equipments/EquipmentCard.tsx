@@ -14,7 +14,7 @@ import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
 import { SensorValues } from "./SensorValues";
-import { ShutterControls } from "./ShutterControls";
+import { ShutterControl } from "./ShutterControl";
 import { ThermostatCard } from "./ThermostatCard";
 import { useEquipmentState } from "./useEquipmentState";
 
@@ -56,8 +56,6 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     isThermostat,
     iconElement,
     iconColor,
-    shutterPosition,
-    hasShutterState,
     sensorBindings,
     batteryBindings,
   } = useEquipmentState(equipment);
@@ -109,11 +107,10 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
       {/* Shutter quick control */}
       {isShutter && equipment.enabled && (
-        <ShutterControls
-          shutterPosition={shutterPosition}
-          hasShutterState={hasShutterState}
-          hasPositionOrder={equipment.orderBindings.some((ob) => ob.alias === "position")}
+        <ShutterControl
+          equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
         />
       )}
 
