@@ -120,8 +120,24 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
           }
         }
 
-        // Re-enable foreign keys
+        // Re-enable foreign keys and verify integrity
         db.pragma("foreign_keys = ON");
+
+        const violations = db.pragma("foreign_key_check") as {
+          table: string;
+          rowid: number;
+          parent: string;
+          fkid: number;
+        }[];
+
+        if (violations.length > 0) {
+          const details = violations
+            .slice(0, 10)
+            .map((v) => `${v.table} row ${v.rowid} → ${v.parent}`);
+          throw new Error(
+            `FK integrity check failed: ${violations.length} violation(s). ${details.join("; ")}`,
+          );
+        }
       });
 
       restore();
