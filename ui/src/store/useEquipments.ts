@@ -11,6 +11,7 @@ import {
   addOrderBinding as apiAddOrderBinding,
   removeOrderBinding as apiRemoveOrderBinding,
 } from "../api";
+import { useOrderTiming } from "./useOrderTiming";
 
 interface EquipmentsState {
   equipments: EquipmentWithDetails[];
@@ -86,6 +87,7 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
   },
 
   executeOrder: async (equipmentId, alias, value) => {
+    useOrderTiming.getState().markSent(equipmentId, alias);
     await apiExecuteOrder(equipmentId, alias, value);
   },
 
@@ -114,6 +116,7 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
   handleEquipmentUpdated: () => { get().fetchEquipments(); },
   handleEquipmentRemoved: () => { get().fetchEquipments(); },
   handleEquipmentDataChanged: (equipmentId, alias, value) => {
+    useOrderTiming.getState().markReceived(equipmentId, alias);
     const now = new Date().toISOString();
     set((state) => ({
       equipments: state.equipments.map((eq) => {

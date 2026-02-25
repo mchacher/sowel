@@ -288,8 +288,7 @@ export class ZoneAggregator {
             this.handleEquipmentChanged(event.equipment.zoneId);
             break;
           case "equipment.removed":
-            // On removal, recompute all (we don't know which zone it was in)
-            this.computeAll();
+            this.recomputeZoneChain(event.zoneId);
             break;
           case "zone.created":
           case "zone.updated":

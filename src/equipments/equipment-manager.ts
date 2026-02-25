@@ -288,6 +288,7 @@ export class EquipmentManager {
       type: "equipment.removed",
       equipmentId: id,
       equipmentName: existing.name,
+      zoneId: existing.zoneId,
     });
   }
 
