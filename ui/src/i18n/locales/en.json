@@ -65,7 +65,7 @@
   "status.connecting": "Connecting...",
   "status.disconnected": "Disconnected",
   "status.mqttDisconnected": "MQTT disconnected",
-  "status.integrationWarning": "Integration disconnected",
+  "status.integrationWarning": "Disconnected: {{names}}",
   "status.error": "Error",
   "status.not_configured": "Not configured",
 

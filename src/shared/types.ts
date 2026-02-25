@@ -401,7 +401,7 @@ export type EngineEvent =
   // Equipment events
   | { type: "equipment.created"; equipment: Equipment }
   | { type: "equipment.updated"; equipment: Equipment }
-  | { type: "equipment.removed"; equipmentId: string; equipmentName: string }
+  | { type: "equipment.removed"; equipmentId: string; equipmentName: string; zoneId: string }
   | {
       type: "equipment.data.changed";
       equipmentId: string;

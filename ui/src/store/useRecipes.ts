@@ -15,6 +15,7 @@ interface RecipesState {
   recipes: RecipeInfo[];
   instances: RecipeInstance[];
   loading: boolean;
+  error: string | null;
   fetchRecipes: () => Promise<void>;
   fetchInstances: () => Promise<void>;
   createInstance: (recipeId: string, params: Record<string, unknown>) => Promise<RecipeInstance>;
@@ -30,23 +31,27 @@ export const useRecipes = create<RecipesState>((set, get) => ({
   recipes: [],
   instances: [],
   loading: false,
+  error: null,
 
   fetchRecipes: async () => {
     try {
       const recipes = await getRecipes();
       set({ recipes });
     } catch {
-      // Ignore — API may not be ready yet
+      // Ignore — API may not be ready yet (recipes are static metadata)
     }
   },
 
   fetchInstances: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
       const instances = await getRecipeInstances();
       set({ instances, loading: false });
-    } catch {
-      set({ loading: false });
+    } catch (err) {
+      set({
+        loading: false,
+        error: err instanceof Error ? err.message : "Failed to fetch recipe instances",
+      });
     }
   },
 

@@ -76,7 +76,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
               onMouseUp={handleBrightnessCommit}
               onTouchEnd={handleBrightnessCommit}
               onClick={(e) => e.stopPropagation()}
-              className="w-[80px] accent-primary h-1"
+              className="w-[80px] accent-active h-1"
             />
             <span className="text-[11px] text-text-tertiary w-7 text-right tabular-nums">
               {Math.round((brightness / 254) * 100)}%
@@ -90,7 +90,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
           className={`
             p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
             ${isOn
-              ? "bg-primary text-white hover:bg-primary-hover"
+              ? "bg-active text-white hover:bg-active/80"
               : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
             }
             disabled:opacity-50 disabled:cursor-not-allowed
@@ -114,7 +114,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
             transition-colors duration-150
             ${isOn
-              ? "bg-primary text-white hover:bg-primary-hover"
+              ? "bg-active text-white hover:bg-active/80"
               : "bg-border-light text-text-secondary hover:bg-border hover:text-text"
             }
             disabled:opacity-50
@@ -137,7 +137,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             onChange={(e) => slider.onChange(Number(e.target.value))}
             onMouseUp={handleBrightnessCommit}
             onTouchEnd={handleBrightnessCommit}
-            className="flex-1 accent-primary h-1.5"
+            className="flex-1 accent-active h-1.5"
           />
           <span className="text-[12px] text-text-secondary w-10 text-right">
             {Math.round((brightness / 254) * 100)}%
