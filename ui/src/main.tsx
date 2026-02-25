@@ -5,7 +5,7 @@ import "./i18n";
 import App from "./App";
 import { useAuth } from "./store/useAuth";
 
-console.log("Winch — (c) 2026 Marc Chachereau — AGPL-3.0");
+console.log("Winch — Founded by Marc Chachereau — AGPL-3.0");
 
 // Trigger auth status check before rendering
 useAuth.getState().checkStatus();
