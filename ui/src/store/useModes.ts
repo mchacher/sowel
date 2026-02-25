@@ -13,6 +13,7 @@ import {
 interface ModesState {
   modes: ModeWithDetails[];
   loading: boolean;
+  error: string | null;
   fetchModes: () => Promise<void>;
   createMode: (data: { name: string; icon?: string; description?: string }) => Promise<ModeWithDetails>;
   updateMode: (id: string, data: { name?: string; icon?: string; description?: string }) => Promise<void>;
@@ -28,14 +29,18 @@ interface ModesState {
 export const useModes = create<ModesState>((set, get) => ({
   modes: [],
   loading: false,
+  error: null,
 
   fetchModes: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
       const modes = await getModes();
       set({ modes, loading: false });
-    } catch {
-      set({ loading: false });
+    } catch (err) {
+      set({
+        loading: false,
+        error: err instanceof Error ? err.message : "Failed to fetch modes",
+      });
     }
   },
 

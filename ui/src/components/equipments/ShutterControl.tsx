@@ -1,21 +1,19 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronUp, Square, ChevronDown } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-
-const SETTLE_DELAY_MS = 2000;
+import { useSliderOverride } from "../../hooks/useSliderOverride";
 
 interface ShutterControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  compact?: boolean;
 }
 
-export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProps) {
+export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
-  const localPosition = useRef<number | null>(null);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [, forceRender] = useState(0);
+  const slider = useSliderOverride();
 
   const positionBinding = equipment.dataBindings.find(
     (db) => db.category === "shutter_position"
@@ -24,13 +22,14 @@ export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProp
     ? positionBinding.value
     : null;
 
-  const position =
-    localPosition.current !== null ? localPosition.current : devicePosition;
+  const position = slider.displayValue(devicePosition);
 
   const hasState = equipment.orderBindings.some((ob) => ob.alias === "state");
   const hasPositionOrder = equipment.orderBindings.some((ob) => ob.alias === "position");
 
-  const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
+  const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE", e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (executing || !hasState) return;
     setExecuting(true);
     try {
@@ -40,26 +39,74 @@ export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProp
     }
   };
 
-  const handlePositionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    localPosition.current = Number(e.target.value);
-    forceRender((n) => n + 1);
-  };
+  const handlePositionCommit = () =>
+    slider.onCommit((v) => onExecuteOrder("position", v));
 
-  const handlePositionCommit = async () => {
-    const commitValue = localPosition.current;
-    if (!hasPositionOrder || commitValue === null) return;
-    try {
-      await onExecuteOrder("position", commitValue);
-    } catch {
-      // Ignore
-    }
-    settleTimer.current = setTimeout(() => {
-      localPosition.current = null;
-      settleTimer.current = null;
-      forceRender((n) => n + 1);
-    }, SETTLE_DELAY_MS);
-  };
+  if (compact) {
+    return (
+      <div
+        className="flex items-center gap-2 flex-shrink-0"
+        onClick={(e) => e.preventDefault()}
+      >
+        {hasPositionOrder && position !== null && (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={position}
+              onChange={(e) => { e.stopPropagation(); slider.onChange(Number(e.target.value)); }}
+              onMouseUp={handlePositionCommit}
+              onTouchEnd={handlePositionCommit}
+              onClick={(e) => e.stopPropagation()}
+              className="w-[60px] accent-primary h-1"
+            />
+            <span className="text-[11px] text-text-tertiary w-8 text-right tabular-nums">
+              {position}%
+            </span>
+          </div>
+        )}
+        {!hasPositionOrder && position !== null && (
+          <span className="text-[13px] text-text-secondary tabular-nums text-right">
+            {position === 0
+              ? t("controls.closed")
+              : position === 100
+                ? t("controls.opened")
+                : `${position}%`}
+          </span>
+        )}
+        {hasState && (
+          <>
+            <div className="w-px h-5 bg-border" />
+            <button
+              onClick={(e) => handleCommand("OPEN", e)}
+              disabled={executing}
+              className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("controls.open")}
+            >
+              <ChevronUp size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={(e) => handleCommand("STOP", e)}
+              disabled={executing}
+              className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("controls.stop")}
+            >
+              <Square size={10} strokeWidth={2} />
+            </button>
+            <button
+              onClick={(e) => handleCommand("CLOSE", e)}
+              disabled={executing}
+              className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("controls.close")}
+            >
+              <ChevronDown size={14} strokeWidth={1.5} />
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -73,7 +120,7 @@ export function ShutterControl({ equipment, onExecuteOrder }: ShutterControlProp
               min={0}
               max={100}
               value={position}
-              onChange={handlePositionChange}
+              onChange={(e) => slider.onChange(Number(e.target.value))}
               onMouseUp={handlePositionCommit}
               onTouchEnd={handlePositionCommit}
               className="flex-1 accent-primary h-1.5"

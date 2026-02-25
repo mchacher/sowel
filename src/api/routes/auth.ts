@@ -47,25 +47,29 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     return reply.code(201).send(tokens);
   });
 
-  // POST /api/v1/auth/login
+  // POST /api/v1/auth/login (stricter rate limit: 10 req/min)
   app.post<{
     Body: { username: string; password: string };
-  }>("/api/v1/auth/login", async (request, reply) => {
-    const { username, password } = request.body ?? {};
-    if (!username || !password) {
-      return reply.code(400).send({ error: "username and password are required" });
-    }
-
-    try {
-      const tokens = await authService.login(username, password);
-      return tokens;
-    } catch (err) {
-      if (err instanceof AuthError) {
-        return reply.code(err.status).send({ error: err.message });
+  }>(
+    "/api/v1/auth/login",
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      const { username, password } = request.body ?? {};
+      if (!username || !password) {
+        return reply.code(400).send({ error: "username and password are required" });
       }
-      throw err;
-    }
-  });
+
+      try {
+        const tokens = await authService.login(username, password);
+        return tokens;
+      } catch (err) {
+        if (err instanceof AuthError) {
+          return reply.code(err.status).send({ error: err.message });
+        }
+        throw err;
+      }
+    },
+  );
 
   // POST /api/v1/auth/refresh
   app.post<{

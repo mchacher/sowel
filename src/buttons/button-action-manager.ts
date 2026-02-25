@@ -11,6 +11,7 @@ import type { ButtonActionBinding, ButtonEffectType } from "../shared/types.js";
 export class ButtonActionManager {
   private readonly logger;
   private readonly stmts;
+  private unsubscribe: (() => void) | null = null;
 
   constructor(
     private readonly db: Database.Database,
@@ -44,7 +45,7 @@ export class ButtonActionManager {
   // ── Init ──────────────────────────────────────────────────
 
   init(): void {
-    this.eventBus.on((event) => {
+    this.unsubscribe = this.eventBus.on((event) => {
       if (event.type === "equipment.data.changed" && event.alias === "action") {
         try {
           this.handleActionEvent(event.equipmentId, event.value);
@@ -61,6 +62,11 @@ export class ButtonActionManager {
     if (bindings.length > 0) {
       this.logger.info({ count: bindings.length }, "Button action bindings loaded");
     }
+  }
+
+  destroy(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
   }
 
   // ── CRUD ──────────────────────────────────────────────────

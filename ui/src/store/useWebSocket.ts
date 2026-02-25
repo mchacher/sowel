@@ -149,7 +149,16 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       // Re-send current subscriptions after (re)connect
       sendSubscribe(currentTopics);
 
-      // Fetch initial integration statuses from health endpoint
+      // Refetch all stores to recover data missed while disconnected
+      useDevices.getState().fetchDevices();
+      useEquipments.getState().fetchEquipments();
+      useZones.getState().fetchZones();
+      useZoneAggregation.getState().fetchAggregation();
+      useRecipes.getState().fetchRecipes();
+      useRecipes.getState().fetchInstances();
+      useModes.getState().fetchModes();
+
+      // Fetch integration statuses from health endpoint
       fetch("/api/v1/health")
         .then((r) => r.json())
         .then((data: { integrations?: Record<string, { status: string }> }) => {
