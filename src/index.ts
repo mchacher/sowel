@@ -31,7 +31,7 @@ async function main() {
   const logBuffer = new LogRingBuffer();
   const logHandle = createLogger(config.log.level, logBuffer);
   const logger = logHandle.logger;
-  logger.info("Winch engine starting...");
+  logger.info("Winch — (c) 2026 Marc Chachereau — AGPL-3.0");
 
   // 3. Open SQLite database and run migrations
   const db = openDatabase(config.sqlite.path, logger);
