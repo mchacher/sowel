@@ -13,6 +13,8 @@ import {
   updateUser,
   deleteUser,
 } from "../api";
+import { setTheme } from "../theme";
+import type { ThemeSetting } from "../theme";
 import type { ApiToken, User, UserRole } from "../types";
 
 export function SettingsPage() {
@@ -50,6 +52,13 @@ export function SettingsPage() {
               localStorage.setItem("winch_language", lang);
               if (user) {
                 await updatePreferences({ ...user.preferences, language: lang });
+              }
+            }}
+            theme={user?.preferences?.theme ?? (localStorage.getItem("winch_theme") as ThemeSetting | null) ?? "system"}
+            onThemeChange={async (theme) => {
+              setTheme(theme);
+              if (user) {
+                await updatePreferences({ ...user.preferences, theme });
               }
             }}
           />
@@ -132,30 +141,57 @@ function ProfileSection({ user, onSave }: { user: User | null; onSave: (displayN
 // Preferences
 // ============================================================
 
-function PreferencesSection({ language, onLanguageChange }: { language: string; onLanguageChange: (lang: "fr" | "en") => Promise<void> }) {
+function PreferencesSection({ language, onLanguageChange, theme, onThemeChange }: {
+  language: string;
+  onLanguageChange: (lang: "fr" | "en") => Promise<void>;
+  theme: ThemeSetting;
+  onThemeChange: (theme: ThemeSetting) => Promise<void>;
+}) {
   const { t } = useTranslation();
 
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
       <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.preferences")}</h2>
-      <div>
-        <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1.5">
-          {t("settings.language")}
-        </label>
-        <div className="flex gap-2">
-          {(["en", "fr"] as const).map((lang) => (
-            <button
-              key={lang}
-              onClick={() => onLanguageChange(lang)}
-              className={`px-4 py-2 text-[13px] font-medium rounded-[6px] border transition-colors cursor-pointer ${
-                language === lang
-                  ? "bg-primary text-white border-primary"
-                  : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
-              }`}
-            >
-              {lang === "en" ? t("settings.languageEn") : t("settings.languageFr")}
-            </button>
-          ))}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1.5">
+            {t("settings.language")}
+          </label>
+          <div className="flex gap-2">
+            {(["en", "fr"] as const).map((lang) => (
+              <button
+                key={lang}
+                onClick={() => onLanguageChange(lang)}
+                className={`px-4 py-2 text-[13px] font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                  language === lang
+                    ? "bg-primary text-white border-primary"
+                    : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
+                }`}
+              >
+                {lang === "en" ? t("settings.languageEn") : t("settings.languageFr")}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1.5">
+            {t("settings.theme")}
+          </label>
+          <div className="flex gap-2">
+            {(["light", "system", "dark"] as const).map((opt) => (
+              <button
+                key={opt}
+                onClick={() => onThemeChange(opt)}
+                className={`px-4 py-2 text-[13px] font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                  theme === opt
+                    ? "bg-primary text-white border-primary"
+                    : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
+                }`}
+              >
+                {t(`settings.theme${opt.charAt(0).toUpperCase() + opt.slice(1)}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </section>

@@ -127,7 +127,7 @@ export function HomePage() {
                 <button
                   onClick={() => handleZoneCommand("allLightsOn")}
                   disabled={commandLoading !== null}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border rounded-[6px] hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 transition-colors duration-150 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border rounded-[6px] hover:bg-active/8 hover:text-active-text hover:border-active/40 transition-colors duration-150 disabled:opacity-50"
                 >
                   {commandLoading === "allLightsOn" ? (
                     <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
@@ -155,7 +155,7 @@ export function HomePage() {
                 <button
                   onClick={() => handleZoneCommand("allShuttersOpen")}
                   disabled={commandLoading !== null}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border rounded-[6px] hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 transition-colors duration-150 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-text-secondary bg-surface border border-border rounded-[6px] hover:bg-primary/6 hover:text-primary hover:border-primary/40 transition-colors duration-150 disabled:opacity-50"
                 >
                   {commandLoading === "allShuttersOpen" ? (
                     <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
