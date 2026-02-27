@@ -339,18 +339,8 @@ export class PresenceThermostatRecipe extends Recipe {
       }, 60_000);
     }
 
-    // Evaluate current zone state immediately
-    const currentZoneData = ctx.zoneAggregator.getByZoneId(this.zoneId);
-    if (currentZoneData) {
-      // Also check if we're currently in a preheat window
-      if (this.isInPreheatWindow() && !this.overrideMode) {
-        this.setComfort("Preheat window active on startup");
-      } else {
-        this.onZoneChanged(currentZoneData.motion);
-      }
-    } else if (this.isInPreheatWindow() && !this.overrideMode) {
-      this.setComfort("Preheat window active on startup");
-    }
+    // Force consistent setpoint on activation
+    this.syncOnStart();
   }
 
   // ── Stop ─────────────────────────────────────────────────
@@ -367,6 +357,21 @@ export class PresenceThermostatRecipe extends Recipe {
     this.unsubs = [];
     this.overrideMode = false;
     this.selfTriggeredUntil = 0;
+  }
+
+  // ── Initial sync — force setpoint on activation ─────────
+
+  private syncOnStart(): void {
+    const zoneData = this.ctx.zoneAggregator.getByZoneId(this.zoneId);
+    const motion = zoneData?.motion ?? false;
+
+    if (this.isInPreheatWindow()) {
+      this.setComfort("Recipe activated — preheat window active");
+    } else if (motion) {
+      this.setComfort("Recipe activated — motion detected");
+    } else {
+      this.setEco("Recipe activated — no motion");
+    }
   }
 
   // ── Event handlers ───────────────────────────────────────
