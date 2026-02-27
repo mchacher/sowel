@@ -6,6 +6,7 @@ import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
 import { setModeImpact, removeModeImpact, applyModeToZone } from "../../api";
 import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
+import { recipeName } from "../../lib/recipe-i18n";
 
 interface ZoneModesSectionProps {
   zoneId: string;
@@ -158,9 +159,11 @@ function ImpactEditor({
   zoneId: string;
   onRefresh: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("fr") ? "fr" : "en";
   const equipments = useEquipments((s) => s.equipments);
   const instances = useRecipes((s) => s.instances);
+  const recipes = useRecipes((s) => s.recipes);
   const [showAddAction, setShowAddAction] = useState(false);
   const [pendingActions, setPendingActions] = useState<ZoneModeImpactAction[]>([]);
   const [saving, setSaving] = useState(false);
@@ -177,6 +180,11 @@ function ImpactEditor({
     () => instances.filter((inst) => inst.params.zone === zoneId),
     [instances, zoneId]
   );
+
+  const resolveRecipeName = (recipeId: string): string => {
+    const recipe = recipes.find((r) => r.id === recipeId);
+    return recipe ? recipeName(recipe, lang) : recipeId;
+  };
 
   const handleRemoveAction = async (actionIndex: number) => {
     const newActions = savedActions.filter((_, i) => i !== actionIndex);
@@ -247,6 +255,7 @@ function ImpactEditor({
                   action={action}
                   equipments={zoneEquipments}
                   instances={zoneInstances}
+                  resolveRecipeName={resolveRecipeName}
                   onRemove={() => handleRemoveAction(idx)}
                   onUpdate={(updated) => handleUpdateAction(idx, updated)}
                 />
@@ -263,6 +272,7 @@ function ImpactEditor({
                   action={action}
                   equipments={zoneEquipments}
                   instances={zoneInstances}
+                  resolveRecipeName={resolveRecipeName}
                   onRemove={() => handleRemovePending(idx)}
                   pending
                 />
@@ -278,6 +288,7 @@ function ImpactEditor({
             <AddActionForm
               equipments={zoneEquipments}
               instances={zoneInstances}
+              resolveRecipeName={resolveRecipeName}
               onAdd={handleStageAction}
               onDone={() => setShowAddAction(false)}
             />
@@ -350,6 +361,7 @@ function ActionRow({
   action,
   equipments,
   instances,
+  resolveRecipeName,
   onRemove,
   onUpdate,
   pending,
@@ -357,6 +369,7 @@ function ActionRow({
   action: ZoneModeImpactAction;
   equipments: EquipmentWithDetails[];
   instances: { id: string; recipeId: string; params: Record<string, unknown> }[];
+  resolveRecipeName: (recipeId: string) => string;
   onRemove: () => void;
   onUpdate?: (updated: ZoneModeImpactAction) => void;
   pending?: boolean;
@@ -404,10 +417,12 @@ function ActionRow({
     label = formatOrderLabel(action, eq, t);
   } else if (action.type === "recipe_toggle") {
     const inst = instances.find((i) => i.id === action.instanceId);
-    label = `${inst?.recipeId ?? action.instanceId} → ${action.enabled ? t("common.on") : t("common.off")}`;
+    const name = inst ? resolveRecipeName(inst.recipeId) : action.instanceId;
+    label = `${name} → ${action.enabled ? t("common.on") : t("common.off")}`;
   } else if (action.type === "recipe_params") {
     const inst = instances.find((i) => i.id === action.instanceId);
-    label = `${inst?.recipeId ?? action.instanceId} → ${JSON.stringify(action.params)}`;
+    const name = inst ? resolveRecipeName(inst.recipeId) : action.instanceId;
+    label = `${name} → ${JSON.stringify(action.params)}`;
   }
 
   if (editing) {
@@ -416,7 +431,7 @@ function ActionRow({
         <div className="text-[10px] text-text-tertiary truncate">
           {action.type === "order"
             ? eq?.name ?? action.equipmentId
-            : instances.find((i) => i.id === (action as { instanceId: string }).instanceId)?.recipeId}
+            : (() => { const inst = instances.find((i) => i.id === (action as { instanceId: string }).instanceId); return inst ? resolveRecipeName(inst.recipeId) : (action as { instanceId: string }).instanceId; })()}
         </div>
         {action.type === "order" && eq && (
           <SmartOrderPicker
@@ -722,11 +737,13 @@ function SmartOrderPicker({
 function AddActionForm({
   equipments,
   instances,
+  resolveRecipeName,
   onAdd,
   onDone,
 }: {
   equipments: EquipmentWithDetails[];
   instances: { id: string; recipeId: string; params: Record<string, unknown> }[];
+  resolveRecipeName: (recipeId: string) => string;
   onAdd: (action: ZoneModeImpactAction) => void;
   onDone: () => void;
 }) {
@@ -811,7 +828,7 @@ function AddActionForm({
             >
               <option value="">{t("modes.form.selectRecipe")}</option>
               {instances.map((inst) => (
-                <option key={inst.id} value={inst.id}>{inst.recipeId}</option>
+                <option key={inst.id} value={inst.id}>{resolveRecipeName(inst.recipeId)}</option>
               ))}
             </select>
             {instanceId && (
