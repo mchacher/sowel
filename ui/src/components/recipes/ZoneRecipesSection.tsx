@@ -364,6 +364,12 @@ function RecipeInstanceRow({
                       onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
                       placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
                     />
+                  ) : slot.type === "time" ? (
+                    <TimeInput
+                      value={editParams[slot.id] ?? ""}
+                      onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                      placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
+                    />
                   ) : (
                     <input
                       type="text"
@@ -521,6 +527,30 @@ function DurationInput({
       />
       <span className="text-[12px] text-text-tertiary font-medium">{t("time.min")}</span>
     </div>
+  );
+}
+
+// ============================================================
+// Time input — native time picker for HH:MM
+// ============================================================
+
+function TimeInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (timeStr: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type="time"
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder ?? "08:00"}
+      className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+    />
   );
 }
 
@@ -800,6 +830,12 @@ function AddRecipeForm({
                     value={params[slot.id] ?? ""}
                     onChange={(v) => setParams({ ...params, [slot.id]: v })}
                     placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
+                  />
+                ) : slot.type === "time" ? (
+                  <TimeInput
+                    value={params[slot.id] ?? ""}
+                    onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                    placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
                   />
                 ) : (
                   <input

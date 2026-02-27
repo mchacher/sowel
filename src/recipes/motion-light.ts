@@ -1,11 +1,20 @@
 import type { RecipeSlotDef, RecipeLangPack } from "../shared/types.js";
 import { Recipe, type RecipeContext } from "./engine/recipe.js";
 import { parseDuration, formatDuration } from "./engine/duration.js";
-import { isAnyLightOn, turnOnLights, turnOffLights } from "./engine/light-helpers.js";
+import {
+  isAnyLightOn,
+  turnOnLights,
+  turnOffLights,
+  setLightsBrightness,
+} from "./engine/light-helpers.js";
 
 // ============================================================
 // Motion-Light Recipe
 // ============================================================
+
+/** Hysteresis factor to prevent lux-based on/off oscillation.
+ *  Turn-on: lux <= threshold.  Turn-off: lux > threshold × (1 + factor). */
+const LUX_HYSTERESIS_FACTOR = 0.1;
 
 export class MotionLightRecipe extends Recipe {
   readonly id = "motion-light";
@@ -40,7 +49,8 @@ export class MotionLightRecipe extends Recipe {
     {
       id: "luxThreshold",
       name: "Lux Threshold",
-      description: "Do not turn on if zone luminosity is above this value (optional)",
+      description:
+        "Do not turn on if zone luminosity is above this value; turns off lights if luminosity rises above threshold + 10% hysteresis (optional)",
       type: "number",
       required: false,
       constraints: { min: 0 },
@@ -51,6 +61,45 @@ export class MotionLightRecipe extends Recipe {
       description: "Force lights off after this duration, regardless of motion (optional failsafe)",
       type: "duration",
       required: false,
+    },
+    {
+      id: "brightness",
+      name: "Brightness",
+      description: "Brightness level when turning on (1-254). Only applies to dimmable lights.",
+      type: "number",
+      required: false,
+      constraints: { min: 1, max: 254 },
+    },
+    {
+      id: "morningBrightness",
+      name: "Morning Brightness",
+      description: "Reduced brightness during the morning window (1-254)",
+      type: "number",
+      required: false,
+      constraints: { min: 1, max: 254 },
+    },
+    {
+      id: "morningStart",
+      name: "Morning Start",
+      description: "Start of morning window (HH:MM)",
+      type: "time",
+      required: false,
+    },
+    {
+      id: "morningEnd",
+      name: "Morning End",
+      description: "End of morning window (HH:MM)",
+      type: "time",
+      required: false,
+    },
+    {
+      id: "buttons",
+      name: "Buttons",
+      description: "Button/switch equipments for manual toggle (optional)",
+      type: "equipment",
+      required: false,
+      list: true,
+      constraints: { equipmentType: "button" },
     },
   ];
 
@@ -68,11 +117,33 @@ export class MotionLightRecipe extends Recipe {
         timeout: { name: "Délai", description: "Délai sans mouvement avant extinction" },
         luxThreshold: {
           name: "Seuil de luminosité",
-          description: "Ne pas allumer si la luminosité dépasse cette valeur (optionnel)",
+          description:
+            "Ne pas allumer si la luminosité dépasse ce seuil ; éteint si la luminosité dépasse le seuil + 10% d'hystérésis (optionnel)",
         },
         maxOnDuration: {
           name: "Durée max allumage",
           description: "Éteindre après cette durée, même si mouvement détecté (sécurité)",
+        },
+        brightness: {
+          name: "Luminosité",
+          description:
+            "Niveau de luminosité à l'allumage (1-254). S'applique uniquement aux lumières dimmables.",
+        },
+        morningBrightness: {
+          name: "Luminosité matin",
+          description: "Luminosité réduite pendant la plage matinale (1-254)",
+        },
+        morningStart: {
+          name: "Début matin",
+          description: "Début de la plage matinale (HH:MM)",
+        },
+        morningEnd: {
+          name: "Fin matin",
+          description: "Fin de la plage matinale (HH:MM)",
+        },
+        buttons: {
+          name: "Boutons",
+          description: "Boutons / interrupteurs pour contrôle manuel (optionnel)",
         },
       },
     },
@@ -87,6 +158,19 @@ export class MotionLightRecipe extends Recipe {
   private timeoutMs!: number;
   private luxThreshold: number | null = null;
   private maxOnDurationMs: number | null = null;
+
+  // Brightness presets
+  private brightness: number | null = null;
+  private morningBrightness: number | null = null;
+  private morningStart: string | null = null;
+  private morningEnd: string | null = null;
+
+  // Button support
+  private buttonIds: string[] = [];
+
+  // Manual override
+  private overrideMode = false;
+  private selfTriggeredUntil = 0;
 
   validate(params: Record<string, unknown>, ctx: RecipeContext): void {
     const { zone, timeout, luxThreshold, maxOnDuration } = params;
@@ -141,6 +225,63 @@ export class MotionLightRecipe extends Recipe {
     if (maxOnDuration !== undefined && maxOnDuration !== null) {
       parseDuration(maxOnDuration);
     }
+
+    // Validate brightness
+    const { brightness, morningBrightness, morningStart, morningEnd, buttons } = params;
+
+    if (brightness !== undefined && brightness !== null && brightness !== "") {
+      const b = Number(brightness);
+      if (isNaN(b) || b < 1 || b > 254) {
+        throw new Error("brightness must be between 1 and 254");
+      }
+    }
+
+    if (morningBrightness !== undefined && morningBrightness !== null && morningBrightness !== "") {
+      const mb = Number(morningBrightness);
+      if (isNaN(mb) || mb < 1 || mb > 254) {
+        throw new Error("morningBrightness must be between 1 and 254");
+      }
+    }
+
+    // Morning window: both start and end must be provided together
+    const hasStart = morningStart !== undefined && morningStart !== null && morningStart !== "";
+    const hasEnd = morningEnd !== undefined && morningEnd !== null && morningEnd !== "";
+    if (hasStart !== hasEnd) {
+      throw new Error("morningStart and morningEnd must both be provided or both omitted");
+    }
+    if (hasStart && typeof morningStart === "string" && !/^\d{2}:\d{2}$/.test(morningStart)) {
+      throw new Error("morningStart must be in HH:MM format");
+    }
+    if (hasEnd && typeof morningEnd === "string" && !/^\d{2}:\d{2}$/.test(morningEnd)) {
+      throw new Error("morningEnd must be in HH:MM format");
+    }
+
+    // morningBrightness requires morning window
+    if (
+      morningBrightness !== undefined &&
+      morningBrightness !== null &&
+      morningBrightness !== "" &&
+      !hasStart
+    ) {
+      throw new Error("morningBrightness requires morningStart and morningEnd");
+    }
+
+    // Validate buttons (optional)
+    if (buttons !== undefined && buttons !== null) {
+      const buttonIds = Array.isArray(buttons)
+        ? buttons.filter((id): id is string => typeof id === "string")
+        : [];
+      for (const buttonId of buttonIds) {
+        const equipment = ctx.equipmentManager.getByIdWithDetails(buttonId);
+        if (!equipment) {
+          throw new Error(`Button equipment not found: ${buttonId}`);
+        }
+        const hasActionData = equipment.dataBindings.some((db) => db.alias === "action");
+        if (!hasActionData) {
+          throw new Error(`Button "${equipment.name}" has no "action" data binding`);
+        }
+      }
+    }
   }
 
   start(params: Record<string, unknown>, ctx: RecipeContext): void {
@@ -157,6 +298,31 @@ export class MotionLightRecipe extends Recipe {
         ? parseDuration(params.maxOnDuration)
         : null;
 
+    // Brightness presets
+    this.brightness =
+      params.brightness !== undefined && params.brightness !== null && params.brightness !== ""
+        ? Number(params.brightness)
+        : null;
+    this.morningBrightness =
+      params.morningBrightness !== undefined &&
+      params.morningBrightness !== null &&
+      params.morningBrightness !== ""
+        ? Number(params.morningBrightness)
+        : null;
+    this.morningStart =
+      typeof params.morningStart === "string" && params.morningStart ? params.morningStart : null;
+    this.morningEnd =
+      typeof params.morningEnd === "string" && params.morningEnd ? params.morningEnd : null;
+
+    // Button support
+    this.buttonIds = Array.isArray(params.buttons)
+      ? params.buttons.filter((id): id is string => typeof id === "string")
+      : [];
+
+    // Reset override
+    this.overrideMode = false;
+    this.selfTriggeredUntil = 0;
+
     // Listen to zone aggregation changes (for motion + luminosity)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
       if (event.zoneId !== this.zoneId) return;
@@ -171,6 +337,26 @@ export class MotionLightRecipe extends Recipe {
       this.onLightChanged(event.value);
     });
     this.unsubs.push(unsubLight);
+
+    // Listen to button actions (optional)
+    if (this.buttonIds.length > 0) {
+      const unsubButton = ctx.eventBus.onType("equipment.data.changed", (event) => {
+        if (!this.buttonIds.includes(event.equipmentId)) return;
+        if (event.alias !== "action") return;
+        this.onButtonAction();
+      });
+      this.unsubs.push(unsubButton);
+    }
+
+    // Listen to brightness changes for manual override detection
+    if (this.brightness !== null) {
+      const unsubBrightness = ctx.eventBus.onType("equipment.data.changed", (event) => {
+        if (!this.lightIds.includes(event.equipmentId)) return;
+        if (event.alias !== "brightness") return;
+        this.onBrightnessChanged();
+      });
+      this.unsubs.push(unsubBrightness);
+    }
   }
 
   stop(): void {
@@ -180,6 +366,8 @@ export class MotionLightRecipe extends Recipe {
       unsub();
     }
     this.unsubs = [];
+    this.overrideMode = false;
+    this.selfTriggeredUntil = 0;
   }
 
   // ============================================================
@@ -202,7 +390,29 @@ export class MotionLightRecipe extends Recipe {
   // ============================================================
 
   private onZoneChanged(motion: boolean, luminosity: number | null): void {
+    // Override mode: recipe is suspended, only track room vacancy
+    if (this.overrideMode) {
+      if (motion) {
+        // Someone still in the room — cancel any pending override-clear timer
+        this.cancelOffTimer();
+        this.clearOffTimerState();
+      } else {
+        // No motion — start timer to clear override when room empties
+        this.startOffTimerForOverrideClear();
+      }
+      return;
+    }
+
+    // Normal (auto) mode
     const lightsOn = isAnyLightOn(this.lightIds, this.ctx);
+
+    // Dynamic lux check: turn off if luminosity rose above threshold (with hysteresis)
+    if (lightsOn && this.isBrightEnoughToTurnOff(luminosity)) {
+      this.cancelOffTimer();
+      this.clearOffTimerState();
+      this.turnOff("Luminosity above threshold — lights turned off");
+      return;
+    }
 
     if (motion && !lightsOn) {
       // Check lux threshold before turning on
@@ -250,6 +460,16 @@ export class MotionLightRecipe extends Recipe {
     return luminosity > this.luxThreshold;
   }
 
+  /**
+   * Check if luminosity is high enough to turn OFF lights that are already on.
+   * Uses a hysteresis margin above the threshold to prevent oscillation.
+   */
+  private isBrightEnoughToTurnOff(luminosity: number | null): boolean {
+    if (this.luxThreshold === null) return false;
+    if (luminosity === null) return false;
+    return luminosity > this.luxThreshold * (1 + LUX_HYSTERESIS_FACTOR);
+  }
+
   // ============================================================
   // Motion state helper
   // ============================================================
@@ -257,6 +477,41 @@ export class MotionLightRecipe extends Recipe {
   private hasMotion(): boolean {
     const zoneData = this.ctx.zoneAggregator.getByZoneId(this.zoneId);
     return zoneData?.motion ?? false;
+  }
+
+  // ============================================================
+  // Brightness resolution
+  // ============================================================
+
+  /**
+   * Determine target brightness based on current time.
+   * Returns null if no brightness is configured (plain ON/OFF behavior).
+   */
+  private getTargetBrightness(): number | null {
+    if (this.brightness === null) return null;
+
+    if (this.morningBrightness !== null && this.morningStart !== null && this.morningEnd !== null) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const [startH, startM] = this.morningStart.split(":").map(Number);
+      const [endH, endM] = this.morningEnd.split(":").map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+
+      if (startMinutes <= endMinutes) {
+        // Same-day range (e.g., 06:00 to 09:00)
+        if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+          return this.morningBrightness;
+        }
+      } else {
+        // Overnight range (e.g., 23:00 to 06:00)
+        if (currentMinutes >= startMinutes || currentMinutes < endMinutes) {
+          return this.morningBrightness;
+        }
+      }
+    }
+
+    return this.brightness;
   }
 
   // ============================================================
@@ -268,7 +523,21 @@ export class MotionLightRecipe extends Recipe {
     if (errors.length > 0) {
       this.ctx.log(`Error turning on some lights: ${errors.join("; ")}`, "error");
     }
-    this.ctx.log(`Motion detected — ${this.lightIds.length} light(s) turned on`);
+
+    const targetBrightness = this.getTargetBrightness();
+    if (targetBrightness !== null) {
+      this.selfTriggeredUntil = Date.now() + 3000;
+      const brightnessErrors = setLightsBrightness(this.lightIds, this.ctx, targetBrightness);
+      if (brightnessErrors.length > 0) {
+        this.ctx.log(`Error setting brightness: ${brightnessErrors.join("; ")}`, "error");
+      }
+      this.ctx.log(
+        `Motion detected — ${this.lightIds.length} light(s) turned on at brightness ${targetBrightness}`,
+      );
+    } else {
+      this.ctx.log(`Motion detected — ${this.lightIds.length} light(s) turned on`);
+    }
+
     this.startFailsafeTimer();
   }
 
@@ -280,6 +549,81 @@ export class MotionLightRecipe extends Recipe {
     this.ctx.log(reason);
     this.cancelFailsafeTimer();
     this.clearFailsafeTimerState();
+    this.clearOverrideMode();
+  }
+
+  // ============================================================
+  // Button handler
+  // ============================================================
+
+  private onButtonAction(): void {
+    if (isAnyLightOn(this.lightIds, this.ctx)) {
+      // Lights ON + button → turn OFF + enter override
+      const errors = turnOffLights(this.lightIds, this.ctx);
+      if (errors.length > 0) {
+        this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
+      }
+      this.cancelOffTimer();
+      this.clearOffTimerState();
+      this.cancelFailsafeTimer();
+      this.clearFailsafeTimerState();
+
+      this.overrideMode = true;
+      this.ctx.state.set("overrideMode", true);
+      this.ctx.notifyStateChanged();
+      this.ctx.log("Button pressed — lights off, entering override mode");
+
+      // Start timer to clear override when room empties
+      this.startOffTimerForOverrideClear();
+    } else {
+      // Lights OFF + button → turn ON at auto brightness (auto mode)
+      this.clearOverrideMode();
+      this.turnOn();
+    }
+  }
+
+  // ============================================================
+  // Brightness override detection
+  // ============================================================
+
+  private onBrightnessChanged(): void {
+    if (Date.now() < this.selfTriggeredUntil) return;
+    if (this.overrideMode) return;
+
+    this.overrideMode = true;
+    this.ctx.state.set("overrideMode", true);
+    this.ctx.notifyStateChanged();
+    this.ctx.log("Manual brightness change detected — entering override mode");
+  }
+
+  // ============================================================
+  // Override management
+  // ============================================================
+
+  private clearOverrideMode(): void {
+    if (!this.overrideMode) return;
+    this.overrideMode = false;
+    this.ctx.state.delete("overrideMode");
+    this.ctx.notifyStateChanged();
+  }
+
+  private startOffTimerForOverrideClear(): void {
+    this.cancelOffTimer();
+    this.offTimer = setTimeout(() => {
+      this.offTimer = null;
+      this.clearOffTimerState();
+      // Turn off lights if still on
+      if (isAnyLightOn(this.lightIds, this.ctx)) {
+        turnOffLights(this.lightIds, this.ctx);
+      }
+      this.clearOverrideMode();
+      this.cancelFailsafeTimer();
+      this.clearFailsafeTimerState();
+      this.ctx.log(
+        `No motion for ${formatDuration(this.timeoutMs)} — override cleared, lights off`,
+      );
+    }, this.timeoutMs);
+    this.persistOffTimerState();
   }
 
   // ============================================================
