@@ -360,11 +360,8 @@ export class MotionLightRecipe extends Recipe {
       this.unsubs.push(unsubBrightness);
     }
 
-    // Evaluate current zone state immediately (e.g., motion already present when recipe starts)
-    const currentZoneData = ctx.zoneAggregator.getByZoneId(this.zoneId);
-    if (currentZoneData) {
-      this.onZoneChanged(currentZoneData.motion, currentZoneData.luminosity);
-    }
+    // Force consistent light state on activation — all ON or all OFF
+    this.syncLightsOnStart();
   }
 
   stop(): void {
@@ -391,6 +388,26 @@ export class MotionLightRecipe extends Recipe {
       return [params.light];
     }
     return [];
+  }
+
+  // ============================================================
+  // Initial sync — force all lights to a consistent state
+  // ============================================================
+
+  private syncLightsOnStart(): void {
+    const zoneData = this.ctx.zoneAggregator.getByZoneId(this.zoneId);
+    const motion = zoneData?.motion ?? false;
+    const luminosity = zoneData?.luminosity ?? null;
+
+    if (motion && !this.isTooBright(luminosity)) {
+      this.turnOn();
+    } else {
+      this.turnOff(
+        motion
+          ? "Recipe activated — luminosity above threshold, lights off"
+          : "Recipe activated — no motion, lights off",
+      );
+    }
   }
 
   // ============================================================

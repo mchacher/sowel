@@ -387,6 +387,7 @@ export function EquipmentDetailPage() {
         <AddBindingModal
           mode="data"
           existingAliases={equipment.dataBindings.map((b) => b.alias)}
+          equipmentType={equipment.type}
           onAdd={async ({ id: deviceDataId, alias }) => {
             await addDataBinding(equipment.id, deviceDataId, alias);
           }}
@@ -399,6 +400,7 @@ export function EquipmentDetailPage() {
         <AddBindingModal
           mode="order"
           existingAliases={equipment.orderBindings.map((b) => b.alias)}
+          equipmentType={equipment.type}
           onAdd={async ({ id: deviceOrderId, alias }) => {
             await addOrderBinding(equipment.id, deviceOrderId, alias);
           }}
