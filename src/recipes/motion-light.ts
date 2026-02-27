@@ -421,6 +421,7 @@ export class MotionLightRecipe extends Recipe {
         // Someone still in the room — cancel any pending override-clear timer
         this.cancelOffTimer();
         this.clearOffTimerState();
+        this.ctx.log("Motion detected but override mode active — ignoring");
       } else {
         // No motion — start timer to clear override when room empties
         this.startOffTimerForOverrideClear();
@@ -442,6 +443,9 @@ export class MotionLightRecipe extends Recipe {
     if (motion && !lightsOn) {
       // Check lux threshold before turning on
       if (this.isTooBright(luminosity)) {
+        this.ctx.log(
+          `Motion detected but luminosity ${luminosity} exceeds threshold ${this.luxThreshold} — not turning on`,
+        );
         return;
       }
       this.turnOn();
@@ -568,6 +572,10 @@ export class MotionLightRecipe extends Recipe {
   }
 
   private turnOff(reason: string): void {
+    // Prevent the MQTT echo-back of brightness from triggering false override
+    if (this.brightness !== null) {
+      this.selfTriggeredUntil = Date.now() + 3000;
+    }
     const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
@@ -585,6 +593,9 @@ export class MotionLightRecipe extends Recipe {
   private onButtonAction(): void {
     if (isAnyLightOn(this.lightIds, this.ctx)) {
       // Lights ON + button → turn OFF + enter override
+      if (this.brightness !== null) {
+        this.selfTriggeredUntil = Date.now() + 3000;
+      }
       const errors = turnOffLights(this.lightIds, this.ctx);
       if (errors.length > 0) {
         this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
@@ -640,6 +651,9 @@ export class MotionLightRecipe extends Recipe {
       this.clearOffTimerState();
       // Turn off lights if still on
       if (isAnyLightOn(this.lightIds, this.ctx)) {
+        if (this.brightness !== null) {
+          this.selfTriggeredUntil = Date.now() + 3000;
+        }
         turnOffLights(this.lightIds, this.ctx);
       }
       this.clearOverrideMode();
@@ -725,6 +739,9 @@ export class MotionLightRecipe extends Recipe {
   }
 
   private turnOffFailsafe(): void {
+    if (this.brightness !== null) {
+      this.selfTriggeredUntil = Date.now() + 3000;
+    }
     const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
