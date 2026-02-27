@@ -12,6 +12,10 @@ import {
 // Motion-Light Recipe
 // ============================================================
 
+/** Hysteresis factor to prevent lux-based on/off oscillation.
+ *  Turn-on: lux <= threshold.  Turn-off: lux > threshold × (1 + factor). */
+const LUX_HYSTERESIS_FACTOR = 0.1;
+
 export class MotionLightRecipe extends Recipe {
   readonly id = "motion-light";
   readonly name = "Motion Light";
@@ -45,7 +49,8 @@ export class MotionLightRecipe extends Recipe {
     {
       id: "luxThreshold",
       name: "Lux Threshold",
-      description: "Do not turn on if zone luminosity is above this value (optional)",
+      description:
+        "Do not turn on if zone luminosity is above this value; turns off lights if luminosity rises above threshold + 10% hysteresis (optional)",
       type: "number",
       required: false,
       constraints: { min: 0 },
@@ -112,7 +117,8 @@ export class MotionLightRecipe extends Recipe {
         timeout: { name: "Délai", description: "Délai sans mouvement avant extinction" },
         luxThreshold: {
           name: "Seuil de luminosité",
-          description: "Ne pas allumer si la luminosité dépasse cette valeur (optionnel)",
+          description:
+            "Ne pas allumer si la luminosité dépasse ce seuil ; éteint si la luminosité dépasse le seuil + 10% d'hystérésis (optionnel)",
         },
         maxOnDuration: {
           name: "Durée max allumage",
@@ -400,6 +406,14 @@ export class MotionLightRecipe extends Recipe {
     // Normal (auto) mode
     const lightsOn = isAnyLightOn(this.lightIds, this.ctx);
 
+    // Dynamic lux check: turn off if luminosity rose above threshold (with hysteresis)
+    if (lightsOn && this.isBrightEnoughToTurnOff(luminosity)) {
+      this.cancelOffTimer();
+      this.clearOffTimerState();
+      this.turnOff("Luminosity above threshold — lights turned off");
+      return;
+    }
+
     if (motion && !lightsOn) {
       // Check lux threshold before turning on
       if (this.isTooBright(luminosity)) {
@@ -444,6 +458,16 @@ export class MotionLightRecipe extends Recipe {
     if (this.luxThreshold === null) return false;
     if (luminosity === null) return false;
     return luminosity > this.luxThreshold;
+  }
+
+  /**
+   * Check if luminosity is high enough to turn OFF lights that are already on.
+   * Uses a hysteresis margin above the threshold to prevent oscillation.
+   */
+  private isBrightEnoughToTurnOff(luminosity: number | null): boolean {
+    if (this.luxThreshold === null) return false;
+    if (luminosity === null) return false;
+    return luminosity > this.luxThreshold * (1 + LUX_HYSTERESIS_FACTOR);
   }
 
   // ============================================================
