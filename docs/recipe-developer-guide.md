@@ -94,8 +94,9 @@ interface RecipeSlotDef {
 | ----------- | -------------- | ---------------------------------- |
 | `zone`      | Auto-filled    | Zone UUID                          |
 | `equipment` | Dropdown/check | Equipment UUID (or UUID[] if list) |
-| `duration`  | Text input     | `"10m"`, `"30s"`, `"1h"`           |
-| `number`    | Text input     | Numeric value                      |
+| `duration`  | Numeric + min  | `"10m"`, `"30s"`, `"1h"`           |
+| `number`    | Numeric input  | Numeric value                      |
+| `time`      | Time picker    | `"HH:MM"` string (24h)             |
 | `boolean`   | Toggle         | `true` / `false`                   |
 
 ## Translations (i18n)
@@ -170,10 +171,10 @@ The `ctx` object injected into `validate()` and `start()` provides:
 
 Reusable utilities in `src/recipes/engine/`:
 
-| Module             | Exports                                               |
-| ------------------ | ----------------------------------------------------- |
-| `duration.ts`      | `parseDuration(value)`, `formatDuration(ms)`          |
-| `light-helpers.ts` | `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()` |
+| Module             | Exports                                                                        |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `duration.ts`      | `parseDuration(value)`, `formatDuration(ms)`                                   |
+| `light-helpers.ts` | `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` |
 
 ## Event Bus Events
 
