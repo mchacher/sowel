@@ -1,35 +1,7 @@
-import type { RecipeSlotDef } from "../shared/types.js";
+import type { RecipeSlotDef, RecipeLangPack } from "../shared/types.js";
 import { Recipe, type RecipeContext } from "./engine/recipe.js";
-
-// ============================================================
-// Duration parsing helper
-// ============================================================
-
-function parseDuration(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (typeof value !== "string") throw new Error(`Invalid duration: ${value}`);
-
-  const match = value.match(/^(\d+)\s*(s|m|h)$/);
-  if (!match) throw new Error(`Invalid duration format: ${value}. Use e.g. "10m", "30s", "1h"`);
-
-  const num = parseInt(match[1], 10);
-  switch (match[2]) {
-    case "s":
-      return num * 1000;
-    case "m":
-      return num * 60 * 1000;
-    case "h":
-      return num * 60 * 60 * 1000;
-    default:
-      throw new Error(`Invalid duration unit: ${match[2]}`);
-  }
-}
-
-function formatDuration(ms: number): string {
-  if (ms >= 60 * 60 * 1000) return `${Math.round(ms / (60 * 60 * 1000))}h`;
-  if (ms >= 60 * 1000) return `${Math.round(ms / (60 * 1000))}min`;
-  return `${Math.round(ms / 1000)}s`;
-}
+import { parseDuration, formatDuration } from "./engine/duration.js";
+import { isAnyLightOn, turnOnLights, turnOffLights } from "./engine/light-helpers.js";
 
 // ============================================================
 // Motion-Light Recipe
@@ -81,6 +53,30 @@ export class MotionLightRecipe extends Recipe {
       required: false,
     },
   ];
+
+  override readonly i18n: Record<string, RecipeLangPack> = {
+    fr: {
+      name: "Lumière sur mouvement",
+      description:
+        "Allume les lumières quand un mouvement est détecté, éteint après un délai sans mouvement. Supporte plusieurs lumières, un seuil de luminosité optionnel et une durée max d'allumage.",
+      slots: {
+        zone: { name: "Zone", description: "Zone à surveiller" },
+        lights: {
+          name: "Lumières",
+          description: "Lumières à contrôler (doivent appartenir à la zone)",
+        },
+        timeout: { name: "Délai", description: "Délai sans mouvement avant extinction" },
+        luxThreshold: {
+          name: "Seuil de luminosité",
+          description: "Ne pas allumer si la luminosité dépasse cette valeur (optionnel)",
+        },
+        maxOnDuration: {
+          name: "Durée max allumage",
+          description: "Éteindre après cette durée, même si mouvement détecté (sécurité)",
+        },
+      },
+    },
+  };
 
   private offTimer: ReturnType<typeof setTimeout> | null = null;
   private failsafeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -206,7 +202,7 @@ export class MotionLightRecipe extends Recipe {
   // ============================================================
 
   private onZoneChanged(motion: boolean, luminosity: number | null): void {
-    const lightsOn = this.isAnyLightOn();
+    const lightsOn = isAnyLightOn(this.lightIds, this.ctx);
 
     if (motion && !lightsOn) {
       // Check lux threshold before turning on
@@ -255,21 +251,8 @@ export class MotionLightRecipe extends Recipe {
   }
 
   // ============================================================
-  // Light state helpers
+  // Motion state helper
   // ============================================================
-
-  private isAnyLightOn(): boolean {
-    for (const lightId of this.lightIds) {
-      const bindings = this.ctx.equipmentManager.getDataBindingsWithValues(lightId);
-      const stateBinding = bindings.find(
-        (b) => b.alias === "state" || b.category === "light_state",
-      );
-      if (stateBinding && (stateBinding.value === true || stateBinding.value === "ON")) {
-        return true;
-      }
-    }
-    return false;
-  }
 
   private hasMotion(): boolean {
     const zoneData = this.ctx.zoneAggregator.getByZoneId(this.zoneId);
@@ -281,14 +264,7 @@ export class MotionLightRecipe extends Recipe {
   // ============================================================
 
   private turnOn(): void {
-    const errors: string[] = [];
-    for (const lightId of this.lightIds) {
-      try {
-        this.ctx.equipmentManager.executeOrder(lightId, "state", "ON");
-      } catch (err) {
-        errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+    const errors = turnOnLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning on some lights: ${errors.join("; ")}`, "error");
     }
@@ -297,14 +273,7 @@ export class MotionLightRecipe extends Recipe {
   }
 
   private turnOff(reason: string): void {
-    const errors: string[] = [];
-    for (const lightId of this.lightIds) {
-      try {
-        this.ctx.equipmentManager.executeOrder(lightId, "state", "OFF");
-      } catch (err) {
-        errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+    const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
     }
@@ -372,14 +341,7 @@ export class MotionLightRecipe extends Recipe {
   }
 
   private turnOffFailsafe(): void {
-    const errors: string[] = [];
-    for (const lightId of this.lightIds) {
-      try {
-        this.ctx.equipmentManager.executeOrder(lightId, "state", "OFF");
-      } catch (err) {
-        errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+    const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
     }
