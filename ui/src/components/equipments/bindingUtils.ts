@@ -32,6 +32,24 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   weather: [],
 };
 
+/**
+ * Maps device data/order keys to standardized equipment aliases.
+ * Integrations expose protocol-specific keys (e.g., "targetTemperature"),
+ * but the equipment model provides a strict, integration-agnostic contract
+ * (e.g., "setpoint"). Recipes and scenarios depend on these standard aliases.
+ */
+const STANDARD_ALIASES: Record<string, Record<string, string>> = {
+  thermostat: {
+    targetTemperature: "setpoint",
+    insideTemperature: "temperature",
+  },
+};
+
+/** Resolve a device key to the standardized equipment alias for the given type. */
+export function resolveAlias(key: string, equipmentType: string): string {
+  return STANDARD_ALIASES[equipmentType]?.[key] ?? key;
+}
+
 export function isRelevantData(category: string, equipmentType: string): boolean {
   return RELEVANT_DATA[equipmentType]?.includes(category) ?? false;
 }
@@ -55,7 +73,7 @@ export async function autoCreateBindings(
 
       for (const data of device.data) {
         if (isRelevantData(data.category, equipmentType)) {
-          const alias = uniqueAlias(data.key, usedDataAliases);
+          const alias = uniqueAlias(resolveAlias(data.key, equipmentType), usedDataAliases);
           try {
             await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
             usedDataAliases.add(alias);
@@ -67,7 +85,7 @@ export async function autoCreateBindings(
 
       for (const order of device.orders) {
         if (isRelevantOrder(order.key, equipmentType)) {
-          const alias = uniqueAlias(order.key, usedOrderAliases);
+          const alias = uniqueAlias(resolveAlias(order.key, equipmentType), usedOrderAliases);
           try {
             await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
             usedOrderAliases.add(alias);
