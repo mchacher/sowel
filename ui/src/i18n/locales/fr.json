@@ -132,6 +132,10 @@
   "zones.moveDown": "Descendre",
   "zones.childCount_one": "{{count}} zone",
   "zones.childCount_other": "{{count}} zones",
+  "zones.commands.allLightsOn": "Allumer les lumières",
+  "zones.commands.allLightsOff": "Éteindre les lumières",
+  "zones.commands.allShuttersOpen": "Ouvrir les volets",
+  "zones.commands.allShuttersClose": "Fermer les volets",
 
   "equipments.title": "Équipements",
   "equipments.filterPlaceholder": "Filtrer...",
