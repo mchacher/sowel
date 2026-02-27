@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Winch Dark Mode — Design System Proposal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     LIGHT THEME (current — from design-system-preview.html)
+     ============================================================ */
+  .light {
+    --primary: #1A4F6E;
+    --primary-hover: #13405A;
+    --primary-light: #E6F0F6;
+    --accent: #D4963F;
+    --accent-hover: #BB8232;
+    --active: #EAB308;
+    --active-text: #A16207;
+    --success: #3D8B6E;
+    --warning: #C88B3A;
+    --error: #C0453A;
+    --bg: #F8FAFB;
+    --surface: #FFFFFF;
+    --surface-raised: #FFFFFF;
+    --text: #1A1A1A;
+    --text-secondary: #6B7280;
+    --text-tertiary: #9CA3AF;
+    --border: #E1E6EA;
+    --border-light: #EDF0F3;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  }
+
+  /* ============================================================
+     DARK THEME (proposed — deep navy slate)
+     ============================================================ */
+  .dark {
+    --primary: #4A9FCC;
+    --primary-hover: #5CB3E0;
+    --primary-light: #1A2E42;
+    --accent: #E0A84F;
+    --accent-hover: #EBB85F;
+    --active: #EAB308;
+    --active-text: #FDE68A;
+    --success: #5BB98C;
+    --warning: #E0A84F;
+    --error: #E05A50;
+    --bg: #111827;
+    --surface: #1E293B;
+    --surface-raised: #253040;
+    --text: #E8EAED;
+    --text-secondary: #94A3B8;
+    --text-tertiary: #64748B;
+    --border: #2D3A4F;
+    --border-light: #253040;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.20);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.30);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.40);
+  }
+
+  /* ============================================================
+     Page chrome (neutral dark)
+     ============================================================ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; color: #E8EAED; background: #0C0E14; padding: 32px; line-height: 1.5; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 40px 0 16px; }
+  .subtitle { color: #94A3B8; font-size: 14px; margin-bottom: 40px; }
+
+  /* ============================================================
+     Side-by-side layout
+     ============================================================ */
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .comparison { grid-template-columns: 1fr; } }
+  .panel { border-radius: 14px; overflow: hidden; border: 1px solid #2D3A4F; }
+  .panel-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 16px; text-align: center; }
+  .light .panel-label { background: #E6F0F6; color: #1A4F6E; }
+  .dark .panel-label { background: #1A2E42; color: #4A9FCC; }
+
+  /* ============================================================
+     Shared component styles (identical to design-system-preview)
+     ============================================================ */
+  .ds { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; color: var(--text); background: var(--bg); line-height: 1.5; padding: 20px; }
+  .ds h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+
+  /* Color swatches */
+  .swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .swatch { width: 80px; }
+  .swatch-color { width: 100%; height: 36px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 4px; }
+  .swatch-label { font-size: 10px; font-weight: 600; color: var(--text); }
+  .swatch-hex { font-size: 10px; color: var(--text-tertiary); font-family: 'JetBrains Mono', monospace; }
+
+  /* Section headers */
+  .section-body { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+  .section-header { display: flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); }
+  .section-row { padding: 8px 14px; font-size: 13px; border-top: 1px solid var(--border-light); color: var(--text-secondary); }
+  .section-row:first-child { border-top: none; }
+
+  /* Pills */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 5px; font-size: 13px; font-weight: 500; }
+  .pill-bar { display: flex; align-items: center; gap: 0; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; flex-wrap: wrap; }
+  .pill-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-error { background: var(--error); color: white; }
+
+  /* Toggle */
+  .toggle { width: 36px; height: 20px; border-radius: 10px; position: relative; display: inline-block; }
+  .toggle-knob { width: 16px; height: 16px; border-radius: 50%; background: white; position: absolute; top: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+  /* Slider */
+  .slider-track { width: 140px; height: 4px; border-radius: 2px; background: var(--border); position: relative; }
+  .slider-fill { height: 100%; border-radius: 2px; }
+  .slider-thumb { width: 16px; height: 16px; border-radius: 50%; position: absolute; top: -6px; border: 2px solid var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+  /* Alerts */
+  .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 8px; border-left: 3px solid; }
+
+  /* Mono values */
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Login mock */
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; max-width: 280px; margin: 0 auto; }
+  .login-logo { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: var(--primary); color: white; font-weight: 700; font-size: 16px; }
+  .login-input { width: 100%; padding: 7px 10px; font-size: 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; outline: none; }
+  .login-input::placeholder { color: var(--text-tertiary); }
+  .login-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; margin-bottom: 4px; }
+
+  /* Token table */
+  .token-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; }
+  .token-table th { text-align: left; padding: 6px 10px; border-bottom: 1px solid #2D3A4F; color: #64748B; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .token-table td { padding: 6px 10px; border-bottom: 1px solid #1E293B; vertical-align: middle; }
+  .tk { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #E0A84F; }
+  .hx { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #94A3B8; }
+  .sw { display: inline-block; width: 24px; height: 24px; border-radius: 4px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(255,255,255,0.08); }
+
+  /* Rationale */
+  .rationale { background: #1E293B; border: 1px solid #2D3A4F; border-radius: 10px; padding: 20px; margin: 24px 0; }
+  .rationale h3 { color: #E8EAED; font-size: 14px; font-weight: 600; margin-bottom: 10px; text-transform: none; letter-spacing: normal; }
+  .rationale ul { padding-left: 20px; color: #94A3B8; font-size: 13px; line-height: 22px; }
+  .rationale li { margin-bottom: 6px; }
+  .rationale strong { color: #E8EAED; }
+  .rationale code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #111827; padding: 1px 5px; border-radius: 3px; color: #4A9FCC; }
+</style>
+</head>
+<body>
+
+<h1>Winch Dark Mode &mdash; Design System Proposal</h1>
+<p class="subtitle">Deep navy palette &bull; Side-by-side comparison &bull; Based on design-system-preview.html</p>
+
+<!-- ============================================================
+     SECTION 1: Token Mapping
+     ============================================================ -->
+<h2>1. Color Token Mapping</h2>
+
+<table class="token-table">
+  <thead>
+    <tr><th>Token</th><th colspan="2">Light (current)</th><th colspan="2">Dark (proposed)</th><th>Rationale</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="tk">--color-background</td><td><span class="sw" style="background:#F8FAFB"></span></td><td class="hx">#F8FAFB</td><td><span class="sw" style="background:#111827"></span></td><td class="hx">#111827</td><td>Deep navy. Warmer than gray, echoes ocean primary.</td></tr>
+    <tr><td class="tk">--color-surface</td><td><span class="sw" style="background:#FFFFFF"></span></td><td class="hx">#FFFFFF</td><td><span class="sw" style="background:#1E293B"></span></td><td class="hx">#1E293B</td><td>Slate-blue cards. Clear elevation above background.</td></tr>
+    <tr><td class="tk">--color-surface-raised</td><td><span class="sw" style="background:#FFFFFF"></span></td><td class="hx">#FFFFFF</td><td><span class="sw" style="background:#253040"></span></td><td class="hx">#253040</td><td>Modals, dropdowns. Third elevation level.</td></tr>
+    <tr><td class="tk">--color-text</td><td><span class="sw" style="background:#1A1A1A"></span></td><td class="hx">#1A1A1A</td><td><span class="sw" style="background:#E8EAED"></span></td><td class="hx">#E8EAED</td><td>Off-white. Not pure white to reduce glare.</td></tr>
+    <tr><td class="tk">--color-text-secondary</td><td><span class="sw" style="background:#6B7280"></span></td><td class="hx">#6B7280</td><td><span class="sw" style="background:#94A3B8"></span></td><td class="hx">#94A3B8</td><td>Slate-tinted. Readable on navy surface.</td></tr>
+    <tr><td class="tk">--color-text-tertiary</td><td><span class="sw" style="background:#9CA3AF"></span></td><td class="hx">#9CA3AF</td><td><span class="sw" style="background:#64748B"></span></td><td class="hx">#64748B</td><td>Muted slate. Maintains 3-tier hierarchy.</td></tr>
+    <tr><td class="tk">--color-border</td><td><span class="sw" style="background:#E1E6EA"></span></td><td class="hx">#E1E6EA</td><td><span class="sw" style="background:#2D3A4F"></span></td><td class="hx">#2D3A4F</td><td>Blue-tinted border. Subtle but visible.</td></tr>
+    <tr><td class="tk">--color-border-light</td><td><span class="sw" style="background:#EDF0F3"></span></td><td class="hx">#EDF0F3</td><td><span class="sw" style="background:#253040"></span></td><td class="hx">#253040</td><td>List separators, card dividers.</td></tr>
+    <tr><td class="tk">--color-primary</td><td><span class="sw" style="background:#1A4F6E"></span></td><td class="hx">#1A4F6E</td><td><span class="sw" style="background:#4A9FCC"></span></td><td class="hx">#4A9FCC</td><td>Same hue, raised luminosity for dark background.</td></tr>
+    <tr><td class="tk">--color-primary-hover</td><td><span class="sw" style="background:#13405A"></span></td><td class="hx">#13405A</td><td><span class="sw" style="background:#5CB3E0"></span></td><td class="hx">#5CB3E0</td><td>Lighter on hover (dark = hover goes brighter).</td></tr>
+    <tr><td class="tk">--color-primary-light</td><td><span class="sw" style="background:#E6F0F6"></span></td><td class="hx">#E6F0F6</td><td><span class="sw" style="background:#1A2E42"></span></td><td class="hx">#1A2E42</td><td>Active nav/selection background.</td></tr>
+    <tr><td class="tk">--color-accent</td><td><span class="sw" style="background:#D4963F"></span></td><td class="hx">#D4963F</td><td><span class="sw" style="background:#E0A84F"></span></td><td class="hx">#E0A84F</td><td>Slightly brighter amber on dark.</td></tr>
+    <tr><td class="tk">--color-active</td><td><span class="sw" style="background:#EAB308"></span></td><td class="hx">#EAB308</td><td><span class="sw" style="background:#EAB308"></span></td><td class="hx">#EAB308</td><td>Yellow stays identical. Signature for lights.</td></tr>
+    <tr><td class="tk">--color-active-text</td><td><span class="sw" style="background:#A16207"></span></td><td class="hx">#A16207</td><td><span class="sw" style="background:#FDE68A"></span></td><td class="hx">#FDE68A</td><td>Light yellow text for readability on dark.</td></tr>
+    <tr><td class="tk">--color-success</td><td><span class="sw" style="background:#3D8B6E"></span></td><td class="hx">#3D8B6E</td><td><span class="sw" style="background:#5BB98C"></span></td><td class="hx">#5BB98C</td><td>Brighter green for dark backgrounds.</td></tr>
+    <tr><td class="tk">--color-warning</td><td><span class="sw" style="background:#C88B3A"></span></td><td class="hx">#C88B3A</td><td><span class="sw" style="background:#E0A84F"></span></td><td class="hx">#E0A84F</td><td>Slightly brighter amber.</td></tr>
+    <tr><td class="tk">--color-error</td><td><span class="sw" style="background:#C0453A"></span></td><td class="hx">#C0453A</td><td><span class="sw" style="background:#E05A50"></span></td><td class="hx">#E05A50</td><td>Brighter red. Alarming, not neon.</td></tr>
+    <tr><td class="tk">--shadow-sm/md/lg</td><td class="hx" colspan="2">rgba(0,0,0, .05/.08/.12)</td><td class="hx" colspan="2">rgba(0,0,0, .20/.30/.40)</td><td>Stronger shadows on dark backgrounds.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================
+     SECTION 2: Colors
+     ============================================================ -->
+<h2>2. Colors</h2>
+
+<div class="comparison">
+  <div class="panel light">
+    <div class="panel-label">Light</div>
+    <div class="ds">
+      <h3>Core Palette</h3>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-color" style="background:var(--primary)"></div><div class="swatch-label">Primary</div><div class="swatch-hex">#1A4F6E</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--primary-hover)"></div><div class="swatch-label">Primary Hover</div><div class="swatch-hex">#13405A</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--primary-light)"></div><div class="swatch-label">Primary Light</div><div class="swatch-hex">#E6F0F6</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--accent)"></div><div class="swatch-label">Accent</div><div class="swatch-hex">#D4963F</div></div>
+      </div>
+      <h3>Semantic</h3>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-color" style="background:var(--active)"></div><div class="swatch-label">Active</div><div class="swatch-hex">#EAB308</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--active-text)"></div><div class="swatch-label">Active Text</div><div class="swatch-hex">#A16207</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--success)"></div><div class="swatch-label">Success</div><div class="swatch-hex">#3D8B6E</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--error)"></div><div class="swatch-label">Error</div><div class="swatch-hex">#C0453A</div></div>
+      </div>
+      <h3>Neutrals</h3>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-color" style="background:var(--bg)"></div><div class="swatch-label">Background</div><div class="swatch-hex">#F8FAFB</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--surface)"></div><div class="swatch-label">Surface</div><div class="swatch-hex">#FFFFFF</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--text)"></div><div class="swatch-label">Text</div><div class="swatch-hex">#1A1A1A</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--text-secondary)"></div><div class="swatch-label">Text 2</div><div class="swatch-hex">#6B7280</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--border)"></div><div class="swatch-label">Border</div><div class="swatch-hex">#E1E6EA</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel dark">
+    <div class="panel-label">Dark</div>
+    <div class="ds">
+      <h3>Core Palette</h3>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-color" style="background:var(--primary)"></div><div class="swatch-label">Primary</div><div class="swatch-hex">#4A9FCC</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--primary-hover)"></div><div class="swatch-label">Primary Hover</div><div class="swatch-hex">#5CB3E0</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--primary-light)"></div><div class="swatch-label">Primary Light</div><div class="swatch-hex">#1A2E42</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--accent)"></div><div class="swatch-label">Accent</div><div class="swatch-hex">#E0A84F</div></div>
+      </div>
+      <h3>Semantic</h3>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-color" style="background:var(--active)"></div><div class="swatch-label">Active</div><div class="swatch-hex">#EAB308</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--active-text)"></div><div class="swatch-label">Active Text</div><div class="swatch-hex">#FDE68A</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--success)"></div><div class="swatch-label">Success</div><div class="swatch-hex">#5BB98C</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--error)"></div><div class="swatch-label">Error</div><div class="swatch-hex">#E05A50</div></div>
+      </div>
+      <h3>Neutrals</h3>
+      <div class="swatch-row">
+        <div class="swatch"><div class="swatch-color" style="background:var(--bg)"></div><div class="swatch-label">Background</div><div class="swatch-hex">#111827</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--surface)"></div><div class="swatch-label">Surface</div><div class="swatch-hex">#1E293B</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--text)"></div><div class="swatch-label">Text</div><div class="swatch-hex">#E8EAED</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--text-secondary)"></div><div class="swatch-label">Text 2</div><div class="swatch-hex">#94A3B8</div></div>
+        <div class="swatch"><div class="swatch-color" style="background:var(--border)"></div><div class="swatch-label">Border</div><div class="swatch-hex">#2D3A4F</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION 3: Typography
+     ============================================================ -->
+<h2>3. Typography</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="card">
+      <div style="margin-bottom:12px"><span style="font-size:28px;font-weight:600" class="mono">21.5<span style="font-size:14px;color:var(--text-tertiary);font-weight:400">°C</span></span> <span style="font-size:11px;color:var(--text-tertiary);margin-left:8px">Data value (28px)</span></div>
+      <div style="margin-bottom:12px"><span style="font-size:20px;font-weight:600" class="mono">65<span style="font-size:13px;color:var(--text-tertiary);font-weight:400">%</span></span> <span style="font-size:11px;color:var(--text-tertiary);margin-left:8px">Data medium (20px)</span></div>
+      <div style="margin-bottom:6px;font-size:14px">Body text at 14px using Inter font family.</div>
+      <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;font-weight:500">Label &mdash; 11px uppercase tracking</div>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="card">
+      <div style="margin-bottom:12px"><span style="font-size:28px;font-weight:600" class="mono">21.5<span style="font-size:14px;color:var(--text-tertiary);font-weight:400">°C</span></span> <span style="font-size:11px;color:var(--text-tertiary);margin-left:8px">Data value (28px)</span></div>
+      <div style="margin-bottom:12px"><span style="font-size:20px;font-weight:600" class="mono">65<span style="font-size:13px;color:var(--text-tertiary);font-weight:400">%</span></span> <span style="font-size:11px;color:var(--text-tertiary);margin-left:8px">Data medium (20px)</span></div>
+      <div style="margin-bottom:6px;font-size:14px">Body text at 14px using Inter font family.</div>
+      <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;font-weight:500">Label &mdash; 11px uppercase tracking</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 4: Section Headers (Zone Cards)
+     ============================================================ -->
+<h2>4. Section Headers (Zone Cards)</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(234,179,8,0.08)"><span style="color:var(--active-text)">&#9728;</span> Lights <span style="margin-left:auto">3</span></div>
+      <div class="section-row">Spots Salon &mdash; ON</div>
+      <div class="section-row">Lampe Bureau &mdash; OFF</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(26,79,110,0.06)"><span style="color:var(--primary)">&#9632;</span> Shutters <span style="margin-left:auto">2</span></div>
+      <div class="section-row">Volet Salon &mdash; 75%</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(192,69,58,0.06)"><span style="color:var(--error)">&#9832;</span> Climate <span style="margin-left:auto">1</span></div>
+      <div class="section-row">Pompe chaleur &mdash; 21.5°C</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(61,139,110,0.08)"><span style="color:var(--success)">&#9881;</span> Modes <span style="margin-left:auto">2 active</span></div>
+      <div class="section-row">Mode Nuit &mdash; Active</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(212,150,63,0.08)"><span style="color:var(--accent)">&#9733;</span> Recipes <span style="margin-left:auto">1</span></div>
+      <div class="section-row">Auto-off &mdash; Spots Salon</div>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(234,179,8,0.08)"><span style="color:var(--active-text)">&#9728;</span> Lights <span style="margin-left:auto">3</span></div>
+      <div class="section-row">Spots Salon &mdash; ON</div>
+      <div class="section-row">Lampe Bureau &mdash; OFF</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(74,159,204,0.08)"><span style="color:var(--primary)">&#9632;</span> Shutters <span style="margin-left:auto">2</span></div>
+      <div class="section-row">Volet Salon &mdash; 75%</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(224,90,80,0.08)"><span style="color:var(--error)">&#9832;</span> Climate <span style="margin-left:auto">1</span></div>
+      <div class="section-row">Pompe chaleur &mdash; 21.5°C</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(91,185,140,0.10)"><span style="color:var(--success)">&#9881;</span> Modes <span style="margin-left:auto">2 active</span></div>
+      <div class="section-row">Mode Nuit &mdash; Active</div>
+    </div>
+    <div class="section-body">
+      <div class="section-header" style="background:rgba(224,168,79,0.10)"><span style="color:var(--accent)">&#9733;</span> Recipes <span style="margin-left:auto">1</span></div>
+      <div class="section-row">Auto-off &mdash; Spots Salon</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 5: Aggregation Pills
+     ============================================================ -->
+<h2>5. Aggregation Pills</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="pill-bar">
+      <div class="pill" style="color:var(--primary)">&#9832; 21.5°C</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--primary)">&#128167; 45%</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--active-text)">&#9899; Motion &middot; 5min</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--active-text)">&#128161; 2/3</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--primary)">&#9632; 1/2</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--active-text)">&#128682; 1 open</div>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="pill-bar">
+      <div class="pill" style="color:var(--primary)">&#9832; 21.5°C</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--primary)">&#128167; 45%</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--active-text)">&#9899; Motion &middot; 5min</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--active-text)">&#128161; 2/3</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--primary)">&#9632; 1/2</div><div class="pill-sep"></div>
+      <div class="pill" style="color:var(--active-text)">&#128682; 1 open</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 6: Controls
+     ============================================================ -->
+<h2>6. Controls</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="card">
+      <h3>Buttons</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-primary">Save</button>
+        <button class="btn btn-outline">Cancel</button>
+        <button class="btn btn-error">Delete</button>
+      </div>
+      <h3>Toggles</h3>
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px">
+        <div><div class="toggle" style="background:var(--primary)"><div class="toggle-knob" style="left:18px"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">ON</div></div>
+        <div><div class="toggle" style="background:var(--border)"><div class="toggle-knob" style="left:2px"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">OFF</div></div>
+        <div><div class="toggle" style="background:var(--success)"><div class="toggle-knob" style="left:18px"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">Success</div></div>
+      </div>
+      <h3>Sliders</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div><div class="slider-track"><div class="slider-fill" style="width:65%;background:var(--primary)"></div><div class="slider-thumb" style="left:calc(65% - 8px);background:var(--primary)"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">Primary</div></div>
+        <div><div class="slider-track"><div class="slider-fill" style="width:80%;background:var(--active)"></div><div class="slider-thumb" style="left:calc(80% - 8px);background:var(--active)"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">Active (brightness)</div></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="card">
+      <h3>Buttons</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-primary">Save</button>
+        <button class="btn btn-outline">Cancel</button>
+        <button class="btn btn-error">Delete</button>
+      </div>
+      <h3>Toggles</h3>
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px">
+        <div><div class="toggle" style="background:var(--primary)"><div class="toggle-knob" style="left:18px"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">ON</div></div>
+        <div><div class="toggle" style="background:var(--border)"><div class="toggle-knob" style="left:2px"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">OFF</div></div>
+        <div><div class="toggle" style="background:var(--success)"><div class="toggle-knob" style="left:18px"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">Success</div></div>
+      </div>
+      <h3>Sliders</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div><div class="slider-track"><div class="slider-fill" style="width:65%;background:var(--primary)"></div><div class="slider-thumb" style="left:calc(65% - 8px);background:var(--primary)"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">Primary</div></div>
+        <div><div class="slider-track"><div class="slider-fill" style="width:80%;background:var(--active)"></div><div class="slider-thumb" style="left:calc(80% - 8px);background:var(--active)"></div></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">Active (brightness)</div></div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 7: Status Badges
+     ============================================================ -->
+<h2>7. Status Badges</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="badge" style="background:rgba(61,139,110,0.1);color:var(--success)">&#10003; Connected</span>
+        <span class="badge" style="background:rgba(192,69,58,0.1);color:var(--error)">&#9888; Error</span>
+        <span class="badge" style="background:rgba(200,139,58,0.1);color:var(--warning)">&#9888; Ignition</span>
+        <span class="badge" style="background:rgba(234,179,8,0.14);color:var(--active-text)">&#128161; ON</span>
+        <span class="badge" style="background:rgba(26,79,110,0.1);color:var(--primary)">&#10148; Running</span>
+        <span class="badge" style="background:var(--border-light);color:var(--text-tertiary)">Inactive</span>
+      </div>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="badge" style="background:rgba(91,185,140,0.12);color:var(--success)">&#10003; Connected</span>
+        <span class="badge" style="background:rgba(224,90,80,0.12);color:var(--error)">&#9888; Error</span>
+        <span class="badge" style="background:rgba(224,168,79,0.12);color:var(--warning)">&#9888; Ignition</span>
+        <span class="badge" style="background:rgba(234,179,8,0.14);color:var(--active-text)">&#128161; ON</span>
+        <span class="badge" style="background:rgba(74,159,204,0.12);color:var(--primary)">&#10148; Running</span>
+        <span class="badge" style="background:var(--border-light);color:var(--text-tertiary)">Inactive</span>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 8: Alerts
+     ============================================================ -->
+<h2>8. Alerts</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="alert" style="background:rgba(61,139,110,0.08);border-color:var(--success);color:var(--success)">Token created successfully. Copy it now.</div>
+    <div class="alert" style="background:rgba(200,139,58,0.08);border-color:var(--warning);color:var(--warning)">Integration restarted with new settings.</div>
+    <div class="alert" style="background:rgba(192,69,58,0.08);border-color:var(--error);color:var(--error)">Connection failed. Check your credentials.</div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="alert" style="background:rgba(91,185,140,0.10);border-color:var(--success);color:var(--success)">Token created successfully. Copy it now.</div>
+    <div class="alert" style="background:rgba(224,168,79,0.10);border-color:var(--warning);color:var(--warning)">Integration restarted with new settings.</div>
+    <div class="alert" style="background:rgba(224,90,80,0.10);border-color:var(--error);color:var(--error)">Connection failed. Check your credentials.</div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 9: Thermostat Modes
+     ============================================================ -->
+<h2>9. Thermostat Modes</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge" style="background:rgba(26,79,110,0.1);color:var(--primary);border:1px solid rgba(26,79,110,0.3)">&#9889; Auto</span>
+        <span class="badge" style="background:rgba(26,79,110,0.1);color:var(--primary);border:1px solid rgba(26,79,110,0.3)">&#10052; Cool</span>
+        <span class="badge" style="background:rgba(192,69,58,0.1);color:var(--error);border:1px solid rgba(192,69,58,0.3)">&#9728; Heat</span>
+        <span class="badge" style="background:rgba(61,139,110,0.1);color:var(--success);border:1px solid rgba(61,139,110,0.3)">&#128167; Dry</span>
+        <span class="badge" style="background:rgba(156,163,175,0.1);color:var(--text-secondary);border:1px solid rgba(156,163,175,0.3)">&#127744; Fan</span>
+        <span class="badge" style="background:rgba(200,139,58,0.1);color:var(--warning);border:1px solid rgba(200,139,58,0.3)">&#128715; Comfort</span>
+      </div>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge" style="background:rgba(74,159,204,0.12);color:var(--primary);border:1px solid rgba(74,159,204,0.3)">&#9889; Auto</span>
+        <span class="badge" style="background:rgba(74,159,204,0.12);color:var(--primary);border:1px solid rgba(74,159,204,0.3)">&#10052; Cool</span>
+        <span class="badge" style="background:rgba(224,90,80,0.12);color:var(--error);border:1px solid rgba(224,90,80,0.3)">&#9728; Heat</span>
+        <span class="badge" style="background:rgba(91,185,140,0.12);color:var(--success);border:1px solid rgba(91,185,140,0.3)">&#128167; Dry</span>
+        <span class="badge" style="background:rgba(148,163,184,0.1);color:var(--text-secondary);border:1px solid rgba(148,163,184,0.3)">&#127744; Fan</span>
+        <span class="badge" style="background:rgba(224,168,79,0.12);color:var(--warning);border:1px solid rgba(224,168,79,0.3)">&#128715; Comfort</span>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 10: Login Page
+     ============================================================ -->
+<h2>10. Login Page</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds" style="padding:24px;text-align:center">
+    <div class="login-card" style="text-align:left">
+      <div style="text-align:center;margin-bottom:16px">
+        <div class="login-logo" style="margin-bottom:8px">W</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text)">Winch</div>
+      </div>
+      <div style="margin-bottom:12px"><div class="login-label">Username</div><input class="login-input" value="admin" readonly></div>
+      <div style="margin-bottom:16px"><div class="login-label">Password</div><input class="login-input" type="password" value="password" readonly></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px 16px">Login</button>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds" style="padding:24px;text-align:center">
+    <div class="login-card" style="text-align:left">
+      <div style="text-align:center;margin-bottom:16px">
+        <div class="login-logo" style="margin-bottom:8px">W</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text)">Winch</div>
+      </div>
+      <div style="margin-bottom:12px"><div class="login-label">Username</div><input class="login-input" value="admin" readonly></div>
+      <div style="margin-bottom:16px"><div class="login-label">Password</div><input class="login-input" type="password" value="password" readonly></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px 16px">Login</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 11: Border Radius + Logo
+     ============================================================ -->
+<h2>11. Border Radius &amp; Logo</h2>
+<div class="comparison">
+  <div class="panel light"><div class="panel-label">Light</div><div class="ds">
+    <div style="display:flex;gap:16px;align-items:end;margin-bottom:16px">
+      <div style="text-align:center"><div style="width:60px;height:36px;background:var(--primary);border-radius:6px"></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">6px (btn)</div></div>
+      <div style="text-align:center"><div style="width:80px;height:60px;background:var(--surface);border:1px solid var(--border);border-radius:10px"></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">10px (card)</div></div>
+      <div style="text-align:center"><div style="width:100px;height:70px;background:var(--surface);border:1px solid var(--border);border-radius:14px"></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">14px (modal)</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none"><rect width="32" height="32" rx="7" fill="#1A4F6E"/><circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/><circle cx="16" cy="16" r="2" fill="white"/><line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/><circle cx="23.5" cy="10.5" r="2" fill="white"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="48" height="48" fill="none"><rect width="32" height="32" rx="7" fill="#1A4F6E"/><circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/><circle cx="16" cy="16" r="2" fill="white"/><line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/><circle cx="23.5" cy="10.5" r="2" fill="white"/></svg>
+      <span style="font-size:11px;color:var(--text-tertiary)">Logo: unchanged (white on primary bg)</span>
+    </div>
+  </div></div>
+  <div class="panel dark"><div class="panel-label">Dark</div><div class="ds">
+    <div style="display:flex;gap:16px;align-items:end;margin-bottom:16px">
+      <div style="text-align:center"><div style="width:60px;height:36px;background:var(--primary);border-radius:6px"></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">6px (btn)</div></div>
+      <div style="text-align:center"><div style="width:80px;height:60px;background:var(--surface);border:1px solid var(--border);border-radius:10px"></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">10px (card)</div></div>
+      <div style="text-align:center"><div style="width:100px;height:70px;background:var(--surface);border:1px solid var(--border);border-radius:14px"></div><div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">14px (modal)</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none"><rect width="32" height="32" rx="7" fill="#4A9FCC"/><circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/><circle cx="16" cy="16" r="2" fill="white"/><line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/><circle cx="23.5" cy="10.5" r="2" fill="white"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="48" height="48" fill="none"><rect width="32" height="32" rx="7" fill="#4A9FCC"/><circle cx="16" cy="16" r="6.5" stroke="white" stroke-width="2" fill="none"/><circle cx="16" cy="16" r="2" fill="white"/><line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" stroke-width="2" stroke-linecap="round"/><circle cx="23.5" cy="10.5" r="2" fill="white"/></svg>
+      <span style="font-size:11px;color:var(--text-tertiary)">Logo: uses dark primary (#4A9FCC)</span>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============================================================
+     SECTION 12: Implementation CSS
+     ============================================================ -->
+<h2>12. Implementation</h2>
+<div class="rationale">
+  <h3>Approach</h3>
+  <ul>
+    <li><strong>Zero component changes:</strong> All components already use semantic tokens (<code>bg-surface</code>, <code>text-text</code>, <code>border-border</code>). Only CSS variables need overriding.</li>
+    <li><strong>Tailwind class strategy:</strong> Add <code>class="dark"</code> on <code>&lt;html&gt;</code>. Override CSS variables in a <code>.dark { }</code> block in <code>index.css</code>.</li>
+    <li><strong>Toggle:</strong> Sun/Moon button in sidebar or settings. Stored in <code>localStorage</code>, with <code>prefers-color-scheme</code> detection on first load.</li>
+    <li><strong>Slider thumb border:</strong> Change <code>border: 2px solid white</code> to <code>border: 2px solid var(--color-surface)</code> so it adapts.</li>
+    <li><strong>Opacity-based backgrounds</strong> (<code>bg-active/8</code>, <code>bg-primary/6</code>, <code>bg-error/6</code>) automatically adapt since the base color changes.</li>
+    <li><strong>Hardcoded rgba backgrounds</strong> in section headers use the light-mode color values. In dark mode, these should use the dark color variants (e.g., <code>rgba(74,159,204,0.08)</code> instead of <code>rgba(26,79,110,0.06)</code>). Since the real app uses Tailwind opacity utilities (<code>bg-primary/6</code>), this is handled automatically.</li>
+  </ul>
+</div>
+
+<div class="rationale">
+  <h3>CSS to add in index.css</h3>
+  <pre style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8;line-height:1.7;overflow-x:auto;white-space:pre;margin-top:8px">
+/* Dark mode overrides — add after @theme block */
+.dark {
+  --color-primary: #4A9FCC;
+  --color-primary-light: #1A2E42;
+  --color-primary-hover: #5CB3E0;
+  --color-accent: #E0A84F;
+  --color-accent-hover: #EBB85F;
+  --color-background: #111827;
+  --color-surface: #1E293B;
+  --color-surface-raised: #253040;
+  --color-text: #E8EAED;
+  --color-text-secondary: #94A3B8;
+  --color-text-tertiary: #64748B;
+  --color-border: #2D3A4F;
+  --color-border-light: #253040;
+  --color-active: #EAB308;
+  --color-active-text: #FDE68A;
+  --color-success: #5BB98C;
+  --color-warning: #E0A84F;
+  --color-error: #E05A50;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.40);
+}</pre>
+</div>
+
+</body>
+</html>

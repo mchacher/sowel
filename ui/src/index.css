@@ -49,6 +49,35 @@
 }
 
 /* ============================================================
+   Dark mode overrides — deep navy slate palette
+   ============================================================ */
+
+.dark {
+  --color-primary: #4A9FCC;
+  --color-primary-light: #1A2E42;
+  --color-primary-hover: #5CB3E0;
+  --color-accent: #E0A84F;
+  --color-accent-hover: #EBB85F;
+  --color-background: #111827;
+  --color-surface: #1E293B;
+  --color-surface-raised: #253040;
+  --color-text: #E8EAED;
+  --color-text-secondary: #94A3B8;
+  --color-text-tertiary: #64748B;
+  --color-border: #2D3A4F;
+  --color-border-light: #253040;
+  --color-active: #EAB308;
+  --color-active-text: #FDE68A;
+  --color-success: #5BB98C;
+  --color-warning: #E0A84F;
+  --color-error: #E05A50;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.40);
+}
+
+/* ============================================================
    Base styles
    ============================================================ */
 
@@ -119,7 +148,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 16px;
   border-radius: 50%;
   background: var(--color-primary);
-  border: 2px solid white;
+  border: 2px solid var(--color-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   margin-top: -6px; /* center on track: (track_h - thumb_h) / 2 */
 }
@@ -129,7 +158,7 @@ input[type="range"]::-moz-range-thumb {
   height: 16px;
   border-radius: 50%;
   background: var(--color-primary);
-  border: 2px solid white;
+  border: 2px solid var(--color-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 

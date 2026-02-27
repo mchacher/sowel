@@ -75,8 +75,47 @@ Winch logo: white drum + crank on `primary` rounded square. Drum centered at (16
 
 ## Shadows
 
-| Token       | Value                         |
-| ----------- | ----------------------------- |
-| `shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)`  |
-| `shadow-md` | `0 2px 8px rgba(0,0,0,0.08)`  |
-| `shadow-lg` | `0 8px 24px rgba(0,0,0,0.12)` |
+| Token       | Light                         | Dark                          |
+| ----------- | ----------------------------- | ----------------------------- |
+| `shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)`  | `0 1px 2px rgba(0,0,0,0.20)`  |
+| `shadow-md` | `0 2px 8px rgba(0,0,0,0.08)`  | `0 2px 8px rgba(0,0,0,0.30)`  |
+| `shadow-lg` | `0 8px 24px rgba(0,0,0,0.12)` | `0 8px 24px rgba(0,0,0,0.40)` |
+
+## Dark Mode
+
+### Strategy
+
+- **Tailwind `class` strategy**: `class="dark"` on `<html>` activates `.dark {}` CSS variable overrides in `ui/src/index.css`
+- **User preference**: Light / Dark / System — stored in `UserPreferences.theme` and `localStorage("winch_theme")`
+- **System detection**: `prefers-color-scheme: dark` media query, with live listener for "system" mode
+- **No component changes**: all components use semantic tokens (`bg-surface`, `text-text`, `border-border`) — only CSS variables change
+
+### Dark Palette (Deep Navy Slate)
+
+| Token            | Light     | Dark      | Rationale                                 |
+| ---------------- | --------- | --------- | ----------------------------------------- |
+| `primary`        | `#1A4F6E` | `#4A9FCC` | Same hue, raised luminosity for dark bg   |
+| `primary-hover`  | `#13405A` | `#5CB3E0` | Lighter on hover (dark = brighter)        |
+| `primary-light`  | `#E6F0F6` | `#1A2E42` | Active nav / selection background         |
+| `accent`         | `#D4963F` | `#E0A84F` | Slightly brighter amber                   |
+| `accent-hover`   | `#BB8232` | `#EBB85F` | Brighter on hover                         |
+| `background`     | `#F8FAFB` | `#111827` | Deep navy, warmer than pure gray          |
+| `surface`        | `#FFFFFF` | `#1E293B` | Slate-blue cards, clear elevation         |
+| `surface-raised` | `#FFFFFF` | `#253040` | Modals, dropdowns, third elevation level  |
+| `text`           | `#1A1A1A` | `#E8EAED` | Off-white, reduces glare                  |
+| `text-secondary` | `#6B7280` | `#94A3B8` | Slate-tinted, readable on navy            |
+| `text-tertiary`  | `#9CA3AF` | `#64748B` | Muted slate, maintains 3-tier hierarchy   |
+| `border`         | `#E1E6EA` | `#2D3A4F` | Blue-tinted border, subtle but visible    |
+| `border-light`   | `#EDF0F3` | `#253040` | List separators, dividers                 |
+| `active`         | `#FACC15` | `#EAB308` | Yellow stays as-is, signature for lights  |
+| `active-text`    | `#A16207` | `#FDE68A` | Light yellow text for readability on dark |
+| `success`        | `#3D8B6E` | `#5BB98C` | Brighter green                            |
+| `warning`        | `#C88B3A` | `#E0A84F` | Slightly brighter amber                   |
+| `error`          | `#C0453A` | `#E05A50` | Brighter red, alarming not neon           |
+
+### Design Considerations
+
+- **Opacity-based backgrounds** (`bg-active/8`, `bg-primary/6`, `bg-error/6`) adapt automatically since the base color changes
+- **Slider thumb border** uses `var(--color-surface)` instead of hardcoded `white` to adapt
+- **Zone command hover states** use semantic tokens (`hover:bg-active/8`, `hover:bg-primary/6`) instead of hardcoded Tailwind colors
+- **Logo**: uses `--color-primary` for background, so it adapts automatically (light ocean blue → brighter sky blue)
