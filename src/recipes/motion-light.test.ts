@@ -250,6 +250,87 @@ function simulateMotion(setup: TestSetup, active: boolean): void {
   });
 }
 
+function addDimmableLight(setup: TestSetup): {
+  lightId: string;
+  lightDataId: string;
+  brightnessDataId: string;
+} {
+  const lightDevice = seedDevice(setup.db, {
+    name: "Dimmer Salon",
+    dataKeys: [
+      { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+      {
+        key: "brightness",
+        type: "number",
+        category: "light_brightness",
+        value: JSON.stringify(0),
+      },
+    ],
+    orderKeys: [
+      { key: "state", type: "boolean", payloadKey: "state" },
+      { key: "brightness", type: "number", payloadKey: "brightness" },
+    ],
+  });
+  const lightEq = setup.equipmentManager.create({
+    name: "Dimmer Salon",
+    type: "light_dimmable",
+    zoneId: setup.zoneId,
+  });
+  setup.equipmentManager.addDataBinding(lightEq.id, lightDevice.dataIds[0], "state");
+  setup.equipmentManager.addDataBinding(lightEq.id, lightDevice.dataIds[1], "brightness");
+  setup.equipmentManager.addOrderBinding(lightEq.id, lightDevice.orderIds[0], "state");
+  setup.equipmentManager.addOrderBinding(lightEq.id, lightDevice.orderIds[1], "brightness");
+  setup.aggregator.computeAll();
+  return {
+    lightId: lightEq.id,
+    lightDataId: lightDevice.dataIds[0],
+    brightnessDataId: lightDevice.dataIds[1],
+  };
+}
+
+function addButton(setup: TestSetup): { buttonId: string; actionDataId: string } {
+  const buttonDevice = seedDevice(setup.db, {
+    name: "Button Salon",
+    dataKeys: [{ key: "action", type: "enum", category: "action", value: JSON.stringify("") }],
+  });
+  const buttonEq = setup.equipmentManager.create({
+    name: "Button Salon",
+    type: "button",
+    zoneId: setup.zoneId,
+  });
+  setup.equipmentManager.addDataBinding(buttonEq.id, buttonDevice.dataIds[0], "action");
+  setup.aggregator.computeAll();
+  return { buttonId: buttonEq.id, actionDataId: buttonDevice.dataIds[0] };
+}
+
+function simulateButtonPress(setup: TestSetup, buttonId: string): void {
+  setup.eventBus.emit({
+    type: "equipment.data.changed",
+    equipmentId: buttonId,
+    alias: "action",
+    value: "single",
+    previous: "",
+  });
+}
+
+function simulateBrightnessChange(
+  setup: TestSetup,
+  lightId: string,
+  brightnessDataId: string,
+  value: number,
+): void {
+  setup.db
+    .prepare("UPDATE device_data SET value = ? WHERE id = ?")
+    .run(JSON.stringify(value), brightnessDataId);
+  setup.eventBus.emit({
+    type: "equipment.data.changed",
+    equipmentId: lightId,
+    alias: "brightness",
+    value,
+    previous: 0,
+  });
+}
+
 function simulateLightState(setup: TestSetup, state: "ON" | "OFF", dataId?: string): void {
   const id = dataId ?? setup.lightDataId;
   setup.db.prepare("UPDATE device_data SET value = ? WHERE id = ?").run(JSON.stringify(state), id);
@@ -798,5 +879,508 @@ describe("MotionLightRecipe", () => {
 
     vi.advanceTimersByTime(10 * 60 * 1000);
     expect(setup.published).toHaveLength(0);
+  });
+
+  // ============================================================
+  // Brightness presets
+  // ============================================================
+
+  describe("Brightness presets", () => {
+    it("turns on at configured brightness", () => {
+      const dimmer = addDimmableLight(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 200,
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 200;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("uses morningBrightness during morning window", () => {
+      const dimmer = addDimmableLight(setup);
+      vi.setSystemTime(new Date("2026-02-27T07:30:00"));
+
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 200,
+        morningBrightness: 50,
+        morningStart: "06:00",
+        morningEnd: "09:00",
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 50;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("uses normal brightness outside morning window", () => {
+      const dimmer = addDimmableLight(setup);
+      vi.setSystemTime(new Date("2026-02-27T12:00:00"));
+
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 200,
+        morningBrightness: 50,
+        morningStart: "06:00",
+        morningEnd: "09:00",
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 200;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("skips brightness for on/off-only lights", () => {
+      // setup.lightId is light_onoff (no brightness order binding)
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      // ON command should exist, brightness should not
+      expect(setup.published.find((p) => JSON.parse(p.payload).state === "ON")).toBeDefined();
+      expect(
+        setup.published.find((p) => JSON.parse(p.payload).brightness !== undefined),
+      ).toBeUndefined();
+    });
+
+    it("falls back to ON/OFF when no brightness configured", () => {
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      expect(setup.published.find((p) => JSON.parse(p.payload).state === "ON")).toBeDefined();
+      expect(
+        setup.published.find((p) => JSON.parse(p.payload).brightness !== undefined),
+      ).toBeUndefined();
+    });
+
+    it("validates brightness range", () => {
+      expect(() =>
+        setup.manager.createInstance("motion-light", {
+          zone: setup.zoneId,
+          lights: [setup.lightId],
+          timeout: "5m",
+          brightness: 300,
+        }),
+      ).toThrow("Invalid params");
+    });
+
+    it("validates morningStart/morningEnd must be provided together", () => {
+      expect(() =>
+        setup.manager.createInstance("motion-light", {
+          zone: setup.zoneId,
+          lights: [setup.lightId],
+          timeout: "5m",
+          brightness: 200,
+          morningStart: "06:00",
+        }),
+      ).toThrow("Invalid params");
+    });
+
+    it("validates morningBrightness requires morning window", () => {
+      expect(() =>
+        setup.manager.createInstance("motion-light", {
+          zone: setup.zoneId,
+          lights: [setup.lightId],
+          timeout: "5m",
+          brightness: 200,
+          morningBrightness: 50,
+        }),
+      ).toThrow("Invalid params");
+    });
+
+    it("validates time format", () => {
+      expect(() =>
+        setup.manager.createInstance("motion-light", {
+          zone: setup.zoneId,
+          lights: [setup.lightId],
+          timeout: "5m",
+          brightness: 200,
+          morningStart: "6:00",
+          morningEnd: "09:00",
+        }),
+      ).toThrow("Invalid params");
+    });
+  });
+
+  // ============================================================
+  // Button support
+  // ============================================================
+
+  describe("Button support", () => {
+    it("button press toggles lights off when on", () => {
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      simulateButtonPress(setup, button.buttonId);
+
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeDefined();
+    });
+
+    it("button press turns lights on when off", () => {
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+      setup.published.length = 0;
+
+      simulateButtonPress(setup, button.buttonId);
+
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeDefined();
+    });
+
+    it("works without buttons configured (backward compat)", () => {
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+      expect(setup.published.find((p) => JSON.parse(p.payload).state === "ON")).toBeDefined();
+    });
+
+    it("validates button equipment has action data binding", () => {
+      // Create button without action binding
+      const noActionDevice = seedDevice(setup.db, {
+        name: "Bad Button",
+        dataKeys: [{ key: "state", type: "boolean", category: "generic", value: "false" }],
+      });
+      const noActionEq = setup.equipmentManager.create({
+        name: "Bad Button",
+        type: "button",
+        zoneId: setup.zoneId,
+      });
+      setup.equipmentManager.addDataBinding(noActionEq.id, noActionDevice.dataIds[0], "state");
+
+      expect(() =>
+        setup.manager.createInstance("motion-light", {
+          zone: setup.zoneId,
+          lights: [setup.lightId],
+          timeout: "5m",
+          buttons: [noActionEq.id],
+        }),
+      ).toThrow("Invalid params");
+    });
+  });
+
+  // ============================================================
+  // Manual override
+  // ============================================================
+
+  describe("Manual override", () => {
+    it("enters override on manual brightness change", () => {
+      const dimmer = addDimmableLight(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON", dimmer.lightDataId);
+
+      // Wait for selfTriggered window to expire
+      vi.advanceTimersByTime(4000);
+
+      // External brightness change
+      simulateBrightnessChange(setup, dimmer.lightId, dimmer.brightnessDataId, 80);
+
+      // Verify override log
+      const instance = setup.manager.getInstances().find((i) => i.recipeId === "motion-light")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(
+        logs.some(
+          (l) => l.message.includes("Manual brightness change") && l.message.includes("override"),
+        ),
+      ).toBe(true);
+    });
+
+    it("ignores self-triggered brightness changes", () => {
+      const dimmer = addDimmableLight(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      // Motion turns on lights (sets selfTriggeredUntil)
+      simulateMotion(setup, true);
+
+      // MQTT echo comes back within 3s — should NOT trigger override
+      simulateBrightnessChange(setup, dimmer.lightId, dimmer.brightnessDataId, 150);
+
+      const instance = setup.manager.getInstances().find((i) => i.recipeId === "motion-light")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(logs.some((l) => l.message.includes("override"))).toBe(false);
+    });
+
+    it("motion does not turn on lights during override", () => {
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+
+      // Turn on via motion, then button off (enter override)
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      simulateButtonPress(setup, button.buttonId);
+      simulateLightState(setup, "OFF");
+      setup.published.length = 0;
+
+      // New motion should NOT turn on lights (override active)
+      simulateMotion(setup, true);
+
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeUndefined();
+    });
+
+    it("no-motion timeout clears override", () => {
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+
+      // Enter override via button
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      simulateButtonPress(setup, button.buttonId);
+      simulateLightState(setup, "OFF");
+
+      // No motion
+      simulateMotion(setup, false);
+      setup.published.length = 0;
+
+      // Wait for timeout
+      vi.advanceTimersByTime(5 * 60 * 1000 + 100);
+
+      // Override should be cleared — next motion should work
+      simulateMotion(setup, true);
+
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeDefined();
+    });
+
+    it("button press when lights ON enters override", () => {
+      const button = addButton(setup);
+      const instance = setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      simulateButtonPress(setup, button.buttonId);
+
+      const logs = setup.manager.getLog(instance.id);
+      expect(logs.some((l) => l.message.includes("override"))).toBe(true);
+    });
+
+    it("button press when lights OFF does NOT enter override", () => {
+      const button = addButton(setup);
+      const instance = setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+
+      // Lights are off, press button to turn on
+      simulateButtonPress(setup, button.buttonId);
+
+      const logs = setup.manager.getLog(instance.id);
+      expect(logs.some((l) => l.message.includes("override mode"))).toBe(false);
+    });
+
+    it("override is cleared after timeout even with lights still on", () => {
+      const dimmer = addDimmableLight(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON", dimmer.lightDataId);
+
+      // Wait past selfTriggered, then change brightness manually
+      vi.advanceTimersByTime(4000);
+      simulateBrightnessChange(setup, dimmer.lightId, dimmer.brightnessDataId, 80);
+
+      // No motion → override clear timer starts
+      simulateMotion(setup, false);
+      setup.published.length = 0;
+
+      // Wait for timeout
+      vi.advanceTimersByTime(5 * 60 * 1000 + 100);
+
+      // Lights should be turned off (override cleared)
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeDefined();
+
+      // Simulate MQTT round-trip: light reports OFF
+      simulateLightState(setup, "OFF", dimmer.lightDataId);
+
+      // Next motion should work
+      setup.published.length = 0;
+      simulateMotion(setup, true);
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeDefined();
+    });
+
+    it("motion resets override clear timer", () => {
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        buttons: [button.buttonId],
+      });
+
+      // Enter override
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      simulateButtonPress(setup, button.buttonId);
+      simulateLightState(setup, "OFF");
+
+      // No motion starts timer
+      simulateMotion(setup, false);
+      vi.advanceTimersByTime(3 * 60 * 1000);
+
+      // Motion detected again — timer should be cancelled
+      simulateMotion(setup, true);
+
+      // Wait past original timeout
+      vi.advanceTimersByTime(3 * 60 * 1000);
+      setup.published.length = 0;
+
+      // Motion goes away again
+      simulateMotion(setup, false);
+
+      // Still in override (timer was reset by motion)
+      simulateMotion(setup, true);
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeUndefined();
+    });
+  });
+
+  // ============================================================
+  // Integration: brightness + buttons + override combined
+  // ============================================================
+
+  describe("Integration: combined features", () => {
+    it("button on sets auto brightness", () => {
+      const dimmer = addDimmableLight(setup);
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 180,
+        buttons: [button.buttonId],
+      });
+      setup.published.length = 0;
+
+      simulateButtonPress(setup, button.buttonId);
+
+      const brightnessCmd = setup.published.find((p) => JSON.parse(p.payload).brightness === 180);
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("full cycle: motion on → override → vacancy → auto again", () => {
+      const dimmer = addDimmableLight(setup);
+      vi.setSystemTime(new Date("2026-02-27T12:00:00"));
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 200,
+        morningBrightness: 50,
+        morningStart: "06:00",
+        morningEnd: "09:00",
+      });
+
+      // 1. Motion → lights on at normal brightness (noon)
+      setup.published.length = 0;
+      simulateMotion(setup, true);
+      expect(setup.published.find((p) => JSON.parse(p.payload).brightness === 200)).toBeDefined();
+      simulateLightState(setup, "ON", dimmer.lightDataId);
+
+      // 2. User dims to 80 → override
+      vi.advanceTimersByTime(4000);
+      simulateBrightnessChange(setup, dimmer.lightId, dimmer.brightnessDataId, 80);
+
+      // 3. No motion → timer starts
+      simulateMotion(setup, false);
+
+      // 4. Timeout → lights off + override cleared
+      vi.advanceTimersByTime(5 * 60 * 1000 + 100);
+      simulateLightState(setup, "OFF", dimmer.lightDataId);
+
+      // 5. Next motion → back to auto brightness
+      setup.published.length = 0;
+      simulateMotion(setup, true);
+      expect(setup.published.find((p) => JSON.parse(p.payload).brightness === 200)).toBeDefined();
+    });
   });
 });
