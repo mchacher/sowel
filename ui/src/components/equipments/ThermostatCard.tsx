@@ -87,8 +87,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode")
     ?? equipment.dataBindings.find((b) => b.alias === "profile");
-  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "targetTemperature");
-  const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "insideTemperature");
+  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
+  const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "temperature");
   const outsideTempBinding = equipment.dataBindings.find((b) => b.alias === "outsideTemperature");
   const fanSpeedBinding = equipment.dataBindings.find((b) => b.alias === "fanSpeed");
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
@@ -100,8 +100,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const currentMode = modeAlias in optimistic
     ? (optimistic[modeAlias] as string | null)
     : typeof modeBinding?.value === "string" ? modeBinding.value : null;
-  const targetTemp = "targetTemperature" in optimistic
-    ? (optimistic.targetTemperature as number | null)
+  const targetTemp = "setpoint" in optimistic
+    ? (optimistic.setpoint as number | null)
     : typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
   const insideTemp = typeof insideTempBinding?.value === "number" ? insideTempBinding.value : null;
   const outsideTemp = typeof outsideTempBinding?.value === "number" ? outsideTempBinding.value : null;
@@ -118,7 +118,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const hasResetAlarmOrder = equipment.orderBindings.some((o) => o.alias === "resetAlarm");
   const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode")
     ?? equipment.orderBindings.find((o) => o.alias === "profile");
-  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "targetTemperature");
+  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
   const fanSpeedOrder = equipment.orderBindings.find((o) => o.alias === "fanSpeed");
 
   const availableModes = modeOrder?.enumValues ?? [];
@@ -155,7 +155,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         targetMax={targetTempOrder?.max ?? 30}
         executing={executing}
         onTogglePower={() => exec("power", !isOn)}
-        onSetTarget={(v) => exec("targetTemperature", v)}
+        onSetTarget={(v) => exec("setpoint", v)}
       />
     );
   }
@@ -229,8 +229,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
           <span className="text-[12px] text-text-tertiary">{t("thermostat.target")}</span>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => targetTemp !== null && exec("targetTemperature", targetTemp - 0.5)}
-              disabled={executing === "targetTemperature" || targetTemp === null || targetTemp <= (targetTempOrder.min ?? 16)}
+              onClick={() => targetTemp !== null && exec("setpoint", targetTemp - 0.5)}
+              disabled={executing === "setpoint" || targetTemp === null || targetTemp <= (targetTempOrder.min ?? 16)}
               className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronDown size={14} strokeWidth={2} />
@@ -240,8 +240,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
               <span className="text-[12px] text-text-tertiary font-normal">°C</span>
             </span>
             <button
-              onClick={() => targetTemp !== null && exec("targetTemperature", targetTemp + 0.5)}
-              disabled={executing === "targetTemperature" || targetTemp === null || targetTemp >= (targetTempOrder.max ?? 30)}
+              onClick={() => targetTemp !== null && exec("setpoint", targetTemp + 0.5)}
+              disabled={executing === "setpoint" || targetTemp === null || targetTemp >= (targetTempOrder.max ?? 30)}
               className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronUp size={14} strokeWidth={2} />
@@ -354,16 +354,16 @@ function CompactThermostat({
       )}
 
       {/* Separator */}
-      {isOn && hasTargetTempOrder && targetTemp !== null && insideTemp !== null && (
+      {hasTargetTempOrder && targetTemp !== null && insideTemp !== null && (
         <div className="w-px h-4 bg-border" />
       )}
 
       {/* Target temp with +/- controls */}
-      {isOn && hasTargetTempOrder && targetTemp !== null && (
+      {hasTargetTempOrder && targetTemp !== null && (
         <div className="flex items-center gap-0.5">
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp - 0.5); }}
-            disabled={executing === "targetTemperature" || targetTemp <= targetMin}
+            disabled={executing === "setpoint" || targetTemp <= targetMin}
             className="p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronDown size={12} strokeWidth={2} />
@@ -374,7 +374,7 @@ function CompactThermostat({
           </span>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp + 0.5); }}
-            disabled={executing === "targetTemperature" || targetTemp >= targetMax}
+            disabled={executing === "setpoint" || targetTemp >= targetMax}
             className="p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronUp size={12} strokeWidth={2} />

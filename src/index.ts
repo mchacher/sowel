@@ -11,6 +11,7 @@ import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { MotionLightRecipe } from "./recipes/motion-light.js";
 import { SwitchLightRecipe } from "./recipes/switch-light.js";
+import { PresenceThermostatRecipe } from "./recipes/presence-thermostat.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -113,6 +114,7 @@ async function main() {
   );
   recipeManager.register(MotionLightRecipe);
   recipeManager.register(SwitchLightRecipe);
+  recipeManager.register(PresenceThermostatRecipe);
 
   // 12. Create Mode Manager + Calendar Manager
   const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);
