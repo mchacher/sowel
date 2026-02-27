@@ -4,7 +4,7 @@ import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRigh
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
-import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails } from "../../types";
+import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription } from "../../lib/recipe-i18n";
@@ -475,13 +475,26 @@ function DuplicateRecipeModal({
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
-  const zones = useZones((s) => s.zones);
+  const zoneTree = useZones((s) => s.tree);
   const equipments = useEquipments((s) => s.equipments);
   const createInstance = useRecipes((s) => s.createInstance);
   const [targetZoneId, setTargetZoneId] = useState("");
   const [equipmentMap, setEquipmentMap] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Flatten zone tree to a flat list
+  const allZones = useMemo(() => {
+    const flat: Zone[] = [];
+    const walk = (nodes: ZoneWithChildren[]) => {
+      for (const n of nodes) {
+        flat.push(n);
+        if (n.children.length > 0) walk(n.children);
+      }
+    };
+    walk(zoneTree);
+    return flat;
+  }, [zoneTree]);
 
   // Equipment slots that need remapping
   const equipmentSlots = useMemo(() => {
@@ -492,8 +505,8 @@ function DuplicateRecipeModal({
 
   // Other zones (exclude current)
   const otherZones = useMemo(() => {
-    return zones.filter((z) => z.id !== sourceZoneId);
-  }, [zones, sourceZoneId]);
+    return allZones.filter((z: Zone) => z.id !== sourceZoneId);
+  }, [allZones, sourceZoneId]);
 
   // Reset equipment map when target zone changes
   useEffect(() => {
@@ -516,7 +529,7 @@ function DuplicateRecipeModal({
         map[slot.id] = compatible[0].id;
       }
     }
-    setEquipmentMap(map); // eslint-disable-line react-hooks/set-state-in-effect -- sync defaults on zone change
+    setEquipmentMap(map);
     setError("");
   }, [targetZoneId, equipmentSlots, equipments]);
 
