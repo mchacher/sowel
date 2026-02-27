@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Plus, Trash2, Loader2, Clock, X, Check, Pencil, Power, PowerOff } from "lucide-react";
+import { Calendar, Plus, Trash2, Loader2, Clock, X, Pencil, Power, PowerOff } from "lucide-react";
 import { useCalendar } from "../store/useCalendar";
 import { useModes } from "../store/useModes";
 import type { CalendarSlot, CalendarModeAction } from "../types";
