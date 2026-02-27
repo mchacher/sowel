@@ -451,6 +451,70 @@ export class EquipmentManager {
   }
 
   // ============================================================
+  // Zone-level order execution
+  // ============================================================
+
+  /** Valid zone order keys and their mapping to equipment types + order alias + value. */
+  private static readonly ZONE_ORDERS: Record<
+    string,
+    { types: string[]; alias: string; value: unknown }
+  > = {
+    allLightsOn: {
+      types: ["light_onoff", "light_dimmable", "light_color"],
+      alias: "state",
+      value: "ON",
+    },
+    allLightsOff: {
+      types: ["light_onoff", "light_dimmable", "light_color"],
+      alias: "state",
+      value: "OFF",
+    },
+    allShuttersOpen: { types: ["shutter"], alias: "position", value: 100 },
+    allShuttersClose: { types: ["shutter"], alias: "position", value: 0 },
+  };
+
+  static readonly VALID_ZONE_ORDER_KEYS = Object.keys(EquipmentManager.ZONE_ORDERS);
+
+  /**
+   * Execute a zone-level order on all matching equipments across the given zone IDs.
+   * Returns a summary of executed and errored orders.
+   */
+  executeZoneOrder(zoneIds: string[], orderKey: string): { executed: number; errors: number } {
+    const mapping = EquipmentManager.ZONE_ORDERS[orderKey];
+    if (!mapping) {
+      throw new EquipmentError(`Invalid zone order key: ${orderKey}`, 400);
+    }
+
+    let executed = 0;
+    let errors = 0;
+
+    for (const zoneId of zoneIds) {
+      const equipments = this.getByZone(zoneId);
+      for (const eq of equipments) {
+        if (!eq.enabled) continue;
+        if (!mapping.types.includes(eq.type)) continue;
+
+        try {
+          this.executeOrder(eq.id, mapping.alias, mapping.value);
+          executed++;
+        } catch (err) {
+          errors++;
+          this.logger.warn(
+            { err, equipmentId: eq.id, orderKey },
+            "Zone order failed for equipment",
+          );
+        }
+      }
+    }
+
+    this.logger.info(
+      { orderKey, zoneCount: zoneIds.length, executed, errors },
+      "Zone order executed",
+    );
+    return { executed, errors };
+  }
+
+  // ============================================================
   // Reactive pipeline: device.data.updated -> equipment.data.changed
   // ============================================================
 

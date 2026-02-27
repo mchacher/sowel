@@ -132,6 +132,10 @@
   "zones.moveDown": "Move down",
   "zones.childCount_one": "{{count}} zone",
   "zones.childCount_other": "{{count}} zones",
+  "zones.commands.allLightsOn": "All lights on",
+  "zones.commands.allLightsOff": "All lights off",
+  "zones.commands.allShuttersOpen": "Open all shutters",
+  "zones.commands.allShuttersClose": "Close all shutters",
 
   "equipments.title": "Equipments",
   "equipments.filterPlaceholder": "Filter...",

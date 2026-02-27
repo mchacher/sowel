@@ -295,6 +295,35 @@ export class ZoneManager {
   }
 
   // ============================================================
+  // Descendant collection (for zone commands)
+  // ============================================================
+
+  /**
+   * Returns the given zone ID plus all descendant zone IDs (recursive).
+   */
+  getDescendantIds(zoneId: string): string[] {
+    const all = this.getAll();
+    const childrenOf = new Map<string, string[]>();
+    for (const z of all) {
+      if (z.parentId) {
+        const list = childrenOf.get(z.parentId) ?? [];
+        list.push(z.id);
+        childrenOf.set(z.parentId, list);
+      }
+    }
+
+    const result: string[] = [];
+    const stack = [zoneId];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      result.push(id);
+      const children = childrenOf.get(id);
+      if (children) stack.push(...children);
+    }
+    return result;
+  }
+
+  // ============================================================
   // Helpers
   // ============================================================
 
