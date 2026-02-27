@@ -58,7 +58,8 @@ export class MotionLightRecipe extends Recipe {
     {
       id: "maxOnDuration",
       name: "Max On Duration",
-      description: "Force lights off after this duration, regardless of motion (optional failsafe)",
+      description:
+        "Force lights off after this duration without motion — resets on each motion detection (optional failsafe)",
       type: "duration",
       required: false,
     },
@@ -122,7 +123,8 @@ export class MotionLightRecipe extends Recipe {
         },
         maxOnDuration: {
           name: "Durée max allumage",
-          description: "Éteindre après cette durée, même si mouvement détecté (sécurité)",
+          description:
+            "Éteindre après cette durée sans mouvement — se réinitialise à chaque mouvement (sécurité)",
         },
         brightness: {
           name: "Luminosité",
@@ -421,9 +423,10 @@ export class MotionLightRecipe extends Recipe {
       }
       this.turnOn();
     } else if (motion && lightsOn) {
-      // Reset off-timer on every motion impulse
+      // Reset off-timer and failsafe on every motion impulse
       this.cancelOffTimer();
       this.clearOffTimerState();
+      this.resetFailsafeTimer();
     } else if (!motion && lightsOn) {
       this.startOffTimer();
     }
@@ -664,9 +667,23 @@ export class MotionLightRecipe extends Recipe {
 
   private startFailsafeTimer(): void {
     if (this.maxOnDurationMs === null) return;
-    // Don't restart if already running
     if (this.failsafeTimer) return;
 
+    this.failsafeTimer = setTimeout(() => {
+      this.failsafeTimer = null;
+      this.clearFailsafeTimerState();
+      this.cancelOffTimer();
+      this.clearOffTimerState();
+      this.turnOffFailsafe();
+    }, this.maxOnDurationMs);
+    this.persistFailsafeTimerState();
+  }
+
+  /** Reset failsafe timer on continued motion — countdown restarts from last motion. */
+  private resetFailsafeTimer(): void {
+    if (this.maxOnDurationMs === null) return;
+    if (!this.failsafeTimer) return; // no active failsafe to reset
+    this.cancelFailsafeTimer();
     this.failsafeTimer = setTimeout(() => {
       this.failsafeTimer = null;
       this.clearFailsafeTimerState();

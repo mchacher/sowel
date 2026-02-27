@@ -76,7 +76,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
               onMouseUp={handleBrightnessCommit}
               onTouchEnd={handleBrightnessCommit}
               onClick={(e) => e.stopPropagation()}
-              className="w-[80px] accent-active h-1"
+              className="w-[80px] slider-active"
             />
             <span className="text-[11px] text-text-tertiary w-7 text-right tabular-nums">
               {Math.round((brightness / 254) * 100)}%
@@ -137,7 +137,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             onChange={(e) => slider.onChange(Number(e.target.value))}
             onMouseUp={handleBrightnessCommit}
             onTouchEnd={handleBrightnessCommit}
-            className="flex-1 accent-active h-1.5"
+            className="flex-1 slider-active"
           />
           <span className="text-[12px] text-text-secondary w-10 text-right">
             {Math.round((brightness / 254) * 100)}%

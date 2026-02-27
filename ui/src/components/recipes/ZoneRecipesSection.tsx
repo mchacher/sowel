@@ -615,6 +615,7 @@ function AddRecipeForm({
   const hasAvailableEquipments = (recipe: RecipeInfo): boolean => {
     for (const slot of recipe.slots) {
       if (slot.type !== "equipment") continue;
+      if (!slot.required) continue; // optional equipment slots don't block creation
       const available = equipments.filter((eq) => {
         if (eq.zoneId !== zoneId) return false;
         if (!slot.list && usedLightIds.has(eq.id)) return false;
