@@ -6,6 +6,9 @@ import { parseDuration, formatDuration } from "./engine/duration.js";
 // Presence-Thermostat Recipe
 // ============================================================
 
+/** Common order binding aliases for thermostat setpoint, tried in order. */
+const SETPOINT_ALIASES = ["setpoint", "targetTemperature", "target_temperature"];
+
 export class PresenceThermostatRecipe extends Recipe {
   readonly id = "presence-thermostat";
   readonly name = "Presence Thermostat";
@@ -150,6 +153,7 @@ export class PresenceThermostatRecipe extends Recipe {
   private ctx!: RecipeContext;
   private zoneId!: string;
   private thermostatId!: string;
+  private setpointOrderAlias!: string;
   private comfortTemp!: number;
   private ecoTemp!: number;
   private timeoutMs!: number;
@@ -203,9 +207,14 @@ export class PresenceThermostatRecipe extends Recipe {
     if (equipment.zoneId !== zone) {
       throw new Error(`Thermostat "${equipment.name}" does not belong to the selected zone`);
     }
-    const hasSetpointOrder = equipment.orderBindings.some((ob) => ob.alias === "setpoint");
-    if (!hasSetpointOrder) {
-      throw new Error(`Thermostat "${equipment.name}" has no "setpoint" order binding`);
+    const setpointBinding = equipment.orderBindings.find((ob) =>
+      SETPOINT_ALIASES.includes(ob.alias),
+    );
+    if (!setpointBinding) {
+      const aliases = SETPOINT_ALIASES.map((a) => `"${a}"`).join(", ");
+      throw new Error(
+        `Thermostat "${equipment.name}" has no setpoint order binding (expected alias: ${aliases})`,
+      );
     }
 
     // Validate temperatures
@@ -287,6 +296,11 @@ export class PresenceThermostatRecipe extends Recipe {
     this.ecoTemp = Number(params.ecoTemp);
     this.timeoutMs = parseDuration(params.timeout ?? "30m");
 
+    // Resolve setpoint order alias from equipment bindings
+    const equipment = ctx.equipmentManager.getByIdWithDetails(this.thermostatId);
+    const binding = equipment?.orderBindings.find((ob) => SETPOINT_ALIASES.includes(ob.alias));
+    this.setpointOrderAlias = binding?.alias ?? "setpoint";
+
     // Night window
     this.nightTemp =
       params.nightTemp !== undefined && params.nightTemp !== null && params.nightTemp !== ""
@@ -326,7 +340,7 @@ export class PresenceThermostatRecipe extends Recipe {
     // Subscribe to thermostat setpoint changes (manual override detection)
     const unsubSetpoint = ctx.eventBus.onType("equipment.data.changed", (event) => {
       if (event.equipmentId !== this.thermostatId) return;
-      if (event.alias !== "setpoint") return;
+      if (event.alias !== this.setpointOrderAlias) return;
       this.onSetpointChanged();
     });
     this.unsubs.push(unsubSetpoint);
@@ -494,7 +508,7 @@ export class PresenceThermostatRecipe extends Recipe {
     const target = this.getTargetComfortTemp();
     this.selfTriggeredUntil = Date.now() + 3000;
     try {
-      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", target);
+      this.ctx.equipmentManager.executeOrder(this.thermostatId, this.setpointOrderAlias, target);
     } catch (err) {
       this.ctx.log(`Error setting comfort setpoint: ${String(err)}`, "error");
     }
@@ -507,7 +521,11 @@ export class PresenceThermostatRecipe extends Recipe {
   private setEco(reason: string): void {
     this.selfTriggeredUntil = Date.now() + 3000;
     try {
-      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.ecoTemp);
+      this.ctx.equipmentManager.executeOrder(
+        this.thermostatId,
+        this.setpointOrderAlias,
+        this.ecoTemp,
+      );
     } catch (err) {
       this.ctx.log(`Error setting eco setpoint: ${String(err)}`, "error");
     }
