@@ -338,6 +338,11 @@
   "recipes.slotRequired": "{{name}} is required",
   "recipes.enable": "Enable recipe",
   "recipes.disable": "Disable recipe",
+  "recipes.duplicate": "Duplicate to another zone",
+  "recipes.duplicateTitle": "Duplicate recipe",
+  "recipes.duplicateAction": "Duplicate",
+  "recipes.targetZone": "Target zone",
+  "recipes.noCompatibleEquipment": "No compatible equipment in this zone",
 
   "home.welcome": "Welcome to Home",
   "home.noZones": "Create your first zone in Settings > Home Topology to get started.",
