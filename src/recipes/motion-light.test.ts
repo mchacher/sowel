@@ -346,6 +346,22 @@ function simulateLightState(setup: TestSetup, state: "ON" | "OFF", dataId?: stri
   });
 }
 
+function simulateLuxChange(setup: TestSetup, luxDataId: string, value: number): void {
+  setup.db
+    .prepare("UPDATE device_data SET value = ? WHERE id = ?")
+    .run(JSON.stringify(value), luxDataId);
+  setup.eventBus.emit({
+    type: "device.data.updated",
+    deviceId: "lux-device",
+    deviceName: "Lux Sensor",
+    dataId: luxDataId,
+    key: "illuminance_lux",
+    value,
+    previous: 0,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 // ============================================================
 // Tests
 // ============================================================
@@ -718,6 +734,177 @@ describe("MotionLightRecipe", () => {
     // luminosity === threshold → NOT too bright (> not >=)
     const onCommand = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
     expect(onCommand).toBeDefined();
+  });
+
+  // ============================================================
+  // Dynamic lux monitoring (turn off when too bright)
+  // ============================================================
+
+  describe("Dynamic lux monitoring", () => {
+    it("turns off lights when luminosity rises above threshold + hysteresis", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        luxThreshold: 50,
+      });
+
+      // Motion → lights on (lux 30 < 50)
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      // Sunrise: lux rises to 60 (> 50 × 1.10 = 55)
+      simulateLuxChange(setup, luxDataId, 60);
+
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeDefined();
+    });
+
+    it("does NOT turn off when lux is in hysteresis zone (between threshold and threshold + 10%)", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        luxThreshold: 50,
+      });
+
+      // Motion → lights on
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      // Lux rises to 53 (> 50 but < 55) — in hysteresis zone
+      simulateLuxChange(setup, luxDataId, 53);
+
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeUndefined();
+    });
+
+    it("turns off lights due to lux even when motion is active", () => {
+      const luxDataId = addLuxSensor(setup, 20);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        luxThreshold: 100,
+      });
+
+      // Motion → lights on
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      // Sun comes up: lux rises to 120 (> 100 × 1.10 = 110) while someone is in the room
+      simulateLuxChange(setup, luxDataId, 120);
+
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeDefined();
+    });
+
+    it("does not turn off when lux is high but no luxThreshold configured", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        // no luxThreshold
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      simulateLuxChange(setup, luxDataId, 500);
+
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeUndefined();
+    });
+
+    it("lux-based turn off is ignored in override mode", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      const button = addButton(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        luxThreshold: 50,
+        buttons: [button.buttonId],
+      });
+
+      // Turn on, enter override (user changes dimmer via button-off)
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      simulateButtonPress(setup, button.buttonId);
+      // Button-off turns lights off + enters override
+
+      // Button-on to turn lights back on in override (turns on but override was set on button-off)
+      simulateLightState(setup, "OFF");
+      // Override is active, motion is ignored
+
+      // Manually turn lights on (simulate external)
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      // Lux rises above threshold — should be ignored because override mode
+      simulateLuxChange(setup, luxDataId, 60);
+
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeUndefined();
+    });
+
+    it("after lux-based turn off, lights re-turn on when lux drops and motion detected", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        luxThreshold: 50,
+      });
+
+      // Motion → lights on
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+
+      // Lux rises → lights off
+      simulateLuxChange(setup, luxDataId, 60);
+      simulateLightState(setup, "OFF");
+      setup.published.length = 0;
+
+      // Lux drops below threshold
+      simulateLuxChange(setup, luxDataId, 40);
+
+      // Next motion event → should turn on again (lux 40 < 50)
+      simulateMotion(setup, true);
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeDefined();
+    });
+
+    it("turns off immediately without waiting for off-timer when lux rises", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        luxThreshold: 50,
+      });
+
+      // Motion on → lights on → motion off (off-timer started)
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      simulateMotion(setup, false);
+      setup.published.length = 0;
+
+      // While off-timer is counting, lux rises above threshold
+      vi.advanceTimersByTime(1 * 60 * 1000); // only 1 min of 5 elapsed
+      simulateLuxChange(setup, luxDataId, 60);
+
+      // Should turn off immediately, not wait for remaining 4 min
+      const offCmd = setup.published.find((p) => JSON.parse(p.payload).state === "OFF");
+      expect(offCmd).toBeDefined();
+    });
   });
 
   // ============================================================
