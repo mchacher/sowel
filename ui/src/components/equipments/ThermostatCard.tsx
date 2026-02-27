@@ -354,12 +354,12 @@ function CompactThermostat({
       )}
 
       {/* Separator */}
-      {isOn && hasTargetTempOrder && targetTemp !== null && insideTemp !== null && (
+      {hasTargetTempOrder && targetTemp !== null && insideTemp !== null && (
         <div className="w-px h-4 bg-border" />
       )}
 
       {/* Target temp with +/- controls */}
-      {isOn && hasTargetTempOrder && targetTemp !== null && (
+      {hasTargetTempOrder && targetTemp !== null && (
         <div className="flex items-center gap-0.5">
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp - 0.5); }}
