@@ -9,11 +9,17 @@ import { SettingsManager } from "../../core/settings-manager.js";
 import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { registerCalendarRoutes } from "./calendar.js";
+import type { CalendarModeAction } from "../../shared/types.js";
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of ["002_zones.sql", "007_settings.sql", "010_modes.sql"]) {
+  for (const file of [
+    "002_zones.sql",
+    "007_settings.sql",
+    "010_modes.sql",
+    "014_calendar_mode_actions.sql",
+  ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../../migrations/${file}`),
       "utf-8",
@@ -35,6 +41,11 @@ function createMockRecipeManager() {
     disableInstance: vi.fn(),
     updateInstanceParams: vi.fn(),
   } as any;
+}
+
+/** Helper to build a simple "on" action list */
+function onActions(...modeIds: string[]): CalendarModeAction[] {
+  return modeIds.map((modeId) => ({ modeId, action: "on" }));
 }
 
 describe("Calendar API routes", () => {
@@ -91,7 +102,7 @@ describe("Calendar API routes", () => {
     });
 
     it("includes slots for active profile", async () => {
-      calendarManager.addSlot("travail", [1, 2, 3], "08:00", ["mode-1"]);
+      calendarManager.addSlot("travail", [1, 2, 3], "08:00", onActions("mode-1"));
       const res = await app.inject({ method: "GET", url: "/api/v1/calendar/active" });
       expect(res.json().slots).toHaveLength(1);
     });
@@ -133,8 +144,8 @@ describe("Calendar API routes", () => {
 
   describe("GET /api/v1/calendar/profiles/:id/slots", () => {
     it("returns slots for a profile", async () => {
-      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "07:30", ["m1"]);
-      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "18:00", ["m2"]);
+      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "07:30", onActions("m1"));
+      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "18:00", onActions("m2"));
       const res = await app.inject({
         method: "GET",
         url: "/api/v1/calendar/profiles/travail/slots",
@@ -157,24 +168,39 @@ describe("Calendar API routes", () => {
 
   describe("POST /api/v1/calendar/profiles/:id/slots", () => {
     it("creates a slot", async () => {
+      const modeActions = onActions("mode-1");
       const res = await app.inject({
         method: "POST",
         url: "/api/v1/calendar/profiles/travail/slots",
-        payload: { days: [1, 2, 3, 4, 5], time: "08:00", modeIds: ["mode-1"] },
+        payload: { days: [1, 2, 3, 4, 5], time: "08:00", modeActions },
       });
       expect(res.statusCode).toBe(201);
       const body = res.json();
       expect(body.profileId).toBe("travail");
       expect(body.days).toEqual([1, 2, 3, 4, 5]);
       expect(body.time).toBe("08:00");
-      expect(body.modeIds).toEqual(["mode-1"]);
+      expect(body.modeActions).toEqual(modeActions);
+    });
+
+    it("creates a slot with mixed on/off actions", async () => {
+      const modeActions: CalendarModeAction[] = [
+        { modeId: "work", action: "on" },
+        { modeId: "vacation", action: "off" },
+      ];
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/calendar/profiles/travail/slots",
+        payload: { days: [1, 2, 3, 4, 5], time: "08:00", modeActions },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().modeActions).toEqual(modeActions);
     });
 
     it("returns 400 when days is missing", async () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/v1/calendar/profiles/travail/slots",
-        payload: { time: "08:00", modeIds: ["m"] },
+        payload: { time: "08:00", modeActions: onActions("m") },
       });
       expect(res.statusCode).toBe(400);
     });
@@ -183,12 +209,12 @@ describe("Calendar API routes", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/v1/calendar/profiles/travail/slots",
-        payload: { days: [1], modeIds: ["m"] },
+        payload: { days: [1], modeActions: onActions("m") },
       });
       expect(res.statusCode).toBe(400);
     });
 
-    it("returns 400 when modeIds is missing", async () => {
+    it("returns 400 when modeActions is missing", async () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/v1/calendar/profiles/travail/slots",
@@ -201,7 +227,7 @@ describe("Calendar API routes", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/v1/calendar/profiles/unknown/slots",
-        payload: { days: [1], time: "08:00", modeIds: ["m"] },
+        payload: { days: [1], time: "08:00", modeActions: onActions("m") },
       });
       expect(res.statusCode).toBe(404);
     });
@@ -211,21 +237,22 @@ describe("Calendar API routes", () => {
 
   describe("PUT /api/v1/calendar/slots/:slotId", () => {
     it("updates a slot", async () => {
-      const slot = calendarManager.addSlot("travail", [1], "08:00", ["m1"]);
+      const slot = calendarManager.addSlot("travail", [1], "08:00", onActions("m1"));
+      const newActions: CalendarModeAction[] = [{ modeId: "m2", action: "off" }];
       const res = await app.inject({
         method: "PUT",
         url: `/api/v1/calendar/slots/${slot.id}`,
-        payload: { days: [0, 6], time: "10:00", modeIds: ["m2"] },
+        payload: { days: [0, 6], time: "10:00", modeActions: newActions },
       });
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.days).toEqual([0, 6]);
       expect(body.time).toBe("10:00");
-      expect(body.modeIds).toEqual(["m2"]);
+      expect(body.modeActions).toEqual(newActions);
     });
 
     it("partial update (time only)", async () => {
-      const slot = calendarManager.addSlot("travail", [1, 2], "08:00", ["m1"]);
+      const slot = calendarManager.addSlot("travail", [1, 2], "08:00", onActions("m1"));
       const res = await app.inject({
         method: "PUT",
         url: `/api/v1/calendar/slots/${slot.id}`,
@@ -250,7 +277,7 @@ describe("Calendar API routes", () => {
 
   describe("DELETE /api/v1/calendar/slots/:slotId", () => {
     it("deletes a slot", async () => {
-      const slot = calendarManager.addSlot("travail", [1], "08:00", ["m"]);
+      const slot = calendarManager.addSlot("travail", [1], "08:00", onActions("m"));
       const res = await app.inject({
         method: "DELETE",
         url: `/api/v1/calendar/slots/${slot.id}`,

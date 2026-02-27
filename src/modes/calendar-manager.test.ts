@@ -7,12 +7,17 @@ import { ModeManager } from "./mode-manager.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
-import type { EngineEvent } from "../shared/types.js";
+import type { CalendarModeAction, EngineEvent } from "../shared/types.js";
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of ["002_zones.sql", "007_settings.sql", "010_modes.sql"]) {
+  for (const file of [
+    "002_zones.sql",
+    "007_settings.sql",
+    "010_modes.sql",
+    "014_calendar_mode_actions.sql",
+  ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),
       "utf-8",
@@ -34,6 +39,16 @@ function createMockRecipeManager() {
     disableInstance: vi.fn(),
     updateInstanceParams: vi.fn(),
   } as any;
+}
+
+/** Helper to build a simple "on" action list */
+function onActions(...modeIds: string[]): CalendarModeAction[] {
+  return modeIds.map((modeId) => ({ modeId, action: "on" }));
+}
+
+/** Helper to build a simple "off" action list */
+function offActions(...modeIds: string[]): CalendarModeAction[] {
+  return modeIds.map((modeId) => ({ modeId, action: "off" }));
 }
 
 describe("CalendarManager", () => {
@@ -123,17 +138,22 @@ describe("CalendarManager", () => {
 
   describe("slots", () => {
     it("adds a slot to a profile", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "08:00", ["mode-1"]);
+      const slot = calendarManager.addSlot(
+        "travail",
+        [1, 2, 3, 4, 5],
+        "08:00",
+        onActions("mode-1"),
+      );
       expect(slot.id).toBeTruthy();
       expect(slot.profileId).toBe("travail");
       expect(slot.days).toEqual([1, 2, 3, 4, 5]);
       expect(slot.time).toBe("08:00");
-      expect(slot.modeIds).toEqual(["mode-1"]);
+      expect(slot.modeActions).toEqual(onActions("mode-1"));
     });
 
     it("lists slots for a profile sorted by time", () => {
-      calendarManager.addSlot("travail", [1, 2, 3], "18:00", ["mode-b"]);
-      calendarManager.addSlot("travail", [1, 2, 3], "08:00", ["mode-a"]);
+      calendarManager.addSlot("travail", [1, 2, 3], "18:00", onActions("mode-b"));
+      calendarManager.addSlot("travail", [1, 2, 3], "08:00", onActions("mode-a"));
       const slots = calendarManager.listSlots("travail");
       expect(slots).toHaveLength(2);
       expect(slots[0].time).toBe("08:00");
@@ -146,41 +166,45 @@ describe("CalendarManager", () => {
     });
 
     it("throws when adding slot to non-existent profile", () => {
-      expect(() => calendarManager.addSlot("nope", [1], "08:00", ["m"])).toThrow(CalendarError);
+      expect(() => calendarManager.addSlot("nope", [1], "08:00", onActions("m"))).toThrow(
+        CalendarError,
+      );
     });
 
     it("updates a slot (days only)", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", ["mode-1"]);
+      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", onActions("mode-1"));
       const updated = calendarManager.updateSlot(slot.id, { days: [0, 6] });
       expect(updated.days).toEqual([0, 6]);
       expect(updated.time).toBe("08:00");
-      expect(updated.modeIds).toEqual(["mode-1"]);
+      expect(updated.modeActions).toEqual(onActions("mode-1"));
     });
 
     it("updates a slot (time only)", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", ["mode-1"]);
+      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", onActions("mode-1"));
       const updated = calendarManager.updateSlot(slot.id, { time: "09:30" });
       expect(updated.time).toBe("09:30");
       expect(updated.days).toEqual([1, 2, 3]);
     });
 
-    it("updates a slot (modeIds only)", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", ["mode-1"]);
-      const updated = calendarManager.updateSlot(slot.id, { modeIds: ["mode-2", "mode-3"] });
-      expect(updated.modeIds).toEqual(["mode-2", "mode-3"]);
+    it("updates a slot (modeActions only)", () => {
+      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", onActions("mode-1"));
+      const updated = calendarManager.updateSlot(slot.id, {
+        modeActions: onActions("mode-2", "mode-3"),
+      });
+      expect(updated.modeActions).toEqual(onActions("mode-2", "mode-3"));
       expect(updated.time).toBe("08:00");
     });
 
     it("updates a slot (all fields)", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", ["mode-1"]);
+      const slot = calendarManager.addSlot("travail", [1, 2, 3], "08:00", onActions("mode-1"));
       const updated = calendarManager.updateSlot(slot.id, {
         days: [0, 6],
         time: "22:00",
-        modeIds: ["mode-x"],
+        modeActions: onActions("mode-x"),
       });
       expect(updated.days).toEqual([0, 6]);
       expect(updated.time).toBe("22:00");
-      expect(updated.modeIds).toEqual(["mode-x"]);
+      expect(updated.modeActions).toEqual(onActions("mode-x"));
     });
 
     it("throws when updating non-existent slot", () => {
@@ -188,7 +212,7 @@ describe("CalendarManager", () => {
     });
 
     it("removes a slot", () => {
-      const slot = calendarManager.addSlot("travail", [1], "08:00", ["m"]);
+      const slot = calendarManager.addSlot("travail", [1], "08:00", onActions("m"));
       calendarManager.removeSlot(slot.id);
       const slots = calendarManager.listSlots("travail");
       expect(slots).toHaveLength(0);
@@ -199,25 +223,51 @@ describe("CalendarManager", () => {
     });
 
     it("slots are isolated per profile", () => {
-      calendarManager.addSlot("travail", [1], "08:00", ["m1"]);
-      calendarManager.addSlot("vacances", [1], "10:00", ["m2"]);
+      calendarManager.addSlot("travail", [1], "08:00", onActions("m1"));
+      calendarManager.addSlot("vacances", [1], "10:00", onActions("m2"));
       expect(calendarManager.listSlots("travail")).toHaveLength(1);
       expect(calendarManager.listSlots("vacances")).toHaveLength(1);
     });
 
-    it("supports multiple mode IDs per slot", () => {
-      const slot = calendarManager.addSlot("travail", [1, 2], "07:00", [
-        "mode-a",
-        "mode-b",
-        "mode-c",
-      ]);
-      expect(slot.modeIds).toEqual(["mode-a", "mode-b", "mode-c"]);
+    it("supports multiple mode actions per slot", () => {
+      const actions: CalendarModeAction[] = [
+        { modeId: "mode-a", action: "on" },
+        { modeId: "mode-b", action: "on" },
+        { modeId: "mode-c", action: "off" },
+      ];
+      const slot = calendarManager.addSlot("travail", [1, 2], "07:00", actions);
+      expect(slot.modeActions).toEqual(actions);
       const fetched = calendarManager.listSlots("travail");
-      expect(fetched[0].modeIds).toEqual(["mode-a", "mode-b", "mode-c"]);
+      expect(fetched[0].modeActions).toEqual(actions);
+    });
+
+    it("supports mixed on/off actions", () => {
+      const actions: CalendarModeAction[] = [
+        { modeId: "work", action: "on" },
+        { modeId: "vacation", action: "off" },
+      ];
+      const slot = calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "08:00", actions);
+      expect(slot.modeActions).toEqual(actions);
+    });
+
+    it("supports all-off actions", () => {
+      const actions = offActions("mode-1", "mode-2");
+      const slot = calendarManager.addSlot("travail", [1], "23:00", actions);
+      expect(slot.modeActions).toEqual(actions);
+      const fetched = calendarManager.listSlots("travail");
+      expect(fetched[0].modeActions).toEqual(actions);
+    });
+
+    it("updates modeActions from on to off", () => {
+      const slot = calendarManager.addSlot("travail", [1], "08:00", onActions("mode-1"));
+      const updated = calendarManager.updateSlot(slot.id, {
+        modeActions: offActions("mode-1"),
+      });
+      expect(updated.modeActions).toEqual(offActions("mode-1"));
     });
 
     it("preserves profileId on update", () => {
-      const slot = calendarManager.addSlot("travail", [1], "08:00", ["m"]);
+      const slot = calendarManager.addSlot("travail", [1], "08:00", onActions("m"));
       const updated = calendarManager.updateSlot(slot.id, { time: "09:00" });
       expect(updated.profileId).toBe("travail");
     });
@@ -231,18 +281,37 @@ describe("CalendarManager", () => {
     });
 
     it("initializes with slots in active profile", () => {
-      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "08:00", ["mode-1"]);
-      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "18:00", ["mode-2"]);
+      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "08:00", onActions("mode-1"));
+      calendarManager.addSlot("travail", [1, 2, 3, 4, 5], "18:00", offActions("mode-2"));
       expect(() => calendarManager.init()).not.toThrow();
     });
 
     it("does not crash on invalid cron expression", () => {
       // Insert a slot with invalid time directly in DB to test robustness
       db.prepare(
-        "INSERT INTO calendar_slots (id, profile_id, days, time, mode_ids) VALUES (?, ?, ?, ?, ?)",
-      ).run("bad-slot", "travail", "[]", "invalid", '["m"]');
+        "INSERT INTO calendar_slots (id, profile_id, days, time, mode_ids, mode_actions) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run("bad-slot", "travail", "[]", "invalid", '["m"]', '[{"modeId":"m","action":"on"}]');
       // Should not throw — logs error internally
       expect(() => calendarManager.init()).not.toThrow();
+    });
+  });
+
+  // ── Legacy backward compatibility ──────────────────────
+
+  describe("legacy mode_ids backward compatibility", () => {
+    it("reads legacy slots that only have mode_ids (no mode_actions)", () => {
+      // Insert a row the old way — mode_actions is NULL
+      db.prepare(
+        "INSERT INTO calendar_slots (id, profile_id, days, time, mode_ids, mode_actions) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run("legacy-slot", "travail", "[1,2,3]", "08:00", '["mode-a","mode-b"]', null);
+
+      const slots = calendarManager.listSlots("travail");
+      expect(slots).toHaveLength(1);
+      // Legacy mode_ids are converted to "on" actions
+      expect(slots[0].modeActions).toEqual([
+        { modeId: "mode-a", action: "on" },
+        { modeId: "mode-b", action: "on" },
+      ]);
     });
   });
 
@@ -250,8 +319,8 @@ describe("CalendarManager", () => {
 
   describe("cascade delete", () => {
     it("deletes slots when profile is deleted", () => {
-      calendarManager.addSlot("travail", [1], "08:00", ["m1"]);
-      calendarManager.addSlot("travail", [1], "18:00", ["m2"]);
+      calendarManager.addSlot("travail", [1], "08:00", onActions("m1"));
+      calendarManager.addSlot("travail", [1], "18:00", onActions("m2"));
       // Delete profile directly (no API method — verify FK cascade)
       db.prepare("DELETE FROM calendar_profiles WHERE id = ?").run("travail");
       const slots = calendarManager.listSlots("travail");

@@ -6,7 +6,7 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { ModeManager } from "./mode-manager.js";
 import type { Logger } from "../core/logger.js";
 import { toISOUtc } from "../core/database.js";
-import type { CalendarProfile, CalendarSlot } from "../shared/types.js";
+import type { CalendarProfile, CalendarSlot, CalendarModeAction } from "../shared/types.js";
 
 const ACTIVE_PROFILE_KEY = "calendar.activeProfileId";
 const DEFAULT_PROFILE_ID = "travail";
@@ -35,10 +35,10 @@ export class CalendarManager {
       listSlots: this.db.prepare(`SELECT * FROM calendar_slots WHERE profile_id = ? ORDER BY time`),
       getSlot: this.db.prepare(`SELECT * FROM calendar_slots WHERE id = ?`),
       insertSlot: this.db.prepare(
-        `INSERT INTO calendar_slots (id, profile_id, days, time, mode_ids) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO calendar_slots (id, profile_id, days, time, mode_ids, mode_actions) VALUES (?, ?, ?, ?, ?, ?)`,
       ),
       updateSlot: this.db.prepare(
-        `UPDATE calendar_slots SET days = ?, time = ?, mode_ids = ? WHERE id = ?`,
+        `UPDATE calendar_slots SET days = ?, time = ?, mode_ids = ?, mode_actions = ? WHERE id = ?`,
       ),
       deleteSlot: this.db.prepare(`DELETE FROM calendar_slots WHERE id = ?`),
     };
@@ -95,14 +95,28 @@ export class CalendarManager {
     return rows.map(rowToSlot);
   }
 
-  addSlot(profileId: string, days: number[], time: string, modeIds: string[]): CalendarSlot {
+  addSlot(
+    profileId: string,
+    days: number[],
+    time: string,
+    modeActions: CalendarModeAction[],
+  ): CalendarSlot {
     const row = this.stmts.getProfile.get(profileId) as CalendarProfileRow | undefined;
     if (!row) throw new CalendarError(`Profile not found: ${profileId}`, 404);
 
     const id = randomUUID();
-    this.stmts.insertSlot.run(id, profileId, JSON.stringify(days), time, JSON.stringify(modeIds));
+    // mode_ids kept for backward compat (extract "on" actions)
+    const legacyModeIds = modeActions.filter((a) => a.action === "on").map((a) => a.modeId);
+    this.stmts.insertSlot.run(
+      id,
+      profileId,
+      JSON.stringify(days),
+      time,
+      JSON.stringify(legacyModeIds),
+      JSON.stringify(modeActions),
+    );
 
-    this.logger.info({ slotId: id, profileId, days, time, modeIds }, "Calendar slot added");
+    this.logger.info({ slotId: id, profileId, days, time, modeActions }, "Calendar slot added");
 
     // Reschedule if this is the active profile
     const activeProfile = this.getActiveProfile();
@@ -110,23 +124,30 @@ export class CalendarManager {
       this.scheduleProfile(profileId);
     }
 
-    return { id, profileId, days, time, modeIds };
+    return { id, profileId, days, time, modeActions };
   }
 
   updateSlot(
     slotId: string,
-    updates: { days?: number[]; time?: string; modeIds?: string[] },
+    updates: { days?: number[]; time?: string; modeActions?: CalendarModeAction[] },
   ): CalendarSlot {
     const existing = this.stmts.getSlot.get(slotId) as CalendarSlotRow | undefined;
     if (!existing) throw new CalendarError(`Slot not found: ${slotId}`, 404);
 
     const days = updates.days ?? JSON.parse(existing.days);
     const time = updates.time ?? existing.time;
-    const modeIds = updates.modeIds ?? JSON.parse(existing.mode_ids);
+    const modeActions = updates.modeActions ?? parseModeActions(existing);
+    const legacyModeIds = modeActions.filter((a) => a.action === "on").map((a) => a.modeId);
 
-    this.stmts.updateSlot.run(JSON.stringify(days), time, JSON.stringify(modeIds), slotId);
+    this.stmts.updateSlot.run(
+      JSON.stringify(days),
+      time,
+      JSON.stringify(legacyModeIds),
+      JSON.stringify(modeActions),
+      slotId,
+    );
 
-    this.logger.info({ slotId, days, time, modeIds }, "Calendar slot updated");
+    this.logger.info({ slotId, days, time, modeActions }, "Calendar slot updated");
 
     // Reschedule if this is the active profile
     const activeProfile = this.getActiveProfile();
@@ -134,7 +155,7 @@ export class CalendarManager {
       this.scheduleProfile(existing.profile_id);
     }
 
-    return { id: slotId, profileId: existing.profile_id, days, time, modeIds };
+    return { id: slotId, profileId: existing.profile_id, days, time, modeActions };
   }
 
   removeSlot(slotId: string): void {
@@ -176,16 +197,20 @@ export class CalendarManager {
       try {
         const job = new Cron(cronExpr, () => {
           this.logger.info(
-            { slotId: slot.id, time: slot.time, modeIds: slot.modeIds },
+            { slotId: slot.id, time: slot.time, modeActions: slot.modeActions },
             "Calendar slot fired",
           );
-          for (const modeId of slot.modeIds) {
+          for (const { modeId, action } of slot.modeActions) {
             try {
-              this.modeManager.activateMode(modeId);
+              if (action === "on") {
+                this.modeManager.activateMode(modeId);
+              } else {
+                this.modeManager.deactivateMode(modeId);
+              }
             } catch (err) {
               this.logger.warn(
-                { err, modeId, slotId: slot.id },
-                "Failed to activate mode from calendar",
+                { err, modeId, action, slotId: slot.id },
+                "Failed to execute mode action from calendar",
               );
             }
           }
@@ -213,6 +238,18 @@ function buildCronExpression(time: string, days: number[]): string {
   return `${minutes} ${hours} * * ${dayStr}`;
 }
 
+/**
+ * Parse modeActions from a DB row, with fallback to legacy mode_ids.
+ */
+function parseModeActions(row: CalendarSlotRow): CalendarModeAction[] {
+  if (row.mode_actions) {
+    return JSON.parse(row.mode_actions) as CalendarModeAction[];
+  }
+  // Fallback: legacy mode_ids → all "on"
+  const legacyIds = JSON.parse(row.mode_ids) as string[];
+  return legacyIds.map((modeId) => ({ modeId, action: "on" as const }));
+}
+
 // ── Row types & mappers ──────────────────────────────────────
 
 interface CalendarProfileRow {
@@ -237,6 +274,7 @@ interface CalendarSlotRow {
   days: string;
   time: string;
   mode_ids: string;
+  mode_actions: string | null;
 }
 
 function rowToSlot(row: CalendarSlotRow): CalendarSlot {
@@ -245,7 +283,7 @@ function rowToSlot(row: CalendarSlotRow): CalendarSlot {
     profileId: row.profile_id,
     days: JSON.parse(row.days) as number[],
     time: row.time,
-    modeIds: JSON.parse(row.mode_ids) as string[],
+    modeActions: parseModeActions(row),
   };
 }
 

@@ -8,7 +8,7 @@ import type {
   Mode, ModeWithDetails,
   ZoneModeImpact, ZoneModeImpactAction,
   ButtonActionBinding, ButtonEffectType,
-  CalendarProfile, CalendarSlot,
+  CalendarProfile, CalendarSlot, CalendarModeAction,
   IntegrationInfo,
   LogsResponse, LogLevel,
 } from "./types";
@@ -560,6 +560,10 @@ export async function removeModeImpact(modeId: string, zoneId: string): Promise<
   });
 }
 
+export async function getModeTriggers(modeId: string): Promise<ButtonActionBinding[]> {
+  return fetchJSON<ButtonActionBinding[]>(`${API_BASE}/modes/${modeId}/triggers`);
+}
+
 // ============================================================
 // Calendar
 // ============================================================
@@ -585,7 +589,7 @@ export async function getProfileSlots(profileId: string): Promise<CalendarSlot[]
 
 export async function addCalendarSlot(
   profileId: string,
-  data: { days: number[]; time: string; modeIds: string[] },
+  data: { days: number[]; time: string; modeActions: CalendarModeAction[] },
 ): Promise<CalendarSlot> {
   return fetchJSON<CalendarSlot>(`${API_BASE}/calendar/profiles/${profileId}/slots`, {
     method: "POST",
@@ -595,7 +599,7 @@ export async function addCalendarSlot(
 
 export async function updateCalendarSlot(
   slotId: string,
-  data: { days?: number[]; time?: string; modeIds?: string[] },
+  data: { days?: number[]; time?: string; modeActions?: CalendarModeAction[] },
 ): Promise<CalendarSlot> {
   return fetchJSON<CalendarSlot>(`${API_BASE}/calendar/slots/${slotId}`, {
     method: "PUT",

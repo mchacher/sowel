@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CalendarProfile, CalendarSlot } from "../types";
+import type { CalendarProfile, CalendarSlot, CalendarModeAction } from "../types";
 import {
   getCalendarProfiles,
   getActiveCalendar,
@@ -19,8 +19,8 @@ interface CalendarState {
   fetchActive: () => Promise<void>;
   setActiveProfile: (profileId: string) => Promise<void>;
   fetchSlots: (profileId: string) => Promise<void>;
-  addSlot: (profileId: string, data: { days: number[]; time: string; modeIds: string[] }) => Promise<void>;
-  updateSlot: (slotId: string, data: { days?: number[]; time?: string; modeIds?: string[] }) => Promise<void>;
+  addSlot: (profileId: string, data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => Promise<void>;
+  updateSlot: (slotId: string, data: { days?: number[]; time?: string; modeActions?: CalendarModeAction[] }) => Promise<void>;
   deleteSlot: (slotId: string) => Promise<void>;
 }
 

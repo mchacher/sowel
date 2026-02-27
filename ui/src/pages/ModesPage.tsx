@@ -129,7 +129,7 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
   const totalActions = mode.impacts.reduce((sum, imp) => sum + imp.actions.length, 0);
 
   // Find next scheduled slot for this mode
-  const modeSlots = calendarSlots.filter((s) => s.modeIds.includes(mode.id));
+  const modeSlots = calendarSlots.filter((s) => s.modeActions.some((a) => a.modeId === mode.id));
   const nextSlot = modeSlots.length > 0 ? modeSlots.sort((a, b) => a.time.localeCompare(b.time))[0] : null;
 
   // Build summary

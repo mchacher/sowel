@@ -456,6 +456,46 @@ describe("MotionLightRecipe", () => {
   });
 
   // ============================================================
+  // Startup: evaluate current zone state
+  // ============================================================
+
+  it("turns lights on immediately if motion already present when recipe starts", () => {
+    // Set motion BEFORE creating the recipe
+    simulateMotion(setup, true);
+    setup.published.length = 0;
+
+    // Create instance — start() should evaluate current zone state
+    setup.manager.createInstance("motion-light", {
+      zone: setup.zoneId,
+      lights: [setup.lightId],
+      timeout: "5m",
+    });
+
+    const onCommand = setup.published.find((p) => {
+      const payload = JSON.parse(p.payload);
+      return payload.state === "ON";
+    });
+    expect(onCommand).toBeDefined();
+  });
+
+  it("does not turn lights on at startup if no motion present", () => {
+    // No motion — default state
+    setup.published.length = 0;
+
+    setup.manager.createInstance("motion-light", {
+      zone: setup.zoneId,
+      lights: [setup.lightId],
+      timeout: "5m",
+    });
+
+    const onCommand = setup.published.find((p) => {
+      const payload = JSON.parse(p.payload);
+      return payload.state === "ON";
+    });
+    expect(onCommand).toBeUndefined();
+  });
+
+  // ============================================================
   // Motion → turn on (single light)
   // ============================================================
 

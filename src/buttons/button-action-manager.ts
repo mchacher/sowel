@@ -116,6 +116,18 @@ export class ButtonActionManager {
     return rows.map(rowToBinding);
   }
 
+  /** Return all button action bindings that reference a given mode (mode_activate or mode_toggle). */
+  getBindingsByMode(modeId: string): ButtonActionBinding[] {
+    const rows = this.stmts.listAll.all() as ButtonActionBindingRow[];
+    return rows
+      .filter((row) => {
+        if (row.effect_type !== "mode_activate" && row.effect_type !== "mode_toggle") return false;
+        const config = JSON.parse(row.config) as Record<string, unknown>;
+        return config.modeId === modeId || config.modeAId === modeId || config.modeBId === modeId;
+      })
+      .map(rowToBinding);
+  }
+
   // ── Effect Execution ──────────────────────────────────────
 
   private handleActionEvent(equipmentId: string, value: unknown): void {

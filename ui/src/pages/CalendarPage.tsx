@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Plus, Trash2, Loader2, Clock, X, Check } from "lucide-react";
+import { Calendar, Plus, Trash2, Loader2, Clock, X, Check, Pencil, Power, PowerOff } from "lucide-react";
 import { useCalendar } from "../store/useCalendar";
 import { useModes } from "../store/useModes";
-import type { CalendarSlot } from "../types";
+import type { CalendarSlot, CalendarModeAction } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function CalendarPage() {
@@ -18,12 +18,14 @@ export function CalendarPage() {
   const setActiveProfile = useCalendar((s) => s.setActiveProfile);
   const fetchSlots = useCalendar((s) => s.fetchSlots);
   const addSlot = useCalendar((s) => s.addSlot);
+  const updateSlot = useCalendar((s) => s.updateSlot);
   const deleteSlot = useCalendar((s) => s.deleteSlot);
   const modes = useModes((s) => s.modes);
   const fetchModes = useModes((s) => s.fetchModes);
 
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [showAddSlot, setShowAddSlot] = useState(false);
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfiles();
@@ -48,17 +50,24 @@ export function CalendarPage() {
     await setActiveProfile(selectedProfileId);
   };
 
-  const handleAddSlot = async (data: { days: number[]; time: string; modeIds: string[] }) => {
+  const handleAddSlot = async (data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => {
     if (!selectedProfileId) return;
     await addSlot(selectedProfileId, data);
     setShowAddSlot(false);
+  };
+
+  const handleUpdateSlot = async (slotId: string, data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => {
+    await updateSlot(slotId, data);
+    setEditingSlotId(null);
   };
 
   const handleDeleteSlot = async (slotId: string) => {
     await deleteSlot(slotId);
   };
 
-  const dayLabels = Array.from({ length: 7 }, (_, i) => t(`calendar.dayShort.${i}`));
+  // Display Mon→Sun (1,2,3,4,5,6,0) instead of JS convention Sun→Sat (0-6)
+  const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const dayLabels = DAY_ORDER.map((i) => ({ index: i, label: t(`calendar.dayShort.${i}`) }));
   const isActive = selectedProfileId === activeProfileId;
 
   if (loading && profiles.length === 0) {
@@ -127,7 +136,7 @@ export function CalendarPage() {
                 {t("calendar.slots")}
               </h2>
               <button
-                onClick={() => setShowAddSlot(!showAddSlot)}
+                onClick={() => { setShowAddSlot(!showAddSlot); setEditingSlotId(null); }}
                 className="p-1.5 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
               >
                 {showAddSlot ? <X size={14} strokeWidth={1.5} /> : <Plus size={14} strokeWidth={1.5} />}
@@ -140,22 +149,36 @@ export function CalendarPage() {
 
             {slots.length > 0 && (
               <div className="space-y-2 mb-3">
-                {slots.map((slot) => (
-                  <SlotRow
-                    key={slot.id}
-                    slot={slot}
-                    dayLabels={dayLabels}
-                    modeNames={modes}
-                    onDelete={() => handleDeleteSlot(slot.id)}
-                  />
-                ))}
+                {slots.map((slot) =>
+                  editingSlotId === slot.id ? (
+                    <SlotForm
+                      key={slot.id}
+                      dayLabels={dayLabels}
+                      modes={modes}
+                      initialValues={slot}
+                      submitLabel={t("common.save")}
+                      onSubmit={(data) => handleUpdateSlot(slot.id, data)}
+                      onCancel={() => setEditingSlotId(null)}
+                    />
+                  ) : (
+                    <SlotRow
+                      key={slot.id}
+                      slot={slot}
+                      dayLabels={dayLabels}
+                      modeNames={modes}
+                      onEdit={() => { setEditingSlotId(slot.id); setShowAddSlot(false); }}
+                      onDelete={() => handleDeleteSlot(slot.id)}
+                    />
+                  )
+                )}
               </div>
             )}
 
             {showAddSlot && (
-              <AddSlotForm
+              <SlotForm
                 dayLabels={dayLabels}
                 modes={modes}
+                submitLabel={t("common.add")}
                 onSubmit={handleAddSlot}
                 onCancel={() => setShowAddSlot(false)}
               />
@@ -171,17 +194,27 @@ function SlotRow({
   slot,
   dayLabels,
   modeNames,
+  onEdit,
   onDelete,
 }: {
   slot: CalendarSlot;
-  dayLabels: string[];
+  dayLabels: { index: number; label: string }[];
   modeNames: { id: string; name: string }[];
+  onEdit: () => void;
   onDelete: () => void;
 }) {
-  const daysStr = slot.days.map((d) => dayLabels[d]).join(", ");
-  const modesStr = slot.modeIds
-    .map((id) => modeNames.find((m) => m.id === id)?.name ?? id)
-    .join(", ");
+  const { t } = useTranslation();
+  const labelMap = Object.fromEntries(dayLabels.map((d) => [d.index, d.label]));
+  // Display days in Mon→Sun order
+  const orderedDays = [...slot.days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  const daysStr = orderedDays.map((d) => labelMap[d]).join(", ");
+
+  const onModes = slot.modeActions
+    .filter((a) => a.action === "on")
+    .map((a) => modeNames.find((m) => m.id === a.modeId)?.name ?? a.modeId);
+  const offModes = slot.modeActions
+    .filter((a) => a.action === "off")
+    .map((a) => modeNames.find((m) => m.id === a.modeId)?.name ?? a.modeId);
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 bg-background rounded-[6px] border border-border">
@@ -189,9 +222,21 @@ function SlotRow({
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-medium text-text font-mono">{slot.time}</div>
         <div className="text-[11px] text-text-tertiary truncate">
-          {daysStr} &middot; {modesStr}
+          {daysStr}
+          {onModes.length > 0 && (
+            <span className="text-success"> &middot; {t("common.on")}: {onModes.join(", ")}</span>
+          )}
+          {offModes.length > 0 && (
+            <span className="text-error"> &middot; {t("common.off")}: {offModes.join(", ")}</span>
+          )}
         </div>
       </div>
+      <button
+        onClick={onEdit}
+        className="p-1 text-text-tertiary hover:text-primary transition-colors"
+      >
+        <Pencil size={12} strokeWidth={1.5} />
+      </button>
       <button
         onClick={onDelete}
         className="p-1 text-text-tertiary hover:text-error transition-colors"
@@ -202,22 +247,39 @@ function SlotRow({
   );
 }
 
-function AddSlotForm({
+/** Tri-state for each mode: null = ignored, "on" = activate, "off" = deactivate */
+type ModeState = "on" | "off" | null;
+
+function SlotForm({
   dayLabels,
   modes,
+  initialValues,
+  submitLabel,
   onSubmit,
   onCancel,
 }: {
-  dayLabels: string[];
+  dayLabels: { index: number; label: string }[];
   modes: { id: string; name: string }[];
-  onSubmit: (data: { days: number[]; time: string; modeIds: string[] }) => Promise<void>;
+  initialValues?: { days: number[]; time: string; modeActions: CalendarModeAction[] };
+  submitLabel: string;
+  onSubmit: (data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mon-Fri by default
-  const [time, setTime] = useState("08:00");
-  const [modeIds, setModeIds] = useState<string[]>([]);
+  const [days, setDays] = useState<number[]>(initialValues?.days ?? [1, 2, 3, 4, 5]);
+  const [time, setTime] = useState(initialValues?.time ?? "08:00");
   const [saving, setSaving] = useState(false);
+
+  // Build initial mode states from modeActions
+  const [modeStates, setModeStates] = useState<Record<string, ModeState>>(() => {
+    const states: Record<string, ModeState> = {};
+    if (initialValues?.modeActions) {
+      for (const { modeId, action } of initialValues.modeActions) {
+        states[modeId] = action;
+      }
+    }
+    return states;
+  });
 
   const toggleDay = (day: number) => {
     setDays((prev) =>
@@ -225,17 +287,38 @@ function AddSlotForm({
     );
   };
 
-  const toggleMode = (modeId: string) => {
-    setModeIds((prev) =>
-      prev.includes(modeId) ? prev.filter((id) => id !== modeId) : [...prev, modeId]
-    );
+  /** Cycle: null → on → off → null */
+  const cycleMode = (modeId: string) => {
+    setModeStates((prev) => {
+      const current = prev[modeId] ?? null;
+      let next: ModeState;
+      if (current === null) next = "on";
+      else if (current === "on") next = "off";
+      else next = null;
+
+      const updated = { ...prev };
+      if (next === null) {
+        delete updated[modeId];
+      } else {
+        updated[modeId] = next;
+      }
+      return updated;
+    });
   };
 
+  const buildModeActions = (): CalendarModeAction[] => {
+    return Object.entries(modeStates)
+      .filter((entry): entry is [string, "on" | "off"] => entry[1] !== null)
+      .map(([modeId, action]) => ({ modeId, action }));
+  };
+
+  const hasModeActions = Object.values(modeStates).some((s) => s !== null);
+
   const handleSubmit = async () => {
-    if (days.length === 0 || !time || modeIds.length === 0) return;
+    if (days.length === 0 || !time || !hasModeActions) return;
     setSaving(true);
     try {
-      await onSubmit({ days, time, modeIds });
+      await onSubmit({ days, time, modeActions: buildModeActions() });
     } finally {
       setSaving(false);
     }
@@ -249,17 +332,17 @@ function AddSlotForm({
           {t("calendar.days")}
         </label>
         <div className="flex gap-1">
-          {dayLabels.map((label, idx) => (
+          {dayLabels.map((day) => (
             <button
-              key={idx}
-              onClick={() => toggleDay(idx)}
+              key={day.index}
+              onClick={() => toggleDay(day.index)}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-[4px] transition-colors duration-150 ${
-                days.includes(idx)
+                days.includes(day.index)
                   ? "bg-primary text-white"
                   : "bg-border-light text-text-tertiary hover:bg-border"
               }`}
             >
-              {label}
+              {day.label}
             </button>
           ))}
         </div>
@@ -278,40 +361,49 @@ function AddSlotForm({
         />
       </div>
 
-      {/* Modes */}
+      {/* Modes — tri-state: click cycles null → ON → OFF → null */}
       <div>
         <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1.5">
           {t("modes.title")}
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {modes.map((mode) => (
-            <button
-              key={mode.id}
-              onClick={() => toggleMode(mode.id)}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-[4px] transition-colors duration-150 ${
-                modeIds.includes(mode.id)
-                  ? "bg-primary text-white"
-                  : "bg-border-light text-text-tertiary hover:bg-border"
-              }`}
-            >
-              {mode.name}
-              {modeIds.includes(mode.id) && <Check size={10} className="inline ml-1" />}
-            </button>
-          ))}
+          {modes.map((mode) => {
+            const state = modeStates[mode.id] ?? null;
+            return (
+              <button
+                key={mode.id}
+                onClick={() => cycleMode(mode.id)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[4px] transition-colors duration-150 ${
+                  state === "on"
+                    ? "bg-success text-white"
+                    : state === "off"
+                      ? "bg-error text-white"
+                      : "bg-border-light text-text-tertiary hover:bg-border"
+                }`}
+              >
+                {state === "on" && <Power size={10} />}
+                {state === "off" && <PowerOff size={10} />}
+                {mode.name}
+                {state === "on" && <span className="text-[9px] opacity-80">ON</span>}
+                {state === "off" && <span className="text-[9px] opacity-80">OFF</span>}
+              </button>
+            );
+          })}
         </div>
         {modes.length === 0 && (
           <p className="text-[11px] text-text-tertiary">{t("calendar.noModesAvailable")}</p>
         )}
+        <p className="text-[10px] text-text-tertiary mt-1">{t("calendar.modeActionHint")}</p>
       </div>
 
       {/* Actions */}
       <div className="flex gap-2">
         <button
           onClick={handleSubmit}
-          disabled={days.length === 0 || !time || modeIds.length === 0 || saving}
+          disabled={days.length === 0 || !time || !hasModeActions || saving}
           className="px-3 py-1.5 bg-primary text-white text-[12px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
         >
-          {t("common.add")}
+          {submitLabel}
         </button>
         <button
           onClick={onCancel}
