@@ -285,11 +285,23 @@ export interface RecipeSlotDef {
   };
 }
 
+export interface RecipeSlotI18n {
+  name: string;
+  description: string;
+}
+
+export interface RecipeLangPack {
+  name: string;
+  description: string;
+  slots?: Record<string, RecipeSlotI18n>;
+}
+
 export interface RecipeInfo {
   id: string;
   name: string;
   description: string;
   slots: RecipeSlotDef[];
+  i18n?: Record<string, RecipeLangPack>;
 }
 
 export interface RecipeInstance {

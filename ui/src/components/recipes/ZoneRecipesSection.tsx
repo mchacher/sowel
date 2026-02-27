@@ -6,6 +6,7 @@ import { useEquipments } from "../../store/useEquipments";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
+import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription } from "../../lib/recipe-i18n";
 
 function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
   const types = Array.isArray(constraint) ? constraint : [constraint];
@@ -102,7 +103,8 @@ function RecipeInstanceRow({
   recipes: RecipeInfo[];
   zoneId: string;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("fr") ? "fr" : "en";
   const deleteInstance = useRecipes((s) => s.deleteInstance);
   const updateInstance = useRecipes((s) => s.updateInstance);
   const enableInstance = useRecipes((s) => s.enableInstance);
@@ -120,7 +122,7 @@ function RecipeInstanceRow({
   const [editError, setEditError] = useState("");
 
   const recipe = recipes.find((r) => r.id === instance.recipeId);
-  const recipeName = recipe?.name ?? instance.recipeId;
+  const displayName = recipe ? recipeName(recipe, lang) : instance.recipeId;
 
   const handleDelete = async () => {
     if (!confirm(t("recipes.deleteConfirm"))) return;
@@ -182,7 +184,7 @@ function RecipeInstanceRow({
     for (const slot of recipe.slots) {
       const value = editParams[slot.id];
       if (slot.required && !value) {
-        setEditError(t("recipes.slotRequired", { name: slot.name }));
+        setEditError(t("recipes.slotRequired", { name: recipeSlotName(recipe, slot, lang) }));
         setSaving(false);
         return;
       }
@@ -251,11 +253,11 @@ function RecipeInstanceRow({
         const eq = equipments.find((e) => e.id === val);
         parts.push(eq?.name ?? String(val));
       } else {
-        parts.push(`${slot.name}: ${String(val)}`);
+        parts.push(`${recipeSlotName(recipe, slot, lang)}: ${String(val)}`);
       }
     }
     return parts.join(" · ");
-  }, [instance.params, recipe, equipments]);
+  }, [instance.params, recipe, equipments, lang]);
 
   return (
     <div className={instance.enabled ? "" : "opacity-50"}>
@@ -269,7 +271,7 @@ function RecipeInstanceRow({
           title="Edit"
         >
           <div className="text-[13px] font-medium text-text truncate">
-            {recipeName}
+            {displayName}
           </div>
           {paramsSummary && (
             <div className="text-[11px] text-text-tertiary truncate">
@@ -320,7 +322,7 @@ function RecipeInstanceRow({
               .map((slot) => (
                 <div key={slot.id} className="mb-2.5">
                   <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-                    {slot.name}
+                    {recipeSlotName(recipe, slot, lang)}
                   </label>
                   {slot.type === "equipment" && slot.list ? (
                     <div className="space-y-1">
@@ -356,12 +358,18 @@ function RecipeInstanceRow({
                         <option key={eq.id} value={eq.id}>{eq.name}</option>
                       ))}
                     </select>
+                  ) : slot.type === "duration" ? (
+                    <DurationInput
+                      value={editParams[slot.id] ?? ""}
+                      onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                      placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
+                    />
                   ) : (
                     <input
                       type="text"
                       value={editParams[slot.id] ?? ""}
                       onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                      placeholder={slot.defaultValue ? String(slot.defaultValue) : slot.description}
+                      placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
                       className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                     />
                   )}
@@ -463,6 +471,60 @@ function formatCountdown(s: number): string {
 }
 
 // ============================================================
+// Duration input — numeric field with "min" suffix
+// ============================================================
+
+/** Parse a duration string ("10m", "30s", "1h") to minutes. Returns NaN if invalid. */
+function durationToMinutes(value: string): number {
+  if (!value) return NaN;
+  const match = value.match(/^(\d+)\s*(s|m|h)$/);
+  if (!match) return NaN;
+  const num = parseInt(match[1], 10);
+  switch (match[2]) {
+    case "s": return num / 60;
+    case "m": return num;
+    case "h": return num * 60;
+    default: return NaN;
+  }
+}
+
+function DurationInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (durationStr: string) => void;
+  placeholder?: string;
+}) {
+  const { t } = useTranslation();
+  // Convert stored "Xm" to numeric minutes for display
+  const minutes = durationToMinutes(value);
+  const displayValue = !isNaN(minutes) ? String(minutes) : "";
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="number"
+        min={1}
+        value={displayValue}
+        onChange={(e) => {
+          const num = e.target.value;
+          if (num === "") {
+            onChange("");
+          } else {
+            onChange(`${num}m`);
+          }
+        }}
+        placeholder={placeholder ?? "10"}
+        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+      />
+      <span className="text-[12px] text-text-tertiary font-medium">{t("time.min")}</span>
+    </div>
+  );
+}
+
+// ============================================================
 // Add recipe wizard (step 1: choose recipe, step 2: configure)
 // ============================================================
 
@@ -477,7 +539,8 @@ function AddRecipeForm({
   recipes: RecipeInfo[];
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("fr") ? "fr" : "en";
   const createInstance = useRecipes((s) => s.createInstance);
   const instances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
@@ -572,7 +635,7 @@ function AddRecipeForm({
     for (const slot of selectedRecipe.slots) {
       const value = params[slot.id];
       if (slot.required && !value) {
-        setError(t("recipes.slotRequired", { name: slot.name }));
+        setError(t("recipes.slotRequired", { name: recipeSlotName(selectedRecipe, slot, lang) }));
         setSubmitting(false);
         return;
       }
@@ -606,7 +669,7 @@ function AddRecipeForm({
             </button>
           )}
           <span className="text-[13px] font-medium text-text">
-            {step === "choose" ? t("recipes.chooseRecipe") : selectedRecipe?.name}
+            {step === "choose" ? t("recipes.chooseRecipe") : selectedRecipe ? recipeName(selectedRecipe, lang) : ""}
           </span>
         </div>
         <button onClick={onClose} className="p-1 text-text-tertiary hover:text-text transition-colors duration-150">
@@ -665,10 +728,10 @@ function AddRecipeForm({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-text">
-                      {recipe.name}
+                      {recipeName(recipe, lang)}
                     </div>
                     <div className="text-[11px] text-text-tertiary line-clamp-1">
-                      {available ? recipe.description : t("recipes.allLightsManagedShort")}
+                      {available ? recipeDescription(recipe, lang) : t("recipes.allLightsManagedShort")}
                     </div>
                   </div>
                   {available && (
@@ -689,14 +752,14 @@ function AddRecipeForm({
       {/* Step 2: Configure parameters */}
       {step === "configure" && selectedRecipe && (
         <>
-          <p className="text-[11px] text-text-tertiary mb-3">{selectedRecipe.description}</p>
+          <p className="text-[11px] text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
 
           {selectedRecipe.slots
             .filter((slot) => slot.id !== "zone")
             .map((slot) => (
               <div key={slot.id} className="mb-3">
                 <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-                  {slot.name}
+                  {recipeSlotName(selectedRecipe, slot, lang)}
                 </label>
                 {slot.type === "equipment" && slot.list ? (
                   <div className="space-y-1">
@@ -732,16 +795,22 @@ function AddRecipeForm({
                       <option key={eq.id} value={eq.id}>{eq.name}</option>
                     ))}
                   </select>
+                ) : slot.type === "duration" ? (
+                  <DurationInput
+                    value={params[slot.id] ?? ""}
+                    onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                    placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
+                  />
                 ) : (
                   <input
                     type="text"
                     value={params[slot.id] ?? ""}
                     onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                    placeholder={slot.defaultValue ? String(slot.defaultValue) : slot.description}
+                    placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
                     className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                   />
                 )}
-                <p className="text-[11px] text-text-tertiary mt-0.5">{slot.description}</p>
+                <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
               </div>
             ))}
 
@@ -756,7 +825,7 @@ function AddRecipeForm({
               className="flex-1 px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 size={14} className="animate-spin" />}
-              Create
+              {t("common.create")}
             </button>
             <button
               onClick={onClose}

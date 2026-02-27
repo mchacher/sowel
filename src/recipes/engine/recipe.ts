@@ -3,7 +3,7 @@ import type { Logger } from "../../core/logger.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
-import type { RecipeSlotDef } from "../../shared/types.js";
+import type { RecipeSlotDef, RecipeLangPack } from "../../shared/types.js";
 import type { RecipeStateStore } from "./recipe-state-store.js";
 
 // ============================================================
@@ -31,6 +31,7 @@ export abstract class Recipe {
   abstract readonly name: string;
   abstract readonly description: string;
   abstract readonly slots: RecipeSlotDef[];
+  readonly i18n: Record<string, RecipeLangPack> = {};
 
   /**
    * Validate params before starting. Throw if invalid.
