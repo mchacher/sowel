@@ -340,6 +340,7 @@ export interface User {
 
 export interface UserPreferences {
   language: "fr" | "en";
+  theme?: "light" | "dark" | "system";
   defaultZoneId?: string;
 }
 
