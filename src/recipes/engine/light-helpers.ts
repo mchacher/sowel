@@ -49,3 +49,28 @@ export function turnOffLights(lightIds: string[], ctx: RecipeContext): string[] 
   }
   return errors;
 }
+
+/**
+ * Set brightness on all lights that have a "brightness" order binding.
+ * Silently skips lights without brightness capability (light_onoff).
+ * Returns an array of error messages (empty if all succeeded).
+ */
+export function setLightsBrightness(
+  lightIds: string[],
+  ctx: RecipeContext,
+  brightness: number,
+): string[] {
+  const errors: string[] = [];
+  for (const lightId of lightIds) {
+    const equipment = ctx.equipmentManager.getByIdWithDetails(lightId);
+    if (!equipment) continue;
+    const hasBrightnessOrder = equipment.orderBindings.some((ob) => ob.alias === "brightness");
+    if (!hasBrightnessOrder) continue;
+    try {
+      ctx.equipmentManager.executeOrder(lightId, "brightness", brightness);
+    } catch (err) {
+      errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  return errors;
+}
