@@ -1,17 +1,19 @@
 import type { FastifyInstance } from "fastify";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
+import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { Logger } from "../../core/logger.js";
 import { ROOT_ZONE_ID } from "../../shared/constants.js";
 
 interface ZonesDeps {
   zoneManager: ZoneManager;
   zoneAggregator: ZoneAggregator;
+  equipmentManager: EquipmentManager;
   logger: Logger;
 }
 
 export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void {
-  const { zoneManager, zoneAggregator } = deps;
+  const { zoneManager, zoneAggregator, equipmentManager } = deps;
 
   // GET /api/v1/zones — List all zones as a tree
   app.get("/api/v1/zones", async () => {
@@ -127,6 +129,26 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
         const { parentId, orderedIds } = request.body;
         zoneManager.reorderSiblings(parentId, orderedIds);
         return reply.code(204).send();
+      } catch (err) {
+        return handleZoneError(err, reply);
+      }
+    },
+  );
+  // POST /api/v1/zones/:id/orders/:orderKey — Execute zone-level order
+  app.post<{ Params: { id: string; orderKey: string } }>(
+    "/api/v1/zones/:id/orders/:orderKey",
+    async (request, reply) => {
+      const { id, orderKey } = request.params;
+
+      const zone = zoneManager.getById(id);
+      if (!zone) {
+        return reply.code(404).send({ error: "Zone not found" });
+      }
+
+      try {
+        const zoneIds = zoneManager.getDescendantIds(id);
+        const result = equipmentManager.executeZoneOrder(zoneIds, orderKey);
+        return result;
       } catch (err) {
         return handleZoneError(err, reply);
       }

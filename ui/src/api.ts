@@ -278,6 +278,16 @@ export async function reorderZones(parentId: string | null, orderedIds: string[]
   });
 }
 
+export async function executeZoneOrder(
+  zoneId: string,
+  orderKey: string,
+): Promise<{ executed: number; errors: number }> {
+  return fetchJSON<{ executed: number; errors: number }>(
+    `${API_BASE}/zones/${zoneId}/orders/${orderKey}`,
+    { method: "POST" },
+  );
+}
+
 // ============================================================
 // Equipments
 // ============================================================
