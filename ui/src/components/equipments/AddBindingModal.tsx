@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X, Radio, Loader2, ChevronRight } from "lucide-react";
 import { getDevices, getDevice, type DeviceWithData } from "../../api";
 import type { DeviceWithDetails, DeviceData, DeviceOrder } from "../../types";
+import { resolveAlias } from "./bindingUtils";
 
 type BindingMode = "data" | "order";
 
@@ -12,6 +13,8 @@ interface AddBindingModalProps {
   onClose: () => void;
   /** Aliases already used — prevents duplicates. */
   existingAliases: string[];
+  /** Equipment type — used to suggest standardized aliases. */
+  equipmentType?: string;
 }
 
 export function AddBindingModal({
@@ -19,6 +22,7 @@ export function AddBindingModal({
   onAdd,
   onClose,
   existingAliases,
+  equipmentType,
 }: AddBindingModalProps) {
   const { t } = useTranslation();
   const [devices, setDevices] = useState<DeviceWithData[]>([]);
@@ -59,7 +63,7 @@ export function AddBindingModal({
 
   const handleSelectItem = (item: DeviceData | DeviceOrder) => {
     setSelectedItemId(item.id);
-    setAlias(item.key);
+    setAlias(equipmentType ? resolveAlias(item.key, equipmentType) : item.key);
     setError(null);
   };
 
