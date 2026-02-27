@@ -321,6 +321,9 @@
   "modes.globallyActive": "actif globalement",
   "modes.schedule": "Programmation horaire",
   "modes.editSchedule": "Modifier dans le calendrier",
+  "modes.triggerActivate": "Active ce mode",
+  "modes.triggerToggle": "Bascule ce mode",
+  "modes.triggerToggleWith": "Bascule avec « {{name}} »",
 
   "recipes.title": "Recettes",
   "recipes.addRecipe": "Ajouter une recette",
@@ -433,6 +436,7 @@
   "calendar.days.thu": "Jeu",
   "calendar.days.fri": "Ven",
   "calendar.days.sat": "Sam",
+  "calendar.modeActionHint": "Cliquer pour alterner : ignoré → ON → OFF",
 
   "thermostat.outside": "Extérieur",
   "thermostat.target": "Consigne",

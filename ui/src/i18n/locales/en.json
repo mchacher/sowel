@@ -321,6 +321,9 @@
   "modes.globallyActive": "globally active",
   "modes.schedule": "Scheduled activation",
   "modes.editSchedule": "Edit in calendar",
+  "modes.triggerActivate": "Activates this mode",
+  "modes.triggerToggle": "Toggles this mode",
+  "modes.triggerToggleWith": "Toggles with \"{{name}}\"",
 
   "recipes.title": "Recipes",
   "recipes.addRecipe": "Add a recipe",
@@ -433,6 +436,7 @@
   "calendar.days.thu": "Thu",
   "calendar.days.fri": "Fri",
   "calendar.days.sat": "Sat",
+  "calendar.modeActionHint": "Click to cycle: ignored → ON → OFF",
 
   "thermostat.outside": "Outside",
   "thermostat.target": "Target",

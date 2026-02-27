@@ -359,6 +359,12 @@ export class MotionLightRecipe extends Recipe {
       });
       this.unsubs.push(unsubBrightness);
     }
+
+    // Evaluate current zone state immediately (e.g., motion already present when recipe starts)
+    const currentZoneData = ctx.zoneAggregator.getByZoneId(this.zoneId);
+    if (currentZoneData) {
+      this.onZoneChanged(currentZoneData.motion, currentZoneData.luminosity);
+    }
   }
 
   stop(): void {

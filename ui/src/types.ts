@@ -414,12 +414,17 @@ export interface CalendarProfile {
   createdAt: string;
 }
 
+export interface CalendarModeAction {
+  modeId: string;
+  action: "on" | "off";
+}
+
 export interface CalendarSlot {
   id: string;
   profileId: string;
   days: number[];
   time: string;
-  modeIds: string[];
+  modeActions: CalendarModeAction[];
 }
 
 // ============================================================

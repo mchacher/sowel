@@ -1,11 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import type { ModeManager } from "../../modes/mode-manager.js";
 import { ModeError } from "../../modes/mode-manager.js";
+import type { ButtonActionManager } from "../../buttons/button-action-manager.js";
 import type { Logger } from "../../core/logger.js";
 import type { ZoneModeImpactAction } from "../../shared/types.js";
 
 interface ModesDeps {
   modeManager: ModeManager;
+  buttonActionManager?: ButtonActionManager;
   logger: Logger;
 }
 
@@ -139,4 +141,12 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
       return reply.code(204).send();
     },
   );
+
+  // ── Triggers ──────────────────────────────────────────
+
+  // GET /api/v1/modes/:id/triggers — button bindings that reference this mode
+  app.get<{ Params: { id: string } }>("/api/v1/modes/:id/triggers", async (request) => {
+    if (!deps.buttonActionManager) return [];
+    return deps.buttonActionManager.getBindingsByMode(request.params.id);
+  });
 }

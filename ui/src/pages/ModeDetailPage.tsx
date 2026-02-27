@@ -4,16 +4,16 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Layers, Trash2, Pencil,
   ToggleRight, ToggleLeft, MapPin,
-  Lightbulb, Power, Clock,
+  Lightbulb, Power, Clock, Zap,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../components/icons/ShutterIcons";
-import { getMode, getActiveCalendar } from "../api";
+import { getMode, getActiveCalendar, getModeTriggers } from "../api";
 import { useModes } from "../store/useModes";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
 import { ModeForm } from "../components/modes/ModeForm";
-import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot } from "../types";
+import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function ModeDetailPage() {
@@ -36,6 +36,7 @@ export function ModeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showEditForm, setShowEditForm] = useState(false);
   const [calendarSlots, setCalendarSlots] = useState<CalendarSlot[]>([]);
+  const [triggers, setTriggers] = useState<ButtonActionBinding[]>([]);
 
   const fetchMode = useCallback(async () => {
     if (!id) return;
@@ -57,7 +58,12 @@ export function ModeDetailPage() {
     getActiveCalendar()
       .then(({ slots }) => setCalendarSlots(slots))
       .catch(() => setCalendarSlots([]));
-  }, [fetchMode, fetchEquipments, fetchZones, modes]);
+    if (id) {
+      getModeTriggers(id)
+        .then(setTriggers)
+        .catch(() => setTriggers([]));
+    }
+  }, [fetchMode, fetchEquipments, fetchZones, modes, id]);
 
   const handleDelete = async () => {
     if (!mode || !confirm(t("modes.deleteConfirm", { name: mode.name }))) return;
@@ -189,6 +195,16 @@ export function ModeDetailPage() {
         <CalendarScheduleSection
           modeId={mode.id}
           slots={calendarSlots}
+          t={t}
+        />
+
+        {/* Button triggers section */}
+        <ButtonTriggersSection
+          modeId={mode.id}
+          triggers={triggers}
+          equipments={equipments}
+          modes={modes}
+          findZoneName={findZoneName}
           t={t}
         />
 
@@ -332,6 +348,83 @@ function ImpactActionRow({
   return null;
 }
 
+function ButtonTriggersSection({
+  modeId,
+  triggers,
+  equipments,
+  modes,
+  findZoneName,
+  t,
+}: {
+  modeId: string;
+  triggers: ButtonActionBinding[];
+  equipments: EquipmentWithDetails[];
+  modes: { id: string; name: string }[];
+  findZoneName: (zoneId: string) => string;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  if (triggers.length === 0) return null;
+
+  return (
+    <section className="bg-surface rounded-[10px] border border-border p-5">
+      <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
+        <Zap size={16} strokeWidth={1.5} className="text-accent" />
+        {t("modes.triggers")}
+      </h2>
+
+      <div className="space-y-2">
+        {triggers.map((binding) => {
+          const eq = equipments.find((e) => e.id === binding.equipmentId);
+          const eqName = eq?.name ?? binding.equipmentId;
+          const zoneName = eq ? findZoneName(eq.zoneId) : null;
+
+          // Resolve action label (single → "Appui simple", etc.)
+          const actionKey = `buttonActions.action.${binding.actionValue}`;
+          const actionTranslated = t(actionKey);
+          const actionLabel = actionTranslated !== actionKey ? actionTranslated : binding.actionValue;
+
+          // Resolve effect label
+          let effectLabel = "";
+          if (binding.effectType === "mode_activate") {
+            effectLabel = t("modes.triggerActivate");
+          } else if (binding.effectType === "mode_toggle") {
+            const otherModeId =
+              (binding.config.modeAId as string) === modeId
+                ? (binding.config.modeBId as string)
+                : (binding.config.modeAId as string);
+            const otherMode = otherModeId ? modes.find((m) => m.id === otherModeId) : null;
+            effectLabel = otherMode
+              ? t("modes.triggerToggleWith", { name: otherMode.name })
+              : t("modes.triggerToggle");
+          }
+
+          return (
+            <Link
+              key={binding.id}
+              to={`/equipments/${binding.equipmentId}`}
+              className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light hover:border-primary/30 transition-colors"
+            >
+              <Zap size={14} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-text">
+                  {eqName}
+                  {zoneName && (
+                    <span className="text-text-tertiary font-normal"> · {zoneName}</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-text-tertiary">
+                  {actionLabel}
+                  {effectLabel && <span> · {effectLabel}</span>}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 function CalendarScheduleSection({
@@ -343,7 +436,7 @@ function CalendarScheduleSection({
   slots: CalendarSlot[];
   t: ReturnType<typeof useTranslation>["t"];
 }) {
-  const modeSlots = slots.filter((s) => s.modeIds.includes(modeId));
+  const modeSlots = slots.filter((s) => s.modeActions.some((a) => a.modeId === modeId));
 
   if (modeSlots.length === 0) return null;
 
@@ -360,8 +453,8 @@ function CalendarScheduleSection({
       days.includes(6)
     )
       return t("calendar.weekend");
-    return days
-      .sort((a, b) => a - b)
+    return [...days]
+      .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
       .map((d) => t(`calendar.days.${DAY_KEYS[d]}`))
       .join(", ");
   };
@@ -374,19 +467,29 @@ function CalendarScheduleSection({
       </h2>
 
       <div className="space-y-2">
-        {modeSlots.map((slot) => (
-          <div
-            key={slot.id}
-            className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light"
-          >
-            <span className="text-[18px] font-semibold text-text tabular-nums font-mono">
-              {slot.time}
-            </span>
-            <span className="text-[13px] text-text-secondary">
-              {formatDays(slot.days)}
-            </span>
-          </div>
-        ))}
+        {modeSlots.map((slot) => {
+          const action = slot.modeActions.find((a) => a.modeId === modeId)?.action;
+          return (
+            <div
+              key={slot.id}
+              className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light"
+            >
+              <span className={`text-[11px] font-semibold uppercase px-1.5 py-0.5 rounded ${
+                action === "on"
+                  ? "bg-success/10 text-success"
+                  : "bg-error/10 text-error"
+              }`}>
+                {action === "on" ? t("common.on") : t("common.off")}
+              </span>
+              <span className="text-[18px] font-semibold text-text tabular-nums font-mono">
+                {slot.time}
+              </span>
+              <span className="text-[13px] text-text-secondary">
+                {formatDays(slot.days)}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <Link

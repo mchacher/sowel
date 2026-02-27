@@ -165,8 +165,6 @@ function ImpactEditor({
   const instances = useRecipes((s) => s.instances);
   const recipes = useRecipes((s) => s.recipes);
   const [showAddAction, setShowAddAction] = useState(false);
-  const [pendingActions, setPendingActions] = useState<ZoneModeImpactAction[]>([]);
-  const [saving, setSaving] = useState(false);
 
   const impact = mode.impacts.find((imp) => imp.zoneId === zoneId);
   const savedActions = impact?.actions ?? [];
@@ -202,30 +200,10 @@ function ImpactEditor({
     onRefresh();
   };
 
-  const handleStageAction = (action: ZoneModeImpactAction) => {
-    setPendingActions((prev) => [...prev, action]);
-    setShowAddAction(false);
+  const handleAddAction = async (action: ZoneModeImpactAction) => {
+    await setModeImpact(mode.id, zoneId, [...savedActions, action]);
+    onRefresh();
   };
-
-  const handleRemovePending = (index: number) => {
-    setPendingActions((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSavePending = async () => {
-    if (pendingActions.length === 0) return;
-    setSaving(true);
-    try {
-      const allActions = [...savedActions, ...pendingActions];
-      await setModeImpact(mode.id, zoneId, allActions);
-      setPendingActions([]);
-      setShowAddAction(false);
-      onRefresh();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const hasPending = pendingActions.length > 0;
 
   return (
     <div className="px-4 pb-3">
@@ -263,24 +241,7 @@ function ImpactEditor({
             </div>
           )}
 
-          {/* Pending (not yet saved) actions */}
-          {hasPending && (
-            <div className="space-y-1.5 mb-2">
-              {pendingActions.map((action, idx) => (
-                <ActionRow
-                  key={`pending-${idx}`}
-                  action={action}
-                  equipments={zoneEquipments}
-                  instances={zoneInstances}
-                  resolveRecipeName={resolveRecipeName}
-                  onRemove={() => handleRemovePending(idx)}
-                  pending
-                />
-              ))}
-            </div>
-          )}
-
-          {savedActions.length === 0 && !hasPending && !showAddAction && (
+          {savedActions.length === 0 && !showAddAction && (
             <p className="text-[11px] text-text-tertiary mb-2">{t("modes.noImpacts")}</p>
           )}
 
@@ -289,28 +250,9 @@ function ImpactEditor({
               equipments={zoneEquipments}
               instances={zoneInstances}
               resolveRecipeName={resolveRecipeName}
-              onAdd={handleStageAction}
+              onAdd={handleAddAction}
               onDone={() => setShowAddAction(false)}
             />
-          )}
-
-          {/* Save / cancel pending actions */}
-          {hasPending && (
-            <div className="flex gap-1.5 mt-2">
-              <button
-                onClick={handleSavePending}
-                disabled={saving}
-                className="px-2.5 py-1 bg-primary text-white text-[11px] font-medium rounded-[4px] hover:bg-primary-hover transition-colors disabled:opacity-50"
-              >
-                {saving ? t("common.saving") : t("common.save")}
-              </button>
-              <button
-                onClick={() => setPendingActions([])}
-                className="px-2.5 py-1 bg-border-light text-text-secondary text-[11px] rounded-[4px] hover:bg-border transition-colors"
-              >
-                {t("common.cancel")}
-              </button>
-            </div>
           )}
         </div>
       </div>
@@ -364,7 +306,6 @@ function ActionRow({
   resolveRecipeName,
   onRemove,
   onUpdate,
-  pending,
 }: {
   action: ZoneModeImpactAction;
   equipments: EquipmentWithDetails[];
@@ -372,7 +313,6 @@ function ActionRow({
   resolveRecipeName: (recipeId: string) => string;
   onRemove: () => void;
   onUpdate?: (updated: ZoneModeImpactAction) => void;
-  pending?: boolean;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
@@ -490,9 +430,7 @@ function ActionRow({
   }
 
   return (
-    <div className={`flex items-center gap-2 px-2 py-1.5 rounded-[4px] border ${
-      pending ? "bg-primary/5 border-primary/20" : "bg-surface border-border-light"
-    }`}>
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-[4px] border bg-surface border-border-light">
       <span className="text-[11px] text-text flex-1 truncate">{label}</span>
       {onUpdate && action.type !== "recipe_params" && (
         <button onClick={startEdit} className="text-text-tertiary hover:text-primary flex-shrink-0">
@@ -744,10 +682,11 @@ function AddActionForm({
   equipments: EquipmentWithDetails[];
   instances: { id: string; recipeId: string; params: Record<string, unknown> }[];
   resolveRecipeName: (recipeId: string) => string;
-  onAdd: (action: ZoneModeImpactAction) => void;
+  onAdd: (action: ZoneModeImpactAction) => Promise<void>;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
+  const [saving, setSaving] = useState(false);
   const [actionType, setActionType] = useState<"order" | "recipe_toggle">("order");
   const [equipmentId, setEquipmentId] = useState("");
   const [orderAlias, setOrderAlias] = useState("");
@@ -757,17 +696,22 @@ function AddActionForm({
 
   const selectedEquipment = equipments.find((eq) => eq.id === equipmentId);
 
-  const handleAdd = () => {
-    if (actionType === "order") {
-      let parsedValue: unknown;
-      try { parsedValue = JSON.parse(orderValue); } catch { parsedValue = orderValue; }
-      onAdd({ type: "order", equipmentId, orderAlias, value: parsedValue });
-      setOrderAlias("");
-      setOrderValue("");
-    } else if (actionType === "recipe_toggle") {
-      onAdd({ type: "recipe_toggle", instanceId, enabled });
-      setInstanceId("");
-      setEnabled(true);
+  const handleAdd = async () => {
+    setSaving(true);
+    try {
+      if (actionType === "order") {
+        let parsedValue: unknown;
+        try { parsedValue = JSON.parse(orderValue); } catch { parsedValue = orderValue; }
+        await onAdd({ type: "order", equipmentId, orderAlias, value: parsedValue });
+        setOrderAlias("");
+        setOrderValue("");
+      } else if (actionType === "recipe_toggle") {
+        await onAdd({ type: "recipe_toggle", instanceId, enabled });
+        setInstanceId("");
+        setEnabled(true);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -857,7 +801,7 @@ function AddActionForm({
         <div className="flex items-center gap-2 pt-0.5">
           <button
             onClick={handleAdd}
-            disabled={!canAdd}
+            disabled={!canAdd || saving}
             className="text-[10px] font-medium text-primary hover:text-primary-hover disabled:text-text-tertiary disabled:opacity-50 transition-colors"
           >
             + {t("common.add")}
