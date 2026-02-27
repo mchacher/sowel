@@ -367,6 +367,54 @@ describe("PresenceThermostatRecipe", () => {
     ).toThrow("Invalid params");
   });
 
+  it("accepts targetTemperature alias for setpoint order", () => {
+    // Create thermostat with "targetTemperature" alias (like Panasonic CC)
+    const thermoDevice = seedDevice(setup.db, {
+      name: "PAC Salon",
+      dataKeys: [
+        {
+          key: "targetTemperature",
+          type: "number",
+          category: "generic",
+          value: JSON.stringify(19),
+        },
+      ],
+      orderKeys: [{ key: "targetTemperature", type: "number", payloadKey: "targetTemperature" }],
+    });
+    const thermoEq = setup.equipmentManager.create({
+      name: "PAC Salon",
+      type: "thermostat",
+      zoneId: setup.zoneId,
+    });
+    setup.equipmentManager.addDataBinding(
+      thermoEq.id,
+      thermoDevice.dataIds[0],
+      "targetTemperature",
+    );
+    setup.equipmentManager.addOrderBinding(
+      thermoEq.id,
+      thermoDevice.orderIds[0],
+      "targetTemperature",
+    );
+
+    const instance = setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: thermoEq.id,
+      ...BASE_PARAMS,
+    });
+    expect(instance.recipeId).toBe("presence-thermostat");
+
+    // Verify it sends orders using the correct alias
+    setup.published.length = 0;
+    simulateMotion(setup, true);
+
+    const cmd = setup.published.find((p) => {
+      const payload = JSON.parse(p.payload) as Record<string, unknown>;
+      return payload.targetTemperature === 21;
+    });
+    expect(cmd).toBeDefined();
+  });
+
   it("validates time format", () => {
     expect(() =>
       setup.manager.createInstance("presence-thermostat", {
