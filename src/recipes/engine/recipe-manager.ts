@@ -93,6 +93,7 @@ export class RecipeManager {
         name: sample.name,
         description: sample.description,
         slots: sample.slots,
+        ...(Object.keys(sample.i18n).length > 0 ? { i18n: sample.i18n } : {}),
       },
       create: () => new RecipeClass(),
     });
