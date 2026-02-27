@@ -59,7 +59,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               onMouseUp={handlePositionCommit}
               onTouchEnd={handlePositionCommit}
               onClick={(e) => e.stopPropagation()}
-              className="w-[60px] accent-primary h-1"
+              className="w-[60px]"
             />
             <span className="text-[11px] text-text-tertiary w-8 text-right tabular-nums">
               {position}%
@@ -123,7 +123,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               onChange={(e) => slider.onChange(Number(e.target.value))}
               onMouseUp={handlePositionCommit}
               onTouchEnd={handlePositionCommit}
-              className="flex-1 accent-primary h-1.5"
+              className="flex-1"
             />
           ) : (
             <div className="flex-1 h-1.5 bg-border-light rounded-full overflow-hidden">

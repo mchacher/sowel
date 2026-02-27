@@ -23,7 +23,7 @@
   --color-text-tertiary: #9CA3AF;
   --color-border: #E1E6EA;
   --color-border-light: #EDF0F3;
-  --color-active: #EAB308;
+  --color-active: #FACC15;
   --color-active-text: #A16207;
   --color-success: #3D8B6E;
   --color-warning: #C88B3A;
@@ -80,4 +80,64 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-tertiary);
+}
+
+/* ============================================================
+   Range slider — strip native styling, use design tokens
+   ============================================================ */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+/* Track */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-border);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-border);
+  border: none;
+}
+
+/* Thumb — default = primary (blue) */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  margin-top: -6px; /* center on track: (track_h - thumb_h) / 2 */
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Active variant (yellow) — for lights */
+input[type="range"].slider-active::-webkit-slider-thumb {
+  background: var(--color-active);
+}
+
+input[type="range"].slider-active::-moz-range-thumb {
+  background: var(--color-active);
 }

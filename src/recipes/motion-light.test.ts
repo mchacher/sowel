@@ -967,6 +967,33 @@ describe("MotionLightRecipe", () => {
     expect(logs.some((l) => l.level === "warn" && l.message.includes("Failsafe"))).toBe(true);
   });
 
+  it("resets failsafe timer on continued motion", () => {
+    setup.manager.createInstance("motion-light", {
+      zone: setup.zoneId,
+      lights: [setup.lightId],
+      timeout: "5m",
+      maxOnDuration: "1h",
+    });
+
+    // Initial motion → lights on, failsafe started (1h)
+    simulateMotion(setup, true);
+    simulateLightState(setup, "ON");
+    setup.published.length = 0;
+
+    // After 50 min, new motion detection (sensor cycles false → true)
+    vi.advanceTimersByTime(50 * 60 * 1000);
+    simulateMotion(setup, false);
+    simulateMotion(setup, true);
+
+    // At 1h10 from start (but only 20 min since last motion) — no failsafe yet
+    vi.advanceTimersByTime(20 * 60 * 1000);
+    expect(setup.published.find((p) => JSON.parse(p.payload).state === "OFF")).toBeUndefined();
+
+    // At 1h50 from start (1h since last motion) — failsafe fires
+    vi.advanceTimersByTime(40 * 60 * 1000);
+    expect(setup.published.find((p) => JSON.parse(p.payload).state === "OFF")).toBeDefined();
+  });
+
   // ============================================================
   // Backward compatibility: single "light" param
   // ============================================================

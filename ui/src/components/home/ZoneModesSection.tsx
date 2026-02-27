@@ -561,7 +561,7 @@ function OrderValueControl({
           step={1}
           value={numValue}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 h-1 accent-primary"
+          className="flex-1"
         />
         <span className="text-[10px] text-text-secondary tabular-nums w-10 text-right">
           {value || order.min}{order.unit ? ` ${order.unit}` : ""}
@@ -651,7 +651,7 @@ function SmartOrderPicker({
               max={positionOrder.max ?? 100}
               value={Number(orderValue) || 50}
               onChange={(e) => onChangeValue(e.target.value)}
-              className="flex-1 h-1 accent-primary"
+              className="flex-1"
             />
             <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">{orderValue}%</span>
           </div>
@@ -690,7 +690,7 @@ function SmartOrderPicker({
               max={brightnessOrder.max ?? 254}
               value={Number(orderValue) || 0}
               onChange={(e) => onChangeValue(e.target.value)}
-              className="flex-1 h-1 accent-primary"
+              className="flex-1"
             />
             <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">
               {Math.round((Number(orderValue) / (brightnessOrder.max ?? 254)) * 100)}%

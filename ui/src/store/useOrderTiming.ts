@@ -61,7 +61,7 @@ export const useOrderTiming = create<OrderTimingState>((set, get) => ({
 
     console.log(
       `%c[perf] ${alias} round-trip: ${roundTripMs}ms`,
-      "color: #EAB308; font-weight: bold",
+      "color: #FACC15; font-weight: bold",
       { equipmentId, alias, roundTripMs },
     );
 
