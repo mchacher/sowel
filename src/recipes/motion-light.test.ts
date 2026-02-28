@@ -1372,6 +1372,51 @@ describe("MotionLightRecipe", () => {
   // ============================================================
 
   describe("Manual override", () => {
+    it("enters override on manual brightness change", () => {
+      const dimmer = addDimmableLight(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON", dimmer.lightDataId);
+
+      // External brightness change (80 ≠ 150 configured → override)
+      simulateBrightnessChange(setup, dimmer.lightId, dimmer.brightnessDataId, 80);
+
+      // Verify override log
+      const instance = setup.manager.getInstances().find((i) => i.recipeId === "motion-light")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(
+        logs.some(
+          (l) => l.message.includes("Manual brightness change") && l.message.includes("override"),
+        ),
+      ).toBe(true);
+    });
+
+    it("ignores self-triggered brightness changes", () => {
+      const dimmer = addDimmableLight(setup);
+      setup.manager.createInstance("motion-light", {
+        zone: setup.zoneId,
+        lights: [dimmer.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      // Motion turns on lights (sets lastSentBrightness = 150)
+      simulateMotion(setup, true);
+
+      // MQTT echo with same value (150 = 150) — should NOT trigger override
+      simulateBrightnessChange(setup, dimmer.lightId, dimmer.brightnessDataId, 150);
+
+      const instance = setup.manager.getInstances().find((i) => i.recipeId === "motion-light")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(logs.some((l) => l.message.includes("override"))).toBe(false);
+    });
+
     it("motion does not turn on lights during override", () => {
       const button = addButton(setup);
       setup.manager.createInstance("motion-light", {

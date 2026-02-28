@@ -168,7 +168,7 @@ export class PresenceThermostatRecipe extends Recipe {
   // Runtime state
   private currentMode: "comfort" | "eco" = "eco";
   private overrideMode = false;
-  private selfTriggeredUntil = 0;
+  private lastSentSetpoint: number | null = null;
   private ecoTimer: ReturnType<typeof setTimeout> | null = null;
   private preheatCheckTimer: ReturnType<typeof setInterval> | null = null;
   private wasInPreheat = false;
@@ -313,7 +313,7 @@ export class PresenceThermostatRecipe extends Recipe {
     // Reset runtime state
     this.currentMode = "eco";
     this.overrideMode = false;
-    this.selfTriggeredUntil = 0;
+    this.lastSentSetpoint = null;
     this.wasInPreheat = false;
 
     // Subscribe to zone changes (motion)
@@ -327,7 +327,7 @@ export class PresenceThermostatRecipe extends Recipe {
     const unsubSetpoint = ctx.eventBus.onType("equipment.data.changed", (event) => {
       if (event.equipmentId !== this.thermostatId) return;
       if (event.alias !== "setpoint") return;
-      this.onSetpointChanged();
+      this.onSetpointChanged(event.value);
     });
     this.unsubs.push(unsubSetpoint);
 
@@ -356,7 +356,7 @@ export class PresenceThermostatRecipe extends Recipe {
     }
     this.unsubs = [];
     this.overrideMode = false;
-    this.selfTriggeredUntil = 0;
+    this.lastSentSetpoint = null;
   }
 
   // ── Initial sync — force setpoint on activation ─────────
@@ -410,14 +410,12 @@ export class PresenceThermostatRecipe extends Recipe {
     }
   }
 
-  private onSetpointChanged(): void {
-    // Ignore self-triggered changes
-    if (Date.now() < this.selfTriggeredUntil) return;
+  private onSetpointChanged(value: unknown): void {
     if (this.overrideMode) return;
+    // Ignore echo: same value as what the recipe sent
+    if (this.lastSentSetpoint !== null && Number(value) === this.lastSentSetpoint) return;
 
     this.overrideMode = true;
-    this.ctx.state.set("overrideMode", true);
-    this.ctx.notifyStateChanged();
     this.ctx.log("Manual setpoint change detected — entering override mode");
   }
 
@@ -497,7 +495,7 @@ export class PresenceThermostatRecipe extends Recipe {
 
   private setComfort(reason: string): void {
     const target = this.getTargetComfortTemp();
-    this.selfTriggeredUntil = Date.now() + 3000;
+    this.lastSentSetpoint = target;
     try {
       this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", target);
     } catch (err) {
@@ -510,7 +508,7 @@ export class PresenceThermostatRecipe extends Recipe {
   }
 
   private setEco(reason: string): void {
-    this.selfTriggeredUntil = Date.now() + 3000;
+    this.lastSentSetpoint = this.ecoTemp;
     try {
       this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.ecoTemp);
     } catch (err) {
@@ -528,8 +526,6 @@ export class PresenceThermostatRecipe extends Recipe {
   private clearOverrideMode(): void {
     if (!this.overrideMode) return;
     this.overrideMode = false;
-    this.ctx.state.delete("overrideMode");
-    this.ctx.notifyStateChanged();
   }
 
   private startEcoTimerForOverrideClear(): void {

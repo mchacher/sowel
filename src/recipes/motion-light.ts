@@ -170,8 +170,9 @@ export class MotionLightRecipe extends Recipe {
   // Button support
   private buttonIds: string[] = [];
 
-  // Manual override (button-only)
+  // Manual override
   private overrideMode = false;
+  private lastSentBrightness: number | null = null;
 
   validate(params: Record<string, unknown>, ctx: RecipeContext): void {
     const { zone, timeout, luxThreshold, maxOnDuration } = params;
@@ -322,6 +323,7 @@ export class MotionLightRecipe extends Recipe {
 
     // Reset override
     this.overrideMode = false;
+    this.lastSentBrightness = null;
 
     // Listen to zone aggregation changes (for motion + luminosity)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
@@ -348,6 +350,16 @@ export class MotionLightRecipe extends Recipe {
       this.unsubs.push(unsubButton);
     }
 
+    // Listen to brightness changes for manual override detection
+    if (this.brightness !== null) {
+      const unsubBrightness = ctx.eventBus.onType("equipment.data.changed", (event) => {
+        if (!this.lightIds.includes(event.equipmentId)) return;
+        if (event.alias !== "brightness") return;
+        this.onBrightnessChanged(event.value);
+      });
+      this.unsubs.push(unsubBrightness);
+    }
+
     // Force consistent light state on activation — all ON or all OFF
     this.syncLightsOnStart();
   }
@@ -360,6 +372,7 @@ export class MotionLightRecipe extends Recipe {
     }
     this.unsubs = [];
     this.overrideMode = false;
+    this.lastSentBrightness = null;
   }
 
   // ============================================================
@@ -408,6 +421,7 @@ export class MotionLightRecipe extends Recipe {
         // Someone still in the room — cancel any pending override-clear timer
         this.cancelOffTimer();
         this.clearOffTimerState();
+        this.resetFailsafeTimer();
         this.ctx.log("Motion detected but override mode active — ignoring");
       } else {
         // No motion — start timer to clear override when room empties
@@ -546,6 +560,7 @@ export class MotionLightRecipe extends Recipe {
 
     const targetBrightness = this.getTargetBrightness();
     if (targetBrightness !== null) {
+      this.lastSentBrightness = targetBrightness;
       const brightnessErrors = setLightsBrightness(this.lightIds, this.ctx, targetBrightness);
       if (brightnessErrors.length > 0) {
         this.ctx.log(`Error setting brightness: ${brightnessErrors.join("; ")}`, "error");
@@ -588,8 +603,6 @@ export class MotionLightRecipe extends Recipe {
       this.clearFailsafeTimerState();
 
       this.overrideMode = true;
-      this.ctx.state.set("overrideMode", true);
-      this.ctx.notifyStateChanged();
       this.ctx.log("Button pressed — lights off, entering override mode");
 
       // Start timer to clear override when room empties
@@ -602,14 +615,27 @@ export class MotionLightRecipe extends Recipe {
   }
 
   // ============================================================
+  // Brightness override detection
+  // ============================================================
+
+  private onBrightnessChanged(value: unknown): void {
+    if (this.overrideMode) return;
+    // Ignore brightness reports when lights are OFF (Zigbee periodic reporting)
+    if (!isAnyLightOn(this.lightIds, this.ctx)) return;
+    // Ignore echo: same value as what the recipe sent
+    if (this.lastSentBrightness !== null && Number(value) === this.lastSentBrightness) return;
+
+    this.overrideMode = true;
+    this.ctx.log("Manual brightness change detected — entering override mode");
+  }
+
+  // ============================================================
   // Override management
   // ============================================================
 
   private clearOverrideMode(): void {
     if (!this.overrideMode) return;
     this.overrideMode = false;
-    this.ctx.state.delete("overrideMode");
-    this.ctx.notifyStateChanged();
   }
 
   private startOffTimerForOverrideClear(): void {

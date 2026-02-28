@@ -694,11 +694,10 @@ describe("PresenceThermostatRecipe", () => {
       ...BASE_PARAMS,
     });
 
-    simulateMotion(setup, true); // go to comfort
+    simulateMotion(setup, true); // go to comfort (lastSentSetpoint = 21)
     setup.published.length = 0;
 
-    // Wait past self-triggered window
-    vi.advanceTimersByTime(4000);
+    // Manual setpoint change (23 ≠ 21 → override)
     simulateSetpointChange(setup, 23);
 
     // Next motion should be ignored (override)
@@ -717,10 +716,10 @@ describe("PresenceThermostatRecipe", () => {
       ...BASE_PARAMS,
     });
 
-    // Motion on → comfort (this triggers selfTriggeredUntil)
+    // Motion on → comfort (lastSentSetpoint = 21)
     simulateMotion(setup, true);
 
-    // Simulate the echo-back within 3s window
+    // MQTT echo with same value (21 = 21) — should NOT trigger override
     simulateSetpointChange(setup, 21);
 
     // Go to eco and back — should work (no override)
@@ -741,9 +740,8 @@ describe("PresenceThermostatRecipe", () => {
       ...BASE_PARAMS,
     });
 
-    simulateMotion(setup, true); // comfort
-    vi.advanceTimersByTime(4000);
-    simulateSetpointChange(setup, 25); // override
+    simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    simulateSetpointChange(setup, 25); // manual change (25 ≠ 21 → override)
 
     // No motion → start override-clear timer
     simulateMotion(setup, false);
@@ -770,9 +768,8 @@ describe("PresenceThermostatRecipe", () => {
       ...BASE_PARAMS,
     });
 
-    simulateMotion(setup, true); // comfort
-    vi.advanceTimersByTime(4000);
-    simulateSetpointChange(setup, 25); // override
+    simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    simulateSetpointChange(setup, 25); // manual change (25 ≠ 21 → override)
 
     simulateMotion(setup, false); // start override-clear timer
     setup.published.length = 0;
@@ -801,9 +798,8 @@ describe("PresenceThermostatRecipe", () => {
       preheatEnd: "08:00",
     });
 
-    simulateMotion(setup, true); // comfort
-    vi.advanceTimersByTime(4000);
-    simulateSetpointChange(setup, 25); // override
+    simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    simulateSetpointChange(setup, 25); // manual change (25 ≠ 21 → override)
     setup.published.length = 0;
 
     // Advance into preheat window
