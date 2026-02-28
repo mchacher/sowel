@@ -116,9 +116,10 @@ export class Lora2MqttParser {
       const data = JSON.parse(payload.toString());
       if (typeof data !== "object" || data === null) return;
 
-      // Remove internal #tx counter before forwarding to device manager
+      // Remove internal #tx counter and normalize action values
       const cleaned = { ...data };
       delete cleaned["#tx"];
+      if (cleaned.action === "click") cleaned.action = "single";
 
       if (Object.keys(cleaned).length > 0) {
         this.deviceManager.updateDeviceData(

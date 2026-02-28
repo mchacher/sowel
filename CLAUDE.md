@@ -94,6 +94,11 @@ npm test                 # Run all tests
 npm test -- --grep "pattern"  # Run specific tests
 ```
 
+## Git Workflow
+
+- **Feature branches required**: any non-trivial development (new feature, refactoring, multi-file changes) must be done on a dedicated branch, not directly on `main`. Use descriptive branch names like `feat/gate-abstraction` or `fix/rate-limit`.
+- Small, isolated fixes (typo, single-line config change) may go directly on `main`.
+
 ## Implementation Conventions
 
 ### IDs and Data

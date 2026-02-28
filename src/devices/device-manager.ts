@@ -362,7 +362,9 @@ export class DeviceManager {
                   ? "hPa"
                   : category === "luminosity"
                     ? "lx"
-                    : undefined;
+                    : category === "voltage"
+                      ? "V"
+                      : undefined;
         const id = deterministicId(device.id, "data", key);
         this.stmts.insertDeviceData.run({
           id,

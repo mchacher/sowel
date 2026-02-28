@@ -223,6 +223,7 @@
   "controls.gate.closed": "Closed",
   "controls.gate.unknown": "Moving",
   "controls.gate.toggle": "Toggle",
+  "controls.gate.command": "Command",
 
   "sensors.title": "Sensors",
   "sensors.noData": "No sensor data.",
@@ -492,6 +493,7 @@
   "buttonActions.action.single": "Single press",
   "buttonActions.action.double": "Double press",
   "buttonActions.action.hold": "Long press",
+  "buttonActions.action.click": "Click",
 
   "stove.state.off": "Off",
   "stove.state.checking": "Checking",

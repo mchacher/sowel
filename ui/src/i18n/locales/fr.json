@@ -223,6 +223,7 @@
   "controls.gate.closed": "Fermé",
   "controls.gate.unknown": "En mouvement",
   "controls.gate.toggle": "Actionner",
+  "controls.gate.command": "Actionner",
 
   "sensors.title": "Capteurs",
   "sensors.noData": "Aucune donnée capteur.",
@@ -492,6 +493,7 @@
   "buttonActions.action.single": "Appui simple",
   "buttonActions.action.double": "Double appui",
   "buttonActions.action.hold": "Appui long",
+  "buttonActions.action.click": "Clic",
 
   "stove.state.off": "Éteint",
   "stove.state.checking": "Vérification",

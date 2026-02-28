@@ -90,9 +90,9 @@ export async function createServer(deps: ServerDeps) {
     methods: ["GET", "PUT", "POST", "DELETE", "OPTIONS"],
   });
 
-  // Rate limiting (global: 100 req/min per IP)
+  // Rate limiting (global: 300 req/min per IP — SPA makes many parallel calls)
   await app.register(rateLimit, {
-    max: 100,
+    max: 300,
     timeWindow: "1 minute",
   });
 

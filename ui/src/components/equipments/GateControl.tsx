@@ -9,44 +9,23 @@ interface GateControlProps {
   compact?: boolean;
 }
 
-/**
- * Derive gate state from reed-switch data bindings.
- * RS=0 → open (no contact), RS=1 → closed (contact), "unknown" → transitioning.
- */
-function deriveGateState(equipment: EquipmentWithDetails): "open" | "closed" | "unknown" {
-  const rsBindings = equipment.dataBindings.filter(
-    (db) => db.alias.startsWith("RS") || db.key.startsWith("RS"),
-  );
-
-  if (rsBindings.length === 0) return "unknown";
-
-  // If any binding is "unknown", the gate is transitioning
-  if (rsBindings.some((b) => b.value === "unknown")) return "unknown";
-
-  // RS=1 means closed (contact), RS=0 means open (no contact)
-  // If any RS is 0 → gate is open (at least partially)
-  const allClosed = rsBindings.every((b) => b.value === 1 || b.value === true);
-  if (allClosed) return "closed";
-
-  return "open";
-}
-
 export function GateControl({ equipment, onExecuteOrder, compact }: GateControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const toggleBinding = equipment.orderBindings.find((ob) => ob.alias === "toggle");
-  const hasToggle = !!toggleBinding;
-  const enumValues = toggleBinding?.enumValues ?? [];
-  const gateState = deriveGateState(equipment);
+  const commandBinding = equipment.orderBindings.find((ob) => ob.alias === "command");
+  const hasCommand = !!commandBinding;
+  const enumValues = commandBinding?.enumValues ?? [];
+  const stateBinding = equipment.dataBindings.find(
+    (db) => db.alias === "state" && db.category === "gate_state",
+  );
+  const gateState = (stateBinding?.value as string) ?? "unknown";
 
-  const handleToggle = async (value?: string) => {
-    if (executing || !toggleBinding) return;
+  const handleCommand = async (value?: string) => {
+    if (executing || !commandBinding) return;
     setExecuting(true);
     try {
-      // Use provided value, first enum value, or "latch" as fallback
-      const sendValue = value ?? enumValues[0] ?? "latch";
-      await onExecuteOrder("toggle", sendValue);
+      await onExecuteOrder("command", value ?? null);
     } finally {
       setExecuting(false);
     }
@@ -70,17 +49,17 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
           {t(`controls.gate.${gateState}`)}
         </span>
 
-        {/* Toggle button */}
-        {hasToggle && (
+        {/* Command button */}
+        {hasCommand && (
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggle(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCommand(); }}
             disabled={executing}
             className={`
               p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
               bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
-            title={t("controls.gate.toggle")}
+            title={t("controls.gate.command")}
           >
             {executing
               ? <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
@@ -115,32 +94,20 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               : <HelpCircle size={22} strokeWidth={1.5} />
           }
         </div>
-        <div>
-          <div className="text-[16px] font-medium text-text">
-            {t(`controls.gate.${gateState}`)}
-          </div>
-          {/* Reed switch details */}
-          <div className="flex items-center gap-3 text-[12px] text-text-tertiary mt-0.5">
-            {equipment.dataBindings
-              .filter((db) => db.alias.startsWith("RS") || db.key.startsWith("RS"))
-              .map((db) => (
-                <span key={db.id} className="font-mono">
-                  {db.alias}: {db.value === "unknown" ? "?" : db.value === 1 || db.value === true ? t("controls.closed") : t("controls.opened")}
-                </span>
-              ))}
-          </div>
+        <div className="text-[16px] font-medium text-text">
+          {t(`controls.gate.${gateState}`)}
         </div>
       </div>
 
-      {/* Toggle buttons */}
-      {hasToggle && (
+      {/* Command buttons */}
+      {hasCommand && (
         <div className="flex items-center gap-2">
           {enumValues.length > 1 ? (
             // Multiple enum values — show a button for each
             enumValues.map((val) => (
               <button
                 key={val}
-                onClick={() => handleToggle(val)}
+                onClick={() => handleCommand(val)}
                 disabled={executing}
                 className={`
                   flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
@@ -154,9 +121,9 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               </button>
             ))
           ) : (
-            // Single value or no enum — show one toggle button
+            // Single value or no enum — show one command button
             <button
-              onClick={() => handleToggle()}
+              onClick={() => handleCommand()}
               disabled={executing}
               className={`
                 flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
@@ -166,7 +133,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               `}
             >
               <DoorOpen size={16} strokeWidth={1.5} />
-              {executing ? "..." : t("controls.gate.toggle")}
+              {executing ? "..." : t("controls.gate.command")}
             </button>
           )}
         </div>
