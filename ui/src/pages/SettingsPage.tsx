@@ -12,6 +12,8 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  getSettings,
+  updateSettings,
 } from "../api";
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
@@ -38,8 +40,9 @@ export function SettingsPage() {
 
       {/* Two-column grid on desktop, single column on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column: Profile + Preferences + Password */}
+        {/* Left column: Home + Profile + Preferences + Password */}
         <div className="space-y-6">
+          {isAdmin && <HomeSettingsSection />}
           <ProfileSection user={user} onSave={async (displayName) => {
             await updateMe({ displayName });
             await fetchMe();
@@ -73,6 +76,134 @@ export function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Home Settings (location + sunlight offsets)
+// ============================================================
+
+function HomeSettingsSection() {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [sunriseOffset, setSunriseOffset] = useState("30");
+  const [sunsetOffset, setSunsetOffset] = useState("45");
+  const [initial, setInitial] = useState({ latitude: "", longitude: "", sunriseOffset: "30", sunsetOffset: "45" });
+
+  useEffect(() => {
+    getSettings().then((all) => {
+      const lat = all["home.latitude"] ?? "";
+      const lon = all["home.longitude"] ?? "";
+      const sr = all["home.sunriseOffset"] ?? "30";
+      const ss = all["home.sunsetOffset"] ?? "45";
+      setLatitude(lat);
+      setLongitude(lon);
+      setSunriseOffset(sr);
+      setSunsetOffset(ss);
+      setInitial({ latitude: lat, longitude: lon, sunriseOffset: sr, sunsetOffset: ss });
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const dirty = latitude !== initial.latitude || longitude !== initial.longitude
+    || sunriseOffset !== initial.sunriseOffset || sunsetOffset !== initial.sunsetOffset;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateSettings({
+        "home.latitude": latitude,
+        "home.longitude": longitude,
+        "home.sunriseOffset": sunriseOffset,
+        "home.sunsetOffset": sunsetOffset,
+      });
+      setInitial({ latitude, longitude, sunriseOffset, sunsetOffset });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="bg-surface rounded-[10px] border border-border p-5">
+        <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.home")}</h2>
+        <Loader2 size={16} className="animate-spin text-text-tertiary" />
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-surface rounded-[10px] border border-border p-5">
+      <h2 className="text-[14px] font-semibold text-text mb-1">{t("settings.home")}</h2>
+      <p className="text-[12px] text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("settings.latitude")}
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
+              placeholder="48.8566"
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("settings.longitude")}
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+              placeholder="2.3522"
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("settings.sunriseOffset")}
+            </label>
+            <input
+              type="number"
+              value={sunriseOffset}
+              onChange={(e) => setSunriseOffset(e.target.value)}
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            />
+            <p className="text-[11px] text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
+          </div>
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("settings.sunsetOffset")}
+            </label>
+            <input
+              type="number"
+              value={sunsetOffset}
+              onChange={(e) => setSunsetOffset(e.target.value)}
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            />
+            <p className="text-[11px] text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
+          </div>
+        </div>
+        {dirty && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+          >
+            {saving ? t("common.saving") : t("common.save")}
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 

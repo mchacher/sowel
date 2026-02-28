@@ -145,6 +145,9 @@ describe("ZoneAggregator", () => {
         shuttersOpen: 0,
         shuttersTotal: 0,
         averageShutterPosition: null,
+        sunrise: null,
+        sunset: null,
+        isDaylight: null,
       });
     });
 

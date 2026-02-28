@@ -3,13 +3,16 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { SunlightBanner } from "./SunlightBanner";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useDevices } from "../../store/useDevices";
 import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
+import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
 import { LogOut, User } from "lucide-react";
 import { WinchLogo } from "./WinchLogo";
+import { ROOT_ZONE_ID } from "../../lib/constants";
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -20,14 +23,17 @@ export function AppLayout() {
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
+  const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
+  const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
 
   useEffect(() => {
     fetchDevices();
     fetchZones();
     fetchEquipments();
+    fetchAggregation();
     connect();
     return () => disconnect();
-  }, [fetchDevices, fetchZones, fetchEquipments, connect, disconnect]);
+  }, [fetchDevices, fetchZones, fetchEquipments, fetchAggregation, connect, disconnect]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -45,6 +51,10 @@ export function AppLayout() {
             <div className="flex md:hidden items-center gap-2">
               <WinchLogo size={28} />
               <span className="font-semibold text-[15px] text-text">{t("app.name")}</span>
+            </div>
+            {/* Sunlight banner — visible on desktop */}
+            <div className="hidden md:block">
+              <SunlightBanner data={rootAgg} />
             </div>
           </div>
 
