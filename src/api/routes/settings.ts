@@ -1,14 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
+import type { EventBus } from "../../core/event-bus.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 
 interface SettingsDeps {
   settingsManager: SettingsManager;
+  eventBus: EventBus;
   logger: Logger;
 }
 
 export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsDeps): void {
-  const { settingsManager, logger: parentLogger } = deps;
+  const { settingsManager, eventBus, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "settings-routes" });
 
   // GET /api/v1/settings — Get all settings (admin only)
@@ -39,7 +41,9 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsDeps)
     }
 
     settingsManager.setMany(entries);
-    logger.info({ keys: Object.keys(entries) }, "Settings updated");
+    const keys = Object.keys(entries);
+    logger.info({ keys }, "Settings updated");
+    eventBus.emit({ type: "settings.changed", keys });
 
     return { success: true };
   });
