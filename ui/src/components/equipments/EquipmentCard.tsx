@@ -9,6 +9,7 @@ import {
   CircleDot,
   Thermometer,
   CloudSun,
+  DoorOpen,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
@@ -16,6 +17,7 @@ import { LightControl } from "./LightControl";
 import { SensorValues } from "./SensorValues";
 import { ShutterControl } from "./ShutterControl";
 import { ThermostatCard } from "./ThermostatCard";
+import { GateControl } from "./GateControl";
 import { useEquipmentState } from "./useEquipmentState";
 
 const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
@@ -28,6 +30,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   button: <CircleDot size={18} strokeWidth={1.5} />,
   thermostat: <Thermometer size={18} strokeWidth={1.5} />,
   weather: <CloudSun size={18} strokeWidth={1.5} />,
+  gate: <DoorOpen size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -40,6 +43,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   button: "equipments.type.button",
   thermostat: "equipments.type.thermostat",
   weather: "equipments.type.weather",
+  gate: "equipments.type.gate",
 };
 
 interface EquipmentCardProps {
@@ -54,6 +58,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     isShutter,
     isSensor,
     isThermostat,
+    isGate,
     iconElement,
     iconColor,
     sensorBindings,
@@ -117,6 +122,15 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       {/* Thermostat quick control */}
       {isThermostat && equipment.enabled && (
         <ThermostatCard
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* Gate quick control */}
+      {isGate && equipment.enabled && (
+        <GateControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact

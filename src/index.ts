@@ -23,6 +23,7 @@ import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
 import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
 import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
+import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -86,6 +87,14 @@ async function main() {
     logger,
   );
   integrationRegistry.register(netatmoHCIntegration);
+
+  const lora2mqttIntegration = new Lora2MqttIntegration(
+    settingsManager,
+    deviceManager,
+    eventBus,
+    logger,
+  );
+  integrationRegistry.register(lora2mqttIntegration);
 
   // 8. Create Zone Manager & ensure root zone exists
   const zoneManager = new ZoneManager(db, eventBus, logger);

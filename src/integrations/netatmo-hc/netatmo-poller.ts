@@ -176,12 +176,15 @@ export class NetatmoPoller {
       const t0 = Date.now();
 
       // Phase 1: independent discovery calls in parallel
+      let hcActiveIds: Set<string> = new Set();
       const phase1: Promise<void>[] = [];
       if (this.enableHomeControl) {
         phase1.push(
-          this.discoverModules().catch((err) =>
-            this.logger.error({ err }, "Home+Control discovery failed"),
-          ),
+          this.discoverModules()
+            .then((ids) => {
+              hcActiveIds = ids;
+            })
+            .catch((err) => this.logger.error({ err }, "Home+Control discovery failed")),
         );
       }
       if (this.enableWeather) {
@@ -192,6 +195,15 @@ export class NetatmoPoller {
         );
       }
       await Promise.all(phase1);
+
+      // Stale device cleanup AFTER all discovery is complete
+      // (merges HC module names + weather station names to avoid race condition)
+      const allActiveIds = new Set(hcActiveIds);
+      for (const name of this.weatherNames) {
+        allActiveIds.add(name);
+      }
+      this.deviceManager.removeStaleDevices("netatmo_hc", allActiveIds);
+
       const t1 = Date.now();
 
       // Phase 2: status + energy (depend on discovery results)
@@ -219,12 +231,13 @@ export class NetatmoPoller {
     }
   }
 
-  private async discoverModules(): Promise<void> {
+  /** Returns the set of active HC module friendly names discovered. */
+  private async discoverModules(): Promise<Set<string>> {
     const homesData = await this.bridge.getHomesData();
     const home = homesData.body.homes.find((h) => h.id === this.homeId);
     if (!home) {
       this.logger.warn({ homeId: this.homeId }, "Home not found in homesdata");
-      return;
+      return new Set<string>();
     }
 
     const modules = home.modules ?? [];
@@ -235,7 +248,7 @@ export class NetatmoPoller {
 
     if (modules.length === 0) {
       this.logger.warn("Legrand H+C discovery: no modules found — check API response");
-      return;
+      return new Set<string>();
     }
 
     const activeIds = new Set<string>();
@@ -274,13 +287,9 @@ export class NetatmoPoller {
       "Legrand H+C discovery complete",
     );
 
-    // Add weather names to active set so they don't get removed
-    for (const name of this.weatherNames) {
-      activeIds.add(name);
-    }
-
-    // Remove stale devices that no longer exist
-    this.deviceManager.removeStaleDevices("netatmo_hc", activeIds);
+    // Weather names are merged and stale cleanup is done in poll()
+    // after all Phase 1 discovery is complete (avoids race condition).
+    return activeIds;
   }
 
   private async pollStatus(expected?: {

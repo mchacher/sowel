@@ -183,6 +183,7 @@
   "equipments.type.button": "Bouton / Télécommande",
   "equipments.type.thermostat": "Thermostat",
   "equipments.type.weather": "Station Météo",
+  "equipments.type.gate": "Ouvrant",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
@@ -218,6 +219,10 @@
   "controls.closed": "Fermé",
   "controls.on": "Marche",
   "controls.off": "Arrêt",
+  "controls.gate.open": "Ouvert",
+  "controls.gate.closed": "Fermé",
+  "controls.gate.unknown": "En mouvement",
+  "controls.gate.toggle": "Actionner",
 
   "sensors.title": "Capteurs",
   "sensors.noData": "Aucune donnée capteur.",

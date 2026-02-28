@@ -26,7 +26,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     return equipment;
   });
 
-  // POST /api/v1/equipments — Create equipment
+  // POST /api/v1/equipments — Create equipment (with optional auto-binding from devices)
   app.post<{
     Body: {
       name: string;
@@ -34,9 +34,10 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       zoneId: string;
       icon?: string;
       description?: string;
+      deviceIds?: string[];
     };
   }>("/api/v1/equipments", async (request, reply) => {
-    const { name, type, zoneId, icon, description } = request.body ?? {};
+    const { name, type, zoneId, icon, description, deviceIds } = request.body ?? {};
 
     if (!name?.trim()) {
       return reply.code(400).send({ error: "Name is required" });
@@ -55,6 +56,18 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     }
 
     try {
+      if (deviceIds && deviceIds.length > 0) {
+        const equipment = equipmentManager.createWithAutoBindings({
+          name: name.trim(),
+          type,
+          zoneId,
+          icon,
+          description,
+          deviceIds,
+        });
+        return reply.code(201).send(equipment);
+      }
+
       const equipment = equipmentManager.create({
         name: name.trim(),
         type,

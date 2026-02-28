@@ -99,6 +99,14 @@ export const PROPERTY_TO_CATEGORY: Record<string, DataCategory> = {
 
   // Button / remote action
   action: "action",
+
+  // LoRa sensors (lora2mqtt data keys)
+  BMP180_T: "temperature",
+  BMP180_P: "pressure",
+  SCD30_T: "temperature",
+  SCD30_CO2: "co2",
+  SCD30_HR: "humidity",
+  vcc: "battery",
 };
 
 // ============================================================
@@ -112,6 +120,16 @@ export const Z2M_TYPE_TO_DATA_TYPE: Record<string, DataType> = {
   text: "text",
   composite: "json",
   list: "json",
+};
+
+// ============================================================
+// LoRa2MQTT type → DataType mapping
+// ============================================================
+
+export const LORA_TYPE_TO_DATA_TYPE: Record<string, DataType> = {
+  numeric: "number",
+  binary: "boolean",
+  enum: "enum",
 };
 
 // ============================================================
