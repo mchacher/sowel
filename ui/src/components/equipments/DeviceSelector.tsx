@@ -14,7 +14,7 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
   button: ["action"],
   weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise"],
-  gate: ["generic"],
+  gate: ["generic", "contact_door"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */

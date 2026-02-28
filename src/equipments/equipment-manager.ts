@@ -68,7 +68,7 @@ export class EquipmentManager {
   private stmts: ReturnType<typeof this.prepareStatements>;
   private unsubscribe: (() => void) | null = null;
 
-  /** Gate equipments with a pending toggle — state is "unknown" until next sensor update */
+  /** Gate equipments with a pending command — state is "unknown" until next sensor update */
   private pendingToggles = new Set<string>();
 
   constructor(
@@ -178,6 +178,14 @@ export class EquipmentManager {
          WHERE ob.equipment_id = ? AND ob.alias = ?`,
       ),
 
+      // Raw data bindings with device_data values (for gate state derivation — no recursion)
+      getRawDataBindingsForEquipment: this.db.prepare(
+        `SELECT db.alias, dd.key, dd.category, dd.value
+         FROM data_bindings db
+         JOIN device_data dd ON db.device_data_id = dd.id
+         WHERE db.equipment_id = ?`,
+      ),
+
       // Validation helpers
       checkZoneExists: this.db.prepare("SELECT id FROM zones WHERE id = ?"),
       checkDeviceDataExists: this.db.prepare("SELECT id FROM device_data WHERE id = ?"),
@@ -219,7 +227,7 @@ export class EquipmentManager {
   /**
    * Create equipment and auto-bind all data/orders from the given devices.
    * Data keys get a binding with alias = key name.
-   * Order keys get a binding with alias = "toggle" (gate) or key name (other types).
+   * Order keys get a binding with alias = "command" (gate) or key name (other types).
    */
   createWithAutoBindings(
     input: CreateEquipmentInput & { deviceIds: string[] },
@@ -244,7 +252,7 @@ export class EquipmentManager {
 
       // Bind all device orders (commands)
       for (const order of device.orders) {
-        const alias = input.type === "gate" ? "toggle" : order.key;
+        const alias = input.type === "gate" ? "command" : order.key;
         try {
           this.addOrderBinding(equipment.id, order.id, alias);
         } catch {
@@ -379,7 +387,16 @@ export class EquipmentManager {
 
   getDataBindingsWithValues(equipmentId: string): DataBindingWithValue[] {
     const rows = this.stmts.getDataBindingsWithValues.all(equipmentId) as DataBindingJoinRow[];
-    return rows.map(rowToDataBindingWithValue);
+    const bindings = rows.map(rowToDataBindingWithValue);
+
+    // Inject virtual gate state binding
+    const equipment = this.getById(equipmentId);
+    if (equipment?.type === "gate") {
+      const state = this.deriveGateState(equipmentId);
+      bindings.unshift(this.buildGateStateBinding(equipmentId, state));
+    }
+
+    return bindings;
   }
 
   // ============================================================
@@ -448,6 +465,22 @@ export class EquipmentManager {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
     }
 
+    // Resolve value: if null/undefined/empty, use the first enum value from the order binding
+    let resolvedValue = value;
+    if (resolvedValue === null || resolvedValue === undefined || resolvedValue === "") {
+      const firstBinding = bindings[0];
+      if (firstBinding.enum_values) {
+        try {
+          const enumVals = JSON.parse(firstBinding.enum_values);
+          if (Array.isArray(enumVals) && enumVals.length > 0) {
+            resolvedValue = enumVals[0];
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+
     // Dispatch to all bound device orders via their integration plugins
     for (const binding of bindings) {
       const device = this.deviceManager.getById(binding.device_id);
@@ -474,7 +507,7 @@ export class EquipmentManager {
         }
       }
 
-      integration.executeOrder(device, dispatchConfig, value).catch((err) => {
+      integration.executeOrder(device, dispatchConfig, resolvedValue).catch((err) => {
         this.logger.error(
           { err, equipmentId, alias, deviceId: device.id },
           "Integration order dispatch failed",
@@ -488,27 +521,27 @@ export class EquipmentManager {
     }
 
     this.logger.info(
-      { equipmentId, alias, value, targets: bindings.length },
+      { equipmentId, alias, value: resolvedValue, targets: bindings.length },
       "Equipment order executed",
     );
-    this.eventBus.emit({ type: "equipment.order.executed", equipmentId, orderAlias: alias, value });
+    this.eventBus.emit({
+      type: "equipment.order.executed",
+      equipmentId,
+      orderAlias: alias,
+      value: resolvedValue,
+    });
 
-    // Gate toggle: mark state as "unknown" until next sensor update
-    if (equipment.type === "gate" && alias === "toggle") {
+    // Gate command: mark state as "unknown" until next sensor update
+    if (equipment.type === "gate" && alias === "command") {
       this.pendingToggles.add(equipmentId);
-      const dataBindings = this.stmts.getDataBindingsByEquipment.all(
+      this.eventBus.emit({
+        type: "equipment.data.changed",
         equipmentId,
-      ) as DataBindingRow[];
-      for (const binding of dataBindings) {
-        this.eventBus.emit({
-          type: "equipment.data.changed",
-          equipmentId,
-          alias: binding.alias,
-          value: "unknown",
-          previous: undefined,
-        });
-      }
-      this.logger.debug({ equipmentId }, "Gate toggle — state set to unknown");
+        alias: "state",
+        value: "unknown",
+        previous: undefined,
+      });
+      this.logger.debug({ equipmentId }, "Gate command — state set to unknown");
     }
   }
 
@@ -577,6 +610,86 @@ export class EquipmentManager {
   }
 
   // ============================================================
+  // Gate state derivation (virtual data binding)
+  // ============================================================
+
+  /**
+   * Derive abstract gate state from raw device bindings.
+   * - LoRa: RS keys (reed switches) — RS=1/true → closed, RS=0/false → open
+   * - Zigbee: contact_door category — true → closed, false → open
+   * - Pending toggle → "unknown"
+   */
+  private deriveGateState(equipmentId: string): "open" | "closed" | "unknown" {
+    if (this.pendingToggles.has(equipmentId)) return "unknown";
+
+    const rows = this.stmts.getRawDataBindingsForEquipment.all(equipmentId) as {
+      alias: string;
+      key: string;
+      category: string;
+      value: string | null;
+    }[];
+
+    // Strategy 1: LoRa reed switches (key starts with RS)
+    const rsRows = rows.filter((r) => r.key.startsWith("RS"));
+    if (rsRows.length > 0) {
+      for (const r of rsRows) {
+        let v: unknown = null;
+        if (r.value !== null) {
+          try {
+            v = JSON.parse(r.value);
+          } catch {
+            v = r.value;
+          }
+        }
+        if (v === "unknown") return "unknown";
+        // RS=0/false → open (no contact)
+        if (v === 0 || v === false) return "open";
+      }
+      return "closed";
+    }
+
+    // Strategy 2: Zigbee contact sensor
+    const contactRows = rows.filter((r) => r.category === "contact_door");
+    if (contactRows.length > 0) {
+      for (const r of contactRows) {
+        let v: unknown = null;
+        if (r.value !== null) {
+          try {
+            v = JSON.parse(r.value);
+          } catch {
+            v = r.value;
+          }
+        }
+        if (v === true) return "closed";
+        if (v === false) return "open";
+      }
+    }
+
+    return "unknown";
+  }
+
+  /** Build a virtual DataBindingWithValue for gate state. */
+  private buildGateStateBinding(
+    equipmentId: string,
+    state: "open" | "closed" | "unknown",
+  ): DataBindingWithValue {
+    return {
+      id: `virtual:gate_state:${equipmentId}`,
+      equipmentId,
+      deviceDataId: "",
+      alias: "state",
+      deviceId: "",
+      deviceName: "",
+      key: "gate_state",
+      type: "enum" as DataType,
+      category: "gate_state" as DataCategory,
+      value: state,
+      unit: undefined,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
+  // ============================================================
   // Reactive pipeline: device.data.updated -> equipment.data.changed
   // ============================================================
 
@@ -584,6 +697,8 @@ export class EquipmentManager {
     const bindings = this.stmts.getDataBindingsByDeviceData.all(dataId) as DataBindingRow[];
 
     for (const binding of bindings) {
+      const equipment = this.getById(binding.equipment_id);
+
       // Clear pending toggle — sensor confirmed new state
       if (this.pendingToggles.has(binding.equipment_id)) {
         this.pendingToggles.delete(binding.equipment_id);
@@ -593,6 +708,7 @@ export class EquipmentManager {
         );
       }
 
+      // Emit raw binding change
       this.eventBus.emit({
         type: "equipment.data.changed",
         equipmentId: binding.equipment_id,
@@ -600,6 +716,18 @@ export class EquipmentManager {
         value,
         previous,
       });
+
+      // For gates, also emit derived abstract state
+      if (equipment?.type === "gate") {
+        const derivedState = this.deriveGateState(binding.equipment_id);
+        this.eventBus.emit({
+          type: "equipment.data.changed",
+          equipmentId: binding.equipment_id,
+          alias: "state",
+          value: derivedState,
+          previous: undefined,
+        });
+      }
     }
   }
 }

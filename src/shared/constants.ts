@@ -106,7 +106,7 @@ export const PROPERTY_TO_CATEGORY: Record<string, DataCategory> = {
   SCD30_T: "temperature",
   SCD30_CO2: "co2",
   SCD30_HR: "humidity",
-  vcc: "battery",
+  vcc: "voltage",
 };
 
 // ============================================================

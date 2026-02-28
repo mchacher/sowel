@@ -69,9 +69,10 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       : TYPE_ICONS[equipment.type];
 
   // Gate state for icon color
-  const gateIsOpen = isGate && equipment.dataBindings
-    .filter((db) => db.alias.startsWith("RS") || db.key.startsWith("RS"))
-    .some((b) => b.value === 0 || b.value === false);
+  const gateStateBinding = isGate
+    ? equipment.dataBindings.find((db) => db.alias === "state" && db.category === "gate_state")
+    : null;
+  const gateIsOpen = gateStateBinding?.value === "open";
 
   const iconColor = isSensor
     ? getSensorIconColor(equipment.dataBindings)

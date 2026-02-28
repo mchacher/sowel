@@ -31,6 +31,7 @@ export type DataCategory =
   | "rain"
   | "wind"
   | "action"
+  | "gate_state"
   | "generic";
 
 // ============================================================

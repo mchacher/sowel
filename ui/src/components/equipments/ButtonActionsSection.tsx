@@ -5,9 +5,22 @@ import { getButtonActionBindings, addButtonActionBinding, updateButtonActionBind
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
-import type { ButtonActionBinding, ButtonEffectType } from "../../types";
+import { useZones } from "../../store/useZones";
+import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "../../types";
 
 const BUTTON_ACTIONS = ["single", "double", "hold"] as const;
+
+function flattenZones(tree: ZoneWithChildren[]): { id: string; name: string }[] {
+  const result: { id: string; name: string }[] = [];
+  const walk = (nodes: ZoneWithChildren[]) => {
+    for (const z of nodes) {
+      result.push({ id: z.id, name: z.name });
+      walk(z.children);
+    }
+  };
+  walk(tree);
+  return result;
+}
 
 interface ButtonActionsSectionProps {
   equipmentId: string;
@@ -18,6 +31,9 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
   const modes = useModes((s) => s.modes);
   const fetchModes = useModes((s) => s.fetchModes);
   const equipments = useEquipments((s) => s.equipments);
+  const zoneTree = useZones((s) => s.tree);
+  // Flatten zone tree for name lookup
+  const zones = flattenZones(zoneTree);
   const instances = useRecipes((s) => s.instances);
 
   const [bindings, setBindings] = useState<ButtonActionBinding[]>([]);
@@ -81,7 +97,11 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
       }
       case "equipment_order": {
         const eq = equipments.find((e) => e.id === binding.config.equipmentId);
-        return `${t("buttonActions.effectType.equipment_order")} → ${eq?.name ?? String(binding.config.equipmentId)} · ${String(binding.config.orderAlias)} = ${JSON.stringify(binding.config.value)}`;
+        const zoneName = eq ? zones.find((z) => z.id === eq.zoneId)?.name : undefined;
+        const eqName = eq ? (zoneName ? `${zoneName} — ${eq.name}` : eq.name) : String(binding.config.equipmentId);
+        const val = binding.config.value;
+        const valueStr = val != null && val !== "" ? ` = ${val}` : "";
+        return `${t("buttonActions.effectType.equipment_order")} → ${eqName} · ${String(binding.config.orderAlias)}${valueStr}`;
       }
       case "recipe_toggle": {
         const inst = instances.find((i) => i.id === binding.config.instanceId);
@@ -134,6 +154,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
                     key={binding.id}
                     modes={modes}
                     equipments={equipments}
+                    zones={zones}
                     instances={instances}
                     initial={binding}
                     onSubmit={async (data) => handleEdit(binding.id, data)}
@@ -183,6 +204,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
                     key={binding.id}
                     modes={modes}
                     equipments={equipments}
+                    zones={zones}
                     instances={instances}
                     initial={binding}
                     onSubmit={async (data) => handleEdit(binding.id, data)}
@@ -220,6 +242,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
         <AddEffectForm
           modes={modes}
           equipments={equipments}
+          zones={zones}
           instances={instances}
           onSubmit={handleAdd}
           onCancel={() => setShowAddForm(false)}
@@ -232,19 +255,26 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
 function AddEffectForm({
   modes,
   equipments,
+  zones,
   instances,
   initial,
   onSubmit,
   onCancel,
 }: {
   modes: { id: string; name: string; active: boolean }[];
-  equipments: { id: string; name: string; type: string; orderBindings: { alias: string }[] }[];
+  equipments: { id: string; name: string; type: string; zoneId: string; orderBindings: { alias: string; type?: string; enumValues?: string[]; min?: number; max?: number }[] }[];
+  zones: { id: string; name: string }[];
   instances: { id: string; recipeId: string }[];
   initial?: ButtonActionBinding;
   onSubmit: (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
+  const zoneMap = new Map(zones.map((z) => [z.id, z.name]));
+  const eqLabel = (eq: { name: string; zoneId: string }) => {
+    const zoneName = zoneMap.get(eq.zoneId);
+    return zoneName ? `${zoneName} — ${eq.name}` : eq.name;
+  };
   const [actionValue, setActionValue] = useState(initial?.actionValue ?? "single");
   const [effectType, setEffectType] = useState<ButtonEffectType>(initial?.effectType ?? "mode_activate");
   const [saving, setSaving] = useState(false);
@@ -300,9 +330,13 @@ function AddEffectForm({
           config = { modeAId, modeBId };
           break;
         case "equipment_order": {
-          let parsedValue: unknown;
-          try { parsedValue = JSON.parse(orderValue); } catch { parsedValue = orderValue; }
-          config = { equipmentId: targetEquipmentId, orderAlias, value: parsedValue };
+          // Only send value when user explicitly chose one (multi-enum or numeric)
+          // null → backend auto-resolves from single enum or order default
+          let parsedValue: unknown = null;
+          if (orderValue !== "") {
+            try { parsedValue = JSON.parse(orderValue); } catch { parsedValue = orderValue; }
+          }
+          config = { equipmentId: targetEquipmentId, orderAlias, value: parsedValue || null };
           break;
         }
         case "recipe_toggle":
@@ -316,6 +350,8 @@ function AddEffectForm({
   };
 
   const selectedEquipment = equipments.find((e) => e.id === targetEquipmentId);
+  const selectedOrder = selectedEquipment?.orderBindings.find((o) => o.alias === orderAlias);
+  const enumVals = selectedOrder?.enumValues ?? [];
 
   const seg = (active: boolean, pos: "first" | "mid" | "last") => {
     const r = pos === "first" ? "rounded-l-[4px]" : pos === "last" ? "rounded-r-[4px]" : "";
@@ -427,44 +463,88 @@ function AddEffectForm({
             </label>
             <select
               value={targetEquipmentId}
-              onChange={(e) => { setTargetEquipmentId(e.target.value); setOrderAlias(""); setOrderValue(""); }}
+              onChange={(e) => {
+                const eqId = e.target.value;
+                setTargetEquipmentId(eqId);
+                // Auto-select order + value if equipment has exactly one order binding
+                const eq = equipments.find((x) => x.id === eqId);
+                const orders = eq?.orderBindings ?? [];
+                if (orders.length === 1) {
+                  setOrderAlias(orders[0].alias);
+                  setOrderValue("");
+                } else {
+                  setOrderAlias("");
+                  setOrderValue("");
+                }
+              }}
               className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {equipments.filter((eq) => eq.orderBindings.length > 0).map((eq) => (
-                <option key={eq.id} value={eq.id}>{eq.name}</option>
+                <option key={eq.id} value={eq.id}>{eqLabel(eq)}</option>
               ))}
             </select>
           </div>
           {selectedEquipment && (
             <>
-              <div>
-                <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-                  {t("modes.form.orderAlias")}
-                </label>
-                <select
-                  value={orderAlias}
-                  onChange={(e) => setOrderAlias(e.target.value)}
-                  className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
-                >
-                  <option value="">{t("common.select")}</option>
-                  {selectedEquipment.orderBindings.map((o) => (
-                    <option key={o.alias} value={o.alias}>{o.alias}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-                  {t("modes.form.actionValuePlaceholder")}
-                </label>
-                <input
-                  type="text"
-                  value={orderValue}
-                  onChange={(e) => setOrderValue(e.target.value)}
-                  placeholder={t("modes.form.actionValuePlaceholder")}
-                  className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
-                />
-              </div>
+              {/* Command: hidden if single order (auto-selected), select if 2+ */}
+              {selectedEquipment.orderBindings.length > 1 && (
+                <div>
+                  <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                    {t("modes.form.orderAlias")}
+                  </label>
+                  <select
+                    value={orderAlias}
+                    onChange={(e) => {
+                      const alias = e.target.value;
+                      setOrderAlias(alias);
+                      // Pre-select value if single enum
+                      setOrderValue("");
+                    }}
+                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                  >
+                    <option value="">{t("common.select")}</option>
+                    {selectedEquipment.orderBindings.map((o) => (
+                      <option key={o.alias} value={o.alias}>{o.alias}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Value: select for 2+ enums, number input for numeric, hidden for single enum (auto-resolved) */}
+              {enumVals.length > 1 ? (
+                <div>
+                  <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                    {t("modes.form.actionValuePlaceholder")}
+                  </label>
+                  <select
+                    value={orderValue}
+                    onChange={(e) => setOrderValue(e.target.value)}
+                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                  >
+                    <option value="">{t("common.select")}</option>
+                    {enumVals.map((v) => (
+                      <option key={v} value={JSON.stringify(v)}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : selectedOrder?.type === "number" ? (
+                <div>
+                  <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                    {t("modes.form.actionValuePlaceholder")}
+                    {selectedOrder.min != null && selectedOrder.max != null && (
+                      <span className="ml-1 font-normal">({selectedOrder.min}–{selectedOrder.max})</span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    value={orderValue}
+                    onChange={(e) => setOrderValue(e.target.value)}
+                    min={selectedOrder.min}
+                    max={selectedOrder.max}
+                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                  />
+                </div>
+              ) : null}
             </>
           )}
         </div>

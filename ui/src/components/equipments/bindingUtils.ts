@@ -18,7 +18,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   button: ["action", "battery"],
   thermostat: ["temperature", "generic"],
   weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise", "battery"],
-  gate: ["generic"],
+  gate: ["generic", "contact_door"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -31,7 +31,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   button: [],
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
   weather: [],
-  gate: ["R1", "R2", "R3", "R4"],
+  gate: ["R1", "R2", "R3", "R4", "command"],
 };
 
 /**
@@ -46,10 +46,10 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
     insideTemperature: "temperature",
   },
   gate: {
-    R1: "toggle",
-    R2: "toggle",
-    R3: "toggle",
-    R4: "toggle",
+    R1: "command",
+    R2: "command",
+    R3: "command",
+    R4: "command",
   },
 };
 
