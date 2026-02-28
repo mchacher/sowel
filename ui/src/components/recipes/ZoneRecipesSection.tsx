@@ -4,6 +4,7 @@ import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRigh
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
+import { useZoneAggregation } from "../../store/useZoneAggregation";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
@@ -113,6 +114,7 @@ function RecipeInstanceRow({
   const getLog = useRecipes((s) => s.getLog);
   const allInstances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
+  const zoneAggregation = useZoneAggregation((s) => s.data);
   const [showLog, setShowLog] = useState(false);
   const [logs, setLogs] = useState<RecipeLogEntry[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -168,13 +170,15 @@ function RecipeInstanceRow({
   };
 
   const hasChanges = useMemo(() => {
-    if (!editing) return false;
-    for (const [key, val] of Object.entries(instance.params)) {
+    if (!editing || !recipe) return false;
+    for (const slot of recipe.slots) {
+      if (slot.id === "zone") continue;
+      const val = instance.params[slot.id];
       const original = Array.isArray(val) ? val.join(",") : String(val ?? "");
-      if ((editParams[key] ?? "") !== original) return true;
+      if ((editParams[slot.id] ?? "") !== original) return true;
     }
     return false;
-  }, [editing, editParams, instance.params]);
+  }, [editing, editParams, instance.params, recipe]);
 
   const handleStartEdit = () => {
     if (editing) {
@@ -183,9 +187,17 @@ function RecipeInstanceRow({
       return;
     }
     const params: Record<string, string> = {};
+    // Initialize from existing instance params
     for (const [key, val] of Object.entries(instance.params)) {
-      // Store array values as comma-separated for the form
       params[key] = Array.isArray(val) ? val.join(",") : String(val ?? "");
+    }
+    // Ensure all recipe slots have a value (for new slots not yet in params)
+    if (recipe) {
+      for (const slot of recipe.slots) {
+        if (!(slot.id in params)) {
+          params[slot.id] = slot.defaultValue !== undefined ? String(slot.defaultValue) : "";
+        }
+      }
     }
     setEditParams(params);
     setEditError("");
@@ -211,7 +223,9 @@ function RecipeInstanceRow({
         return;
       }
       // Convert comma-separated string back to array for list slots
-      if (slot.list && value) {
+      if (slot.type === "boolean") {
+        finalParams[slot.id] = value === "true";
+      } else if (slot.list && value) {
         finalParams[slot.id] = value.split(",").filter(Boolean);
       } else {
         finalParams[slot.id] = value;
@@ -256,6 +270,15 @@ function RecipeInstanceRow({
       }
       return true;
     });
+  };
+
+  // Hide luxThreshold when zone has no lux sensor
+  const shouldShowSlot = (slotId: string): boolean => {
+    if (slotId === "luxThreshold") {
+      const agg = zoneAggregation[zoneId];
+      return agg?.luminosity !== undefined && agg?.luminosity !== null;
+    }
+    return true;
   };
 
   // Build a human-readable summary of params
@@ -367,9 +390,21 @@ function RecipeInstanceRow({
         <div className="px-4 pb-3">
           <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3">
             {recipe.slots
-              .filter((slot) => slot.id !== "zone")
+              .filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id))
               .map((slot) => (
                 <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"}`}>
+                  {slot.type === "boolean" ? (
+                    <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                      <input
+                        type="checkbox"
+                        checked={editParams[slot.id] === "true"}
+                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.checked ? "true" : "false" })}
+                        className="accent-primary"
+                      />
+                      {recipeSlotName(recipe, slot, lang)}
+                    </label>
+                  ) : (
+                  <>
                   <label className={`block text-[11px] uppercase tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
                     {recipeSlotName(recipe, slot, lang)}
                   </label>
@@ -427,6 +462,8 @@ function RecipeInstanceRow({
                       placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
                       className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                     />
+                  )}
+                  </>
                   )}
                 </div>
               ))}
@@ -844,6 +881,7 @@ function AddRecipeForm({
   const createInstance = useRecipes((s) => s.createInstance);
   const instances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
+  const zoneAggregation = useZoneAggregation((s) => s.data);
   const [step, setStep] = useState<WizardStep>("choose");
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
   const [params, setParams] = useState<Record<string, string>>({});
@@ -899,6 +937,15 @@ function AddRecipeForm({
     return true;
   };
 
+  // Hide luxThreshold when zone has no lux sensor
+  const shouldShowSlot = (slotId: string): boolean => {
+    if (slotId === "luxThreshold") {
+      const agg = zoneAggregation[zoneId];
+      return agg?.luminosity !== undefined && agg?.luminosity !== null;
+    }
+    return true;
+  };
+
   // Initialize default params when recipe is selected
   useEffect(() => {
     if (!selectedRecipe) return;
@@ -940,7 +987,9 @@ function AddRecipeForm({
         setSubmitting(false);
         return;
       }
-      if (slot.list && value) {
+      if (slot.type === "boolean") {
+        finalParams[slot.id] = value === "true";
+      } else if (slot.list && value) {
         finalParams[slot.id] = value.split(",").filter(Boolean);
       } else {
         finalParams[slot.id] = value;
@@ -1056,9 +1105,21 @@ function AddRecipeForm({
           <p className="text-[11px] text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
 
           {selectedRecipe.slots
-            .filter((slot) => slot.id !== "zone")
+            .filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id))
             .map((slot) => (
               <div key={slot.id} className="mb-3">
+                {slot.type === "boolean" ? (
+                  <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                    <input
+                      type="checkbox"
+                      checked={params[slot.id] === "true"}
+                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.checked ? "true" : "false" })}
+                      className="accent-primary"
+                    />
+                    {recipeSlotName(selectedRecipe, slot, lang)}
+                  </label>
+                ) : (
+                <>
                 <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
                   {recipeSlotName(selectedRecipe, slot, lang)}
                 </label>
@@ -1118,6 +1179,8 @@ function AddRecipeForm({
                   />
                 )}
                 <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                </>
+                )}
               </div>
             ))}
 

@@ -11,6 +11,7 @@ import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { MotionLightRecipe } from "./recipes/motion-light.js";
+import { MotionLightDimmableRecipe } from "./recipes/motion-light-dimmable.js";
 import { SwitchLightRecipe } from "./recipes/switch-light.js";
 import { PresenceThermostatRecipe } from "./recipes/presence-thermostat.js";
 import { UserManager } from "./auth/user-manager.js";
@@ -125,6 +126,7 @@ async function main() {
     logger,
   );
   recipeManager.register(MotionLightRecipe);
+  recipeManager.register(MotionLightDimmableRecipe);
   recipeManager.register(SwitchLightRecipe);
   recipeManager.register(PresenceThermostatRecipe);
 
