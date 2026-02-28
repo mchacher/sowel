@@ -695,6 +695,7 @@ describe("PresenceThermostatRecipe", () => {
     });
 
     simulateMotion(setup, true); // go to comfort (lastSentSetpoint = 21)
+    vi.advanceTimersByTime(6000); // wait past grace period
     setup.published.length = 0;
 
     // Manual setpoint change (23 ≠ 21 → override)
@@ -733,6 +734,31 @@ describe("PresenceThermostatRecipe", () => {
     expect(setpoints).toContain(21); // comfort works — not in override
   });
 
+  it("ignores setpoint echo during grace period after command", () => {
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+    });
+
+    // Motion → comfort (setpoint=21, starts 5s grace)
+    simulateMotion(setup, true);
+
+    // Device echoes previous setpoint (17) within grace window — should NOT trigger override
+    vi.advanceTimersByTime(1000);
+    simulateSetpointChange(setup, 17);
+
+    // Go to eco and back — should work (no override)
+    simulateMotion(setup, false);
+    vi.advanceTimersByTime(30 * 60 * 1000 + 100);
+    setup.published.length = 0;
+
+    simulateMotion(setup, true);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(21); // comfort works — not in override
+  });
+
   it("clears override after absence timeout", () => {
     setup.manager.createInstance("presence-thermostat", {
       zone: setup.zoneId,
@@ -741,6 +767,7 @@ describe("PresenceThermostatRecipe", () => {
     });
 
     simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    vi.advanceTimersByTime(6000); // wait past grace period
     simulateSetpointChange(setup, 25); // manual change (25 ≠ 21 → override)
 
     // No motion → start override-clear timer
@@ -769,6 +796,7 @@ describe("PresenceThermostatRecipe", () => {
     });
 
     simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    vi.advanceTimersByTime(6000); // wait past grace period
     simulateSetpointChange(setup, 25); // manual change (25 ≠ 21 → override)
 
     simulateMotion(setup, false); // start override-clear timer
@@ -799,6 +827,7 @@ describe("PresenceThermostatRecipe", () => {
     });
 
     simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    vi.advanceTimersByTime(6000); // wait past grace period
     simulateSetpointChange(setup, 25); // manual change (25 ≠ 21 → override)
     setup.published.length = 0;
 
