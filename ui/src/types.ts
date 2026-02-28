@@ -144,7 +144,8 @@ export type EquipmentType =
   | "sensor"
   | "button"
   | "thermostat"
-  | "weather";
+  | "weather"
+  | "gate";
 
 export interface Equipment {
   id: string;

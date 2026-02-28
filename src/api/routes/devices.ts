@@ -53,6 +53,54 @@ export function registerDeviceRoutes(app: FastifyInstance, deps: DevicesDeps): v
     return reply.code(204).send();
   });
 
+  // GET /api/v1/devices/suggest — Suggest compatible devices for an equipment type
+  app.get<{ Querystring: { type?: string } }>("/api/v1/devices/suggest", async (request, reply) => {
+    const eqType = request.query.type;
+    if (!eqType) {
+      return reply.code(400).send({ error: "Query parameter 'type' is required" });
+    }
+
+    const allDevices = deviceManager.getAllWithData();
+    const suggestions: {
+      device: { id: string; name: string; source: string };
+      completeness: "complete" | "state_only" | "command_only";
+      stateKeys: string[];
+      commandKeys: string[];
+    }[] = [];
+
+    for (const device of allDevices) {
+      const stateKeys = device.data.map((d) => d.key);
+      const commandKeys = device.orders.map((o) => o.key);
+
+      if (eqType === "gate") {
+        // Gate needs at least state or command capability
+        if (stateKeys.length === 0 && commandKeys.length === 0) continue;
+
+        let completeness: "complete" | "state_only" | "command_only";
+        if (stateKeys.length > 0 && commandKeys.length > 0) {
+          completeness = "complete";
+        } else if (stateKeys.length > 0) {
+          completeness = "state_only";
+        } else {
+          completeness = "command_only";
+        }
+
+        suggestions.push({
+          device: { id: device.id, name: device.name, source: device.source },
+          completeness,
+          stateKeys,
+          commandKeys,
+        });
+      }
+    }
+
+    // Sort: complete first, then state_only, then command_only
+    const order = { complete: 0, state_only: 1, command_only: 2 };
+    suggestions.sort((a, b) => order[a.completeness] - order[b.completeness]);
+
+    return suggestions;
+  });
+
   // GET /api/v1/devices/:id/raw — Get raw zigbee2mqtt expose data
   app.get<{ Params: { id: string } }>("/api/v1/devices/:id/raw", async (request, reply) => {
     const device = deviceManager.getById(request.params.id);

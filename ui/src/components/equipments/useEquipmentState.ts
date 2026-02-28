@@ -17,6 +17,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
   const isThermostat = equipment.type === "thermostat";
+  const isGate = equipment.type === "gate";
 
   // State binding
   const stateBinding = equipment.dataBindings.find(
@@ -67,6 +68,11 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       ? ShutterIcon({ size: 18, strokeWidth: 1.5, position: shutterPosition })
       : TYPE_ICONS[equipment.type];
 
+  // Gate state for icon color
+  const gateIsOpen = isGate && equipment.dataBindings
+    .filter((db) => db.alias.startsWith("RS") || db.key.startsWith("RS"))
+    .some((b) => b.value === 0 || b.value === false);
+
   const iconColor = isSensor
     ? getSensorIconColor(equipment.dataBindings)
     : isThermostat
@@ -77,17 +83,22 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
         ? shutterIsOpen
           ? "bg-primary/10 text-primary"
           : "bg-border-light text-text-tertiary"
-        : isLight && isOn
-          ? "bg-active/15 text-active-text"
-          : isOn
+        : isGate
+          ? gateIsOpen
             ? "bg-primary/10 text-primary"
-            : "bg-border-light text-text-tertiary";
+            : "bg-border-light text-text-tertiary"
+          : isLight && isOn
+            ? "bg-active/15 text-active-text"
+            : isOn
+              ? "bg-primary/10 text-primary"
+              : "bg-border-light text-text-tertiary";
 
   return {
     isLight,
     isShutter,
     isSensor,
     isThermostat,
+    isGate,
     stateBinding,
     isOn,
     shutterPosition,

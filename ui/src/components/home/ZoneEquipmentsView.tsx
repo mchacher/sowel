@@ -25,7 +25,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.climate", types: ["thermostat"], icon: <Thermometer size={14} strokeWidth={1.5} />, headerBg: "bg-error/6", iconColor: "text-error" },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.weather", types: ["weather"], icon: <CloudSun size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
-  { labelKey: "equipments.group.other", types: ["switch", "button"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
+  { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
 ];
 
 interface ZoneEquipmentsViewProps {

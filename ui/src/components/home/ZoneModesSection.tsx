@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ToggleLeft, ToggleRight, Settings, Trash2, X, Pencil, Check, ChevronUp, ChevronDown, Play } from "lucide-react";
+import { ToggleLeft, ToggleRight, Settings, Trash2, X, Pencil, Check, ChevronUp, ChevronDown, Play, Plus } from "lucide-react";
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
@@ -16,25 +16,61 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
   const { t } = useTranslation();
   const modes = useModes((s) => s.modes);
   const fetchModes = useModes((s) => s.fetchModes);
+  const [addingModeId, setAddingModeId] = useState<string | null>(null);
+  const [showModeSelector, setShowModeSelector] = useState(false);
+  const selectorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchModes();
   }, [fetchModes]);
 
-  // Modes with impacts on this zone first, then others
-  const sortedModes = useMemo(() => {
-    const withImpact = modes.filter((m) => m.impacts.some((imp) => imp.zoneId === zoneId));
-    const without = modes.filter((m) => !m.impacts.some((imp) => imp.zoneId === zoneId));
-    return [...withImpact, ...without];
-  }, [modes, zoneId]);
+  // Close dropdown on click outside
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (selectorRef.current && !selectorRef.current.contains(e.target as Node)) {
+      setShowModeSelector(false);
+    }
+  }, []);
 
-  const activeCount = sortedModes.filter((m) => m.active).length;
+  useEffect(() => {
+    if (showModeSelector) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showModeSelector, handleClickOutside]);
 
+  // Only modes with impacts configured for this zone
+  const configuredModes = useMemo(
+    () => modes.filter((m) => m.impacts.some((imp) => imp.zoneId === zoneId)),
+    [modes, zoneId]
+  );
+
+  // Modes available to add (no impacts for this zone yet)
+  const unconfiguredModes = useMemo(
+    () => modes.filter((m) => !m.impacts.some((imp) => imp.zoneId === zoneId)),
+    [modes, zoneId]
+  );
+
+  const addingMode = addingModeId ? modes.find((m) => m.id === addingModeId) : null;
+
+  const activeCount = configuredModes.filter((m) => m.active).length;
+  const hasBody = configuredModes.length > 0 || !!addingMode;
+
+  const handleModeAdded = () => {
+    setAddingModeId(null);
+    fetchModes();
+  };
+
+  const handleSelectMode = (modeId: string) => {
+    setAddingModeId(modeId);
+    setShowModeSelector(false);
+  };
+
+  // No global modes at all → hide section entirely
   if (modes.length === 0) return null;
 
   return (
-    <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1 bg-success/8">
+    <div className="rounded-[10px] border border-border bg-surface">
+      <div className={`flex items-center gap-1.5 px-3 py-1 bg-success/8 rounded-t-[10px] ${!hasBody ? "rounded-b-[10px]" : ""}`}>
         <span className="text-success">
           <ToggleRight size={14} strokeWidth={1.5} />
         </span>
@@ -44,20 +80,61 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
         <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
           {activeCount > 0
             ? t("modes.activeCount", { count: activeCount })
-            : sortedModes.length}
+            : configuredModes.length}
         </span>
+        {unconfiguredModes.length > 0 && !addingMode && (
+          <div className="relative" ref={selectorRef}>
+            <button
+              onClick={() => setShowModeSelector(!showModeSelector)}
+              className="p-0.5 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/10 transition-colors duration-150"
+              title={t("modes.addMode", "Add mode")}
+            >
+              <Plus size={14} strokeWidth={1.5} />
+            </button>
+            {showModeSelector && (
+              <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] bg-surface border border-border rounded-[6px] shadow-lg py-1">
+                {unconfiguredModes.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => handleSelectMode(m.id)}
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-text hover:bg-border-light/60 transition-colors flex items-center gap-2"
+                  >
+                    {m.active ? (
+                      <ToggleRight size={12} strokeWidth={1.5} className="text-primary flex-shrink-0" />
+                    ) : (
+                      <ToggleLeft size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+                    )}
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="divide-y divide-border-light">
-        {sortedModes.map((mode) => (
-          <ModeRow
-            key={mode.id}
-            mode={mode}
-            zoneId={zoneId}
-            onRefresh={fetchModes}
-          />
-        ))}
-      </div>
+      {(configuredModes.length > 0 || addingMode) && (
+        <div className="divide-y divide-border-light">
+          {configuredModes.map((mode) => (
+            <ModeRow
+              key={mode.id}
+              mode={mode}
+              zoneId={zoneId}
+              onRefresh={fetchModes}
+            />
+          ))}
+          {addingMode && (
+            <ModeRow
+              key={addingMode.id}
+              mode={addingMode}
+              zoneId={zoneId}
+              onRefresh={handleModeAdded}
+              initialEditing
+              onCancelAdd={() => setAddingModeId(null)}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -66,18 +143,27 @@ function ModeRow({
   mode,
   zoneId,
   onRefresh,
+  initialEditing = false,
+  onCancelAdd,
 }: {
   mode: ModeWithDetails;
   zoneId: string;
   onRefresh: () => void;
+  initialEditing?: boolean;
+  onCancelAdd?: () => void;
 }) {
   const { t } = useTranslation();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [applying, setApplying] = useState(false);
 
   const impact = mode.impacts.find((imp) => imp.zoneId === zoneId);
   const actionCount = impact?.actions.length ?? 0;
   const hasImpacts = actionCount > 0;
+
+  const handleClose = () => {
+    setEditing(false);
+    if (onCancelAdd) onCancelAdd();
+  };
 
   const handleApply = async () => {
     if (applying || !hasImpacts) return;
@@ -119,7 +205,7 @@ function ModeRow({
           </div>
         </div>
         <button
-          onClick={() => setEditing(!editing)}
+          onClick={() => editing ? handleClose() : setEditing(true)}
           className="p-1.5 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
           title={t("modes.configure")}
         >

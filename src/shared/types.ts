@@ -39,6 +39,7 @@ export type DataCategory =
 
 export type DeviceSource =
   | "zigbee2mqtt"
+  | "lora2mqtt"
   | "tasmota"
   | "esphome"
   | "shelly"
@@ -148,7 +149,8 @@ export type EquipmentType =
   | "sensor"
   | "button"
   | "thermostat"
-  | "weather";
+  | "weather"
+  | "gate";
 
 export interface Equipment {
   id: string;

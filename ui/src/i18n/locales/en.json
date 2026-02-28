@@ -183,6 +183,7 @@
   "equipments.type.button": "Button / Remote",
   "equipments.type.thermostat": "Thermostat",
   "equipments.type.weather": "Weather Station",
+  "equipments.type.gate": "Gate",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",
@@ -218,6 +219,10 @@
   "controls.closed": "Closed",
   "controls.on": "On",
   "controls.off": "Off",
+  "controls.gate.open": "Open",
+  "controls.gate.closed": "Closed",
+  "controls.gate.unknown": "Moving",
+  "controls.gate.toggle": "Toggle",
 
   "sensors.title": "Sensors",
   "sensors.noData": "No sensor data.",

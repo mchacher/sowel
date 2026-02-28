@@ -6,6 +6,7 @@ import { SensorValues } from "../equipments/SensorValues";
 import { LightControl } from "../equipments/LightControl";
 import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
+import { GateControl } from "../equipments/GateControl";
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -21,6 +22,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isShutter,
     isSensor,
     isThermostat,
+    isGate,
     stateBinding,
     isOn,
     sensorBindings,
@@ -29,8 +31,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     iconColor,
   } = useEquipmentState(equipment);
 
-  // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat equipments
-  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat
+  // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat, non-gate equipments
+  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isGate
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -80,7 +82,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       )}
 
       {/* Primary value for other equipments */}
-      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && (
+      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && !isGate && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -113,8 +115,17 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         />
       )}
 
-      {/* Boolean state badge for non-light, non-sensor, non-shutter equipments */}
-      {!isLight && !isSensor && !isShutter && !isThermostat && stateBinding && (
+      {/* Gate controls */}
+      {isGate && equipment.enabled && (
+        <GateControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* Boolean state badge for non-light, non-sensor, non-shutter, non-gate equipments */}
+      {!isLight && !isSensor && !isShutter && !isThermostat && !isGate && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0

@@ -31,6 +31,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "button",
   "thermostat",
   "weather",
+  "gate",
 ]);
 
 // ============================================================
@@ -66,6 +67,9 @@ export class EquipmentManager {
   private deviceManager: DeviceManager;
   private stmts: ReturnType<typeof this.prepareStatements>;
   private unsubscribe: (() => void) | null = null;
+
+  /** Gate equipments with a pending toggle — state is "unknown" until next sensor update */
+  private pendingToggles = new Set<string>();
 
   constructor(
     db: Database.Database,
@@ -210,6 +214,46 @@ export class EquipmentManager {
     this.logger.info({ equipmentId: id, name: input.name, type: input.type }, "Equipment created");
     this.eventBus.emit({ type: "equipment.created", equipment });
     return equipment;
+  }
+
+  /**
+   * Create equipment and auto-bind all data/orders from the given devices.
+   * Data keys get a binding with alias = key name.
+   * Order keys get a binding with alias = "toggle" (gate) or key name (other types).
+   */
+  createWithAutoBindings(
+    input: CreateEquipmentInput & { deviceIds: string[] },
+  ): EquipmentWithDetails {
+    const equipment = this.create(input);
+
+    for (const deviceId of input.deviceIds) {
+      const device = this.deviceManager.getByIdWithDetails(deviceId);
+      if (!device) {
+        this.logger.warn({ deviceId }, "Device not found for auto-binding");
+        continue;
+      }
+
+      // Bind all device data (sensors/state)
+      for (const data of device.data) {
+        try {
+          this.addDataBinding(equipment.id, data.id, data.key);
+        } catch {
+          // Skip if alias conflict (same key from multiple devices)
+        }
+      }
+
+      // Bind all device orders (commands)
+      for (const order of device.orders) {
+        const alias = input.type === "gate" ? "toggle" : order.key;
+        try {
+          this.addOrderBinding(equipment.id, order.id, alias);
+        } catch {
+          // Skip if already bound
+        }
+      }
+    }
+
+    return this.getByIdWithDetails(equipment.id)!;
   }
 
   getById(id: string): Equipment | null {
@@ -448,6 +492,24 @@ export class EquipmentManager {
       "Equipment order executed",
     );
     this.eventBus.emit({ type: "equipment.order.executed", equipmentId, orderAlias: alias, value });
+
+    // Gate toggle: mark state as "unknown" until next sensor update
+    if (equipment.type === "gate" && alias === "toggle") {
+      this.pendingToggles.add(equipmentId);
+      const dataBindings = this.stmts.getDataBindingsByEquipment.all(
+        equipmentId,
+      ) as DataBindingRow[];
+      for (const binding of dataBindings) {
+        this.eventBus.emit({
+          type: "equipment.data.changed",
+          equipmentId,
+          alias: binding.alias,
+          value: "unknown",
+          previous: undefined,
+        });
+      }
+      this.logger.debug({ equipmentId }, "Gate toggle — state set to unknown");
+    }
   }
 
   // ============================================================
@@ -522,6 +584,15 @@ export class EquipmentManager {
     const bindings = this.stmts.getDataBindingsByDeviceData.all(dataId) as DataBindingRow[];
 
     for (const binding of bindings) {
+      // Clear pending toggle — sensor confirmed new state
+      if (this.pendingToggles.has(binding.equipment_id)) {
+        this.pendingToggles.delete(binding.equipment_id);
+        this.logger.debug(
+          { equipmentId: binding.equipment_id },
+          "Gate toggle resolved — sensor update received",
+        );
+      }
+
       this.eventBus.emit({
         type: "equipment.data.changed",
         equipmentId: binding.equipment_id,
