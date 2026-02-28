@@ -652,8 +652,11 @@ export class MotionLightRecipe extends Recipe {
     if (this.overrideMode) return;
     // Ignore brightness reports when lights are OFF (Zigbee periodic reporting)
     if (!isAnyLightOn(this.lightIds, this.ctx)) return;
+    // If we haven't sent any brightness yet, we can't distinguish
+    // echo from manual change — ignore to avoid false override at startup
+    if (this.lastSentBrightness === null) return;
     // Ignore echo: same value as what the recipe sent
-    if (this.lastSentBrightness !== null && Number(value) === this.lastSentBrightness) return;
+    if (Number(value) === this.lastSentBrightness) return;
 
     this.overrideMode = true;
     this.ctx.state.set("overrideMode", true);
