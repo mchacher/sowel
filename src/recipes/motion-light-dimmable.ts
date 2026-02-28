@@ -4,14 +4,50 @@ import { MotionLightBase, baseSlots, commonTrailingSlots } from "./engine/motion
 import { isAnyLightOn, turnOnLights, setLightsBrightness } from "./engine/light-helpers.js";
 
 // ============================================================
-// Motion-Light Dimmable Recipe (advanced — brightness + morning window)
+// Motion-Light Dimmable Recipe (advanced — brightness + time slots)
 // ============================================================
+
+interface BrightnessSlot {
+  start: string;
+  end: string;
+  brightness: number;
+}
+
+function makeSlotFields(n: number): RecipeSlotDef[] {
+  return [
+    {
+      id: `slot${n}Start`,
+      name: `Slot ${n} Start`,
+      description: `Start time for brightness slot ${n} (HH:MM)`,
+      type: "time",
+      required: false,
+      group: `slot${n}`,
+    },
+    {
+      id: `slot${n}End`,
+      name: `Slot ${n} End`,
+      description: `End time for brightness slot ${n} (HH:MM)`,
+      type: "time",
+      required: false,
+      group: `slot${n}`,
+    },
+    {
+      id: `slot${n}Brightness`,
+      name: `Slot ${n} Brightness`,
+      description: `Brightness level during slot ${n} (1-254)`,
+      type: "number",
+      required: false,
+      constraints: { min: 1, max: 254 },
+      group: `slot${n}`,
+    },
+  ];
+}
 
 export class MotionLightDimmableRecipe extends MotionLightBase {
   readonly id = "motion-light-dimmable";
   readonly name = "Motion Light (Dimmable)";
   readonly description =
-    "Turns on dimmable lights when motion is detected with brightness control. Supports brightness presets, morning window, manual brightness override detection, lux threshold, and button toggle.";
+    "Turns on dimmable lights when motion is detected with brightness control. Supports up to 3 brightness time slots, manual brightness override detection, lux threshold, and button toggle.";
 
   readonly slots: RecipeSlotDef[] = [
     ...baseSlots(),
@@ -28,41 +64,22 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
     {
       id: "brightness",
       name: "Brightness",
-      description: "Brightness level when turning on (1-254)",
+      description: "Default brightness level when no time slot matches (1-254)",
       type: "number",
       required: false,
       constraints: { min: 1, max: 254 },
-    },
-    {
-      id: "morningBrightness",
-      name: "Morning Brightness",
-      description: "Reduced brightness during the morning window (1-254)",
-      type: "number",
-      required: false,
-      constraints: { min: 1, max: 254 },
-    },
-    {
-      id: "morningStart",
-      name: "Morning Start",
-      description: "Start of morning window (HH:MM)",
-      type: "time",
-      required: false,
-    },
-    {
-      id: "morningEnd",
-      name: "Morning End",
-      description: "End of morning window (HH:MM)",
-      type: "time",
-      required: false,
     },
     ...commonTrailingSlots().slice(1), // luxThreshold, maxOnDuration, buttons, disableWhenDaylight
+    ...makeSlotFields(1),
+    ...makeSlotFields(2),
+    ...makeSlotFields(3),
   ];
 
   override readonly i18n: Record<string, RecipeLangPack> = {
     fr: {
       name: "Lumière dimmable sur mouvement",
       description:
-        "Allume les lumières dimmables quand un mouvement est détecté avec contrôle de luminosité. Supporte des presets de luminosité, plage matinale, détection de changement manuel, seuil de luminosité et boutons.",
+        "Allume les lumières dimmables quand un mouvement est détecté avec contrôle de luminosité. Supporte jusqu'à 3 plages horaires de luminosité, détection de changement manuel, seuil de luminosité et boutons.",
       slots: {
         zone: { name: "Zone", description: "Zone à surveiller" },
         lights: {
@@ -72,48 +89,54 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
         timeout: { name: "Délai", description: "Délai sans mouvement avant extinction" },
         brightness: {
           name: "Luminosité",
-          description: "Niveau de luminosité à l'allumage (1-254)",
+          description: "Luminosité par défaut hors plages horaires (1-254)",
         },
-        morningBrightness: {
-          name: "Luminosité matin",
-          description: "Luminosité réduite pendant la plage matinale (1-254)",
+        slot1Start: { name: "Début", description: "Heure de début de la plage 1" },
+        slot1End: { name: "Fin", description: "Heure de fin de la plage 1" },
+        slot1Brightness: {
+          name: "Luminosité",
+          description: "Luminosité pendant la plage 1 (1-254)",
         },
-        morningStart: {
-          name: "Début matin",
-          description: "Début de la plage matinale (HH:MM)",
+        slot2Start: { name: "Début", description: "Heure de début de la plage 2" },
+        slot2End: { name: "Fin", description: "Heure de fin de la plage 2" },
+        slot2Brightness: {
+          name: "Luminosité",
+          description: "Luminosité pendant la plage 2 (1-254)",
         },
-        morningEnd: {
-          name: "Fin matin",
-          description: "Fin de la plage matinale (HH:MM)",
+        slot3Start: { name: "Début", description: "Heure de début de la plage 3" },
+        slot3End: { name: "Fin", description: "Heure de fin de la plage 3" },
+        slot3Brightness: {
+          name: "Luminosité",
+          description: "Luminosité pendant la plage 3 (1-254)",
         },
         luxThreshold: {
-          name: "Seuil de luminosité",
-          description:
-            "Ne pas allumer si la luminosité dépasse ce seuil ; éteint si la luminosité dépasse le seuil + 10% d'hystérésis (optionnel)",
+          name: "Seuil lux (max)",
+          description: "Au-dessus de ce seuil, les lumières ne s'allument pas",
         },
         maxOnDuration: {
-          name: "Durée max allumage",
-          description:
-            "Éteindre après cette durée sans mouvement — se réinitialise à chaque mouvement (sécurité)",
+          name: "Extinction auto (sécurité)",
+          description: "Coupe les lumières après cette durée même avec mouvement — anti-oubli",
         },
         buttons: {
-          name: "Boutons",
-          description: "Boutons / interrupteurs pour contrôle manuel (optionnel)",
+          name: "Interrupteurs",
+          description: "Interrupteurs physiques pour allumer/éteindre manuellement",
         },
         disableWhenDaylight: {
-          name: "Désactiver le jour",
-          description:
-            "Ne pas allumer les lumières quand il fait jour (basé sur lever/coucher du soleil et décalages dans les réglages)",
+          name: "Inactif le jour",
+          description: "Ne pas allumer pendant la journée (basé sur lever/coucher du soleil)",
         },
+      },
+      groups: {
+        slot1: "Plage 1",
+        slot2: "Plage 2",
+        slot3: "Plage 3",
       },
     },
   };
 
   // Dimmable-specific state
   private brightness: number | null = null;
-  private morningBrightness: number | null = null;
-  private morningStart: string | null = null;
-  private morningEnd: string | null = null;
+  private brightnessSlots: BrightnessSlot[] = [];
   private lastSentBrightness: number | null = null;
   /** Grace period: ignore brightness echoes for 5s after we send a brightness command */
   private brightnessGraceUntil = 0;
@@ -123,7 +146,7 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
   // ============================================================
 
   protected override validateExtra(params: Record<string, unknown>, _ctx: RecipeContext): void {
-    const { brightness, morningBrightness, morningStart, morningEnd } = params;
+    const { brightness } = params;
 
     if (brightness !== undefined && brightness !== null && brightness !== "") {
       const b = Number(brightness);
@@ -132,34 +155,38 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
       }
     }
 
-    if (morningBrightness !== undefined && morningBrightness !== null && morningBrightness !== "") {
-      const mb = Number(morningBrightness);
-      if (isNaN(mb) || mb < 1 || mb > 254) {
-        throw new Error("morningBrightness must be between 1 and 254");
+    for (let i = 1; i <= 3; i++) {
+      const start = params[`slot${i}Start`];
+      const end = params[`slot${i}End`];
+      const slotBrightness = params[`slot${i}Brightness`];
+
+      const hasStart = start !== undefined && start !== null && start !== "";
+      const hasEnd = end !== undefined && end !== null && end !== "";
+      const hasBrightness =
+        slotBrightness !== undefined && slotBrightness !== null && slotBrightness !== "";
+
+      const provided = [hasStart, hasEnd, hasBrightness];
+      const anyProvided = provided.some(Boolean);
+      const allProvided = provided.every(Boolean);
+
+      if (anyProvided && !allProvided) {
+        throw new Error(
+          `Slot ${i}: start, end, and brightness must all be provided or all omitted`,
+        );
       }
-    }
 
-    // Morning window: both start and end must be provided together
-    const hasStart = morningStart !== undefined && morningStart !== null && morningStart !== "";
-    const hasEnd = morningEnd !== undefined && morningEnd !== null && morningEnd !== "";
-    if (hasStart !== hasEnd) {
-      throw new Error("morningStart and morningEnd must both be provided or both omitted");
-    }
-    if (hasStart && typeof morningStart === "string" && !/^\d{2}:\d{2}$/.test(morningStart)) {
-      throw new Error("morningStart must be in HH:MM format");
-    }
-    if (hasEnd && typeof morningEnd === "string" && !/^\d{2}:\d{2}$/.test(morningEnd)) {
-      throw new Error("morningEnd must be in HH:MM format");
-    }
-
-    // morningBrightness requires morning window
-    if (
-      morningBrightness !== undefined &&
-      morningBrightness !== null &&
-      morningBrightness !== "" &&
-      !hasStart
-    ) {
-      throw new Error("morningBrightness requires morningStart and morningEnd");
+      if (hasStart && typeof start === "string" && !/^\d{2}:\d{2}$/.test(start)) {
+        throw new Error(`slot${i}Start must be in HH:MM format`);
+      }
+      if (hasEnd && typeof end === "string" && !/^\d{2}:\d{2}$/.test(end)) {
+        throw new Error(`slot${i}End must be in HH:MM format`);
+      }
+      if (hasBrightness) {
+        const b = Number(slotBrightness);
+        if (isNaN(b) || b < 1 || b > 254) {
+          throw new Error(`slot${i}Brightness must be between 1 and 254`);
+        }
+      }
     }
   }
 
@@ -172,16 +199,28 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
       params.brightness !== undefined && params.brightness !== null && params.brightness !== ""
         ? Number(params.brightness)
         : null;
-    this.morningBrightness =
-      params.morningBrightness !== undefined &&
-      params.morningBrightness !== null &&
-      params.morningBrightness !== ""
-        ? Number(params.morningBrightness)
-        : null;
-    this.morningStart =
-      typeof params.morningStart === "string" && params.morningStart ? params.morningStart : null;
-    this.morningEnd =
-      typeof params.morningEnd === "string" && params.morningEnd ? params.morningEnd : null;
+
+    this.brightnessSlots = [];
+    for (let i = 1; i <= 3; i++) {
+      const start = params[`slot${i}Start`];
+      const end = params[`slot${i}End`];
+      const slotBrightness = params[`slot${i}Brightness`];
+      if (
+        typeof start === "string" &&
+        start &&
+        typeof end === "string" &&
+        end &&
+        slotBrightness !== undefined &&
+        slotBrightness !== null &&
+        slotBrightness !== ""
+      ) {
+        this.brightnessSlots.push({
+          start,
+          end,
+          brightness: Number(slotBrightness),
+        });
+      }
+    }
 
     this.lastSentBrightness = null;
 
@@ -203,6 +242,7 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
   protected override stopExtra(): void {
     this.lastSentBrightness = null;
     this.brightnessGraceUntil = 0;
+    this.brightnessSlots = [];
   }
 
   // ============================================================
@@ -232,27 +272,29 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
   }
 
   // ============================================================
-  // Brightness resolution
+  // Brightness resolution — first matching slot wins
   // ============================================================
 
   private getTargetBrightness(): number | null {
     if (this.brightness === null) return null;
 
-    if (this.morningBrightness !== null && this.morningStart !== null && this.morningEnd !== null) {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const [startH, startM] = this.morningStart.split(":").map(Number);
-      const [endH, endM] = this.morningEnd.split(":").map(Number);
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    for (const slot of this.brightnessSlots) {
+      const [startH, startM] = slot.start.split(":").map(Number);
+      const [endH, endM] = slot.end.split(":").map(Number);
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
 
       if (startMinutes <= endMinutes) {
         if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-          return this.morningBrightness;
+          return slot.brightness;
         }
       } else {
+        // Wraparound (e.g. 23:30 → 06:00)
         if (currentMinutes >= startMinutes || currentMinutes < endMinutes) {
-          return this.morningBrightness;
+          return slot.brightness;
         }
       }
     }

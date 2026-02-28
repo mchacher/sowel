@@ -677,6 +677,69 @@ describe("MotionLightRecipe", () => {
     expect(offCommand).toBeUndefined();
   });
 
+  it("enters override when manually turned off while motion active", () => {
+    setup.manager.createInstance("motion-light", {
+      zone: setup.zoneId,
+      lights: [setup.lightId],
+      timeout: "5m",
+    });
+
+    // Motion detected → lights turn on
+    simulateMotion(setup, true);
+    simulateLightState(setup, "ON");
+
+    // User manually turns off light while there is still motion
+    setup.published.length = 0;
+    simulateLightState(setup, "OFF");
+
+    // Verify override mode is entered
+    const instance = setup.manager.getInstances().find((i) => i.recipeId === "motion-light")!;
+    const logs = setup.manager.getLog(instance.id);
+    expect(
+      logs.some((l) => l.message.includes("turned off manually") && l.message.includes("override")),
+    ).toBe(true);
+
+    // Motion continues — lights should NOT be turned on again
+    setup.published.length = 0;
+    simulateMotion(setup, true);
+    const onCommand = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+    expect(onCommand).toBeUndefined();
+  });
+
+  it("does not enter override when recipe itself turns off lights", () => {
+    setup.manager.createInstance("motion-light", {
+      zone: setup.zoneId,
+      lights: [setup.lightId],
+      timeout: "5m",
+    });
+
+    // Motion on → lights on
+    simulateMotion(setup, true);
+    simulateLightState(setup, "ON");
+
+    // Motion stops → off-timer starts
+    simulateMotion(setup, false);
+
+    // Wait for timeout → recipe turns off lights
+    vi.advanceTimersByTime(5 * 60 * 1000 + 100);
+
+    // Simulate MQTT echo: light reports OFF
+    simulateLightState(setup, "OFF");
+
+    // Verify no override mode
+    const instance = setup.manager.getInstances().find((i) => i.recipeId === "motion-light")!;
+    const logs = setup.manager.getLog(instance.id);
+    expect(
+      logs.some((l) => l.message.includes("turned off manually") && l.message.includes("override")),
+    ).toBe(false);
+
+    // New motion should turn lights on (no override blocking)
+    setup.published.length = 0;
+    simulateMotion(setup, true);
+    const onCommand = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+    expect(onCommand).toBeDefined();
+  });
+
   // ============================================================
   // Lux threshold
   // ============================================================

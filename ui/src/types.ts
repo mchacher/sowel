@@ -288,6 +288,7 @@ export interface RecipeSlotDef {
     min?: number;
     max?: number;
   };
+  group?: string;
 }
 
 export interface RecipeSlotI18n {
@@ -299,6 +300,7 @@ export interface RecipeLangPack {
   name: string;
   description: string;
   slots?: Record<string, RecipeSlotI18n>;
+  groups?: Record<string, string>;
 }
 
 export interface RecipeInfo {

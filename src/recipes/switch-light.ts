@@ -59,12 +59,12 @@ export class SwitchLightRecipe extends Recipe {
           description: "Lumières à contrôler (doivent appartenir à la zone)",
         },
         buttons: {
-          name: "Boutons",
-          description: "Boutons / interrupteurs qui déclenchent le basculement",
+          name: "Interrupteurs",
+          description: "Interrupteurs physiques pour allumer/éteindre",
         },
         maxOnDuration: {
-          name: "Durée max allumage",
-          description: "Éteindre après cette durée (sécurité, optionnel)",
+          name: "Extinction auto (sécurité)",
+          description: "Coupe les lumières après cette durée — anti-oubli",
         },
       },
     },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Check, Copy, ShieldOff } from "lucide-react";
+import { ChefHat, Plus, Minus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Check, Copy, ShieldOff } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -8,11 +8,49 @@ import { useZoneAggregation } from "../../store/useZoneAggregation";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
-import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription } from "../../lib/recipe-i18n";
+import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel } from "../../lib/recipe-i18n";
+import type { RecipeSlotDef } from "../../types";
 
 function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
   const types = Array.isArray(constraint) ? constraint : [constraint];
   return types.some((t) => t === eqType);
+}
+
+/** A chunk is either a single ungrouped slot or a group of slots sharing the same group key. */
+interface SlotChunk {
+  group: string | null;
+  slots: RecipeSlotDef[];
+}
+
+/** Group consecutive slots by their `group` field. Ungrouped slots become individual chunks. */
+function groupSlots(slots: RecipeSlotDef[]): SlotChunk[] {
+  const chunks: SlotChunk[] = [];
+  for (const slot of slots) {
+    const group = slot.group ?? null;
+    const last = chunks[chunks.length - 1];
+    if (last && last.group === group && group !== null) {
+      last.slots.push(slot);
+    } else {
+      chunks.push({ group, slots: [slot] });
+    }
+  }
+  return chunks;
+}
+
+/** Check if a group has any value filled in a params record. */
+function isGroupFilled(group: string, allSlots: RecipeSlotDef[], paramsRecord: Record<string, string>): boolean {
+  return allSlots
+    .filter((s) => s.group === group)
+    .some((s) => (paramsRecord[s.id] ?? "") !== "");
+}
+
+/** Get all unique group keys from slots. */
+function getGroupKeys(slots: RecipeSlotDef[]): string[] {
+  const seen = new Set<string>();
+  for (const slot of slots) {
+    if (slot.group) seen.add(slot.group);
+  }
+  return [...seen];
 }
 
 interface ZoneRecipesSectionProps {
@@ -124,6 +162,7 @@ function RecipeInstanceRow({
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   const [showDuplicate, setShowDuplicate] = useState(false);
+  const [visibleGroups, setVisibleGroups] = useState<Set<string>>(new Set());
 
   const recipe = recipes.find((r) => r.id === instance.recipeId);
   const displayName = recipe ? recipeName(recipe, lang) : instance.recipeId;
@@ -201,6 +240,14 @@ function RecipeInstanceRow({
     }
     setEditParams(params);
     setEditError("");
+    // Initialize visible groups: show groups that already have data
+    if (recipe) {
+      const filled = new Set<string>();
+      for (const gk of getGroupKeys(recipe.slots)) {
+        if (isGroupFilled(gk, recipe.slots, params)) filled.add(gk);
+      }
+      setVisibleGroups(filled);
+    }
     setEditing(true);
   };
 
@@ -277,6 +324,9 @@ function RecipeInstanceRow({
     if (slotId === "luxThreshold") {
       const agg = zoneAggregation[zoneId];
       return agg?.luminosity !== undefined && agg?.luminosity !== null;
+    }
+    if (slotId === "buttons") {
+      return equipments.some((eq) => eq.zoneId === zoneId && eq.type === "button");
     }
     return true;
   };
@@ -389,84 +439,156 @@ function RecipeInstanceRow({
       {editing && recipe && (
         <div className="px-4 pb-3">
           <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3">
-            {recipe.slots
-              .filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id))
-              .map((slot) => (
-                <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"}`}>
-                  {slot.type === "boolean" ? (
-                    <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
-                      <input
-                        type="checkbox"
-                        checked={editParams[slot.id] === "true"}
-                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.checked ? "true" : "false" })}
-                        className="accent-primary"
-                      />
-                      {recipeSlotName(recipe, slot, lang)}
-                    </label>
-                  ) : (
-                  <>
-                  <label className={`block text-[11px] uppercase tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
-                    {recipeSlotName(recipe, slot, lang)}
-                  </label>
-                  {slot.type === "equipment" && slot.list ? (
-                    <div className="space-y-1">
-                      {getEquipmentOptions(slot.id).map((eq) => {
-                        const selected = (editParams[slot.id] ?? "").split(",").filter(Boolean);
-                        const checked = selected.includes(eq.id);
-                        return (
-                          <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+            {(() => {
+              const filteredSlots = recipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
+              const chunks = groupSlots(filteredSlots);
+              const allGroupKeys = getGroupKeys(recipe.slots);
+              const hiddenGroups = allGroupKeys.filter((gk) => !visibleGroups.has(gk));
+              return (
+                <>
+                  {chunks.map((chunk) => {
+                    // Grouped slots — render as compact inline row
+                    if (chunk.group) {
+                      if (!visibleGroups.has(chunk.group)) return null;
+                      const groupKey = chunk.group;
+                      return (
+                        <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] uppercase tracking-wider text-accent">{recipeGroupLabel(recipe, groupKey, lang)}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = { ...editParams };
+                                for (const s of chunk.slots) next[s.id] = "";
+                                setEditParams(next);
+                                setVisibleGroups((prev) => { const n = new Set(prev); n.delete(groupKey); return n; });
+                              }}
+                              className="p-0.5 rounded text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
+                              title={t("common.delete")}
+                            >
+                              <Minus size={14} strokeWidth={1.5} />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {chunk.slots.map((slot) => (
+                              <div key={slot.id}>
+                                <label className={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                                  {recipeSlotName(recipe, slot, lang)}
+                                </label>
+                                {slot.type === "time" ? (
+                                  <TimeInput
+                                    value={editParams[slot.id] ?? ""}
+                                    onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                  />
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={editParams[slot.id] ?? ""}
+                                    onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                    placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
+                                    className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    // Ungrouped — render each slot individually (original logic)
+                    return chunk.slots.map((slot) => (
+                      <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"}`}>
+                        {slot.type === "boolean" ? (
+                          <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                             <input
                               type="checkbox"
-                              checked={checked}
-                              onChange={() => {
-                                const next = checked
-                                  ? selected.filter((id) => id !== eq.id)
-                                  : [...selected, eq.id];
-                                setEditParams({ ...editParams, [slot.id]: next.join(",") });
-                              }}
+                              checked={editParams[slot.id] === "true"}
+                              onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.checked ? "true" : "false" })}
                               className="accent-primary"
                             />
-                            {eq.name}
+                            {recipeSlotName(recipe, slot, lang)}
                           </label>
-                        );
-                      })}
-                    </div>
-                  ) : slot.type === "equipment" ? (
-                    <select
-                      value={editParams[slot.id] ?? ""}
-                      onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                      className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                        ) : (
+                        <>
+                        <label className={`block text-[11px] uppercase tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                          {recipeSlotName(recipe, slot, lang)}
+                        </label>
+                        {slot.type === "equipment" && slot.list ? (
+                          <div className="space-y-1">
+                            {getEquipmentOptions(slot.id).map((eq) => {
+                              const selected = (editParams[slot.id] ?? "").split(",").filter(Boolean);
+                              const checked = selected.includes(eq.id);
+                              return (
+                                <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => {
+                                      const next = checked
+                                        ? selected.filter((id) => id !== eq.id)
+                                        : [...selected, eq.id];
+                                      setEditParams({ ...editParams, [slot.id]: next.join(",") });
+                                    }}
+                                    className="accent-primary"
+                                  />
+                                  {eq.name}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : slot.type === "equipment" ? (
+                          <select
+                            value={editParams[slot.id] ?? ""}
+                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                          >
+                            <option value="">{t("common.select")}</option>
+                            {getEquipmentOptions(slot.id).map((eq) => (
+                              <option key={eq.id} value={eq.id}>{eq.name}</option>
+                            ))}
+                          </select>
+                        ) : slot.type === "duration" ? (
+                          <DurationInput
+                            value={editParams[slot.id] ?? ""}
+                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                            placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
+                          />
+                        ) : slot.type === "time" ? (
+                          <TimeInput
+                            value={editParams[slot.id] ?? ""}
+                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                            placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={editParams[slot.id] ?? ""}
+                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                            placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
+                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                          />
+                        )}
+                        </>
+                        )}
+                      </div>
+                    ));
+                  })}
+                  {/* Add group button */}
+                  {hiddenGroups.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibleGroups((prev) => new Set([...prev, hiddenGroups[0]]));
+                      }}
+                      className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover mb-2.5 transition-colors duration-150"
                     >
-                      <option value="">{t("common.select")}</option>
-                      {getEquipmentOptions(slot.id).map((eq) => (
-                        <option key={eq.id} value={eq.id}>{eq.name}</option>
-                      ))}
-                    </select>
-                  ) : slot.type === "duration" ? (
-                    <DurationInput
-                      value={editParams[slot.id] ?? ""}
-                      onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                      placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
-                    />
-                  ) : slot.type === "time" ? (
-                    <TimeInput
-                      value={editParams[slot.id] ?? ""}
-                      onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                      placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={editParams[slot.id] ?? ""}
-                      onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                      placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
-                      className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
-                    />
+                      <Plus size={14} strokeWidth={1.5} />
+                      {recipeGroupLabel(recipe, hiddenGroups[0], lang)}
+                    </button>
                   )}
-                  </>
-                  )}
-                </div>
-              ))}
+                </>
+              );
+            })()}
             {editError && (
               <p className="text-[12px] text-error mb-2">{editError}</p>
             )}
@@ -887,6 +1009,7 @@ function AddRecipeForm({
   const [params, setParams] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [visibleGroups, setVisibleGroups] = useState<Set<string>>(new Set());
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId);
 
@@ -942,6 +1065,9 @@ function AddRecipeForm({
     if (slotId === "luxThreshold") {
       const agg = zoneAggregation[zoneId];
       return agg?.luminosity !== undefined && agg?.luminosity !== null;
+    }
+    if (slotId === "buttons") {
+      return equipments.some((eq) => eq.zoneId === zoneId && eq.type === "button");
     }
     return true;
   };
@@ -1104,85 +1230,157 @@ function AddRecipeForm({
         <>
           <p className="text-[11px] text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
 
-          {selectedRecipe.slots
-            .filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id))
-            .map((slot) => (
-              <div key={slot.id} className="mb-3">
-                {slot.type === "boolean" ? (
-                  <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
-                    <input
-                      type="checkbox"
-                      checked={params[slot.id] === "true"}
-                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.checked ? "true" : "false" })}
-                      className="accent-primary"
-                    />
-                    {recipeSlotName(selectedRecipe, slot, lang)}
-                  </label>
-                ) : (
-                <>
-                <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-                  {recipeSlotName(selectedRecipe, slot, lang)}
-                </label>
-                {slot.type === "equipment" && slot.list ? (
-                  <div className="space-y-1">
-                    {getEquipmentOptions(slot.id).map((eq) => {
-                      const selected = (params[slot.id] ?? "").split(",").filter(Boolean);
-                      const checked = selected.includes(eq.id);
-                      return (
-                        <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+          {(() => {
+            const filteredSlots = selectedRecipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
+            const chunks = groupSlots(filteredSlots);
+            const allGroupKeys = getGroupKeys(selectedRecipe.slots);
+            const hiddenGroups = allGroupKeys.filter((gk) => !visibleGroups.has(gk));
+            return (
+              <>
+                {chunks.map((chunk) => {
+                  // Grouped slots — render as compact inline row
+                  if (chunk.group) {
+                    if (!visibleGroups.has(chunk.group)) return null;
+                    const groupKey = chunk.group;
+                    return (
+                      <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] uppercase tracking-wider text-accent">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = { ...params };
+                              for (const s of chunk.slots) next[s.id] = "";
+                              setParams(next);
+                              setVisibleGroups((prev) => { const n = new Set(prev); n.delete(groupKey); return n; });
+                            }}
+                            className="p-0.5 rounded text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
+                            title={t("common.delete")}
+                          >
+                            <Minus size={14} strokeWidth={1.5} />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {chunk.slots.map((slot) => (
+                            <div key={slot.id}>
+                              <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
+                                {recipeSlotName(selectedRecipe, slot, lang)}
+                              </label>
+                              {slot.type === "time" ? (
+                                <TimeInput
+                                  value={params[slot.id] ?? ""}
+                                  onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={params[slot.id] ?? ""}
+                                  onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                  placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
+                                  className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Ungrouped — render each slot individually
+                  return chunk.slots.map((slot) => (
+                    <div key={slot.id} className="mb-3">
+                      {slot.type === "boolean" ? (
+                        <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                           <input
                             type="checkbox"
-                            checked={checked}
-                            onChange={() => {
-                              const next = checked
-                                ? selected.filter((id) => id !== eq.id)
-                                : [...selected, eq.id];
-                              setParams({ ...params, [slot.id]: next.join(",") });
-                            }}
+                            checked={params[slot.id] === "true"}
+                            onChange={(e) => setParams({ ...params, [slot.id]: e.target.checked ? "true" : "false" })}
                             className="accent-primary"
                           />
-                          {eq.name}
+                          {recipeSlotName(selectedRecipe, slot, lang)}
                         </label>
-                      );
-                    })}
-                  </div>
-                ) : slot.type === "equipment" ? (
-                  <select
-                    value={params[slot.id] ?? ""}
-                    onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                      ) : (
+                      <>
+                      <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                        {recipeSlotName(selectedRecipe, slot, lang)}
+                      </label>
+                      {slot.type === "equipment" && slot.list ? (
+                        <div className="space-y-1">
+                          {getEquipmentOptions(slot.id).map((eq) => {
+                            const selected = (params[slot.id] ?? "").split(",").filter(Boolean);
+                            const checked = selected.includes(eq.id);
+                            return (
+                              <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    const next = checked
+                                      ? selected.filter((id) => id !== eq.id)
+                                      : [...selected, eq.id];
+                                    setParams({ ...params, [slot.id]: next.join(",") });
+                                  }}
+                                  className="accent-primary"
+                                />
+                                {eq.name}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : slot.type === "equipment" ? (
+                        <select
+                          value={params[slot.id] ?? ""}
+                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                        >
+                          <option value="">{t("common.select")}</option>
+                          {getEquipmentOptions(slot.id).map((eq) => (
+                            <option key={eq.id} value={eq.id}>{eq.name}</option>
+                          ))}
+                        </select>
+                      ) : slot.type === "duration" ? (
+                        <DurationInput
+                          value={params[slot.id] ?? ""}
+                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                          placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
+                        />
+                      ) : slot.type === "time" ? (
+                        <TimeInput
+                          value={params[slot.id] ?? ""}
+                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                          placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={params[slot.id] ?? ""}
+                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                          placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
+                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                        />
+                      )}
+                      <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                      </>
+                      )}
+                    </div>
+                  ));
+                })}
+                {/* Add group button */}
+                {hiddenGroups.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisibleGroups((prev) => new Set([...prev, hiddenGroups[0]]));
+                    }}
+                    className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover mb-2.5 transition-colors duration-150"
                   >
-                    <option value="">{t("common.select")}</option>
-                    {getEquipmentOptions(slot.id).map((eq) => (
-                      <option key={eq.id} value={eq.id}>{eq.name}</option>
-                    ))}
-                  </select>
-                ) : slot.type === "duration" ? (
-                  <DurationInput
-                    value={params[slot.id] ?? ""}
-                    onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                    placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
-                  />
-                ) : slot.type === "time" ? (
-                  <TimeInput
-                    value={params[slot.id] ?? ""}
-                    onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                    placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={params[slot.id] ?? ""}
-                    onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                    placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
-                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
-                  />
+                    <Plus size={14} strokeWidth={1.5} />
+                    {recipeGroupLabel(selectedRecipe, hiddenGroups[0], lang)}
+                  </button>
                 )}
-                <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
-                </>
-                )}
-              </div>
-            ))}
+              </>
+            );
+          })()}
 
           {error && (
             <p className="text-[12px] text-error mb-3">{error}</p>

@@ -46,23 +46,22 @@ export function commonTrailingSlots(): RecipeSlotDef[] {
       id: "luxThreshold",
       name: "Lux Threshold",
       description:
-        "Do not turn on if zone luminosity is above this value; turns off lights if luminosity rises above threshold + 10% hysteresis (optional)",
+        "Lights won't turn on when ambient brightness exceeds this value; turns off if it rises above threshold + 10% hysteresis",
       type: "number",
       required: false,
       constraints: { min: 0 },
     },
     {
       id: "maxOnDuration",
-      name: "Max On Duration",
-      description:
-        "Force lights off after this duration without motion — resets on each motion detection (optional failsafe)",
+      name: "Safety Auto-off",
+      description: "Force lights off after this duration even with continued motion (failsafe)",
       type: "duration",
       required: false,
     },
     {
       id: "buttons",
-      name: "Buttons",
-      description: "Button/switch equipments for manual toggle (optional)",
+      name: "Manual Switches",
+      description: "Physical switches for manual on/off toggle",
       type: "equipment",
       required: false,
       list: true,
@@ -70,9 +69,9 @@ export function commonTrailingSlots(): RecipeSlotDef[] {
     },
     {
       id: "disableWhenDaylight",
-      name: "Disable When Daylight",
+      name: "Inactive During Day",
       description:
-        "Do not turn on lights during daytime (based on sunrise/sunset and offsets from home settings)",
+        "Do not turn on lights during daytime (based on sunrise/sunset and offsets from settings)",
       type: "boolean",
       required: false,
     },
@@ -96,6 +95,8 @@ export abstract class MotionLightBase extends Recipe {
   protected overrideMode = false;
   protected lightsOnByRecipe = false;
   protected disableWhenDaylight = false;
+  /** Grace period: ignore light-off echoes for 5s after the recipe itself sends a turnOff */
+  protected turnOffGraceUntil = 0;
 
   // ============================================================
   // Template methods — override in subclasses
@@ -272,6 +273,9 @@ export abstract class MotionLightBase extends Recipe {
 
     // Force consistent light state on activation
     this.syncLightsOnStart();
+    // Reset grace — syncLightsOnStart's turnOff is not a "recipe action" that
+    // should suppress manual-off override detection
+    this.turnOffGraceUntil = 0;
   }
 
   // ============================================================
@@ -287,6 +291,7 @@ export abstract class MotionLightBase extends Recipe {
     this.unsubs = [];
     this.overrideMode = false;
     this.lightsOnByRecipe = false;
+    this.turnOffGraceUntil = 0;
     this.ctx.state.delete("overrideMode");
     this.ctx.state.delete("timerExpiresAt");
     this.ctx.state.delete("failsafeExpiresAt");
@@ -379,6 +384,21 @@ export abstract class MotionLightBase extends Recipe {
     }
 
     if (motion && !lightsOn) {
+      // If recipe had turned lights on but they're now off → manual turn-off
+      if (this.lightsOnByRecipe) {
+        this.lightsOnByRecipe = false;
+        // Grace period: recipe's own turnoff echo → ignore
+        if (Date.now() < this.turnOffGraceUntil) {
+          return;
+        }
+        // Manual turnoff while motion active → override
+        this.overrideMode = true;
+        this.ctx.state.set("overrideMode", true);
+        this.ctx.notifyStateChanged();
+        this.startOffTimerForOverrideClear();
+        this.ctx.log("Light turned off manually while motion active — entering override mode");
+        return;
+      }
       // Check lux threshold before turning on
       if (this.isTooBright(luminosity)) {
         this.ctx.log(
@@ -425,6 +445,14 @@ export abstract class MotionLightBase extends Recipe {
         this.clearFailsafeTimerState();
         this.ctx.log("Light turned off externally — timers cancelled");
       }
+      // Manual turn-off while motion → enter override so we don't immediately re-turn on
+      if (Date.now() >= this.turnOffGraceUntil && this.hasMotion()) {
+        this.overrideMode = true;
+        this.ctx.state.set("overrideMode", true);
+        this.ctx.notifyStateChanged();
+        this.startOffTimerForOverrideClear();
+        this.ctx.log("Light turned off manually while motion active — entering override mode");
+      }
     }
   }
 
@@ -464,6 +492,7 @@ export abstract class MotionLightBase extends Recipe {
   }
 
   protected turnOff(reason: string): void {
+    this.turnOffGraceUntil = Date.now() + 5000;
     const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
@@ -481,6 +510,7 @@ export abstract class MotionLightBase extends Recipe {
   private onButtonAction(): void {
     if (isAnyLightOn(this.lightIds, this.ctx)) {
       this.lightsOnByRecipe = false;
+      this.turnOffGraceUntil = Date.now() + 5000;
       const errors = turnOffLights(this.lightIds, this.ctx);
       if (errors.length > 0) {
         this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
@@ -520,6 +550,7 @@ export abstract class MotionLightBase extends Recipe {
       this.clearOffTimerState();
       if (isAnyLightOn(this.lightIds, this.ctx)) {
         this.lightsOnByRecipe = false;
+        this.turnOffGraceUntil = Date.now() + 5000;
         turnOffLights(this.lightIds, this.ctx);
       }
       this.clearOverrideMode();
@@ -605,6 +636,7 @@ export abstract class MotionLightBase extends Recipe {
 
   private turnOffFailsafe(): void {
     this.lightsOnByRecipe = false;
+    this.turnOffGraceUntil = Date.now() + 5000;
     const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");

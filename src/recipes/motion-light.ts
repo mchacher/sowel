@@ -38,23 +38,20 @@ export class MotionLightRecipe extends MotionLightBase {
         },
         timeout: { name: "Délai", description: "Délai sans mouvement avant extinction" },
         luxThreshold: {
-          name: "Seuil de luminosité",
-          description:
-            "Ne pas allumer si la luminosité dépasse ce seuil ; éteint si la luminosité dépasse le seuil + 10% d'hystérésis (optionnel)",
+          name: "Seuil lux (max)",
+          description: "Au-dessus de ce seuil, les lumières ne s'allument pas",
         },
         maxOnDuration: {
-          name: "Durée max allumage",
-          description:
-            "Éteindre après cette durée sans mouvement — se réinitialise à chaque mouvement (sécurité)",
+          name: "Extinction auto (sécurité)",
+          description: "Coupe les lumières après cette durée même avec mouvement — anti-oubli",
         },
         buttons: {
-          name: "Boutons",
-          description: "Boutons / interrupteurs pour contrôle manuel (optionnel)",
+          name: "Interrupteurs",
+          description: "Interrupteurs physiques pour allumer/éteindre manuellement",
         },
         disableWhenDaylight: {
-          name: "Désactiver le jour",
-          description:
-            "Ne pas allumer les lumières quand il fait jour (basé sur lever/coucher du soleil et décalages dans les réglages)",
+          name: "Inactif le jour",
+          description: "Ne pas allumer pendant la journée (basé sur lever/coucher du soleil)",
         },
       },
     },
