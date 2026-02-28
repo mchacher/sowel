@@ -325,7 +325,9 @@ export class MotionLightRecipe extends Recipe {
     // Reset override (clear any stale state from previous run)
     this.overrideMode = false;
     this.lastSentBrightness = null;
-    this.lightsOnByRecipe = false;
+    // Take ownership of current light state so syncLightsOnStart turnOff
+    // doesn't trigger false override before the OFF echo arrives
+    this.lightsOnByRecipe = isAnyLightOn(this.lightIds, ctx);
     ctx.state.delete("overrideMode");
     ctx.notifyStateChanged();
 
@@ -494,6 +496,7 @@ export class MotionLightRecipe extends Recipe {
       this.cancelOffTimer();
       this.clearOffTimerState();
     } else if (!lightOn) {
+      this.lightsOnByRecipe = false;
       // Only log/cancel if we had active timers (avoids noise from Zigbee periodic reports)
       if (this.offTimer || this.failsafeTimer) {
         this.cancelOffTimer();
@@ -598,7 +601,8 @@ export class MotionLightRecipe extends Recipe {
   }
 
   private turnOff(reason: string): void {
-    this.lightsOnByRecipe = false;
+    // Don't clear lightsOnByRecipe here — wait for the OFF echo in
+    // onLightChanged to avoid false override during the MQTT round-trip gap
     const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
       this.ctx.log(`Error turning off some lights: ${errors.join("; ")}`, "error");
