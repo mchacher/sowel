@@ -272,6 +272,8 @@
   "aggregation.smoke": "Fumée",
   "aggregation.open_one": "{{count}} ouvert(e)",
   "aggregation.open_other": "{{count}} ouvert(e)s",
+  "aggregation.daylight": "Jour",
+  "aggregation.night": "Nuit",
 
   "time.min": "min",
   "time.hour": "h",
@@ -399,6 +401,14 @@
   "settings.enabled": "Actif",
   "settings.deleteUserConfirm": "Supprimer l'utilisateur « {{name}} » ?",
   "settings.cannotDeleteSelf": "Vous ne pouvez pas supprimer votre propre compte",
+  "settings.home": "Maison",
+  "settings.homeDescription": "Localisation géographique pour le calcul lever/coucher du soleil",
+  "settings.latitude": "Latitude",
+  "settings.longitude": "Longitude",
+  "settings.sunriseOffset": "Décalage lever (min)",
+  "settings.sunsetOffset": "Décalage coucher (min)",
+  "settings.sunriseOffsetHelp": "Minutes après le lever avant de considérer qu'il fait jour",
+  "settings.sunsetOffsetHelp": "Minutes avant le coucher pour anticiper la nuit",
 
   "backup.title": "Sauvegarde / Restauration",
   "backup.description": "Exportez ou importez la configuration complète de Winch (zones, appareils, équipements, utilisateurs, recettes, intégrations).",

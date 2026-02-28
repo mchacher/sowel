@@ -130,6 +130,9 @@ export interface ZoneAggregatedData {
   shuttersOpen: number;
   shuttersTotal: number;
   averageShutterPosition: number | null;
+  sunrise: string | null;
+  sunset: string | null;
+  isDaylight: boolean | null;
 }
 
 // ============================================================

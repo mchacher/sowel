@@ -135,6 +135,9 @@ export interface ZoneAggregatedData {
   shuttersOpen: number;
   shuttersTotal: number;
   averageShutterPosition: number | null;
+  sunrise: string | null;
+  sunset: string | null;
+  isDaylight: boolean | null;
 }
 
 // ============================================================
@@ -451,6 +454,10 @@ export type EngineEvent =
   | { type: "mode.deactivated"; modeId: string; modeName: string }
   // Calendar events
   | { type: "calendar.profile.changed"; profileId: string; profileName: string }
+  // Settings events
+  | { type: "settings.changed"; keys: string[] }
+  // Sunlight events
+  | { type: "sunlight.changed" }
   // System events
   | { type: "system.started" }
   | { type: "system.integration.connected"; integrationId: string }

@@ -8,6 +8,7 @@ import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
+import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { MotionLightRecipe } from "./recipes/motion-light.js";
 import { SwitchLightRecipe } from "./recipes/switch-light.js";
@@ -109,8 +110,10 @@ async function main() {
     logger,
   );
 
-  // 10. Create Zone Aggregator
+  // 10. Create Zone Aggregator + Sunlight Manager
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
+  const sunlightManager = new SunlightManager(settingsManager, eventBus, logger);
+  zoneAggregator.setSunlightManager(sunlightManager);
 
   // 11. Create Recipe Manager
   const recipeManager = new RecipeManager(
@@ -173,7 +176,10 @@ async function main() {
     `Winch API listening on http://${config.api.host}:${config.api.port}`,
   );
 
-  // 16. Emit system started event (triggers zone aggregation compute)
+  // 16. Start Sunlight Manager (before system.started so aggregation has sunlight data)
+  sunlightManager.start();
+
+  // 17. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
 
   // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
@@ -193,6 +199,11 @@ async function main() {
   // Graceful shutdown — each step is isolated so one failure doesn't block the rest
   const shutdown = async () => {
     logger.info("Shutting down...");
+    try {
+      sunlightManager.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping sunlight manager");
+    }
     try {
       calendarManager.stopAll();
     } catch (err) {

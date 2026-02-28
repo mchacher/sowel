@@ -2,12 +2,14 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { ZoneManager } from "./zone-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import type { SunlightManager } from "./sunlight-manager.js";
 import type {
   DataCategory,
   ZoneAggregatedData,
   DataBindingWithValue,
   Zone,
 } from "../shared/types.js";
+import { ROOT_ZONE_ID } from "../shared/constants.js";
 
 // ============================================================
 // Internal accumulator for aggregation (tracks sums + counts)
@@ -105,6 +107,9 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       acc.shutterPositionCount > 0
         ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
         : null,
+    sunrise: null,
+    sunset: null,
+    isDaylight: null,
   };
 }
 
@@ -126,7 +131,10 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.lightsTotal === b.lightsTotal &&
     a.shuttersOpen === b.shuttersOpen &&
     a.shuttersTotal === b.shuttersTotal &&
-    a.averageShutterPosition === b.averageShutterPosition
+    a.averageShutterPosition === b.averageShutterPosition &&
+    a.sunrise === b.sunrise &&
+    a.sunset === b.sunset &&
+    a.isDaylight === b.isDaylight
   );
 }
 
@@ -169,6 +177,7 @@ export class ZoneAggregator {
   private eventBus: EventBus;
   private zoneManager: ZoneManager;
   private equipmentManager: EquipmentManager;
+  private sunlightManager: SunlightManager | null = null;
   private unsubscribe: (() => void) | null = null;
 
   // Cache: per-zone accumulators and public data
@@ -188,6 +197,10 @@ export class ZoneAggregator {
     this.logger = logger.child({ module: "zone-aggregator" });
 
     this.setupEventListeners();
+  }
+
+  setSunlightManager(sunlightManager: SunlightManager): void {
+    this.sunlightManager = sunlightManager;
   }
 
   destroy(): void {
@@ -260,6 +273,7 @@ export class ZoneAggregator {
       const pub = accumulatorToPublic(merged);
       const oldPub = this.publicCache.get(zoneId);
       pub.motionSince = resolveMotionSince(pub, oldPub, now);
+      this.injectSunlightData(zoneId, pub);
       this.publicCache.set(zoneId, pub);
       computed.add(zoneId);
     };
@@ -294,6 +308,9 @@ export class ZoneAggregator {
           case "zone.updated":
           case "zone.removed":
             this.computeAll();
+            break;
+          case "sunlight.changed":
+            this.recomputeZoneChain(ROOT_ZONE_ID);
             break;
           case "system.started":
             this.computeAll();
@@ -365,6 +382,7 @@ export class ZoneAggregator {
 
       // Resolve motionSince before equality check
       newPublic.motionSince = resolveMotionSince(newPublic, oldPublic, now);
+      this.injectSunlightData(currentId, newPublic);
 
       if (!oldPublic || !aggregatedDataEqual(oldPublic, newPublic)) {
         this.publicCache.set(currentId, newPublic);
@@ -384,6 +402,17 @@ export class ZoneAggregator {
 
       currentId = zone.parentId;
     }
+  }
+
+  /**
+   * Inject sunlight data into root zone aggregation.
+   */
+  private injectSunlightData(zoneId: string, data: ZoneAggregatedData): void {
+    if (zoneId !== ROOT_ZONE_ID || !this.sunlightManager) return;
+    const sunlight = this.sunlightManager.getSunlightData();
+    data.sunrise = sunlight.sunrise;
+    data.sunset = sunlight.sunset;
+    data.isDaylight = sunlight.isDaylight;
   }
 
   /**
