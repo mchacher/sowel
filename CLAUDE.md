@@ -98,6 +98,7 @@ npm test -- --grep "pattern"  # Run specific tests
 
 - **Feature branches required**: any non-trivial development (new feature, refactoring, multi-file changes) must be done on a dedicated branch, not directly on `main`. Use descriptive branch names like `feat/gate-abstraction` or `fix/rate-limit`.
 - Small, isolated fixes (typo, single-line config change) may go directly on `main`.
+- **PR merge requires explicit user approval**: never merge a pull request without the user's explicit validation. Create the PR, present it, and wait for approval before merging.
 
 ## Implementation Conventions
 
