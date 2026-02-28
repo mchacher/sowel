@@ -115,6 +115,8 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
   private morningStart: string | null = null;
   private morningEnd: string | null = null;
   private lastSentBrightness: number | null = null;
+  /** Grace period: ignore brightness echoes for 5s after we send a brightness command */
+  private brightnessGraceUntil = 0;
 
   // ============================================================
   // Dimmable-specific validation
@@ -200,6 +202,7 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
 
   protected override stopExtra(): void {
     this.lastSentBrightness = null;
+    this.brightnessGraceUntil = 0;
   }
 
   // ============================================================
@@ -214,6 +217,7 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
 
     const targetBrightness = this.getTargetBrightness();
     if (targetBrightness !== null) {
+      this.brightnessGraceUntil = Date.now() + 5000;
       this.lastSentBrightness = targetBrightness;
       const brightnessErrors = setLightsBrightness(this.lightIds, this.ctx, targetBrightness);
       if (brightnessErrors.length > 0) {
@@ -264,6 +268,7 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
     if (this.overrideMode) return;
     if (!isAnyLightOn(this.lightIds, this.ctx)) return;
     if (this.lastSentBrightness === null) return;
+    if (Date.now() < this.brightnessGraceUntil) return;
     if (Number(value) === this.lastSentBrightness) return;
 
     this.overrideMode = true;

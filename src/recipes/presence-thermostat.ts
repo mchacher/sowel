@@ -169,6 +169,8 @@ export class PresenceThermostatRecipe extends Recipe {
   private currentMode: "comfort" | "eco" = "eco";
   private overrideMode = false;
   private lastSentSetpoint: number | null = null;
+  /** Grace period: ignore setpoint echoes for 5s after we send a setpoint command */
+  private setpointGraceUntil = 0;
   private ecoTimer: ReturnType<typeof setTimeout> | null = null;
   private preheatCheckTimer: ReturnType<typeof setInterval> | null = null;
   private wasInPreheat = false;
@@ -359,6 +361,7 @@ export class PresenceThermostatRecipe extends Recipe {
     this.unsubs = [];
     this.overrideMode = false;
     this.lastSentSetpoint = null;
+    this.setpointGraceUntil = 0;
     this.ctx.state.delete("overrideMode");
     this.ctx.state.delete("timerExpiresAt");
     this.ctx.state.delete("currentMode");
@@ -418,6 +421,7 @@ export class PresenceThermostatRecipe extends Recipe {
 
   private onSetpointChanged(value: unknown): void {
     if (this.overrideMode) return;
+    if (Date.now() < this.setpointGraceUntil) return;
     // Ignore echo: same value as what the recipe sent
     if (this.lastSentSetpoint !== null && Number(value) === this.lastSentSetpoint) return;
 
@@ -503,6 +507,7 @@ export class PresenceThermostatRecipe extends Recipe {
 
   private setComfort(reason: string): void {
     const target = this.getTargetComfortTemp();
+    this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = target;
     try {
       this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", target);
@@ -516,6 +521,7 @@ export class PresenceThermostatRecipe extends Recipe {
   }
 
   private setEco(reason: string): void {
+    this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = this.ecoTemp;
     try {
       this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.ecoTemp);

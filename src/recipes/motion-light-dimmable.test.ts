@@ -534,6 +534,9 @@ describe("MotionLightDimmableRecipe", () => {
       simulateMotion(setup, true);
       simulateLightState(setup, "ON");
 
+      // Wait past grace period
+      vi.advanceTimersByTime(6000);
+
       // External brightness change (80 !== 150 configured -> override)
       simulateBrightnessChange(setup, setup.lightId, setup.brightnessDataId, 80);
 
@@ -570,6 +573,58 @@ describe("MotionLightDimmableRecipe", () => {
       expect(logs.some((l) => l.message.includes("override"))).toBe(false);
     });
 
+    it("ignores brightness echo during grace period after turn-on", () => {
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      // Motion turns on lights (sends brightness=150, starts 5s grace period)
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+
+      // Device echoes its PREVIOUS brightness (200) before applying new value
+      // This happens within the 5s grace window — should NOT trigger override
+      vi.advanceTimersByTime(500);
+      simulateBrightnessChange(setup, setup.lightId, setup.brightnessDataId, 200);
+
+      const instance = setup.manager
+        .getInstances()
+        .find((i) => i.recipeId === "motion-light-dimmable")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(logs.some((l) => l.message.includes("override"))).toBe(false);
+    });
+
+    it("detects manual brightness change after grace period", () => {
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+
+      // Wait past the 5s grace period
+      vi.advanceTimersByTime(6000);
+
+      // NOW a brightness change should be detected as manual override
+      simulateBrightnessChange(setup, setup.lightId, setup.brightnessDataId, 80);
+
+      const instance = setup.manager
+        .getInstances()
+        .find((i) => i.recipeId === "motion-light-dimmable")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(
+        logs.some(
+          (l) => l.message.includes("Manual brightness change") && l.message.includes("override"),
+        ),
+      ).toBe(true);
+    });
+
     it("override is cleared after timeout even with lights still on", () => {
       setup.manager.createInstance("motion-light-dimmable", {
         zone: setup.zoneId,
@@ -582,7 +637,7 @@ describe("MotionLightDimmableRecipe", () => {
       simulateLightState(setup, "ON");
 
       // Wait past self-triggered, then change brightness manually
-      vi.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(6000);
       simulateBrightnessChange(setup, setup.lightId, setup.brightnessDataId, 80);
 
       // No motion -> override clear timer starts
@@ -648,7 +703,7 @@ describe("MotionLightDimmableRecipe", () => {
       simulateLightState(setup, "ON");
 
       // 2. User dims to 80 -> override
-      vi.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(6000);
       simulateBrightnessChange(setup, setup.lightId, setup.brightnessDataId, 80);
 
       // 3. No motion -> timer starts
