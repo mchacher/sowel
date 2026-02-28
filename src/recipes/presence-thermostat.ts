@@ -359,6 +359,8 @@ export class PresenceThermostatRecipe extends Recipe {
     this.unsubs = [];
     this.overrideMode = false;
     this.lastSentSetpoint = null;
+    this.ctx.state.delete("overrideMode");
+    this.ctx.notifyStateChanged();
   }
 
   // ── Initial sync — force setpoint on activation ─────────

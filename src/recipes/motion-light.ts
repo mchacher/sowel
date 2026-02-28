@@ -375,6 +375,8 @@ export class MotionLightRecipe extends Recipe {
     this.unsubs = [];
     this.overrideMode = false;
     this.lastSentBrightness = null;
+    this.ctx.state.delete("overrideMode");
+    this.ctx.notifyStateChanged();
   }
 
   // ============================================================
