@@ -407,7 +407,7 @@ describe("MotionLightDimmableRecipe", () => {
       expect(brightnessCmd).toBeDefined();
     });
 
-    it("uses morningBrightness during morning window", () => {
+    it("uses slot1 brightness during slot 1 window", () => {
       vi.setSystemTime(new Date("2026-02-27T07:30:00"));
 
       setup.manager.createInstance("motion-light-dimmable", {
@@ -415,9 +415,9 @@ describe("MotionLightDimmableRecipe", () => {
         lights: [setup.lightId],
         timeout: "5m",
         brightness: 200,
-        morningBrightness: 50,
-        morningStart: "06:00",
-        morningEnd: "09:00",
+        slot1Start: "06:00",
+        slot1End: "09:00",
+        slot1Brightness: 50,
       });
       setup.published.length = 0;
 
@@ -430,7 +430,33 @@ describe("MotionLightDimmableRecipe", () => {
       expect(brightnessCmd).toBeDefined();
     });
 
-    it("uses normal brightness outside morning window", () => {
+    it("uses slot2 brightness during slot 2 window", () => {
+      vi.setSystemTime(new Date("2026-02-27T22:15:00"));
+
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 200,
+        slot1Start: "06:00",
+        slot1End: "09:00",
+        slot1Brightness: 80,
+        slot2Start: "22:00",
+        slot2End: "23:30",
+        slot2Brightness: 50,
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 50;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("uses default brightness outside all slots", () => {
       vi.setSystemTime(new Date("2026-02-27T12:00:00"));
 
       setup.manager.createInstance("motion-light-dimmable", {
@@ -438,9 +464,9 @@ describe("MotionLightDimmableRecipe", () => {
         lights: [setup.lightId],
         timeout: "5m",
         brightness: 200,
-        morningBrightness: 50,
-        morningStart: "06:00",
-        morningEnd: "09:00",
+        slot1Start: "06:00",
+        slot1End: "09:00",
+        slot1Brightness: 50,
       });
       setup.published.length = 0;
 
@@ -449,6 +475,79 @@ describe("MotionLightDimmableRecipe", () => {
       const brightnessCmd = setup.published.find((p) => {
         const payload = JSON.parse(p.payload);
         return payload.brightness === 200;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("handles wraparound slot (23:30-06:00)", () => {
+      vi.setSystemTime(new Date("2026-02-27T02:00:00"));
+
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 200,
+        slot1Start: "23:30",
+        slot1End: "06:00",
+        slot1Brightness: 20,
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 20;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("first matching slot wins on overlap", () => {
+      vi.setSystemTime(new Date("2026-02-27T07:30:00"));
+
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 200,
+        slot1Start: "06:00",
+        slot1End: "09:00",
+        slot1Brightness: 50,
+        slot2Start: "07:00",
+        slot2End: "10:00",
+        slot2Brightness: 100,
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      // Slot 1 should win (first match)
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 50;
+      });
+      expect(brightnessCmd).toBeDefined();
+    });
+
+    it("accepts partial slots (only slot 2 filled)", () => {
+      vi.setSystemTime(new Date("2026-02-27T22:15:00"));
+
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 200,
+        slot2Start: "22:00",
+        slot2End: "23:30",
+        slot2Brightness: 50,
+      });
+      setup.published.length = 0;
+
+      simulateMotion(setup, true);
+
+      const brightnessCmd = setup.published.find((p) => {
+        const payload = JSON.parse(p.payload);
+        return payload.brightness === 50;
       });
       expect(brightnessCmd).toBeDefined();
     });
@@ -480,39 +579,42 @@ describe("MotionLightDimmableRecipe", () => {
       ).toThrow("Invalid params");
     });
 
-    it("validates morningStart/morningEnd must be provided together", () => {
+    it("validates slot fields must be all-or-nothing", () => {
       expect(() =>
         setup.manager.createInstance("motion-light-dimmable", {
           zone: setup.zoneId,
           lights: [setup.lightId],
           timeout: "5m",
           brightness: 200,
-          morningStart: "06:00",
+          slot1Start: "06:00",
         }),
       ).toThrow("Invalid params");
     });
 
-    it("validates morningBrightness requires morning window", () => {
+    it("validates slot brightness range", () => {
       expect(() =>
         setup.manager.createInstance("motion-light-dimmable", {
           zone: setup.zoneId,
           lights: [setup.lightId],
           timeout: "5m",
           brightness: 200,
-          morningBrightness: 50,
+          slot1Start: "06:00",
+          slot1End: "09:00",
+          slot1Brightness: 300,
         }),
       ).toThrow("Invalid params");
     });
 
-    it("validates time format", () => {
+    it("validates slot time format", () => {
       expect(() =>
         setup.manager.createInstance("motion-light-dimmable", {
           zone: setup.zoneId,
           lights: [setup.lightId],
           timeout: "5m",
           brightness: 200,
-          morningStart: "6:00",
-          morningEnd: "09:00",
+          slot1Start: "6:00",
+          slot1End: "09:00",
+          slot1Brightness: 50,
         }),
       ).toThrow("Invalid params");
     });
@@ -625,6 +727,79 @@ describe("MotionLightDimmableRecipe", () => {
       ).toBe(true);
     });
 
+    it("enters override when manually turned off while motion active", () => {
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      // Motion detected → lights turn on
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+
+      // User manually turns off light while there is still motion
+      setup.published.length = 0;
+      simulateLightState(setup, "OFF");
+
+      // Verify override mode is entered
+      const instance = setup.manager
+        .getInstances()
+        .find((i) => i.recipeId === "motion-light-dimmable")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(
+        logs.some(
+          (l) => l.message.includes("turned off manually") && l.message.includes("override"),
+        ),
+      ).toBe(true);
+
+      // Motion continues — lights should NOT be turned on again
+      setup.published.length = 0;
+      simulateMotion(setup, true);
+      const onCommand = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCommand).toBeUndefined();
+    });
+
+    it("does not enter override when recipe itself turns off lights", () => {
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 150,
+      });
+
+      // Motion on → lights on
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+
+      // Motion stops → off-timer starts
+      simulateMotion(setup, false);
+
+      // Wait for timeout → recipe turns off lights
+      vi.advanceTimersByTime(5 * 60 * 1000 + 100);
+
+      // Simulate MQTT echo: light reports OFF
+      simulateLightState(setup, "OFF");
+
+      // Verify no override mode
+      const instance = setup.manager
+        .getInstances()
+        .find((i) => i.recipeId === "motion-light-dimmable")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(
+        logs.some(
+          (l) => l.message.includes("turned off manually") && l.message.includes("override"),
+        ),
+      ).toBe(false);
+
+      // New motion should turn lights on (no override blocking)
+      setup.published.length = 0;
+      simulateMotion(setup, true);
+      const onCommand = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCommand).toBeDefined();
+    });
+
     it("override is cleared after timeout even with lights still on", () => {
       setup.manager.createInstance("motion-light-dimmable", {
         zone: setup.zoneId,
@@ -691,9 +866,9 @@ describe("MotionLightDimmableRecipe", () => {
         lights: [setup.lightId],
         timeout: "5m",
         brightness: 200,
-        morningBrightness: 50,
-        morningStart: "06:00",
-        morningEnd: "09:00",
+        slot1Start: "06:00",
+        slot1End: "09:00",
+        slot1Brightness: 50,
       });
 
       // 1. Motion -> lights on at normal brightness (noon)

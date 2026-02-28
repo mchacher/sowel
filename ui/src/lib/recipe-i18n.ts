@@ -31,3 +31,11 @@ export function recipeSlotName(recipe: RecipeInfo, slot: RecipeSlotDef, lang: st
 export function recipeSlotDescription(recipe: RecipeInfo, slot: RecipeSlotDef, lang: string): string {
   return recipe.i18n?.[lang]?.slots?.[slot.id]?.description ?? slot.description;
 }
+
+/**
+ * Resolve a group's translated label for the given language.
+ * Falls back to the group key itself.
+ */
+export function recipeGroupLabel(recipe: RecipeInfo, groupKey: string, lang: string): string {
+  return recipe.i18n?.[lang]?.groups?.[groupKey] ?? groupKey;
+}
