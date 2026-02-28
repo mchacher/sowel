@@ -94,6 +94,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Form inputs — clean focus ring */
+input, select, textarea {
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-primary);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

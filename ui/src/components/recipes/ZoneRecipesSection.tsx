@@ -161,7 +161,27 @@ function RecipeInstanceRow({
     setShowLog(true);
   };
 
+  const isSlotChanged = (slotId: string): boolean => {
+    const val = instance.params[slotId];
+    const original = Array.isArray(val) ? val.join(",") : String(val ?? "");
+    return (editParams[slotId] ?? "") !== original;
+  };
+
+  const hasChanges = useMemo(() => {
+    if (!editing) return false;
+    for (const [key, val] of Object.entries(instance.params)) {
+      const original = Array.isArray(val) ? val.join(",") : String(val ?? "");
+      if ((editParams[key] ?? "") !== original) return true;
+    }
+    return false;
+  }, [editing, editParams, instance.params]);
+
   const handleStartEdit = () => {
+    if (editing) {
+      setEditing(false);
+      setEditError("");
+      return;
+    }
     const params: Record<string, string> = {};
     for (const [key, val] of Object.entries(instance.params)) {
       // Store array values as comma-separated for the form
@@ -349,8 +369,8 @@ function RecipeInstanceRow({
             {recipe.slots
               .filter((slot) => slot.id !== "zone")
               .map((slot) => (
-                <div key={slot.id} className="mb-2.5">
-                  <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"}`}>
+                  <label className={`block text-[11px] uppercase tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
                     {recipeSlotName(recipe, slot, lang)}
                   </label>
                   {slot.type === "equipment" && slot.list ? (
@@ -416,8 +436,10 @@ function RecipeInstanceRow({
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[12px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+                disabled={saving || !hasChanges}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-[12px] font-medium rounded-[6px] transition-colors duration-150 disabled:opacity-40 ${
+                  hasChanges ? "bg-success hover:brightness-110" : "bg-primary"
+                }`}
               >
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={1.5} />}
                 {t("common.save")}
