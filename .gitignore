@@ -8,3 +8,8 @@ data/
 .DS_Store
 coverage/
 .venv/
+
+# Local tool configs
+.claude/settings.json
+.mcp.json
+.playwright-mcp/
