@@ -321,9 +321,11 @@ export class MotionLightRecipe extends Recipe {
       ? params.buttons.filter((id): id is string => typeof id === "string")
       : [];
 
-    // Reset override
+    // Reset override (clear any stale state from previous run)
     this.overrideMode = false;
     this.lastSentBrightness = null;
+    ctx.state.delete("overrideMode");
+    ctx.notifyStateChanged();
 
     // Listen to zone aggregation changes (for motion + luminosity)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
@@ -603,6 +605,8 @@ export class MotionLightRecipe extends Recipe {
       this.clearFailsafeTimerState();
 
       this.overrideMode = true;
+      this.ctx.state.set("overrideMode", true);
+      this.ctx.notifyStateChanged();
       this.ctx.log("Button pressed — lights off, entering override mode");
 
       // Start timer to clear override when room empties
@@ -626,6 +630,8 @@ export class MotionLightRecipe extends Recipe {
     if (this.lastSentBrightness !== null && Number(value) === this.lastSentBrightness) return;
 
     this.overrideMode = true;
+    this.ctx.state.set("overrideMode", true);
+    this.ctx.notifyStateChanged();
     this.ctx.log("Manual brightness change detected — entering override mode");
   }
 
@@ -636,6 +642,8 @@ export class MotionLightRecipe extends Recipe {
   private clearOverrideMode(): void {
     if (!this.overrideMode) return;
     this.overrideMode = false;
+    this.ctx.state.delete("overrideMode");
+    this.ctx.notifyStateChanged();
   }
 
   private startOffTimerForOverrideClear(): void {

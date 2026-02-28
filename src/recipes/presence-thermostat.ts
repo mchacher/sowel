@@ -310,11 +310,13 @@ export class PresenceThermostatRecipe extends Recipe {
         ? params.weekendPreheatEnd
         : null;
 
-    // Reset runtime state
+    // Reset runtime state (clear any stale override from previous run)
     this.currentMode = "eco";
     this.overrideMode = false;
     this.lastSentSetpoint = null;
     this.wasInPreheat = false;
+    ctx.state.delete("overrideMode");
+    ctx.notifyStateChanged();
 
     // Subscribe to zone changes (motion)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
@@ -416,6 +418,8 @@ export class PresenceThermostatRecipe extends Recipe {
     if (this.lastSentSetpoint !== null && Number(value) === this.lastSentSetpoint) return;
 
     this.overrideMode = true;
+    this.ctx.state.set("overrideMode", true);
+    this.ctx.notifyStateChanged();
     this.ctx.log("Manual setpoint change detected — entering override mode");
   }
 
@@ -526,6 +530,8 @@ export class PresenceThermostatRecipe extends Recipe {
   private clearOverrideMode(): void {
     if (!this.overrideMode) return;
     this.overrideMode = false;
+    this.ctx.state.delete("overrideMode");
+    this.ctx.notifyStateChanged();
   }
 
   private startEcoTimerForOverrideClear(): void {
