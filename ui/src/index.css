@@ -15,6 +15,7 @@
   --color-primary-hover: #13405A;
   --color-accent: #D4963F;
   --color-accent-hover: #BB8232;
+  --color-accent-light: #FDF0E0;
   --color-background: #F8FAFB;
   --color-surface: #FFFFFF;
   --color-surface-raised: #FFFFFF;
@@ -58,6 +59,7 @@
   --color-primary-hover: #5CB3E0;
   --color-accent: #E0A84F;
   --color-accent-hover: #EBB85F;
+  --color-accent-light: #3A2A14;
   --color-background: #111827;
   --color-surface: #1E293B;
   --color-surface-raised: #253040;

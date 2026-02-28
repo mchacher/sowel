@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Check, Copy } from "lucide-react";
+import { ChefHat, Plus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Check, Copy, ShieldOff } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -283,6 +283,16 @@ function RecipeInstanceRow({
         </button>
         {!!instance.state?.timerExpiresAt && instance.enabled && (
           <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
+        )}
+        {!!instance.state?.overrideMode && instance.enabled && (
+          <span
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0"
+            style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
+            title={t("recipes.overrideActive", "Override active")}
+          >
+            <ShieldOff size={10} strokeWidth={2} />
+            Override
+          </span>
         )}
         <button
           onClick={handleToggleEnabled}
