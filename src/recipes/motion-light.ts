@@ -376,6 +376,8 @@ export class MotionLightRecipe extends Recipe {
     this.overrideMode = false;
     this.lastSentBrightness = null;
     this.ctx.state.delete("overrideMode");
+    this.ctx.state.delete("timerExpiresAt");
+    this.ctx.state.delete("failsafeExpiresAt");
     this.ctx.notifyStateChanged();
   }
 

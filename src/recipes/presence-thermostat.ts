@@ -360,6 +360,8 @@ export class PresenceThermostatRecipe extends Recipe {
     this.overrideMode = false;
     this.lastSentSetpoint = null;
     this.ctx.state.delete("overrideMode");
+    this.ctx.state.delete("timerExpiresAt");
+    this.ctx.state.delete("currentMode");
     this.ctx.notifyStateChanged();
   }
 

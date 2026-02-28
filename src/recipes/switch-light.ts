@@ -170,6 +170,8 @@ export class SwitchLightRecipe extends Recipe {
       unsub();
     }
     this.unsubs = [];
+    this.ctx.state.delete("failsafeExpiresAt");
+    this.ctx.notifyStateChanged();
   }
 
   // ============================================================
