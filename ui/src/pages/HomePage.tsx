@@ -195,7 +195,6 @@ export function HomePage() {
             zoneName={currentZone.name}
             equipments={zoneEquipments}
             onExecuteOrder={executeOrder}
-            historyEnabled={historyEnabled}
           />
         </CollapsibleSection>
 

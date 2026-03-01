@@ -265,7 +265,7 @@ export function EquipmentDetailPage() {
       {equipment.type === "weather" ? (
         <WeatherPanel bindings={equipment.dataBindings} />
       ) : isSensor ? (
-        <SensorDataPanel bindings={equipment.dataBindings} />
+        <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
       {/* Button actions */}
