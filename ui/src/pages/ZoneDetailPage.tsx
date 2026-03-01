@@ -24,6 +24,7 @@ const MODE_COLORS: Record<string, { bg: string; text: string }> = {
   eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
   cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
+  night: { bg: "#ede9fe", text: "#7c3aed" },
 };
 
 const DEFAULT_PILL_COLOR = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
@@ -46,9 +47,10 @@ function RecipeModePill({
   const currentValue = instance.state?.[action.stateKey] as string | undefined;
   if (!currentValue) return null;
 
-  // Filter options: hide cocoon if cocoonTemp not configured
+  // Filter options: hide cocoon/night if their temp is not configured
   const availableOptions = action.options.filter((opt) => {
     if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
+    if (opt.value === "night" && !instance.params.nightTemp) return false;
     return true;
   });
 

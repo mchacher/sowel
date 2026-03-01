@@ -510,7 +510,7 @@ describe("PresenceThermostatRecipe", () => {
   // Night window
   // ============================================================
 
-  it("sends nightTemp instead of comfortTemp during night window", () => {
+  it("auto-activates night mode when starting during night window", () => {
     vi.setSystemTime(new Date("2026-02-27T23:30:00")); // 23:30, inside 22:00-06:00
 
     setup.manager.createInstance("presence-thermostat", {
@@ -521,13 +521,16 @@ describe("PresenceThermostatRecipe", () => {
       nightStart: "22:00",
       nightEnd: "06:00",
     });
-    setup.published.length = 0;
 
-    simulateMotion(setup, true);
-
+    // Night mode should be active on start — sends nightTemp
     const setpoints = getSetpointCommands(setup.published);
     expect(setpoints).toContain(18);
-    expect(setpoints).not.toContain(21);
+    expect(setpoints).not.toContain(21); // not comfortTemp
+
+    // Motion during night mode is ignored
+    setup.published.length = 0;
+    simulateMotion(setup, true);
+    expect(getSetpointCommands(setup.published)).toHaveLength(0);
   });
 
   it("sends comfortTemp outside night window", () => {
@@ -550,7 +553,7 @@ describe("PresenceThermostatRecipe", () => {
     expect(setpoints).not.toContain(18);
   });
 
-  it("eco setpoint is not affected by night window", () => {
+  it("eco timer does not fire during night mode", () => {
     vi.setSystemTime(new Date("2026-02-27T23:30:00")); // during night
 
     setup.manager.createInstance("presence-thermostat", {
@@ -561,15 +564,15 @@ describe("PresenceThermostatRecipe", () => {
       nightStart: "22:00",
       nightEnd: "06:00",
     });
-
-    simulateMotion(setup, true);
-    simulateMotion(setup, false);
     setup.published.length = 0;
 
+    // Motion changes during night mode are ignored — no eco timer starts
+    simulateMotion(setup, true);
+    simulateMotion(setup, false);
     vi.advanceTimersByTime(30 * 60 * 1000 + 100);
 
     const setpoints = getSetpointCommands(setup.published);
-    expect(setpoints).toContain(17); // ecoTemp, not nightTemp
+    expect(setpoints).toHaveLength(0); // night mode holds — no transitions
   });
 
   // ============================================================
@@ -1127,7 +1130,7 @@ describe("PresenceThermostatRecipe", () => {
     expect(setpoints).not.toContain(17); // no eco
   });
 
-  it("cocoon exits when night window starts", () => {
+  it("cocoon exits to night mode when night window starts", () => {
     vi.setSystemTime(new Date("2026-02-27T21:50:00")); // 21:50, just before night
 
     const buttonId = createButton(setup);
@@ -1146,12 +1149,12 @@ describe("PresenceThermostatRecipe", () => {
     simulateButtonPress(setup, buttonId); // cocoon
     setup.published.length = 0;
 
-    // Advance into night window — periodic check should exit cocoon
+    // Advance into night window — periodic check should switch to night mode
     vi.setSystemTime(new Date("2026-02-27T22:01:00"));
     vi.advanceTimersByTime(60_000); // trigger periodic check
 
     const setpoints = getSetpointCommands(setup.published);
-    expect(setpoints).toContain(17); // eco (night forces eco)
+    expect(setpoints).toContain(18); // nightTemp (night mode)
     expect(setpoints).not.toContain(23); // not cocoon
   });
 
