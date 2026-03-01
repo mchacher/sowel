@@ -14,6 +14,7 @@ import { MotionLightRecipe } from "./recipes/motion-light.js";
 import { MotionLightDimmableRecipe } from "./recipes/motion-light-dimmable.js";
 import { SwitchLightRecipe } from "./recipes/switch-light.js";
 import { PresenceThermostatRecipe } from "./recipes/presence-thermostat.js";
+import { PresenceHeaterRecipe } from "./recipes/presence-heater.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -137,6 +138,7 @@ async function main() {
   recipeManager.register(MotionLightDimmableRecipe);
   recipeManager.register(SwitchLightRecipe);
   recipeManager.register(PresenceThermostatRecipe);
+  recipeManager.register(PresenceHeaterRecipe);
 
   // 12. Create Mode Manager + Calendar Manager
   const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);

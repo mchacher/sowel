@@ -17,6 +17,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
   const isThermostat = equipment.type === "thermostat";
+  const isHeater = equipment.type === "heater";
   const isGate = equipment.type === "gate";
 
   // State binding
@@ -80,6 +81,10 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       ? isOn
         ? "bg-error/10 text-error"
         : "bg-border-light text-text-tertiary"
+      : isHeater
+        ? !isOn // fil pilote: relay OFF = comfort (warm)
+          ? "bg-error/10 text-error"
+          : "bg-border-light text-text-tertiary"
       : isShutter
         ? shutterIsOpen
           ? "bg-primary/10 text-primary"
@@ -99,6 +104,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isShutter,
     isSensor,
     isThermostat,
+    isHeater,
     isGate,
     stateBinding,
     isOn,
