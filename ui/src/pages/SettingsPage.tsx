@@ -16,10 +16,11 @@ import {
   updateSettings,
   getHistoryStatus,
   testHistoryConnection,
+  getHistoryRetention,
 } from "../api";
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
-import type { ApiToken, User, UserRole, HistoryStatus } from "../types";
+import type { ApiToken, User, UserRole, HistoryStatus, RetentionStatus } from "../types";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -791,9 +792,9 @@ function InfluxDbSettingsSection() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [status, setStatus] = useState<HistoryStatus | null>(null);
+  const [retention, setRetention] = useState<RetentionStatus | null>(null);
 
   const [url, setUrl] = useState("");
-  const [token, setToken] = useState("");
   const [org, setOrg] = useState("");
   const [bucket, setBucket] = useState("");
   const [enabled, setEnabled] = useState(false);
@@ -814,6 +815,10 @@ function InfluxDbSettingsSection() {
       setEnabled(en);
       setInitial({ url: u, token: tk, org: o, bucket: b, enabled: en });
       setStatus(histStatus);
+      // Fetch retention status if connected
+      if (histStatus.connected) {
+        getHistoryRetention().then(setRetention).catch(() => setRetention(null));
+      }
     } finally {
       setLoading(false);
     }
@@ -838,6 +843,9 @@ function InfluxDbSettingsSection() {
       // Refresh status after save
       const histStatus = await getHistoryStatus();
       setStatus(histStatus);
+      if (histStatus.connected) {
+        getHistoryRetention().then(setRetention).catch(() => setRetention(null));
+      }
     } finally {
       setSaving(false);
     }
@@ -998,6 +1006,78 @@ function InfluxDbSettingsSection() {
             </button>
           )}
         </div>
+
+        {/* Retention & Downsampling — read-only status */}
+        {status?.connected && retention && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[13px] font-semibold text-text">{t("history.retention")}</h3>
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${
+                retention.setupComplete
+                  ? "bg-success/10 text-success"
+                  : "bg-warning/10 text-warning"
+              }`}>
+                {retention.setupComplete ? t("history.setupComplete") : t("history.setupIncomplete")}
+              </span>
+            </div>
+            <p className="text-[11px] text-text-tertiary mb-3">{t("history.retentionDescription")}</p>
+
+            {/* Bucket retention policies */}
+            <div className="space-y-1.5 mb-3">
+              {([
+                { key: "raw" as const, label: t("history.retentionRaw"), bucket: retention.buckets.raw },
+                { key: "hourly" as const, label: t("history.retentionHourly"), bucket: retention.buckets.hourly },
+                { key: "daily" as const, label: t("history.retentionDaily"), bucket: retention.buckets.daily },
+              ]).map(({ key, label, bucket }) => (
+                <div key={key} className="flex items-center justify-between py-1.5 px-3 bg-background rounded-[6px]">
+                  <span className="text-[12px] text-text-secondary">{label}</span>
+                  <span className="text-[12px] font-mono text-text">
+                    {bucket
+                      ? bucket.retentionSeconds === 0
+                        ? t("history.retentionInfinite")
+                        : bucket.retentionSeconds >= 365 * 86400
+                          ? t("history.retentionYears", { years: Math.round(bucket.retentionSeconds / (365 * 86400)) })
+                          : t("history.retentionDays", { days: Math.round(bucket.retentionSeconds / 86400) })
+                      : "—"
+                    }
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Downsampling task status */}
+            <div className="space-y-1.5">
+              {([
+                { key: "hourly" as const, label: `${t("history.downsamplingTask")}: ${t("history.retentionHourly")}`, task: retention.tasks.hourly },
+                { key: "daily" as const, label: `${t("history.downsamplingTask")}: ${t("history.retentionDaily")}`, task: retention.tasks.daily },
+              ]).map(({ key, label, task }) => (
+                <div key={key} className="flex items-center justify-between py-1.5 px-3 bg-background rounded-[6px]">
+                  <span className="text-[12px] text-text-secondary">{label}</span>
+                  <div className="flex items-center gap-2">
+                    {task ? (
+                      <>
+                        <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${
+                          task.status === "active"
+                            ? "bg-success/10 text-success"
+                            : "bg-border-light text-text-tertiary"
+                        }`}>
+                          {task.status === "active" ? t("history.taskActive") : t("history.taskInactive")}
+                        </span>
+                        {task.lastRunAt && (
+                          <span className="text-[11px] text-text-tertiary">
+                            {t("history.lastRun")}: {new Date(task.lastRunAt).toLocaleString()}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-text-tertiary">{t("history.taskNotCreated")}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -141,17 +141,17 @@ Each iteration is independently deployable and delivers visible value to the use
 
 **Backend**:
 
-- [ ] Create InfluxDB downsampling tasks on first connection (or via setup endpoint):
+- [x] Create InfluxDB downsampling tasks on first connection (or via setup endpoint):
   - Task `downsample-hourly`: aggregate raw → `winch-hourly` bucket (mean, min, max per 1h)
   - Task `downsample-daily`: aggregate hourly → `winch-daily` bucket (mean, min, max per 1d)
-- [ ] Bucket retention: raw=7d, hourly=90d, daily=5y (configurable in settings)
-- [ ] `GET /api/v1/history/status` returns storage stats (bucket sizes, oldest/newest points)
-- [ ] HistoryQuery auto-selects bucket based on time range
+- [x] Bucket retention: raw=7d, hourly=90d, daily=5y (configurable in settings)
+- [x] `GET /api/v1/history/retention` returns bucket retention + task status
+- [x] HistoryQuery auto-selects bucket based on time range (with fallback to raw)
 
 **Frontend**:
 
-- [ ] Settings: retention policy display (read-only for now, shows current config)
-- [ ] Settings: storage usage indicator (total points, approximate disk usage)
+- [x] Settings: retention policy display (read-only, shows current bucket retention + task status)
+- [ ] Settings: storage usage indicator (total points, approximate disk usage) — deferred
 
 **Testing**:
 

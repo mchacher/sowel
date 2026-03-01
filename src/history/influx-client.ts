@@ -9,6 +9,26 @@ export interface InfluxConfig {
   bucket: string;
 }
 
+/** Default retention durations in seconds. */
+export const DEFAULT_RETENTION = {
+  raw: 7 * 86_400, // 7 days
+  hourly: 90 * 86_400, // 90 days
+  daily: 5 * 365 * 86_400, // 5 years
+} as const;
+
+export interface RetentionStatus {
+  buckets: {
+    raw: { name: string; retentionSeconds: number } | null;
+    hourly: { name: string; retentionSeconds: number } | null;
+    daily: { name: string; retentionSeconds: number } | null;
+  };
+  tasks: {
+    hourly: { id: string; status: string; lastRunAt?: string } | null;
+    daily: { id: string; status: string; lastRunAt?: string } | null;
+  };
+  setupComplete: boolean;
+}
+
 /**
  * Thin wrapper around the InfluxDB 2.x client.
  * Provides connect, disconnect, health check, and buffered write.
@@ -128,6 +148,332 @@ export class InfluxClient {
     return { pointsWritten24h: this.pointsWritten24h, errors24h: this.errors24h };
   }
 
+  // ============================================================
+  // Bucket & Task Management (IT5: Retention & Downsampling)
+  // ============================================================
+
+  /**
+   * Ensure downsampling buckets exist with correct retention.
+   * Idempotent: skips creation if bucket already exists.
+   */
+  async ensureBuckets(retention?: {
+    rawSeconds?: number;
+    hourlySeconds?: number;
+    dailySeconds?: number;
+  }): Promise<void> {
+    if (!this.config) return;
+
+    const rawRetention = retention?.rawSeconds ?? DEFAULT_RETENTION.raw;
+    const hourlyRetention = retention?.hourlySeconds ?? DEFAULT_RETENTION.hourly;
+    const dailyRetention = retention?.dailySeconds ?? DEFAULT_RETENTION.daily;
+
+    try {
+      const orgId = await this.getOrgId();
+      if (!orgId) {
+        this.logger.warn("Could not resolve InfluxDB org ID — skipping bucket setup");
+        return;
+      }
+
+      // Ensure hourly and daily buckets exist
+      await this.ensureBucket(`${this.config.bucket}-hourly`, hourlyRetention, orgId);
+      await this.ensureBucket(`${this.config.bucket}-daily`, dailyRetention, orgId);
+
+      // Update raw bucket retention (if currently 0 = infinite)
+      await this.updateBucketRetention(this.config.bucket, rawRetention, orgId);
+
+      this.logger.info(
+        {
+          rawDays: rawRetention / 86_400,
+          hourlyDays: hourlyRetention / 86_400,
+          dailyDays: dailyRetention / 86_400,
+        },
+        "Downsampling buckets configured",
+      );
+    } catch (err) {
+      this.logger.warn(
+        { err },
+        "Failed to ensure downsampling buckets — continuing without retention management",
+      );
+    }
+  }
+
+  /**
+   * Ensure downsampling Flux tasks exist.
+   * Creates two tasks: hourly (raw→hourly) and daily (hourly→daily).
+   * Idempotent: skips creation if task with same name already exists.
+   */
+  async ensureDownsamplingTasks(): Promise<void> {
+    if (!this.config) return;
+
+    try {
+      const orgId = await this.getOrgId();
+      if (!orgId) {
+        this.logger.warn("Could not resolve InfluxDB org ID — skipping task setup");
+        return;
+      }
+
+      const rawBucket = this.config.bucket;
+      const hourlyBucket = `${rawBucket}-hourly`;
+      const dailyBucket = `${rawBucket}-daily`;
+      const org = this.config.org;
+
+      // Hourly downsampling task
+      const hourlyFlux = buildDownsampleHourlyFlux(rawBucket, hourlyBucket, org);
+      await this.ensureTask("winch-downsample-hourly", hourlyFlux, orgId);
+
+      // Daily downsampling task
+      const dailyFlux = buildDownsampleDailyFlux(hourlyBucket, dailyBucket, org);
+      await this.ensureTask("winch-downsample-daily", dailyFlux, orgId);
+
+      this.logger.info("Downsampling tasks configured");
+    } catch (err) {
+      this.logger.warn(
+        { err },
+        "Failed to ensure downsampling tasks — continuing without auto-downsampling",
+      );
+    }
+  }
+
+  /**
+   * Get current retention & downsampling status for the API.
+   */
+  async getRetentionStatus(): Promise<RetentionStatus> {
+    const empty: RetentionStatus = {
+      buckets: { raw: null, hourly: null, daily: null },
+      tasks: { hourly: null, daily: null },
+      setupComplete: false,
+    };
+    if (!this.config) return empty;
+
+    try {
+      const [buckets, tasks] = await Promise.all([this.listBuckets(), this.listTasks()]);
+
+      const rawBucket = buckets.find((b) => b.name === this.config!.bucket);
+      const hourlyBucket = buckets.find((b) => b.name === `${this.config!.bucket}-hourly`);
+      const dailyBucket = buckets.find((b) => b.name === `${this.config!.bucket}-daily`);
+
+      const hourlyTask = tasks.find((t) => t.name === "winch-downsample-hourly");
+      const dailyTask = tasks.find((t) => t.name === "winch-downsample-daily");
+
+      const result: RetentionStatus = {
+        buckets: {
+          raw: rawBucket
+            ? { name: rawBucket.name, retentionSeconds: rawBucket.retentionSeconds }
+            : null,
+          hourly: hourlyBucket
+            ? { name: hourlyBucket.name, retentionSeconds: hourlyBucket.retentionSeconds }
+            : null,
+          daily: dailyBucket
+            ? { name: dailyBucket.name, retentionSeconds: dailyBucket.retentionSeconds }
+            : null,
+        },
+        tasks: {
+          hourly: hourlyTask
+            ? {
+                id: hourlyTask.id,
+                status: hourlyTask.status,
+                lastRunAt: hourlyTask.latestCompleted,
+              }
+            : null,
+          daily: dailyTask
+            ? { id: dailyTask.id, status: dailyTask.status, lastRunAt: dailyTask.latestCompleted }
+            : null,
+        },
+        setupComplete: !!hourlyBucket && !!dailyBucket && !!hourlyTask && !!dailyTask,
+      };
+
+      return result;
+    } catch (err) {
+      this.logger.debug({ err }, "Failed to fetch retention status");
+      return empty;
+    }
+  }
+
+  // ============================================================
+  // Private: InfluxDB v2 HTTP API helpers
+  // ============================================================
+
+  private async getOrgId(): Promise<string | null> {
+    if (!this.config) return null;
+    try {
+      const resp = await fetch(
+        `${this.config.url}/api/v2/orgs?org=${encodeURIComponent(this.config.org)}`,
+        {
+          headers: { Authorization: `Token ${this.config.token}` },
+        },
+      );
+      if (!resp.ok) return null;
+      const body = (await resp.json()) as { orgs?: Array<{ id: string }> };
+      return body.orgs?.[0]?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async listBuckets(): Promise<
+    Array<{ id: string; name: string; retentionSeconds: number }>
+  > {
+    if (!this.config) return [];
+    try {
+      const resp = await fetch(`${this.config.url}/api/v2/buckets?limit=100`, {
+        headers: { Authorization: `Token ${this.config.token}` },
+      });
+      if (!resp.ok) return [];
+      const body = (await resp.json()) as {
+        buckets?: Array<{
+          id: string;
+          name: string;
+          retentionRules?: Array<{ everySeconds: number }>;
+        }>;
+      };
+      return (body.buckets ?? []).map((b) => ({
+        id: b.id,
+        name: b.name,
+        retentionSeconds: b.retentionRules?.[0]?.everySeconds ?? 0,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  private async ensureBucket(name: string, retentionSeconds: number, orgId: string): Promise<void> {
+    if (!this.config) return;
+
+    // Check if already exists
+    const existing = await this.listBuckets();
+    const found = existing.find((b) => b.name === name);
+    if (found) {
+      // Update retention if different
+      if (found.retentionSeconds !== retentionSeconds) {
+        await this.updateBucketRetentionById(found.id, retentionSeconds);
+        this.logger.debug({ bucket: name, retentionSeconds }, "Updated bucket retention");
+      }
+      return;
+    }
+
+    // Create bucket
+    const resp = await fetch(`${this.config.url}/api/v2/buckets`, {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${this.config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        orgID: orgId,
+        retentionRules: [{ type: "expire", everySeconds: retentionSeconds }],
+      }),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      this.logger.warn(
+        { bucket: name, status: resp.status, body: text },
+        "Failed to create bucket",
+      );
+      return;
+    }
+
+    this.logger.info({ bucket: name, retentionDays: retentionSeconds / 86_400 }, "Bucket created");
+  }
+
+  private async updateBucketRetention(
+    name: string,
+    retentionSeconds: number,
+    orgId: string,
+  ): Promise<void> {
+    if (!this.config) return;
+    // Find bucket by name
+    const buckets = await this.listBuckets();
+    const bucket = buckets.find((b) => b.name === name);
+    if (!bucket) {
+      this.logger.debug({ bucket: name, orgId }, "Bucket not found for retention update");
+      return;
+    }
+    if (bucket.retentionSeconds === retentionSeconds) return; // Already correct
+    await this.updateBucketRetentionById(bucket.id, retentionSeconds);
+    this.logger.debug({ bucket: name, retentionSeconds }, "Updated raw bucket retention");
+  }
+
+  private async updateBucketRetentionById(
+    bucketId: string,
+    retentionSeconds: number,
+  ): Promise<void> {
+    if (!this.config) return;
+    await fetch(`${this.config.url}/api/v2/buckets/${bucketId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Token ${this.config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        retentionRules: [{ type: "expire", everySeconds: retentionSeconds }],
+      }),
+    });
+  }
+
+  private async listTasks(): Promise<
+    Array<{ id: string; name: string; status: string; latestCompleted?: string }>
+  > {
+    if (!this.config) return [];
+    try {
+      const resp = await fetch(`${this.config.url}/api/v2/tasks?limit=100`, {
+        headers: { Authorization: `Token ${this.config.token}` },
+      });
+      if (!resp.ok) return [];
+      const body = (await resp.json()) as {
+        tasks?: Array<{
+          id: string;
+          name: string;
+          status: string;
+          latestCompleted?: string;
+        }>;
+      };
+      return body.tasks ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async ensureTask(name: string, flux: string, orgId: string): Promise<void> {
+    if (!this.config) return;
+
+    // Check if already exists
+    const tasks = await this.listTasks();
+    if (tasks.some((t) => t.name === name)) {
+      this.logger.debug({ task: name }, "Downsampling task already exists");
+      return;
+    }
+
+    const resp = await fetch(`${this.config.url}/api/v2/tasks`, {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${this.config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        orgID: orgId,
+        flux,
+        status: "active",
+      }),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      this.logger.warn(
+        { task: name, status: resp.status, body: text },
+        "Failed to create downsampling task",
+      );
+      return;
+    }
+
+    this.logger.info({ task: name }, "Downsampling task created");
+  }
+
+  // ============================================================
+  // Private: counters
+  // ============================================================
+
   private tickPointWritten(): void {
     this.maybeResetCounters();
     this.pointsWritten24h++;
@@ -146,6 +492,60 @@ export class InfluxClient {
       this.counterResetAt = now;
     }
   }
+}
+
+// ============================================================
+// Flux task definitions
+// ============================================================
+
+function buildDownsampleHourlyFlux(rawBucket: string, hourlyBucket: string, org: string): string {
+  return `option task = {name: "winch-downsample-hourly", every: 1h}
+
+data = from(bucket: "${rawBucket}")
+  |> range(start: -task.every)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r._field == "value_number")
+
+mean_data = data
+  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
+  |> set(key: "_field", value: "mean")
+
+min_data = data
+  |> aggregateWindow(every: 1h, fn: min, createEmpty: false)
+  |> set(key: "_field", value: "min")
+
+max_data = data
+  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)
+  |> set(key: "_field", value: "max")
+
+union(tables: [mean_data, min_data, max_data])
+  |> to(bucket: "${hourlyBucket}", org: "${org}")`;
+}
+
+function buildDownsampleDailyFlux(hourlyBucket: string, dailyBucket: string, org: string): string {
+  return `option task = {name: "winch-downsample-daily", every: 1d}
+
+data = from(bucket: "${hourlyBucket}")
+  |> range(start: -task.every)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+
+mean_data = data
+  |> filter(fn: (r) => r._field == "mean")
+  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)
+  |> set(key: "_field", value: "mean")
+
+min_data = data
+  |> filter(fn: (r) => r._field == "min")
+  |> aggregateWindow(every: 1d, fn: min, createEmpty: false)
+  |> set(key: "_field", value: "min")
+
+max_data = data
+  |> filter(fn: (r) => r._field == "max")
+  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)
+  |> set(key: "_field", value: "max")
+
+union(tables: [mean_data, min_data, max_data])
+  |> to(bucket: "${dailyBucket}", org: "${org}")`;
 }
 
 // Re-export Point for convenience
