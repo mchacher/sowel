@@ -27,6 +27,7 @@ import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
 import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
 import { HistoryWriter } from "./history/history-writer.js";
+import { ChartManager } from "./charts/chart-manager.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -120,6 +121,9 @@ async function main() {
   // 11. Create History Writer (passive observer — subscribes to events, writes to InfluxDB)
   const historyWriter = new HistoryWriter(db, eventBus, settingsManager, equipmentManager, logger);
 
+  // 11b. Create Chart Manager
+  const chartManager = new ChartManager(db, logger);
+
   // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
@@ -170,6 +174,7 @@ async function main() {
     settingsManager,
     buttonActionManager,
     historyWriter,
+    chartManager,
     eventBus,
     integrationRegistry,
     logBuffer,

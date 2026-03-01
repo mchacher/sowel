@@ -492,6 +492,28 @@ export interface LogsResponse {
 }
 
 // ============================================================
+// Saved Charts
+// ============================================================
+
+export interface SavedChartSeriesConfig {
+  equipmentId: string;
+  alias: string;
+}
+
+export interface SavedChartConfig {
+  series: SavedChartSeriesConfig[];
+  timeRange: string;
+}
+
+export interface SavedChart {
+  id: string;
+  name: string;
+  config: SavedChartConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // Integration
 // ============================================================
 

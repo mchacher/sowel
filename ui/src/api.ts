@@ -12,6 +12,7 @@ import type {
   IntegrationInfo,
   LogsResponse, LogLevel,
   HistoryStatus, HistoryBindingState, HistoryQueryResult,
+  SavedChart, SavedChartConfig,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -753,4 +754,37 @@ export async function getHistoryData(
   return fetchJSON<HistoryQueryResult>(
     `${API_BASE}/history/${equipmentId}/${alias}${qs ? `?${qs}` : ""}`,
   );
+}
+
+// ============================================================
+// Saved Charts
+// ============================================================
+
+export async function getCharts(): Promise<SavedChart[]> {
+  return fetchJSON<SavedChart[]>(`${API_BASE}/charts`);
+}
+
+export async function getChart(id: string): Promise<SavedChart> {
+  return fetchJSON<SavedChart>(`${API_BASE}/charts/${id}`);
+}
+
+export async function createChart(data: { name: string; config: SavedChartConfig }): Promise<SavedChart> {
+  return fetchJSON<SavedChart>(`${API_BASE}/charts`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateChart(
+  id: string,
+  data: { name?: string; config?: SavedChartConfig },
+): Promise<SavedChart> {
+  return fetchJSON<SavedChart>(`${API_BASE}/charts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteChart(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/charts/${id}`, { method: "DELETE" });
 }
