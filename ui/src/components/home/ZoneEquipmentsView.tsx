@@ -5,7 +5,6 @@ import {
   Gauge,
   ToggleRight,
   Thermometer,
-  Heater,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { useTranslation } from "react-i18next";
