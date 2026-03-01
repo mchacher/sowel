@@ -173,6 +173,27 @@ export interface DataBinding {
   equipmentId: string;
   deviceDataId: string;
   alias: string;
+  historize?: number | null; // NULL = category default, 1 = force ON, 0 = force OFF
+}
+
+// ============================================================
+// History (InfluxDB)
+// ============================================================
+
+export interface HistoryStatus {
+  configured: boolean;
+  connected: boolean;
+  enabled: boolean;
+  historizedBindings: number;
+  stats: { pointsWritten24h: number; errors24h: number };
+}
+
+export interface HistoryBindingState {
+  bindingId: string;
+  alias: string;
+  category: DataCategory;
+  historize: number | null; // NULL = default, 1 = force ON, 0 = force OFF
+  effectiveOn: boolean; // Resolved from override → alias default → category default
 }
 
 export interface OrderBinding {
@@ -191,6 +212,7 @@ export interface DataBindingWithValue extends DataBinding {
   value: unknown;
   unit?: string;
   lastUpdated: string | null;
+  historize?: number | null;
 }
 
 export interface OrderBindingWithDetails extends OrderBinding {

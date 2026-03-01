@@ -17,6 +17,7 @@ function createTestDb(): Database.Database {
     "003_equipments.sql",
     "010_modes.sql",
     "013_button_action_bindings.sql",
+    "020_history.sql",
   ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../../migrations/${file}`),

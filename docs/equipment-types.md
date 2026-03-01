@@ -455,30 +455,66 @@ This allows simplified UX: a gate toggle with `enumValues: ["latch"]` doesn't re
 
 ## Data Category Reference
 
-Categories drive zone aggregation and UI icon/color selection.
+Categories drive zone aggregation, UI icon/color selection, and history defaults.
 
-| Category           | Type      | Aggregation      | Unit   | Icon            |
-| ------------------ | --------- | ---------------- | ------ | --------------- |
-| `temperature`      | `number`  | AVG              | °C     | Thermometer     |
-| `humidity`         | `number`  | AVG              | %      | Droplets        |
-| `pressure`         | `number`  | —                | hPa    | —               |
-| `luminosity`       | `number`  | AVG              | lux    | Sun             |
-| `motion`           | `boolean` | OR + COUNT       | —      | PersonStanding  |
-| `contact_door`     | `boolean` | COUNT open       | —      | DoorOpen/Closed |
-| `contact_window`   | `boolean` | COUNT open       | —      | DoorOpen/Closed |
-| `light_state`      | `boolean` | COUNT on/total   | —      | Lightbulb       |
-| `light_brightness` | `number`  | —                | 0–254  | SunDim          |
-| `light_color_temp` | `number`  | —                | mireds | —               |
-| `shutter_position` | `number`  | AVG + COUNT open | %      | Blinds          |
-| `battery`          | `number`  | —                | %      | Battery         |
-| `voltage`          | `number`  | —                | V      | —               |
-| `power`            | `number`  | —                | W      | —               |
-| `energy`           | `number`  | —                | kWh    | —               |
-| `water_leak`       | `boolean` | OR               | —      | Droplet         |
-| `smoke`            | `boolean` | OR               | —      | Flame           |
-| `co2`              | `number`  | —                | ppm    | —               |
-| `voc`              | `number`  | —                | —      | —               |
-| `wind`             | `number`  | —                | km/h   | Wind            |
-| `rain`             | `number`  | —                | mm     | CloudRain       |
-| `action`           | `text`    | —                | —      | CircleDot       |
-| `generic`          | any       | —                | —      | —               |
+| Category           | Type      | Aggregation      | Unit   | Icon            | History |
+| ------------------ | --------- | ---------------- | ------ | --------------- | ------- |
+| `temperature`      | `number`  | AVG              | °C     | Thermometer     | ON      |
+| `humidity`         | `number`  | AVG              | %      | Droplets        | ON      |
+| `pressure`         | `number`  | —                | hPa    | —               | ON      |
+| `luminosity`       | `number`  | AVG              | lux    | Sun             | ON      |
+| `motion`           | `boolean` | OR + COUNT       | —      | PersonStanding  | OFF     |
+| `contact_door`     | `boolean` | COUNT open       | —      | DoorOpen/Closed | OFF     |
+| `contact_window`   | `boolean` | COUNT open       | —      | DoorOpen/Closed | OFF     |
+| `light_state`      | `boolean` | COUNT on/total   | —      | Lightbulb       | OFF     |
+| `light_brightness` | `number`  | —                | 0–254  | SunDim          | OFF     |
+| `light_color_temp` | `number`  | —                | mireds | —               | OFF     |
+| `shutter_position` | `number`  | AVG + COUNT open | %      | Blinds          | ON      |
+| `battery`          | `number`  | —                | %      | Battery         | ON      |
+| `voltage`          | `number`  | —                | V      | —               | ON      |
+| `power`            | `number`  | —                | W      | —               | ON      |
+| `energy`           | `number`  | —                | kWh    | —               | ON      |
+| `water_leak`       | `boolean` | OR               | —      | Droplet         | OFF     |
+| `smoke`            | `boolean` | OR               | —      | Flame           | OFF     |
+| `co2`              | `number`  | —                | ppm    | —               | ON      |
+| `voc`              | `number`  | —                | —      | —               | ON      |
+| `wind`             | `number`  | —                | km/h   | Wind            | ON      |
+| `rain`             | `number`  | —                | mm     | CloudRain       | ON      |
+| `action`           | `text`    | —                | —      | CircleDot       | OFF     |
+| `generic`          | any       | —                | —      | —               | OFF     |
+
+---
+
+## History Defaults (V0.13)
+
+When InfluxDB is configured, Winch historizes data bindings using **convention over configuration**. Each binding's effective historize state is resolved in priority order:
+
+1. **Explicit override** (`data_bindings.historize = 1` or `0`) → force ON or OFF
+2. **Alias default** (see below) → handles semantically important bindings in `generic` category
+3. **Category default** (see History column in Data Category Reference above)
+
+If no override and no alias/category match → OFF (manual opt-in required).
+
+### Alias Defaults
+
+Some bindings have category `generic` but are semantically important. These are historized by default based on their alias:
+
+| Alias      | Default | Rationale                                                                                           |
+| ---------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `setpoint` | ON      | Thermostat setpoint — essential for target vs actual temperature analysis                           |
+| `power`    | ON      | HVAC ON/OFF state on thermostats — category is `generic` boolean, but essential for energy analysis |
+
+### Per Equipment Type Summary
+
+| Equipment Type   | Historized by default                              | Not historized (opt-in)                        |
+| ---------------- | -------------------------------------------------- | ---------------------------------------------- |
+| `thermostat`     | temperature, setpoint, outsideTemperature, power   | mode, fanSpeed, ecoMode, deviceState (generic) |
+| `sensor`         | temperature, humidity, pressure, co2, voc, battery | motion, contact, water_leak, smoke             |
+| `weather`        | temperature, humidity, pressure, wind*\*, rain*\*  | —                                              |
+| `shutter`        | position                                           | —                                              |
+| `light_onoff`    | —                                                  | state (light_state)                            |
+| `light_dimmable` | —                                                  | state, brightness                              |
+| `light_color`    | —                                                  | state, brightness, color_temp                  |
+| `gate`           | —                                                  | state (gate_state)                             |
+| `button`         | —                                                  | action                                         |
+| `switch`         | —                                                  | state (light_state)                            |
