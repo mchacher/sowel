@@ -271,20 +271,22 @@ export class RecipeManager {
     // Update params in DB
     this.stmts.updateInstanceParams.run(JSON.stringify(params), instanceId);
 
-    // Reload and restart
+    // Reload and restart only if enabled
     const updatedRow = this.stmts.getInstanceById.get(instanceId) as InstanceRow;
     const instance = rowToInstance(updatedRow);
 
-    try {
-      const runRecipe = registered.create();
-      this.startInstance(runRecipe, instance);
-    } catch (err) {
-      this.logger.error({ err, instanceId }, "Failed to restart recipe instance after update");
-      this.writeLog(
-        instanceId,
-        `Failed to restart: ${err instanceof Error ? err.message : String(err)}`,
-        "error",
-      );
+    if (updatedRow.enabled === 1) {
+      try {
+        const runRecipe = registered.create();
+        this.startInstance(runRecipe, instance);
+      } catch (err) {
+        this.logger.error({ err, instanceId }, "Failed to restart recipe instance after update");
+        this.writeLog(
+          instanceId,
+          `Failed to restart: ${err instanceof Error ? err.message : String(err)}`,
+          "error",
+        );
+      }
     }
 
     this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance updated");
@@ -316,9 +318,12 @@ export class RecipeManager {
   disableInstance(instanceId: string): void {
     const row = this.stmts.getInstanceById.get(instanceId) as InstanceRow | undefined;
     if (!row) throw new RecipeError("Instance not found", 404);
+
+    // Always stop in-memory runner even if DB says disabled — prevents orphaned runners
+    this.stopInstance(instanceId);
+
     if (row.enabled === 0) return;
 
-    this.stopInstance(instanceId);
     this.stmts.setInstanceEnabled.run(0, instanceId);
 
     this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance disabled");
@@ -345,6 +350,9 @@ export class RecipeManager {
   // ============================================================
 
   private startInstance(recipe: Recipe, instance: RecipeInstance): void {
+    // Stop any existing runner for this instance first (prevents orphaned subscriptions)
+    this.stopInstance(instance.id);
+
     const ctx = this.buildContext(instance.id, instance.recipeId);
 
     recipe.validate(instance.params, ctx);
