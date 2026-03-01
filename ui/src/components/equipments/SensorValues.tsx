@@ -14,11 +14,14 @@ import { computeElapsed, formatElapsed } from "./useEquipmentState";
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
   batteryBindings: DataBindingWithValue[];
+  /** Optional element rendered between sensor values and battery (e.g. sparkline). */
+  trailing?: React.ReactNode;
 }
 
 export function SensorValues({
   sensorBindings,
   batteryBindings,
+  trailing,
 }: SensorValuesProps) {
   const { t } = useTranslation();
 
@@ -75,6 +78,9 @@ export function SensorValues({
           ))}
         </div>
       )}
+
+      {/* Trailing element (e.g. sparkline) */}
+      {trailing}
 
       {/* Battery indicator — shows lowest level, tooltip lists all */}
       {batteryBindings.length > 0 && (
