@@ -34,7 +34,10 @@ interface ParsedDevice {
 interface LoraNode {
   node_id: number;
   friendly_name: string | null;
-  data_keys: Record<string, { type: string; access: string; values?: string[] }>;
+  data_keys: Record<
+    string,
+    { type: string; access: string; values?: string[]; description?: string; category?: string }
+  >;
   is_active: boolean;
 }
 
@@ -161,7 +164,8 @@ export class Lora2MqttParser {
 
     for (const [key, meta] of Object.entries(node.data_keys ?? {})) {
       const dataType: DataType = LORA_TYPE_TO_DATA_TYPE[meta.type] ?? "text";
-      const category: DataCategory = PROPERTY_TO_CATEGORY[key] ?? "generic";
+      const category: DataCategory =
+        (meta.category as DataCategory) ?? PROPERTY_TO_CATEGORY[key] ?? "generic";
 
       // All keys are readable → create DeviceData
       data.push({ key, type: dataType, category });
