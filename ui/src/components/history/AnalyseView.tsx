@@ -206,6 +206,7 @@ export function AnalyseView() {
     }
 
     if (chartId === loadedChartIdRef.current) return;
+    if (equipments.length === 0) return; // wait for equipments to resolve names
 
     setLoadingChart(true);
     getChart(chartId)
