@@ -42,6 +42,7 @@ interface SeriesConfig {
   id: string;
   equipmentId: string;
   equipmentName: string;
+  zoneName: string;
   alias: string;
   category: string;
   color: string;
@@ -182,6 +183,15 @@ export function AnalyseView() {
       .finally(() => setLoading(false));
   }, []);
 
+  const flatZones = useMemo(() => flattenZones(zones), [zones]);
+
+  // Zone id → name lookup (leaf name, not breadcrumb)
+  const zoneNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const z of flatZones) map.set(z.id, z.name);
+    return map;
+  }, [flatZones]);
+
   // Load saved chart when chartId changes
   useEffect(() => {
     if (!chartId) {
@@ -211,6 +221,7 @@ export function AnalyseView() {
             id,
             equipmentId: sc.equipmentId,
             equipmentName: eq?.name ?? sc.equipmentId,
+            zoneName: eq?.zoneId ? (zoneNameById.get(eq.zoneId) ?? "") : "",
             alias: sc.alias,
             category: "",
             color: SERIES_COLORS[newSeries.length % SERIES_COLORS.length],
@@ -224,9 +235,7 @@ export function AnalyseView() {
         loadedChartIdRef.current = chartId;
       })
       .finally(() => setLoadingChart(false));
-  }, [chartId, equipments]);
-
-  const flatZones = useMemo(() => flattenZones(zones), [zones]);
+  }, [chartId, equipments, zoneNameById]);
 
   const filteredEquipments = useMemo(() => {
     return equipments.filter((e) => e.zoneId === selectedZoneId);
@@ -289,6 +298,7 @@ export function AnalyseView() {
       id,
       equipmentId: selectedEquipmentId,
       equipmentName: equipment.name,
+      zoneName: zoneNameById.get(equipment.zoneId ?? "") ?? "",
       alias: binding.alias,
       category: binding.category,
       color: SERIES_COLORS[series.length % SERIES_COLORS.length],
@@ -469,6 +479,7 @@ export function AnalyseView() {
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: s.color }}
             />
+            {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
             <span className="text-text">{s.equipmentName}</span>
             <span className="text-text-tertiary">/ {s.alias}</span>
             {CATEGORY_UNITS[s.category] && (
@@ -654,7 +665,9 @@ export function AnalyseView() {
                     const s = series.find((ser) => ser.id === name);
                     const unit = s ? CATEGORY_UNITS[s.category] : "";
                     const formatted = Number.isInteger(v) ? String(v) : v.toFixed(1);
-                    const label = s ? `${s.equipmentName} / ${s.alias}` : (name ?? "");
+                    const label = s
+                      ? (s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${s.alias}` : `${s.equipmentName} / ${s.alias}`)
+                      : (name ?? "");
                     return [unit ? `${formatted} ${unit}` : formatted, label];
                   }}
                 />
@@ -662,7 +675,9 @@ export function AnalyseView() {
                   formatter={(value: string) => {
                     const s = series.find((ser) => ser.id === value);
                     if (!s) return value;
-                    return `${s.equipmentName} / ${s.alias}`;
+                    return s.zoneName
+                      ? `${s.zoneName} / ${s.equipmentName} / ${s.alias}`
+                      : `${s.equipmentName} / ${s.alias}`;
                   }}
                   wrapperStyle={{ fontSize: "11px" }}
                 />
