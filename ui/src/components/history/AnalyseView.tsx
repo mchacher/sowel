@@ -295,9 +295,6 @@ export function AnalyseView() {
     };
 
     setSeries((prev) => [...prev, newSeries]);
-    setShowAddForm(false);
-    setSelectedZoneId("");
-    setSelectedEquipmentId("");
   };
 
   const removeSeries = (id: string) => {
