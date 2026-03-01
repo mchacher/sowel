@@ -29,6 +29,8 @@ import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
 import { HistoryWriter } from "./history/history-writer.js";
 import { ChartManager } from "./charts/chart-manager.js";
+import { MqttPublisherManager } from "./mqtt-publishers/mqtt-publisher-manager.js";
+import { MqttPublishService } from "./mqtt-publishers/mqtt-publish-service.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -125,6 +127,9 @@ async function main() {
   // 11b. Create Chart Manager
   const chartManager = new ChartManager(db, logger);
 
+  // 11c. Create MQTT Publisher Manager (service created after RecipeManager)
+  const mqttPublisherManager = new MqttPublisherManager(db, eventBus, logger);
+
   // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
@@ -140,7 +145,18 @@ async function main() {
   recipeManager.register(PresenceThermostatRecipe);
   recipeManager.register(PresenceHeaterRecipe);
 
-  // 12. Create Mode Manager + Calendar Manager
+  // 12b. Create MQTT Publish Service (needs RecipeManager)
+  const mqttPublishService = new MqttPublishService(
+    eventBus,
+    settingsManager,
+    mqttPublisherManager,
+    equipmentManager,
+    zoneAggregator,
+    recipeManager,
+    logger,
+  );
+
+  // 13. Create Mode Manager + Calendar Manager
   const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);
   const calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
 
@@ -177,6 +193,8 @@ async function main() {
     buttonActionManager,
     historyWriter,
     chartManager,
+    mqttPublisherManager,
+    mqttPublishService,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -201,6 +219,9 @@ async function main() {
 
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
+
+  // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
+  mqttPublishService.init();
 
   // 19. Initialize mode manager, calendar, and button actions
   modeManager.init();
@@ -230,6 +251,11 @@ async function main() {
       recipeManager.stopAll();
     } catch (err) {
       logger.error({ err }, "Error stopping recipe manager");
+    }
+    try {
+      await mqttPublishService.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping MQTT publish service");
     }
     try {
       await historyWriter.destroy();
