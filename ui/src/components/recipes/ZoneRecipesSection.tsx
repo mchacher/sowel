@@ -5,7 +5,7 @@ import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
-import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
+import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel } from "../../lib/recipe-i18n";
@@ -131,6 +131,81 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
 }
 
 // ============================================================
+// Mode cycle pill (for recipe actions with type "cycle")
+// ============================================================
+
+const MODE_PILL_COLORS: Record<string, { bg: string; text: string }> = {
+  eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
+  comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
+  cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
+};
+const DEFAULT_PILL = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
+
+function ModeCyclePill({
+  instance,
+  recipe,
+  action,
+  lang,
+  sendAction,
+}: {
+  instance: RecipeInstance;
+  recipe: RecipeInfo;
+  action: RecipeActionDef;
+  lang: string;
+  sendAction: (instanceId: string, action: string, payload?: Record<string, unknown>) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [sending, setSending] = useState(false);
+
+  const currentValue = instance.state?.[action.stateKey] as string | undefined;
+  if (!currentValue || !instance.enabled) return null;
+
+  // Filter options: hide cocoon if cocoonTemp not configured
+  const availableOptions = action.options.filter((opt) => {
+    if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
+    return true;
+  });
+  if (availableOptions.length < 2) return null;
+
+  const currentIndex = availableOptions.findIndex((o) => o.value === currentValue);
+  const nextIndex = (currentIndex + 1) % availableOptions.length;
+  const nextOption = availableOptions[nextIndex];
+  const currentOption = availableOptions[currentIndex >= 0 ? currentIndex : 0];
+
+  const colors = MODE_PILL_COLORS[currentValue] ?? DEFAULT_PILL;
+
+  // Resolve label with i18n
+  const i18nPack = lang && recipe.i18n?.[lang];
+  const displayLabel = i18nPack
+    ? t(`recipes.actions.${action.id}.${currentValue}`, { defaultValue: currentOption.label })
+    : currentOption.label;
+
+  const handleClick = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await sendAction(instance.id, action.id, { mode: nextOption.value });
+    } catch {
+      // ignore — state refreshed via WebSocket
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={sending}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+      title={t("recipes.actions.cycleTo", { mode: nextOption.label, defaultValue: `Click to switch to ${nextOption.label}` })}
+    >
+      {displayLabel}
+    </button>
+  );
+}
+
+// ============================================================
 // Instance row
 // ============================================================
 
@@ -149,6 +224,7 @@ function RecipeInstanceRow({
   const updateInstance = useRecipes((s) => s.updateInstance);
   const enableInstance = useRecipes((s) => s.enableInstance);
   const disableInstance = useRecipes((s) => s.disableInstance);
+  const sendAction = useRecipes((s) => s.sendAction);
   const getLog = useRecipes((s) => s.getLog);
   const allInstances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
@@ -396,6 +472,16 @@ function RecipeInstanceRow({
             Override
           </span>
         )}
+        {recipe?.actions?.filter((a) => a.type === "cycle").map((action) => (
+          <ModeCyclePill
+            key={action.id}
+            instance={instance}
+            recipe={recipe}
+            action={action}
+            lang={lang}
+            sendAction={sendAction}
+          />
+        ))}
         <button
           onClick={handleToggleEnabled}
           disabled={toggling}
