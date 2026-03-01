@@ -7,14 +7,22 @@ import { LightControl } from "../equipments/LightControl";
 import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
+import { Sparkline } from "../history/Sparkline";
+
+/** Categories suitable for sparkline rendering (continuous numeric data). */
+const SPARKLINE_CATEGORIES = new Set([
+  "temperature", "humidity", "luminosity", "pressure",
+  "power", "energy", "co2", "noise", "voltage", "current",
+]);
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   zoneName?: string;
+  historyEnabled?: boolean;
 }
 
-export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
+export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, historyEnabled }: CompactEquipmentCardProps) {
   const { t } = useTranslation();
 
   const {
@@ -34,6 +42,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat, non-gate equipments
   const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isGate
     ? equipment.dataBindings[0] ?? null
+    : null;
+
+  // Find the first sparkline-eligible binding for sensors (temperature preferred)
+  const sparklineBinding = historyEnabled && isSensor
+    ? sensorBindings.find((b) => SPARKLINE_CATEGORIES.has(b.category)) ?? null
     : null;
 
   return (
@@ -79,6 +92,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           }
           batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
         />
+      )}
+
+      {/* Sparkline for primary sensor metric */}
+      {sparklineBinding && (
+        <Sparkline equipmentId={equipment.id} alias={sparklineBinding.alias} />
       )}
 
       {/* Primary value for other equipments */}
