@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Winch — Sparkline Mockup (IT3)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --primary: #1A4F6E;
+    --primary-hover: #13405A;
+    --primary-light: #E6F0F6;
+    --accent: #D4963F;
+    --accent-hover: #BB8232;
+    --text: #1a1a1a;
+    --text-secondary: #5a5a5a;
+    --text-tertiary: #8a8a8a;
+    --surface: #ffffff;
+    --bg: #f5f5f5;
+    --border: #e0e0e0;
+    --border-light: #eee;
+    --success: #22c55e;
+    --active-text: #D4963F;
+    --error: #ef4444;
+  }
+
+  .dark {
+    --primary: #5ba3d0;
+    --primary-hover: #7bbde3;
+    --primary-light: #1a3448;
+    --accent: #D4963F;
+    --text: #e8e8e8;
+    --text-secondary: #aaa;
+    --text-tertiary: #777;
+    --surface: #1e1e1e;
+    --bg: #141414;
+    --border: #333;
+    --border-light: #2a2a2a;
+    --success: #22c55e;
+    --active-text: #D4963F;
+    --error: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  h1 { font-size: 22px; font-weight: 600; line-height: 28px; margin-bottom: 4px; }
+
+  .zone-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+
+  /* ─── Theme toggle ─── */
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; cursor: pointer;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  }
+  .theme-toggle:hover { background: var(--border-light); }
+
+  /* ─── Aggregation Pills ─── */
+  .pills-container {
+    display: flex; align-items: center;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); padding: 4px; overflow-x: auto;
+    margin-bottom: 24px;
+  }
+  .pill-divider {
+    width: 1px; height: 16px; background: var(--border);
+    margin: 0 4px; flex-shrink: 0;
+  }
+  .pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px 8px; border-radius: 5px;
+    font-size: 13px; font-weight: 500;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .pill-icon { width: 14px; height: 14px; flex-shrink: 0; }
+  .color-primary { color: var(--primary); }
+  .color-active { color: var(--active-text); }
+  .color-tertiary { color: var(--text-tertiary); }
+
+  /* ─── Sparkline SVG ─── */
+  .sparkline-wrap {
+    width: 60px; height: 24px; flex-shrink: 0;
+  }
+  .sparkline-wrap svg { display: block; }
+
+  /* ─── Equipment Group ─── */
+  .eq-group {
+    border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .eq-group-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px;
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+  }
+  .eq-group-header .count { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .eq-group-header.sensors { background: rgba(26, 79, 110, 0.06); }
+  .dark .eq-group-header.sensors { background: rgba(91, 163, 208, 0.08); }
+  .eq-group-header.weather { background: rgba(26, 79, 110, 0.06); }
+  .dark .eq-group-header.weather { background: rgba(91, 163, 208, 0.08); }
+
+  .eq-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-light);
+    transition: background 0.15s;
+  }
+  .eq-row:hover { background: rgba(0,0,0,0.02); }
+  .dark .eq-row:hover { background: rgba(255,255,255,0.03); }
+
+  .eq-icon {
+    width: 28px; height: 28px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 14px;
+  }
+  .eq-icon.sensor { background: rgba(26, 79, 110, 0.08); color: var(--primary); }
+  .dark .eq-icon.sensor { background: rgba(91, 163, 208, 0.12); }
+
+  .eq-name {
+    flex: 1; min-width: 0;
+    font-size: 13px; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .eq-values {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .eq-value {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 12px; color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .eq-value .unit { font-size: 10px; color: var(--text-tertiary); }
+  .eq-value .val-icon { width: 12px; height: 12px; color: var(--text-tertiary); }
+
+  /* ─── Labels ─── */
+  .section-label {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; margin-top: 24px;
+  }
+  .section-label .badge {
+    font-size: 10px; font-weight: 600;
+    background: var(--primary); color: white;
+    padding: 2px 8px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .section-label .desc {
+    font-size: 12px; color: var(--text-tertiary);
+  }
+
+  /* ─── Comparison layout ─── */
+  .comparison {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 700px) { .comparison { grid-template-columns: 1fr; } }
+
+  .comparison-col { }
+  .comparison-col h3 {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-tertiary);
+    margin-bottom: 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  /* ─── Skeleton animation ─── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--border-light) 25%, var(--border) 50%, var(--border-light) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 3px;
+    width: 60px; height: 24px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* ─── Note box ─── */
+  .note {
+    background: var(--primary-light); border: 1px solid var(--primary);
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; color: var(--text-secondary);
+    margin-top: 24px; line-height: 1.6;
+  }
+  .note strong { color: var(--text); }
+</style>
+</head>
+<body>
+<button class="theme-toggle" onclick="document.body.classList.toggle('dark'); this.textContent = document.body.classList.contains('dark') ? '☀ Light' : '● Dark'">● Dark</button>
+
+<div class="container">
+
+  <h1>Salon</h1>
+  <div class="zone-desc">Pièce de vie principale</div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SECTION 1: Zone Aggregation Pills              -->
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <div class="section-label">
+    <span class="badge">Zone Pills</span>
+    <span class="desc">Sparklines dans les pills d'agrégation de zone</span>
+  </div>
+
+  <div class="comparison">
+    <!-- AVANT -->
+    <div class="comparison-col">
+      <h3>Avant (actuel)</h3>
+      <div class="pills-container">
+        <div class="pill color-primary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+          <span>21.3°C</span>
+        </div>
+        <div class="pill-divider"></div>
+        <div class="pill color-primary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+          <span>58%</span>
+        </div>
+        <div class="pill-divider"></div>
+        <div class="pill color-primary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <span>342 lx</span>
+        </div>
+        <div class="pill-divider"></div>
+        <div class="pill color-tertiary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Calme · 45min</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- APRES -->
+    <div class="comparison-col">
+      <h3>Apres (IT3 — avec sparklines)</h3>
+      <div class="pills-container">
+        <div class="pill color-primary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+          <span>21.3°C</span>
+          <div class="sparkline-wrap">
+            <svg width="60" height="24" viewBox="0 0 60 24">
+              <defs>
+                <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+                  <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,16 L4,15 L8,14 L12,15 L16,13 L20,12 L24,11 L28,10 L32,9 L36,8 L40,10 L44,9 L48,7 L52,8 L56,6 L60,5 L60,24 L0,24 Z" fill="url(#g1)"/>
+              <polyline points="0,16 4,15 8,14 12,15 16,13 20,12 24,11 28,10 32,9 36,8 40,10 44,9 48,7 52,8 56,6 60,5" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="pill-divider"></div>
+        <div class="pill color-primary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+          <span>58%</span>
+          <div class="sparkline-wrap">
+            <svg width="60" height="24" viewBox="0 0 60 24">
+              <defs>
+                <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+                  <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,10 L4,11 L8,12 L12,10 L16,11 L20,13 L24,14 L28,12 L32,11 L36,13 L40,14 L44,13 L48,12 L52,14 L56,13 L60,12 L60,24 L0,24 Z" fill="url(#g2)"/>
+              <polyline points="0,10 4,11 8,12 12,10 16,11 20,13 24,14 28,12 32,11 36,13 40,14 44,13 48,12 52,14 56,13 60,12" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="pill-divider"></div>
+        <div class="pill color-primary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <span>342 lx</span>
+          <div class="sparkline-wrap">
+            <svg width="60" height="24" viewBox="0 0 60 24">
+              <defs>
+                <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.2"/>
+                  <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,20 L4,20 L8,19 L12,18 L16,14 L20,8 L24,5 L28,4 L32,3 L36,4 L40,5 L44,4 L48,5 L52,6 L56,8 L60,12 L60,24 L0,24 Z" fill="url(#g3)"/>
+              <polyline points="0,20 4,20 8,19 12,18 16,14 20,8 24,5 28,4 32,3 36,4 40,5 44,4 48,5 52,6 56,8 60,12" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="pill-divider"></div>
+        <div class="pill color-tertiary">
+          <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Calme · 45min</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SECTION 2: Equipment Cards                     -->
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <div class="section-label">
+    <span class="badge">Equipment Cards</span>
+    <span class="desc">Sparklines dans les cartes d'equipements (capteurs)</span>
+  </div>
+
+  <div class="comparison">
+    <!-- AVANT -->
+    <div class="comparison-col">
+      <h3>Avant (actuel)</h3>
+      <div class="eq-group">
+        <div class="eq-group-header sensors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"/><path d="M12 6v6l4 2"/></svg>
+          CAPTEURS
+          <span class="count">3</span>
+        </div>
+        <div class="eq-row">
+          <div class="eq-icon sensor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+          </div>
+          <span class="eq-name">Netatmo Salon</span>
+          <div class="eq-values">
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+              21.3 <span class="unit">°C</span>
+            </div>
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+              58 <span class="unit">%</span>
+            </div>
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              1012 <span class="unit">hPa</span>
+            </div>
+          </div>
+        </div>
+        <div class="eq-row">
+          <div class="eq-icon sensor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+          </div>
+          <span class="eq-name">Netatmo Exterieur</span>
+          <div class="eq-values">
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+              8.7 <span class="unit">°C</span>
+            </div>
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+              72 <span class="unit">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="eq-row">
+          <div class="eq-icon sensor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </div>
+          <span class="eq-name">Capteur Luminosite</span>
+          <div class="eq-values">
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              342 <span class="unit">lx</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APRES -->
+    <div class="comparison-col">
+      <h3>Apres (IT3 — avec sparklines)</h3>
+      <div class="eq-group">
+        <div class="eq-group-header sensors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"/><path d="M12 6v6l4 2"/></svg>
+          CAPTEURS
+          <span class="count">3</span>
+        </div>
+        <div class="eq-row">
+          <div class="eq-icon sensor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+          </div>
+          <span class="eq-name">Netatmo Salon</span>
+          <div class="eq-values">
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+              21.3 <span class="unit">°C</span>
+              <div class="sparkline-wrap" style="margin-left: 2px;">
+                <svg width="60" height="24" viewBox="0 0 60 24">
+                  <defs><linearGradient id="s1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity="0.15"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0.01"/></linearGradient></defs>
+                  <path d="M0,16 L4,15 L8,14 L12,15 L16,13 L20,12 L24,11 L28,10 L32,9 L36,8 L40,10 L44,9 L48,7 L52,8 L56,6 L60,5 L60,24 L0,24 Z" fill="url(#s1)"/>
+                  <polyline points="0,16 4,15 8,14 12,15 16,13 20,12 24,11 28,10 32,9 36,8 40,10 44,9 48,7 52,8 56,6 60,5" fill="none" stroke="var(--primary)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+              58 <span class="unit">%</span>
+            </div>
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              1012 <span class="unit">hPa</span>
+            </div>
+          </div>
+        </div>
+        <div class="eq-row">
+          <div class="eq-icon sensor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+          </div>
+          <span class="eq-name">Netatmo Exterieur</span>
+          <div class="eq-values">
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+              8.7 <span class="unit">°C</span>
+              <div class="sparkline-wrap" style="margin-left: 2px;">
+                <svg width="60" height="24" viewBox="0 0 60 24">
+                  <defs><linearGradient id="s2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity="0.15"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0.01"/></linearGradient></defs>
+                  <path d="M0,8 L4,9 L8,10 L12,12 L16,14 L20,16 L24,18 L28,17 L32,15 L36,14 L40,12 L44,11 L48,10 L52,9 L56,8 L60,10 L60,24 L0,24 Z" fill="url(#s2)"/>
+                  <polyline points="0,8 4,9 8,10 12,12 16,14 20,16 24,18 28,17 32,15 36,14 40,12 44,11 48,10 52,9 56,8 60,10" fill="none" stroke="var(--primary)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+              72 <span class="unit">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="eq-row">
+          <div class="eq-icon sensor">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </div>
+          <span class="eq-name">Capteur Luminosite</span>
+          <div class="eq-values">
+            <div class="eq-value">
+              <svg class="val-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              342 <span class="unit">lx</span>
+              <div class="sparkline-wrap" style="margin-left: 2px;">
+                <svg width="60" height="24" viewBox="0 0 60 24">
+                  <defs><linearGradient id="s3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity="0.15"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0.01"/></linearGradient></defs>
+                  <path d="M0,20 L4,20 L8,19 L12,18 L16,14 L20,8 L24,5 L28,4 L32,3 L36,4 L40,5 L44,4 L48,5 L52,6 L56,8 L60,12 L60,24 L0,24 Z" fill="url(#s3)"/>
+                  <polyline points="0,20 4,20 8,19 12,18 16,14 20,8 24,5 28,4 32,3 36,4 40,5 44,4 48,5 52,6 56,8 60,12" fill="none" stroke="var(--primary)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SECTION 3: Loading state                       -->
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <div class="section-label">
+    <span class="badge">Loading</span>
+    <span class="desc">Skeleton animation pendant le chargement (pas de spinner)</span>
+  </div>
+
+  <div class="pills-container" style="margin-bottom: 24px;">
+    <div class="pill color-primary">
+      <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0Z"/></svg>
+      <span>21.3°C</span>
+      <div class="skeleton"></div>
+    </div>
+    <div class="pill-divider"></div>
+    <div class="pill color-primary">
+      <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/></svg>
+      <span>58%</span>
+      <div class="skeleton"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- NOTES                                          -->
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <div class="note">
+    <strong>Comportement prevu IT3 :</strong><br><br>
+    &bull; <strong>Sparkline = 60x24px</strong>, SVG pur (pas recharts), ligne + fill gradient semi-transparent<br>
+    &bull; <strong>Donnees :</strong> 24h auto-agrege, fetch au mount, cache par session (Zustand)<br>
+    &bull; <strong>Lazy loading :</strong> IntersectionObserver — le fetch ne demarre que quand le composant est visible<br>
+    &bull; <strong>Loading :</strong> skeleton shimmer (pas de spinner) — visible ci-dessus<br>
+    &bull; <strong>Placement zone pills :</strong> apres la valeur numerique (temperature, humidite, luminosite uniquement)<br>
+    &bull; <strong>Placement equipment card :</strong> apres la valeur primaire du capteur (temperature seulement pour rester compact)<br>
+    &bull; <strong>Pas de sparkline</strong> sur motion, lights on/off, shutters, alertes (pas de donnees numeriques continues)<br>
+    &bull; <strong>Dark mode :</strong> couleurs via CSS variables, identique au reste du design system<br>
+    &bull; Cliquer le bouton "Dark" en haut a droite pour voir le rendu dark mode
+  </div>
+
+</div>
+</body>
+</html>

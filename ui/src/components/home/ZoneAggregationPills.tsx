@@ -12,10 +12,13 @@ import {
   Flame,
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
+import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
 
 interface ZoneAggregationPillsProps {
   data: ZoneAggregatedData;
+  zoneId?: string;
+  historyEnabled?: boolean;
 }
 
 interface StatusItem {
@@ -24,9 +27,11 @@ interface StatusItem {
   label: string;
   color: string;
   alert?: boolean;
+  /** If set, show a sparkline for this category. */
+  sparklineCategory?: string;
 }
 
-export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
+export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggregationPillsProps) {
   const { t } = useTranslation();
   const items: StatusItem[] = [];
   const duration = useRelativeTime(data.motionSince, t);
@@ -38,6 +43,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       icon: <Thermometer size={14} strokeWidth={1.5} />,
       label: `${data.temperature}°C`,
       color: "text-primary",
+      sparklineCategory: "temperature",
     });
   }
 
@@ -48,6 +54,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       icon: <Droplets size={14} strokeWidth={1.5} />,
       label: `${data.humidity}%`,
       color: "text-primary",
+      sparklineCategory: "humidity",
     });
   }
 
@@ -58,6 +65,7 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
       icon: <Sun size={14} strokeWidth={1.5} />,
       label: `${data.luminosity} lx`,
       color: "text-primary",
+      sparklineCategory: "luminosity",
     });
   }
 
@@ -160,6 +168,9 @@ export function ZoneAggregationPills({ data }: ZoneAggregationPillsProps) {
           >
             {item.icon}
             <span>{item.label}</span>
+            {historyEnabled && zoneId && item.sparklineCategory && (
+              <ZoneSparkline zoneId={zoneId} category={item.sparklineCategory} />
+            )}
           </div>
         </div>
       ))}
