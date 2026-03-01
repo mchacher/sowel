@@ -105,6 +105,13 @@ export function ZoneDetailPage() {
   const deleteZone = useZones((s) => s.deleteZone);
   const recipes = useRecipes((s) => s.recipes);
   const instances = useRecipes((s) => s.instances);
+  const fetchRecipes = useRecipes((s) => s.fetchRecipes);
+  const fetchInstances = useRecipes((s) => s.fetchInstances);
+
+  useEffect(() => {
+    if (recipes.length === 0) fetchRecipes();
+    if (instances.length === 0) fetchInstances();
+  }, [recipes.length, instances.length, fetchRecipes, fetchInstances]);
 
   const [zone, setZone] = useState<ZoneWithChildren | null>(null);
   const [loading, setLoading] = useState(true);

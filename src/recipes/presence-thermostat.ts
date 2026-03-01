@@ -425,6 +425,7 @@ export class PresenceThermostatRecipe extends Recipe {
     this.wasInPreheat = false;
     ctx.state.delete("overrideMode");
     ctx.state.delete("cocoonMode");
+    ctx.state.set("currentMode", "eco");
     ctx.notifyStateChanged();
 
     // Subscribe to zone changes (motion)
