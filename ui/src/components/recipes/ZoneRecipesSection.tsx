@@ -153,6 +153,15 @@ function RecipeInstanceRow({
   const allInstances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
   const zoneAggregation = useZoneAggregation((s) => s.data);
+  const zoneTree = useZones((s) => s.tree);
+  const allZones = useMemo(() => {
+    const flat: { id: string; name: string }[] = [];
+    const walk = (nodes: ZoneWithChildren[]) => {
+      for (const n of nodes) { flat.push({ id: n.id, name: n.name }); if (n.children.length > 0) walk(n.children); }
+    };
+    walk(zoneTree);
+    return flat;
+  }, [zoneTree]);
   const [showLog, setShowLog] = useState(false);
   const [logs, setLogs] = useState<RecipeLogEntry[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -326,7 +335,7 @@ function RecipeInstanceRow({
       return agg?.luminosity !== undefined && agg?.luminosity !== null;
     }
     if (slotId === "buttons") {
-      return equipments.some((eq) => eq.zoneId === zoneId && eq.type === "button");
+      return equipments.some((eq) => eq.type === "button");
     }
     return true;
   };
@@ -469,29 +478,62 @@ function RecipeInstanceRow({
                               <Minus size={14} strokeWidth={1.5} />
                             </button>
                           </div>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {chunk.slots.map((slot) => (
-                              <div key={slot.id}>
-                                <label className={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
-                                  {recipeSlotName(recipe, slot, lang)}
-                                </label>
-                                {slot.type === "time" ? (
-                                  <TimeInput
-                                    value={editParams[slot.id] ?? ""}
-                                    onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                                  />
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={editParams[slot.id] ?? ""}
-                                    onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                    placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                    className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
-                                  />
-                                )}
+                          {/* Full-width equipment list slots — cross-zone picker */}
+                          {chunk.slots.filter((s) => s.type === "equipment" && s.list).map((slot) => (
+                            <EquipmentListPicker
+                              key={slot.id}
+                              slot={slot}
+                              value={editParams[slot.id] ?? ""}
+                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                              equipments={equipments}
+                              zones={allZones}
+                              recipe={recipe}
+                              lang={lang}
+                              labelClassName={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}
+                            />
+                          ))}
+                          {/* Compact grid for non-list slots */}
+                          {(() => {
+                            const compactSlots = chunk.slots.filter((s) => !(s.type === "equipment" && s.list));
+                            if (compactSlots.length === 0) return null;
+                            const cols = Math.min(compactSlots.length, 3);
+                            return (
+                              <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                                {compactSlots.map((slot) => (
+                                  <div key={slot.id}>
+                                    <label className={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                                      {recipeSlotName(recipe, slot, lang)}
+                                    </label>
+                                    {slot.type === "equipment" ? (
+                                      <select
+                                        value={editParams[slot.id] ?? ""}
+                                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                        className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                      >
+                                        <option value="">{t("common.select")}</option>
+                                        {getEquipmentOptions(slot.id).map((eq) => (
+                                          <option key={eq.id} value={eq.id}>{eq.name}</option>
+                                        ))}
+                                      </select>
+                                    ) : slot.type === "time" ? (
+                                      <TimeInput
+                                        value={editParams[slot.id] ?? ""}
+                                        onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                      />
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        value={editParams[slot.id] ?? ""}
+                                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                        placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
+                                        className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                      />
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })()}
                         </div>
                       );
                     }
@@ -984,6 +1026,131 @@ function TimeInput({
 }
 
 // ============================================================
+// Equipment list picker — zone + equipment + add button
+// ============================================================
+
+function EquipmentListPicker({
+  slot,
+  value,
+  onChange,
+  equipments,
+  zones,
+  recipe,
+  lang,
+  labelClassName,
+}: {
+  slot: RecipeSlotDef;
+  value: string;
+  onChange: (value: string) => void;
+  equipments: EquipmentWithDetails[];
+  zones: { id: string; name: string }[];
+  recipe: RecipeInfo;
+  lang: string;
+  labelClassName?: string;
+}) {
+  const { t } = useTranslation();
+  const [pickerZoneId, setPickerZoneId] = useState("");
+  const [pickerEqId, setPickerEqId] = useState("");
+
+  const selectedIds = value.split(",").filter(Boolean);
+
+  const matchesConstraint = (eq: EquipmentWithDetails) => {
+    if (!slot.constraints?.equipmentType) return true;
+    return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
+  };
+
+  // Zones that have matching, non-selected equipments
+  const zonesWithOptions = useMemo(() => {
+    return zones.filter((z) =>
+      equipments.some((eq) => eq.zoneId === z.id && !selectedIds.includes(eq.id) && matchesConstraint(eq))
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zones, equipments, selectedIds, slot.constraints?.equipmentType]);
+
+  // Equipments in picked zone matching constraints
+  const pickerOptions = useMemo(() => {
+    if (!pickerZoneId) return [];
+    return equipments.filter((eq) =>
+      eq.zoneId === pickerZoneId && !selectedIds.includes(eq.id) && matchesConstraint(eq)
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerZoneId, equipments, selectedIds, slot.constraints?.equipmentType]);
+
+  const handleAdd = () => {
+    if (!pickerEqId) return;
+    const next = [...selectedIds, pickerEqId];
+    onChange(next.join(","));
+    setPickerEqId("");
+    // If no more options in this zone, reset zone too
+    const remaining = pickerOptions.filter((eq) => eq.id !== pickerEqId);
+    if (remaining.length === 0) setPickerZoneId("");
+  };
+
+  const handleRemove = (eqId: string) => {
+    const next = selectedIds.filter((id) => id !== eqId);
+    onChange(next.join(","));
+  };
+
+  return (
+    <div className="mb-1.5">
+      <label className={labelClassName ?? "block text-[10px] tracking-wider mb-0.5 text-text-tertiary"}>
+        {recipeSlotName(recipe, slot, lang)}
+      </label>
+
+      {/* Selected items */}
+      {selectedIds.map((id) => {
+        const eq = equipments.find((e) => e.id === id);
+        const zone = eq ? zones.find((z) => z.id === eq.zoneId) : null;
+        return (
+          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-[13px] bg-surface border border-border rounded-[6px]">
+            <span className="flex-1 text-text truncate">{eq?.name ?? id}</span>
+            {zone && <span className="text-[11px] text-text-tertiary shrink-0">{zone.name}</span>}
+            <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
+              <X size={12} strokeWidth={1.5} />
+            </button>
+          </div>
+        );
+      })}
+
+      {/* Add row: zone + equipment + button */}
+      {zonesWithOptions.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <select
+            value={pickerZoneId}
+            onChange={(e) => { setPickerZoneId(e.target.value); setPickerEqId(""); }}
+            className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+          >
+            <option value="">Zone…</option>
+            {zonesWithOptions.map((z) => (
+              <option key={z.id} value={z.id}>{z.name}</option>
+            ))}
+          </select>
+          <select
+            value={pickerEqId}
+            onChange={(e) => setPickerEqId(e.target.value)}
+            disabled={!pickerZoneId}
+            className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+          >
+            <option value="">{t("common.select")}</option>
+            {pickerOptions.map((eq) => (
+              <option key={eq.id} value={eq.id}>{eq.name}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!pickerEqId}
+            className="p-1 rounded-[4px] text-accent hover:text-accent-hover hover:bg-accent/5 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          >
+            <Plus size={16} strokeWidth={1.5} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // Add recipe wizard (step 1: choose recipe, step 2: configure)
 // ============================================================
 
@@ -1004,6 +1171,7 @@ function AddRecipeForm({
   const instances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
   const zoneAggregation = useZoneAggregation((s) => s.data);
+  const zoneTree = useZones((s) => s.tree);
   const [step, setStep] = useState<WizardStep>("choose");
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
   const [params, setParams] = useState<Record<string, string>>({});
@@ -1012,6 +1180,16 @@ function AddRecipeForm({
   const [visibleGroups, setVisibleGroups] = useState<Set<string>>(new Set());
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId);
+
+  // Flatten zone tree for equipment list picker
+  const allZones = useMemo(() => {
+    const flat: { id: string; name: string }[] = [];
+    const walk = (nodes: ZoneWithChildren[]) => {
+      for (const n of nodes) { flat.push({ id: n.id, name: n.name }); if (n.children.length > 0) walk(n.children); }
+    };
+    walk(zoneTree);
+    return flat;
+  }, [zoneTree]);
 
   // Light IDs already managed by a recipe instance in this zone
   const usedLightIds = useMemo(() => {
@@ -1067,7 +1245,7 @@ function AddRecipeForm({
       return agg?.luminosity !== undefined && agg?.luminosity !== null;
     }
     if (slotId === "buttons") {
-      return equipments.some((eq) => eq.zoneId === zoneId && eq.type === "button");
+      return equipments.some((eq) => eq.type === "button");
     }
     return true;
   };
@@ -1260,29 +1438,62 @@ function AddRecipeForm({
                             <Minus size={14} strokeWidth={1.5} />
                           </button>
                         </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {chunk.slots.map((slot) => (
-                            <div key={slot.id}>
-                              <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
-                                {recipeSlotName(selectedRecipe, slot, lang)}
-                              </label>
-                              {slot.type === "time" ? (
-                                <TimeInput
-                                  value={params[slot.id] ?? ""}
-                                  onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                                />
-                              ) : (
-                                <input
-                                  type="text"
-                                  value={params[slot.id] ?? ""}
-                                  onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                  placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                  className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
-                                />
-                              )}
+                        {/* Full-width equipment list slots — cross-zone picker */}
+                        {chunk.slots.filter((s) => s.type === "equipment" && s.list).map((slot) => (
+                          <EquipmentListPicker
+                            key={slot.id}
+                            slot={slot}
+                            value={params[slot.id] ?? ""}
+                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                            equipments={equipments}
+                            zones={allZones}
+                            recipe={selectedRecipe}
+                            lang={lang}
+                          />
+                        ))}
+                        {/* Compact grid for non-list slots */}
+                        {(() => {
+                          const compactSlots = chunk.slots.filter((s) => !(s.type === "equipment" && s.list));
+                          if (compactSlots.length === 0) return null;
+                          const n = compactSlots.length;
+                          const cols = n <= 3 ? n : n % 3 === 0 ? 3 : 2;
+                          return (
+                            <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                              {compactSlots.map((slot) => (
+                                <div key={slot.id}>
+                                  <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
+                                    {recipeSlotName(selectedRecipe, slot, lang)}
+                                  </label>
+                                  {slot.type === "equipment" ? (
+                                    <select
+                                      value={params[slot.id] ?? ""}
+                                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                      className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                    >
+                                      <option value="">{t("common.select")}</option>
+                                      {getEquipmentOptions(slot.id).map((eq) => (
+                                        <option key={eq.id} value={eq.id}>{eq.name}</option>
+                                      ))}
+                                    </select>
+                                  ) : slot.type === "time" ? (
+                                    <TimeInput
+                                      value={params[slot.id] ?? ""}
+                                      onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={params[slot.id] ?? ""}
+                                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                      placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
+                                      className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                    />
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })()}
                       </div>
                     );
                   }

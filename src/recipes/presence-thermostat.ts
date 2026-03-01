@@ -55,6 +55,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "Setpoint during the night window (°C, optional)",
       type: "number",
       required: false,
+      group: "night",
     },
     {
       id: "nightStart",
@@ -62,6 +63,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "Start of night window (HH:MM)",
       type: "time",
       required: false,
+      group: "night",
     },
     {
       id: "nightEnd",
@@ -69,6 +71,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "End of night window (HH:MM)",
       type: "time",
       required: false,
+      group: "night",
     },
     {
       id: "preheatStart",
@@ -76,6 +79,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "Start of weekday preheat window (HH:MM, Mon-Fri)",
       type: "time",
       required: false,
+      group: "preheat",
     },
     {
       id: "preheatEnd",
@@ -83,6 +87,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "End of weekday preheat window (HH:MM, Mon-Fri)",
       type: "time",
       required: false,
+      group: "preheat",
     },
     {
       id: "weekendPreheatStart",
@@ -90,6 +95,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "Start of weekend preheat window (HH:MM, Sat-Sun)",
       type: "time",
       required: false,
+      group: "preheat",
     },
     {
       id: "weekendPreheatEnd",
@@ -97,6 +103,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "End of weekend preheat window (HH:MM, Sat-Sun)",
       type: "time",
       required: false,
+      group: "preheat",
     },
     {
       id: "buttons",
@@ -106,6 +113,7 @@ export class PresenceThermostatRecipe extends Recipe {
       required: false,
       list: true,
       constraints: { equipmentType: "button" },
+      group: "cocoon",
     },
     {
       id: "cocoonTemp",
@@ -113,6 +121,7 @@ export class PresenceThermostatRecipe extends Recipe {
       description: "Boosted setpoint when cocoon is activated by button (°C)",
       type: "number",
       required: false,
+      group: "cocoon",
     },
   ];
 
@@ -166,6 +175,21 @@ export class PresenceThermostatRecipe extends Recipe {
           name: "Température cocoon",
           description: "Consigne boostée quand le cocoon est activé par bouton (°C)",
         },
+      },
+      groups: {
+        night: "Nuit",
+        preheat: "Préchauffe",
+        cocoon: "Cocoon",
+      },
+    },
+    en: {
+      name: "Presence Thermostat",
+      description:
+        "Adjusts thermostat setpoint based on zone presence. Sends comfort temperature when motion is detected, switches to eco after a timeout with no motion.",
+      groups: {
+        night: "Night",
+        preheat: "Preheat",
+        cocoon: "Cocoon",
       },
     },
   };
