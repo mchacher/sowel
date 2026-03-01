@@ -112,6 +112,16 @@ export class InfluxClient {
     }
   }
 
+  /** Get the current config (org/bucket needed by query builder). */
+  getConfig(): InfluxConfig | null {
+    return this.config;
+  }
+
+  /** Get underlying InfluxDB client instance (for queries). */
+  getClient(): InfluxDB | null {
+    return this.client;
+  }
+
   /** Get 24h stats (auto-resets after 24h). */
   getStats(): { pointsWritten24h: number; errors24h: number } {
     this.maybeResetCounters();
