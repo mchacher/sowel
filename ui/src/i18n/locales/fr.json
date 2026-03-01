@@ -150,6 +150,7 @@
   "equipments.notFound.message": "Cet équipement n'existe pas.",
   "equipments.deleteConfirm": "Supprimer l'équipement « {{name}} » ? Cette action est irréversible.",
   "equipments.controls": "Contrôles",
+  "equipments.configuration": "Configuration",
   "equipments.devices": "Appareils",
   "equipments.bindings": "Liaisons",
   "equipments.bindingCount_one": "{{count}} liaison",

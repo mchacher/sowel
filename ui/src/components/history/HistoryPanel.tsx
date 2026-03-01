@@ -130,8 +130,8 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
           ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
           : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
         }
-        <BarChart3 size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        <span className="text-[13px] font-medium text-text-secondary">
+        <BarChart3 size={16} strokeWidth={1.5} className="text-text-tertiary" />
+        <span className="text-[14px] font-semibold text-text">
           {t("history.chart")}
         </span>
         <span className="text-[11px] text-text-tertiary">
