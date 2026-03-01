@@ -1,7 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import { HistoryWriter } from "../../history/history-writer.js";
-import { queryHistory, queryHistorizedAliases } from "../../history/history-query.js";
+import {
+  queryHistory,
+  queryHistorizedAliases,
+  querySparkline,
+  queryZoneSparkline,
+} from "../../history/history-query.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EventBus } from "../../core/event-bus.js";
@@ -124,6 +129,49 @@ export function registerHistoryRoutes(
 
     return { success: true };
   });
+
+  // ============================================================
+  // GET /api/v1/history/sparkline/zone/:zoneId/:category — zone-level 24h sparkline
+  // ============================================================
+
+  app.get<{ Params: { zoneId: string; category: string } }>(
+    "/api/v1/history/sparkline/zone/:zoneId/:category",
+    async (req) => {
+      const { zoneId, category } = req.params;
+
+      const influx = historyWriter.getInfluxClient();
+      if (!influx.isConnected()) {
+        return { values: [] };
+      }
+
+      const values = await queryZoneSparkline(influx, { zoneId, category }, logger);
+      return { values };
+    },
+  );
+
+  // ============================================================
+  // GET /api/v1/history/sparkline/:equipmentId/:alias — lightweight 24h sparkline data
+  // ============================================================
+
+  app.get<{ Params: { equipmentId: string; alias: string } }>(
+    "/api/v1/history/sparkline/:equipmentId/:alias",
+    async (req, reply) => {
+      const { equipmentId, alias } = req.params;
+
+      const equipment = equipmentManager.getById(equipmentId);
+      if (!equipment) {
+        return reply.status(404).send({ error: "Equipment not found" });
+      }
+
+      const influx = historyWriter.getInfluxClient();
+      if (!influx.isConnected()) {
+        return { values: [] };
+      }
+
+      const values = await querySparkline(influx, { equipmentId, alias }, logger);
+      return { values };
+    },
+  );
 
   // ============================================================
   // GET /api/v1/history/:equipmentId — list historized aliases

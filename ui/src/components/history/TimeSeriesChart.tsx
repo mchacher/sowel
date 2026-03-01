@@ -19,6 +19,8 @@ interface TimeSeriesChartProps {
   resolution: "raw" | "1h" | "1d";
   unit?: string;
   height?: number;
+  /** Timestamp (ms) when the data was fetched — used to extend chart to "now". */
+  fetchTime?: number;
 }
 
 function formatTime(iso: string, range: TimeRange): string {
@@ -47,20 +49,61 @@ function formatValue(v: number, unit?: string): string {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
-export function TimeSeriesChart({ points, range, resolution, unit, height = 200 }: TimeSeriesChartProps) {
+/** Returns a human-readable relative time string, or null if gap < 5 minutes. */
+function formatRelativeTime(isoTime: string, now: number, tFn: (key: string) => string): string | null {
+  const diffMs = now - new Date(isoTime).getTime();
+  if (diffMs < 5 * 60_000) return null;
+
+  const minutes = Math.floor(diffMs / 60_000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remH = hours % 24;
+    return remH > 0
+      ? `${days}${tFn("time.day")} ${remH}${tFn("time.hour")}`
+      : `${days}${tFn("time.day")}`;
+  }
+  if (hours > 0) {
+    const remM = minutes % 60;
+    return remM > 0
+      ? `${hours}${tFn("time.hour")} ${remM}${tFn("time.min")}`
+      : `${hours}${tFn("time.hour")}`;
+  }
+  return `${minutes}${tFn("time.min")}`;
+}
+
+export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime }: TimeSeriesChartProps) {
   const { t } = useTranslation();
 
-  const data = useMemo(
-    () =>
-      points.map((p) => ({
-        time: p.time,
-        label: formatTime(p.time, range),
-        value: p.value,
-        min: p.min,
-        max: p.max,
-      })),
-    [points, range],
-  );
+  const { data, lastRealTime } = useMemo(() => {
+    const mapped = points.map((p) => ({
+      time: p.time,
+      label: formatTime(p.time, range),
+      value: p.value,
+      min: p.min,
+      max: p.max,
+    }));
+
+    if (mapped.length === 0 || !fetchTime) return { data: mapped, lastRealTime: null as string | null };
+
+    const lastPoint = mapped[mapped.length - 1];
+    const lastTime = new Date(lastPoint.time).getTime();
+
+    // Extend chart line to current time with a synthetic point
+    if (fetchTime - lastTime > 60_000) {
+      const nowIso = new Date(fetchTime).toISOString();
+      mapped.push({
+        time: nowIso,
+        label: formatTime(nowIso, range),
+        value: lastPoint.value,
+        min: undefined,
+        max: undefined,
+      });
+    }
+
+    return { data: mapped, lastRealTime: lastPoint.time };
+  }, [points, range, fetchTime]);
 
   if (data.length === 0) {
     return (
@@ -71,6 +114,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200 
   }
 
   const hasMinMax = resolution !== "raw" && data.some((d) => d.min !== undefined);
+  const staleDuration = lastRealTime && fetchTime ? formatRelativeTime(lastRealTime, fetchTime, t) : null;
 
   // Use CSS variables for chart colors — works in both light and dark mode
   const primaryColor = "var(--color-primary)";
@@ -80,6 +124,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200 
   const borderColor = "var(--color-border-light)";
 
   return (
+    <div>
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
@@ -168,5 +213,11 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200 
         )}
       </LineChart>
     </ResponsiveContainer>
+    {staleDuration && (
+      <div className="text-[10px] text-accent text-right mt-1">
+        {t("history.lastMeasurement", { duration: staleDuration })}
+      </div>
+    )}
+    </div>
   );
 }

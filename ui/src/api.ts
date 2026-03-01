@@ -722,6 +722,24 @@ export async function getHistoryAliases(equipmentId: string): Promise<{ aliases:
   return fetchJSON<{ aliases: string[] }>(`${API_BASE}/history/${equipmentId}`);
 }
 
+export async function getSparklineData(
+  equipmentId: string,
+  alias: string,
+): Promise<{ values: number[] }> {
+  return fetchJSON<{ values: number[] }>(
+    `${API_BASE}/history/sparkline/${equipmentId}/${alias}`,
+  );
+}
+
+export async function getZoneSparklineData(
+  zoneId: string,
+  category: string,
+): Promise<{ values: number[] }> {
+  return fetchJSON<{ values: number[] }>(
+    `${API_BASE}/history/sparkline/zone/${zoneId}/${category}`,
+  );
+}
+
 export async function getHistoryData(
   equipmentId: string,
   alias: string,
