@@ -577,5 +577,16 @@
   "history.default": "défaut",
   "history.override": "modifié",
   "history.on": "ON",
-  "history.off": "OFF"
+  "history.off": "OFF",
+  "history.chart": "Graphique",
+  "history.noData": "Aucune donnée pour cette période",
+  "history.loading": "Chargement des données...",
+  "history.range6h": "6h",
+  "history.range24h": "24h",
+  "history.range7d": "7j",
+  "history.range30d": "30j",
+  "history.resolution": "Résolution",
+  "history.raw": "Brut",
+  "history.hourly": "Horaire",
+  "history.daily": "Journalier"
 }
