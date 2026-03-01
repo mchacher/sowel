@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Layers,
   Calendar,
+  BarChart3,
   ScrollText,
   DatabaseBackup,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarZoneTree } from "./SidebarZoneTree";
 import { SidebarModeList } from "./SidebarModeList";
+import { SidebarChartList } from "./SidebarChartList";
 import { WinchLogo } from "./WinchLogo";
 import { useAuth } from "../../store/useAuth";
 
@@ -94,8 +96,8 @@ export function Sidebar() {
             >
               {({ isActive }) => (
                 <>
-                  <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-tertiary group-hover:text-primary"}`} />
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-tertiary group-hover:text-primary"}`}>
+                  <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
                     {t("nav.modes")}
                   </span>
                 </>
@@ -121,6 +123,44 @@ export function Sidebar() {
             <SidebarModeList collapsed={collapsed} />
           )}
         </div>
+
+        {/* Analyse section */}
+        <div className="mt-3 pt-2 border-t border-border-light">
+          {collapsed ? (
+            <NavLink
+              to="/analyse"
+              className={({ isActive }) => `
+                flex items-center justify-center px-3 py-2.5 rounded-[6px]
+                transition-colors duration-150 ease-out
+                ${isActive
+                  ? "bg-primary-light text-primary font-medium"
+                  : "text-text-secondary hover:bg-border-light hover:text-text"
+                }
+              `}
+              title={t("nav.analyse")}
+            >
+              <BarChart3 size={20} strokeWidth={1.5} />
+            </NavLink>
+          ) : (
+            <>
+              <NavLink
+                to="/analyse"
+                end
+                className={() => `flex items-center gap-2 px-3 mb-2 group`}
+              >
+                {({ isActive }) => (
+                  <>
+                    <BarChart3 size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                    <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                      {t("nav.analyse")}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+              <SidebarChartList collapsed={collapsed} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Administration section — admin only */}
@@ -128,8 +168,8 @@ export function Sidebar() {
         <div className="border-t border-border-light py-2 px-2">
           {!collapsed && (
             <div className="flex items-center gap-2 px-3 mb-1.5">
-              <Shield size={14} strokeWidth={1.5} className="text-text-tertiary" />
-              <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
+              <Shield size={14} strokeWidth={1.5} className="text-text" />
+              <span className="text-[11px] font-semibold text-text uppercase tracking-wider">
                 {t("nav.administration")}
               </span>
             </div>

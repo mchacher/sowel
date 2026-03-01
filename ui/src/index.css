@@ -181,3 +181,12 @@ input[type="range"].slider-active::-webkit-slider-thumb {
 input[type="range"].slider-active::-moz-range-thumb {
   background: var(--color-active);
 }
+
+/* ============================================================
+   Recharts — remove focus outline on chart click
+   ============================================================ */
+
+.recharts-wrapper,
+.recharts-wrapper svg {
+  outline: none !important;
+}

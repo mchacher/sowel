@@ -49,10 +49,39 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
   }, [zoneId, zone]);
 
   const icon = depth === 0
-    ? <Home size={15} strokeWidth={1.5} />
+    ? <Home size={depth === 0 ? 14 : 15} strokeWidth={1.5} />
     : hasChildren
       ? <Layers size={15} strokeWidth={1.5} />
       : <DoorOpen size={15} strokeWidth={1.5} />;
+
+  // Root zones: section header style, always expanded, not collapsable
+  if (depth === 0) {
+    return (
+      <div>
+        <NavLink
+          to={`/home/${zone.id}`}
+          className={() => `flex items-center gap-2 px-3 py-1.5 min-w-0 group`}
+        >
+          {({ isActive: linkActive }) => (
+            <>
+              <Home size={14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+              <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                {zone.name}
+              </span>
+            </>
+          )}
+        </NavLink>
+
+        {hasChildren && (
+          <div>
+            {zone.children.map((child) => (
+              <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
