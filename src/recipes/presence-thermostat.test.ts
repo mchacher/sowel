@@ -243,6 +243,30 @@ const BASE_PARAMS = {
   timeout: "30m",
 };
 
+function createButton(setup: TestSetup): string {
+  const buttonDevice = seedDevice(setup.db, {
+    name: "Button Salon",
+    dataKeys: [{ key: "action", type: "text", category: "action", value: JSON.stringify("") }],
+  });
+  const buttonEq = setup.equipmentManager.create({
+    name: "Button Salon",
+    type: "button",
+    zoneId: setup.zoneId,
+  });
+  setup.equipmentManager.addDataBinding(buttonEq.id, buttonDevice.dataIds[0], "action");
+  return buttonEq.id;
+}
+
+function simulateButtonPress(setup: TestSetup, buttonId: string): void {
+  setup.eventBus.emit({
+    type: "equipment.data.changed",
+    equipmentId: buttonId,
+    alias: "action",
+    value: "single",
+    previous: "",
+  });
+}
+
 // ============================================================
 // Tests
 // ============================================================
@@ -927,5 +951,321 @@ describe("PresenceThermostatRecipe", () => {
     vi.advanceTimersByTime(60_000); // trigger preheat check
     vi.advanceTimersByTime(30 * 60 * 1000 + 100);
     expect(getSetpointCommands(setup.published)).toContain(17);
+  });
+
+  // ============================================================
+  // Cocoon mode
+  // ============================================================
+
+  it("validates cocoonTemp required when buttons provided", () => {
+    const buttonId = createButton(setup);
+    expect(() =>
+      setup.manager.createInstance("presence-thermostat", {
+        zone: setup.zoneId,
+        thermostat: setup.thermostatId,
+        ...BASE_PARAMS,
+        buttons: [buttonId],
+      }),
+    ).toThrow("Invalid params");
+  });
+
+  it("validates buttons required when cocoonTemp provided", () => {
+    expect(() =>
+      setup.manager.createInstance("presence-thermostat", {
+        zone: setup.zoneId,
+        thermostat: setup.thermostatId,
+        ...BASE_PARAMS,
+        cocoonTemp: 23,
+      }),
+    ).toThrow("Invalid params");
+  });
+
+  it("validates button has action data binding", () => {
+    // Create button WITHOUT action binding
+    const btnDevice = seedDevice(setup.db, {
+      name: "Bad Button",
+      dataKeys: [{ key: "battery", type: "number", category: "battery", value: "100" }],
+    });
+    const btnEq = setup.equipmentManager.create({
+      name: "Bad Button",
+      type: "button",
+      zoneId: setup.zoneId,
+    });
+    setup.equipmentManager.addDataBinding(btnEq.id, btnDevice.dataIds[0], "battery");
+
+    expect(() =>
+      setup.manager.createInstance("presence-thermostat", {
+        zone: setup.zoneId,
+        thermostat: setup.thermostatId,
+        ...BASE_PARAMS,
+        buttons: [btnEq.id],
+        cocoonTemp: 23,
+      }),
+    ).toThrow("Invalid params");
+  });
+
+  it("creates valid instance with cocoon config", () => {
+    const buttonId = createButton(setup);
+    const instance = setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+    expect(instance.recipeId).toBe("presence-thermostat");
+    expect(instance.enabled).toBe(true);
+  });
+
+  it("button press activates cocoon mode and sends cocoonTemp", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+    setup.published.length = 0;
+
+    simulateButtonPress(setup, buttonId);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(23);
+  });
+
+  it("second button press exits cocoon — comfort if motion, eco if not", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    // Enter cocoon
+    simulateButtonPress(setup, buttonId);
+    setup.published.length = 0;
+
+    // Exit cocoon without motion → eco
+    simulateButtonPress(setup, buttonId);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(17); // eco (no motion)
+  });
+
+  it("second button press during cocoon with motion returns to comfort", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    simulateMotion(setup, true); // comfort
+    simulateButtonPress(setup, buttonId); // cocoon
+    setup.published.length = 0;
+
+    // Exit cocoon with motion present → comfort
+    simulateButtonPress(setup, buttonId);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(21); // comfort (motion present)
+    expect(setpoints).not.toContain(23); // not cocoon
+  });
+
+  it("cocoon exits to eco after absence timeout", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    simulateMotion(setup, true); // comfort
+    simulateButtonPress(setup, buttonId); // cocoon
+
+    // No motion → start eco timer
+    simulateMotion(setup, false);
+    setup.published.length = 0;
+
+    // Advance past timeout
+    vi.advanceTimersByTime(30 * 60 * 1000 + 100);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(17); // eco
+  });
+
+  it("motion during cocoon cancels eco timer and keeps cocoon", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    simulateMotion(setup, true); // comfort
+    simulateButtonPress(setup, buttonId); // cocoon
+    simulateMotion(setup, false); // start eco timer
+    setup.published.length = 0;
+
+    // Motion resumes before timeout → cancel eco timer, stay in cocoon
+    vi.advanceTimersByTime(10 * 60 * 1000);
+    simulateMotion(setup, true);
+
+    // Advance past original timeout — should NOT fire
+    vi.advanceTimersByTime(25 * 60 * 1000);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).not.toContain(17); // no eco
+  });
+
+  it("cocoon exits when night window starts", () => {
+    vi.setSystemTime(new Date("2026-02-27T21:50:00")); // 21:50, just before night
+
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+      nightTemp: 18,
+      nightStart: "22:00",
+      nightEnd: "06:00",
+    });
+
+    simulateMotion(setup, true); // comfort
+    simulateButtonPress(setup, buttonId); // cocoon
+    setup.published.length = 0;
+
+    // Advance into night window — periodic check should exit cocoon
+    vi.setSystemTime(new Date("2026-02-27T22:01:00"));
+    vi.advanceTimersByTime(60_000); // trigger periodic check
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(17); // eco (night forces eco)
+    expect(setpoints).not.toContain(23); // not cocoon
+  });
+
+  it("button press during override is ignored", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    simulateMotion(setup, true); // comfort (lastSentSetpoint = 21)
+    vi.advanceTimersByTime(6000); // wait past grace period
+    simulateSetpointChange(setup, 25); // manual change → override
+    setup.published.length = 0;
+
+    // Button press during override — should be ignored
+    simulateButtonPress(setup, buttonId);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).not.toContain(23); // no cocoon
+  });
+
+  it("manual setpoint change during cocoon enters override", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    simulateButtonPress(setup, buttonId); // cocoon (lastSentSetpoint = 23)
+    vi.advanceTimersByTime(6000); // wait past grace period
+    simulateSetpointChange(setup, 25); // manual change (25 ≠ 23 → override)
+    setup.published.length = 0;
+
+    // Next motion should be ignored (override)
+    simulateMotion(setup, true);
+    simulateMotion(setup, false);
+    simulateMotion(setup, true);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).not.toContain(21); // no comfort
+    expect(setpoints).not.toContain(23); // no cocoon
+  });
+
+  it("preheat does not prevent cocoon from exiting on absence", () => {
+    // Wednesday 06:30 — inside preheat
+    vi.setSystemTime(new Date("2026-02-25T06:30:00"));
+
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+      preheatStart: "06:00",
+      preheatEnd: "08:00",
+    });
+
+    simulateMotion(setup, true); // comfort
+    simulateButtonPress(setup, buttonId); // cocoon
+    simulateMotion(setup, false); // start eco timer (preheat should NOT protect cocoon)
+    setup.published.length = 0;
+
+    vi.advanceTimersByTime(30 * 60 * 1000 + 100);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(17); // eco despite being in preheat window
+  });
+
+  it("button press from eco enters cocoon directly", () => {
+    const buttonId = createButton(setup);
+    setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+    setup.published.length = 0;
+
+    // In eco, no motion — press button
+    simulateButtonPress(setup, buttonId);
+
+    const setpoints = getSetpointCommands(setup.published);
+    expect(setpoints).toContain(23); // cocoon directly from eco
+  });
+
+  it("cocoonMode state is exposed and cleared correctly", () => {
+    const buttonId = createButton(setup);
+    const instance = setup.manager.createInstance("presence-thermostat", {
+      zone: setup.zoneId,
+      thermostat: setup.thermostatId,
+      ...BASE_PARAMS,
+      buttons: [buttonId],
+      cocoonTemp: 23,
+    });
+
+    // Enter cocoon
+    simulateButtonPress(setup, buttonId);
+    const stateAfterCocoon = setup.manager.getInstanceState(instance.id);
+    expect(stateAfterCocoon.cocoonMode).toBe(true);
+    expect(stateAfterCocoon.currentMode).toBe("cocoon");
+
+    // Exit cocoon
+    simulateButtonPress(setup, buttonId);
+    const stateAfterExit = setup.manager.getInstanceState(instance.id);
+    expect(stateAfterExit.cocoonMode).toBeUndefined();
+    expect(stateAfterExit.currentMode).not.toBe("cocoon");
   });
 });
