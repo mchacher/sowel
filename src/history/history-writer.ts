@@ -49,6 +49,9 @@ const DEADBAND: Record<string, number> = {
 /** Minimum write interval in ms (default 30s). */
 const DEFAULT_MIN_WRITE_INTERVAL = 30_000;
 
+/** Maximum interval between writes in ms — forces a write even if value unchanged (default 5 min). */
+const DEFAULT_MAX_WRITE_INTERVAL = 5 * 60_000;
+
 interface LastWritten {
   value: unknown;
   timestamp: number;
@@ -78,6 +81,9 @@ export class HistoryWriter {
   /** Resolved min write interval. */
   private minWriteInterval = DEFAULT_MIN_WRITE_INTERVAL;
 
+  /** Resolved max write interval — forces periodic writes for stable values. */
+  private maxWriteInterval = DEFAULT_MAX_WRITE_INTERVAL;
+
   constructor(
     _db: Database.Database,
     eventBus: EventBus,
@@ -97,11 +103,16 @@ export class HistoryWriter {
     this.tryConnect();
     this.refreshCache();
 
-    // Read configurable min interval
+    // Read configurable intervals
     const intervalSetting = this.settingsManager.get("history.minWriteInterval");
     if (intervalSetting) {
       const parsed = parseInt(intervalSetting, 10);
       if (!isNaN(parsed) && parsed > 0) this.minWriteInterval = parsed;
+    }
+    const maxSetting = this.settingsManager.get("history.maxWriteInterval");
+    if (maxSetting) {
+      const parsed = parseInt(maxSetting, 10);
+      if (!isNaN(parsed) && parsed > 0) this.maxWriteInterval = parsed;
     }
 
     // Subscribe to events
@@ -322,6 +333,9 @@ export class HistoryWriter {
     // Minimum interval check
     const elapsed = Date.now() - last.timestamp;
     if (elapsed < this.minWriteInterval) return false;
+
+    // Maximum interval — force write even if value unchanged (keeps charts fresh)
+    if (elapsed > this.maxWriteInterval) return true;
 
     // Deadband check for numeric values
     if (meta.type === "number" && typeof value === "number" && typeof last.value === "number") {
