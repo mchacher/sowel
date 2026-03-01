@@ -23,10 +23,13 @@ export function ZoneSparkline({
   height = 24,
   className = "",
 }: ZoneSparklineProps) {
+  const cacheKey = `zone:${zoneId}:${category}`;
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const [values, setValues] = useState<number[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [values, setValues] = useState<number[] | null>(
+    () => zoneSparklineCache.get(cacheKey) ?? null,
+  );
+  const [loading, setLoading] = useState(() => !zoneSparklineCache.has(cacheKey));
 
   // Lazy visibility detection
   useEffect(() => {
@@ -46,17 +49,9 @@ export function ZoneSparkline({
     return () => observer.disconnect();
   }, []);
 
-  // Fetch data once visible
+  // Fetch data once visible (skip if already cached via initial state)
   useEffect(() => {
-    if (!visible) return;
-
-    const cacheKey = `zone:${zoneId}:${category}`;
-    const cached = zoneSparklineCache.get(cacheKey);
-    if (cached) {
-      setValues(cached);
-      setLoading(false);
-      return;
-    }
+    if (!visible || zoneSparklineCache.has(cacheKey)) return;
 
     let cancelled = false;
     getZoneSparklineData(zoneId, category)
@@ -73,7 +68,7 @@ export function ZoneSparkline({
       });
 
     return () => { cancelled = true; };
-  }, [visible, zoneId, category]);
+  }, [visible, zoneId, category, cacheKey]);
 
   // Build SVG path from values
   const pathData = useMemo(() => {

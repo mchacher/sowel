@@ -25,10 +25,13 @@ export function Sparkline({
   height = 24,
   className = "",
 }: SparklineProps) {
+  const cacheKey = `${equipmentId}:${alias}`;
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const [values, setValues] = useState<number[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [values, setValues] = useState<number[] | null>(
+    () => sparklineCache.get(cacheKey) ?? null,
+  );
+  const [loading, setLoading] = useState(() => !sparklineCache.has(cacheKey));
 
   // Lazy visibility detection
   useEffect(() => {
@@ -48,17 +51,9 @@ export function Sparkline({
     return () => observer.disconnect();
   }, []);
 
-  // Fetch data once visible
+  // Fetch data once visible (skip if already cached via initial state)
   useEffect(() => {
-    if (!visible) return;
-
-    const cacheKey = `${equipmentId}:${alias}`;
-    const cached = sparklineCache.get(cacheKey);
-    if (cached) {
-      setValues(cached);
-      setLoading(false);
-      return;
-    }
+    if (!visible || sparklineCache.has(cacheKey)) return;
 
     let cancelled = false;
     getSparklineData(equipmentId, alias)
@@ -75,7 +70,7 @@ export function Sparkline({
       });
 
     return () => { cancelled = true; };
-  }, [visible, equipmentId, alias]);
+  }, [visible, equipmentId, alias, cacheKey]);
 
   // Build SVG path from values
   const pathData = useMemo(() => {

@@ -91,12 +91,10 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, hist
               : sensorBindings
           }
           batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
+          trailing={sparklineBinding ? (
+            <Sparkline equipmentId={equipment.id} alias={sparklineBinding.alias} />
+          ) : undefined}
         />
-      )}
-
-      {/* Sparkline for primary sensor metric */}
-      {sparklineBinding && (
-        <Sparkline equipmentId={equipment.id} alias={sparklineBinding.alias} />
       )}
 
       {/* Primary value for other equipments */}
