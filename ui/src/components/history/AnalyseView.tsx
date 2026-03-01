@@ -90,12 +90,13 @@ const CATEGORY_UNITS: Record<string, string> = {
 // Helpers
 // ============================================================
 
-function flattenZones(zones: ZoneWithChildren[]): { id: string; name: string; depth: number }[] {
-  const result: { id: string; name: string; depth: number }[] = [];
-  function walk(list: ZoneWithChildren[], depth: number) {
+function flattenZones(zones: ZoneWithChildren[]): { id: string; name: string; depth: number; label: string }[] {
+  const result: { id: string; name: string; depth: number; label: string }[] = [];
+  function walk(list: ZoneWithChildren[], depth: number, parentName?: string) {
     for (const z of list) {
-      result.push({ id: z.id, name: z.name, depth });
-      if (z.children.length > 0) walk(z.children, depth + 1);
+      const label = parentName ? `${parentName} › ${z.name}` : z.name;
+      result.push({ id: z.id, name: z.name, depth, label });
+      if (z.children.length > 0) walk(z.children, depth + 1, label);
     }
   }
   walk(zones, 0);
@@ -228,7 +229,6 @@ export function AnalyseView() {
   const flatZones = useMemo(() => flattenZones(zones), [zones]);
 
   const filteredEquipments = useMemo(() => {
-    if (!selectedZoneId) return equipments;
     return equipments.filter((e) => e.zoneId === selectedZoneId);
   }, [equipments, selectedZoneId]);
 
@@ -486,7 +486,13 @@ export function AnalyseView() {
 
         <button
           type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => {
+            const next = !showAddForm;
+            setShowAddForm(next);
+            if (next && !selectedZoneId && flatZones.length > 0) {
+              setSelectedZoneId(flatZones[0].id);
+            }
+          }}
           className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium
             bg-primary-light text-primary hover:bg-primary hover:text-white
             transition-colors cursor-pointer"
@@ -514,10 +520,9 @@ export function AnalyseView() {
                   }}
                   className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-[12px] text-text appearance-none cursor-pointer"
                 >
-                  <option value="">{t("analyse.allZones")}</option>
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
-                      {"  ".repeat(z.depth)}{z.name}
+                      {z.label}
                     </option>
                   ))}
                 </select>
