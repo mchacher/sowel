@@ -10,6 +10,7 @@ import {
   Thermometer,
   CloudSun,
   DoorOpen,
+  Heater,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
@@ -31,6 +32,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   thermostat: <Thermometer size={18} strokeWidth={1.5} />,
   weather: <CloudSun size={18} strokeWidth={1.5} />,
   gate: <DoorOpen size={18} strokeWidth={1.5} />,
+  heater: <Heater size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -44,6 +46,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   thermostat: "equipments.type.thermostat",
   weather: "equipments.type.weather",
   gate: "equipments.type.gate",
+  heater: "equipments.type.heater",
 };
 
 interface EquipmentCardProps {

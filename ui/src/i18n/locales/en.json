@@ -185,6 +185,7 @@
   "equipments.type.thermostat": "Thermostat",
   "equipments.type.weather": "Weather Station",
   "equipments.type.gate": "Gate",
+  "equipments.type.heater": "Electric Heater",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",
@@ -225,6 +226,13 @@
   "controls.gate.unknown": "Moving",
   "controls.gate.toggle": "Toggle",
   "controls.gate.command": "Command",
+
+  "controls.heater.comfort": "Comfort",
+  "controls.heater.eco": "Eco",
+  "controls.heater.switchComfort": "Switch to comfort",
+  "controls.heater.switchEco": "Switch to eco",
+  "controls.heater.relayOn": "Relay on",
+  "controls.heater.relayOff": "Relay off",
 
   "sensors.title": "Sensors",
   "sensors.noData": "No sensor data.",

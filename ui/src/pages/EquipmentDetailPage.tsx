@@ -17,6 +17,7 @@ import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard"
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";
 import { GateControl } from "../components/equipments/GateControl";
+import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import {
   ArrowLeft,
@@ -169,7 +170,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const { isLight, isShutter, isSensor, isThermostat, isGate, actionBinding } = equipmentState;
+  const { isLight, isShutter, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
 
   return (
     <div className="p-6">
@@ -271,6 +272,17 @@ export function EquipmentDetailPage() {
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <GateControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* Heater controls */}
+      {isHeater && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <HeaterControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />

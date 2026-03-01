@@ -149,7 +149,8 @@ export type EquipmentType =
   | "button"
   | "thermostat"
   | "weather"
-  | "gate";
+  | "gate"
+  | "heater";
 
 export interface Equipment {
   id: string;

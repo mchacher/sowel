@@ -7,6 +7,7 @@ import { LightControl } from "../equipments/LightControl";
 import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
+import { HeaterControl } from "../equipments/HeaterControl";
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -22,6 +23,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isShutter,
     isSensor,
     isThermostat,
+    isHeater,
     isGate,
     stateBinding,
     isOn,
@@ -31,8 +33,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     iconColor,
   } = useEquipmentState(equipment);
 
-  // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat, non-gate equipments
-  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isGate
+  // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat, non-heater, non-gate equipments
+  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -82,7 +84,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       )}
 
       {/* Primary value for other equipments */}
-      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && !isGate && (
+      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -124,8 +126,17 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         />
       )}
 
-      {/* Boolean state badge for non-light, non-sensor, non-shutter, non-gate equipments */}
-      {!isLight && !isSensor && !isShutter && !isThermostat && !isGate && stateBinding && (
+      {/* Heater controls */}
+      {isHeater && equipment.enabled && (
+        <HeaterControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* Boolean state badge for non-light, non-sensor, non-shutter, non-heater, non-gate equipments */}
+      {!isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
