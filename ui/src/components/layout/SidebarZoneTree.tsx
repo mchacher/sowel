@@ -49,10 +49,61 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
   }, [zoneId, zone]);
 
   const icon = depth === 0
-    ? <Home size={15} strokeWidth={1.5} />
+    ? <Home size={depth === 0 ? 14 : 15} strokeWidth={1.5} />
     : hasChildren
       ? <Layers size={15} strokeWidth={1.5} />
       : <DoorOpen size={15} strokeWidth={1.5} />;
+
+  // Root zones use section header style (uppercase, bold, text-text)
+  if (depth === 0) {
+    return (
+      <div>
+        <div className="flex items-center gap-1" style={{ paddingLeft: "8px" }}>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (hasChildren) setExpanded(!expanded);
+            }}
+            className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded ${
+              hasChildren
+                ? "text-text-tertiary hover:text-text-secondary"
+                : "text-transparent"
+            }`}
+          >
+            {hasChildren &&
+              (expanded ? (
+                <ChevronDown size={11} strokeWidth={1.5} />
+              ) : (
+                <ChevronRight size={11} strokeWidth={1.5} />
+              ))}
+          </button>
+
+          <NavLink
+            to={`/home/${zone.id}`}
+            className={() => `flex-1 flex items-center gap-2 px-2 py-1.5 min-w-0 group`}
+          >
+            {({ isActive: linkActive }) => (
+              <>
+                <Home size={14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                  {zone.name}
+                </span>
+              </>
+            )}
+          </NavLink>
+        </div>
+
+        {expanded && hasChildren && (
+          <div>
+            {zone.children.map((child) => (
+              <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
