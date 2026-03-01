@@ -142,7 +142,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                     <option value="">{t("equipments.form.selectZone")}</option>
                     {flatZones.map((z) => (
                       <option key={z.id} value={z.id}>
-                        {"  ".repeat(z.depth)}{z.name}
+                        {z.label}
                       </option>
                     ))}
                   </select>
@@ -225,14 +225,15 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
   );
 }
 
-function flattenZones(
-  zones: ZoneWithChildren[],
-  depth = 0
-): { id: string; name: string; depth: number }[] {
-  const result: { id: string; name: string; depth: number }[] = [];
-  for (const zone of zones) {
-    result.push({ id: zone.id, name: zone.name, depth });
-    result.push(...flattenZones(zone.children, depth + 1));
+function flattenZones(zones: ZoneWithChildren[]): { id: string; name: string; label: string }[] {
+  const result: { id: string; name: string; label: string }[] = [];
+  function walk(list: ZoneWithChildren[], parentLabel?: string) {
+    for (const z of list) {
+      const label = parentLabel ? `${parentLabel} › ${z.name}` : z.name;
+      result.push({ id: z.id, name: z.name, label });
+      if (z.children.length > 0) walk(z.children, label);
+    }
   }
+  walk(zones);
   return result;
 }
