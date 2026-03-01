@@ -22,6 +22,7 @@ import type { AuthService } from "../auth/auth-service.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { ButtonActionManager } from "../buttons/button-action-manager.js";
 import type { HistoryWriter } from "../history/history-writer.js";
+import type { ChartManager } from "../charts/chart-manager.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -39,6 +40,7 @@ import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerButtonActionRoutes } from "./routes/button-actions.js";
 import { registerLogRoutes } from "./routes/logs.js";
 import { registerHistoryRoutes } from "./routes/history.js";
+import { registerChartRoutes } from "./routes/charts.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -55,6 +57,7 @@ interface ServerDeps {
   settingsManager: SettingsManager;
   buttonActionManager: ButtonActionManager;
   historyWriter: HistoryWriter;
+  chartManager: ChartManager;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -77,6 +80,7 @@ export async function createServer(deps: ServerDeps) {
     settingsManager,
     buttonActionManager,
     historyWriter,
+    chartManager,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -128,6 +132,7 @@ export async function createServer(deps: ServerDeps) {
     eventBus,
     logger,
   });
+  registerChartRoutes(app, { chartManager });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

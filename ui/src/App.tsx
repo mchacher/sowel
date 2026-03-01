@@ -52,6 +52,7 @@ export default function App() {
           <Route path="/modes/:id" element={<ModeDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/analyse" element={<AnalysePage />} />
+          <Route path="/analyse/:chartId" element={<AnalysePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/logs" element={<LogsPage />} />

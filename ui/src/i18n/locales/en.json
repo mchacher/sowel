@@ -602,5 +602,14 @@
   "analyse.metric": "Metric",
   "analyse.noHistorizedData": "No historized data for this equipment.",
   "analyse.empty": "No series to display",
-  "analyse.emptyHint": "Click \"Add\" to overlay metrics from different equipments."
+  "analyse.emptyHint": "Click \"Add\" to overlay metrics from different equipments.",
+  "analyse.save": "Save",
+  "analyse.saveAs": "Save as",
+  "analyse.saveName": "Chart name",
+  "analyse.saveNamePlaceholder": "e.g. Temperature comparison",
+  "analyse.deleteChart": "Delete chart",
+  "analyse.deleteConfirm": "Delete chart \"{{name}}\"?",
+  "analyse.noSavedCharts": "No saved charts",
+  "analyse.saved": "Chart saved",
+  "analyse.new": "New chart"
 }
