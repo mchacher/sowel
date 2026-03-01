@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Layers,
   Calendar,
+  BarChart3,
   ScrollText,
   DatabaseBackup,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: "/equipments", label: "nav.equipments", icon: <Box size={18} strokeWidth={1.5} /> },
   { to: "/zones", label: "nav.zones", icon: <Map size={18} strokeWidth={1.5} /> },
   { to: "/calendar", label: "nav.calendar", icon: <Calendar size={18} strokeWidth={1.5} /> },
+  { to: "/analyse", label: "nav.analyse", icon: <BarChart3 size={18} strokeWidth={1.5} /> },
   { to: "/integrations", label: "nav.integrations", icon: <Plug size={18} strokeWidth={1.5} /> },
   { to: "/logs", label: "nav.logs", icon: <ScrollText size={18} strokeWidth={1.5} /> },
   { to: "/backup", label: "nav.backup", icon: <DatabaseBackup size={18} strokeWidth={1.5} /> },

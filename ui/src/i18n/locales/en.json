@@ -418,6 +418,7 @@
   "backup.exported": "Backup exported successfully",
   "backup.imported": "Backup imported successfully. Reloading...",
 
+  "nav.analyse": "Analyse",
   "nav.integrations": "Integrations",
   "nav.logs": "Logs",
   "nav.backup": "Backup",
@@ -590,5 +591,16 @@
   "history.raw": "Raw",
   "history.hourly": "Hourly",
   "history.daily": "Daily",
-  "history.lastMeasurement": "Last measurement {{duration}} ago"
+  "history.lastMeasurement": "Last measurement {{duration}} ago",
+
+  "analyse.title": "Analyse",
+  "analyse.addSeries": "Add",
+  "analyse.zone": "Zone",
+  "analyse.allZones": "All zones",
+  "analyse.equipment": "Equipment",
+  "analyse.selectEquipment": "Select an equipment...",
+  "analyse.metric": "Metric",
+  "analyse.noHistorizedData": "No historized data for this equipment.",
+  "analyse.empty": "No series to display",
+  "analyse.emptyHint": "Click \"Add\" to overlay metrics from different equipments."
 }

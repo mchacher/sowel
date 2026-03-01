@@ -418,6 +418,7 @@
   "backup.exported": "Sauvegarde exportée avec succès",
   "backup.imported": "Sauvegarde importée avec succès. Rechargement...",
 
+  "nav.analyse": "Analyse",
   "nav.integrations": "Intégrations",
   "nav.logs": "Logs",
   "nav.backup": "Sauvegarde",
@@ -590,5 +591,16 @@
   "history.raw": "Brut",
   "history.hourly": "Horaire",
   "history.daily": "Journalier",
-  "history.lastMeasurement": "Dernière mesure il y a {{duration}}"
+  "history.lastMeasurement": "Dernière mesure il y a {{duration}}",
+
+  "analyse.title": "Analyse",
+  "analyse.addSeries": "Ajouter",
+  "analyse.zone": "Zone",
+  "analyse.allZones": "Toutes les zones",
+  "analyse.equipment": "Équipement",
+  "analyse.selectEquipment": "Sélectionner un équipement...",
+  "analyse.metric": "Métrique",
+  "analyse.noHistorizedData": "Aucune donnée historisée pour cet équipement.",
+  "analyse.empty": "Aucune série à afficher",
+  "analyse.emptyHint": "Cliquez sur « Ajouter » pour superposer des métriques de différents équipements."
 }
