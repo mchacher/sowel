@@ -122,6 +122,26 @@ export function registerRecipeRoutes(app: FastifyInstance, deps: RecipesDeps): v
     },
   );
 
+  // POST /api/v1/recipe-instances/:id/actions — Send an action to a running recipe
+  app.post<{
+    Params: { id: string };
+    Body: { action: string; payload?: Record<string, unknown> };
+  }>("/api/v1/recipe-instances/:id/actions", async (request, reply) => {
+    const { action, payload } = request.body ?? {};
+    if (!action || typeof action !== "string") {
+      return reply.code(400).send({ error: "action is required" });
+    }
+    try {
+      recipeManager.sendAction(request.params.id, action, payload);
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof RecipeError) {
+        return reply.code(err.status).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
   // GET /api/v1/recipe-instances/:id/log — Get execution log
   app.get<{
     Params: { id: string };

@@ -9,6 +9,7 @@ import {
   enableRecipeInstance,
   disableRecipeInstance,
   getRecipeInstanceLog,
+  sendRecipeInstanceAction,
 } from "../api";
 
 interface RecipesState {
@@ -23,6 +24,7 @@ interface RecipesState {
   deleteInstance: (instanceId: string) => Promise<void>;
   enableInstance: (instanceId: string) => Promise<void>;
   disableInstance: (instanceId: string) => Promise<void>;
+  sendAction: (instanceId: string, action: string, payload?: Record<string, unknown>) => Promise<void>;
   getLog: (instanceId: string) => Promise<RecipeLogEntry[]>;
   handleInstanceChanged: () => void;
 }
@@ -79,6 +81,10 @@ export const useRecipes = create<RecipesState>((set, get) => ({
   disableInstance: async (instanceId) => {
     await disableRecipeInstance(instanceId);
     await get().fetchInstances();
+  },
+
+  sendAction: async (instanceId, action, payload) => {
+    await sendRecipeInstanceAction(instanceId, action, payload);
   },
 
   getLog: async (instanceId) => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useZones } from "../store/useZones";
+import { useRecipes } from "../store/useRecipes";
 import { getZone } from "../api";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
 import {
@@ -13,18 +14,97 @@ import {
   ChevronRight,
   FolderOpen,
 } from "lucide-react";
-import type { ZoneWithChildren } from "../types";
+import type { ZoneWithChildren, RecipeActionDef, RecipeInstance, RecipeInfo } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { ROOT_ZONE_ID } from "../lib/constants";
 
+// ── Mode pill colors ────────────────────────────────────
+
+const MODE_COLORS: Record<string, { bg: string; text: string }> = {
+  eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
+  comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
+  cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
+};
+
+const DEFAULT_PILL_COLOR = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
+
+// ── Recipe mode pill ────────────────────────────────────
+
+function RecipeModePill({
+  instance,
+  recipe,
+  action,
+}: {
+  instance: RecipeInstance;
+  recipe: RecipeInfo;
+  action: RecipeActionDef;
+}) {
+  const { t } = useTranslation();
+  const sendAction = useRecipes((s) => s.sendAction);
+  const [sending, setSending] = useState(false);
+
+  const currentValue = instance.state?.[action.stateKey] as string | undefined;
+  if (!currentValue) return null;
+
+  // Filter options: hide cocoon if cocoonTemp not configured
+  const availableOptions = action.options.filter((opt) => {
+    if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
+    return true;
+  });
+
+  if (availableOptions.length < 2) return null;
+
+  const currentIndex = availableOptions.findIndex((o) => o.value === currentValue);
+  const nextIndex = (currentIndex + 1) % availableOptions.length;
+  const nextOption = availableOptions[nextIndex];
+  const currentOption = availableOptions[currentIndex >= 0 ? currentIndex : 0];
+
+  const colors = MODE_COLORS[currentValue] ?? DEFAULT_PILL_COLOR;
+
+  // Resolve label with i18n
+  const lang = t("lang", { defaultValue: "" });
+  const i18nPack = lang && recipe.i18n?.[lang];
+  const displayLabel = i18nPack
+    ? t(`recipes.actions.${action.id}.${currentValue}`, { defaultValue: currentOption.label })
+    : currentOption.label;
+
+  const handleClick = async () => {
+    if (sending || !instance.enabled) return;
+    setSending(true);
+    try {
+      await sendAction(instance.id, action.id, { mode: nextOption.value });
+    } catch {
+      // ignore — state will be refreshed via WebSocket
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={sending || !instance.enabled}
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+      title={t("recipes.actions.cycleTo", { mode: nextOption.label, defaultValue: `Click to switch to ${nextOption.label}` })}
+    >
+      {displayLabel}
+    </button>
+  );
+}
+
+// ── Page component ──────────────────────────────────────
+
 export function ZoneDetailPage() {
-  useWsSubscription(["zones", "equipments"]);
+  useWsSubscription(["zones", "equipments", "recipes"]);
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const tree = useZones((s) => s.tree);
   const updateZone = useZones((s) => s.updateZone);
   const deleteZone = useZones((s) => s.deleteZone);
+  const recipes = useRecipes((s) => s.recipes);
+  const instances = useRecipes((s) => s.instances);
 
   const [zone, setZone] = useState<ZoneWithChildren | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,9 +198,28 @@ export function ZoneDetailPage() {
       {/* Zone header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-[24px] font-semibold text-text leading-[32px]">
-            {zone.name}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+              {zone.name}
+            </h1>
+            {/* Recipe mode pills */}
+            {instances
+              .filter((inst) => inst.params.zone === zone.id && inst.enabled)
+              .map((inst) => {
+                const recipe = recipes.find((r) => r.id === inst.recipeId);
+                if (!recipe?.actions) return null;
+                return recipe.actions
+                  .filter((a) => a.type === "cycle")
+                  .map((action) => (
+                    <RecipeModePill
+                      key={`${inst.id}-${action.id}`}
+                      instance={inst}
+                      recipe={recipe}
+                      action={action}
+                    />
+                  ));
+              })}
+          </div>
           {zone.description && (
             <p className="text-[14px] text-text-secondary mt-1">{zone.description}</p>
           )}

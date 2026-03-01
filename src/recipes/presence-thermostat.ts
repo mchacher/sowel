@@ -1,4 +1,4 @@
-import type { RecipeSlotDef, RecipeLangPack } from "../shared/types.js";
+import type { RecipeSlotDef, RecipeActionDef, RecipeLangPack } from "../shared/types.js";
 import { Recipe, type RecipeContext } from "./engine/recipe.js";
 import { parseDuration, formatDuration } from "./engine/duration.js";
 
@@ -122,6 +122,19 @@ export class PresenceThermostatRecipe extends Recipe {
       type: "number",
       required: false,
       group: "cocoon",
+    },
+  ];
+
+  override readonly actions: RecipeActionDef[] = [
+    {
+      id: "set_mode",
+      type: "cycle",
+      stateKey: "currentMode",
+      options: [
+        { value: "eco", label: "Eco" },
+        { value: "comfort", label: "Comfort" },
+        { value: "cocoon", label: "Cocoon" },
+      ],
     },
   ];
 
@@ -553,6 +566,36 @@ export class PresenceThermostatRecipe extends Recipe {
     } else {
       // Enter cocoon from any non-override mode
       this.setCocoon("Button pressed");
+    }
+  }
+
+  // ── Action handler (UI / mode impact) ─────────────────
+
+  override onAction(action: string, payload?: Record<string, unknown>): void {
+    if (action !== "set_mode" || !payload?.mode) return;
+    const mode = payload.mode as string;
+
+    // Clear override if active — user is explicitly choosing a mode
+    if (this.overrideMode) {
+      this.clearOverrideMode();
+    }
+
+    switch (mode) {
+      case "cocoon":
+        if (this.cocoonTemp !== null && this.currentMode !== "cocoon") {
+          this.setCocoon("Manual activation from UI");
+        }
+        break;
+      case "comfort":
+        if (this.currentMode !== "comfort") {
+          this.setComfort("Manual activation from UI");
+        }
+        break;
+      case "eco":
+        if (this.currentMode !== "eco") {
+          this.setEco("Manual activation from UI");
+        }
+        break;
     }
   }
 

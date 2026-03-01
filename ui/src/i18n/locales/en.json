@@ -365,6 +365,10 @@
   "recipes.duplicateAction": "Duplicate",
   "recipes.targetZone": "Target zone",
   "recipes.noCompatibleEquipment": "No compatible equipment in this zone",
+  "recipes.actions.cycleTo": "Click to switch to {{mode}}",
+  "recipes.actions.set_mode.eco": "Eco",
+  "recipes.actions.set_mode.comfort": "Comfort",
+  "recipes.actions.set_mode.cocoon": "Cocoon",
 
   "home.welcome": "Welcome to Home",
   "home.noZones": "Create your first zone in Settings > Home Topology to get started.",

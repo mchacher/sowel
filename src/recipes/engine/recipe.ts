@@ -3,7 +3,7 @@ import type { Logger } from "../../core/logger.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
-import type { RecipeSlotDef, RecipeLangPack } from "../../shared/types.js";
+import type { RecipeSlotDef, RecipeActionDef, RecipeLangPack } from "../../shared/types.js";
 import type { RecipeStateStore } from "./recipe-state-store.js";
 
 // ============================================================
@@ -31,6 +31,7 @@ export abstract class Recipe {
   abstract readonly name: string;
   abstract readonly description: string;
   abstract readonly slots: RecipeSlotDef[];
+  readonly actions: RecipeActionDef[] = [];
   readonly i18n: Record<string, RecipeLangPack> = {};
 
   /**
@@ -48,4 +49,12 @@ export abstract class Recipe {
    * Must be idempotent.
    */
   abstract stop(): void;
+
+  /**
+   * Handle an action sent from UI or mode impact.
+   * Override in subclasses to support recipe-specific actions.
+   */
+  onAction(_action: string, _payload?: Record<string, unknown>): void {
+    // Default: no-op
+  }
 }
