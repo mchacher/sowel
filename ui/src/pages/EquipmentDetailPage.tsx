@@ -39,6 +39,7 @@ import {
 import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails, HistoryBindingState } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+import { HistoryPanel } from "../components/history/HistoryPanel";
 
 export function EquipmentDetailPage() {
   useWsSubscription(["equipments", "devices"]);
@@ -68,6 +69,7 @@ export function EquipmentDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [showBindings, setShowBindings] = useState(false);
   const [showChangeDevice, setShowChangeDevice] = useState(false);
+  const [historyBindings, setHistoryBindings] = useState<HistoryBindingState[]>([]);
 
   useEffect(() => {
     fetchZones();
@@ -275,7 +277,10 @@ export function EquipmentDetailPage() {
       <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
       {/* History (per-binding ON/OFF toggles) */}
-      <HistorySection equipmentId={equipment.id} />
+      <HistorySection equipmentId={equipment.id} onBindingsLoaded={setHistoryBindings} />
+
+      {/* History charts */}
+      <HistoryPanel equipmentId={equipment.id} bindings={historyBindings} />
 
       {/* Technical: Bindings (collapsible) */}
       <div className="bg-surface rounded-[10px] border border-border mb-6">
@@ -443,7 +448,7 @@ export function EquipmentDetailPage() {
 // History section (per-binding ON/OFF toggles)
 // ============================================================
 
-function HistorySection({ equipmentId }: { equipmentId: string }) {
+function HistorySection({ equipmentId, onBindingsLoaded }: { equipmentId: string; onBindingsLoaded?: (bindings: HistoryBindingState[]) => void }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [bindings, setBindings] = useState<HistoryBindingState[]>([]);
@@ -460,11 +465,12 @@ function HistorySection({ equipmentId }: { equipmentId: string }) {
       ]);
       setHistoryEnabled(status.enabled);
       setBindings(data);
+      onBindingsLoaded?.(data);
     } finally {
       setLoading(false);
       setLoaded(true);
     }
-  }, [equipmentId]);
+  }, [equipmentId, onBindingsLoaded]);
 
   // Load on first open
   useEffect(() => {
@@ -487,6 +493,7 @@ function HistorySection({ equipmentId }: { equipmentId: string }) {
     // Refresh
     const data = await getHistoryBindings(equipmentId);
     setBindings(data);
+    onBindingsLoaded?.(data);
   };
 
   // Don't render anything until we know if history is enabled (only after first load)

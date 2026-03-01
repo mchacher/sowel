@@ -11,7 +11,7 @@ import type {
   CalendarProfile, CalendarSlot, CalendarModeAction,
   IntegrationInfo,
   LogsResponse, LogLevel,
-  HistoryStatus, HistoryBindingState,
+  HistoryStatus, HistoryBindingState, HistoryQueryResult,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -716,4 +716,23 @@ export async function setHistorize(
     method: "PUT",
     body: JSON.stringify({ historize }),
   });
+}
+
+export async function getHistoryAliases(equipmentId: string): Promise<{ aliases: string[] }> {
+  return fetchJSON<{ aliases: string[] }>(`${API_BASE}/history/${equipmentId}`);
+}
+
+export async function getHistoryData(
+  equipmentId: string,
+  alias: string,
+  params?: { from?: string; to?: string; aggregation?: string },
+): Promise<HistoryQueryResult> {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.aggregation) query.set("aggregation", params.aggregation);
+  const qs = query.toString();
+  return fetchJSON<HistoryQueryResult>(
+    `${API_BASE}/history/${equipmentId}/${alias}${qs ? `?${qs}` : ""}`,
+  );
 }

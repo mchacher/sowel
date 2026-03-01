@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import { HistoryWriter } from "../../history/history-writer.js";
+import { queryHistory, queryHistorizedAliases } from "../../history/history-query.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EventBus } from "../../core/event-bus.js";
@@ -122,6 +123,73 @@ export function registerHistoryRoutes(
     eventBus.emit({ type: "equipment.updated", equipment });
 
     return { success: true };
+  });
+
+  // ============================================================
+  // GET /api/v1/history/:equipmentId — list historized aliases
+  // ============================================================
+
+  app.get<{ Params: { equipmentId: string } }>(
+    "/api/v1/history/:equipmentId",
+    async (req, reply) => {
+      const { equipmentId } = req.params;
+      const equipment = equipmentManager.getById(equipmentId);
+      if (!equipment) {
+        return reply.status(404).send({ error: "Equipment not found" });
+      }
+
+      const influx = historyWriter.getInfluxClient();
+      if (!influx.isConnected()) {
+        return { aliases: [] };
+      }
+
+      const aliases = await queryHistorizedAliases(influx, equipmentId, logger);
+      return { aliases };
+    },
+  );
+
+  // ============================================================
+  // GET /api/v1/history/:equipmentId/:alias — query time-series data
+  // ============================================================
+
+  app.get<{
+    Params: { equipmentId: string; alias: string };
+    Querystring: { from?: string; to?: string; aggregation?: string };
+  }>("/api/v1/history/:equipmentId/:alias", async (req, reply) => {
+    const { equipmentId, alias } = req.params;
+    const { from, to, aggregation } = req.query;
+
+    const equipment = equipmentManager.getById(equipmentId);
+    if (!equipment) {
+      return reply.status(404).send({ error: "Equipment not found" });
+    }
+
+    const influx = historyWriter.getInfluxClient();
+    if (!influx.isConnected()) {
+      return { points: [], resolution: "raw" };
+    }
+
+    // Validate aggregation parameter
+    const validAggregations = ["raw", "1h", "1d", "auto"];
+    if (aggregation && !validAggregations.includes(aggregation)) {
+      return reply
+        .status(400)
+        .send({ error: "Invalid aggregation. Must be: raw, 1h, 1d, or auto" });
+    }
+
+    const result = await queryHistory(
+      influx,
+      {
+        equipmentId,
+        alias,
+        from: from ?? "-24h",
+        to,
+        aggregation: (aggregation as "raw" | "1h" | "1d" | "auto") ?? "auto",
+      },
+      logger,
+    );
+
+    return result;
   });
 
   logger.debug("History routes registered");
