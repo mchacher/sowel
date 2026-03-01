@@ -112,9 +112,10 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200 
             }
             return "";
           }}
-          formatter={(value: number, name: string) => {
-            if (name === "min" || name === "max") return [formatValue(value, unit), name];
-            return [formatValue(value, unit), ""];
+          formatter={(value?: number, name?: string) => {
+            const v = value ?? 0;
+            if (name === "min" || name === "max") return [formatValue(v, unit), name];
+            return [formatValue(v, unit), ""];
           }}
         />
 
