@@ -11,12 +11,20 @@ import {
   formatBooleanSensor,
   formatSensorValue,
 } from "./sensorUtils";
+import { Sparkline } from "../history/Sparkline";
+
+/** Categories that produce continuous numeric data suitable for sparklines. */
+const SPARKLINE_CATEGORIES = new Set([
+  "temperature", "humidity", "luminosity", "pressure",
+  "power", "energy", "co2", "noise", "voltage", "current",
+]);
 
 interface SensorDataPanelProps {
   bindings: DataBindingWithValue[];
+  equipmentId: string;
 }
 
-export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
+export function SensorDataPanel({ bindings, equipmentId }: SensorDataPanelProps) {
   const { t } = useTranslation();
   const sensorBindings = getSensorBindings(bindings);
   const batteryBindings = getAllBatteryBindings(bindings);
@@ -53,6 +61,7 @@ export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
             key={category}
             category={category}
             bindings={categoryBindings}
+            equipmentId={equipmentId}
           />
         ))}
         {batteryBindings.map((b) => {
@@ -73,9 +82,11 @@ export function SensorDataPanel({ bindings }: SensorDataPanelProps) {
 function SensorCategoryRow({
   category,
   bindings,
+  equipmentId,
 }: {
   category: DataCategory;
   bindings: DataBindingWithValue[];
+  equipmentId: string;
 }) {
   const { t } = useTranslation();
   const isBoolean = isBooleanSensorCategory(category);
@@ -108,7 +119,7 @@ function SensorCategoryRow({
         {isBoolean ? (
           <BooleanSensorValue category={category} bindings={bindings} />
         ) : (
-          <NumericSensorValues bindings={bindings} />
+          <NumericSensorValues bindings={bindings} equipmentId={equipmentId} />
         )}
       </div>
     </div>
@@ -155,17 +166,22 @@ function BooleanSensorValue({
   );
 }
 
-function NumericSensorValues({ bindings }: { bindings: DataBindingWithValue[] }) {
+function NumericSensorValues({ bindings, equipmentId }: { bindings: DataBindingWithValue[]; equipmentId: string }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-baseline gap-3">
+    <div className="flex items-center gap-3">
       {bindings.map((b) => (
-        <div key={b.id} className="text-right">
-          <span className="text-[22px] font-semibold text-text font-mono leading-none">
-            {formatSensorValue(b.value, undefined, t)}
-          </span>
-          {b.unit && (
-            <span className="text-[13px] text-text-tertiary ml-1">{b.unit}</span>
+        <div key={b.id} className="flex items-center gap-2">
+          <div className="text-right">
+            <span className="text-[22px] font-semibold text-text font-mono leading-none">
+              {formatSensorValue(b.value, undefined, t)}
+            </span>
+            {b.unit && (
+              <span className="text-[13px] text-text-tertiary ml-1">{b.unit}</span>
+            )}
+          </div>
+          {SPARKLINE_CATEGORIES.has(b.category) && (
+            <Sparkline equipmentId={equipmentId} alias={b.alias} width={80} height={28} />
           )}
         </div>
       ))}

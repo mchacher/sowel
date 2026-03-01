@@ -32,14 +32,12 @@ interface ZoneEquipmentsViewProps {
   zoneName: string;
   equipments: EquipmentWithDetails[];
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
-  historyEnabled?: boolean;
 }
 
 export function ZoneEquipmentsView({
   zoneName,
   equipments,
   onExecuteOrder,
-  historyEnabled,
 }: ZoneEquipmentsViewProps) {
   const { t } = useTranslation();
 
@@ -53,15 +51,10 @@ export function ZoneEquipmentsView({
     equipments: equipments.filter((eq) => group.types.includes(eq.type)),
   })).filter((g) => g.equipments.length > 0);
 
-  // Check if any group has sensor/weather equipments that would show sparklines
-  const hasSparklineGroups = historyEnabled && grouped.some(
-    (g) => g.types.some((t) => t === "sensor" || t === "weather"),
-  );
-
   return (
-    <div className={`space-y-3 ${hasSparklineGroups ? "overflow-x-auto" : ""}`}>
+    <div className="space-y-3">
       {grouped.map((group) => (
-        <div key={group.labelKey} className={`rounded-[10px] border border-border bg-surface overflow-hidden ${hasSparklineGroups ? "min-w-[640px]" : ""}`}>
+        <div key={group.labelKey} className="rounded-[10px] border border-border bg-surface overflow-hidden">
           <div className={`flex items-center gap-1.5 px-3 py-1 ${group.headerBg}`}>
             <span className={group.iconColor}>{group.icon}</span>
             <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
@@ -78,7 +71,6 @@ export function ZoneEquipmentsView({
                 equipment={eq}
                 onExecuteOrder={onExecuteOrder}
                 zoneName={zoneName}
-                historyEnabled={historyEnabled}
               />
             ))}
           </div>

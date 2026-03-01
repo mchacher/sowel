@@ -7,22 +7,14 @@ import { LightControl } from "../equipments/LightControl";
 import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
-import { Sparkline } from "../history/Sparkline";
-
-/** Categories suitable for sparkline rendering (continuous numeric data). */
-const SPARKLINE_CATEGORIES = new Set([
-  "temperature", "humidity", "luminosity", "pressure",
-  "power", "energy", "co2", "noise", "voltage", "current",
-]);
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   zoneName?: string;
-  historyEnabled?: boolean;
 }
 
-export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, historyEnabled }: CompactEquipmentCardProps) {
+export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
   const { t } = useTranslation();
 
   const {
@@ -43,15 +35,6 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, hist
   const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isGate
     ? equipment.dataBindings[0] ?? null
     : null;
-
-  // Build sparkline elements for all eligible sensor bindings
-  const sparklines = historyEnabled && isSensor
-    ? Object.fromEntries(
-        sensorBindings
-          .filter((b) => SPARKLINE_CATEGORIES.has(b.category))
-          .map((b) => [b.id, <Sparkline key={b.id} equipmentId={equipment.id} alias={b.alias} />]),
-      )
-    : undefined;
 
   return (
     <div
@@ -95,7 +78,6 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, hist
               : sensorBindings
           }
           batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
-          sparklines={sparklines}
         />
       )}
 
