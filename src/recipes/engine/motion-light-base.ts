@@ -97,6 +97,8 @@ export abstract class MotionLightBase extends Recipe {
   protected disableWhenDaylight = false;
   /** Grace period: ignore light-off echoes for 5s after the recipe itself sends a turnOff */
   protected turnOffGraceUntil = 0;
+  /** Defence flag: set by stop(), checked by all event handlers to prevent orphaned execution */
+  protected stopped = false;
 
   // ============================================================
   // Template methods — override in subclasses
@@ -216,6 +218,7 @@ export abstract class MotionLightBase extends Recipe {
   // ============================================================
 
   start(params: Record<string, unknown>, ctx: RecipeContext): void {
+    this.stopped = false;
     this.ctx = ctx;
     this.zoneId = params.zone as string;
     this.lightIds = this.normalizeLights(params);
@@ -283,6 +286,7 @@ export abstract class MotionLightBase extends Recipe {
   // ============================================================
 
   stop(): void {
+    this.stopped = true;
     this.cancelOffTimer();
     this.cancelFailsafeTimer();
     for (const unsub of this.unsubs) {
@@ -351,6 +355,8 @@ export abstract class MotionLightBase extends Recipe {
   // ============================================================
 
   private onZoneChanged(motion: boolean, luminosity: number | null): void {
+    if (this.stopped) return;
+
     // Override mode: recipe is suspended, only track room vacancy
     if (this.overrideMode) {
       if (motion) {
@@ -427,6 +433,7 @@ export abstract class MotionLightBase extends Recipe {
   }
 
   protected onLightChanged(value: unknown): void {
+    if (this.stopped) return;
     if (this.overrideMode) return;
 
     const lightOn = value === true || String(value).toUpperCase() === "ON";
@@ -506,6 +513,7 @@ export abstract class MotionLightBase extends Recipe {
   // ============================================================
 
   private onButtonAction(): void {
+    if (this.stopped) return;
     if (isAnyLightOn(this.lightIds, this.ctx)) {
       this.lightsOnByRecipe = false;
       this.turnOffGraceUntil = Date.now() + 5000;
