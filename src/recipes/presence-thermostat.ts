@@ -1,4 +1,4 @@
-import type { RecipeSlotDef, RecipeLangPack } from "../shared/types.js";
+import type { RecipeSlotDef, RecipeActionDef, RecipeLangPack } from "../shared/types.js";
 import { Recipe, type RecipeContext } from "./engine/recipe.js";
 import { parseDuration, formatDuration } from "./engine/duration.js";
 
@@ -10,7 +10,7 @@ export class PresenceThermostatRecipe extends Recipe {
   readonly id = "presence-thermostat";
   readonly name = "Presence Thermostat";
   readonly description =
-    "Adjusts thermostat setpoint based on zone presence. Sends comfort temperature when motion is detected, switches to eco after a timeout with no motion. Supports night setpoint, weekday/weekend preheat windows, cocoon mode (button-triggered boost), and manual override detection.";
+    "Adjusts thermostat setpoint based on zone presence. Sends comfort temperature when motion is detected, switches to eco after a timeout with no motion. Supports night mode (fixed setpoint during night window, ignoring presence), weekday/weekend preheat windows, cocoon mode (button-triggered boost), and manual override detection.";
   readonly slots: RecipeSlotDef[] = [
     {
       id: "zone",
@@ -52,7 +52,7 @@ export class PresenceThermostatRecipe extends Recipe {
     {
       id: "nightTemp",
       name: "Night Temperature",
-      description: "Setpoint during the night window (°C, optional)",
+      description: "Fixed setpoint during the night window, regardless of presence (°C, optional)",
       type: "number",
       required: false,
       group: "night",
@@ -125,11 +125,25 @@ export class PresenceThermostatRecipe extends Recipe {
     },
   ];
 
+  override readonly actions: RecipeActionDef[] = [
+    {
+      id: "set_mode",
+      type: "cycle",
+      stateKey: "currentMode",
+      options: [
+        { value: "eco", label: "Eco" },
+        { value: "comfort", label: "Comfort" },
+        { value: "cocoon", label: "Cocoon" },
+        { value: "night", label: "Night" },
+      ],
+    },
+  ];
+
   override readonly i18n: Record<string, RecipeLangPack> = {
     fr: {
       name: "Thermostat présence",
       description:
-        "Ajuste la consigne du thermostat en fonction de la présence dans la zone. Envoie la température confort quand un mouvement est détecté, passe en éco après un délai sans mouvement. Supporte une consigne nuit, des plages de préchauffe semaine/week-end, un mode cocoon (boost par bouton), et la détection de changement manuel.",
+        "Ajuste la consigne du thermostat en fonction de la présence dans la zone. Envoie la température confort quand un mouvement est détecté, passe en éco après un délai sans mouvement. Supporte un mode nuit (consigne fixe pendant la plage nocturne, indépendamment de la présence), des plages de préchauffe semaine/week-end, un mode cocoon (boost par bouton), et la détection de changement manuel.",
       slots: {
         zone: { name: "Zone", description: "Zone à surveiller" },
         thermostat: {
@@ -147,7 +161,8 @@ export class PresenceThermostatRecipe extends Recipe {
         timeout: { name: "Délai", description: "Délai sans mouvement avant passage en éco" },
         nightTemp: {
           name: "Température nuit",
-          description: "Consigne pendant la plage nocturne (°C, optionnel)",
+          description:
+            "Consigne fixe appliquée pendant la plage nocturne, indépendamment de la présence (°C, optionnel)",
         },
         nightStart: { name: "Début nuit", description: "Début de la plage nocturne (HH:MM)" },
         nightEnd: { name: "Fin nuit", description: "Fin de la plage nocturne (HH:MM)" },
@@ -218,7 +233,7 @@ export class PresenceThermostatRecipe extends Recipe {
   private cocoonTemp: number | null = null;
 
   // Runtime state
-  private currentMode: "comfort" | "eco" | "cocoon" = "eco";
+  private currentMode: "comfort" | "eco" | "cocoon" | "night" = "eco";
   private overrideMode = false;
   private lastSentSetpoint: number | null = null;
   /** Grace period: ignore setpoint echoes for 5s after we send a setpoint command */
@@ -226,6 +241,7 @@ export class PresenceThermostatRecipe extends Recipe {
   private ecoTimer: ReturnType<typeof setTimeout> | null = null;
   private periodicCheckTimer: ReturnType<typeof setInterval> | null = null;
   private wasInPreheat = false;
+  private wasInNight = false;
   private unsubs: (() => void)[] = [];
 
   // ── Validation ───────────────────────────────────────────
@@ -410,8 +426,10 @@ export class PresenceThermostatRecipe extends Recipe {
     this.overrideMode = false;
     this.lastSentSetpoint = null;
     this.wasInPreheat = false;
+    this.wasInNight = false;
     ctx.state.delete("overrideMode");
     ctx.state.delete("cocoonMode");
+    ctx.state.set("currentMode", "eco");
     ctx.notifyStateChanged();
 
     // Subscribe to zone changes (motion)
@@ -442,6 +460,7 @@ export class PresenceThermostatRecipe extends Recipe {
     // Periodic check (preheat transitions + cocoon night exit)
     if (this.needsPeriodicCheck()) {
       this.wasInPreheat = this.isInPreheatWindow();
+      this.wasInNight = this.isInNightWindow();
       this.periodicCheckTimer = setInterval(() => {
         this.checkPeriodicTransitions();
       }, 60_000);
@@ -476,6 +495,12 @@ export class PresenceThermostatRecipe extends Recipe {
   // ── Initial sync — force setpoint on activation ─────────
 
   private syncOnStart(): void {
+    // Night mode takes priority — fixed setpoint regardless of presence
+    if (this.isInNightWindow()) {
+      this.setNight("Recipe activated — night window active");
+      return;
+    }
+
     const zoneData = this.ctx.zoneAggregator.getByZoneId(this.zoneId);
     const motion = zoneData?.motion ?? false;
 
@@ -491,6 +516,9 @@ export class PresenceThermostatRecipe extends Recipe {
   // ── Event handlers ───────────────────────────────────────
 
   private onZoneChanged(motion: boolean): void {
+    // Night mode: fixed setpoint, ignore presence changes
+    if (this.currentMode === "night") return;
+
     // Override mode: recipe is suspended, only track room vacancy
     if (this.overrideMode) {
       if (motion) {
@@ -538,8 +566,9 @@ export class PresenceThermostatRecipe extends Recipe {
   }
 
   private onButtonAction(): void {
-    // Ignore during override
+    // Ignore during override or night mode
     if (this.overrideMode) return;
+    if (this.currentMode === "night") return;
 
     if (this.currentMode === "cocoon") {
       // Second press → exit cocoon
@@ -556,6 +585,41 @@ export class PresenceThermostatRecipe extends Recipe {
     }
   }
 
+  // ── Action handler (UI / mode impact) ─────────────────
+
+  override onAction(action: string, payload?: Record<string, unknown>): void {
+    if (action !== "set_mode" || !payload?.mode) return;
+    const mode = payload.mode as string;
+
+    // Clear override if active — user is explicitly choosing a mode
+    if (this.overrideMode) {
+      this.clearOverrideMode();
+    }
+
+    switch (mode) {
+      case "night":
+        if (this.nightTemp !== null && this.currentMode !== "night") {
+          this.setNight("Manual activation from UI");
+        }
+        break;
+      case "cocoon":
+        if (this.cocoonTemp !== null && this.currentMode !== "cocoon") {
+          this.setCocoon("Manual activation from UI");
+        }
+        break;
+      case "comfort":
+        if (this.currentMode !== "comfort") {
+          this.setComfort("Manual activation from UI");
+        }
+        break;
+      case "eco":
+        if (this.currentMode !== "eco") {
+          this.setEco("Manual activation from UI");
+        }
+        break;
+    }
+  }
+
   // ── Preheat logic ───────────────────────────────────────
 
   private hasPreheatConfig(): boolean {
@@ -566,7 +630,7 @@ export class PresenceThermostatRecipe extends Recipe {
   }
 
   private needsPeriodicCheck(): boolean {
-    return this.hasPreheatConfig() || (this.buttonIds.length > 0 && this.hasNightConfig());
+    return this.hasPreheatConfig() || this.hasNightConfig();
   }
 
   private isInPreheatWindow(): boolean {
@@ -587,17 +651,38 @@ export class PresenceThermostatRecipe extends Recipe {
   }
 
   private checkPeriodicTransitions(): void {
-    // Cocoon exit on night start
-    if (this.currentMode === "cocoon" && this.isInNightWindow()) {
+    // Night window transitions (auto-enter/exit)
+    const inNight = this.isInNightWindow();
+    if (inNight && !this.wasInNight) {
+      // Entering night window → force night mode
       this.cancelEcoTimer();
       this.clearTimerState();
-      this.setEco("Night started — cocoon deactivated");
+      this.setNight("Night window started");
+      this.wasInNight = true;
       this.wasInPreheat = this.isInPreheatWindow();
       return;
     }
+    if (!inNight && this.wasInNight) {
+      // Leaving night window → resume normal behavior
+      this.wasInNight = false;
+      if (this.currentMode === "night") {
+        this.cancelEcoTimer();
+        this.clearTimerState();
+        if (this.isInPreheatWindow()) {
+          this.setComfort("Night ended — preheat window active");
+        } else if (this.hasMotion()) {
+          this.setComfort("Night ended — motion detected");
+        } else {
+          this.setEco("Night ended — no motion");
+        }
+      }
+    }
+    this.wasInNight = inNight;
 
-    // Preheat transitions
-    this.checkPreheatTransition();
+    // Preheat transitions (skip during night mode)
+    if (this.currentMode !== "night") {
+      this.checkPreheatTransition();
+    }
   }
 
   private checkPreheatTransition(): void {
@@ -642,11 +727,6 @@ export class PresenceThermostatRecipe extends Recipe {
   // ── Temperature resolution ──────────────────────────────
 
   private getTargetComfortTemp(): number {
-    if (this.nightTemp !== null && this.nightStart !== null && this.nightEnd !== null) {
-      if (isInTimeWindow(new Date(), this.nightStart, this.nightEnd)) {
-        return this.nightTemp;
-      }
-    }
     return this.comfortTemp;
   }
 
@@ -706,6 +786,23 @@ export class PresenceThermostatRecipe extends Recipe {
     this.ctx.state.set("cocoonMode", true);
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.cocoonTemp}°C (cocoon)`);
+  }
+
+  private setNight(reason: string): void {
+    this.cancelEcoTimer();
+    this.clearTimerState();
+    this.setpointGraceUntil = Date.now() + 5000;
+    this.lastSentSetpoint = this.nightTemp!;
+    try {
+      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.nightTemp!);
+    } catch (err) {
+      this.ctx.log(`Error setting night setpoint: ${String(err)}`, "error");
+    }
+    this.currentMode = "night";
+    this.ctx.state.set("currentMode", "night");
+    this.clearCocoonState();
+    this.ctx.notifyStateChanged();
+    this.ctx.log(`${reason} — setpoint → ${this.nightTemp}°C (night)`);
   }
 
   // ── Cocoon state management ───────────────────────────────

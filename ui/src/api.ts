@@ -441,6 +441,17 @@ export async function getRecipeInstanceLog(
   return fetchJSON<RecipeLogEntry[]>(`${API_BASE}/recipe-instances/${instanceId}/log?limit=${limit}`);
 }
 
+export async function sendRecipeInstanceAction(
+  instanceId: string,
+  action: string,
+  payload?: Record<string, unknown>,
+): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/recipe-instances/${instanceId}/actions`, {
+    method: "POST",
+    body: JSON.stringify({ action, payload }),
+  });
+}
+
 // ============================================================
 // Settings (admin)
 // ============================================================
