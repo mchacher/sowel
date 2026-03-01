@@ -18,7 +18,7 @@ Add time-series data historization to Winch using InfluxDB 2.x as an **optional*
 - [ ] Equipment detail shows expandable time-series charts for historized bindings
 - [ ] Zone/home cards show mini sparkline charts for key metrics (temperature, humidity, etc.)
 - [ ] Dedicated "Analyse" page allows multi-metric overlay with time range selector
-- [ ] InfluxDB downsampling tasks auto-created (raw→hourly→daily)
+- [x] InfluxDB downsampling tasks auto-created (raw→hourly→daily)
 - [ ] If InfluxDB goes down, Winch continues operating — data points are silently dropped with warning logs
 
 ## Scope

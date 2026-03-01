@@ -47,6 +47,22 @@ export function registerHistoryRoutes(
   });
 
   // ============================================================
+  // GET /api/v1/history/retention — retention & downsampling status
+  // ============================================================
+
+  app.get("/api/v1/history/retention", async () => {
+    const influx = historyWriter.getInfluxClient();
+    if (!influx.isConnected()) {
+      return {
+        buckets: { raw: null, hourly: null, daily: null },
+        tasks: { hourly: null, daily: null },
+        setupComplete: false,
+      };
+    }
+    return influx.getRetentionStatus();
+  });
+
+  // ============================================================
   // POST /api/v1/history/test-connection
   // ============================================================
 
