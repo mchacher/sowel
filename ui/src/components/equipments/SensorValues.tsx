@@ -14,14 +14,14 @@ import { computeElapsed, formatElapsed } from "./useEquipmentState";
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
   batteryBindings: DataBindingWithValue[];
-  /** Optional element rendered between sensor values and battery (e.g. sparkline). */
-  trailing?: React.ReactNode;
+  /** Sparkline rendered inline right after the matching binding. */
+  sparkline?: { bindingId: string; element: React.ReactNode };
 }
 
 export function SensorValues({
   sensorBindings,
   batteryBindings,
-  trailing,
+  sparkline,
 }: SensorValuesProps) {
   const { t } = useTranslation();
 
@@ -46,7 +46,7 @@ export function SensorValues({
       {sensorBindings.length > 0 && (
         <div className="flex items-center gap-2 flex-shrink-0">
           {sensorBindings.map((b) => (
-            <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
+            <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0 inline-flex items-center gap-1.5">
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-active/15 text-active-text inline-flex items-center gap-1">
                   {formatBooleanSensor(b.category, b.value, t)}
@@ -74,13 +74,11 @@ export function SensorValues({
                   {formatSensorValue(b.value, b.unit, t)}
                 </span>
               )}
+              {sparkline?.bindingId === b.id && sparkline.element}
             </span>
           ))}
         </div>
       )}
-
-      {/* Trailing element (e.g. sparkline) */}
-      {trailing}
 
       {/* Battery indicator — shows lowest level, tooltip lists all */}
       {batteryBindings.length > 0 && (
