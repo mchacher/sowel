@@ -185,6 +185,7 @@
   "equipments.type.thermostat": "Thermostat",
   "equipments.type.weather": "Station Météo",
   "equipments.type.gate": "Ouvrant",
+  "equipments.type.heater": "Radiateur électrique",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
@@ -225,6 +226,13 @@
   "controls.gate.unknown": "En mouvement",
   "controls.gate.toggle": "Actionner",
   "controls.gate.command": "Actionner",
+
+  "controls.heater.comfort": "Confort",
+  "controls.heater.eco": "Éco",
+  "controls.heater.switchComfort": "Passer en confort",
+  "controls.heater.switchEco": "Passer en éco",
+  "controls.heater.relayOn": "Relais activé",
+  "controls.heater.relayOff": "Relais désactivé",
 
   "sensors.title": "Capteurs",
   "sensors.noData": "Aucune donnée capteur.",
