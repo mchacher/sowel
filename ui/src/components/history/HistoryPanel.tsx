@@ -18,6 +18,7 @@ interface ChartState {
   resolution: "raw" | "1h" | "1d";
   loading: boolean;
   error: string | null;
+  fetchTime: number;
 }
 
 const RESOLUTION_I18N: Record<string, string> = {
@@ -51,7 +52,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
     async (alias: string, timeRange: TimeRange) => {
       setCharts((prev) => ({
         ...prev,
-        [alias]: { points: [], resolution: "raw", loading: true, error: null },
+        [alias]: { points: [], resolution: "raw", loading: true, error: null, fetchTime: 0 },
       }));
 
       try {
@@ -66,6 +67,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
             resolution: result.resolution,
             loading: false,
             error: null,
+            fetchTime: Date.now(),
           },
         }));
       } catch (err) {
@@ -76,6 +78,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
             resolution: "raw",
             loading: false,
             error: err instanceof Error ? err.message : "Failed to load",
+            fetchTime: 0,
           },
         }));
       }
@@ -194,6 +197,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                         range={range}
                         resolution={chart?.resolution ?? "raw"}
                         unit={unit}
+                        fetchTime={chart?.fetchTime}
                       />
                       {chart?.resolution && (
                         <div className="text-[10px] text-text-tertiary text-right mt-1">
