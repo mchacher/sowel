@@ -307,6 +307,7 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
   // ============================================================
 
   private onBrightnessChanged(value: unknown): void {
+    if (this.stopped) return;
     if (this.overrideMode) return;
     if (!isAnyLightOn(this.lightIds, this.ctx)) return;
     if (this.lastSentBrightness === null) return;
