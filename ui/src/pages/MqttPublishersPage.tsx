@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Settings2,
+  Zap,
 } from "lucide-react";
 import {
   getMqttPublishers,
@@ -18,8 +19,11 @@ import {
   deleteMqttPublisher,
   addMqttPublisherMapping,
   removeMqttPublisherMapping,
+  testMqttPublisher,
   getEquipments,
   getZones,
+  getRecipeInstances,
+  getRecipes,
   getSettings,
   updateSettings,
 } from "../api";
@@ -28,6 +32,8 @@ import type {
   MqttPublisherMapping,
   EquipmentWithDetails,
   ZoneWithChildren,
+  RecipeInstance,
+  RecipeInfo,
 } from "../types";
 
 const ZONE_AGG_KEYS = [
@@ -53,6 +59,8 @@ export function MqttPublishersPage() {
   const [publishers, setPublishers] = useState<MqttPublisherWithMappings[]>([]);
   const [equipments, setEquipments] = useState<EquipmentWithDetails[]>([]);
   const [zones, setZones] = useState<ZoneWithChildren[]>([]);
+  const [recipeInstances, setRecipeInstances] = useState<RecipeInstance[]>([]);
+  const [recipes, setRecipes] = useState<RecipeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showBrokerSettings, setShowBrokerSettings] = useState(false);
@@ -63,15 +71,19 @@ export function MqttPublishersPage() {
 
   const load = useCallback(async () => {
     try {
-      const [pubs, eqs, zs, settings] = await Promise.all([
+      const [pubs, eqs, zs, ri, recs, settings] = await Promise.all([
         getMqttPublishers(),
         getEquipments(),
         getZones(),
+        getRecipeInstances(),
+        getRecipes(),
         getSettings(),
       ]);
       setPublishers(pubs);
       setEquipments(eqs);
       setZones(zs);
+      setRecipeInstances(ri);
+      setRecipes(recs);
       setBrokerUrl(settings["mqtt-publisher.brokerUrl"] ?? "");
       setBrokerUsername(settings["mqtt-publisher.username"] ?? "");
       setBrokerPassword(settings["mqtt-publisher.password"] ?? "");
@@ -221,6 +233,8 @@ export function MqttPublishersPage() {
               publisher={pub}
               equipments={equipments}
               zones={zones}
+              recipeInstances={recipeInstances}
+              recipes={recipes}
               onRefresh={load}
             />
           ))}
@@ -313,19 +327,39 @@ function PublisherCard({
   publisher,
   equipments,
   zones,
+  recipeInstances,
+  recipes,
   onRefresh,
 }: {
   publisher: MqttPublisherWithMappings;
   equipments: EquipmentWithDetails[];
   zones: ZoneWithChildren[];
+  recipeInstances: RecipeInstance[];
+  recipes: RecipeInfo[];
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
   const [showAddMapping, setShowAddMapping] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<number | null>(null);
 
   const flatZones = flattenZones(zones);
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const { published } = await testMqttPublisher(publisher.id);
+      setTestResult(published);
+      setTimeout(() => setTestResult(null), 3000);
+    } catch {
+      // ignore
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleToggle = async () => {
     setToggling(true);
@@ -366,6 +400,12 @@ function PublisherCard({
       const eq = equipments.find((e) => e.id === mapping.sourceId);
       return eq ? `${eq.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
     }
+    if (mapping.sourceType === "recipe") {
+      const inst = recipeInstances.find((i) => i.id === mapping.sourceId);
+      const recipe = inst ? recipes.find((r) => r.id === inst.recipeId) : undefined;
+      const label = recipe ? recipe.name : "???";
+      return `${label} → ${mapping.sourceKey}`;
+    }
     const zone = flatZones.find((z) => z.id === mapping.sourceId);
     return zone ? `${zone.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
   };
@@ -382,6 +422,24 @@ function PublisherCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleTest}
+            disabled={testing || publisher.mappings.length === 0}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
+            title={t("mqttPublishers.testPublish")}
+          >
+            {testing ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Zap size={13} />
+            )}
+            {t("mqttPublishers.test")}
+          </button>
+          {testResult !== null && (
+            <span className="text-[11px] text-green-500">
+              {t("mqttPublishers.testResult", { count: testResult })}
+            </span>
+          )}
           <button
             onClick={handleToggle}
             disabled={toggling}
@@ -451,6 +509,8 @@ function PublisherCard({
           publisherId={publisher.id}
           equipments={equipments}
           zones={flatZones}
+          recipeInstances={recipeInstances}
+          recipes={recipes}
           onAdded={() => {
             setShowAddMapping(false);
             onRefresh();
@@ -479,13 +539,14 @@ interface FlatZone {
 
 function flattenZones(zones: ZoneWithChildren[]): FlatZone[] {
   const result: FlatZone[] = [];
-  const recurse = (list: ZoneWithChildren[], depth: number) => {
+  const recurse = (list: ZoneWithChildren[], parentLabel?: string) => {
     for (const z of list) {
-      result.push({ id: z.id, name: "  ".repeat(depth) + z.name });
-      if (z.children.length > 0) recurse(z.children, depth + 1);
+      const label = parentLabel ? `${parentLabel} › ${z.name}` : z.name;
+      result.push({ id: z.id, name: label });
+      if (z.children.length > 0) recurse(z.children, label);
     }
   };
-  recurse(zones, 0);
+  recurse(zones, undefined);
   return result;
 }
 
@@ -493,22 +554,37 @@ function AddMappingForm({
   publisherId,
   equipments,
   zones,
+  recipeInstances,
+  recipes,
   onAdded,
   onCancel,
 }: {
   publisherId: string;
   equipments: EquipmentWithDetails[];
   zones: FlatZone[];
+  recipeInstances: RecipeInstance[];
+  recipes: RecipeInfo[];
   onAdded: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [publishKey, setPublishKey] = useState("");
-  const [sourceType, setSourceType] = useState<"equipment" | "zone">("equipment");
+  const [sourceType, setSourceType] = useState<"equipment" | "zone" | "recipe">("equipment");
+  const [filterZoneId, setFilterZoneId] = useState("");
   const [sourceId, setSourceId] = useState("");
   const [sourceKey, setSourceKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Equipments filtered by selected zone
+  const filteredEquipments = filterZoneId
+    ? equipments.filter((e) => e.zoneId === filterZoneId)
+    : equipments;
+
+  // Recipe instances filtered by selected zone (zone stored in params.zone)
+  const filteredRecipeInstances = filterZoneId
+    ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
+    : recipeInstances;
 
   // Available keys depend on source type and selected source
   const availableKeys: string[] = (() => {
@@ -517,12 +593,17 @@ function AddMappingForm({
       const eq = equipments.find((e) => e.id === sourceId);
       if (eq) return eq.dataBindings.map((b) => b.alias);
     }
+    if (sourceType === "recipe" && sourceId) {
+      const inst = recipeInstances.find((i) => i.id === sourceId);
+      if (inst?.state) return Object.keys(inst.state);
+    }
     return [];
   })();
 
-  // Reset sourceId and sourceKey when sourceType changes
-  const handleSourceTypeChange = (val: "equipment" | "zone") => {
+  // Reset downstream selections when sourceType changes
+  const handleSourceTypeChange = (val: "equipment" | "zone" | "recipe") => {
     setSourceType(val);
+    setFilterZoneId("");
     setSourceId("");
     setSourceKey("");
   };
@@ -569,39 +650,98 @@ function AddMappingForm({
           </label>
           <select
             value={sourceType}
-            onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone")}
+            onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")}
             className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
           >
             <option value="equipment">{t("mqttPublishers.equipment")}</option>
             <option value="zone">{t("mqttPublishers.zone")}</option>
+            <option value="recipe">{t("mqttPublishers.recipe")}</option>
           </select>
         </div>
+
+        {/* Zone selector — filter for equipment/recipe, direct source for zone */}
         <div>
           <label className="block text-[11px] text-text-secondary mb-1">
-            {t("mqttPublishers.source")}
+            {t("mqttPublishers.zone")}
           </label>
           <select
-            value={sourceId}
+            value={sourceType === "zone" ? sourceId : filterZoneId}
             onChange={(e) => {
-              setSourceId(e.target.value);
-              setSourceKey("");
+              if (sourceType === "zone") {
+                setSourceId(e.target.value);
+                setSourceKey("");
+              } else {
+                setFilterZoneId(e.target.value);
+                setSourceId("");
+                setSourceKey("");
+              }
             }}
             className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
           >
-            <option value="">{t("mqttPublishers.selectSource")}</option>
-            {sourceType === "equipment"
-              ? equipments.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.name}
-                  </option>
-                ))
-              : zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name}
-                  </option>
-                ))}
+            <option value="">
+              {sourceType === "zone"
+                ? t("mqttPublishers.selectSource")
+                : t("mqttPublishers.allZones")}
+            </option>
+            {zones.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.name}
+              </option>
+            ))}
           </select>
         </div>
+
+        {/* Equipment selector — only when sourceType is equipment */}
+        {sourceType === "equipment" && (
+          <div>
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t("mqttPublishers.equipment")}
+            </label>
+            <select
+              value={sourceId}
+              onChange={(e) => {
+                setSourceId(e.target.value);
+                setSourceKey("");
+              }}
+              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+            >
+              <option value="">{t("mqttPublishers.selectSource")}</option>
+              {filteredEquipments.map((eq) => (
+                <option key={eq.id} value={eq.id}>
+                  {eq.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Recipe instance selector — only when sourceType is recipe */}
+        {sourceType === "recipe" && (
+          <div>
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t("mqttPublishers.recipeInstance")}
+            </label>
+            <select
+              value={sourceId}
+              onChange={(e) => {
+                setSourceId(e.target.value);
+                setSourceKey("");
+              }}
+              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+            >
+              <option value="">{t("mqttPublishers.selectSource")}</option>
+              {filteredRecipeInstances.map((inst) => {
+                const recipe = recipes.find((r) => r.id === inst.recipeId);
+                return (
+                  <option key={inst.id} value={inst.id}>
+                    {recipe?.name ?? inst.recipeId}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+
         <div>
           <label className="block text-[11px] text-text-secondary mb-1">
             {t("mqttPublishers.sourceKey")}
@@ -610,7 +750,7 @@ function AddMappingForm({
             value={sourceKey}
             onChange={(e) => setSourceKey(e.target.value)}
             className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            disabled={!sourceId && sourceType === "equipment"}
+            disabled={!sourceId}
           >
             <option value="">{t("mqttPublishers.selectKey")}</option>
             {availableKeys.map((k) => (

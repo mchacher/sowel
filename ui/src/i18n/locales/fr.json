@@ -623,7 +623,7 @@
   "analyse.new": "Nouveau graphique",
 
   "mqttPublishers.title": "Publications MQTT",
-  "mqttPublishers.subtitle": "Publier les données d'équipements et de zones vers des topics MQTT",
+  "mqttPublishers.subtitle": "Publier les données d'équipements, zones et recettes vers des topics MQTT",
   "mqttPublishers.newPublisher": "Nouveau publisher",
   "mqttPublishers.name": "Nom",
   "mqttPublishers.topic": "Topic MQTT",
@@ -636,6 +636,8 @@
   "mqttPublishers.sourceKey": "Clé de donnée",
   "mqttPublishers.equipment": "Équipement",
   "mqttPublishers.zone": "Zone",
+  "mqttPublishers.recipe": "Recette",
+  "mqttPublishers.recipeInstance": "Instance de recette",
   "mqttPublishers.selectSource": "Sélectionner une source...",
   "mqttPublishers.selectKey": "Sélectionner une clé...",
   "mqttPublishers.empty": "Aucun publisher configuré",
@@ -644,5 +646,9 @@
   "mqttPublishers.brokerHint": "Laisser vide pour utiliser le broker Zigbee2MQTT",
   "mqttPublishers.brokerUrl": "URL du broker",
   "mqttPublishers.brokerUsername": "Nom d'utilisateur",
-  "mqttPublishers.brokerPassword": "Mot de passe"
+  "mqttPublishers.brokerPassword": "Mot de passe",
+  "mqttPublishers.allZones": "Toutes les zones",
+  "mqttPublishers.test": "Test",
+  "mqttPublishers.testPublish": "Publier un snapshot de test",
+  "mqttPublishers.testResult": "{{count}} message(s) publié(s)"
 }

@@ -623,7 +623,7 @@
   "analyse.new": "New chart",
 
   "mqttPublishers.title": "MQTT Publishers",
-  "mqttPublishers.subtitle": "Publish equipment and zone data to MQTT topics",
+  "mqttPublishers.subtitle": "Publish equipment, zone and recipe data to MQTT topics",
   "mqttPublishers.newPublisher": "New Publisher",
   "mqttPublishers.name": "Name",
   "mqttPublishers.topic": "MQTT Topic",
@@ -636,6 +636,8 @@
   "mqttPublishers.sourceKey": "Data Key",
   "mqttPublishers.equipment": "Equipment",
   "mqttPublishers.zone": "Zone",
+  "mqttPublishers.recipe": "Recipe",
+  "mqttPublishers.recipeInstance": "Recipe instance",
   "mqttPublishers.selectSource": "Select source...",
   "mqttPublishers.selectKey": "Select key...",
   "mqttPublishers.empty": "No publishers configured yet",
@@ -644,5 +646,9 @@
   "mqttPublishers.brokerHint": "Leave empty to use the Zigbee2MQTT broker",
   "mqttPublishers.brokerUrl": "Broker URL",
   "mqttPublishers.brokerUsername": "Username",
-  "mqttPublishers.brokerPassword": "Password"
+  "mqttPublishers.brokerPassword": "Password",
+  "mqttPublishers.allZones": "All zones",
+  "mqttPublishers.test": "Test",
+  "mqttPublishers.testPublish": "Publish a test snapshot",
+  "mqttPublishers.testResult": "{{count}} message(s) published"
 }

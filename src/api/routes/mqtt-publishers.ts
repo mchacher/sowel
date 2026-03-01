@@ -1,13 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import type { MqttPublisherManager } from "../../mqtt-publishers/mqtt-publisher-manager.js";
+import type { MqttPublishService } from "../../mqtt-publishers/mqtt-publish-service.js";
 import { MqttPublisherError } from "../../mqtt-publishers/mqtt-publisher-manager.js";
 
 interface MqttPublishersDeps {
   mqttPublisherManager: MqttPublisherManager;
+  mqttPublishService: MqttPublishService;
 }
 
 export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPublishersDeps): void {
-  const { mqttPublisherManager } = deps;
+  const { mqttPublisherManager, mqttPublishService } = deps;
 
   // GET /api/v1/mqtt-publishers
   app.get("/api/v1/mqtt-publishers", async () => {
@@ -66,12 +68,24 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
     }
   });
 
+  // POST /api/v1/mqtt-publishers/:id/test
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/mqtt-publishers/:id/test",
+    async (request, reply) => {
+      const publisher = mqttPublisherManager.getById(request.params.id);
+      if (!publisher) return reply.code(404).send({ error: "Publisher not found" });
+
+      const published = mqttPublishService.publishSnapshotForPublisher(request.params.id);
+      return { published };
+    },
+  );
+
   // POST /api/v1/mqtt-publishers/:id/mappings
   app.post<{
     Params: { id: string };
     Body: {
       publishKey: string;
-      sourceType: "equipment" | "zone";
+      sourceType: "equipment" | "zone" | "recipe";
       sourceId: string;
       sourceKey: string;
     };
