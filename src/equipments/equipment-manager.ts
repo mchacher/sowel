@@ -138,7 +138,7 @@ export class EquipmentManager {
         "SELECT * FROM data_bindings WHERE device_data_id = ?",
       ),
       getDataBindingsWithValues: this.db.prepare(
-        `SELECT db.id, db.equipment_id, db.device_data_id, db.alias,
+        `SELECT db.id, db.equipment_id, db.device_data_id, db.alias, db.historize,
                 dd.device_id, d.name as device_name, dd.key, dd.type, dd.category,
                 dd.value, dd.unit, dd.last_updated
          FROM data_bindings db
@@ -146,6 +146,7 @@ export class EquipmentManager {
          JOIN devices d ON dd.device_id = d.id
          WHERE db.equipment_id = ?`,
       ),
+      setHistorize: this.db.prepare("UPDATE data_bindings SET historize = ? WHERE id = ?"),
 
       // OrderBinding
       insertOrderBinding: this.db.prepare(
@@ -397,6 +398,12 @@ export class EquipmentManager {
     }
 
     return bindings;
+  }
+
+  /** Set the historize flag on a data binding. NULL = category default, 1 = force ON, 0 = force OFF. */
+  setHistorize(bindingId: string, historize: number | null): void {
+    this.stmts.setHistorize.run(historize, bindingId);
+    this.logger.info({ bindingId, historize }, "DataBinding historize flag updated");
   }
 
   // ============================================================
@@ -780,6 +787,7 @@ interface DataBindingJoinRow {
   equipment_id: string;
   device_data_id: string;
   alias: string;
+  historize: number | null;
   device_id: string;
   device_name: string;
   key: string;
@@ -834,6 +842,7 @@ function rowToDataBindingWithValue(row: DataBindingJoinRow): DataBindingWithValu
     equipmentId: row.equipment_id,
     deviceDataId: row.device_data_id,
     alias: row.alias,
+    historize: row.historize ?? undefined,
     deviceId: row.device_id,
     deviceName: row.device_name,
     key: row.key,

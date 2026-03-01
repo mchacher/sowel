@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plus, Trash2, Copy, Check, Eye, EyeOff, Settings } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Check, Eye, EyeOff, Settings, Database } from "lucide-react";
 import { useAuth } from "../store/useAuth";
 import {
   updateMe,
@@ -14,10 +14,12 @@ import {
   deleteUser,
   getSettings,
   updateSettings,
+  getHistoryStatus,
+  testHistoryConnection,
 } from "../api";
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
-import type { ApiToken, User, UserRole } from "../types";
+import type { ApiToken, User, UserRole, HistoryStatus } from "../types";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -69,10 +71,11 @@ export function SettingsPage() {
           <ChangePasswordSection />
         </div>
 
-        {/* Right column: API Tokens + User Management + Backup */}
+        {/* Right column: API Tokens + User Management + InfluxDB */}
         <div className="space-y-6">
           <ApiTokensSection />
           {isAdmin && <UserManagementSection currentUserId={user?.id ?? ""} />}
+          {isAdmin && <InfluxDbSettingsSection />}
         </div>
       </div>
     </div>
@@ -773,6 +776,229 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+// ============================================================
+// InfluxDB Settings (admin only)
+// ============================================================
+
+function InfluxDbSettingsSection() {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [status, setStatus] = useState<HistoryStatus | null>(null);
+
+  const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [org, setOrg] = useState("");
+  const [bucket, setBucket] = useState("");
+  const [enabled, setEnabled] = useState(false);
+  const [initial, setInitial] = useState({ url: "", token: "", org: "", bucket: "", enabled: false });
+
+  const loadAll = useCallback(async () => {
+    try {
+      const [settings, histStatus] = await Promise.all([getSettings(), getHistoryStatus()]);
+      const u = settings["history.influx.url"] ?? "";
+      const tk = settings["history.influx.token"] ?? "";
+      const o = settings["history.influx.org"] ?? "";
+      const b = settings["history.influx.bucket"] ?? "";
+      const en = settings["history.enabled"] === "true";
+      setUrl(u);
+      setToken(tk);
+      setOrg(o);
+      setBucket(b);
+      setEnabled(en);
+      setInitial({ url: u, token: tk, org: o, bucket: b, enabled: en });
+      setStatus(histStatus);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const dirty = url !== initial.url || token !== initial.token || org !== initial.org || bucket !== initial.bucket || enabled !== initial.enabled;
+
+  const handleSave = async () => {
+    setSaving(true);
+    setTestResult(null);
+    try {
+      await updateSettings({
+        "history.influx.url": url,
+        "history.influx.token": token,
+        "history.influx.org": org,
+        "history.influx.bucket": bucket,
+        "history.enabled": enabled ? "true" : "false",
+      });
+      setInitial({ url, token, org, bucket, enabled });
+      // Refresh status after save
+      const histStatus = await getHistoryStatus();
+      setStatus(histStatus);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testHistoryConnection();
+      setTestResult(result);
+    } catch {
+      setTestResult({ success: false, message: "Connection error" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="bg-surface rounded-[10px] border border-border p-5">
+        <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
+          <Database size={16} strokeWidth={1.5} className="text-text-tertiary" />
+          {t("history.influxdb")}
+        </h2>
+        <Loader2 size={16} className="animate-spin text-text-tertiary" />
+      </section>
+    );
+  }
+
+  const configured = !!(url && token && org && bucket);
+
+  return (
+    <section className="bg-surface rounded-[10px] border border-border p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[14px] font-semibold text-text flex items-center gap-2">
+          <Database size={16} strokeWidth={1.5} className="text-text-tertiary" />
+          {t("history.influxdb")}
+        </h2>
+        {status && (
+          <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${
+            status.connected
+              ? "bg-success/10 text-success"
+              : configured
+                ? "bg-error/10 text-error"
+                : "bg-border-light text-text-tertiary"
+          }`}>
+            {status.connected
+              ? t("history.connected")
+              : configured
+                ? t("history.disconnected")
+                : t("history.notConfigured")}
+          </span>
+        )}
+      </div>
+      <p className="text-[12px] text-text-tertiary mb-4">{t("history.influxdbDescription")}</p>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+            {t("history.url")}
+          </label>
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="http://localhost:8086"
+            className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div>
+          <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+            {t("history.token")}
+          </label>
+          <input
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="influxdb-token"
+            className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("history.org")}
+            </label>
+            <input
+              type="text"
+              value={org}
+              onChange={(e) => setOrg(e.target.value)}
+              placeholder="winch"
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("history.bucket")}
+            </label>
+            <input
+              type="text"
+              value={bucket}
+              onChange={(e) => setBucket(e.target.value)}
+              placeholder="winch"
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+
+        {/* Enable toggle */}
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+            className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+          />
+          <span className="text-[13px] text-text">{t("history.enabled")}</span>
+        </label>
+
+        {/* Status info */}
+        {status && status.connected && (
+          <div className="text-[12px] text-text-tertiary">
+            {t("history.historizedBindings")}: <span className="font-medium text-text">{status.historizedBindings}</span>
+          </div>
+        )}
+
+        {/* Test result */}
+        {testResult && (
+          <div className={`text-[12px] px-3 py-2 rounded-[6px] ${
+            testResult.success
+              ? "bg-success/10 text-success"
+              : "bg-error/10 text-error"
+          }`}>
+            {testResult.success ? t("history.testSuccess") : t("history.testFailed")}
+            {testResult.message && ` — ${testResult.message}`}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          {dirty && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+            >
+              {saving ? t("common.saving") : t("common.save")}
+            </button>
+          )}
+          {configured && !dirty && (
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              className="px-4 py-2 text-[13px] font-medium text-primary border border-primary/30 rounded-[6px] hover:bg-primary-light transition-colors disabled:opacity-50"
+            >
+              {testing ? t("common.loading") : t("history.testConnection")}
+            </button>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

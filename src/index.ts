@@ -26,6 +26,7 @@ import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
 import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
+import { HistoryWriter } from "./history/history-writer.js";
 import { createServer } from "./api/server.js";
 
 async function main() {
@@ -116,7 +117,10 @@ async function main() {
   const sunlightManager = new SunlightManager(settingsManager, eventBus, logger);
   zoneAggregator.setSunlightManager(sunlightManager);
 
-  // 11. Create Recipe Manager
+  // 11. Create History Writer (passive observer — subscribes to events, writes to InfluxDB)
+  const historyWriter = new HistoryWriter(db, eventBus, settingsManager, equipmentManager, logger);
+
+  // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
     eventBus,
@@ -165,6 +169,7 @@ async function main() {
     authService,
     settingsManager,
     buttonActionManager,
+    historyWriter,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -187,7 +192,10 @@ async function main() {
   // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
   recipeManager.init();
 
-  // 18. Initialize mode manager, calendar, and button actions
+  // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
+  historyWriter.init();
+
+  // 19. Initialize mode manager, calendar, and button actions
   modeManager.init();
   calendarManager.init();
   buttonActionManager.init();
@@ -215,6 +223,11 @@ async function main() {
       recipeManager.stopAll();
     } catch (err) {
       logger.error({ err }, "Error stopping recipe manager");
+    }
+    try {
+      await historyWriter.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping history writer");
     }
     try {
       await server.close();

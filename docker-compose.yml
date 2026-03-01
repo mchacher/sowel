@@ -13,5 +13,24 @@ services:
     #   API_PORT: 3000
     #   LOG_LEVEL: info
 
+  # InfluxDB 2.x — optional time-series backend for data history (V0.13)
+  # Configure connection in Winch Settings > InfluxDB after first start.
+  influxdb:
+    image: influxdb:2.7
+    container_name: winch-influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=winch
+      - DOCKER_INFLUXDB_INIT_PASSWORD=winch-secret
+      - DOCKER_INFLUXDB_INIT_ORG=winch
+      - DOCKER_INFLUXDB_INIT_BUCKET=winch
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=winch-dev-token
+
 volumes:
   winch-data:
+  influxdb-data:
