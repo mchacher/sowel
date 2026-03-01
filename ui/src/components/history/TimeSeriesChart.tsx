@@ -124,7 +124,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
   const borderColor = "var(--color-border-light)";
 
   return (
-    <div>
+    <div className="[&_.recharts-wrapper]:!outline-none">
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
