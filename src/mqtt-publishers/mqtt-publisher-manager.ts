@@ -48,7 +48,7 @@ function rowToMapping(row: MappingRow): MqttPublisherMapping {
     id: row.id,
     publisherId: row.publisher_id,
     publishKey: row.publish_key,
-    sourceType: row.source_type as "equipment" | "zone",
+    sourceType: row.source_type as "equipment" | "zone" | "recipe",
     sourceId: row.source_id,
     sourceKey: row.source_key,
     createdAt: toISOUtc(row.created_at),
@@ -180,7 +180,7 @@ export class MqttPublisherManager {
     publisherId: string,
     input: {
       publishKey: string;
-      sourceType: "equipment" | "zone";
+      sourceType: "equipment" | "zone" | "recipe";
       sourceId: string;
       sourceKey: string;
     },
@@ -190,8 +190,12 @@ export class MqttPublisherManager {
     if (!input.publishKey?.trim()) throw new MqttPublisherError("publishKey is required", 400);
     if (!input.sourceId?.trim()) throw new MqttPublisherError("sourceId is required", 400);
     if (!input.sourceKey?.trim()) throw new MqttPublisherError("sourceKey is required", 400);
-    if (input.sourceType !== "equipment" && input.sourceType !== "zone") {
-      throw new MqttPublisherError("sourceType must be 'equipment' or 'zone'", 400);
+    if (
+      input.sourceType !== "equipment" &&
+      input.sourceType !== "zone" &&
+      input.sourceType !== "recipe"
+    ) {
+      throw new MqttPublisherError("sourceType must be 'equipment', 'zone', or 'recipe'", 400);
     }
 
     const id = randomUUID();

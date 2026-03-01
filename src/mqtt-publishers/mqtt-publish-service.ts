@@ -5,6 +5,7 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { MqttPublisherManager } from "./mqtt-publisher-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../zones/zone-aggregator.js";
+import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { ZoneAggregatedData } from "../shared/types.js";
 
 // ============================================================
@@ -18,6 +19,19 @@ interface MappingRef {
 }
 
 // ============================================================
+// Value conversion — booleans and binary states → 0/1
+// ============================================================
+
+const TRUTHY = new Set<unknown>([true, "ON", "open"]);
+const FALSY = new Set<unknown>([false, "OFF", "closed"]);
+
+function toMqttValue(value: unknown): unknown {
+  if (TRUTHY.has(value)) return 1;
+  if (FALSY.has(value)) return 0;
+  return value;
+}
+
+// ============================================================
 // MqttPublishService
 // ============================================================
 
@@ -28,7 +42,7 @@ export class MqttPublishService {
 
   /**
    * In-memory lookup index:
-   * key = "equipment:{sourceId}:{sourceKey}" or "zone:{sourceId}:{sourceKey}"
+   * key = "equipment:{sourceId}:{sourceKey}" or "zone:{sourceId}:{sourceKey}" or "recipe:{instanceId}:{stateKey}"
    * value = array of mapping refs to publish to
    */
   private index: Map<string, MappingRef[]> = new Map();
@@ -39,6 +53,7 @@ export class MqttPublishService {
     private readonly publisherManager: MqttPublisherManager,
     private readonly equipmentManager: EquipmentManager,
     private readonly zoneAggregator: ZoneAggregator,
+    private readonly recipeManager: RecipeManager,
     logger: Logger,
   ) {
     this.logger = logger.child({ module: "mqtt-publish-service" });
@@ -168,6 +183,10 @@ export class MqttPublishService {
             this.handleZoneDataChanged(event.zoneId, event.aggregatedData);
             break;
 
+          case "recipe.instance.state.changed":
+            this.handleRecipeStateChanged(event.instanceId);
+            break;
+
           case "mqtt-publisher.created":
           case "mqtt-publisher.updated":
           case "mqtt-publisher.removed":
@@ -213,12 +232,27 @@ export class MqttPublishService {
     }
   }
 
+  private handleRecipeStateChanged(instanceId: string): void {
+    const state = this.recipeManager.getInstanceState(instanceId);
+    for (const [stateKey, value] of Object.entries(state)) {
+      const key = `recipe:${instanceId}:${stateKey}`;
+      const refs = this.index.get(key);
+      if (!refs) continue;
+
+      for (const ref of refs) {
+        if (!ref.enabled) continue;
+        this.publish(ref.publisherTopic, ref.publishKey, value);
+      }
+    }
+  }
+
   // ── Publishing ───────────────────────────────────────────────
 
   private publish(topic: string, publishKey: string, value: unknown): void {
     if (!this.client?.connected) return;
 
-    const payload = JSON.stringify({ [publishKey]: value });
+    const mqttValue = toMqttValue(value);
+    const payload = JSON.stringify({ [publishKey]: mqttValue });
     this.client.publish(topic, payload, { retain: true }, (err) => {
       if (err) {
         this.logger.error({ err, topic, publishKey }, "MQTT publish error");
@@ -257,8 +291,33 @@ export class MqttPublishService {
     }
   }
 
+  // ── Test publish ────────────────────────────────────────────
+
+  publishSnapshotForPublisher(publisherId: string): number {
+    if (!this.client?.connected) return 0;
+
+    const publisher = this.publisherManager.getByIdWithMappings(publisherId);
+    if (!publisher) return 0;
+
+    let published = 0;
+    for (const mapping of publisher.mappings) {
+      const value = this.resolveCurrentValue(
+        mapping.sourceType,
+        mapping.sourceId,
+        mapping.sourceKey,
+      );
+      if (value !== undefined) {
+        this.publish(publisher.topic, mapping.publishKey, value);
+        published++;
+      }
+    }
+
+    this.logger.info({ publisherId, published }, "Test publish triggered");
+    return published;
+  }
+
   private resolveCurrentValue(
-    sourceType: "equipment" | "zone",
+    sourceType: "equipment" | "zone" | "recipe",
     sourceId: string,
     sourceKey: string,
   ): unknown {
@@ -273,6 +332,11 @@ export class MqttPublishService {
       const zoneData = allAggregated[sourceId];
       if (!zoneData) return undefined;
       return zoneData[sourceKey as keyof ZoneAggregatedData];
+    }
+
+    if (sourceType === "recipe") {
+      const state = this.recipeManager.getInstanceState(sourceId);
+      return state[sourceKey];
     }
 
     return undefined;

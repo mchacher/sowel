@@ -24,6 +24,7 @@ import type { ButtonActionManager } from "../buttons/button-action-manager.js";
 import type { HistoryWriter } from "../history/history-writer.js";
 import type { ChartManager } from "../charts/chart-manager.js";
 import type { MqttPublisherManager } from "../mqtt-publishers/mqtt-publisher-manager.js";
+import type { MqttPublishService } from "../mqtt-publishers/mqtt-publish-service.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -61,6 +62,7 @@ interface ServerDeps {
   historyWriter: HistoryWriter;
   chartManager: ChartManager;
   mqttPublisherManager: MqttPublisherManager;
+  mqttPublishService: MqttPublishService;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -85,6 +87,7 @@ export async function createServer(deps: ServerDeps) {
     historyWriter,
     chartManager,
     mqttPublisherManager,
+    mqttPublishService,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -137,7 +140,7 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerChartRoutes(app, { chartManager });
-  registerMqttPublisherRoutes(app, { mqttPublisherManager });
+  registerMqttPublisherRoutes(app, { mqttPublisherManager, mqttPublishService });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

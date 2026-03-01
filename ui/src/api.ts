@@ -831,7 +831,7 @@ export async function addMqttPublisherMapping(
   publisherId: string,
   data: {
     publishKey: string;
-    sourceType: "equipment" | "zone";
+    sourceType: "equipment" | "zone" | "recipe";
     sourceId: string;
     sourceKey: string;
   },
@@ -848,5 +848,11 @@ export async function removeMqttPublisherMapping(
 ): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/mqtt-publishers/${publisherId}/mappings/${mappingId}`, {
     method: "DELETE",
+  });
+}
+
+export async function testMqttPublisher(publisherId: string): Promise<{ published: number }> {
+  return fetchJSON<{ published: number }>(`${API_BASE}/mqtt-publishers/${publisherId}/test`, {
+    method: "POST",
   });
 }

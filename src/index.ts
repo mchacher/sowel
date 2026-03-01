@@ -127,16 +127,8 @@ async function main() {
   // 11b. Create Chart Manager
   const chartManager = new ChartManager(db, logger);
 
-  // 11c. Create MQTT Publisher Manager + Service
+  // 11c. Create MQTT Publisher Manager (service created after RecipeManager)
   const mqttPublisherManager = new MqttPublisherManager(db, eventBus, logger);
-  const mqttPublishService = new MqttPublishService(
-    eventBus,
-    settingsManager,
-    mqttPublisherManager,
-    equipmentManager,
-    zoneAggregator,
-    logger,
-  );
 
   // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
@@ -153,7 +145,18 @@ async function main() {
   recipeManager.register(PresenceThermostatRecipe);
   recipeManager.register(PresenceHeaterRecipe);
 
-  // 12. Create Mode Manager + Calendar Manager
+  // 12b. Create MQTT Publish Service (needs RecipeManager)
+  const mqttPublishService = new MqttPublishService(
+    eventBus,
+    settingsManager,
+    mqttPublisherManager,
+    equipmentManager,
+    zoneAggregator,
+    recipeManager,
+    logger,
+  );
+
+  // 13. Create Mode Manager + Calendar Manager
   const modeManager = new ModeManager(db, eventBus, equipmentManager, recipeManager, logger);
   const calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
 
@@ -191,6 +194,7 @@ async function main() {
     historyWriter,
     chartManager,
     mqttPublisherManager,
+    mqttPublishService,
     eventBus,
     integrationRegistry,
     logBuffer,
