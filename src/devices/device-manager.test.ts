@@ -229,14 +229,22 @@ describe("DeviceManager", () => {
       }
     });
 
-    it("deletes device on offline status", () => {
+    it("marks device as offline and preserves data", () => {
       manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
       events.length = 0;
 
       manager.updateDeviceStatus("zigbee2mqtt", "salon_pir", "offline");
 
-      expect(manager.getAll()).toHaveLength(0);
-      expect(events.find((e) => e.type === "device.removed")).toBeDefined();
+      const devices = manager.getAll();
+      expect(devices).toHaveLength(1);
+      expect(devices[0].status).toBe("offline");
+
+      const statusEvent = events.find((e) => e.type === "device.status_changed");
+      expect(statusEvent).toBeDefined();
+      if (statusEvent?.type === "device.status_changed") {
+        expect(statusEvent.status).toBe("offline");
+      }
+      expect(events.find((e) => e.type === "device.removed")).toBeUndefined();
     });
 
     it("does not emit event if status unchanged", () => {
