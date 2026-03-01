@@ -22,9 +22,14 @@ function createTestDb(): Database.Database {
     resolve(import.meta.dirname ?? ".", "../../migrations/003_equipments.sql"),
     "utf-8",
   );
+  const migration20 = readFileSync(
+    resolve(import.meta.dirname ?? ".", "../../migrations/020_history.sql"),
+    "utf-8",
+  );
   db.exec(migration1);
   db.exec(migration2);
   db.exec(migration3);
+  db.exec(migration20);
   return db;
 }
 

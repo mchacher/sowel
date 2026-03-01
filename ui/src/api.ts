@@ -11,6 +11,7 @@ import type {
   CalendarProfile, CalendarSlot, CalendarModeAction,
   IntegrationInfo,
   LogsResponse, LogLevel,
+  HistoryStatus, HistoryBindingState,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -685,5 +686,34 @@ export async function setLogLevel(level: LogLevel): Promise<{ level: string; pre
   return fetchJSON(`${API_BASE}/logs/level`, {
     method: "PUT",
     body: JSON.stringify({ level }),
+  });
+}
+
+// ============================================================
+// History (InfluxDB)
+// ============================================================
+
+export async function getHistoryStatus(): Promise<HistoryStatus> {
+  return fetchJSON<HistoryStatus>(`${API_BASE}/history/status`);
+}
+
+export async function testHistoryConnection(): Promise<{ success: boolean; message: string }> {
+  return fetchJSON<{ success: boolean; message: string }>(`${API_BASE}/history/test-connection`, {
+    method: "POST",
+  });
+}
+
+export async function getHistoryBindings(equipmentId: string): Promise<HistoryBindingState[]> {
+  return fetchJSON<HistoryBindingState[]>(`${API_BASE}/history/bindings/${equipmentId}`);
+}
+
+export async function setHistorize(
+  equipmentId: string,
+  bindingId: string,
+  historize: number | null,
+): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/history/bindings/${equipmentId}/${bindingId}`, {
+    method: "PUT",
+    body: JSON.stringify({ historize }),
   });
 }

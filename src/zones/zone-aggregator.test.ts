@@ -33,11 +33,16 @@ function createTestDb(): Database.Database {
     resolve(import.meta.dirname ?? ".", "../../migrations/011_integration_architecture.sql"),
     "utf-8",
   );
+  const migration20 = readFileSync(
+    resolve(import.meta.dirname ?? ".", "../../migrations/020_history.sql"),
+    "utf-8",
+  );
   db.exec(migration1);
   db.exec(migration2);
   db.exec(migration3);
   db.exec(migration7);
   db.exec(migration11);
+  db.exec(migration20);
   return db;
 }
 
