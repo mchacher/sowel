@@ -95,8 +95,8 @@ export function Sidebar() {
             >
               {({ isActive }) => (
                 <>
-                  <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-tertiary group-hover:text-primary"}`} />
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-tertiary group-hover:text-primary"}`}>
+                  <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
                     {t("nav.modes")}
                   </span>
                 </>
@@ -149,8 +149,8 @@ export function Sidebar() {
         <div className="border-t border-border-light py-2 px-2">
           {!collapsed && (
             <div className="flex items-center gap-2 px-3 mb-1.5">
-              <Shield size={14} strokeWidth={1.5} className="text-text-tertiary" />
-              <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-wider">
+              <Shield size={14} strokeWidth={1.5} className="text-text" />
+              <span className="text-[11px] font-semibold text-text uppercase tracking-wider">
                 {t("nav.administration")}
               </span>
             </div>
