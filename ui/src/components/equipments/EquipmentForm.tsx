@@ -46,6 +46,9 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
   const [error, setError] = useState<string | null>(null);
 
   const flatZones = flattenZones(zones);
+  const sortedTypes = [...EQUIPMENT_TYPE_KEYS].sort((a, b) =>
+    t(a.labelKey).localeCompare(t(b.labelKey)),
+  );
 
   const handleCreate = async () => {
     if (!name.trim() || !zoneId || saving) return;
@@ -74,10 +77,9 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div
         className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light flex-shrink-0">
@@ -106,7 +108,7 @@ export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundD
                     className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
                     disabled={!!initial}
                   >
-                    {EQUIPMENT_TYPE_KEYS.map((et) => (
+                    {sortedTypes.map((et) => (
                       <option key={et.value} value={et.value}>{t(et.labelKey)}</option>
                     ))}
                   </select>
