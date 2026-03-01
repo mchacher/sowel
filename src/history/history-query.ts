@@ -36,7 +36,22 @@ function parseFrom(from: string): Date {
 }
 
 /**
+ * Resolve the bucket name based on resolution.
+ * - raw → base bucket (e.g. "winch")
+ * - 1h  → base bucket + "-hourly" (e.g. "winch-hourly")
+ * - 1d  → base bucket + "-daily" (e.g. "winch-daily")
+ */
+function resolveBucket(baseBucket: string, resolution: Resolution): string {
+  if (resolution === "1h") return `${baseBucket}-hourly`;
+  if (resolution === "1d") return `${baseBucket}-daily`;
+  return baseBucket;
+}
+
+/**
  * Build a Flux query for time-series data.
+ * For raw resolution: queries the raw bucket with value_number field.
+ * For 1h/1d: queries the pre-aggregated downsampled bucket (mean field).
+ * Falls back to on-the-fly aggregation if downsampled bucket has no data.
  */
 function buildFluxQuery(params: {
   bucket: string;
@@ -78,21 +93,39 @@ function buildFluxQuery(params: {
 
 /**
  * Build a Flux query that returns min/max alongside mean for aggregated data.
+ * When querying a downsampled bucket (hourly/daily), reads pre-computed mean/min/max fields.
+ * When querying the raw bucket (fallback), computes aggregation on the fly.
  */
 function buildAggregatedFluxQuery(params: {
   bucket: string;
+  baseBucket: string;
   equipmentId: string;
   alias: string;
   from: Date;
   to: Date;
   resolution: "1h" | "1d";
 }): string {
-  const { bucket, equipmentId, alias, from, to, resolution } = params;
+  const { bucket, baseBucket, equipmentId, alias, from, to, resolution } = params;
   const fromStr = from.toISOString();
   const toStr = to.toISOString();
   const every = resolution === "1h" ? "1h" : "1d";
 
-  // Query mean, min, max in a single request using pivot
+  const isDownsampled = bucket !== baseBucket;
+
+  if (isDownsampled) {
+    // Query pre-aggregated downsampled bucket — fields are already mean, min, max
+    return `from(bucket: "${bucket}")
+  |> range(start: ${fromStr}, stop: ${toStr})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "mean" or r._field == "min" or r._field == "max")
+  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
+  }
+
+  // Fallback: compute aggregation on the fly from raw data
   return `import "experimental"
 
 data = from(bucket: "${bucket}")
@@ -142,6 +175,9 @@ export async function queryHistory(
   const queryApi = client.getQueryApi(config.org);
   const points: HistoryPoint[] = [];
 
+  // Resolve target bucket based on resolution (raw, hourly, or daily)
+  const targetBucket = resolveBucket(config.bucket, resolution);
+
   try {
     if (resolution === "raw") {
       // Simple raw query
@@ -163,9 +199,10 @@ export async function queryHistory(
         }
       }
     } else {
-      // Aggregated query with min/max
+      // Aggregated query — try downsampled bucket first, fallback to raw
       const flux = buildAggregatedFluxQuery({
-        bucket: config.bucket,
+        bucket: targetBucket,
+        baseBucket: config.bucket,
         equipmentId: params.equipmentId,
         alias: params.alias,
         from: fromDate,
@@ -186,6 +223,39 @@ export async function queryHistory(
             min: typeof min === "number" ? min : undefined,
             max: typeof max === "number" ? max : undefined,
           });
+        }
+      }
+
+      // Fallback: if downsampled bucket returned no data, try raw bucket with on-the-fly aggregation
+      if (points.length === 0 && targetBucket !== config.bucket) {
+        logger.debug(
+          { bucket: targetBucket, equipmentId: params.equipmentId, alias: params.alias },
+          "No data in downsampled bucket, falling back to raw",
+        );
+        const fallbackFlux = buildAggregatedFluxQuery({
+          bucket: config.bucket,
+          baseBucket: config.bucket,
+          equipmentId: params.equipmentId,
+          alias: params.alias,
+          from: fromDate,
+          to: toDate,
+          resolution,
+        });
+
+        for await (const { values, tableMeta } of queryApi.iterateRows(fallbackFlux)) {
+          const o = tableMeta.toObject(values);
+          const time = o._time as string | undefined;
+          const mean = o.mean as number | undefined;
+          const min = o.min as number | undefined;
+          const max = o.max as number | undefined;
+          if (time && typeof mean === "number") {
+            points.push({
+              time,
+              value: mean,
+              min: typeof min === "number" ? min : undefined,
+              max: typeof max === "number" ? max : undefined,
+            });
+          }
         }
       }
     }

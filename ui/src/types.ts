@@ -240,6 +240,19 @@ export interface HistoryQueryResult {
   resolution: "raw" | "1h" | "1d";
 }
 
+export interface RetentionStatus {
+  buckets: {
+    raw: { name: string; retentionSeconds: number } | null;
+    hourly: { name: string; retentionSeconds: number } | null;
+    daily: { name: string; retentionSeconds: number } | null;
+  };
+  tasks: {
+    hourly: { id: string; status: string; lastRunAt?: string } | null;
+    daily: { id: string; status: string; lastRunAt?: string } | null;
+  };
+  setupComplete: boolean;
+}
+
 // ============================================================
 // Engine Events (received via WebSocket)
 // ============================================================

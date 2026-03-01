@@ -217,6 +217,29 @@ export class HistoryWriter {
     }
 
     this.influxClient.connect({ url, token, org, bucket });
+
+    // Auto-setup downsampling buckets and tasks (fire-and-forget)
+    this.setupDownsampling();
+  }
+
+  private setupDownsampling(): void {
+    // Read configurable retention from settings (optional overrides)
+    const rawDays = parseInt(this.settingsManager.get("history.retention.rawDays") ?? "", 10);
+    const hourlyDays = parseInt(this.settingsManager.get("history.retention.hourlyDays") ?? "", 10);
+    const dailyDays = parseInt(this.settingsManager.get("history.retention.dailyDays") ?? "", 10);
+
+    const retention = {
+      rawSeconds: !isNaN(rawDays) && rawDays > 0 ? rawDays * 86_400 : undefined,
+      hourlySeconds: !isNaN(hourlyDays) && hourlyDays > 0 ? hourlyDays * 86_400 : undefined,
+      dailySeconds: !isNaN(dailyDays) && dailyDays > 0 ? dailyDays * 86_400 : undefined,
+    };
+
+    Promise.all([
+      this.influxClient.ensureBuckets(retention),
+      this.influxClient.ensureDownsamplingTasks(),
+    ]).catch((err) => {
+      this.logger.warn({ err }, "Downsampling setup failed — will retry on next connect");
+    });
   }
 
   // ============================================================
