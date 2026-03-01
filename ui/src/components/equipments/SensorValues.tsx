@@ -14,14 +14,14 @@ import { computeElapsed, formatElapsed } from "./useEquipmentState";
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
   batteryBindings: DataBindingWithValue[];
-  /** Sparkline rendered inline right after the matching binding. */
-  sparkline?: { bindingId: string; element: React.ReactNode };
+  /** Sparkline elements keyed by binding ID, rendered inline after matching values. */
+  sparklines?: Record<string, React.ReactNode>;
 }
 
 export function SensorValues({
   sensorBindings,
   batteryBindings,
-  sparkline,
+  sparklines,
 }: SensorValuesProps) {
   const { t } = useTranslation();
 
@@ -74,7 +74,7 @@ export function SensorValues({
                   {formatSensorValue(b.value, b.unit, t)}
                 </span>
               )}
-              {sparkline?.bindingId === b.id && sparkline.element}
+              {sparklines?.[b.id]}
             </span>
           ))}
         </div>

@@ -44,10 +44,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, hist
     ? equipment.dataBindings[0] ?? null
     : null;
 
-  // Find the first sparkline-eligible binding for sensors (temperature preferred)
-  const sparklineBinding = historyEnabled && isSensor
-    ? sensorBindings.find((b) => SPARKLINE_CATEGORIES.has(b.category)) ?? null
-    : null;
+  // Build sparkline elements for all eligible sensor bindings
+  const sparklines = historyEnabled && isSensor
+    ? Object.fromEntries(
+        sensorBindings
+          .filter((b) => SPARKLINE_CATEGORIES.has(b.category))
+          .map((b) => [b.id, <Sparkline key={b.id} equipmentId={equipment.id} alias={b.alias} />]),
+      )
+    : undefined;
 
   return (
     <div
@@ -91,10 +95,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName, hist
               : sensorBindings
           }
           batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
-          sparkline={sparklineBinding ? {
-            bindingId: sparklineBinding.id,
-            element: <Sparkline equipmentId={equipment.id} alias={sparklineBinding.alias} />,
-          } : undefined}
+          sparklines={sparklines}
         />
       )}
 
