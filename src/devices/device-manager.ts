@@ -402,8 +402,8 @@ export class DeviceManager {
 
   /**
    * Update device status.
-   * "online" → update status in DB.
-   * "offline" → delete device from DB (will be re-created on next discovery if still present).
+   * "online" / "offline" → update status in DB.
+   * Device data and bindings are preserved across offline/online transitions.
    */
   updateDeviceStatus(
     integrationId: string,
@@ -415,23 +415,9 @@ export class DeviceManager {
       | undefined;
     if (!device) return;
 
-    if (status === "offline") {
-      this.stmts.deleteDevice.run(device.id);
-      this.logger.info(
-        { deviceId: device.id, name: sourceDeviceId },
-        "Device offline — deleted from DB",
-      );
-      this.eventBus.emit({
-        type: "device.removed",
-        deviceId: device.id,
-        deviceName: device.name,
-      });
-      return;
-    }
-
     if (device.status !== status) {
       this.stmts.updateDeviceStatus.run(status, device.id);
-      this.logger.debug(
+      this.logger.info(
         { deviceId: device.id, name: sourceDeviceId, status },
         "Device status changed",
       );
