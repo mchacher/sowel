@@ -150,6 +150,7 @@
   "equipments.notFound.message": "This equipment does not exist.",
   "equipments.deleteConfirm": "Delete equipment \"{{name}}\"? This cannot be undone.",
   "equipments.controls": "Controls",
+  "equipments.configuration": "Configuration",
   "equipments.devices": "Devices",
   "equipments.bindings": "Bindings",
   "equipments.bindingCount_one": "{{count}} binding",

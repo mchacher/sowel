@@ -35,6 +35,7 @@ import {
   RefreshCw,
   X,
   Database,
+  Settings,
 } from "lucide-react";
 import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails, HistoryBindingState } from "../types";
@@ -293,6 +294,11 @@ export function EquipmentDetailPage() {
 
       {/* Configuration */}
       <div className="bg-surface rounded-[10px] border border-border mb-6 divide-y divide-border-light">
+        <div className="flex items-center gap-2 p-4">
+          <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
+          <h3 className="text-[14px] font-semibold text-text">{t("equipments.configuration")}</h3>
+        </div>
+
         <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
         {historyBindings.length > 0 && (
