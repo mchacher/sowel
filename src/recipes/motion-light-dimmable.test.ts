@@ -222,6 +222,44 @@ function addButton(setup: TestSetup): { buttonId: string; actionDataId: string }
   return { buttonId: buttonEq.id, actionDataId: buttonDevice.dataIds[0] };
 }
 
+function addLuxSensor(setup: TestSetup, initialLux: number): string {
+  const luxDevice = seedDevice(setup.db, {
+    name: "Lux Sensor",
+    dataKeys: [
+      {
+        key: "illuminance_lux",
+        type: "number",
+        category: "luminosity",
+        value: JSON.stringify(initialLux),
+      },
+    ],
+  });
+  const luxEq = setup.equipmentManager.create({
+    name: "Lux Sensor",
+    type: "sensor",
+    zoneId: setup.zoneId,
+  });
+  setup.equipmentManager.addDataBinding(luxEq.id, luxDevice.dataIds[0], "illuminance_lux");
+  setup.aggregator.computeAll();
+  return luxDevice.dataIds[0];
+}
+
+function simulateLuxChange(setup: TestSetup, luxDataId: string, value: number): void {
+  setup.db
+    .prepare("UPDATE device_data SET value = ? WHERE id = ?")
+    .run(JSON.stringify(value), luxDataId);
+  setup.eventBus.emit({
+    type: "device.data.updated",
+    deviceId: "lux-device",
+    deviceName: "Lux Sensor",
+    dataId: luxDataId,
+    key: "illuminance_lux",
+    value,
+    previous: 0,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function simulateMotion(setup: TestSetup, active: boolean): void {
   setup.db
     .prepare("UPDATE device_data SET value = ? WHERE id = ?")
@@ -798,6 +836,48 @@ describe("MotionLightDimmableRecipe", () => {
       simulateMotion(setup, true);
       const onCommand = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
       expect(onCommand).toBeDefined();
+    });
+
+    it("does not enter override when recipe turns off lights due to lux rising", () => {
+      const luxDataId = addLuxSensor(setup, 30);
+      setup.manager.createInstance("motion-light-dimmable", {
+        zone: setup.zoneId,
+        lights: [setup.lightId],
+        timeout: "5m",
+        brightness: 150,
+        luxThreshold: 50,
+      });
+
+      // Motion → lights on (lux 30 < 50)
+      simulateMotion(setup, true);
+      simulateLightState(setup, "ON");
+      setup.published.length = 0;
+
+      // Lux rises above threshold+hysteresis → recipe turns off lights
+      simulateLuxChange(setup, luxDataId, 60);
+
+      // Advance past grace period to simulate delayed MQTT echo
+      vi.advanceTimersByTime(6000);
+
+      // MQTT echo: light reports OFF
+      simulateLightState(setup, "OFF");
+
+      // Verify NO override mode was entered
+      const instance = setup.manager
+        .getInstances()
+        .find((i) => i.recipeId === "motion-light-dimmable")!;
+      const logs = setup.manager.getLog(instance.id);
+      expect(
+        logs.some(
+          (l) => l.message.includes("turned off manually") && l.message.includes("override"),
+        ),
+      ).toBe(false);
+
+      // Lux drops — motion still active → recipe should auto-turn on (no override blocking)
+      setup.published.length = 0;
+      simulateLuxChange(setup, luxDataId, 20);
+      const onCmd = setup.published.find((p) => JSON.parse(p.payload).state === "ON");
+      expect(onCmd).toBeDefined();
     });
 
     it("override is cleared after timeout even with lights still on", () => {

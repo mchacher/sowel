@@ -370,6 +370,9 @@ export abstract class MotionLightBase extends Recipe {
     // Dynamic lux check: turn off if luminosity rose above threshold (with hysteresis)
     if (lightsOn && this.isBrightEnoughToTurnOff(luminosity)) {
       if (!this.lightsOnByRecipe) {
+        // Grace period: recipe recently sent OFF — this ON echo is a stale
+        // MQTT round-trip from a previous turnOn, not a manual action.
+        if (Date.now() < this.turnOffGraceUntil) return;
         this.overrideMode = true;
         this.ctx.state.set("overrideMode", true);
         this.ctx.notifyStateChanged();
@@ -445,14 +448,8 @@ export abstract class MotionLightBase extends Recipe {
         this.clearFailsafeTimerState();
         this.ctx.log("Light turned off externally — timers cancelled");
       }
-      // Manual turn-off while motion → enter override so we don't immediately re-turn on
-      if (Date.now() >= this.turnOffGraceUntil && this.hasMotion()) {
-        this.overrideMode = true;
-        this.ctx.state.set("overrideMode", true);
-        this.ctx.notifyStateChanged();
-        this.startOffTimerForOverrideClear();
-        this.ctx.log("Light turned off manually while motion active — entering override mode");
-      }
+      // Note: manual-off override detection is handled in onZoneChanged
+      // (which fires first) using the lightsOnByRecipe flag.
     }
   }
 
@@ -492,6 +489,7 @@ export abstract class MotionLightBase extends Recipe {
   }
 
   protected turnOff(reason: string): void {
+    this.lightsOnByRecipe = false;
     this.turnOffGraceUntil = Date.now() + 5000;
     const errors = turnOffLights(this.lightIds, this.ctx);
     if (errors.length > 0) {
