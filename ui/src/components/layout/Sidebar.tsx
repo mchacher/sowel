@@ -82,7 +82,23 @@ export function Sidebar() {
             <Home size={20} strokeWidth={1.5} />
           </NavLink>
         ) : (
-          <SidebarZoneTree collapsed={collapsed} />
+          <>
+            <NavLink
+              to="/home"
+              end
+              className={() => `flex items-center gap-2 px-3 mb-2 group`}
+            >
+              {({ isActive }) => (
+                <>
+                  <Home size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                    {t("nav.maison")}
+                  </span>
+                </>
+              )}
+            </NavLink>
+            <SidebarZoneTree collapsed={collapsed} />
+          </>
         )}
 
         {/* Modes section */}
@@ -125,22 +141,36 @@ export function Sidebar() {
 
         {/* Analyse section */}
         <div className="mt-3 pt-2 border-t border-border-light">
-          <NavLink
-            to="/analyse"
-            className={({ isActive }) => `
-              flex items-center gap-3 px-3 py-1.5 rounded-[6px]
-              transition-colors duration-150 ease-out
-              ${collapsed ? "justify-center" : ""}
-              ${isActive
-                ? "bg-primary-light text-primary font-medium"
-                : "text-text-secondary hover:bg-border-light hover:text-text"
-              }
-            `}
-            title={collapsed ? t("nav.analyse") : undefined}
-          >
-            <span className="flex-shrink-0"><BarChart3 size={18} strokeWidth={1.5} /></span>
-            {!collapsed && <span className="text-[12px] font-medium">{t("nav.analyse")}</span>}
-          </NavLink>
+          {collapsed ? (
+            <NavLink
+              to="/analyse"
+              className={({ isActive }) => `
+                flex items-center justify-center px-3 py-2.5 rounded-[6px]
+                transition-colors duration-150 ease-out
+                ${isActive
+                  ? "bg-primary-light text-primary font-medium"
+                  : "text-text-secondary hover:bg-border-light hover:text-text"
+                }
+              `}
+              title={t("nav.analyse")}
+            >
+              <BarChart3 size={20} strokeWidth={1.5} />
+            </NavLink>
+          ) : (
+            <NavLink
+              to="/analyse"
+              className={() => `flex items-center gap-2 px-3 mb-2 group`}
+            >
+              {({ isActive }) => (
+                <>
+                  <BarChart3 size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                    {t("nav.analyse")}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          )}
         </div>
       </div>
 
