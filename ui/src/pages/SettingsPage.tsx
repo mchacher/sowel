@@ -795,6 +795,7 @@ function InfluxDbSettingsSection() {
   const [retention, setRetention] = useState<RetentionStatus | null>(null);
 
   const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
   const [org, setOrg] = useState("");
   const [bucket, setBucket] = useState("");
   const [enabled, setEnabled] = useState(false);
