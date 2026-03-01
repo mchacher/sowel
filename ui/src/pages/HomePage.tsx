@@ -13,7 +13,7 @@ import {
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
 import { useZoneAggregation } from "../store/useZoneAggregation";
-import { executeZoneOrder } from "../api";
+import { executeZoneOrder, getHistoryStatus } from "../api";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
@@ -36,10 +36,16 @@ export function HomePage() {
   const aggregationData = useZoneAggregation((s) => s.data);
   const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
 
+  // Check if history (InfluxDB) is enabled — used for sparklines
+  const [historyEnabled, setHistoryEnabled] = useState(false);
+
   useEffect(() => {
     fetchZones();
     fetchEquipments();
     fetchAggregation();
+    getHistoryStatus()
+      .then((s) => setHistoryEnabled(s.enabled && s.connected))
+      .catch(() => setHistoryEnabled(false));
   }, [fetchZones, fetchEquipments, fetchAggregation]);
 
   // If no zoneId in URL, redirect to first zone
@@ -116,7 +122,7 @@ export function HomePage() {
         )}
         {zoneId && aggregationData[zoneId] && (
           <div className="mt-3">
-            <ZoneAggregationPills data={aggregationData[zoneId]} />
+            <ZoneAggregationPills data={aggregationData[zoneId]} zoneId={zoneId} historyEnabled={historyEnabled} />
           </div>
         )}
         {/* Zone command buttons */}

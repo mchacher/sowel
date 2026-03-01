@@ -200,6 +200,94 @@ export async function queryHistory(
 }
 
 /**
+ * Query sparkline data — last 24h aggregated to ~48 points (30min windows).
+ * Returns only values (no timestamps, no min/max) for lightweight inline rendering.
+ */
+export async function querySparkline(
+  influxClient: InfluxClient,
+  params: { equipmentId: string; alias: string },
+  logger: Logger,
+): Promise<number[]> {
+  const config = influxClient.getConfig();
+  const client = influxClient.getClient();
+  if (!config || !client) return [];
+
+  const queryApi = client.getQueryApi(config.org);
+  const values: number[] = [];
+
+  try {
+    const flux = `from(bucket: "${config.bucket}")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${params.equipmentId}")
+  |> filter(fn: (r) => r.alias == "${params.alias}")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(every: 30m, fn: mean, createEmpty: false)
+  |> sort(columns: ["_time"])
+  |> limit(n: 48)`;
+
+    for await (const { values: rowValues, tableMeta } of queryApi.iterateRows(flux)) {
+      const o = tableMeta.toObject(rowValues);
+      const v = o._value as number | undefined;
+      if (typeof v === "number") {
+        values.push(v);
+      }
+    }
+  } catch (err) {
+    logger.error(
+      { err, equipmentId: params.equipmentId, alias: params.alias },
+      "Sparkline query failed",
+    );
+  }
+
+  return values;
+}
+
+/**
+ * Query zone-level sparkline — last 24h, all equipments in the zone for a given
+ * category, averaged into ~48 points (30min windows).
+ */
+export async function queryZoneSparkline(
+  influxClient: InfluxClient,
+  params: { zoneId: string; category: string },
+  logger: Logger,
+): Promise<number[]> {
+  const config = influxClient.getConfig();
+  const client = influxClient.getClient();
+  if (!config || !client) return [];
+
+  const queryApi = client.getQueryApi(config.org);
+  const values: number[] = [];
+
+  try {
+    const flux = `from(bucket: "${config.bucket}")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.zoneId == "${params.zoneId}")
+  |> filter(fn: (r) => r.category == "${params.category}")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(every: 30m, fn: mean, createEmpty: false)
+  |> sort(columns: ["_time"])
+  |> limit(n: 48)`;
+
+    for await (const { values: rowValues, tableMeta } of queryApi.iterateRows(flux)) {
+      const o = tableMeta.toObject(rowValues);
+      const v = o._value as number | undefined;
+      if (typeof v === "number") {
+        values.push(v);
+      }
+    }
+  } catch (err) {
+    logger.error(
+      { err, zoneId: params.zoneId, category: params.category },
+      "Zone sparkline query failed",
+    );
+  }
+
+  return values;
+}
+
+/**
  * List historized aliases for an equipment.
  * Returns aliases that have data in InfluxDB.
  */

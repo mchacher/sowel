@@ -150,6 +150,7 @@
   "equipments.notFound.message": "Cet équipement n'existe pas.",
   "equipments.deleteConfirm": "Supprimer l'équipement « {{name}} » ? Cette action est irréversible.",
   "equipments.controls": "Contrôles",
+  "equipments.configuration": "Configuration",
   "equipments.devices": "Appareils",
   "equipments.bindings": "Liaisons",
   "equipments.bindingCount_one": "{{count}} liaison",
@@ -588,5 +589,6 @@
   "history.resolution": "Résolution",
   "history.raw": "Brut",
   "history.hourly": "Horaire",
-  "history.daily": "Journalier"
+  "history.daily": "Journalier",
+  "history.lastMeasurement": "Dernière mesure il y a {{duration}}"
 }

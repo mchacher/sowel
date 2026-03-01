@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
-import { getEquipment, getHistoryStatus, getHistoryBindings, setHistorize } from "../api";
+import { getEquipment, getHistoryBindings, setHistorize } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
 import { ShutterControl } from "../components/equipments/ShutterControl";
@@ -35,6 +35,7 @@ import {
   RefreshCw,
   X,
   Database,
+  Settings,
 } from "lucide-react";
 import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails, HistoryBindingState } from "../types";
@@ -107,6 +108,21 @@ export function EquipmentDetailPage() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- equipment is set inside effect, adding it would cause infinite loop
   }, [id, equipments]); // Re-fetch when store updates
+
+  // Eagerly load history bindings so HistoryPanel can render immediately
+  const loadHistoryBindings = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await getHistoryBindings(id);
+      setHistoryBindings(data);
+    } catch {
+      // Silently ignore — history may not be configured
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadHistoryBindings();
+  }, [loadHistoryBindings]);
 
   if (loading) {
     return (
@@ -265,7 +281,7 @@ export function EquipmentDetailPage() {
       {equipment.type === "weather" ? (
         <WeatherPanel bindings={equipment.dataBindings} />
       ) : isSensor ? (
-        <SensorDataPanel bindings={equipment.dataBindings} />
+        <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
       {/* Button actions */}
@@ -273,113 +289,122 @@ export function EquipmentDetailPage() {
         <ButtonActionsSection equipmentId={equipment.id} />
       )}
 
-      {/* Devices */}
-      <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
-
-      {/* History (per-binding ON/OFF toggles) */}
-      <HistorySection equipmentId={equipment.id} onBindingsLoaded={setHistoryBindings} />
-
       {/* History charts */}
       <HistoryPanel equipmentId={equipment.id} bindings={historyBindings} />
 
-      {/* Technical: Bindings (collapsible) */}
-      <div className="bg-surface rounded-[10px] border border-border mb-6">
-        <button
-          type="button"
-          onClick={() => setShowBindings(!showBindings)}
-          className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
-        >
-          {showBindings
-            ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
-            : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          }
-          <span className="text-[13px] font-medium text-text-secondary">{t("equipments.bindings")}</span>
-          <span className="text-[11px] text-text-tertiary">
-            {t("equipments.bindingCount", { count: equipment.dataBindings.length + equipment.orderBindings.length })}
-          </span>
-        </button>
+      {/* Configuration */}
+      <div className="bg-surface rounded-[10px] border border-border mb-6 divide-y divide-border-light">
+        <div className="flex items-center gap-2 p-4">
+          <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
+          <h3 className="text-[14px] font-semibold text-text">{t("equipments.configuration")}</h3>
+        </div>
 
-        {showBindings && (
-          <div className="px-4 pb-4 space-y-4">
-            {/* Data Bindings */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
-                  <Link2 size={13} strokeWidth={1.5} />
-                  {t("equipments.dataBindings")}
-                </h4>
-                <button
-                  onClick={() => setShowAddDataBinding(true)}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
-                >
-                  <Plus size={11} strokeWidth={1.5} />
-                  {t("common.add")}
-                </button>
-              </div>
-              {equipment.dataBindings.length === 0 ? (
-                <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
-              ) : (
-                <div className="space-y-1">
-                  {equipment.dataBindings.map((binding) => (
-                    <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px] group">
-                      <span className="font-mono font-medium text-primary">{binding.alias}</span>
-                      <span className="text-text-tertiary">({binding.category})</span>
-                      <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
-                      <span className="ml-auto font-mono text-text">
-                        {binding.value !== null && binding.value !== undefined ? String(binding.value) : "—"}
-                        {binding.unit && <span className="text-text-tertiary ml-0.5">{binding.unit}</span>}
-                      </span>
-                      <button
-                        onClick={() => removeDataBinding(equipment.id, binding.id)}
-                        className="p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title={t("common.remove")}
-                      >
-                        <Unlink size={11} strokeWidth={1.5} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
-            {/* Order Bindings */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
-                  <Zap size={13} strokeWidth={1.5} />
-                  {t("equipments.orderBindings")}
-                </h4>
-                <button
-                  onClick={() => setShowAddOrderBinding(true)}
-                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
-                >
-                  <Plus size={11} strokeWidth={1.5} />
-                  {t("common.add")}
-                </button>
-              </div>
-              {equipment.orderBindings.length === 0 ? (
-                <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
-              ) : (
-                <div className="space-y-1">
-                  {equipment.orderBindings.map((binding) => (
-                    <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px] group">
-                      <span className="font-mono font-medium text-accent">{binding.alias}</span>
-                      <span className="text-text-tertiary">({binding.type})</span>
-                      <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
-                      <button
-                        onClick={() => removeOrderBinding(equipment.id, binding.id)}
-                        className="ml-auto p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title={t("common.remove")}
-                      >
-                        <Unlink size={11} strokeWidth={1.5} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        {historyBindings.length > 0 && (
+          <HistorySection equipmentId={equipment.id} bindings={historyBindings} onBindingsChanged={loadHistoryBindings} />
         )}
+
+        {/* Bindings */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowBindings(!showBindings)}
+            className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
+          >
+            {showBindings
+              ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+              : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+            }
+            <Link2 size={14} strokeWidth={1.5} className="text-text-tertiary" />
+            <span className="text-[13px] font-medium text-text-secondary">{t("equipments.bindings")}</span>
+            <span className="text-[11px] text-text-tertiary">
+              {t("equipments.bindingCount", { count: equipment.dataBindings.length + equipment.orderBindings.length })}
+            </span>
+          </button>
+
+          {showBindings && (
+            <div className="px-4 pb-4 space-y-4">
+              {/* Data Bindings */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
+                    <Link2 size={13} strokeWidth={1.5} />
+                    {t("equipments.dataBindings")}
+                  </h4>
+                  <button
+                    onClick={() => setShowAddDataBinding(true)}
+                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+                  >
+                    <Plus size={11} strokeWidth={1.5} />
+                    {t("common.add")}
+                  </button>
+                </div>
+                {equipment.dataBindings.length === 0 ? (
+                  <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
+                ) : (
+                  <div className="space-y-1">
+                    {equipment.dataBindings.map((binding) => (
+                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px] group">
+                        <span className="font-mono font-medium text-primary">{binding.alias}</span>
+                        <span className="text-text-tertiary">({binding.category})</span>
+                        <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
+                        <span className="ml-auto font-mono text-text">
+                          {binding.value !== null && binding.value !== undefined ? String(binding.value) : "—"}
+                          {binding.unit && <span className="text-text-tertiary ml-0.5">{binding.unit}</span>}
+                        </span>
+                        <button
+                          onClick={() => removeDataBinding(equipment.id, binding.id)}
+                          className="p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title={t("common.remove")}
+                        >
+                          <Unlink size={11} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Order Bindings */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
+                    <Zap size={13} strokeWidth={1.5} />
+                    {t("equipments.orderBindings")}
+                  </h4>
+                  <button
+                    onClick={() => setShowAddOrderBinding(true)}
+                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+                  >
+                    <Plus size={11} strokeWidth={1.5} />
+                    {t("common.add")}
+                  </button>
+                </div>
+                {equipment.orderBindings.length === 0 ? (
+                  <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
+                ) : (
+                  <div className="space-y-1">
+                    {equipment.orderBindings.map((binding) => (
+                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px] group">
+                        <span className="font-mono font-medium text-accent">{binding.alias}</span>
+                        <span className="text-text-tertiary">({binding.type})</span>
+                        <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
+                        <button
+                          onClick={() => removeOrderBinding(equipment.id, binding.id)}
+                          className="ml-auto p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title={t("common.remove")}
+                        >
+                          <Unlink size={11} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Edit equipment modal */}
@@ -448,58 +473,25 @@ export function EquipmentDetailPage() {
 // History section (per-binding ON/OFF toggles)
 // ============================================================
 
-function HistorySection({ equipmentId, onBindingsLoaded }: { equipmentId: string; onBindingsLoaded?: (bindings: HistoryBindingState[]) => void }) {
+function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmentId: string; bindings: HistoryBindingState[]; onBindingsChanged: () => void }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [bindings, setBindings] = useState<HistoryBindingState[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [historyEnabled, setHistoryEnabled] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [status, data] = await Promise.all([
-        getHistoryStatus(),
-        getHistoryBindings(equipmentId),
-      ]);
-      setHistoryEnabled(status.enabled);
-      setBindings(data);
-      onBindingsLoaded?.(data);
-    } finally {
-      setLoading(false);
-      setLoaded(true);
-    }
-  }, [equipmentId, onBindingsLoaded]);
-
-  // Load on first open
-  useEffect(() => {
-    if (open && !loaded) {
-      load();
-    }
-  }, [open, loaded, load]);
 
   const handleToggle = async (binding: HistoryBindingState) => {
-    // Cycle: default → ON → OFF → default
     let next: number | null;
     if (binding.historize === null) {
-      next = binding.effectiveOn ? 0 : 1; // flip from default
+      next = binding.effectiveOn ? 0 : 1;
     } else if (binding.historize === 1) {
       next = 0;
     } else {
-      next = null; // back to default
+      next = null;
     }
     await setHistorize(equipmentId, binding.bindingId, next);
-    // Refresh
-    const data = await getHistoryBindings(equipmentId);
-    setBindings(data);
-    onBindingsLoaded?.(data);
+    onBindingsChanged();
   };
 
-  // Don't render anything until we know if history is enabled (only after first load)
-  // Show the section header always but only expand content when history is enabled
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6">
+    <div>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -515,58 +507,50 @@ function HistorySection({ equipmentId, onBindingsLoaded }: { equipmentId: string
 
       {open && (
         <div className="px-4 pb-4">
-          {loading ? (
-            <Loader2 size={16} className="animate-spin text-text-tertiary" />
-          ) : !historyEnabled ? (
-            <p className="text-[12px] text-text-tertiary">{t("history.notConfigured")}</p>
-          ) : bindings.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
-          ) : (
-            <div className="space-y-1">
-              {bindings.map((b) => (
-                <div
-                  key={b.bindingId}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px]"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-medium text-primary">{b.alias}</span>
-                    <span className="text-text-tertiary">({b.category})</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-text-tertiary">
-                      {b.historize === null
-                        ? `(${t("history.default")})`
-                        : `(${t("history.override")})`
-                      }
-                    </span>
-                    <button
-                      onClick={() => handleToggle(b)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors ${
-                        b.effectiveOn
-                          ? "bg-success/10 text-success hover:bg-success/20"
-                          : "bg-border-light text-text-tertiary hover:bg-border"
-                      }`}
-                    >
-                      {b.effectiveOn ? t("history.on") : t("history.off")}
-                    </button>
-                  </div>
+          <div className="space-y-1">
+            {bindings.map((b) => (
+              <div
+                key={b.bindingId}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-medium text-primary">{b.alias}</span>
+                  <span className="text-text-tertiary">({b.category})</span>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-text-tertiary">
+                    {b.historize === null
+                      ? `(${t("history.default")})`
+                      : `(${t("history.override")})`
+                    }
+                  </span>
+                  <button
+                    onClick={() => handleToggle(b)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors ${
+                      b.effectiveOn
+                        ? "bg-success/10 text-success hover:bg-success/20"
+                        : "bg-border-light text-text-tertiary hover:bg-border"
+                    }`}
+                  >
+                    {b.effectiveOn ? t("history.on") : t("history.off")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-/** Group bindings by device and show a summary card per device. */
+/** Collapsible devices sub-section inside the Configuration card. */
 function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWithDetails; onChangeDevice: () => void }) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const devicesStore = useDevices((s) => s.devices);
-  // Collect unique devices from all bindings
-  const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[] }>();
 
+  const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[] }>();
   for (const db of equipment.dataBindings) {
     let entry = deviceMap.get(db.deviceId);
     if (!entry) {
@@ -583,68 +567,68 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
     }
     entry.orderKeys.push(ob.alias);
   }
-
   const devices = [...deviceMap.values()];
 
-  if (devices.length === 0) {
-    return (
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
-            <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
-            {t("equipments.devices")}
-          </h3>
-          <button
-            onClick={onChangeDevice}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
-          >
-            <Plus size={11} strokeWidth={1.5} />
-            {t("common.add")}
-          </button>
-        </div>
-        <p className="text-[13px] text-text-tertiary">{t("equipments.noDevice")}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
-          <Cpu size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          {t("equipments.devices")}
-        </h3>
-        <button
-          onClick={onChangeDevice}
-          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
-        >
-          <RefreshCw size={11} strokeWidth={1.5} />
-          {t("equipments.changeDevice")}
-        </button>
-      </div>
-      <div className="space-y-2">
-        {devices.map((dev) => {
-          const storeDevice = devicesStore[dev.deviceId];
-          const lastSeen = storeDevice?.lastSeen ?? null;
-          return (
-            <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
-              <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
-                <div className="flex items-center gap-1 text-[11px] text-text-tertiary mt-0.5">
-                  <Clock size={10} strokeWidth={1.5} />
-                  <span><RelativeTime iso={lastSeen} /></span>
-                </div>
-              </div>
-              <span className="text-[11px] text-text-tertiary flex-shrink-0">
-                {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
-                {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
-                {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
-              </span>
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
+      >
+        {open
+          ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+          : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        }
+        <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        <span className="text-[13px] font-medium text-text-secondary">{t("equipments.devices")}</span>
+        <span className="text-[11px] text-text-tertiary">{devices.length}</span>
+        {open && (
+          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={onChangeDevice}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+            >
+              {devices.length > 0
+                ? <><RefreshCw size={11} strokeWidth={1.5} /> {t("equipments.changeDevice")}</>
+                : <><Plus size={11} strokeWidth={1.5} /> {t("common.add")}</>
+              }
+            </button>
+          </div>
+        )}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4">
+          {devices.length === 0 ? (
+            <p className="text-[13px] text-text-tertiary">{t("equipments.noDevice")}</p>
+          ) : (
+            <div className="space-y-2">
+              {devices.map((dev) => {
+                const storeDevice = devicesStore[dev.deviceId];
+                const lastSeen = storeDevice?.lastSeen ?? null;
+                return (
+                  <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
+                    <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
+                      <div className="flex items-center gap-1 text-[11px] text-text-tertiary mt-0.5">
+                        <Clock size={10} strokeWidth={1.5} />
+                        <span><RelativeTime iso={lastSeen} /></span>
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-text-tertiary flex-shrink-0">
+                      {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
+                      {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
+                      {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

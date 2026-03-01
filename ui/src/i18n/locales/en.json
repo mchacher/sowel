@@ -150,6 +150,7 @@
   "equipments.notFound.message": "This equipment does not exist.",
   "equipments.deleteConfirm": "Delete equipment \"{{name}}\"? This cannot be undone.",
   "equipments.controls": "Controls",
+  "equipments.configuration": "Configuration",
   "equipments.devices": "Devices",
   "equipments.bindings": "Bindings",
   "equipments.bindingCount_one": "{{count}} binding",
@@ -588,5 +589,6 @@
   "history.resolution": "Resolution",
   "history.raw": "Raw",
   "history.hourly": "Hourly",
-  "history.daily": "Daily"
+  "history.daily": "Daily",
+  "history.lastMeasurement": "Last measurement {{duration}} ago"
 }
