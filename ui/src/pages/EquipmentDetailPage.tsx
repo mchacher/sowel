@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
-import { getEquipment } from "../api";
+import { getEquipment, getHistoryStatus, getHistoryBindings, setHistorize } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
 import { ShutterControl } from "../components/equipments/ShutterControl";
@@ -34,9 +34,10 @@ import {
   Clock,
   RefreshCw,
   X,
+  Database,
 } from "lucide-react";
 import { RelativeTime } from "../components/RelativeTime";
-import type { EquipmentWithDetails } from "../types";
+import type { EquipmentWithDetails, HistoryBindingState } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentDetailPage() {
@@ -273,6 +274,9 @@ export function EquipmentDetailPage() {
       {/* Devices */}
       <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
+      {/* History (per-binding ON/OFF toggles) */}
+      <HistorySection equipmentId={equipment.id} />
+
       {/* Technical: Bindings (collapsible) */}
       <div className="bg-surface rounded-[10px] border border-border mb-6">
         <button
@@ -430,6 +434,120 @@ export function EquipmentDetailPage() {
           }}
           onClose={() => setShowChangeDevice(false)}
         />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// History section (per-binding ON/OFF toggles)
+// ============================================================
+
+function HistorySection({ equipmentId }: { equipmentId: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [bindings, setBindings] = useState<HistoryBindingState[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [historyEnabled, setHistoryEnabled] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [status, data] = await Promise.all([
+        getHistoryStatus(),
+        getHistoryBindings(equipmentId),
+      ]);
+      setHistoryEnabled(status.enabled);
+      setBindings(data);
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  }, [equipmentId]);
+
+  // Load on first open
+  useEffect(() => {
+    if (open && !loaded) {
+      load();
+    }
+  }, [open, loaded, load]);
+
+  const handleToggle = async (binding: HistoryBindingState) => {
+    // Cycle: default → ON → OFF → default
+    let next: number | null;
+    if (binding.historize === null) {
+      next = binding.effectiveOn ? 0 : 1; // flip from default
+    } else if (binding.historize === 1) {
+      next = 0;
+    } else {
+      next = null; // back to default
+    }
+    await setHistorize(equipmentId, binding.bindingId, next);
+    // Refresh
+    const data = await getHistoryBindings(equipmentId);
+    setBindings(data);
+  };
+
+  // Don't render anything until we know if history is enabled (only after first load)
+  // Show the section header always but only expand content when history is enabled
+  return (
+    <div className="bg-surface rounded-[10px] border border-border mb-6">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
+      >
+        {open
+          ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+          : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        }
+        <Database size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        <span className="text-[13px] font-medium text-text-secondary">{t("history.title")}</span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4">
+          {loading ? (
+            <Loader2 size={16} className="animate-spin text-text-tertiary" />
+          ) : !historyEnabled ? (
+            <p className="text-[12px] text-text-tertiary">{t("history.notConfigured")}</p>
+          ) : bindings.length === 0 ? (
+            <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
+          ) : (
+            <div className="space-y-1">
+              {bindings.map((b) => (
+                <div
+                  key={b.bindingId}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-medium text-primary">{b.alias}</span>
+                    <span className="text-text-tertiary">({b.category})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-text-tertiary">
+                      {b.historize === null
+                        ? `(${t("history.default")})`
+                        : `(${t("history.override")})`
+                      }
+                    </span>
+                    <button
+                      onClick={() => handleToggle(b)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors ${
+                        b.effectiveOn
+                          ? "bg-success/10 text-success hover:bg-success/20"
+                          : "bg-border-light text-text-tertiary hover:bg-border"
+                      }`}
+                    >
+                      {b.effectiveOn ? t("history.on") : t("history.off")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

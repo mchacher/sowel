@@ -27,6 +27,7 @@ function createTestDb(): Database.Database {
     "005_recipes.sql",
     "007_settings.sql",
     "011_integration_architecture.sql",
+    "020_history.sql",
   ];
   for (const file of migrations) {
     const sql = readFileSync(

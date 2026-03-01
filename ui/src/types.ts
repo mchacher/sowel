@@ -168,6 +168,7 @@ export interface DataBinding {
   equipmentId: string;
   deviceDataId: string;
   alias: string;
+  historize?: number | null;
 }
 
 export interface OrderBinding {
@@ -186,6 +187,7 @@ export interface DataBindingWithValue extends DataBinding {
   value: unknown;
   unit?: string;
   lastUpdated: string | null;
+  historize?: number | null;
 }
 
 export interface OrderBindingWithDetails extends OrderBinding {
@@ -203,6 +205,26 @@ export interface OrderBindingWithDetails extends OrderBinding {
 export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
+}
+
+// ============================================================
+// History (InfluxDB)
+// ============================================================
+
+export interface HistoryStatus {
+  configured: boolean;
+  connected: boolean;
+  enabled: boolean;
+  historizedBindings: number;
+  stats: { pointsWritten24h: number; errors24h: number };
+}
+
+export interface HistoryBindingState {
+  bindingId: string;
+  alias: string;
+  category: DataCategory;
+  historize: number | null;
+  effectiveOn: boolean;
 }
 
 // ============================================================

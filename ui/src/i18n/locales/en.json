@@ -556,5 +556,26 @@
   "logs.allModules": "All modules",
   "logs.entries": "{{count}} entries",
   "logs.engineLevel": "Engine level",
-  "logs.levelChanged": "Log level changed to {{level}}"
+  "logs.levelChanged": "Log level changed to {{level}}",
+
+  "history.influxdb": "InfluxDB",
+  "history.influxdbDescription": "Time-series database for data historization",
+  "history.url": "URL",
+  "history.token": "Token",
+  "history.org": "Organization",
+  "history.bucket": "Bucket",
+  "history.enabled": "Historization enabled",
+  "history.testConnection": "Test connection",
+  "history.testSuccess": "Connection successful",
+  "history.testFailed": "Connection failed",
+  "history.notConfigured": "Not configured",
+  "history.connected": "Connected",
+  "history.disconnected": "Disconnected",
+  "history.status": "Status",
+  "history.historizedBindings": "Historized data",
+  "history.title": "History",
+  "history.default": "default",
+  "history.override": "modified",
+  "history.on": "ON",
+  "history.off": "OFF"
 }

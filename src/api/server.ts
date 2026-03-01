@@ -21,6 +21,7 @@ import type { UserManager } from "../auth/user-manager.js";
 import type { AuthService } from "../auth/auth-service.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { ButtonActionManager } from "../buttons/button-action-manager.js";
+import type { HistoryWriter } from "../history/history-writer.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -37,6 +38,7 @@ import { registerCalendarRoutes } from "./routes/calendar.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerButtonActionRoutes } from "./routes/button-actions.js";
 import { registerLogRoutes } from "./routes/logs.js";
+import { registerHistoryRoutes } from "./routes/history.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -52,6 +54,7 @@ interface ServerDeps {
   authService: AuthService;
   settingsManager: SettingsManager;
   buttonActionManager: ButtonActionManager;
+  historyWriter: HistoryWriter;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -73,6 +76,7 @@ export async function createServer(deps: ServerDeps) {
     authService,
     settingsManager,
     buttonActionManager,
+    historyWriter,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -117,6 +121,13 @@ export async function createServer(deps: ServerDeps) {
   registerSettingsRoutes(app, { settingsManager, eventBus, logger });
   registerIntegrationRoutes(app, { integrationRegistry, settingsManager, logger });
   registerButtonActionRoutes(app, { buttonActionManager, logger });
+  registerHistoryRoutes(app, {
+    historyWriter,
+    equipmentManager,
+    settingsManager,
+    eventBus,
+    logger,
+  });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 
