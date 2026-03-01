@@ -138,6 +138,7 @@ const MODE_PILL_COLORS: Record<string, { bg: string; text: string }> = {
   eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
   cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
+  night: { bg: "#ede9fe", text: "#7c3aed" },
 };
 const DEFAULT_PILL = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
 
@@ -160,9 +161,10 @@ function ModeCyclePill({
   const currentValue = instance.state?.[action.stateKey] as string | undefined;
   if (!currentValue || !instance.enabled) return null;
 
-  // Filter options: hide cocoon if cocoonTemp not configured
+  // Filter options: hide cocoon/night if their temp is not configured
   const availableOptions = action.options.filter((opt) => {
     if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
+    if (opt.value === "night" && !instance.params.nightTemp) return false;
     return true;
   });
   if (availableOptions.length < 2) return null;
@@ -196,7 +198,7 @@ function ModeCyclePill({
     <button
       onClick={handleClick}
       disabled={sending}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
+      className="inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-[10px] leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
       style={{ backgroundColor: colors.bg, color: colors.text }}
       title={t("recipes.actions.cycleTo", { mode: nextOption.label, defaultValue: `Click to switch to ${nextOption.label}` })}
     >
