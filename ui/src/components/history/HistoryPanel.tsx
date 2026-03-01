@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, BarChart3 } from "lucide-react";
+import { Loader2, BarChart3, ChevronDown, ChevronRight } from "lucide-react";
 import { getHistoryData, getHistoryStatus } from "../../api";
 import type { HistoryPoint, HistoryBindingState } from "../../types";
 import { TimeRangeSelector } from "./TimeRangeSelector";
@@ -33,6 +33,7 @@ const RESOLUTION_I18N: Record<string, string> = {
 export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
   const { t } = useTranslation();
   const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
+  const [open, setOpen] = useState(false);
   const [range, setRange] = useState<TimeRange>("24h");
   const [expandedAlias, setExpandedAlias] = useState<string | null>(null);
   const [charts, setCharts] = useState<Record<string, ChartState>>({});
@@ -120,20 +121,30 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
 
   return (
     <div className="bg-surface rounded-[10px] border border-border mb-6">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2">
-          <BarChart3 size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          <span className="text-[13px] font-medium text-text-secondary">
-            {t("history.chart")}
-          </span>
-          <span className="text-[11px] text-text-tertiary">
-            {historizedBindings.length}
-          </span>
-        </div>
-        <TimeRangeSelector value={range} onChange={setRange} />
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
+      >
+        {open
+          ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+          : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        }
+        <BarChart3 size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        <span className="text-[13px] font-medium text-text-secondary">
+          {t("history.chart")}
+        </span>
+        <span className="text-[11px] text-text-tertiary">
+          {historizedBindings.length}
+        </span>
+        {open && (
+          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <TimeRangeSelector value={range} onChange={setRange} />
+          </div>
+        )}
+      </button>
 
-      <div className="px-4 pb-4 space-y-1">
+      {open && <div className="px-4 pb-4 space-y-1">
         {historizedBindings.map((binding) => {
           const isExpanded = expandedAlias === binding.alias;
           const chart = charts[binding.alias];
@@ -196,7 +207,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
