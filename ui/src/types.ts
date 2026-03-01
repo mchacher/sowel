@@ -227,6 +227,18 @@ export interface HistoryBindingState {
   effectiveOn: boolean;
 }
 
+export interface HistoryPoint {
+  time: string; // ISO 8601
+  value: number;
+  min?: number;
+  max?: number;
+}
+
+export interface HistoryQueryResult {
+  points: HistoryPoint[];
+  resolution: "raw" | "1h" | "1d";
+}
+
 // ============================================================
 // Engine Events (received via WebSocket)
 // ============================================================

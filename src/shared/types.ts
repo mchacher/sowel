@@ -196,6 +196,26 @@ export interface HistoryBindingState {
   effectiveOn: boolean; // Resolved from override → alias default → category default
 }
 
+export interface HistoryPoint {
+  time: string; // ISO 8601
+  value: number;
+  min?: number; // Only for aggregated data
+  max?: number; // Only for aggregated data
+}
+
+export interface HistoryQueryParams {
+  equipmentId: string;
+  alias: string;
+  from: string; // ISO 8601 or relative (-24h, -7d)
+  to?: string; // ISO 8601, defaults to now()
+  aggregation?: "raw" | "1h" | "1d" | "auto"; // auto picks based on range
+}
+
+export interface HistoryQueryResult {
+  points: HistoryPoint[];
+  resolution: "raw" | "1h" | "1d";
+}
+
 export interface OrderBinding {
   id: string;
   equipmentId: string;
