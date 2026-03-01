@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Loader2, BarChart3 } from "lucide-react";
 import { getHistoryData, getHistoryStatus } from "../../api";
 import type { HistoryPoint, HistoryBindingState } from "../../types";
-import { TimeRangeSelector, rangeToFrom } from "./TimeRangeSelector";
-import type { TimeRange } from "./TimeRangeSelector";
+import { TimeRangeSelector } from "./TimeRangeSelector";
+import { rangeToFrom } from "./history-utils";
+import type { TimeRange } from "./history-utils";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 
 interface HistoryPanelProps {

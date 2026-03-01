@@ -11,7 +11,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { HistoryPoint } from "../../types";
-import type { TimeRange } from "./TimeRangeSelector";
+import type { TimeRange } from "./history-utils";
 
 interface TimeSeriesChartProps {
   points: HistoryPoint[];

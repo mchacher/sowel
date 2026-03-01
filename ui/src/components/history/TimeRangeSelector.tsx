@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
-
-export type TimeRange = "6h" | "24h" | "7d" | "30d";
+import type { TimeRange } from "./history-utils";
 
 interface TimeRangeSelectorProps {
   value: TimeRange;
@@ -14,16 +13,6 @@ const RANGE_I18N: Record<TimeRange, string> = {
   "7d": "history.range7d",
   "30d": "history.range30d",
 };
-
-/** Convert a TimeRange to a relative "from" string for the API. */
-export function rangeToFrom(range: TimeRange): string {
-  switch (range) {
-    case "6h": return "-6h";
-    case "24h": return "-24h";
-    case "7d": return "-168h"; // 7 * 24
-    case "30d": return "-720h"; // 30 * 24
-  }
-}
 
 export function TimeRangeSelector({ value, onChange }: TimeRangeSelectorProps) {
   const { t } = useTranslation();
