@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -6,6 +7,9 @@ import {
   Plus,
   X,
   ChevronDown,
+  Save,
+  Copy,
+  Trash2,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -17,12 +21,14 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { getEquipments, getZones, getHistoryBindings, getHistoryData } from "../../api";
+import { getEquipments, getZones, getHistoryBindings, getHistoryData, getChart } from "../../api";
+import { useCharts } from "../../store/useCharts";
 import type {
   EquipmentWithDetails,
   ZoneWithChildren,
   HistoryBindingState,
   HistoryPoint,
+  SavedChart,
 } from "../../types";
 import { TimeRangeSelector } from "./TimeRangeSelector";
 import { rangeToFrom } from "./history-utils";
@@ -123,6 +129,12 @@ function formatTooltipTime(iso: string): string {
 
 export function AnalyseView() {
   const { t } = useTranslation();
+  const { chartId } = useParams();
+  const navigate = useNavigate();
+  const createChart = useCharts((s) => s.createChart);
+  const updateChartStore = useCharts((s) => s.updateChart);
+  const deleteChartStore = useCharts((s) => s.deleteChart);
+  const fetchCharts = useCharts((s) => s.fetchCharts);
 
   // --- Data sources ---
   const [zones, setZones] = useState<ZoneWithChildren[]>([]);
@@ -134,12 +146,29 @@ export function AnalyseView() {
   const [series, setSeries] = useState<SeriesConfig[]>([]);
   const [seriesData, setSeriesData] = useState<Record<string, SeriesData>>({});
 
+  // --- Saved chart state ---
+  const [currentChart, setCurrentChart] = useState<SavedChart | null>(null);
+  const [loadingChart, setLoadingChart] = useState(false);
+
+  // --- Save modal ---
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMode, setSaveMode] = useState<"save" | "saveAs">("save");
+  const saveInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Delete confirm ---
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // --- Add series form ---
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedZoneId, setSelectedZoneId] = useState<string>("");
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
   const [availableBindings, setAvailableBindings] = useState<HistoryBindingState[]>([]);
   const [loadingBindings, setLoadingBindings] = useState(false);
+
+  // Track loaded chart id to avoid re-loading
+  const loadedChartIdRef = useRef<string | undefined>(undefined);
 
   // Load zones + equipments on mount
   useEffect(() => {
@@ -152,15 +181,57 @@ export function AnalyseView() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Load saved chart when chartId changes
+  useEffect(() => {
+    if (!chartId) {
+      if (loadedChartIdRef.current !== undefined) {
+        setCurrentChart(null);
+        setSeries([]);
+        setSeriesData({});
+        setRange("24h");
+        loadedChartIdRef.current = undefined;
+      }
+      return;
+    }
+
+    if (chartId === loadedChartIdRef.current) return;
+
+    setLoadingChart(true);
+    getChart(chartId)
+      .then((chart) => {
+        setCurrentChart(chart);
+        loadedChartIdRef.current = chartId;
+        setRange((chart.config.timeRange as TimeRange) || "24h");
+        const newSeries: SeriesConfig[] = [];
+        for (const sc of chart.config.series) {
+          const eq = equipments.find((e) => e.id === sc.equipmentId);
+          const id = `${sc.equipmentId}:${sc.alias}`;
+          newSeries.push({
+            id,
+            equipmentId: sc.equipmentId,
+            equipmentName: eq?.name ?? sc.equipmentId,
+            alias: sc.alias,
+            category: "",
+            color: SERIES_COLORS[newSeries.length % SERIES_COLORS.length],
+          });
+        }
+        setSeries(newSeries);
+        setSeriesData({});
+      })
+      .catch(() => {
+        setCurrentChart(null);
+        loadedChartIdRef.current = chartId;
+      })
+      .finally(() => setLoadingChart(false));
+  }, [chartId, equipments]);
+
   const flatZones = useMemo(() => flattenZones(zones), [zones]);
 
-  // Equipments filtered by selected zone
   const filteredEquipments = useMemo(() => {
     if (!selectedZoneId) return equipments;
     return equipments.filter((e) => e.zoneId === selectedZoneId);
   }, [equipments, selectedZoneId]);
 
-  // Load historized bindings when equipment selected
   useEffect(() => {
     if (!selectedEquipmentId) {
       setAvailableBindings([]);
@@ -173,7 +244,6 @@ export function AnalyseView() {
       .finally(() => setLoadingBindings(false));
   }, [selectedEquipmentId]);
 
-  // Fetch series data when series list or range changes
   const fetchSeriesData = useCallback(
     async (seriesList: SeriesConfig[], timeRange: TimeRange) => {
       for (const s of seriesList) {
@@ -213,7 +283,7 @@ export function AnalyseView() {
     if (!equipment) return;
 
     const id = `${selectedEquipmentId}:${binding.alias}`;
-    if (series.some((s) => s.id === id)) return; // already added
+    if (series.some((s) => s.id === id)) return;
 
     const newSeries: SeriesConfig = {
       id,
@@ -239,11 +309,71 @@ export function AnalyseView() {
     });
   };
 
+  // --- Save handlers ---
+  const buildConfig = () => ({
+    series: series.map((s) => ({ equipmentId: s.equipmentId, alias: s.alias })),
+    timeRange: range,
+  });
+
+  const handleSave = async () => {
+    if (currentChart) {
+      setSaving(true);
+      try {
+        const updated = await updateChartStore(currentChart.id, { config: buildConfig() });
+        setCurrentChart(updated);
+      } catch { /* ignore */ }
+      setSaving(false);
+    } else {
+      setSaveMode("save");
+      setSaveName("");
+      setShowSaveModal(true);
+    }
+  };
+
+  const handleSaveAs = () => {
+    setSaveMode("saveAs");
+    setSaveName(currentChart?.name ? `${currentChart.name} (2)` : "");
+    setShowSaveModal(true);
+  };
+
+  const handleSaveConfirm = async () => {
+    if (!saveName.trim()) return;
+    setSaving(true);
+    try {
+      const chart = await createChart(saveName.trim(), buildConfig());
+      setCurrentChart(chart);
+      loadedChartIdRef.current = chart.id;
+      setShowSaveModal(false);
+      navigate(`/analyse/${chart.id}`, { replace: true });
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!currentChart) return;
+    try {
+      await deleteChartStore(currentChart.id);
+      setCurrentChart(null);
+      loadedChartIdRef.current = undefined;
+      setShowDeleteConfirm(false);
+      navigate("/analyse", { replace: true });
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (showSaveModal) {
+      setTimeout(() => saveInputRef.current?.focus(), 50);
+    }
+  }, [showSaveModal]);
+
+  useEffect(() => {
+    fetchCharts();
+  }, [fetchCharts]);
+
   // --- Merge all series into a unified chart dataset ---
   const chartData = useMemo(() => {
     if (series.length === 0) return [];
 
-    // Collect all unique timestamps
     const timeMap = new Map<string, Record<string, number>>();
 
     for (const s of series) {
@@ -256,7 +386,6 @@ export function AnalyseView() {
       }
     }
 
-    // Sort by time and build chart data
     const sorted = Array.from(timeMap.entries()).sort(([a], [b]) => a.localeCompare(b));
     return sorted.map(([time, values]) => ({
       time,
@@ -267,11 +396,10 @@ export function AnalyseView() {
 
   const anyLoading = series.some((s) => seriesData[s.id]?.loading);
 
-  // --- Chart colors ---
   const textTertiary = "var(--color-text-tertiary)";
   const borderColor = "var(--color-border-light)";
 
-  if (loading) {
+  if (loading || loadingChart) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 size={20} className="animate-spin text-text-tertiary" />
@@ -279,15 +407,58 @@ export function AnalyseView() {
     );
   }
 
+  const title = currentChart?.name ?? t("analyse.title");
+
   return (
     <div className="space-y-4">
-      {/* Header with range selector */}
+      {/* Header with range selector + save buttons */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
-          <h1 className="text-[18px] font-semibold text-text">{t("analyse.title")}</h1>
+          <h1 className="text-[18px] font-semibold text-text">{title}</h1>
         </div>
-        <TimeRangeSelector value={range} onChange={setRange} />
+        <div className="flex items-center gap-2">
+          {series.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                  bg-primary-light text-primary hover:bg-primary hover:text-white
+                  transition-colors cursor-pointer disabled:opacity-50"
+                title={t("analyse.save")}
+              >
+                <Save size={14} strokeWidth={1.5} />
+                {t("analyse.save")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAs}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                  text-text-secondary hover:bg-border-light hover:text-text
+                  transition-colors cursor-pointer disabled:opacity-50"
+                title={t("analyse.saveAs")}
+              >
+                <Copy size={14} strokeWidth={1.5} />
+              </button>
+              {currentChart && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                    text-text-secondary hover:bg-error/10 hover:text-error
+                    transition-colors cursor-pointer"
+                  title={t("analyse.deleteChart")}
+                >
+                  <Trash2 size={14} strokeWidth={1.5} />
+                </button>
+              )}
+            </>
+          )}
+          <TimeRangeSelector value={range} onChange={setRange} />
+        </div>
       </div>
 
       {/* Series pills + add button */}
@@ -510,6 +681,81 @@ export function AnalyseView() {
               </LineChart>
             </ResponsiveContainer>
           )}
+        </div>
+      )}
+
+      {/* Save name modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-[14px] border border-border shadow-xl w-[360px] p-5">
+            <h2 className="text-[15px] font-semibold text-text mb-3">
+              {saveMode === "saveAs" ? t("analyse.saveAs") : t("analyse.save")}
+            </h2>
+            <label className="block text-[11px] font-medium text-text-tertiary mb-1">
+              {t("analyse.saveName")}
+            </label>
+            <input
+              ref={saveInputRef}
+              type="text"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveConfirm(); }}
+              placeholder={t("analyse.saveNamePlaceholder")}
+              className="w-full px-3 py-2 rounded-[6px] border border-border bg-surface text-[13px] text-text
+                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(false)}
+                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-text-secondary
+                  hover:bg-border-light transition-colors cursor-pointer"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveConfirm}
+                disabled={!saveName.trim() || saving}
+                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium bg-primary text-white
+                  hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : t("analyse.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {showDeleteConfirm && currentChart && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-[14px] border border-border shadow-xl w-[360px] p-5">
+            <h2 className="text-[15px] font-semibold text-text mb-3">
+              {t("analyse.deleteChart")}
+            </h2>
+            <p className="text-[13px] text-text-secondary">
+              {t("analyse.deleteConfirm", { name: currentChart.name })}
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-text-secondary
+                  hover:bg-border-light transition-colors cursor-pointer"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium bg-error text-white
+                  hover:bg-error/80 transition-colors cursor-pointer"
+              >
+                {t("common.delete")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

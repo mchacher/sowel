@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarZoneTree } from "./SidebarZoneTree";
 import { SidebarModeList } from "./SidebarModeList";
+import { SidebarChartList } from "./SidebarChartList";
 import { WinchLogo } from "./WinchLogo";
 import { useAuth } from "../../store/useAuth";
 
@@ -141,19 +142,23 @@ export function Sidebar() {
               <BarChart3 size={20} strokeWidth={1.5} />
             </NavLink>
           ) : (
-            <NavLink
-              to="/analyse"
-              className={() => `flex items-center gap-2 px-3 mb-2 group`}
-            >
-              {({ isActive }) => (
-                <>
-                  <BarChart3 size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
-                    {t("nav.analyse")}
-                  </span>
-                </>
-              )}
-            </NavLink>
+            <>
+              <NavLink
+                to="/analyse"
+                end
+                className={() => `flex items-center gap-2 px-3 mb-2 group`}
+              >
+                {({ isActive }) => (
+                  <>
+                    <BarChart3 size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                    <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                      {t("nav.analyse")}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+              <SidebarChartList collapsed={collapsed} />
+            </>
           )}
         </div>
       </div>

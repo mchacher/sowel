@@ -602,5 +602,14 @@
   "analyse.metric": "Métrique",
   "analyse.noHistorizedData": "Aucune donnée historisée pour cet équipement.",
   "analyse.empty": "Aucune série à afficher",
-  "analyse.emptyHint": "Cliquez sur « Ajouter » pour superposer des métriques de différents équipements."
+  "analyse.emptyHint": "Cliquez sur « Ajouter » pour superposer des métriques de différents équipements.",
+  "analyse.save": "Enregistrer",
+  "analyse.saveAs": "Enregistrer sous",
+  "analyse.saveName": "Nom du graphique",
+  "analyse.saveNamePlaceholder": "ex. Comparaison températures",
+  "analyse.deleteChart": "Supprimer le graphique",
+  "analyse.deleteConfirm": "Supprimer le graphique « {{name}} » ?",
+  "analyse.noSavedCharts": "Aucun graphique sauvegardé",
+  "analyse.saved": "Graphique enregistré",
+  "analyse.new": "Nouveau graphique"
 }
