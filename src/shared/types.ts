@@ -285,11 +285,19 @@ export interface RecipeLangPack {
   groups?: Record<string, string>;
 }
 
+export interface RecipeActionDef {
+  id: string;
+  type: "cycle";
+  stateKey: string;
+  options: { value: string; label: string }[];
+}
+
 export interface RecipeInfo {
   id: string;
   name: string;
   description: string;
   slots: RecipeSlotDef[];
+  actions?: RecipeActionDef[];
   i18n?: Record<string, RecipeLangPack>;
 }
 

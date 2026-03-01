@@ -93,6 +93,7 @@ export class RecipeManager {
         name: sample.name,
         description: sample.description,
         slots: sample.slots,
+        ...(sample.actions.length > 0 ? { actions: sample.actions } : {}),
         ...(Object.keys(sample.i18n).length > 0 ? { i18n: sample.i18n } : {}),
       },
       create: () => new RecipeClass(),
@@ -337,6 +338,15 @@ export class RecipeManager {
   getLog(instanceId: string, limit = 50): RecipeLogEntry[] {
     const rows = this.stmts.getLog.all(instanceId, limit) as LogRow[];
     return rows.map(rowToLogEntry);
+  }
+
+  sendAction(instanceId: string, action: string, payload?: Record<string, unknown>): void {
+    const running = this.running.get(instanceId);
+    if (!running) {
+      throw new RecipeError("Instance not running", 400);
+    }
+    running.recipe.onAction(action, payload);
+    this.logger.debug({ instanceId, action, payload }, "Recipe action sent");
   }
 
   stopAll(): void {
