@@ -11,11 +11,25 @@ export function isAnyLightOn(lightIds: string[], ctx: RecipeContext): boolean {
   for (const lightId of lightIds) {
     const bindings = ctx.equipmentManager.getDataBindingsWithValues(lightId);
     const stateBinding = bindings.find((b) => b.alias === "state" || b.category === "light_state");
-    if (stateBinding && (stateBinding.value === true || stateBinding.value === "ON")) {
+    if (
+      stateBinding &&
+      (stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON")
+    ) {
       return true;
     }
   }
   return false;
+}
+
+/**
+ * Resolve the actual ON or OFF value from the order binding's enumValues.
+ * Falls back to uppercase "ON"/"OFF" (Z2M convention) if no enum match found.
+ */
+function resolveEnumValue(lightId: string, ctx: RecipeContext, target: "on" | "off"): string {
+  const equipment = ctx.equipmentManager.getByIdWithDetails(lightId);
+  const stateOrder = equipment?.orderBindings.find((ob) => ob.alias === "state");
+  const match = stateOrder?.enumValues?.find((v) => v.toLowerCase() === target);
+  return match ?? target.toUpperCase();
 }
 
 /**
@@ -26,7 +40,7 @@ export function turnOnLights(lightIds: string[], ctx: RecipeContext): string[] {
   const errors: string[] = [];
   for (const lightId of lightIds) {
     try {
-      ctx.equipmentManager.executeOrder(lightId, "state", "ON");
+      ctx.equipmentManager.executeOrder(lightId, "state", resolveEnumValue(lightId, ctx, "on"));
     } catch (err) {
       errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -42,7 +56,7 @@ export function turnOffLights(lightIds: string[], ctx: RecipeContext): string[] 
   const errors: string[] = [];
   for (const lightId of lightIds) {
     try {
-      ctx.equipmentManager.executeOrder(lightId, "state", "OFF");
+      ctx.equipmentManager.executeOrder(lightId, "state", resolveEnumValue(lightId, ctx, "off"));
     } catch (err) {
       errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
     }

@@ -23,7 +23,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
   );
 
   const isOn = stateBinding
-    ? stateBinding.value === true || stateBinding.value === "ON"
+    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
     : false;
 
   const deviceBrightness = brightnessBinding
@@ -35,7 +35,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
   const brightness = slider.displayValue(deviceBrightness);
 
   const toggleBinding = equipment.orderBindings.find(
-    (ob) => ob.type === "boolean"
+    (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum")
   );
   const hasToggle = !!toggleBinding;
   const hasBrightness = equipment.orderBindings.some(
@@ -49,10 +49,12 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
     setExecuting(true);
     try {
       const alias = toggleBinding.alias;
-      // Boolean orders use true/false; "state" alias uses "ON"/"OFF" strings (Z2M convention)
+      // Boolean orders use true/false; enum/state orders use the actual enum values
+      const onVal = toggleBinding.enumValues?.find(v => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find(v => /^off$/i.test(v)) ?? "OFF";
       const value = toggleBinding.type === "boolean" && alias !== "state"
         ? !isOn
-        : (isOn ? "OFF" : "ON");
+        : (isOn ? offVal : onVal);
       await onExecuteOrder(alias, value);
     } finally {
       setExecuting(false);
