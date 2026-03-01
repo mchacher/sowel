@@ -15,14 +15,14 @@ export class PresenceHeaterRecipe extends Recipe {
     {
       id: "zone",
       name: "Zone",
-      description: "Room monitored by the motion sensor",
+      description: "Zone to monitor for presence",
       type: "zone",
       required: true,
     },
     {
       id: "heaters",
       name: "Heaters",
-      description: "Heaters to control (fil pilote relay modules)",
+      description: "Electric heater equipments (relay-controlled)",
       type: "equipment",
       required: true,
       list: true,
@@ -30,32 +30,32 @@ export class PresenceHeaterRecipe extends Recipe {
     },
     {
       id: "timeout",
-      name: "Eco delay",
-      description: "Duration without motion before switching to eco (e.g. 30m, 1h)",
+      name: "Timeout",
+      description: "Delay with no motion before switching to eco",
       type: "duration",
       required: true,
       defaultValue: "30m",
     },
     {
       id: "nightStart",
-      name: "Night mode start",
-      description: "Time when heating switches to eco (e.g. 22:00)",
+      name: "Night Start",
+      description: "Start of forced eco window (HH:MM)",
       type: "time",
       required: false,
       group: "night",
     },
     {
       id: "nightEnd",
-      name: "Night mode end",
-      description: "Time when heating can switch back to comfort (e.g. 06:30)",
+      name: "Night End",
+      description: "End of forced eco window (HH:MM)",
       type: "time",
       required: false,
       group: "night",
     },
     {
       id: "maxOnDuration",
-      name: "Max comfort duration",
-      description: "Safety: switch to eco after this duration even if motion is detected (e.g. 4h)",
+      name: "Max Comfort Duration",
+      description: "Force eco after this duration even with continued motion (safety)",
       type: "duration",
       required: false,
     },
@@ -67,30 +67,23 @@ export class PresenceHeaterRecipe extends Recipe {
       description:
         "Passe les radiateurs électriques en confort sur mouvement, éco après un délai sans présence. Convention fil pilote : relais OFF = confort, relais ON = éco.",
       slots: {
-        zone: {
-          name: "Zone",
-          description: "Pièce surveillée par le détecteur de mouvement",
-        },
+        zone: { name: "Zone", description: "Zone à surveiller" },
         heaters: {
           name: "Radiateurs",
-          description: "Radiateurs à piloter (modules relais fil pilote)",
+          description: "Radiateurs électriques (contrôlés par relais)",
         },
-        timeout: {
-          name: "Délai avant éco",
-          description: "Durée sans mouvement avant de repasser en éco (ex : 30m, 1h)",
-        },
+        timeout: { name: "Délai", description: "Délai sans mouvement avant passage en éco" },
         nightStart: {
-          name: "Début mode nuit",
-          description: "Heure à partir de laquelle le chauffage passe en éco (ex : 22:00)",
+          name: "Début nuit",
+          description: "Début de la plage éco forcé (HH:MM)",
         },
         nightEnd: {
-          name: "Fin mode nuit",
-          description: "Heure à laquelle le chauffage peut repasser en confort (ex : 06:30)",
+          name: "Fin nuit",
+          description: "Fin de la plage éco forcé (HH:MM)",
         },
         maxOnDuration: {
           name: "Durée max confort",
-          description:
-            "Sécurité : repasse en éco après cette durée même si du mouvement est détecté (ex : 4h)",
+          description: "Forcer éco après cette durée même si mouvement continu (sécurité)",
         },
       },
       groups: {
