@@ -476,11 +476,12 @@ export function AnalyseView() {
                     }
                     return "";
                   }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value?: number, name?: string) => {
+                    const v = value ?? 0;
                     const s = series.find((ser) => ser.id === name);
                     const unit = s ? CATEGORY_UNITS[s.category] : "";
-                    const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-                    const label = s ? `${s.equipmentName} / ${s.alias}` : name;
+                    const formatted = Number.isInteger(v) ? String(v) : v.toFixed(1);
+                    const label = s ? `${s.equipmentName} / ${s.alias}` : (name ?? "");
                     return [unit ? `${formatted} ${unit}` : formatted, label];
                   }}
                 />
