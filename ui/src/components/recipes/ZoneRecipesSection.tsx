@@ -529,6 +529,7 @@ function RecipeInstanceRow({
                                         className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                                       />
                                     )}
+                                    <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                                   </div>
                                 ))}
                               </div>
@@ -610,6 +611,7 @@ function RecipeInstanceRow({
                             className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                           />
                         )}
+                        <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                         </>
                         )}
                       </div>
