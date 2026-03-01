@@ -18,6 +18,7 @@ import { ModeDetailPage } from "./pages/ModeDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { LogsPage } from "./pages/LogsPage";
 import { BackupPage } from "./pages/BackupPage";
+import { AnalysePage } from "./pages/AnalysePage";
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/modes" element={<ModesPage />} />
           <Route path="/modes/:id" element={<ModeDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/analyse" element={<AnalysePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/logs" element={<LogsPage />} />
