@@ -616,7 +616,7 @@ export function AnalyseView() {
           <p className="text-[12px] text-text-tertiary mt-1">{t("analyse.emptyHint")}</p>
         </div>
       ) : (
-        <div className="bg-surface rounded-[10px] border border-border p-4">
+        <div className="bg-surface rounded-[10px] border border-border p-4 [&_.recharts-wrapper]:!outline-none">
           {anyLoading && (
             <div className="flex items-center gap-2 mb-3">
               <Loader2 size={14} className="animate-spin text-text-tertiary" />
