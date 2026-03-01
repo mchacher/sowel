@@ -82,23 +82,7 @@ export function Sidebar() {
             <Home size={20} strokeWidth={1.5} />
           </NavLink>
         ) : (
-          <>
-            <NavLink
-              to="/home"
-              end
-              className={() => `flex items-center gap-2 px-3 mb-2 group`}
-            >
-              {({ isActive }) => (
-                <>
-                  <Home size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
-                    {t("nav.maison")}
-                  </span>
-                </>
-              )}
-            </NavLink>
-            <SidebarZoneTree collapsed={collapsed} />
-          </>
+          <SidebarZoneTree collapsed={collapsed} />
         )}
 
         {/* Modes section */}
