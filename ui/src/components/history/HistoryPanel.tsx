@@ -33,7 +33,7 @@ const RESOLUTION_I18N: Record<string, string> = {
 export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
   const { t } = useTranslation();
   const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [range, setRange] = useState<TimeRange>("24h");
   const [expandedAlias, setExpandedAlias] = useState<string | null>(null);
   const [charts, setCharts] = useState<Record<string, ChartState>>({});
