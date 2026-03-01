@@ -19,6 +19,7 @@ import { CalendarPage } from "./pages/CalendarPage";
 import { LogsPage } from "./pages/LogsPage";
 import { BackupPage } from "./pages/BackupPage";
 import { AnalysePage } from "./pages/AnalysePage";
+import { MqttPublishersPage } from "./pages/MqttPublishersPage";
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/analyse/:chartId" element={<AnalysePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/mqtt-publishers" element={<MqttPublishersPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/backup" element={<BackupPage />} />
 

@@ -515,6 +515,33 @@ export interface SavedChart {
 }
 
 // ============================================================
+// MQTT Publishers
+// ============================================================
+
+export interface MqttPublisher {
+  id: string;
+  name: string;
+  topic: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MqttPublisherMapping {
+  id: string;
+  publisherId: string;
+  publishKey: string;
+  sourceType: "equipment" | "zone";
+  sourceId: string;
+  sourceKey: string;
+  createdAt: string;
+}
+
+export interface MqttPublisherWithMappings extends MqttPublisher {
+  mappings: MqttPublisherMapping[];
+}
+
+// ============================================================
 // Integration
 // ============================================================
 

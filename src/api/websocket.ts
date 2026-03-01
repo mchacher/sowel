@@ -20,6 +20,7 @@ type WsTopic =
   | "modes"
   | "recipes"
   | "calendar"
+  | "mqtt-publishers"
   | "system"
   | "logs";
 
@@ -30,6 +31,7 @@ const VALID_TOPICS = new Set<WsTopic>([
   "modes",
   "recipes",
   "calendar",
+  "mqtt-publishers",
   "system",
   "logs",
 ]);
@@ -57,6 +59,8 @@ function getEventTopic(event: EngineEvent): WsTopic {
       return "recipes";
     case "calendar":
       return "calendar";
+    case "mqtt-publisher":
+      return "mqtt-publishers";
     default:
       return "system";
   }

@@ -503,6 +503,12 @@ export type EngineEvent =
   | { type: "settings.changed"; keys: string[] }
   // Sunlight events
   | { type: "sunlight.changed" }
+  // MQTT Publisher events
+  | { type: "mqtt-publisher.created"; publisher: MqttPublisher }
+  | { type: "mqtt-publisher.updated"; publisher: MqttPublisher }
+  | { type: "mqtt-publisher.removed"; publisherId: string; publisherName: string }
+  | { type: "mqtt-publisher.mapping.created"; publisherId: string; mapping: MqttPublisherMapping }
+  | { type: "mqtt-publisher.mapping.removed"; publisherId: string; mappingId: string }
   // System events
   | { type: "system.started" }
   | { type: "system.integration.connected"; integrationId: string }
@@ -609,6 +615,33 @@ export interface SavedChart {
   config: SavedChartConfig;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================================
+// MQTT Publishers
+// ============================================================
+
+export interface MqttPublisher {
+  id: string;
+  name: string;
+  topic: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MqttPublisherMapping {
+  id: string;
+  publisherId: string;
+  publishKey: string;
+  sourceType: "equipment" | "zone";
+  sourceId: string;
+  sourceKey: string;
+  createdAt: string;
+}
+
+export interface MqttPublisherWithMappings extends MqttPublisher {
+  mappings: MqttPublisherMapping[];
 }
 
 // ============================================================
