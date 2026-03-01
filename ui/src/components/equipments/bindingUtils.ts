@@ -23,11 +23,11 @@ const RELEVANT_DATA: Record<string, string[]> = {
 
 /** Maps equipment types to relevant order keys for auto-binding. */
 const RELEVANT_ORDERS: Record<string, string[]> = {
-  light_onoff: ["state", "on"],
-  light_dimmable: ["state", "on", "brightness"],
-  light_color: ["state", "on", "brightness", "color", "color_temp"],
+  light_onoff: ["state", "on", "R1", "R2", "R3", "R4"],
+  light_dimmable: ["state", "on", "brightness", "R1", "R2", "R3", "R4"],
+  light_color: ["state", "on", "brightness", "color", "color_temp", "R1", "R2", "R3", "R4"],
   shutter: ["position", "state", "target_position"],
-  switch: ["state", "on"],
+  switch: ["state", "on", "R1", "R2", "R3", "R4"],
   button: [],
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
   weather: [],
@@ -50,6 +50,30 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
     R2: "command",
     R3: "command",
     R4: "command",
+  },
+  light_onoff: {
+    R1: "state",
+    R2: "state",
+    R3: "state",
+    R4: "state",
+  },
+  light_dimmable: {
+    R1: "state",
+    R2: "state",
+    R3: "state",
+    R4: "state",
+  },
+  light_color: {
+    R1: "state",
+    R2: "state",
+    R3: "state",
+    R4: "state",
+  },
+  switch: {
+    R1: "state",
+    R2: "state",
+    R3: "state",
+    R4: "state",
   },
 };
 

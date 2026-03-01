@@ -429,7 +429,7 @@ export abstract class MotionLightBase extends Recipe {
   protected onLightChanged(value: unknown): void {
     if (this.overrideMode) return;
 
-    const lightOn = value === true || value === "ON";
+    const lightOn = value === true || String(value).toUpperCase() === "ON";
     const motion = this.hasMotion();
 
     if (lightOn && !motion) {
