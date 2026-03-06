@@ -100,6 +100,7 @@ export function registerHistoryRoutes(
           bindingId: b.id,
           alias: b.alias,
           category: b.category,
+          type: b.type,
           historize: b.historize ?? null,
           effectiveOn: HistoryWriter.resolveHistorize(
             b.historize ?? null,
@@ -241,6 +242,11 @@ export function registerHistoryRoutes(
         .send({ error: "Invalid aggregation. Must be: raw, 1h, 1d, or auto" });
     }
 
+    // Look up binding type for proper aggregation strategy
+    const bindings = equipmentManager.getDataBindingsWithValues(equipmentId);
+    const binding = bindings.find((b) => b.alias === alias);
+    const dataType = binding?.type ?? "number";
+
     const result = await queryHistory(
       influx,
       {
@@ -249,11 +255,12 @@ export function registerHistoryRoutes(
         from: from ?? "-24h",
         to,
         aggregation: (aggregation as "raw" | "1h" | "1d" | "auto") ?? "auto",
+        dataType,
       },
       logger,
     );
 
-    return result;
+    return { ...result, dataType };
   });
 
   logger.debug("History routes registered");

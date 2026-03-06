@@ -21,6 +21,8 @@ interface TimeSeriesChartProps {
   height?: number;
   /** Timestamp (ms) when the data was fetched — used to extend chart to "now". */
   fetchTime?: number;
+  /** Data type — "boolean" or "enum" use step interpolation instead of smooth curves. */
+  dataType?: string;
 }
 
 function formatTime(iso: string, range: TimeRange): string {
@@ -73,8 +75,9 @@ function formatRelativeTime(isoTime: string, now: number, tFn: (key: string) => 
   return `${minutes}${tFn("time.min")}`;
 }
 
-export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime }: TimeSeriesChartProps) {
+export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime, dataType }: TimeSeriesChartProps) {
   const { t } = useTranslation();
+  const isDiscrete = dataType === "boolean" || dataType === "enum";
 
   const { data, lastRealTime } = useMemo(() => {
     const mapped = points.map((p) => ({
@@ -141,7 +144,10 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           tickLine={false}
           axisLine={false}
           width={48}
-          tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
+          {...(isDiscrete
+            ? { domain: [0, 1], ticks: [0, 1], tickFormatter: (v: number) => (v === 1 ? "ON" : "OFF") }
+            : { tickFormatter: (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)) }
+          )}
         />
         <Tooltip
           contentStyle={{
@@ -160,6 +166,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           formatter={(value?: number, name?: string) => {
             const v = value ?? 0;
             if (name === "min" || name === "max") return [formatValue(v, unit), name];
+            if (isDiscrete) return [v === 1 ? "ON" : "OFF", ""];
             return [formatValue(v, unit), ""];
           }}
         />
@@ -178,7 +185,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
 
         {/* Main value line */}
         <Line
-          type="monotone"
+          type={isDiscrete ? "stepAfter" : "monotone"}
           dataKey="value"
           stroke={primaryColor}
           strokeWidth={1.5}

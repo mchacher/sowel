@@ -215,6 +215,7 @@ export interface HistoryQueryParams {
 export interface HistoryQueryResult {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
+  dataType?: string; // "number" | "boolean" | "enum" — helps frontend choose chart style
 }
 
 export interface OrderBinding {

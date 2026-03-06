@@ -16,6 +16,7 @@ interface HistoryPanelProps {
 interface ChartState {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
+  dataType?: string;
   loading: boolean;
   error: string | null;
   fetchTime: number;
@@ -65,6 +66,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
           [alias]: {
             points: result.points,
             resolution: result.resolution,
+            dataType: result.dataType,
             loading: false,
             error: null,
             fetchTime: Date.now(),
@@ -198,6 +200,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                         resolution={chart?.resolution ?? "raw"}
                         unit={unit}
                         fetchTime={chart?.fetchTime}
+                        dataType={chart?.dataType}
                       />
                       {chart?.resolution && (
                         <div className="text-[10px] text-text-tertiary text-right mt-1">
