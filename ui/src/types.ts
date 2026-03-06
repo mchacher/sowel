@@ -224,6 +224,7 @@ export interface HistoryBindingState {
   bindingId: string;
   alias: string;
   category: DataCategory;
+  type: string; // "number" | "boolean" | "enum"
   historize: number | null;
   effectiveOn: boolean;
 }
@@ -238,6 +239,7 @@ export interface HistoryPoint {
 export interface HistoryQueryResult {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
+  dataType?: string; // "number" | "boolean" | "enum"
 }
 
 export interface RetentionStatus {
