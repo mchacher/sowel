@@ -60,8 +60,9 @@ function buildFluxQuery(params: {
   from: Date;
   to: Date;
   resolution: Resolution;
+  isDiscrete?: boolean;
 }): string {
-  const { bucket, equipmentId, alias, from, to, resolution } = params;
+  const { bucket, equipmentId, alias, from, to, resolution, isDiscrete } = params;
 
   const fromStr = from.toISOString();
   const toStr = to.toISOString();
@@ -75,10 +76,11 @@ function buildFluxQuery(params: {
   |> filter(fn: (r) => r._field == "value_number")`;
 
   if (resolution === "raw") {
-    // Raw data — just sort and limit
+    // Raw data — higher limit for discrete state data over long ranges
+    const limit = isDiscrete ? 2000 : 500;
     query += `
   |> sort(columns: ["_time"])
-  |> limit(n: 500)`;
+  |> limit(n: ${limit})`;
   } else {
     // Aggregated data — window + mean/min/max
     const every = resolution === "1h" ? "1h" : "1d";
@@ -156,6 +158,7 @@ export async function queryHistory(
     from: string;
     to?: string;
     aggregation?: "raw" | "1h" | "1d" | "auto";
+    dataType?: string;
   },
   logger: Logger,
 ): Promise<HistoryQueryResult> {
@@ -167,8 +170,12 @@ export async function queryHistory(
 
   const fromDate = parseFrom(params.from);
   const toDate = params.to ? new Date(params.to) : new Date();
-  const resolution =
-    params.aggregation === "auto" || !params.aggregation
+  const isDiscrete = params.dataType === "boolean" || params.dataType === "enum";
+
+  // Boolean/enum types always use raw resolution — mean aggregation is meaningless for state data
+  const resolution = isDiscrete
+    ? ("raw" as Resolution)
+    : params.aggregation === "auto" || !params.aggregation
       ? autoResolution(fromDate.getTime(), toDate.getTime())
       : params.aggregation;
 
@@ -188,6 +195,7 @@ export async function queryHistory(
         from: fromDate,
         to: toDate,
         resolution: "raw",
+        isDiscrete,
       });
 
       for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
