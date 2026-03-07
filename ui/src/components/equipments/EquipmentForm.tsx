@@ -25,6 +25,7 @@ interface EquipmentFormProps {
     type: EquipmentType;
     zoneId: string;
   };
+  defaultZoneId?: string;
   zones: ZoneWithChildren[];
   onSubmit: (data: {
     name: string;
@@ -36,12 +37,12 @@ interface EquipmentFormProps {
   boundDeviceIds?: Set<string>;
 }
 
-export function EquipmentForm({ title, initial, zones, onSubmit, onClose, boundDeviceIds }: EquipmentFormProps) {
+export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds }: EquipmentFormProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<EquipmentType>(initial?.type ?? "light_onoff");
-  const [zoneId, setZoneId] = useState(initial?.zoneId ?? "");
+  const [zoneId, setZoneId] = useState(initial?.zoneId ?? defaultZoneId ?? "");
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

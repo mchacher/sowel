@@ -9,15 +9,19 @@ import {
   LightbulbOff,
   ArrowUpFromLine,
   ArrowDownToLine,
+  Plus,
 } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
+import { useAuth } from "../store/useAuth";
 import { useZoneAggregation } from "../store/useZoneAggregation";
 import { executeZoneOrder, getHistoryStatus } from "../api";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import { ZoneModesSection } from "../components/home/ZoneModesSection";
+import { EquipmentForm } from "../components/equipments/EquipmentForm";
+import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import type { ZoneWithChildren } from "../types";
 
@@ -33,8 +37,12 @@ export function HomePage() {
   const equipmentsLoading = useEquipments((s) => s.loading);
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
   const executeOrder = useEquipments((s) => s.executeOrder);
+  const createEquipment = useEquipments((s) => s.createEquipment);
+  const user = useAuth((s) => s.user);
+  const isAdmin = user?.role === "admin";
   const aggregationData = useZoneAggregation((s) => s.data);
   const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
+  const [showEquipmentForm, setShowEquipmentForm] = useState(false);
 
   // Check if history (InfluxDB) is enabled — used for sparklines
   const [historyEnabled, setHistoryEnabled] = useState(false);
@@ -190,11 +198,24 @@ export function HomePage() {
 
       {/* Sections: Equipments + Behaviors */}
       <div className="max-w-[720px] space-y-6">
-        <CollapsibleSection title={t("equipments.title")} storageKey="section-equipments">
+        <CollapsibleSection
+          title={t("equipments.title")}
+          storageKey="section-equipments"
+          headerRight={isAdmin ? (
+            <button
+              onClick={() => setShowEquipmentForm(true)}
+              className="p-0.5 rounded text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+              title={t("equipments.createEquipment")}
+            >
+              <Plus size={16} strokeWidth={1.5} />
+            </button>
+          ) : undefined}
+        >
           <ZoneEquipmentsView
             zoneName={currentZone.name}
             equipments={zoneEquipments}
             onExecuteOrder={executeOrder}
+            onAdd={isAdmin ? () => setShowEquipmentForm(true) : undefined}
           />
         </CollapsibleSection>
 
@@ -207,6 +228,30 @@ export function HomePage() {
           </CollapsibleSection>
         )}
       </div>
+
+      {showEquipmentForm && zoneId && (
+        <EquipmentForm
+          title={t("equipments.createEquipment")}
+          defaultZoneId={zoneId}
+          zones={tree}
+          boundDeviceIds={new Set(equipments.flatMap((e) => [
+            ...e.dataBindings.map((b) => b.deviceId),
+            ...e.orderBindings.map((b) => b.deviceId),
+          ]))}
+          onSubmit={async (data) => {
+            const equipment = await createEquipment({
+              name: data.name,
+              type: data.type,
+              zoneId: data.zoneId,
+            });
+            if (data.selectedDeviceIds.length > 0) {
+              await autoCreateBindings(equipment.id, data.selectedDeviceIds, data.type);
+              await fetchEquipments();
+            }
+          }}
+          onClose={() => setShowEquipmentForm(false)}
+        />
+      )}
     </div>
   );
 }
@@ -253,10 +298,12 @@ function ZoneNotFound() {
 function CollapsibleSection({
   title,
   storageKey,
+  headerRight,
   children,
 }: {
   title: string;
   storageKey: string;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -273,19 +320,22 @@ function CollapsibleSection({
 
   return (
     <section>
-      <button
-        onClick={toggle}
-        className="flex items-center gap-1.5 mb-2 group cursor-pointer"
-      >
-        <ChevronDown
-          size={14}
-          strokeWidth={2}
-          className={`text-text-tertiary transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
-        />
-        <h2 className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider group-hover:text-text transition-colors duration-150">
-          {title}
-        </h2>
-      </button>
+      <div className="flex items-center gap-1.5 mb-2">
+        <button
+          onClick={toggle}
+          className="flex items-center gap-1.5 group cursor-pointer"
+        >
+          <ChevronDown
+            size={14}
+            strokeWidth={2}
+            className={`text-text-tertiary transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
+          />
+          <h2 className="text-[13px] font-semibold text-text-secondary uppercase tracking-wider group-hover:text-text transition-colors duration-150">
+            {title}
+          </h2>
+        </button>
+        {headerRight && <div className="ml-auto">{headerRight}</div>}
+      </div>
       {!collapsed && children}
     </section>
   );
