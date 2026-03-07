@@ -45,7 +45,7 @@ function resolveJwtSecret(dataDir: string): string {
 }
 
 export function loadConfig(): AppConfig {
-  const sqlitePath = env("SQLITE_PATH", "./data/winch.db");
+  const sqlitePath = env("SQLITE_PATH", "./data/sowel.db");
   const dataDir = dirname(resolve(sqlitePath));
 
   return {
