@@ -928,3 +928,99 @@ export async function testMqttPublisher(publisherId: string): Promise<{ publishe
     method: "POST",
   });
 }
+
+// ── Notification Publishers ──────────────────────────────────
+
+export async function getNotificationPublishers(): Promise<
+  import("./types").NotificationPublisherWithMappings[]
+> {
+  return fetchJSON(`${API_BASE}/notification-publishers`);
+}
+
+export async function createNotificationPublisher(data: {
+  name: string;
+  channelType: "telegram";
+  channelConfig: import("./types").TelegramChannelConfig;
+  enabled?: boolean;
+}): Promise<import("./types").NotificationPublisher> {
+  return fetchJSON(`${API_BASE}/notification-publishers`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNotificationPublisher(
+  id: string,
+  data: {
+    name?: string;
+    channelType?: "telegram";
+    channelConfig?: import("./types").TelegramChannelConfig;
+    enabled?: boolean;
+  },
+): Promise<import("./types").NotificationPublisher> {
+  return fetchJSON(`${API_BASE}/notification-publishers/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteNotificationPublisher(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/notification-publishers/${id}`, { method: "DELETE" });
+}
+
+export async function testNotificationChannel(publisherId: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/test-channel`, {
+    method: "POST",
+  });
+}
+
+export async function testNotificationPublisher(
+  publisherId: string,
+): Promise<{ sent: number }> {
+  return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/test`, {
+    method: "POST",
+  });
+}
+
+export async function addNotificationPublisherMapping(
+  publisherId: string,
+  data: {
+    message: string;
+    sourceType: "equipment" | "zone" | "recipe";
+    sourceId: string;
+    sourceKey: string;
+    throttleMs?: number;
+  },
+): Promise<import("./types").NotificationPublisherMapping> {
+  return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/mappings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNotificationPublisherMapping(
+  publisherId: string,
+  mappingId: string,
+  data: {
+    message?: string;
+    sourceType?: "equipment" | "zone" | "recipe";
+    sourceId?: string;
+    sourceKey?: string;
+    throttleMs?: number;
+  },
+): Promise<import("./types").NotificationPublisherMapping> {
+  return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/mappings/${mappingId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeNotificationPublisherMapping(
+  publisherId: string,
+  mappingId: string,
+): Promise<void> {
+  return fetchJSON<void>(
+    `${API_BASE}/notification-publishers/${publisherId}/mappings/${mappingId}`,
+    { method: "DELETE" },
+  );
+}
