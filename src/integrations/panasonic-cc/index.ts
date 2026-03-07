@@ -24,6 +24,8 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
   private bridge: PanasonicBridge | null = null;
   private poller: PanasonicPoller | null = null;
   private status: IntegrationStatus = "disconnected";
+  private retryTimeout: ReturnType<typeof setTimeout> | null = null;
+  private retryCount = 0;
 
   constructor(
     settingsManager: SettingsManager,
@@ -110,15 +112,18 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
       await this.poller.start(options?.pollOffset ?? 0);
 
       this.status = "connected";
+      this.retryCount = 0;
       this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
       this.logger.info({ pollingIntervalMs }, "Panasonic CC integration started");
     } catch (err) {
       this.status = "error";
       this.logger.error({ err }, "Failed to start Panasonic CC integration");
+      this.scheduleRetry();
     }
   }
 
   async stop(): Promise<void> {
+    this.cancelRetry();
     if (this.poller) {
       this.poller.stop();
       this.poller = null;
@@ -127,6 +132,25 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
     this.status = "disconnected";
     this.eventBus.emit({ type: "system.integration.disconnected", integrationId: this.id });
     this.logger.info("Panasonic CC integration stopped");
+  }
+
+  /** Schedule an automatic retry with exponential backoff (30s, 60s, 120s, ... max 10min). */
+  private scheduleRetry(): void {
+    this.cancelRetry();
+    this.retryCount++;
+    const delaySec = Math.min(30 * Math.pow(2, this.retryCount - 1), 600);
+    this.logger.warn({ retryCount: this.retryCount, delaySec }, "Scheduling automatic retry");
+    this.retryTimeout = setTimeout(() => {
+      this.retryTimeout = null;
+      this.start().catch((err) => this.logger.error({ err }, "Retry start failed"));
+    }, delaySec * 1000);
+  }
+
+  private cancelRetry(): void {
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
   }
 
   async executeOrder(
