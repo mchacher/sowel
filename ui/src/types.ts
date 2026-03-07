@@ -539,12 +539,27 @@ export interface SavedChart {
 }
 
 // ============================================================
+// MQTT Brokers
+// ============================================================
+
+export interface MqttBroker {
+  id: string;
+  name: string;
+  url: string;
+  username?: string;
+  password?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // MQTT Publishers
 // ============================================================
 
 export interface MqttPublisher {
   id: string;
   name: string;
+  brokerId: string | null;
   topic: string;
   enabled: boolean;
   createdAt: string;

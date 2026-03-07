@@ -513,6 +513,10 @@ export type EngineEvent =
   | { type: "settings.changed"; keys: string[] }
   // Sunlight events
   | { type: "sunlight.changed" }
+  // MQTT Broker events
+  | { type: "mqtt-broker.created"; broker: MqttBroker }
+  | { type: "mqtt-broker.updated"; broker: MqttBroker }
+  | { type: "mqtt-broker.removed"; brokerId: string }
   // MQTT Publisher events
   | { type: "mqtt-publisher.created"; publisher: MqttPublisher }
   | { type: "mqtt-publisher.updated"; publisher: MqttPublisher }
@@ -628,12 +632,27 @@ export interface SavedChart {
 }
 
 // ============================================================
+// MQTT Brokers
+// ============================================================
+
+export interface MqttBroker {
+  id: string;
+  name: string;
+  url: string;
+  username?: string;
+  password?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // MQTT Publishers
 // ============================================================
 
 export interface MqttPublisher {
   id: string;
   name: string;
+  brokerId: string | null;
   topic: string;
   enabled: boolean;
   createdAt: string;

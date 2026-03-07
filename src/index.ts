@@ -29,6 +29,7 @@ import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
 import { HistoryWriter } from "./history/history-writer.js";
 import { ChartManager } from "./charts/chart-manager.js";
+import { MqttBrokerManager } from "./mqtt-publishers/mqtt-broker-manager.js";
 import { MqttPublisherManager } from "./mqtt-publishers/mqtt-publisher-manager.js";
 import { MqttPublishService } from "./mqtt-publishers/mqtt-publish-service.js";
 import { createServer } from "./api/server.js";
@@ -127,7 +128,8 @@ async function main() {
   // 11b. Create Chart Manager
   const chartManager = new ChartManager(db, logger);
 
-  // 11c. Create MQTT Publisher Manager (service created after RecipeManager)
+  // 11c. Create MQTT Broker Manager & Publisher Manager (service created after RecipeManager)
+  const mqttBrokerManager = new MqttBrokerManager(db, eventBus, logger);
   const mqttPublisherManager = new MqttPublisherManager(db, eventBus, logger);
 
   // 12. Create Recipe Manager
@@ -148,7 +150,7 @@ async function main() {
   // 12b. Create MQTT Publish Service (needs RecipeManager)
   const mqttPublishService = new MqttPublishService(
     eventBus,
-    settingsManager,
+    mqttBrokerManager,
     mqttPublisherManager,
     equipmentManager,
     zoneAggregator,
@@ -193,6 +195,7 @@ async function main() {
     buttonActionManager,
     historyWriter,
     chartManager,
+    mqttBrokerManager,
     mqttPublisherManager,
     mqttPublishService,
     eventBus,
