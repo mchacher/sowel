@@ -108,7 +108,7 @@ export class PanasonicPoller {
 
     try {
       this.lastPollAt = new Date().toISOString();
-      this.logger.debug("Polling Panasonic devices...");
+      this.logger.trace("Polling Panasonic devices...");
       const response = await this.bridge.getDevices(this.email, this.password);
 
       for (const device of response.devices) {

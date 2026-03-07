@@ -34,6 +34,7 @@ const logger = createLogger("silent").logger;
 function createMockEquipmentManager() {
   return {
     executeOrder: vi.fn(),
+    getById: vi.fn().mockReturnValue({ name: "Mock Equipment" }),
   } as any;
 }
 

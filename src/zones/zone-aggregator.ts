@@ -330,7 +330,7 @@ export class ZoneAggregator {
     const equipment = this.equipmentManager.getById(equipmentId);
     if (!equipment) return;
 
-    this.recomputeZoneChain(equipment.zoneId);
+    this.recomputeZoneChain(equipment.zoneId, equipment.name);
   }
 
   private handleEquipmentChanged(zoneId: string): void {
@@ -340,7 +340,7 @@ export class ZoneAggregator {
   /**
    * Recompute a zone and walk up the parent chain.
    */
-  private recomputeZoneChain(zoneId: string): void {
+  private recomputeZoneChain(zoneId: string, triggerName?: string): void {
     const zones = this.zoneManager.getAll();
     const zoneMap = new Map(zones.map((z) => [z.id, z]));
     const childrenMap = new Map<string, Zone[]>();
@@ -355,6 +355,7 @@ export class ZoneAggregator {
     let currentId: string | null = zoneId;
     let recomputeDirect = true;
     const now = new Date().toISOString();
+    const updatedZones: string[] = [];
 
     while (currentId) {
       const zone = zoneMap.get(currentId);
@@ -391,16 +392,21 @@ export class ZoneAggregator {
           zoneId: currentId,
           aggregatedData: newPublic,
         });
-        this.logger.debug(
-          { zoneId: currentId, aggregatedData: newPublic },
-          "Zone aggregation updated",
-        );
+        updatedZones.push(zone.name);
+        this.logger.trace({ zoneId: currentId, zoneName: zone.name }, "Zone aggregation updated");
       } else {
         // Even if aggregation data is unchanged, update cache with motionSince
         this.publicCache.set(currentId, newPublic);
       }
 
       currentId = zone.parentId;
+    }
+
+    if (updatedZones.length > 0) {
+      this.logger.debug(
+        { trigger: triggerName, zonesUpdated: updatedZones },
+        "Zone chain recomputed",
+      );
     }
   }
 
