@@ -177,32 +177,42 @@ export class NetatmoPoller {
 
       // Phase 1: independent discovery calls in parallel
       let hcActiveIds: Set<string> = new Set();
+      let hcDiscoveryOk = !this.enableHomeControl; // true if HC not enabled
+      let weatherDiscoveryOk = !this.enableWeather; // true if weather not enabled
       const phase1: Promise<void>[] = [];
       if (this.enableHomeControl) {
         phase1.push(
           this.discoverModules()
             .then((ids) => {
               hcActiveIds = ids;
+              hcDiscoveryOk = true;
             })
             .catch((err) => this.logger.error({ err }, "Home+Control discovery failed")),
         );
       }
       if (this.enableWeather) {
         phase1.push(
-          this.pollWeatherStation().catch((err) =>
-            this.logger.warn({ err }, "Weather station poll failed (phase 1)"),
-          ),
+          this.pollWeatherStation()
+            .then(() => {
+              weatherDiscoveryOk = true;
+            })
+            .catch((err) => this.logger.warn({ err }, "Weather station poll failed (phase 1)")),
         );
       }
       await Promise.all(phase1);
 
       // Stale device cleanup AFTER all discovery is complete
-      // (merges HC module names + weather station names to avoid race condition)
-      const allActiveIds = new Set(hcActiveIds);
-      for (const name of this.weatherNames) {
-        allActiveIds.add(name);
+      // Only run if ALL enabled discoveries succeeded — avoids purging
+      // devices when the API is temporarily unavailable
+      if (hcDiscoveryOk && weatherDiscoveryOk) {
+        const allActiveIds = new Set(hcActiveIds);
+        for (const name of this.weatherNames) {
+          allActiveIds.add(name);
+        }
+        this.deviceManager.removeStaleDevices("netatmo_hc", allActiveIds);
+      } else {
+        this.logger.warn("Skipping stale device cleanup — discovery incomplete");
       }
-      this.deviceManager.removeStaleDevices("netatmo_hc", allActiveIds);
 
       const t1 = Date.now();
 
