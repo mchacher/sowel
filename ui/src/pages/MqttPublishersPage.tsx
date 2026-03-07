@@ -19,6 +19,7 @@ import {
   updateMqttPublisher,
   deleteMqttPublisher,
   addMqttPublisherMapping,
+  updateMqttPublisherMapping,
   removeMqttPublisherMapping,
   testMqttPublisher,
   getEquipments,
@@ -688,29 +689,17 @@ function PublisherCard({
         ) : (
           <div className="space-y-1">
             {publisher.mappings.map((mapping) => (
-              <div
+              <MappingRow
                 key={mapping.id}
-                className="flex items-center justify-between px-3 py-1.5 bg-bg rounded-[6px] text-[12px]"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-text">
-                    {mapping.publishKey}
-                  </span>
-                  <span className="text-text-tertiary">←</span>
-                  <span className="text-text-secondary">
-                    {resolveSourceLabel(mapping)}
-                  </span>
-                  <span className="text-text-tertiary text-[11px]">
-                    ({mapping.sourceType})
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleRemoveMapping(mapping.id)}
-                  className="text-text-tertiary hover:text-red-500 transition-colors"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
+                publisherId={publisher.id}
+                mapping={mapping}
+                label={resolveSourceLabel(mapping)}
+                equipments={equipments}
+                zones={flatZones}
+                recipeInstances={recipeInstances}
+                recipes={recipes}
+                onRefresh={onRefresh}
+              />
             ))}
           </div>
         )}
@@ -739,6 +728,287 @@ function PublisherCard({
           {t("mqttPublishers.addMapping")}
         </button>
       )}
+    </div>
+  );
+}
+
+// ── Mapping row (display + inline edit) ──────────────────────
+
+function MappingRow({
+  publisherId,
+  mapping,
+  label,
+  equipments,
+  zones,
+  recipeInstances,
+  recipes,
+  onRefresh,
+}: {
+  publisherId: string;
+  mapping: MqttPublisherMapping;
+  label: string;
+  equipments: EquipmentWithDetails[];
+  zones: FlatZone[];
+  recipeInstances: RecipeInstance[];
+  recipes: RecipeInfo[];
+  onRefresh: () => void;
+}) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const [publishKey, setPublishKey] = useState(mapping.publishKey);
+  const [sourceType, setSourceType] = useState<"equipment" | "zone" | "recipe">(mapping.sourceType);
+  const [filterZoneId, setFilterZoneId] = useState("");
+  const [sourceId, setSourceId] = useState(mapping.sourceId);
+  const [sourceKey, setSourceKey] = useState(mapping.sourceKey);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const filteredEquipments = filterZoneId
+    ? equipments.filter((e) => e.zoneId === filterZoneId)
+    : equipments;
+
+  const filteredRecipeInstances = filterZoneId
+    ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
+    : recipeInstances;
+
+  const availableKeys: string[] = (() => {
+    if (sourceType === "zone") return ZONE_AGG_KEYS;
+    if (sourceType === "equipment" && sourceId) {
+      const eq = equipments.find((e) => e.id === sourceId);
+      if (eq) return eq.dataBindings.map((b) => b.alias);
+    }
+    if (sourceType === "recipe" && sourceId) {
+      const inst = recipeInstances.find((i) => i.id === sourceId);
+      if (inst?.state) return Object.keys(inst.state);
+    }
+    return [];
+  })();
+
+  const handleSourceTypeChange = (val: "equipment" | "zone" | "recipe") => {
+    setSourceType(val);
+    setFilterZoneId("");
+    setSourceId("");
+    setSourceKey("");
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!publishKey.trim() || !sourceId || !sourceKey) return;
+    setSaving(true);
+    setError("");
+    try {
+      await updateMqttPublisherMapping(publisherId, mapping.id, {
+        publishKey: publishKey.trim(),
+        sourceType,
+        sourceId,
+        sourceKey,
+      });
+      setEditing(false);
+      onRefresh();
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await removeMqttPublisherMapping(publisherId, mapping.id);
+      onRefresh();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setPublishKey(mapping.publishKey);
+    setSourceType(mapping.sourceType);
+    setSourceId(mapping.sourceId);
+    setSourceKey(mapping.sourceKey);
+    setFilterZoneId("");
+    setError("");
+  };
+
+  if (editing) {
+    return (
+      <form onSubmit={handleSave} className="p-3 bg-bg rounded-[6px] border border-border">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t("mqttPublishers.publishKey")}
+            </label>
+            <input
+              type="text"
+              value={publishKey}
+              onChange={(e) => setPublishKey(e.target.value)}
+              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text font-mono"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t("mqttPublishers.sourceType")}
+            </label>
+            <select
+              value={sourceType}
+              onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")}
+              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+            >
+              <option value="equipment">{t("mqttPublishers.equipment")}</option>
+              <option value="zone">{t("mqttPublishers.zone")}</option>
+              <option value="recipe">{t("mqttPublishers.recipe")}</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t("mqttPublishers.zone")}
+            </label>
+            <select
+              value={sourceType === "zone" ? sourceId : filterZoneId}
+              onChange={(e) => {
+                if (sourceType === "zone") {
+                  setSourceId(e.target.value);
+                  setSourceKey("");
+                } else {
+                  setFilterZoneId(e.target.value);
+                  setSourceId("");
+                  setSourceKey("");
+                }
+              }}
+              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+            >
+              <option value="">
+                {sourceType === "zone"
+                  ? t("mqttPublishers.selectSource")
+                  : t("mqttPublishers.allZones")}
+              </option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {sourceType === "equipment" && (
+            <div>
+              <label className="block text-[11px] text-text-secondary mb-1">
+                {t("mqttPublishers.equipment")}
+              </label>
+              <select
+                value={sourceId}
+                onChange={(e) => {
+                  setSourceId(e.target.value);
+                  setSourceKey("");
+                }}
+                className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+              >
+                <option value="">{t("mqttPublishers.selectSource")}</option>
+                {filteredEquipments.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {sourceType === "recipe" && (
+            <div>
+              <label className="block text-[11px] text-text-secondary mb-1">
+                {t("mqttPublishers.recipeInstance")}
+              </label>
+              <select
+                value={sourceId}
+                onChange={(e) => {
+                  setSourceId(e.target.value);
+                  setSourceKey("");
+                }}
+                className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+              >
+                <option value="">{t("mqttPublishers.selectSource")}</option>
+                {filteredRecipeInstances.map((inst) => {
+                  const recipe = recipes.find((r) => r.id === inst.recipeId);
+                  return (
+                    <option key={inst.id} value={inst.id}>
+                      {recipe?.name ?? inst.recipeId}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t("mqttPublishers.sourceKey")}
+            </label>
+            <select
+              value={sourceKey}
+              onChange={(e) => setSourceKey(e.target.value)}
+              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+              disabled={!sourceId}
+            >
+              <option value="">{t("mqttPublishers.selectKey")}</option>
+              {availableKeys.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {error && (
+          <div className="mt-2 text-[11px] text-red-500">{error}</div>
+        )}
+        <div className="flex items-center gap-2 mt-3">
+          <button
+            type="submit"
+            disabled={saving || !publishKey.trim() || !sourceId || !sourceKey}
+            className="px-3 py-1 bg-primary text-white text-[12px] rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={12} className="animate-spin" /> : t("common.save")}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="px-3 py-1 text-[12px] text-text-secondary hover:text-text transition-colors"
+          >
+            {t("common.cancel")}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between px-3 py-1.5 bg-bg rounded-[4px]">
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="text-[12px] font-mono text-text font-medium shrink-0">
+          {mapping.publishKey}
+        </span>
+        <span className="text-[11px] text-text-tertiary">←</span>
+        <span className="text-[11px] text-text-secondary truncate">
+          [{mapping.sourceType}] {label}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => setEditing(true)}
+          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+        >
+          <Pencil size={12} />
+        </button>
+        <button
+          onClick={handleDelete}
+          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-red-500"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
     </div>
   );
 }

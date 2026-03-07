@@ -895,6 +895,25 @@ export async function addMqttPublisherMapping(
   });
 }
 
+export async function updateMqttPublisherMapping(
+  publisherId: string,
+  mappingId: string,
+  data: {
+    publishKey?: string;
+    sourceType?: "equipment" | "zone" | "recipe";
+    sourceId?: string;
+    sourceKey?: string;
+  },
+): Promise<MqttPublisherMapping> {
+  return fetchJSON<MqttPublisherMapping>(
+    `${API_BASE}/mqtt-publishers/${publisherId}/mappings/${mappingId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    },
+  );
+}
+
 export async function removeMqttPublisherMapping(
   publisherId: string,
   mappingId: string,

@@ -93,6 +93,10 @@ export class MqttPublisherManager {
          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
       ),
       getMapping: this.db.prepare(`SELECT * FROM mqtt_publisher_mappings WHERE id = ?`),
+      updateMapping: this.db.prepare(
+        `UPDATE mqtt_publisher_mappings SET publish_key = ?, source_type = ?, source_id = ?, source_key = ?
+         WHERE id = ? AND publisher_id = ?`,
+      ),
       deleteMapping: this.db.prepare(
         `DELETE FROM mqtt_publisher_mappings WHERE id = ? AND publisher_id = ?`,
       ),
@@ -246,6 +250,60 @@ export class MqttPublisherManager {
       { publisherId, mappingId: id, publishKey: input.publishKey },
       "MQTT publisher mapping added",
     );
+    return mapping;
+  }
+
+  updateMapping(
+    publisherId: string,
+    mappingId: string,
+    input: {
+      publishKey?: string;
+      sourceType?: "equipment" | "zone" | "recipe";
+      sourceId?: string;
+      sourceKey?: string;
+    },
+  ): MqttPublisherMapping {
+    const publisher = this.getById(publisherId);
+    if (!publisher) throw new MqttPublisherError(`Publisher not found: ${publisherId}`, 404);
+
+    const existingRow = this.stmts.getMapping.get(mappingId) as MappingRow | undefined;
+    if (!existingRow || existingRow.publisher_id !== publisherId) {
+      throw new MqttPublisherError(`Mapping not found: ${mappingId}`, 404);
+    }
+
+    const publishKey = input.publishKey?.trim() ?? existingRow.publish_key;
+    const sourceType =
+      input.sourceType ?? (existingRow.source_type as "equipment" | "zone" | "recipe");
+    const sourceId = input.sourceId?.trim() ?? existingRow.source_id;
+    const sourceKey = input.sourceKey?.trim() ?? existingRow.source_key;
+
+    try {
+      this.stmts.updateMapping.run(
+        publishKey,
+        sourceType,
+        sourceId,
+        sourceKey,
+        mappingId,
+        publisherId,
+      );
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
+        throw new MqttPublisherError(
+          `Publish key '${publishKey}' already exists in this publisher`,
+          409,
+        );
+      }
+      throw err;
+    }
+
+    const row = this.stmts.getMapping.get(mappingId) as MappingRow;
+    const mapping = rowToMapping(row);
+    this.eventBus.emit({
+      type: "mqtt-publisher.mapping.created",
+      publisherId,
+      mapping,
+    });
+    this.logger.info({ publisherId, mappingId, publishKey }, "MQTT publisher mapping updated");
     return mapping;
   }
 
