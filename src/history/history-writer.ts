@@ -344,40 +344,75 @@ export class HistoryWriter {
     value: unknown,
     previous: unknown,
   ): boolean {
+    const logCtx = { bindingId, category: meta.category, alias: meta.alias, value };
+
     // Force write on boolean/enum state transitions
     if (meta.type === "boolean" || meta.type === "enum") {
-      if (value !== previous) return true;
-      return false; // Same value → skip
+      if (value !== previous) {
+        this.logger.trace({ ...logCtx, previous, reason: "state-transition" }, "History write");
+        return true;
+      }
+      this.logger.trace({ ...logCtx, reason: "same-value" }, "History skip");
+      return false;
     }
 
     const last = this.lastWritten.get(bindingId);
-    if (!last) return true; // First write
+    if (!last) {
+      this.logger.trace({ ...logCtx, reason: "first-write" }, "History write");
+      return true;
+    }
 
     // Minimum interval check
     const elapsed = Date.now() - last.timestamp;
-    if (elapsed < this.minWriteInterval) return false;
+    if (elapsed < this.minWriteInterval) {
+      this.logger.trace({ ...logCtx, elapsedMs: elapsed, reason: "min-interval" }, "History skip");
+      return false;
+    }
 
     // Maximum interval — force write even if value unchanged (keeps charts fresh)
-    if (elapsed > this.maxWriteInterval) return true;
+    if (elapsed > this.maxWriteInterval) {
+      this.logger.trace({ ...logCtx, elapsedMs: elapsed, reason: "max-interval" }, "History write");
+      return true;
+    }
 
     // Deadband check for numeric values
     if (meta.type === "number" && typeof value === "number" && typeof last.value === "number") {
       const deadband = DEADBAND[meta.category];
       if (deadband !== undefined) {
+        const delta = Math.abs(value - (last.value as number));
         // Special case: luminosity uses relative deadband (5%)
         if (meta.category === "luminosity") {
           const threshold = Math.abs(last.value as number) * deadband;
-          if (Math.abs(value - (last.value as number)) < Math.max(threshold, 1)) return false;
+          if (delta < Math.max(threshold, 1)) {
+            this.logger.trace(
+              { ...logCtx, delta, threshold: Math.max(threshold, 1), reason: "deadband-lux" },
+              "History skip",
+            );
+            return false;
+          }
         } else {
-          if (Math.abs(value - (last.value as number)) < deadband) return false;
+          if (delta < deadband) {
+            this.logger.trace({ ...logCtx, delta, deadband, reason: "deadband" }, "History skip");
+            return false;
+          }
         }
       }
       // No deadband configured → write on any change
-      return value !== last.value;
+      if (value !== last.value) {
+        this.logger.trace({ ...logCtx, reason: "value-changed" }, "History write");
+        return true;
+      }
+      this.logger.trace({ ...logCtx, reason: "same-value" }, "History skip");
+      return false;
     }
 
     // Default: write on any change
-    return value !== last.value;
+    if (value !== last.value) {
+      this.logger.trace({ ...logCtx, reason: "value-changed" }, "History write");
+      return true;
+    }
+    this.logger.trace({ ...logCtx, reason: "same-value" }, "History skip");
+    return false;
   }
 }
 

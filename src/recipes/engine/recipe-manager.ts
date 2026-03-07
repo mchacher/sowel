@@ -442,6 +442,9 @@ export class RecipeManager {
       state: stateStore,
       log: (message: string, level: "info" | "warn" | "error" = "info") => {
         this.writeLog(instanceId, message, level);
+        const recipeName = this.registry.get(recipeId)?.info.name;
+        const childLogger = this.logger.child({ instanceId, recipeId, recipeName });
+        childLogger[level]({ instanceId, recipeId, recipeName }, message);
       },
       notifyStateChanged: () => {
         this.eventBus.emit({ type: "recipe.instance.state.changed", instanceId, recipeId });
