@@ -56,9 +56,15 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
 
     // Build SQLite JSON payload
     const tables: Record<string, unknown[]> = {};
+    let totalRows = 0;
     for (const table of BACKUP_TABLES) {
       tables[table] = db.prepare(`SELECT * FROM ${table}`).all();
+      totalRows += tables[table].length;
     }
+    logger.info(
+      { tables: BACKUP_TABLES.length, totalRows },
+      "Backup export — SQLite data collected",
+    );
 
     const sqlitePayload: BackupPayload = {
       version: 1,
@@ -211,8 +217,16 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
 
       restore();
 
+      const totalRestoredRows = Object.values(payload.tables).reduce(
+        (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
+        0,
+      );
       logger.info(
-        { tables: Object.keys(payload.tables).length, exportedAt: payload.exportedAt },
+        {
+          tables: Object.keys(payload.tables).length,
+          totalRows: totalRestoredRows,
+          exportedAt: payload.exportedAt,
+        },
         "Configuration restored from backup",
       );
 

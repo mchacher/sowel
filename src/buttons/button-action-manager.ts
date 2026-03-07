@@ -145,6 +145,10 @@ export class ButtonActionManager {
 
       try {
         this.executeEffect(row.effect_type as ButtonEffectType, config);
+        this.logger.debug(
+          { bindingId: row.id, effectType: row.effect_type, config },
+          "Button action effect executed",
+        );
       } catch (err) {
         this.logger.warn(
           { err, bindingId: row.id, effectType: row.effect_type },

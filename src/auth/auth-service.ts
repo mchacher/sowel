@@ -93,6 +93,7 @@ export class AuthService {
 
     const valid = await this.userManager.verifyPassword(userWithHash.passwordHash, password);
     if (!valid) {
+      this.logger.warn({ username }, "Login failed — invalid credentials");
       throw new AuthError("Invalid credentials", 401);
     }
 
@@ -100,6 +101,7 @@ export class AuthService {
 
     // Get clean user object without passwordHash
     const user = this.userManager.getById(userWithHash.id)!;
+    this.logger.info({ userId: user.id, username, role: user.role }, "User logged in");
     return this.generateTokens(user);
   }
 
@@ -118,6 +120,7 @@ export class AuthService {
       throw new AuthError("User not found or disabled", 401);
     }
 
+    this.logger.debug({ userId: user.id, username: user.username }, "Token refreshed");
     return this.generateTokens(user);
   }
 

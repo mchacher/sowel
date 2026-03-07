@@ -205,14 +205,20 @@ export class MqttPublishService {
     const refs = this.index.get(key);
     if (!refs) return;
 
+    let published = 0;
     for (const ref of refs) {
       if (!ref.enabled || !ref.brokerId) continue;
       this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
+      published++;
+    }
+    if (published > 0) {
+      this.logger.debug({ equipmentId, alias, published }, "MQTT published equipment data");
     }
   }
 
   private handleZoneDataChanged(zoneId: string, aggregatedData: ZoneAggregatedData): void {
     const entries = Object.entries(aggregatedData) as [keyof ZoneAggregatedData, unknown][];
+    let published = 0;
     for (const [field, value] of entries) {
       const key = `zone:${zoneId}:${field}`;
       const refs = this.index.get(key);
@@ -221,12 +227,17 @@ export class MqttPublishService {
       for (const ref of refs) {
         if (!ref.enabled || !ref.brokerId) continue;
         this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
+        published++;
       }
+    }
+    if (published > 0) {
+      this.logger.debug({ zoneId, published }, "MQTT published zone data");
     }
   }
 
   private handleRecipeStateChanged(instanceId: string): void {
     const state = this.recipeManager.getInstanceState(instanceId);
+    let published = 0;
     for (const [stateKey, value] of Object.entries(state)) {
       const key = `recipe:${instanceId}:${stateKey}`;
       const refs = this.index.get(key);
@@ -235,7 +246,11 @@ export class MqttPublishService {
       for (const ref of refs) {
         if (!ref.enabled || !ref.brokerId) continue;
         this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
+        published++;
       }
+    }
+    if (published > 0) {
+      this.logger.debug({ instanceId, published }, "MQTT published recipe state");
     }
   }
 
@@ -249,7 +264,11 @@ export class MqttPublishService {
     const payload = JSON.stringify({ [publishKey]: mqttValue });
     client.publish(topic, payload, { retain: true }, (err) => {
       if (err) {
-        this.logger.error({ err, brokerId, topic, publishKey }, "MQTT publish error");
+        const broker = this.brokerManager.getById(brokerId);
+        this.logger.error(
+          { err, brokerId, brokerName: broker?.name, topic, publishKey },
+          "MQTT publish error",
+        );
       }
     });
 
