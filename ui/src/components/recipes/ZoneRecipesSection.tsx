@@ -603,6 +603,25 @@ function RecipeInstanceRow({
                                           <option key={eq.id} value={eq.id}>{eq.name}</option>
                                         ))}
                                       </select>
+                                    ) : slot.type === "data-key" ? (
+                                      (() => {
+                                        const eqSlot = recipe?.slots.find((s) => s.type === "equipment" && !s.list);
+                                        const eqId = eqSlot ? editParams[eqSlot.id] : undefined;
+                                        const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                                        const bindings = eq?.dataBindings ?? [];
+                                        return (
+                                          <select
+                                            value={editParams[slot.id] ?? ""}
+                                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                            className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                          >
+                                            <option value="">{t("common.select")}</option>
+                                            {bindings.map((b) => (
+                                              <option key={b.alias} value={b.alias}>{b.alias}</option>
+                                            ))}
+                                          </select>
+                                        );
+                                      })()
                                     ) : slot.type === "time" ? (
                                       <TimeInput
                                         value={editParams[slot.id] ?? ""}
@@ -678,6 +697,25 @@ function RecipeInstanceRow({
                               <option key={eq.id} value={eq.id}>{eq.name}</option>
                             ))}
                           </select>
+                        ) : slot.type === "data-key" ? (
+                          (() => {
+                            const eqSlot = recipe?.slots.find((s) => s.type === "equipment" && !s.list);
+                            const eqId = eqSlot ? editParams[eqSlot.id] : undefined;
+                            const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                            const bindings = eq?.dataBindings ?? [];
+                            return (
+                              <select
+                                value={editParams[slot.id] ?? ""}
+                                onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                              >
+                                <option value="">{t("common.select")}</option>
+                                {bindings.map((b) => (
+                                  <option key={b.alias} value={b.alias}>{b.alias}</option>
+                                ))}
+                              </select>
+                            );
+                          })()
                         ) : slot.type === "duration" ? (
                           <DurationInput
                             value={editParams[slot.id] ?? ""}
@@ -1554,6 +1592,25 @@ function AddRecipeForm({
                                         <option key={eq.id} value={eq.id}>{eq.name}</option>
                                       ))}
                                     </select>
+                                  ) : slot.type === "data-key" ? (
+                                    (() => {
+                                      const eqSlot = selectedRecipe?.slots.find((s) => s.type === "equipment" && !s.list);
+                                      const eqId = eqSlot ? params[eqSlot.id] : undefined;
+                                      const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                                      const bindings = eq?.dataBindings ?? [];
+                                      return (
+                                        <select
+                                          value={params[slot.id] ?? ""}
+                                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                          className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                        >
+                                          <option value="">{t("common.select")}</option>
+                                          {bindings.map((b) => (
+                                            <option key={b.alias} value={b.alias}>{b.alias}</option>
+                                          ))}
+                                        </select>
+                                      );
+                                    })()
                                   ) : slot.type === "time" ? (
                                     <TimeInput
                                       value={params[slot.id] ?? ""}
@@ -1628,6 +1685,25 @@ function AddRecipeForm({
                             <option key={eq.id} value={eq.id}>{eq.name}</option>
                           ))}
                         </select>
+                      ) : slot.type === "data-key" ? (
+                        (() => {
+                          const eqSlot = selectedRecipe?.slots.find((s) => s.type === "equipment" && !s.list);
+                          const eqId = eqSlot ? params[eqSlot.id] : undefined;
+                          const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                          const bindings = eq?.dataBindings ?? [];
+                          return (
+                            <select
+                              value={params[slot.id] ?? ""}
+                              onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                            >
+                              <option value="">{t("common.select")}</option>
+                              {bindings.map((b) => (
+                                <option key={b.alias} value={b.alias}>{b.alias}</option>
+                              ))}
+                            </select>
+                          );
+                        })()
                       ) : slot.type === "duration" ? (
                         <DurationInput
                           value={params[slot.id] ?? ""}
