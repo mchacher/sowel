@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useTranslation } from "react-i18next";
 import type { DataBindingWithValue } from "../../types";
 import {
@@ -97,15 +97,14 @@ export function SensorValues({
  * Uses last_changed timestamp (only updates on actual value transitions).
  */
 function ElapsedCounter({ origin }: { origin: string | null }) {
-  const [elapsed, setElapsed] = useState(() => computeElapsed(origin));
+  const [, tick] = useReducer((x: number) => x + 1, 0);
 
   useEffect(() => {
-    setElapsed(computeElapsed(origin));
-    const id = setInterval(() => setElapsed(computeElapsed(origin)), 1000);
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [origin]);
 
   return (
-    <span className="tabular-nums opacity-80">{formatElapsed(elapsed)}</span>
+    <span className="tabular-nums opacity-80">{formatElapsed(computeElapsed(origin))}</span>
   );
 }
