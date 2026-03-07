@@ -32,17 +32,19 @@ interface ZoneEquipmentsViewProps {
   zoneName: string;
   equipments: EquipmentWithDetails[];
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
+  onAdd?: () => void;
 }
 
 export function ZoneEquipmentsView({
   zoneName,
   equipments,
   onExecuteOrder,
+  onAdd,
 }: ZoneEquipmentsViewProps) {
   const { t } = useTranslation();
 
   if (equipments.length === 0) {
-    return <EmptyZone zoneName={zoneName} />;
+    return <EmptyZone zoneName={zoneName} onAdd={onAdd} />;
   }
 
   // Group equipments by type category
@@ -80,7 +82,7 @@ export function ZoneEquipmentsView({
   );
 }
 
-function EmptyZone({ zoneName }: { zoneName: string }) {
+function EmptyZone({ zoneName, onAdd }: { zoneName: string; onAdd?: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -91,6 +93,14 @@ function EmptyZone({ zoneName }: { zoneName: string }) {
       <p className="text-[13px] text-text-secondary max-w-[280px]">
         {t("equipments.noEquipmentsMessage", { name: zoneName })}
       </p>
+      {onAdd && (
+        <button
+          onClick={onAdd}
+          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+        >
+          {t("equipments.createEquipment")}
+        </button>
+      )}
     </div>
   );
 }
