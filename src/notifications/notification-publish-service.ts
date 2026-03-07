@@ -161,7 +161,7 @@ export class NotificationPublishService {
       if (!ref.enabled) continue;
       if (!this.shouldNotify(ref, value, previous)) continue;
 
-      const text = `${ref.message} : ${formatDisplayValue(value)}`;
+      const text = formatNotificationText(ref.message, value);
       this.sendNotification(ref, text);
       this.lastSent.set(ref.mappingId, Date.now());
       sent++;
@@ -240,7 +240,7 @@ export class NotificationPublishService {
       );
       if (value === undefined) continue;
 
-      const text = `${mapping.message} : ${formatDisplayValue(value)}`;
+      const text = formatNotificationText(mapping.message, value);
       await channel.send(publisher.channelConfig, text);
       sent++;
     }
@@ -283,6 +283,14 @@ export class NotificationPublishService {
 // ============================================================
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+
+function formatNotificationText(message: string, value: unknown): string {
+  // Booleans: just send the message, no value suffix
+  if (typeof value === "boolean") return message;
+  // null: just send the message
+  if (value === null) return message;
+  return `${message} : ${formatDisplayValue(value)}`;
+}
 
 function formatDisplayValue(value: unknown): string {
   if (typeof value === "string" && ISO_DATE_RE.test(value)) {
