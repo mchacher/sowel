@@ -534,7 +534,7 @@ export class DeviceManager {
     const total = this.getDeviceCount();
     this.logger.info(
       { total, online: counts.online, offline: counts.offline, unknown: counts.unknown },
-      `Device summary: ${total} devices (${counts.online} online, ${counts.offline} offline, ${counts.unknown} unknown)`,
+      "Device summary",
     );
   }
 }

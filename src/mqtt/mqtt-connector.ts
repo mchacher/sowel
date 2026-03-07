@@ -45,17 +45,17 @@ export class MqttConnector {
       this.client = mqtt.connect(this.url, this.options);
 
       this.client.on("connect", () => {
-        this.logger.info("MQTT connected");
+        this.logger.info({ url: this.url }, "MQTT connected");
         this.eventBus.emit({ type: "system.integration.connected", integrationId: "zigbee2mqtt" });
         doResolve();
       });
 
       this.client.on("reconnect", () => {
-        this.logger.warn("MQTT reconnecting...");
+        this.logger.warn({ url: this.url }, "MQTT reconnecting...");
       });
 
       this.client.on("disconnect", () => {
-        this.logger.warn("MQTT disconnected");
+        this.logger.warn({ url: this.url }, "MQTT disconnected");
         this.eventBus.emit({
           type: "system.integration.disconnected",
           integrationId: "zigbee2mqtt",
@@ -63,7 +63,7 @@ export class MqttConnector {
       });
 
       this.client.on("offline", () => {
-        this.logger.warn("MQTT offline");
+        this.logger.warn({ url: this.url }, "MQTT offline");
         this.eventBus.emit({
           type: "system.integration.disconnected",
           integrationId: "zigbee2mqtt",
@@ -84,7 +84,10 @@ export class MqttConnector {
       // Timeout for initial connection
       setTimeout(() => {
         if (!this.isConnected()) {
-          this.logger.warn("MQTT initial connection timeout, continuing without MQTT");
+          this.logger.warn(
+            { url: this.url },
+            "MQTT initial connection timeout, continuing without MQTT",
+          );
         }
         doResolve();
       }, 10_000);
@@ -162,7 +165,7 @@ export class MqttConnector {
   async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.endAsync();
-      this.logger.info("MQTT disconnected");
+      this.logger.info({ url: this.url }, "MQTT disconnected");
     }
   }
 

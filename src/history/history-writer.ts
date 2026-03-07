@@ -274,7 +274,7 @@ export class HistoryWriter {
       }
     }
 
-    this.logger.debug(
+    this.logger.trace(
       { total: this.bindingMeta.size, historized: this.historizedBindings.size },
       "History cache refreshed",
     );

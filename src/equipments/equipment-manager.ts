@@ -517,19 +517,39 @@ export class EquipmentManager {
 
       integration.executeOrder(device, dispatchConfig, resolvedValue).catch((err) => {
         this.logger.error(
-          { err, equipmentId, alias, deviceId: device.id },
+          {
+            err,
+            equipmentId,
+            equipmentName: equipment.name,
+            alias,
+            deviceId: device.id,
+            deviceName: device.name,
+          },
           "Integration order dispatch failed",
         );
       });
 
       this.logger.debug(
-        { equipmentId, alias, integrationId: device.integrationId, deviceId: device.id },
+        {
+          equipmentId,
+          equipmentName: equipment.name,
+          alias,
+          integrationId: device.integrationId,
+          deviceId: device.id,
+          deviceName: device.name,
+        },
         "Order dispatched to integration",
       );
     }
 
     this.logger.info(
-      { equipmentId, alias, value: resolvedValue, targets: bindings.length },
+      {
+        equipmentId,
+        equipmentName: equipment.name,
+        alias,
+        value: resolvedValue,
+        targets: bindings.length,
+      },
       "Equipment order executed",
     );
     this.eventBus.emit({
@@ -549,7 +569,10 @@ export class EquipmentManager {
         value: "unknown",
         previous: undefined,
       });
-      this.logger.debug({ equipmentId }, "Gate command — state set to unknown");
+      this.logger.debug(
+        { equipmentId, equipmentName: equipment.name },
+        "Gate command — state set to unknown",
+      );
     }
   }
 
@@ -603,7 +626,7 @@ export class EquipmentManager {
         } catch (err) {
           errors++;
           this.logger.warn(
-            { err, equipmentId: eq.id, orderKey },
+            { err, equipmentId: eq.id, equipmentName: eq.name, orderKey },
             "Zone order failed for equipment",
           );
         }
@@ -708,11 +731,22 @@ export class EquipmentManager {
     for (const binding of bindings) {
       const equipment = this.getById(binding.equipment_id);
 
+      this.logger.trace(
+        {
+          equipmentId: binding.equipment_id,
+          equipmentName: equipment?.name,
+          alias: binding.alias,
+          value,
+          previous,
+        },
+        "Equipment binding propagated",
+      );
+
       // Clear pending toggle — sensor confirmed new state
       if (this.pendingToggles.has(binding.equipment_id)) {
         this.pendingToggles.delete(binding.equipment_id);
         this.logger.debug(
-          { equipmentId: binding.equipment_id },
+          { equipmentId: binding.equipment_id, equipmentName: equipment?.name },
           "Gate toggle resolved — sensor update received",
         );
       }
