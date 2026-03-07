@@ -149,9 +149,9 @@ export function MqttPublishersPage() {
 
       {/* Create form */}
       {showCreate && (
-        <CreatePublisherForm
+        <PublisherForm
           brokers={brokers}
-          onCreated={() => {
+          onSaved={() => {
             setShowCreate(false);
             load();
           }}
@@ -390,21 +390,25 @@ function BrokerForm({
   );
 }
 
-// ── Create publisher form ─────────────────────────────────────
+// ── Publisher form (create + edit) ─────────────────────────────
 
-function CreatePublisherForm({
+function PublisherForm({
+  publisher,
   brokers,
-  onCreated,
+  onSaved,
   onCancel,
 }: {
+  publisher?: MqttPublisherWithMappings;
   brokers: MqttBroker[];
-  onCreated: () => void;
+  onSaved: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [name, setName] = useState("");
-  const [brokerId, setBrokerId] = useState(brokers.length === 1 ? brokers[0].id : "");
-  const [topic, setTopic] = useState("");
+  const [name, setName] = useState(publisher?.name ?? "");
+  const [brokerId, setBrokerId] = useState(
+    publisher?.brokerId ?? (brokers.length === 1 ? brokers[0].id : ""),
+  );
+  const [topic, setTopic] = useState(publisher?.topic ?? "");
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -412,8 +416,16 @@ function CreatePublisherForm({
     if (!name.trim() || !brokerId || !topic.trim()) return;
     setSaving(true);
     try {
-      await createMqttPublisher({ name: name.trim(), brokerId, topic: topic.trim() });
-      onCreated();
+      if (publisher) {
+        await updateMqttPublisher(publisher.id, {
+          name: name.trim(),
+          brokerId,
+          topic: topic.trim(),
+        });
+      } else {
+        await createMqttPublisher({ name: name.trim(), brokerId, topic: topic.trim() });
+      }
+      onSaved();
     } catch {
       // ignore
     } finally {
@@ -472,7 +484,7 @@ function CreatePublisherForm({
             disabled={saving || !name.trim() || !brokerId || !topic.trim()}
             className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
           >
-            {t("common.create")}
+            {saving ? <Loader2 size={14} className="animate-spin" /> : publisher ? t("common.save") : t("common.create")}
           </button>
           <button
             type="button"
@@ -508,6 +520,7 @@ function PublisherCard({
 }) {
   const { t } = useTranslation();
   const [showAddMapping, setShowAddMapping] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -515,6 +528,20 @@ function PublisherCard({
 
   const flatZones = flattenZones(zones);
   const broker = brokers.find((b) => b.id === publisher.brokerId);
+
+  if (editing) {
+    return (
+      <PublisherForm
+        publisher={publisher}
+        brokers={brokers}
+        onSaved={() => {
+          setEditing(false);
+          onRefresh();
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
 
   const handleTest = async () => {
     setTesting(true);
@@ -619,6 +646,13 @@ function PublisherCard({
               {t("mqttPublishers.testResult", { count: testResult })}
             </span>
           )}
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
+            title={t("common.edit")}
+          >
+            <Pencil size={16} />
+          </button>
           <button
             onClick={handleToggle}
             disabled={toggling}
