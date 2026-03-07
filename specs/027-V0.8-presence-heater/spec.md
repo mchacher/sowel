@@ -6,7 +6,7 @@ Add a `"heater"` equipment type for electric radiators controlled via Zigbee rel
 
 ## Reference
 
-- Recipe system: §12 of winch-spec.md
+- Recipe system: §12 of sowel-spec.md
 - Motion-light base recipe: `src/recipes/engine/motion-light-base.ts`
 - Presence-thermostat recipe: `src/recipes/presence-thermostat.ts` (night window pattern)
 

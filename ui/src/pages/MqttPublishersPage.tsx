@@ -296,7 +296,7 @@ function CreatePublisherForm({
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="winch/homedisplay/livingroom"
+            placeholder="sowel/homedisplay/livingroom"
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary font-mono"
           />
         </div>

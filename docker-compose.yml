@@ -1,12 +1,12 @@
 services:
-  winch:
+  sowel:
     build: .
-    container_name: winch
+    container_name: sowel
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
-      - winch-data:/app/data
+      - sowel-data:/app/data
     # No .env needed — all settings have sensible defaults.
     # Override with environment variables if needed:
     # environment:
@@ -14,10 +14,10 @@ services:
     #   LOG_LEVEL: info
 
   # InfluxDB 2.x — optional time-series backend for data history (V0.13)
-  # Configure connection in Winch Settings > InfluxDB after first start.
+  # Configure connection in Sowel Settings > InfluxDB after first start.
   influxdb:
     image: influxdb:2.7
-    container_name: winch-influxdb
+    container_name: sowel-influxdb
     restart: unless-stopped
     ports:
       - "8086:8086"
@@ -25,12 +25,12 @@ services:
       - influxdb-data:/var/lib/influxdb2
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=winch
-      - DOCKER_INFLUXDB_INIT_PASSWORD=winch-secret
-      - DOCKER_INFLUXDB_INIT_ORG=winch
-      - DOCKER_INFLUXDB_INIT_BUCKET=winch
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=winch-dev-token
+      - DOCKER_INFLUXDB_INIT_USERNAME=sowel
+      - DOCKER_INFLUXDB_INIT_PASSWORD=sowel-secret
+      - DOCKER_INFLUXDB_INIT_ORG=sowel
+      - DOCKER_INFLUXDB_INIT_BUCKET=sowel
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-dev-token
 
 volumes:
-  winch-data:
+  sowel-data:
   influxdb-data:

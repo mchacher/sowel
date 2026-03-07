@@ -70,7 +70,7 @@ export class Lora2MqttIntegration implements IntegrationPlugin {
         label: "MQTT Client ID",
         type: "text",
         required: false,
-        defaultValue: "winch-lora",
+        defaultValue: "sowel-lora",
       },
       {
         key: "base_topic",
@@ -91,7 +91,7 @@ export class Lora2MqttIntegration implements IntegrationPlugin {
     const mqttUrl = this.getSetting("mqtt_url")!;
     const mqttUsername = this.getSetting("mqtt_username") || undefined;
     const mqttPassword = this.getSetting("mqtt_password") || undefined;
-    const mqttClientId = this.getSetting("mqtt_client_id") ?? "winch-lora";
+    const mqttClientId = this.getSetting("mqtt_client_id") ?? "sowel-lora";
     const baseTopic = this.getSetting("base_topic") ?? "lora2mqtt";
 
     try {

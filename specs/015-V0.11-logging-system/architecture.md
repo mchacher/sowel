@@ -8,7 +8,7 @@ Single pino root logger → 3 simultaneous outputs via `pino.multistream()`:
 pino root logger (formatters, redaction, ISO timestamps)
         |
         +-- stdout (pino-pretty in dev, JSON in prod)
-        +-- pino-roll file transport (data/logs/winch.log, daily rotation)
+        +-- pino-roll file transport (data/logs/sowel.log, daily rotation)
         +-- Writable stream → LogRingBuffer (in-memory, 2000 entries)
                                     |
                                     +-- WebSocket "logs" topic (live tail)

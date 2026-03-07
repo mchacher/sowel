@@ -83,7 +83,7 @@ export function createLogger(level: string, logBuffer?: LogRingBuffer): LoggerHa
     const fileTransport = pino.transport({
       target: "pino-roll",
       options: {
-        file: "data/logs/winch",
+        file: "data/logs/sowel",
         frequency: "daily",
         limit: { count: 14 },
         mkdir: true,

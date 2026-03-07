@@ -2,19 +2,19 @@
 
 ## Summary
 
-Integration plugin for Legrand Home+Control devices via the Netatmo Connect cloud API. Exposes teleruptors, contactors, and energy meters as Winch devices with polling-based state updates and order execution via REST API.
+Integration plugin for Legrand Home+Control devices via the Netatmo Connect cloud API. Exposes teleruptors, contactors, and energy meters as Sowel devices with polling-based state updates and order execution via REST API.
 
 ## Reference
 
 - Netatmo Connect API: https://dev.netatmo.com/apidocumentation/control
-- Winch spec: Integration Plugin Architecture (V0.10a)
+- Sowel spec: Integration Plugin Architecture (V0.10a)
 - Existing plugins: Panasonic CC (V0.10b), MCZ Maestro (V0.10c)
 
 ## Acceptance Criteria
 
 - [ ] Plugin appears in Administration > Integrations with status "not_configured"
 - [ ] After entering client_id, client_secret, refresh_token → status becomes "connected"
-- [ ] All Legrand modules appear as Devices in Winch (teleruptors, contactors, energy meters)
+- [ ] All Legrand modules appear as Devices in Sowel (teleruptors, contactors, energy meters)
 - [ ] Teleruptor/contactor state (on/off) is polled and visible as DeviceData
 - [ ] Energy meter readings (power W, energy Wh) are polled and visible as DeviceData
 - [ ] Executing an order on a teleruptor/contactor sends `setstate` to Netatmo API
@@ -40,7 +40,7 @@ Integration plugin for Legrand Home+Control devices via the Netatmo Connect clou
 ### Out of Scope
 
 - Full OAuth2 browser redirect flow (user provides refresh_token manually from dev portal)
-- Netatmo topology mapping to Winch zones (user creates their own)
+- Netatmo topology mapping to Sowel zones (user creates their own)
 - Netatmo webhooks (not available for Home+Control)
 - Netatmo weather station / camera / thermostat devices (different scopes)
 - UI components specific to Netatmo devices

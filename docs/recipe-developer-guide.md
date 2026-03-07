@@ -1,6 +1,6 @@
 # Recipe Developer Guide
 
-How to create a new recipe for Winch.
+How to create a new recipe for Sowel.
 
 ## Architecture
 

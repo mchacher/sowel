@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Winch** is a home automation engine with a plugin-based integration architecture. It supports multiple device sources (Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, and more via the IntegrationPlugin interface). It separates physical **Devices** (auto-discovered from integrations) from user-facing **Equipments** (functional units like "Spots Salon"), provides automatic **Zone** aggregation, a **Scenario** engine with reusable **Recipe** templates, and exposes a reactive web UI.
+**Sowel** is a home automation engine with a plugin-based integration architecture. It supports multiple device sources (Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, and more via the IntegrationPlugin interface). It separates physical **Devices** (auto-discovered from integrations) from user-facing **Equipments** (functional units like "Spots Salon"), provides automatic **Zone** aggregation, a **Scenario** engine with reusable **Recipe** templates, and exposes a reactive web UI.
 
-The full specification is in [winch-spec.md](winch-spec.md) — it is the single source of truth. It is a living document that evolves alongside feature development; always re-read the relevant sections before implementing a milestone.
+The full specification is in [sowel-spec.md](sowel-spec.md) — it is the single source of truth. It is a living document that evolves alongside feature development; always re-read the relevant sections before implementing a milestone.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ Integration message (MQTT, cloud API poll, etc.)
 ### Project Structure
 
 ```
-winch/
+sowel/
 ├── src/
 │   ├── index.ts                 # Entry point
 │   ├── config.ts                # Env config loading
@@ -139,7 +139,7 @@ npm test -- --grep "pattern"  # Run specific tests
 ### Authentication
 
 - bcrypt (cost 12) for passwords, `jsonwebtoken` (HS256) for JWT
-- API tokens: `wch_` prefix (legacy `cbl_` also accepted), SHA-256 hash stored, generated via `crypto.randomBytes(32)`
+- API tokens: `swl_` prefix (legacy `wch_` and `cbl_` also accepted), SHA-256 hash stored, generated via `crypto.randomBytes(32)`
 - Auth middleware: try JWT decode first, then API token lookup
 - Roles: admin > user > viewer (hierarchical permissions)
 
@@ -216,11 +216,11 @@ V0.1 Devices → V0.2 Zones → V0.3 Equipments+Bindings → V0.4 UI Home → V0
 
 ## Environment Variables
 
-All settings are optional with sensible defaults — Winch runs zero-config out of the box. Override via `.env` if needed:
+All settings are optional with sensible defaults — Sowel runs zero-config out of the box. Override via `.env` if needed:
 
 | Variable          | Default           | Notes                                           |
 | ----------------- | ----------------- | ----------------------------------------------- |
-| `SQLITE_PATH`     | `./data/winch.db` | SQLite database path                            |
+| `SQLITE_PATH`     | `./data/sowel.db` | SQLite database path                            |
 | `API_PORT`        | `3000`            | HTTP server port                                |
 | `API_HOST`        | `0.0.0.0`         | Bind address                                    |
 | `JWT_SECRET`      | auto-generated    | Persisted in `data/.jwt-secret` on first launch |

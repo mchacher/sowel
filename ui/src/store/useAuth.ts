@@ -29,8 +29,8 @@ interface AuthState {
   fetchMe: () => Promise<void>;
 }
 
-const STORAGE_KEY_ACCESS = "winch_access_token";
-const STORAGE_KEY_REFRESH = "winch_refresh_token";
+const STORAGE_KEY_ACCESS = "sowel_access_token";
+const STORAGE_KEY_REFRESH = "sowel_refresh_token";
 
 function saveTokens(accessToken: string, refreshToken: string): void {
   localStorage.setItem(STORAGE_KEY_ACCESS, accessToken);

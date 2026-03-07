@@ -2,7 +2,7 @@
 
 ## Summary
 
-Generic MQTT key/value publisher that listens to Winch state changes (equipment data, zone aggregations) and publishes them to configurable MQTT topics. Each publisher has a topic and a list of mappings that bind a Winch data source to a publish key. Messages are published with retain=true.
+Generic MQTT key/value publisher that listens to Sowel state changes (equipment data, zone aggregations) and publishes them to configurable MQTT topics. Each publisher has a topic and a list of mappings that bind a Sowel data source to a publish key. Messages are published with retain=true.
 
 ## Reference
 
@@ -18,7 +18,7 @@ Generic MQTT key/value publisher that listens to Winch state changes (equipment 
 - [ ] On equipment.data.changed or zone.data.changed, matching mappings publish `{"key": value}` to the publisher's topic
 - [ ] Messages are published with retain=true
 - [ ] MQTT broker settings are configurable (fallback to Zigbee2MQTT broker)
-- [ ] Publisher uses its own MQTT connection (client ID: winch-publisher)
+- [ ] Publisher uses its own MQTT connection (client ID: sowel-publisher)
 - [ ] TypeScript compiles with zero errors (backend + frontend)
 
 ## Scope
