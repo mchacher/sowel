@@ -128,7 +128,7 @@ export async function createServer(deps: ServerDeps) {
   registerRecipeRoutes(app, { recipeManager, logger });
   registerModeRoutes(app, { modeManager, buttonActionManager, logger });
   registerCalendarRoutes(app, { calendarManager, logger });
-  registerBackupRoutes(app, { db, logger });
+  registerBackupRoutes(app, { db, historyWriter, logger });
   registerSettingsRoutes(app, { settingsManager, eventBus, logger });
   registerIntegrationRoutes(app, { integrationRegistry, settingsManager, logger });
   registerButtonActionRoutes(app, { buttonActionManager, logger });

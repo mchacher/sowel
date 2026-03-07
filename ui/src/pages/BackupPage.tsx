@@ -16,11 +16,12 @@ export function BackupPage() {
     setSuccess("");
     setExporting(true);
     try {
-      const blob = await exportBackup();
-      const url = URL.createObjectURL(blob);
+      const resp = await exportBackup();
+      const url = URL.createObjectURL(resp.blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `sowel-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `sowel-backup-${dateStr}.${resp.isZip ? "zip" : "json"}`;
       a.click();
       URL.revokeObjectURL(url);
       setSuccess(t("backup.exported"));
@@ -112,7 +113,7 @@ export function BackupPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
+              accept=".json,.zip"
               onChange={handleImport}
               className="hidden"
             />
