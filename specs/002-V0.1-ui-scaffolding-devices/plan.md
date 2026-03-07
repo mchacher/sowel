@@ -11,7 +11,7 @@
 
 1. [ ] Initialize Vite + React + TypeScript project in `ui/`
 2. [ ] Install dependencies: tailwindcss, postcss, autoprefixer, zustand, react-router-dom, lucide-react
-3. [ ] Configure Tailwind with Winch design system tokens (colors, fonts, spacing, border-radius) — light mode only
+3. [ ] Configure Tailwind with Sowel design system tokens (colors, fonts, spacing, border-radius) — light mode only
 4. [ ] Configure Vite proxy for `/api` and `/ws` to backend (localhost:3000)
 5. [ ] Set up Inter + JetBrains Mono fonts (via @fontsource or CDN)
 6. [ ] Create `ui/src/index.css` with Tailwind directives and base styles

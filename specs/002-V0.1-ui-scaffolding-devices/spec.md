@@ -22,7 +22,7 @@ This is part of the new incremental UI strategy: each backend version ships its 
 ## Acceptance Criteria
 
 - [ ] `ui/` directory contains a working React + Vite + TypeScript project
-- [ ] Tailwind CSS configured with the Winch design system tokens (light mode)
+- [ ] Tailwind CSS configured with the Sowel design system tokens (light mode)
 - [ ] Zustand WebSocket store connects to `ws://host:port/ws` and dispatches events
 - [ ] Zustand device store hydrates from `GET /api/v1/devices` on startup
 - [ ] Device store updates in real-time from WebSocket events (device.discovered, device.removed, device.status_changed, device.data.updated)

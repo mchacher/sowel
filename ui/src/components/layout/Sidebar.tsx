@@ -21,7 +21,7 @@ import { useTranslation } from "react-i18next";
 import { SidebarZoneTree } from "./SidebarZoneTree";
 import { SidebarModeList } from "./SidebarModeList";
 import { SidebarChartList } from "./SidebarChartList";
-import { WinchLogo } from "./WinchLogo";
+import { SowelLogo } from "./SowelLogo";
 import { useAuth } from "../../store/useAuth";
 
 interface NavItem {
@@ -58,7 +58,7 @@ export function Sidebar() {
       {/* Logo area */}
       <div className="flex items-center h-[60px] px-4 border-b border-border-light">
         <div className="flex items-center gap-3 min-w-0">
-          <WinchLogo size={32} className="flex-shrink-0" />
+          <SowelLogo size={32} className="flex-shrink-0" />
           {!collapsed && (
             <span className="font-semibold text-[16px] tracking-[-0.01em] text-text truncate">
               {t("app.name")}

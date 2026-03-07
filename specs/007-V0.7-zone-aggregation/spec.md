@@ -6,7 +6,7 @@ Implement automatic zone-level data aggregation. When a zone contains sensor or 
 
 ## Reference
 
-- Spec sections: winch-spec.md §Zone auto-aggregation, data-model.md §3.3
+- Spec sections: sowel-spec.md §Zone auto-aggregation, data-model.md §3.3
 
 ## Acceptance Criteria
 

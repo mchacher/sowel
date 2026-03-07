@@ -1,14 +1,14 @@
-# Winch — Data Model
+# Sowel — Data Model
 
 > Version: 1.0 — 2026-02-19
 >
-> This document is the reference for Winch's core data model. It describes the three-layer architecture (Topology → Functional → Physical), all entities, their relationships, and the aggregation rules.
+> This document is the reference for Sowel's core data model. It describes the three-layer architecture (Topology → Functional → Physical), all entities, their relationships, and the aggregation rules.
 
 ---
 
 ## 1. Three-Layer Architecture
 
-Winch separates concerns into three distinct layers:
+Sowel separates concerns into three distinct layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

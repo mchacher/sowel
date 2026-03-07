@@ -26,7 +26,7 @@ Each iteration is independently deployable and delivers visible value to the use
 **Deployment / InfluxDB Setup**:
 
 - [ ] Update `docker-compose.yml` with InfluxDB 2.7 service (auto-init: org, bucket, admin token)
-- [ ] Auto-setup on first connect: InfluxClient verifies/creates required buckets (winch, winch-hourly, winch-daily) with correct retention policies
+- [ ] Auto-setup on first connect: InfluxClient verifies/creates required buckets (sowel, sowel-hourly, sowel-daily) with correct retention policies
 - [ ] Test connection endpoint validates: ping OK + bucket exists + write permission
 - [ ] Graceful startup: if InfluxDB is in docker-compose but slow to start, HistoryWriter retries connection silently (no crash)
 - [ ] Add `history.enabled` setting — master switch (default: false until configured)
@@ -142,8 +142,8 @@ Each iteration is independently deployable and delivers visible value to the use
 **Backend**:
 
 - [x] Create InfluxDB downsampling tasks on first connection (or via setup endpoint):
-  - Task `downsample-hourly`: aggregate raw → `winch-hourly` bucket (mean, min, max per 1h)
-  - Task `downsample-daily`: aggregate hourly → `winch-daily` bucket (mean, min, max per 1d)
+  - Task `downsample-hourly`: aggregate raw → `sowel-hourly` bucket (mean, min, max per 1h)
+  - Task `downsample-daily`: aggregate hourly → `sowel-daily` bucket (mean, min, max per 1d)
 - [x] Bucket retention: raw=7d, hourly=90d, daily=5y (configurable in settings)
 - [x] `GET /api/v1/history/retention` returns bucket retention + task status
 - [x] HistoryQuery auto-selects bucket based on time range (with fallback to raw)
@@ -174,7 +174,7 @@ Each iteration is independently deployable and delivers visible value to the use
 
 ## Dependencies
 
-- Winch V0.12 (Computed Data) is NOT a prerequisite — history can be built independently
+- Sowel V0.12 (Computed Data) is NOT a prerequisite — history can be built independently
 - InfluxDB 2.7+ (Docker image: `influxdb:2.7`)
 - npm: `@influxdata/influxdb-client` (backend)
 - npm: `recharts` (frontend)
@@ -191,12 +191,12 @@ Each iteration is independently deployable and delivers visible value to the use
 
 ## Manual Testing Checklist
 
-- [ ] Start Winch without InfluxDB → no errors, history features hidden
+- [ ] Start Sowel without InfluxDB → no errors, history features hidden
 - [ ] Configure InfluxDB in Settings → test connection succeeds
 - [ ] Enable historize on a temperature binding → data appears in InfluxDB
 - [ ] Open equipment detail → chart shows last 24h of temperature
 - [ ] Switch to 7d range → hourly aggregation loads
 - [ ] Home page sparklines show trends
 - [ ] Analyse page: overlay temperature from 2 zones
-- [ ] Kill InfluxDB → Winch continues running, warning in logs
+- [ ] Kill InfluxDB → Sowel continues running, warning in logs
 - [ ] Restart InfluxDB → writes resume automatically

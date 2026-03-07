@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../store/useAuth";
+import { SowelLogo } from "../components/layout/SowelLogo";
 
 export function SetupPage() {
   const isAuthenticated = useAuth((s) => s.isAuthenticated);
@@ -50,9 +51,7 @@ export function SetupPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-sm mx-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-[10px] bg-primary text-white text-lg font-bold mb-3">
-            C
-          </div>
+          <SowelLogo size={48} className="inline-block mb-3" />
           <h1 className="text-xl font-semibold text-text">{t("app.name")}</h1>
           <p className="text-[13px] text-text-secondary mt-2">
             {t("auth.setupTitle")}

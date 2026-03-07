@@ -63,7 +63,7 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
     return reply
       .header(
         "Content-Disposition",
-        `attachment; filename="winch-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+        `attachment; filename="sowel-backup-${new Date().toISOString().slice(0, 10)}.json"`,
       )
       .send(payload);
   });

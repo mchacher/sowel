@@ -6,10 +6,10 @@ import App from "./App";
 import { useAuth } from "./store/useAuth";
 import { applyTheme } from "./theme";
 
-console.log("Winch — Founded by Marc Chachereau — AGPL-3.0");
+console.log("Sowel — Founded by Marc Chachereau — AGPL-3.0");
 
 // Apply theme immediately to prevent flash of wrong theme
-applyTheme(localStorage.getItem("winch_theme") as "light" | "dark" | "system" | null);
+applyTheme(localStorage.getItem("sowel_theme") as "light" | "dark" | "system" | null);
 
 // Trigger auth status check before rendering
 useAuth.getState().checkStatus();

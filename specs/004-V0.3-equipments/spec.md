@@ -9,7 +9,7 @@ V0.3 builds the **generic Equipment infrastructure** but focuses on **lighting**
 ## Reference
 
 - Data model: `docs/data-model.md` — sections 5, 6, 7
-- Spec: `docs/winch-spec.md` — Equipment, Binding, Order concepts
+- Spec: `docs/sowel-spec.md` — Equipment, Binding, Order concepts
 
 ## Acceptance Criteria
 

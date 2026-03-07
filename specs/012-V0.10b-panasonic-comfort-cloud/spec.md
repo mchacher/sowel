@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add a Panasonic Comfort Cloud integration plugin that discovers AC units from the Panasonic cloud API, exposes them as Devices with Data and Orders, and allows controlling them from the Winch UI. Uses a **Python bridge** wrapping the community-maintained `aio-panasonic-comfort-cloud` library (Home Assistant ecosystem) for authentication and API calls. Introduces the `thermostat` EquipmentType with a dedicated dashboard widget. Uses polling-based data updates with configurable interval (default 5 min) and on-demand polling after order execution.
+Add a Panasonic Comfort Cloud integration plugin that discovers AC units from the Panasonic cloud API, exposes them as Devices with Data and Orders, and allows controlling them from the Sowel UI. Uses a **Python bridge** wrapping the community-maintained `aio-panasonic-comfort-cloud` library (Home Assistant ecosystem) for authentication and API calls. Introduces the `thermostat` EquipmentType with a dedicated dashboard widget. Uses polling-based data updates with configurable interval (default 5 min) and on-demand polling after order execution.
 
 ## Reference
 
@@ -53,7 +53,7 @@ Add a Panasonic Comfort Cloud integration plugin that discovers AC units from th
 - Aquarea heat pump devices (different protocol, deferred)
 - Energy/history data from Panasonic API (deferred)
 - Zone parameters for ducted systems (multi-zone AC, rare)
-- Multi-account support (one Panasonic account per Winch instance)
+- Multi-account support (one Panasonic account per Sowel instance)
 - Docker configuration for Python runtime (deferred)
 
 ## Edge Cases

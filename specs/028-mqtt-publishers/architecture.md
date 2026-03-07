@@ -31,7 +31,7 @@ mqtt_publisher_mappings (id TEXT PK, publisher_id TEXT FK, publish_key TEXT, sou
 
 ## MQTT Topics
 
-- Publishes to user-configured topics (e.g., `winch/homedisplay/livingroom`)
+- Publishes to user-configured topics (e.g., `sowel/homedisplay/livingroom`)
 - Payload: `{"publishKey": value}` with retain=true
 
 ## API Changes

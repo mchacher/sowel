@@ -1,8 +1,8 @@
-# Winch — Equipment Types Specification
+# Sowel — Equipment Types Specification
 
 > **Version:** 0.1 — February 2026
 >
-> Winch separates **Devices** (physical hardware, auto-discovered) from **Equipments** (user-facing functional units). An equipment binds to one or more devices via **data bindings** (read) and **order bindings** (write). This abstraction is a core differentiator: the user thinks in terms of "garage door", not "LoRa node 12 + relay R1 + reed switches RS1/RS2".
+> Sowel separates **Devices** (physical hardware, auto-discovered) from **Equipments** (user-facing functional units). An equipment binds to one or more devices via **data bindings** (read) and **order bindings** (write). This abstraction is a core differentiator: the user thinks in terms of "garage door", not "LoRa node 12 + relay R1 + reed switches RS1/RS2".
 
 ---
 
@@ -487,7 +487,7 @@ Categories drive zone aggregation, UI icon/color selection, and history defaults
 
 ## History Defaults (V0.13)
 
-When InfluxDB is configured, Winch historizes data bindings using **convention over configuration**. Each binding's effective historize state is resolved in priority order:
+When InfluxDB is configured, Sowel historizes data bindings using **convention over configuration**. Each binding's effective historize state is resolved in priority order:
 
 1. **Explicit override** (`data_bindings.historize = 1` or `0`) → force ON or OFF
 2. **Alias default** (see below) → handles semantically important bindings in `generic` category

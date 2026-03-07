@@ -155,7 +155,7 @@ export class MczPoller {
 }
 
 /**
- * Map an MCZ status frame to a Winch DiscoveredDevice for upsert.
+ * Map an MCZ status frame to a Sowel DiscoveredDevice for upsert.
  */
 function mapFrameToDiscovered(_serial: string, _frame: MczStatusFrame): DiscoveredDevice {
   const stoveStates = [
