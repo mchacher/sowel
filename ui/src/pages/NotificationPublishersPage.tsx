@@ -752,10 +752,10 @@ function MappingRow({
             </label>
             <input
               type="number"
-              value={Math.round(throttleMs / 1000)}
-              onChange={(e) => setThrottleMs(Number(e.target.value) * 1000)}
+              value={Math.round(throttleMs / 60000)}
+              onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
               min={0}
-              step={30}
+              step={1}
               className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text font-mono"
             />
           </div>
@@ -794,7 +794,7 @@ function MappingRow({
           [{mapping.sourceType}] {label}
         </span>
         <span className="text-[10px] text-text-tertiary shrink-0">
-          {t("notifPublishers.throttleSeconds", { seconds: Math.round(mapping.throttleMs / 1000) })}
+          {t("notifPublishers.throttleMinutes", { minutes: Math.round(mapping.throttleMs / 60000) })}
         </span>
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -1044,14 +1044,14 @@ function AddMappingForm({
 
         <div>
           <label className="block text-[11px] text-text-secondary mb-1">
-            {t("notifPublishers.throttle")} (s)
+            {t("notifPublishers.throttle")}
           </label>
           <input
             type="number"
-            value={Math.round(throttleMs / 1000)}
-            onChange={(e) => setThrottleMs(Number(e.target.value) * 1000)}
+            value={Math.round(throttleMs / 60000)}
+            onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
             min={0}
-            step={30}
+            step={1}
             className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text font-mono"
           />
         </div>
