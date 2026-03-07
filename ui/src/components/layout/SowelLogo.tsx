@@ -13,13 +13,20 @@ export function SowelLogo({ size = 32, className = "" }: SowelLogoProps) {
       fill="none"
       className={className}
     >
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="0.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
       <rect width="32" height="32" rx="7" className="fill-primary" />
-      {/* Sowel drum — centered in square */}
-      <circle cx="16" cy="16" r="6.5" stroke="white" strokeWidth="2" fill="none" />
-      <circle cx="16" cy="16" r="2" fill="white" />
-      {/* Handle/crank */}
-      <line x1="16" y1="16" x2="23.5" y2="10.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="23.5" cy="10.5" r="2" fill="white" />
+      {/* Concentric circles with glow diffusion */}
+      <circle cx="16" cy="16" r="2.85" fill="white" stroke="white" strokeWidth="0.3" />
+      <circle cx="16" cy="16" r="7" stroke="white" strokeWidth="1.5" opacity="0.8" fill="none" filter="url(#glow)" />
+      <circle cx="16" cy="16" r="11.5" stroke="white" strokeWidth="1.2" opacity="0.45" fill="none" />
     </svg>
   );
 }
