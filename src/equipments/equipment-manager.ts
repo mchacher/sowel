@@ -141,7 +141,7 @@ export class EquipmentManager {
       getDataBindingsWithValues: this.db.prepare(
         `SELECT db.id, db.equipment_id, db.device_data_id, db.alias, db.historize,
                 dd.device_id, d.name as device_name, dd.key, dd.type, dd.category,
-                dd.value, dd.unit, dd.last_updated
+                dd.value, dd.unit, dd.last_updated, dd.last_changed
          FROM data_bindings db
          JOIN device_data dd ON db.device_data_id = dd.id
          JOIN devices d ON dd.device_id = d.id
@@ -694,6 +694,7 @@ export class EquipmentManager {
       value: state,
       unit: undefined,
       lastUpdated: new Date().toISOString(),
+      lastChanged: new Date().toISOString(),
     };
   }
 
@@ -797,6 +798,7 @@ interface DataBindingJoinRow {
   value: string | null;
   unit: string | null;
   last_updated: string | null;
+  last_changed: string | null;
 }
 
 interface OrderBindingJoinRow {
@@ -852,6 +854,7 @@ function rowToDataBindingWithValue(row: DataBindingJoinRow): DataBindingWithValu
     value,
     unit: row.unit ?? undefined,
     lastUpdated: toISOUtc(row.last_updated),
+    lastChanged: toISOUtc(row.last_changed),
   };
 }
 

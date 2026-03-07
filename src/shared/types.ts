@@ -234,6 +234,7 @@ export interface DataBindingWithValue extends DataBinding {
   value: unknown;
   unit?: string;
   lastUpdated: string | null;
+  lastChanged: string | null;
   historize?: number | null;
 }
 

@@ -27,6 +27,7 @@ CREATE TABLE device_data (
   value TEXT,
   unit TEXT,
   last_updated DATETIME,
+  last_changed DATETIME,
   UNIQUE(device_id, key)
 );
 

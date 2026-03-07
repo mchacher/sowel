@@ -123,9 +123,11 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
         if (eq.id !== equipmentId) return eq;
         return {
           ...eq,
-          dataBindings: eq.dataBindings.map((db) =>
-            db.alias === alias ? { ...db, value, lastUpdated: now } : db
-          ),
+          dataBindings: eq.dataBindings.map((db) => {
+            if (db.alias !== alias) return db;
+            const valueChanged = JSON.stringify(db.value) !== JSON.stringify(value);
+            return { ...db, value, lastUpdated: now, lastChanged: valueChanged ? now : db.lastChanged };
+          }),
         };
       }),
     }));
