@@ -25,14 +25,15 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
 
   // POST /api/v1/mqtt-publishers
   app.post<{
-    Body: { name: string; topic: string; enabled?: boolean };
+    Body: { name: string; brokerId: string; topic: string; enabled?: boolean };
   }>("/api/v1/mqtt-publishers", async (request, reply) => {
-    const { name, topic, enabled } = request.body ?? {};
+    const { name, brokerId, topic, enabled } = request.body ?? {};
     if (!name) return reply.code(400).send({ error: "name is required" });
+    if (!brokerId) return reply.code(400).send({ error: "brokerId is required" });
     if (!topic) return reply.code(400).send({ error: "topic is required" });
 
     try {
-      const publisher = mqttPublisherManager.create({ name, topic, enabled });
+      const publisher = mqttPublisherManager.create({ name, brokerId, topic, enabled });
       return reply.code(201).send(publisher);
     } catch (err) {
       if (err instanceof MqttPublisherError)
@@ -44,7 +45,7 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
   // PUT /api/v1/mqtt-publishers/:id
   app.put<{
     Params: { id: string };
-    Body: { name?: string; topic?: string; enabled?: boolean };
+    Body: { name?: string; brokerId?: string; topic?: string; enabled?: boolean };
   }>("/api/v1/mqtt-publishers/:id", async (request, reply) => {
     try {
       const publisher = mqttPublisherManager.update(request.params.id, request.body ?? {});
@@ -104,6 +105,30 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
         sourceKey,
       });
       return reply.code(201).send(mapping);
+    } catch (err) {
+      if (err instanceof MqttPublisherError)
+        return reply.code(err.status).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  // PUT /api/v1/mqtt-publishers/:id/mappings/:mappingId
+  app.put<{
+    Params: { id: string; mappingId: string };
+    Body: {
+      publishKey?: string;
+      sourceType?: "equipment" | "zone" | "recipe";
+      sourceId?: string;
+      sourceKey?: string;
+    };
+  }>("/api/v1/mqtt-publishers/:id/mappings/:mappingId", async (request, reply) => {
+    try {
+      const mapping = mqttPublisherManager.updateMapping(
+        request.params.id,
+        request.params.mappingId,
+        request.body ?? {},
+      );
+      return mapping;
     } catch (err) {
       if (err instanceof MqttPublisherError)
         return reply.code(err.status).send({ error: err.message });

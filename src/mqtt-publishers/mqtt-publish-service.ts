@@ -1,7 +1,7 @@
 import mqtt, { type MqttClient } from "mqtt";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
-import type { SettingsManager } from "../core/settings-manager.js";
+import type { MqttBrokerManager } from "./mqtt-broker-manager.js";
 import type { MqttPublisherManager } from "./mqtt-publisher-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../zones/zone-aggregator.js";
@@ -16,6 +16,7 @@ interface MappingRef {
   publisherTopic: string;
   publishKey: string;
   enabled: boolean;
+  brokerId: string | null;
 }
 
 // ============================================================
@@ -37,7 +38,7 @@ function toMqttValue(value: unknown): unknown {
 
 export class MqttPublishService {
   private readonly logger: Logger;
-  private client: MqttClient | null = null;
+  private readonly clients: Map<string, MqttClient> = new Map();
   private unsubscribe: (() => void) | null = null;
 
   /**
@@ -49,7 +50,7 @@ export class MqttPublishService {
 
   constructor(
     private readonly eventBus: EventBus,
-    private readonly settingsManager: SettingsManager,
+    private readonly brokerManager: MqttBrokerManager,
     private readonly publisherManager: MqttPublisherManager,
     private readonly equipmentManager: EquipmentManager,
     private readonly zoneAggregator: ZoneAggregator,
@@ -62,7 +63,7 @@ export class MqttPublishService {
   // ── Lifecycle ────────────────────────────────────────────────
 
   init(): void {
-    this.tryConnect();
+    this.connectAllBrokers();
     this.rebuildIndex();
     this.subscribeToEvents();
     this.publishInitialSnapshot();
@@ -72,79 +73,63 @@ export class MqttPublishService {
   async destroy(): Promise<void> {
     this.unsubscribe?.();
     this.unsubscribe = null;
-    if (this.client) {
+    const disconnects = [...this.clients.entries()].map(async ([brokerId, client]) => {
       try {
-        await this.client.endAsync();
+        await client.endAsync();
       } catch {
         // Ignore disconnect errors during shutdown
       }
-      this.client = null;
+      this.clients.delete(brokerId);
+    });
+    await Promise.all(disconnects);
+  }
+
+  // ── Broker connection pool ─────────────────────────────────
+
+  private connectAllBrokers(): void {
+    const brokers = this.brokerManager.getAll();
+    for (const broker of brokers) {
+      this.connectBroker(broker.id);
     }
   }
 
-  // ── MQTT connection ──────────────────────────────────────────
+  private connectBroker(brokerId: string): void {
+    const broker = this.brokerManager.getById(brokerId);
+    if (!broker) return;
 
-  private tryConnect(): void {
-    // Read publisher-specific MQTT settings, fallback to Z2M settings
-    const brokerUrl =
-      this.settingsManager.get("mqtt-publisher.brokerUrl") ||
-      this.settingsManager.get("integration.zigbee2mqtt.mqtt_url");
+    // Disconnect existing client for this broker if any
+    this.disconnectBroker(brokerId);
 
-    if (!brokerUrl) {
-      this.logger.warn(
-        "No MQTT broker configured for publisher (set mqtt-publisher.brokerUrl or configure Zigbee2MQTT)",
-      );
-      return;
-    }
-
-    const username =
-      this.settingsManager.get("mqtt-publisher.username") ||
-      this.settingsManager.get("integration.zigbee2mqtt.mqtt_username") ||
-      undefined;
-    const password =
-      this.settingsManager.get("mqtt-publisher.password") ||
-      this.settingsManager.get("integration.zigbee2mqtt.mqtt_password") ||
-      undefined;
-
-    // Disconnect existing client if any
-    if (this.client) {
-      this.client.end(true);
-      this.client = null;
-    }
-
-    this.client = mqtt.connect(brokerUrl, {
-      clientId: "sowel-publisher",
-      username,
-      password,
+    const client = mqtt.connect(broker.url, {
+      clientId: `sowel-publisher-${brokerId.slice(0, 8)}`,
+      username: broker.username,
+      password: broker.password,
       clean: true,
       reconnectPeriod: 5000,
     });
 
-    this.client.on("connect", () => {
-      this.logger.info({ brokerUrl }, "MQTT publish service connected");
-      // Re-publish snapshot on reconnect so retained values are up-to-date
-      this.publishInitialSnapshot();
+    client.on("connect", () => {
+      this.logger.info({ brokerId, brokerUrl: broker.url }, "MQTT publish broker connected");
+      this.publishInitialSnapshotForBroker(brokerId);
     });
 
-    this.client.on("reconnect", () => {
-      this.logger.warn("MQTT publish service reconnecting...");
+    client.on("reconnect", () => {
+      this.logger.warn({ brokerId }, "MQTT publish broker reconnecting...");
     });
 
-    this.client.on("error", (err) => {
-      this.logger.error({ err }, "MQTT publish service error");
+    client.on("error", (err) => {
+      this.logger.error({ err, brokerId }, "MQTT publish broker error");
     });
+
+    this.clients.set(brokerId, client);
   }
 
-  private async tryReconnect(): Promise<void> {
-    if (this.client) {
-      try {
-        await this.client.endAsync(true);
-      } catch {
-        // Ignore
-      }
-      this.client = null;
+  private disconnectBroker(brokerId: string): void {
+    const existing = this.clients.get(brokerId);
+    if (existing) {
+      existing.end(true);
+      this.clients.delete(brokerId);
     }
-    this.tryConnect();
   }
 
   // ── Index management ─────────────────────────────────────────
@@ -161,6 +146,7 @@ export class MqttPublishService {
           publisherTopic: pub.topic,
           publishKey: mapping.publishKey,
           enabled: pub.enabled,
+          brokerId: pub.brokerId,
         });
         this.index.set(key, refs);
       }
@@ -195,10 +181,17 @@ export class MqttPublishService {
             this.rebuildIndex();
             break;
 
-          case "settings.changed":
-            if (event.keys.some((k) => k.startsWith("mqtt-publisher."))) {
-              this.tryReconnect();
-            }
+          case "mqtt-broker.created":
+            this.connectBroker(event.broker.id);
+            break;
+
+          case "mqtt-broker.updated":
+            this.connectBroker(event.broker.id);
+            break;
+
+          case "mqtt-broker.removed":
+            this.disconnectBroker(event.brokerId);
+            this.rebuildIndex();
             break;
         }
       } catch (err) {
@@ -213,8 +206,8 @@ export class MqttPublishService {
     if (!refs) return;
 
     for (const ref of refs) {
-      if (!ref.enabled) continue;
-      this.publish(ref.publisherTopic, ref.publishKey, value);
+      if (!ref.enabled || !ref.brokerId) continue;
+      this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
     }
   }
 
@@ -226,8 +219,8 @@ export class MqttPublishService {
       if (!refs) continue;
 
       for (const ref of refs) {
-        if (!ref.enabled) continue;
-        this.publish(ref.publisherTopic, ref.publishKey, value);
+        if (!ref.enabled || !ref.brokerId) continue;
+        this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
       }
     }
   }
@@ -240,38 +233,39 @@ export class MqttPublishService {
       if (!refs) continue;
 
       for (const ref of refs) {
-        if (!ref.enabled) continue;
-        this.publish(ref.publisherTopic, ref.publishKey, value);
+        if (!ref.enabled || !ref.brokerId) continue;
+        this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
       }
     }
   }
 
   // ── Publishing ───────────────────────────────────────────────
 
-  private publish(topic: string, publishKey: string, value: unknown): void {
-    if (!this.client?.connected) return;
+  private publish(brokerId: string, topic: string, publishKey: string, value: unknown): void {
+    const client = this.clients.get(brokerId);
+    if (!client?.connected) return;
 
     const mqttValue = toMqttValue(value);
     const payload = JSON.stringify({ [publishKey]: mqttValue });
-    this.client.publish(topic, payload, { retain: true }, (err) => {
+    client.publish(topic, payload, { retain: true }, (err) => {
       if (err) {
-        this.logger.error({ err, topic, publishKey }, "MQTT publish error");
+        this.logger.error({ err, brokerId, topic, publishKey }, "MQTT publish error");
       }
     });
 
-    this.logger.trace({ topic, publishKey, value }, "MQTT published");
+    this.logger.trace({ brokerId, topic, publishKey, value }, "MQTT published");
   }
 
   // ── Initial snapshot ─────────────────────────────────────────
 
   private publishInitialSnapshot(): void {
-    if (!this.client?.connected) return;
-
     const publishers = this.publisherManager.getAllWithMappings();
     let published = 0;
 
     for (const pub of publishers) {
-      if (!pub.enabled) continue;
+      if (!pub.enabled || !pub.brokerId) continue;
+      const client = this.clients.get(pub.brokerId);
+      if (!client?.connected) continue;
 
       for (const mapping of pub.mappings) {
         const value = this.resolveCurrentValue(
@@ -280,7 +274,7 @@ export class MqttPublishService {
           mapping.sourceKey,
         );
         if (value !== undefined) {
-          this.publish(pub.topic, mapping.publishKey, value);
+          this.publish(pub.brokerId, pub.topic, mapping.publishKey, value);
           published++;
         }
       }
@@ -291,13 +285,39 @@ export class MqttPublishService {
     }
   }
 
+  private publishInitialSnapshotForBroker(brokerId: string): void {
+    const publishers = this.publisherManager.getAllWithMappings();
+    let published = 0;
+
+    for (const pub of publishers) {
+      if (!pub.enabled || pub.brokerId !== brokerId) continue;
+
+      for (const mapping of pub.mappings) {
+        const value = this.resolveCurrentValue(
+          mapping.sourceType,
+          mapping.sourceId,
+          mapping.sourceKey,
+        );
+        if (value !== undefined) {
+          this.publish(brokerId, pub.topic, mapping.publishKey, value);
+          published++;
+        }
+      }
+    }
+
+    if (published > 0) {
+      this.logger.debug({ brokerId, published }, "Broker snapshot published on connect");
+    }
+  }
+
   // ── Test publish ────────────────────────────────────────────
 
   publishSnapshotForPublisher(publisherId: string): number {
-    if (!this.client?.connected) return 0;
-
     const publisher = this.publisherManager.getByIdWithMappings(publisherId);
-    if (!publisher) return 0;
+    if (!publisher || !publisher.brokerId) return 0;
+
+    const client = this.clients.get(publisher.brokerId);
+    if (!client?.connected) return 0;
 
     let published = 0;
     for (const mapping of publisher.mappings) {
@@ -307,7 +327,7 @@ export class MqttPublishService {
         mapping.sourceKey,
       );
       if (value !== undefined) {
-        this.publish(publisher.topic, mapping.publishKey, value);
+        this.publish(publisher.brokerId, publisher.topic, mapping.publishKey, value);
         published++;
       }
     }

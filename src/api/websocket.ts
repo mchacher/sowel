@@ -59,6 +59,7 @@ function getEventTopic(event: EngineEvent): WsTopic {
       return "recipes";
     case "calendar":
       return "calendar";
+    case "mqtt-broker":
     case "mqtt-publisher":
       return "mqtt-publishers";
     default:

@@ -14,6 +14,7 @@ import type {
 interface PublisherRow {
   id: string;
   name: string;
+  broker_id: string | null;
   topic: string;
   enabled: number;
   created_at: string;
@@ -36,6 +37,7 @@ function rowToPublisher(row: PublisherRow): MqttPublisher {
   return {
     id: row.id,
     name: row.name,
+    brokerId: row.broker_id,
     topic: row.topic,
     enabled: row.enabled === 1,
     createdAt: toISOUtc(row.created_at),
@@ -75,11 +77,11 @@ export class MqttPublisherManager {
       listPublishers: this.db.prepare(`SELECT * FROM mqtt_publishers ORDER BY name`),
       getPublisher: this.db.prepare(`SELECT * FROM mqtt_publishers WHERE id = ?`),
       insertPublisher: this.db.prepare(
-        `INSERT INTO mqtt_publishers (id, name, topic, enabled, created_at, updated_at)
-         VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO mqtt_publishers (id, name, broker_id, topic, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       ),
       updatePublisher: this.db.prepare(
-        `UPDATE mqtt_publishers SET name = ?, topic = ?, enabled = ?, updated_at = datetime('now')
+        `UPDATE mqtt_publishers SET name = ?, broker_id = ?, topic = ?, enabled = ?, updated_at = datetime('now')
          WHERE id = ?`,
       ),
       deletePublisher: this.db.prepare(`DELETE FROM mqtt_publishers WHERE id = ?`),
@@ -91,6 +93,10 @@ export class MqttPublisherManager {
          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
       ),
       getMapping: this.db.prepare(`SELECT * FROM mqtt_publisher_mappings WHERE id = ?`),
+      updateMapping: this.db.prepare(
+        `UPDATE mqtt_publisher_mappings SET publish_key = ?, source_type = ?, source_id = ?, source_key = ?
+         WHERE id = ? AND publisher_id = ?`,
+      ),
       deleteMapping: this.db.prepare(
         `DELETE FROM mqtt_publisher_mappings WHERE id = ? AND publisher_id = ?`,
       ),
@@ -126,13 +132,24 @@ export class MqttPublisherManager {
     return { ...publisher, mappings: this.getMappings(id) };
   }
 
-  create(input: { name: string; topic: string; enabled?: boolean }): MqttPublisher {
+  create(input: {
+    name: string;
+    brokerId: string | null;
+    topic: string;
+    enabled?: boolean;
+  }): MqttPublisher {
     if (!input.name?.trim()) throw new MqttPublisherError("name is required", 400);
     if (!input.topic?.trim()) throw new MqttPublisherError("topic is required", 400);
 
     const id = randomUUID();
     const enabled = input.enabled !== false ? 1 : 0;
-    this.stmts.insertPublisher.run(id, input.name.trim(), input.topic.trim(), enabled);
+    this.stmts.insertPublisher.run(
+      id,
+      input.name.trim(),
+      input.brokerId,
+      input.topic.trim(),
+      enabled,
+    );
 
     const publisher = this.getById(id)!;
     this.eventBus.emit({ type: "mqtt-publisher.created", publisher });
@@ -140,16 +157,20 @@ export class MqttPublisherManager {
     return publisher;
   }
 
-  update(id: string, updates: { name?: string; topic?: string; enabled?: boolean }): MqttPublisher {
+  update(
+    id: string,
+    updates: { name?: string; brokerId?: string | null; topic?: string; enabled?: boolean },
+  ): MqttPublisher {
     const existing = this.getById(id);
     if (!existing) throw new MqttPublisherError(`Publisher not found: ${id}`, 404);
 
     const name = updates.name?.trim() ?? existing.name;
+    const brokerId = updates.brokerId !== undefined ? updates.brokerId : existing.brokerId;
     const topic = updates.topic?.trim() ?? existing.topic;
     const enabled =
       updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : existing.enabled ? 1 : 0;
 
-    this.stmts.updatePublisher.run(name, topic, enabled, id);
+    this.stmts.updatePublisher.run(name, brokerId, topic, enabled, id);
     const publisher = this.getById(id)!;
     this.eventBus.emit({ type: "mqtt-publisher.updated", publisher });
     this.logger.info({ publisherId: id }, "MQTT publisher updated");
@@ -229,6 +250,60 @@ export class MqttPublisherManager {
       { publisherId, mappingId: id, publishKey: input.publishKey },
       "MQTT publisher mapping added",
     );
+    return mapping;
+  }
+
+  updateMapping(
+    publisherId: string,
+    mappingId: string,
+    input: {
+      publishKey?: string;
+      sourceType?: "equipment" | "zone" | "recipe";
+      sourceId?: string;
+      sourceKey?: string;
+    },
+  ): MqttPublisherMapping {
+    const publisher = this.getById(publisherId);
+    if (!publisher) throw new MqttPublisherError(`Publisher not found: ${publisherId}`, 404);
+
+    const existingRow = this.stmts.getMapping.get(mappingId) as MappingRow | undefined;
+    if (!existingRow || existingRow.publisher_id !== publisherId) {
+      throw new MqttPublisherError(`Mapping not found: ${mappingId}`, 404);
+    }
+
+    const publishKey = input.publishKey?.trim() ?? existingRow.publish_key;
+    const sourceType =
+      input.sourceType ?? (existingRow.source_type as "equipment" | "zone" | "recipe");
+    const sourceId = input.sourceId?.trim() ?? existingRow.source_id;
+    const sourceKey = input.sourceKey?.trim() ?? existingRow.source_key;
+
+    try {
+      this.stmts.updateMapping.run(
+        publishKey,
+        sourceType,
+        sourceId,
+        sourceKey,
+        mappingId,
+        publisherId,
+      );
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
+        throw new MqttPublisherError(
+          `Publish key '${publishKey}' already exists in this publisher`,
+          409,
+        );
+      }
+      throw err;
+    }
+
+    const row = this.stmts.getMapping.get(mappingId) as MappingRow;
+    const mapping = rowToMapping(row);
+    this.eventBus.emit({
+      type: "mqtt-publisher.mapping.created",
+      publisherId,
+      mapping,
+    });
+    this.logger.info({ publisherId, mappingId, publishKey }, "MQTT publisher mapping updated");
     return mapping;
   }
 
