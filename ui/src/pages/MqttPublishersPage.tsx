@@ -9,8 +9,9 @@ import {
   PowerOff,
   ChevronDown,
   ChevronUp,
-  Settings2,
   Zap,
+  Server,
+  Pencil,
 } from "lucide-react";
 import {
   getMqttPublishers,
@@ -24,8 +25,10 @@ import {
   getZones,
   getRecipeInstances,
   getRecipes,
-  getSettings,
-  updateSettings,
+  getMqttBrokers,
+  createMqttBroker,
+  updateMqttBroker,
+  deleteMqttBroker,
 } from "../api";
 import type {
   MqttPublisherWithMappings,
@@ -34,6 +37,7 @@ import type {
   ZoneWithChildren,
   RecipeInstance,
   RecipeInfo,
+  MqttBroker,
 } from "../types";
 
 const ZONE_AGG_KEYS = [
@@ -57,36 +61,31 @@ const ZONE_AGG_KEYS = [
 export function MqttPublishersPage() {
   const { t } = useTranslation();
   const [publishers, setPublishers] = useState<MqttPublisherWithMappings[]>([]);
+  const [brokers, setBrokers] = useState<MqttBroker[]>([]);
   const [equipments, setEquipments] = useState<EquipmentWithDetails[]>([]);
   const [zones, setZones] = useState<ZoneWithChildren[]>([]);
   const [recipeInstances, setRecipeInstances] = useState<RecipeInstance[]>([]);
   const [recipes, setRecipes] = useState<RecipeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [showBrokerSettings, setShowBrokerSettings] = useState(false);
-  const [brokerUrl, setBrokerUrl] = useState("");
-  const [brokerUsername, setBrokerUsername] = useState("");
-  const [brokerPassword, setBrokerPassword] = useState("");
-  const [savingBroker, setSavingBroker] = useState(false);
+  const [showBrokers, setShowBrokers] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [pubs, eqs, zs, ri, recs, settings] = await Promise.all([
+      const [pubs, eqs, zs, ri, recs, brks] = await Promise.all([
         getMqttPublishers(),
         getEquipments(),
         getZones(),
         getRecipeInstances(),
         getRecipes(),
-        getSettings(),
+        getMqttBrokers(),
       ]);
       setPublishers(pubs);
       setEquipments(eqs);
       setZones(zs);
       setRecipeInstances(ri);
       setRecipes(recs);
-      setBrokerUrl(settings["mqtt-publisher.brokerUrl"] ?? "");
-      setBrokerUsername(settings["mqtt-publisher.username"] ?? "");
-      setBrokerPassword(settings["mqtt-publisher.password"] ?? "");
+      setBrokers(brks);
     } catch {
       // ignore
     } finally {
@@ -97,22 +96,6 @@ export function MqttPublishersPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleSaveBroker = async () => {
-    setSavingBroker(true);
-    try {
-      const entries: Record<string, string> = {
-        "mqtt-publisher.brokerUrl": brokerUrl,
-        "mqtt-publisher.username": brokerUsername,
-        "mqtt-publisher.password": brokerPassword,
-      };
-      await updateSettings(entries);
-    } catch {
-      // ignore
-    } finally {
-      setSavingBroker(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -136,65 +119,18 @@ export function MqttPublishersPage() {
         </p>
       </div>
 
-      {/* Broker settings */}
+      {/* Brokers section */}
       <div className="mb-6">
         <button
-          onClick={() => setShowBrokerSettings(!showBrokerSettings)}
+          onClick={() => setShowBrokers(!showBrokers)}
           className="flex items-center gap-2 text-[13px] text-text-secondary hover:text-text transition-colors"
         >
-          <Settings2 size={16} strokeWidth={1.5} />
-          {t("mqttPublishers.brokerSettings")}
-          {showBrokerSettings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <Server size={16} strokeWidth={1.5} />
+          {t("mqttPublishers.brokers")} ({brokers.length})
+          {showBrokers ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
-        {showBrokerSettings && (
-          <div className="mt-3 p-4 bg-surface rounded-[10px] border border-border max-w-lg">
-            <p className="text-[12px] text-text-tertiary mb-3">
-              {t("mqttPublishers.brokerHint")}
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[12px] text-text-secondary mb-1">
-                  {t("mqttPublishers.brokerUrl")}
-                </label>
-                <input
-                  type="text"
-                  value={brokerUrl}
-                  onChange={(e) => setBrokerUrl(e.target.value)}
-                  placeholder="mqtt://192.168.0.45:1883"
-                  className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] text-text-secondary mb-1">
-                  {t("mqttPublishers.brokerUsername")}
-                </label>
-                <input
-                  type="text"
-                  value={brokerUsername}
-                  onChange={(e) => setBrokerUsername(e.target.value)}
-                  className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] text-text-secondary mb-1">
-                  {t("mqttPublishers.brokerPassword")}
-                </label>
-                <input
-                  type="password"
-                  value={brokerPassword}
-                  onChange={(e) => setBrokerPassword(e.target.value)}
-                  className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
-                />
-              </div>
-              <button
-                onClick={handleSaveBroker}
-                disabled={savingBroker}
-                className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
-              >
-                {savingBroker ? <Loader2 size={14} className="animate-spin" /> : t("common.save")}
-              </button>
-            </div>
-          </div>
+        {showBrokers && (
+          <BrokersSection brokers={brokers} onRefresh={load} />
         )}
       </div>
 
@@ -202,7 +138,9 @@ export function MqttPublishersPage() {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover transition-colors"
+          disabled={brokers.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+          title={brokers.length === 0 ? t("mqttPublishers.noBrokersHint") : undefined}
         >
           <Plus size={14} />
           {t("mqttPublishers.newPublisher")}
@@ -212,6 +150,7 @@ export function MqttPublishersPage() {
       {/* Create form */}
       {showCreate && (
         <CreatePublisherForm
+          brokers={brokers}
           onCreated={() => {
             setShowCreate(false);
             load();
@@ -231,6 +170,7 @@ export function MqttPublishersPage() {
             <PublisherCard
               key={pub.id}
               publisher={pub}
+              brokers={brokers}
               equipments={equipments}
               zones={zones}
               recipeInstances={recipeInstances}
@@ -244,26 +184,235 @@ export function MqttPublishersPage() {
   );
 }
 
-// ── Create form ──────────────────────────────────────────────
+// ── Brokers section ───────────────────────────────────────────
+
+function BrokersSection({
+  brokers,
+  onRefresh,
+}: {
+  brokers: MqttBroker[];
+  onRefresh: () => void;
+}) {
+  const { t } = useTranslation();
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(t("mqttPublishers.confirmDeleteBroker"))) return;
+    try {
+      await deleteMqttBroker(id);
+      onRefresh();
+    } catch (err: unknown) {
+      if (err instanceof Error) alert(err.message);
+    }
+  };
+
+  return (
+    <div className="mt-3 space-y-2">
+      {brokers.map((broker) =>
+        editingId === broker.id ? (
+          <BrokerForm
+            key={broker.id}
+            broker={broker}
+            onSaved={() => {
+              setEditingId(null);
+              onRefresh();
+            }}
+            onCancel={() => setEditingId(null)}
+          />
+        ) : (
+          <div
+            key={broker.id}
+            className="flex items-center justify-between px-4 py-2.5 bg-surface rounded-[10px] border border-border max-w-lg"
+          >
+            <div>
+              <div className="text-[13px] font-medium text-text">{broker.name}</div>
+              <div className="text-[12px] text-text-tertiary font-mono">{broker.url}</div>
+              {broker.username && (
+                <div className="text-[11px] text-text-tertiary">{t("mqttPublishers.brokerUsername")}: {broker.username}</div>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditingId(broker.id)}
+                className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => handleDelete(broker.id)}
+                className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-red-500"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        ),
+      )}
+      {showAdd ? (
+        <BrokerForm
+          onSaved={() => {
+            setShowAdd(false);
+            onRefresh();
+          }}
+          onCancel={() => setShowAdd(false)}
+        />
+      ) : (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 text-[12px] text-primary hover:text-primary-hover transition-colors"
+        >
+          <Plus size={13} />
+          {t("mqttPublishers.addBroker")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Broker form (create + edit) ──────────────────────────────
+
+function BrokerForm({
+  broker,
+  onSaved,
+  onCancel,
+}: {
+  broker?: MqttBroker;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState(broker?.name ?? "");
+  const [url, setUrl] = useState(broker?.url ?? "");
+  const [username, setUsername] = useState(broker?.username ?? "");
+  const [password, setPassword] = useState(broker?.password ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !url.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      if (broker) {
+        await updateMqttBroker(broker.id, {
+          name: name.trim(),
+          url: url.trim(),
+          username: username.trim() || undefined,
+          password: password || undefined,
+        });
+      } else {
+        await createMqttBroker({
+          name: name.trim(),
+          url: url.trim(),
+          username: username.trim() || undefined,
+          password: password || undefined,
+        });
+      }
+      onSaved();
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+      <div className="space-y-3">
+        <div>
+          <label className="block text-[12px] text-text-secondary mb-1">
+            {t("mqttPublishers.brokerName")}
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My Broker"
+            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-[12px] text-text-secondary mb-1">
+            {t("mqttPublishers.brokerUrl")}
+          </label>
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="mqtt://192.168.0.45:1883"
+            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary font-mono"
+          />
+        </div>
+        <div>
+          <label className="block text-[12px] text-text-secondary mb-1">
+            {t("mqttPublishers.brokerUsername")}
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
+          />
+        </div>
+        <div>
+          <label className="block text-[12px] text-text-secondary mb-1">
+            {t("mqttPublishers.brokerPassword")}
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
+          />
+        </div>
+        {error && <div className="text-[11px] text-red-500">{error}</div>}
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            disabled={saving || !name.trim() || !url.trim()}
+            className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : broker ? t("common.save") : t("common.create")}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-1.5 text-[13px] text-text-secondary hover:text-text transition-colors"
+          >
+            {t("common.cancel")}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// ── Create publisher form ─────────────────────────────────────
 
 function CreatePublisherForm({
+  brokers,
   onCreated,
   onCancel,
 }: {
+  brokers: MqttBroker[];
   onCreated: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
+  const [brokerId, setBrokerId] = useState(brokers.length === 1 ? brokers[0].id : "");
   const [topic, setTopic] = useState("");
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !topic.trim()) return;
+    if (!name.trim() || !brokerId || !topic.trim()) return;
     setSaving(true);
     try {
-      await createMqttPublisher({ name: name.trim(), topic: topic.trim() });
+      await createMqttPublisher({ name: name.trim(), brokerId, topic: topic.trim() });
       onCreated();
     } catch {
       // ignore
@@ -290,6 +439,23 @@ function CreatePublisherForm({
         </div>
         <div>
           <label className="block text-[12px] text-text-secondary mb-1">
+            {t("mqttPublishers.broker")}
+          </label>
+          <select
+            value={brokerId}
+            onChange={(e) => setBrokerId(e.target.value)}
+            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
+          >
+            <option value="">{t("mqttPublishers.selectBroker")}</option>
+            {brokers.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name} ({b.url})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[12px] text-text-secondary mb-1">
             {t("mqttPublishers.topic")}
           </label>
           <input
@@ -303,7 +469,7 @@ function CreatePublisherForm({
         <div className="flex items-center gap-2">
           <button
             type="submit"
-            disabled={saving || !name.trim() || !topic.trim()}
+            disabled={saving || !name.trim() || !brokerId || !topic.trim()}
             className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
           >
             {t("common.create")}
@@ -325,6 +491,7 @@ function CreatePublisherForm({
 
 function PublisherCard({
   publisher,
+  brokers,
   equipments,
   zones,
   recipeInstances,
@@ -332,6 +499,7 @@ function PublisherCard({
   onRefresh,
 }: {
   publisher: MqttPublisherWithMappings;
+  brokers: MqttBroker[];
   equipments: EquipmentWithDetails[];
   zones: ZoneWithChildren[];
   recipeInstances: RecipeInstance[];
@@ -346,6 +514,7 @@ function PublisherCard({
   const [testResult, setTestResult] = useState<number | null>(null);
 
   const flatZones = flattenZones(zones);
+  const broker = brokers.find((b) => b.id === publisher.brokerId);
 
   const handleTest = async () => {
     setTesting(true);
@@ -419,12 +588,22 @@ function PublisherCard({
           <div>
             <h3 className="text-[14px] font-medium text-text">{publisher.name}</h3>
             <span className="text-[12px] text-text-tertiary font-mono">{publisher.topic}</span>
+            {broker && (
+              <span className="ml-2 text-[11px] text-text-tertiary">
+                → {broker.name}
+              </span>
+            )}
+            {!publisher.brokerId && (
+              <span className="ml-2 text-[11px] text-amber-500">
+                {t("mqttPublishers.noBroker")}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleTest}
-            disabled={testing || publisher.mappings.length === 0}
+            disabled={testing || publisher.mappings.length === 0 || !publisher.brokerId}
             className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
             title={t("mqttPublishers.testPublish")}
           >

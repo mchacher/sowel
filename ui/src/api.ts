@@ -13,6 +13,7 @@ import type {
   LogsResponse, LogLevel,
   HistoryStatus, HistoryBindingState, HistoryQueryResult, RetentionStatus,
   SavedChart, SavedChartConfig,
+  MqttBroker,
   MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
 } from "./types";
 
@@ -808,6 +809,40 @@ export async function deleteChart(id: string): Promise<void> {
 }
 
 // ============================================================
+// MQTT Brokers
+// ============================================================
+
+export async function getMqttBrokers(): Promise<MqttBroker[]> {
+  return fetchJSON<MqttBroker[]>(`${API_BASE}/mqtt-brokers`);
+}
+
+export async function createMqttBroker(data: {
+  name: string;
+  url: string;
+  username?: string;
+  password?: string;
+}): Promise<MqttBroker> {
+  return fetchJSON<MqttBroker>(`${API_BASE}/mqtt-brokers`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateMqttBroker(
+  id: string,
+  data: { name?: string; url?: string; username?: string; password?: string },
+): Promise<MqttBroker> {
+  return fetchJSON<MqttBroker>(`${API_BASE}/mqtt-brokers/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMqttBroker(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/mqtt-brokers/${id}`, { method: "DELETE" });
+}
+
+// ============================================================
 // MQTT Publishers
 // ============================================================
 
@@ -821,6 +856,7 @@ export async function getMqttPublisher(id: string): Promise<MqttPublisherWithMap
 
 export async function createMqttPublisher(data: {
   name: string;
+  brokerId: string;
   topic: string;
   enabled?: boolean;
 }): Promise<MqttPublisher> {
@@ -832,7 +868,7 @@ export async function createMqttPublisher(data: {
 
 export async function updateMqttPublisher(
   id: string,
-  data: { name?: string; topic?: string; enabled?: boolean },
+  data: { name?: string; brokerId?: string; topic?: string; enabled?: boolean },
 ): Promise<MqttPublisher> {
   return fetchJSON<MqttPublisher>(`${API_BASE}/mqtt-publishers/${id}`, {
     method: "PUT",

@@ -29,6 +29,7 @@ const BACKUP_TABLES = [
   "calendar_profiles",
   "calendar_slots",
   "button_action_bindings",
+  "mqtt_brokers",
   "mqtt_publishers",
   "mqtt_publisher_mappings",
   "chart_configs",
