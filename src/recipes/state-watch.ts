@@ -267,26 +267,25 @@ export class StateWatchRecipe extends Recipe {
     const wasInAlarm = this.ctx.state.get("alarm") === true;
     const watchStartedAt = this.ctx.state.get("watchStartedAt") as string | undefined;
 
+    this.ctx.log(`Current: ${this.dataKey}=${String(currentValue)}`);
+
     if (!isInWatchedState) {
-      // Value is not in watched state — clear everything
       if (wasInAlarm) {
         this.ctx.state.set("alarm", false);
         this.ctx.state.set("alarmSince", null);
         this.ctx.state.set("alarmCount", 0);
         this.ctx.state.delete("watchStartedAt");
         this.ctx.notifyStateChanged();
-        this.ctx.log("Alarm cleared on restart: value no longer in watched state");
+        this.ctx.log("Alarm cleared on restart");
       }
       return;
     }
 
-    // Value is in watched state
     if (wasInAlarm) {
-      // Was already in alarm — restore repeat timer
       if (this.repeatIntervalMs) {
         this.startRepeatTimer();
       }
-      this.ctx.log("Alarm restored on restart — still in watched state");
+      this.ctx.log("Alarm still active after restart");
     } else if (watchStartedAt && this.delayMs !== null) {
       // Was waiting for delay — recalculate
       const elapsed = Date.now() - new Date(watchStartedAt).getTime();
@@ -327,19 +326,16 @@ export class StateWatchRecipe extends Recipe {
     this.ctx.state.set("watchStartedAt", now);
 
     if (this.delayMs !== null && this.delayMs > 0) {
-      // Start delay timer
       this.delayTimer = setTimeout(() => {
         this.delayTimer = null;
         this.raiseAlarm();
       }, this.delayMs);
-      this.ctx.log(
-        `Value entered watched state (${this.dataKey}=${this.watchValue}), alarm in ${formatDuration(this.delayMs)}`,
-      );
+      this.ctx.log(`${this.dataKey}=${this.watchValue} — alarm in ${formatDuration(this.delayMs)}`);
     } else if (this.delayMs === 0 || (this.delayMs === null && this.repeatIntervalMs !== null)) {
-      // No delay or delay=0 — alarm immediately
       this.raiseAlarm();
+    } else if (this.checkTimeStr) {
+      this.ctx.log(`${this.dataKey}=${this.watchValue} — check at ${this.checkTimeStr}`);
     }
-    // If only checkTime is configured, no immediate action — wait for scheduled check
   }
 
   private onValueLeavesWatchedState(newValue: unknown): void {
@@ -354,7 +350,9 @@ export class StateWatchRecipe extends Recipe {
       this.ctx.state.set("alarmSince", null);
       this.ctx.state.set("alarmCount", 0);
       this.ctx.notifyStateChanged();
-      this.ctx.log(`Alarm cleared: ${this.dataKey} changed to ${String(newValue)}`);
+      this.ctx.log(`${this.dataKey}=${String(newValue)} — alarm cleared`);
+    } else {
+      this.ctx.log(`${this.dataKey}=${String(newValue)}`);
     }
   }
 
@@ -374,10 +372,9 @@ export class StateWatchRecipe extends Recipe {
     this.ctx.notifyStateChanged();
 
     if (!wasInAlarm) {
-      const delayLabel = this.delayMs ? ` after ${formatDuration(this.delayMs)}` : "";
-      this.ctx.log(`Alarm raised: ${this.dataKey}=${this.watchValue}${delayLabel}`);
+      this.ctx.log(`ALARM: ${this.dataKey}=${this.watchValue}`);
     } else {
-      this.ctx.log(`Alarm repeat #${alarmCount}: ${this.dataKey}=${this.watchValue}`);
+      this.ctx.log(`ALARM repeat #${alarmCount}`);
     }
 
     // Start repeat timer if configured
@@ -429,7 +426,7 @@ export class StateWatchRecipe extends Recipe {
     this.ctx.state.set("alarmCount", alarmCount);
     this.ctx.notifyStateChanged();
     this.ctx.log(
-      `Scheduled check at ${this.checkTimeStr}: ${this.dataKey}=${this.watchValue} (alarm #${alarmCount})`,
+      `Check ${this.checkTimeStr}: ${this.dataKey}=${this.watchValue} — ALARM #${alarmCount}`,
     );
   }
 
