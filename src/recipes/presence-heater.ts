@@ -182,6 +182,9 @@ export class PresenceHeaterRecipe extends Recipe {
     if (Array.isArray(value)) {
       return value.filter((id): id is string => typeof id === "string");
     }
+    if (typeof value === "string" && value.length > 0) {
+      return value.split(",").filter(Boolean);
+    }
     return [];
   }
 

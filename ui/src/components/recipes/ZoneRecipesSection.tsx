@@ -359,8 +359,8 @@ function RecipeInstanceRow({
       // Convert comma-separated string back to array for list slots
       if (slot.type === "boolean") {
         finalParams[slot.id] = value === "true";
-      } else if (slot.list && value) {
-        finalParams[slot.id] = value.split(",").filter(Boolean);
+      } else if (slot.list) {
+        finalParams[slot.id] = value ? value.split(",").filter(Boolean) : [];
       } else {
         finalParams[slot.id] = value;
       }
@@ -1140,7 +1140,6 @@ function EquipmentListPicker({
 }) {
   const { t } = useTranslation();
   const [pickerZoneId, setPickerZoneId] = useState("");
-  const [pickerEqId, setPickerEqId] = useState("");
 
   const selectedIds = value.split(",").filter(Boolean);
 
@@ -1165,16 +1164,6 @@ function EquipmentListPicker({
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickerZoneId, equipments, selectedIds, slot.constraints?.equipmentType]);
-
-  const handleAdd = () => {
-    if (!pickerEqId) return;
-    const next = [...selectedIds, pickerEqId];
-    onChange(next.join(","));
-    setPickerEqId("");
-    // If no more options in this zone, reset zone too
-    const remaining = pickerOptions.filter((eq) => eq.id !== pickerEqId);
-    if (remaining.length === 0) setPickerZoneId("");
-  };
 
   const handleRemove = (eqId: string) => {
     const next = selectedIds.filter((id) => id !== eqId);
@@ -1207,7 +1196,7 @@ function EquipmentListPicker({
         <div className="flex items-center gap-1.5">
           <select
             value={pickerZoneId}
-            onChange={(e) => { setPickerZoneId(e.target.value); setPickerEqId(""); }}
+            onChange={(e) => setPickerZoneId(e.target.value)}
             className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
           >
             <option value="">Zone…</option>
@@ -1216,8 +1205,16 @@ function EquipmentListPicker({
             ))}
           </select>
           <select
-            value={pickerEqId}
-            onChange={(e) => setPickerEqId(e.target.value)}
+            value=""
+            onChange={(e) => {
+              const eqId = e.target.value;
+              if (eqId) {
+                const next = [...selectedIds, eqId];
+                onChange(next.join(","));
+                const remaining = pickerOptions.filter((eq) => eq.id !== eqId);
+                if (remaining.length === 0) setPickerZoneId("");
+              }
+            }}
             disabled={!pickerZoneId}
             className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
           >
@@ -1226,14 +1223,6 @@ function EquipmentListPicker({
               <option key={eq.id} value={eq.id}>{eq.name}</option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={!pickerEqId}
-            className="p-1 rounded-[4px] text-accent hover:text-accent-hover hover:bg-accent/5 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-          >
-            <Plus size={16} strokeWidth={1.5} />
-          </button>
         </div>
       )}
     </div>
@@ -1383,8 +1372,8 @@ function AddRecipeForm({
       }
       if (slot.type === "boolean") {
         finalParams[slot.id] = value === "true";
-      } else if (slot.list && value) {
-        finalParams[slot.id] = value.split(",").filter(Boolean);
+      } else if (slot.list) {
+        finalParams[slot.id] = value ? value.split(",").filter(Boolean) : [];
       } else {
         finalParams[slot.id] = value;
       }
