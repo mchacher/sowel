@@ -156,7 +156,7 @@ export class PresenceHeaterRecipe extends Recipe {
     }
 
     // Validate timeout
-    parseDuration(timeout ?? "30m");
+    parseDuration(timeout || "30m");
 
     // Validate night window
     const { nightStart: ns, nightEnd: ne } = params;
@@ -191,7 +191,7 @@ export class PresenceHeaterRecipe extends Recipe {
     this.ctx = ctx;
     this.zoneId = params.zone as string;
     this.heaterIds = this.normalizeStringArray(params.heaters);
-    this.timeoutMs = parseDuration(params.timeout ?? "30m");
+    this.timeoutMs = parseDuration(params.timeout || "30m");
 
     // Night window
     this.nightStart =

@@ -175,7 +175,7 @@ export abstract class MotionLightBase extends Recipe {
     }
 
     // Validate timeout
-    const timeoutValue = timeout ?? "10m";
+    const timeoutValue = timeout || "10m";
     parseDuration(timeoutValue);
 
     // Validate luxThreshold
@@ -187,7 +187,7 @@ export abstract class MotionLightBase extends Recipe {
     }
 
     // Validate maxOnDuration
-    if (maxOnDuration !== undefined && maxOnDuration !== null) {
+    if (maxOnDuration !== undefined && maxOnDuration !== null && maxOnDuration !== "") {
       parseDuration(maxOnDuration);
     }
 
@@ -222,13 +222,15 @@ export abstract class MotionLightBase extends Recipe {
     this.ctx = ctx;
     this.zoneId = params.zone as string;
     this.lightIds = this.normalizeLights(params);
-    this.timeoutMs = parseDuration(params.timeout ?? "10m");
+    this.timeoutMs = parseDuration(params.timeout || "10m");
     this.luxThreshold =
       params.luxThreshold !== undefined && params.luxThreshold !== null
         ? Number(params.luxThreshold)
         : null;
     this.maxOnDurationMs =
-      params.maxOnDuration !== undefined && params.maxOnDuration !== null
+      params.maxOnDuration !== undefined &&
+      params.maxOnDuration !== null &&
+      params.maxOnDuration !== ""
         ? parseDuration(params.maxOnDuration)
         : null;
 

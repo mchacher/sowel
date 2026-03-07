@@ -129,7 +129,7 @@ export class SwitchLightRecipe extends Recipe {
     }
 
     // Validate maxOnDuration
-    if (maxOnDuration !== undefined && maxOnDuration !== null) {
+    if (maxOnDuration !== undefined && maxOnDuration !== null && maxOnDuration !== "") {
       parseDuration(maxOnDuration);
     }
   }
@@ -143,7 +143,9 @@ export class SwitchLightRecipe extends Recipe {
     this.lightIds = this.normalizeStringArray(params.lights);
     this.buttonIds = this.normalizeStringArray(params.buttons);
     this.maxOnDurationMs =
-      params.maxOnDuration !== undefined && params.maxOnDuration !== null
+      params.maxOnDuration !== undefined &&
+      params.maxOnDuration !== null &&
+      params.maxOnDuration !== ""
         ? parseDuration(params.maxOnDuration)
         : null;
 

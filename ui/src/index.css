@@ -183,6 +183,15 @@ input[type="range"].slider-active::-moz-range-thumb {
 }
 
 /* ============================================================
+   Native time/date picker — adapt icons to dark mode
+   ============================================================ */
+
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* ============================================================
    Recharts — remove focus outline on chart click
    ============================================================ */
 

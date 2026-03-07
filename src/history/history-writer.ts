@@ -201,10 +201,10 @@ export class HistoryWriter {
   // ============================================================
 
   private tryConnect(): void {
-    const url = this.settingsManager.get("history.influx.url");
-    const token = this.settingsManager.get("history.influx.token");
-    const org = this.settingsManager.get("history.influx.org");
-    const bucket = this.settingsManager.get("history.influx.bucket");
+    const url = this.settingsManager.get("history.influx.url")?.trim();
+    const token = this.settingsManager.get("history.influx.token")?.trim();
+    const org = this.settingsManager.get("history.influx.org")?.trim();
+    const bucket = this.settingsManager.get("history.influx.bucket")?.trim();
     const enabled = this.settingsManager.get("history.enabled");
 
     if (!url || !token || !org || !bucket || enabled !== "true") {

@@ -29,7 +29,7 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=sowel-secret
       - DOCKER_INFLUXDB_INIT_ORG=sowel
       - DOCKER_INFLUXDB_INIT_BUCKET=sowel
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-dev-token
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=Uvht0Iez4HD5xu1BwhLFe9PI-ODIX9pTTdgYoNq1PQeSL2x3UKXHHRcQq5D-f2rkc0pnJGriuTzbO-kJKP3O8w==
 
 volumes:
   sowel-data:
