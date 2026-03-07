@@ -95,14 +95,35 @@ export class InfluxClient {
     return this._connected;
   }
 
-  /** Health check: ping InfluxDB. Returns true if reachable. */
+  /**
+   * Health check: ping InfluxDB and validate token.
+   * Returns { reachable, authenticated } so the caller can report specific errors.
+   */
   async ping(): Promise<boolean> {
-    if (!this.config) return false;
+    const detail = await this.pingDetail();
+    return detail.reachable && detail.authenticated;
+  }
+
+  /**
+   * Detailed health check with separate reachability and auth status.
+   */
+  async pingDetail(): Promise<{ reachable: boolean; authenticated: boolean }> {
+    if (!this.config) return { reachable: false, authenticated: false };
     try {
-      const response = await fetch(`${this.config.url}/ping`);
-      return response.ok || response.status === 204;
+      // 1. Check reachability (unauthenticated)
+      const pingResp = await fetch(`${this.config.url}/ping`);
+      if (!pingResp.ok && pingResp.status !== 204) {
+        return { reachable: false, authenticated: false };
+      }
+
+      // 2. Validate token by querying orgs
+      const authResp = await fetch(
+        `${this.config.url}/api/v2/orgs?org=${encodeURIComponent(this.config.org)}`,
+        { headers: { Authorization: `Token ${this.config.token}` } },
+      );
+      return { reachable: true, authenticated: authResp.ok };
     } catch {
-      return false;
+      return { reachable: false, authenticated: false };
     }
   }
 

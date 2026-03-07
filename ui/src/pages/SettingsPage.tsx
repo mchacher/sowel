@@ -858,8 +858,9 @@ function InfluxDbSettingsSection() {
     try {
       const result = await testHistoryConnection();
       setTestResult(result);
-    } catch {
-      setTestResult({ success: false, message: "Connection error" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Connection error";
+      setTestResult({ success: false, message });
     } finally {
       setTesting(false);
     }

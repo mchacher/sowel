@@ -590,7 +590,7 @@ function RecipeInstanceRow({
                                 {compactSlots.map((slot) => (
                                   <div key={slot.id}>
                                     <label className={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
-                                      {recipeSlotName(recipe, slot, lang)}
+                                      {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                     </label>
                                     {slot.type === "equipment" ? (
                                       <select
@@ -642,7 +642,7 @@ function RecipeInstanceRow({
                         ) : (
                         <>
                         <label className={`block text-[11px] uppercase tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
-                          {recipeSlotName(recipe, slot, lang)}
+                          {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                         </label>
                         {slot.type === "equipment" && slot.list ? (
                           <div className="space-y-1">
@@ -1552,7 +1552,7 @@ function AddRecipeForm({
                               {compactSlots.map((slot) => (
                                 <div key={slot.id}>
                                   <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
-                                    {recipeSlotName(selectedRecipe, slot, lang)}
+                                    {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                   </label>
                                   {slot.type === "equipment" ? (
                                     <select
@@ -1603,7 +1603,7 @@ function AddRecipeForm({
                       ) : (
                       <>
                       <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-                        {recipeSlotName(selectedRecipe, slot, lang)}
+                        {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                       </label>
                       {slot.type === "equipment" && slot.list ? (
                         <div className="space-y-1">

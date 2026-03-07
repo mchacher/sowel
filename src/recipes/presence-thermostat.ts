@@ -293,7 +293,7 @@ export class PresenceThermostatRecipe extends Recipe {
     }
 
     // Validate timeout
-    parseDuration(timeout ?? "30m");
+    parseDuration(timeout || "30m");
 
     // Validate night window
     const { nightTemp: nt, nightStart: ns, nightEnd: ne } = params;
@@ -389,7 +389,7 @@ export class PresenceThermostatRecipe extends Recipe {
     this.thermostatId = params.thermostat as string;
     this.comfortTemp = Number(params.comfortTemp);
     this.ecoTemp = Number(params.ecoTemp);
-    this.timeoutMs = parseDuration(params.timeout ?? "30m");
+    this.timeoutMs = parseDuration(params.timeout || "30m");
 
     // Night window
     this.nightTemp =

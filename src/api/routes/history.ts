@@ -72,11 +72,17 @@ export function registerHistoryRoutes(
       return reply.status(400).send({ error: "InfluxDB not configured or not connected" });
     }
 
-    const ok = await influx.ping();
-    if (ok) {
+    const { reachable, authenticated } = await influx.pingDetail();
+    if (reachable && authenticated) {
       return { success: true, message: "InfluxDB connection successful" };
+    } else if (reachable && !authenticated) {
+      return reply
+        .status(422)
+        .send({
+          error: "InfluxDB reachable but authentication failed — check token, org and bucket",
+        });
     } else {
-      return reply.status(503).send({ error: "InfluxDB ping failed" });
+      return reply.status(503).send({ error: "InfluxDB not reachable — check URL" });
     }
   });
 
