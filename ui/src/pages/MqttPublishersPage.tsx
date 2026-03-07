@@ -283,7 +283,7 @@ function CreatePublisherForm({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Living Room Display"
+            placeholder="Mon publisher"
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
             autoFocus
           />
@@ -296,7 +296,7 @@ function CreatePublisherForm({
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="sowel/homedisplay/livingroom"
+            placeholder="sowel/publish/my-topic"
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary font-mono"
           />
         </div>
