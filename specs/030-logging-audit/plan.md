@@ -18,12 +18,12 @@
 11. [x] equipment-manager.ts — add trace log in handleDeviceDataUpdated
 12. [x] mqtt-publish-service.ts — add debug summary per event handler
 13. [x] auth-service.ts — add login success/failure and token refresh logs
-14. [ ] recipe execution (motion-light-base, etc.) — deferred (requires ctx.log refactor)
-15. [ ] history-writer.ts — deferred (requires deadband logic inspection)
+14. [x] recipe execution — ctx.log() now also emits to pino with structured context
+15. [x] history-writer.ts — trace logs for every shouldWrite() decision (deadband, throttle, state)
 16. [x] button-action-manager.ts — add debug for effect execution
 17. [x] backup.ts — add info with row counts on export and restore
 18. [x] Type-check + test
-19. [ ] Commit + PR
+19. [x] Commit + PR
 
 ## Testing
 
