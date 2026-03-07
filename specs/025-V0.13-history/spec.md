@@ -2,15 +2,15 @@
 
 ## Summary
 
-Add time-series data historization to Winch using InfluxDB 2.x as an **optional** backend. Users configure which equipment data bindings to historize. Mini-charts appear inline in equipment/zone views, and a dedicated "Analyse" page enables deep exploration. The system has zero impact on Winch core performance — writes are async, batched, and fire-and-forget.
+Add time-series data historization to Sowel using InfluxDB 2.x as an **optional** backend. Users configure which equipment data bindings to historize. Mini-charts appear inline in equipment/zone views, and a dedicated "Analyse" page enables deep exploration. The system has zero impact on Sowel core performance — writes are async, batched, and fire-and-forget.
 
 ## Reference
 
-- Spec sections: winch-spec.md §9 (InfluxDB Schema), §7.6 (History API), §10 (influx.ts), §12 (env vars)
+- Spec sections: sowel-spec.md §9 (InfluxDB Schema), §7.6 (History API), §10 (influx.ts), §12 (env vars)
 
 ## Acceptance Criteria
 
-- [ ] Winch starts and runs normally without InfluxDB configured
+- [ ] Sowel starts and runs normally without InfluxDB configured
 - [ ] Admin can configure InfluxDB connection in Settings (URL, token, org, bucket) with a "Test" button
 - [ ] Admin can toggle historization per equipment data binding (checkbox in equipment detail)
 - [ ] Historized data points are written to InfluxDB asynchronously with batch buffering
@@ -19,7 +19,7 @@ Add time-series data historization to Winch using InfluxDB 2.x as an **optional*
 - [ ] Zone/home cards show mini sparkline charts for key metrics (temperature, humidity, etc.)
 - [ ] Dedicated "Analyse" page allows multi-metric overlay with time range selector
 - [x] InfluxDB downsampling tasks auto-created (raw→hourly→daily)
-- [ ] If InfluxDB goes down, Winch continues operating — data points are silently dropped with warning logs
+- [ ] If InfluxDB goes down, Sowel continues operating — data points are silently dropped with warning logs
 
 ## Scope
 

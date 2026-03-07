@@ -22,8 +22,8 @@
 
 ## Testing
 
-- Create publisher via UI with topic `winch/homedisplay/livingroom`
+- Create publisher via UI with topic `sowel/homedisplay/livingroom`
 - Add mappings to existing equipments/zones
-- `mosquitto_sub -t "winch/homedisplay/#" -v` to verify published messages
+- `mosquitto_sub -t "sowel/homedisplay/#" -v` to verify published messages
 - Change equipment state → verify immediate MQTT publication
 - Verify retain=true (reconnect subscriber → receives last values)

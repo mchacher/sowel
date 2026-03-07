@@ -6,7 +6,7 @@ Add a "cocoon" temperature level to the presence-thermostat recipe, triggered by
 
 ## Reference
 
-- Recipe system: §12 of winch-spec.md
+- Recipe system: §12 of sowel-spec.md
 - Presence-thermostat recipe: `src/recipes/presence-thermostat.ts`
 - Button action pattern: `src/recipes/switch-light.ts`
 

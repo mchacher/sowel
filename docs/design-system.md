@@ -1,4 +1,4 @@
-# Winch Design System
+# Sowel Design System
 
 ## Typography
 
@@ -71,7 +71,7 @@
 
 ## Logo
 
-Winch logo: white drum + crank on `primary` rounded square. Drum centered at (16,16) in a 32x32 viewBox.
+Sowel logo: white drum + crank on `primary` rounded square. Drum centered at (16,16) in a 32x32 viewBox.
 
 ## Shadows
 
@@ -86,7 +86,7 @@ Winch logo: white drum + crank on `primary` rounded square. Drum centered at (16
 ### Strategy
 
 - **Tailwind `class` strategy**: `class="dark"` on `<html>` activates `.dark {}` CSS variable overrides in `ui/src/index.css`
-- **User preference**: Light / Dark / System — stored in `UserPreferences.theme` and `localStorage("winch_theme")`
+- **User preference**: Light / Dark / System — stored in `UserPreferences.theme` and `localStorage("sowel_theme")`
 - **System detection**: `prefers-color-scheme: dark` media query, with live listener for "system" mode
 - **No component changes**: all components use semantic tokens (`bg-surface`, `text-text`, `border-border`) — only CSS variables change
 

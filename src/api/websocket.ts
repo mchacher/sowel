@@ -171,7 +171,7 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
 
     if (token) {
       try {
-        if (token.startsWith("wch_") || token.startsWith("cbl_")) {
+        if (token.startsWith("swl_") || token.startsWith("wch_") || token.startsWith("cbl_")) {
           const result = authService.verifyApiToken(token);
           if (!result) {
             socket.close(4001, "Invalid token");
@@ -236,7 +236,7 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
     socket.send(
       JSON.stringify({
         type: "connected",
-        message: "Connected to Winch engine",
+        message: "Connected to Sowel engine",
         version: "0.1.0",
       }),
     );

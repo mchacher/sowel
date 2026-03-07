@@ -15,7 +15,7 @@ Tailwind `class` strategy: adding `class="dark"` on `<html>` triggers `.dark {}`
 
 ## Theme Initialization
 
-- `ui/src/main.tsx`: read `localStorage("winch_theme")` before React render, apply `dark` class immediately to prevent flash
+- `ui/src/main.tsx`: read `localStorage("sowel_theme")` before React render, apply `dark` class immediately to prevent flash
 - System detection: `window.matchMedia("(prefers-color-scheme: dark)")` listener
 
 ## UI Changes

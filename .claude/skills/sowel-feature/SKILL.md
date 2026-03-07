@@ -1,14 +1,14 @@
 ---
-name: winch-feature
+name: sowel-feature
 description: |
-  Creates features for Winch — a home automation engine. Use when:
-  - User asks to "create a feature", "implement X", "add VX.Y" for Winch
+  Creates features for Sowel — a home automation engine. Use when:
+  - User asks to "create a feature", "implement X", "add VX.Y" for Sowel
   - Working on a roadmap version (V0.1, V0.2, etc.)
   - User says "créer une feature", "ajouter une fonctionnalité", "implémenter"
-  Specific to Winch project: MQTT, devices, equipments, zones, scenarios, recipes, AI assistant.
+  Specific to Sowel project: MQTT, devices, equipments, zones, scenarios, recipes, AI assistant.
 ---
 
-# Winch Feature Workflow
+# Sowel Feature Workflow
 
 ## Phase 1: Understand & Clarify
 
@@ -18,7 +18,7 @@ Before starting, read these files:
 
 | Document                  | Purpose                                         |
 | ------------------------- | ----------------------------------------------- |
-| `docs/winch-spec.md`      | Full specification — the single source of truth |
+| `docs/sowel-spec.md`      | Full specification — the single source of truth |
 | `src/shared/types.ts`     | All TypeScript types and interfaces             |
 | `src/shared/constants.ts` | DataCategory mappings, EquipmentType, etc.      |
 | `CLAUDE.md`               | Project conventions and rules                   |
@@ -112,7 +112,7 @@ Brief description.
 
 ## Reference
 
-- Spec sections: §X, §Y (reference winch-spec.md sections)
+- Spec sections: §X, §Y (reference sowel-spec.md sections)
 
 ## Acceptance Criteria
 
@@ -417,7 +417,7 @@ Before final commit, update:
 
 | Document                           | What to update                                                                     |
 | ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `docs/winch-spec.md`               | Mark completed items, add any spec clarifications discovered during implementation |
+| `docs/sowel-spec.md`               | Mark completed items, add any spec clarifications discovered during implementation |
 | `specs/XXX-<version>-name/plan.md` | Mark tasks as completed [x]                                                        |
 | `specs/XXX-<version>-name/spec.md` | Mark acceptance criteria as completed [x]                                          |
 | `CLAUDE.md`                        | Add new commands, patterns, or conventions discovered                              |
@@ -470,7 +470,7 @@ gh pr create --title "feat: V0.X — feature description" --body "$(cat <<'EOF'
 - [x] Spec acceptance criteria all checked
 
 ## Roadmap
-- Implements V0.X from winch-spec.md
+- Implements V0.X from sowel-spec.md
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
@@ -501,7 +501,7 @@ git pull
 
 | Purpose            | Location                              |
 | ------------------ | ------------------------------------- |
-| Full specification | `docs/winch-spec.md`                  |
+| Full specification | `docs/sowel-spec.md`                  |
 | Feature specs      | `specs/XXX-version-name/`             |
 | TypeScript types   | `src/shared/types.ts`                 |
 | Constants          | `src/shared/constants.ts`             |
@@ -536,7 +536,7 @@ git pull
 | Run tests          | `npm run test`                    |
 | Run single test    | `npx vitest run <file>`           |
 | Lint               | `npx eslint src/ --ext .ts`       |
-| Reset DB           | `rm data/winch.db && npm run dev` |
+| Reset DB           | `rm data/sowel.db && npm run dev` |
 
 ### Event-Driven Pipeline
 

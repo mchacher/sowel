@@ -219,11 +219,11 @@ export class InfluxClient {
 
       // Hourly downsampling task
       const hourlyFlux = buildDownsampleHourlyFlux(rawBucket, hourlyBucket, org);
-      await this.ensureTask("winch-downsample-hourly", hourlyFlux, orgId);
+      await this.ensureTask("sowel-downsample-hourly", hourlyFlux, orgId);
 
       // Daily downsampling task
       const dailyFlux = buildDownsampleDailyFlux(hourlyBucket, dailyBucket, org);
-      await this.ensureTask("winch-downsample-daily", dailyFlux, orgId);
+      await this.ensureTask("sowel-downsample-daily", dailyFlux, orgId);
 
       this.logger.info("Downsampling tasks configured");
     } catch (err) {
@@ -252,8 +252,8 @@ export class InfluxClient {
       const hourlyBucket = buckets.find((b) => b.name === `${this.config!.bucket}-hourly`);
       const dailyBucket = buckets.find((b) => b.name === `${this.config!.bucket}-daily`);
 
-      const hourlyTask = tasks.find((t) => t.name === "winch-downsample-hourly");
-      const dailyTask = tasks.find((t) => t.name === "winch-downsample-daily");
+      const hourlyTask = tasks.find((t) => t.name === "sowel-downsample-hourly");
+      const dailyTask = tasks.find((t) => t.name === "sowel-downsample-daily");
 
       const result: RetentionStatus = {
         buckets: {
@@ -499,7 +499,7 @@ export class InfluxClient {
 // ============================================================
 
 function buildDownsampleHourlyFlux(rawBucket: string, hourlyBucket: string, org: string): string {
-  return `option task = {name: "winch-downsample-hourly", every: 1h}
+  return `option task = {name: "sowel-downsample-hourly", every: 1h}
 
 data = from(bucket: "${rawBucket}")
   |> range(start: -task.every)
@@ -523,7 +523,7 @@ union(tables: [mean_data, min_data, max_data])
 }
 
 function buildDownsampleDailyFlux(hourlyBucket: string, dailyBucket: string, org: string): string {
-  return `option task = {name: "winch-downsample-daily", every: 1d}
+  return `option task = {name: "sowel-downsample-daily", every: 1d}
 
 data = from(bucket: "${hourlyBucket}")
   |> range(start: -task.every)

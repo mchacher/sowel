@@ -37,9 +37,9 @@ function parseFrom(from: string): Date {
 
 /**
  * Resolve the bucket name based on resolution.
- * - raw → base bucket (e.g. "winch")
- * - 1h  → base bucket + "-hourly" (e.g. "winch-hourly")
- * - 1d  → base bucket + "-daily" (e.g. "winch-daily")
+ * - raw → base bucket (e.g. "sowel")
+ * - 1h  → base bucket + "-hourly" (e.g. "sowel-hourly")
+ * - 1d  → base bucket + "-daily" (e.g. "sowel-daily")
  */
 function resolveBucket(baseBucket: string, resolution: Resolution): string {
   if (resolution === "1h") return `${baseBucket}-hourly`;

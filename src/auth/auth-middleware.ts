@@ -68,8 +68,8 @@ export function registerAuthMiddleware(
     try {
       let payload: JwtPayload;
 
-      if (token.startsWith("wch_") || token.startsWith("cbl_")) {
-        // API token (wch_ = new prefix, cbl_ = legacy)
+      if (token.startsWith("swl_") || token.startsWith("wch_") || token.startsWith("cbl_")) {
+        // API token (swl_ = current, wch_ and cbl_ = legacy)
         const result = authService.verifyApiToken(token);
         if (!result) {
           return reply.code(401).send({ error: "Invalid API token" });

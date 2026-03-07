@@ -55,12 +55,12 @@ export function SettingsPage() {
             language={user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")}
             onLanguageChange={async (lang) => {
               i18n.changeLanguage(lang);
-              localStorage.setItem("winch_language", lang);
+              localStorage.setItem("sowel_language", lang);
               if (user) {
                 await updatePreferences({ ...user.preferences, language: lang });
               }
             }}
-            theme={user?.preferences?.theme ?? (localStorage.getItem("winch_theme") as ThemeSetting | null) ?? "system"}
+            theme={user?.preferences?.theme ?? (localStorage.getItem("sowel_theme") as ThemeSetting | null) ?? "system"}
             onThemeChange={async (theme) => {
               setTheme(theme);
               if (user) {
@@ -938,7 +938,7 @@ function InfluxDbSettingsSection() {
               type="text"
               value={org}
               onChange={(e) => setOrg(e.target.value)}
-              placeholder="winch"
+              placeholder="sowel"
               className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
             />
           </div>
@@ -950,7 +950,7 @@ function InfluxDbSettingsSection() {
               type="text"
               value={bucket}
               onChange={(e) => setBucket(e.target.value)}
-              placeholder="winch"
+              placeholder="sowel"
               className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
             />
           </div>

@@ -167,7 +167,7 @@ This allows the UI dev server (port 5173) to proxy API and WS calls to the backe
 ### AppLayout
 
 - Left sidebar (collapsible on mobile) with navigation links
-- Top header bar with app name "Winch" and connection status indicator
+- Top header bar with app name "Sowel" and connection status indicator
 - Main content area with `<Outlet/>` for routed pages
 
 ### DeviceCard

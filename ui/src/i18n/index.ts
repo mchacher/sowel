@@ -18,7 +18,7 @@ i18n
     },
     detection: {
       order: ["localStorage", "navigator"],
-      lookupLocalStorage: "winch_language",
+      lookupLocalStorage: "sowel_language",
     },
   });
 

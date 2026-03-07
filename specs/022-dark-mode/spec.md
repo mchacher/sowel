@@ -2,7 +2,7 @@
 
 ## Summary
 
-Add dark mode support to Winch UI using a deep navy slate palette. Theme is toggled from Settings > Preferences (alongside language), persisted in user preferences, and applied via Tailwind's `class` strategy on `<html>`.
+Add dark mode support to Sowel UI using a deep navy slate palette. Theme is toggled from Settings > Preferences (alongside language), persisted in user preferences, and applied via Tailwind's `class` strategy on `<html>`.
 
 ## Reference
 

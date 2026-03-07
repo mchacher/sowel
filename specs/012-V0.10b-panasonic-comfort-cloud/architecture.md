@@ -149,7 +149,7 @@ class PanasonicPoller {
 On each poll cycle:
 
 1. Call `bridge.getDevices()` (single Python invocation returns all devices + status)
-2. For each device, map to Winch `DiscoveredDevice` format
+2. For each device, map to Sowel `DiscoveredDevice` format
 3. Call `deviceManager.upsertFromDiscovery()` to update/create devices + data
 
 ### PanasonicCCIntegration (`index.ts`)
@@ -185,11 +185,11 @@ class PanasonicCCIntegration implements IntegrationPlugin {
 
 ## Data Model
 
-### Panasonic Device → Winch Device Mapping
+### Panasonic Device → Sowel Device Mapping
 
-Each AC unit becomes a Winch Device:
+Each AC unit becomes a Sowel Device:
 
-| Winch field      | Source                         |
+| Sowel field      | Source                         |
 | ---------------- | ------------------------------ |
 | `integrationId`  | `"panasonic_cc"`               |
 | `sourceDeviceId` | `device.id` from bridge output |

@@ -1,9 +1,9 @@
-interface WinchLogoProps {
+interface SowelLogoProps {
   size?: number;
   className?: string;
 }
 
-export function WinchLogo({ size = 32, className = "" }: WinchLogoProps) {
+export function SowelLogo({ size = 32, className = "" }: SowelLogoProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -14,7 +14,7 @@ export function WinchLogo({ size = 32, className = "" }: WinchLogoProps) {
       className={className}
     >
       <rect width="32" height="32" rx="7" className="fill-primary" />
-      {/* Winch drum — centered in square */}
+      {/* Sowel drum — centered in square */}
       <circle cx="16" cy="16" r="6.5" stroke="white" strokeWidth="2" fill="none" />
       <circle cx="16" cy="16" r="2" fill="white" />
       {/* Handle/crank */}
