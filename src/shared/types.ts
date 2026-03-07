@@ -523,6 +523,16 @@ export type EngineEvent =
   | { type: "mqtt-publisher.removed"; publisherId: string; publisherName: string }
   | { type: "mqtt-publisher.mapping.created"; publisherId: string; mapping: MqttPublisherMapping }
   | { type: "mqtt-publisher.mapping.removed"; publisherId: string; mappingId: string }
+  // Notification Publisher events
+  | { type: "notification-publisher.created"; publisher: NotificationPublisher }
+  | { type: "notification-publisher.updated"; publisher: NotificationPublisher }
+  | { type: "notification-publisher.removed"; publisherId: string; publisherName: string }
+  | {
+      type: "notification-publisher.mapping.created";
+      publisherId: string;
+      mapping: NotificationPublisherMapping;
+    }
+  | { type: "notification-publisher.mapping.removed"; publisherId: string; mappingId: string }
   // System events
   | { type: "system.started" }
   | { type: "system.integration.connected"; integrationId: string }
@@ -671,6 +681,40 @@ export interface MqttPublisherMapping {
 
 export interface MqttPublisherWithMappings extends MqttPublisher {
   mappings: MqttPublisherMapping[];
+}
+
+// ============================================================
+// Notification Publishers
+// ============================================================
+
+export interface TelegramChannelConfig {
+  botToken: string;
+  chatId: string;
+}
+
+export interface NotificationPublisher {
+  id: string;
+  name: string;
+  channelType: "telegram";
+  channelConfig: TelegramChannelConfig;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPublisherMapping {
+  id: string;
+  publisherId: string;
+  message: string;
+  sourceType: "equipment" | "zone" | "recipe";
+  sourceId: string;
+  sourceKey: string;
+  throttleMs: number;
+  createdAt: string;
+}
+
+export interface NotificationPublisherWithMappings extends NotificationPublisher {
+  mappings: NotificationPublisherMapping[];
 }
 
 // ============================================================
