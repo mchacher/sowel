@@ -20,6 +20,7 @@ import { LogsPage } from "./pages/LogsPage";
 import { BackupPage } from "./pages/BackupPage";
 import { AnalysePage } from "./pages/AnalysePage";
 import { MqttPublishersPage } from "./pages/MqttPublishersPage";
+import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
 
 export default function App() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/mqtt-publishers" element={<MqttPublishersPage />} />
+          <Route path="/notification-publishers" element={<NotificationPublishersPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/backup" element={<BackupPage />} />
 
