@@ -127,7 +127,10 @@ export class RecipeManager {
         this.startInstance(recipe, instance);
         restored++;
       } catch (err) {
-        this.logger.error({ err, instanceId: row.id }, "Failed to restore recipe instance");
+        this.logger.error(
+          { err, instanceId: row.id, recipeId: row.recipe_id, recipeName: registered.info.name },
+          "Failed to restore recipe instance",
+        );
         this.writeLog(
           row.id,
           `Failed to restore: ${err instanceof Error ? err.message : String(err)}`,
@@ -210,7 +213,10 @@ export class RecipeManager {
       const runRecipe = registered.create();
       this.startInstance(runRecipe, instance);
     } catch (err) {
-      this.logger.error({ err, instanceId: id }, "Failed to start recipe instance");
+      this.logger.error(
+        { err, instanceId: id, recipeId, recipeName: registered.info.name },
+        "Failed to start recipe instance",
+      );
       this.writeLog(
         id,
         `Failed to start: ${err instanceof Error ? err.message : String(err)}`,
@@ -239,7 +245,11 @@ export class RecipeManager {
     // Delete from DB (cascades to recipe_state and recipe_log)
     this.stmts.deleteInstance.run(instanceId);
 
-    this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance deleted");
+    const recipeName = this.registry.get(row.recipe_id)?.info.name;
+    this.logger.info(
+      { instanceId, recipeId: row.recipe_id, recipeName },
+      "Recipe instance deleted",
+    );
     this.eventBus.emit({ type: "recipe.instance.removed", instanceId, recipeId: row.recipe_id });
   }
 
@@ -281,7 +291,10 @@ export class RecipeManager {
         const runRecipe = registered.create();
         this.startInstance(runRecipe, instance);
       } catch (err) {
-        this.logger.error({ err, instanceId }, "Failed to restart recipe instance after update");
+        this.logger.error(
+          { err, instanceId, recipeId: row.recipe_id, recipeName: registered.info.name },
+          "Failed to restart recipe instance after update",
+        );
         this.writeLog(
           instanceId,
           `Failed to restart: ${err instanceof Error ? err.message : String(err)}`,
@@ -290,7 +303,10 @@ export class RecipeManager {
       }
     }
 
-    this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance updated");
+    this.logger.info(
+      { instanceId, recipeId: row.recipe_id, recipeName: registered.info.name },
+      "Recipe instance updated",
+    );
     return instance;
   }
 
@@ -308,11 +324,18 @@ export class RecipeManager {
         const recipe = registered.create();
         this.startInstance(recipe, instance);
       } catch (err) {
-        this.logger.error({ err, instanceId }, "Failed to start recipe after enable");
+        this.logger.error(
+          { err, instanceId, recipeId: row.recipe_id, recipeName: registered?.info.name },
+          "Failed to start recipe after enable",
+        );
       }
     }
 
-    this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance enabled");
+    const enabledRecipeName = this.registry.get(row.recipe_id)?.info.name;
+    this.logger.info(
+      { instanceId, recipeId: row.recipe_id, recipeName: enabledRecipeName },
+      "Recipe instance enabled",
+    );
     this.eventBus.emit({ type: "recipe.instance.started", instanceId, recipeId: row.recipe_id });
   }
 
@@ -327,7 +350,11 @@ export class RecipeManager {
 
     this.stmts.setInstanceEnabled.run(0, instanceId);
 
-    this.logger.info({ instanceId, recipeId: row.recipe_id }, "Recipe instance disabled");
+    const disabledRecipeName = this.registry.get(row.recipe_id)?.info.name;
+    this.logger.info(
+      { instanceId, recipeId: row.recipe_id, recipeName: disabledRecipeName },
+      "Recipe instance disabled",
+    );
     this.eventBus.emit({ type: "recipe.instance.stopped", instanceId, recipeId: row.recipe_id });
   }
 
@@ -369,8 +396,9 @@ export class RecipeManager {
     recipe.start(instance.params, ctx);
 
     this.running.set(instance.id, { recipe, instance });
+    const startedRecipeName = this.registry.get(instance.recipeId)?.info.name;
     this.logger.info(
-      { instanceId: instance.id, recipeId: instance.recipeId },
+      { instanceId: instance.id, recipeId: instance.recipeId, recipeName: startedRecipeName },
       "Recipe instance started",
     );
     this.eventBus.emit({
@@ -391,8 +419,9 @@ export class RecipeManager {
     }
 
     this.running.delete(instanceId);
+    const stoppedRecipeName = this.registry.get(running.instance.recipeId)?.info.name;
     this.logger.info(
-      { instanceId, recipeId: running.instance.recipeId },
+      { instanceId, recipeId: running.instance.recipeId, recipeName: stoppedRecipeName },
       "Recipe instance stopped",
     );
     this.eventBus.emit({

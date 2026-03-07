@@ -202,11 +202,13 @@ export class ModeManager {
 
   private executeAction(action: ZoneModeImpactAction, modeName: string): void {
     switch (action.type) {
-      case "order":
+      case "order": {
+        const eq = this.equipmentManager.getById(action.equipmentId);
         this.equipmentManager.executeOrder(action.equipmentId, action.orderAlias, action.value);
         this.logger.debug(
           {
             equipmentId: action.equipmentId,
+            equipmentName: eq?.name,
             alias: action.orderAlias,
             value: action.value,
             modeName,
@@ -214,6 +216,7 @@ export class ModeManager {
           "Mode order executed",
         );
         break;
+      }
 
       case "recipe_toggle":
         if (action.enabled) {

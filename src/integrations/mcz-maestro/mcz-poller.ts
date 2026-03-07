@@ -114,7 +114,7 @@ export class MczPoller {
 
     try {
       this.lastPollAt = new Date().toISOString();
-      this.logger.debug("Polling MCZ stove...");
+      this.logger.trace("Polling MCZ stove...");
       const frame = await this.bridge.getStatus();
 
       // Upsert device with capabilities
