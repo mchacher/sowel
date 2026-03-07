@@ -199,6 +199,14 @@ export class StateWatchRecipe extends Recipe {
         ? String(params.checkTime)
         : null;
 
+    // Initialize all state keys so they are visible in notification publisher mappings
+    if (ctx.state.get("alarm") === undefined) {
+      ctx.state.set("alarm", false);
+      ctx.state.set("alarmSince", null);
+      ctx.state.set("alarmCount", 0);
+      ctx.state.set("currentValue", null);
+    }
+
     // Subscribe to equipment data changes
     const unsub = ctx.eventBus.onType("equipment.data.changed", (event) => {
       if (event.equipmentId !== this.equipmentId) return;
