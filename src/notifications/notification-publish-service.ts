@@ -161,7 +161,7 @@ export class NotificationPublishService {
       if (!ref.enabled) continue;
       if (!this.shouldNotify(ref, value, previous)) continue;
 
-      const text = `${ref.message} : ${value}`;
+      const text = formatNotificationText(ref.message, value);
       this.sendNotification(ref, text);
       this.lastSent.set(ref.mappingId, Date.now());
       sent++;
@@ -240,7 +240,7 @@ export class NotificationPublishService {
       );
       if (value === undefined) continue;
 
-      const text = `${mapping.message} : ${value}`;
+      const text = formatNotificationText(mapping.message, value);
       await channel.send(publisher.channelConfig, text);
       sent++;
     }
@@ -248,6 +248,8 @@ export class NotificationPublishService {
     this.logger.info({ publisherId, sent }, "Notification test publish completed");
     return sent;
   }
+
+  // ── Resolve current value ──────────────────────────────────
 
   private resolveCurrentValue(
     sourceType: "equipment" | "zone" | "recipe",
@@ -274,4 +276,33 @@ export class NotificationPublishService {
 
     return undefined;
   }
+}
+
+// ============================================================
+// Helper: format values for human-readable display
+// ============================================================
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+
+function formatNotificationText(message: string, value: unknown): string {
+  // Booleans: just send the message, no value suffix
+  if (typeof value === "boolean") return message;
+  // null: just send the message
+  if (value === null) return message;
+  return `${message} : ${formatDisplayValue(value)}`;
+}
+
+function formatDisplayValue(value: unknown): string {
+  if (typeof value === "string" && ISO_DATE_RE.test(value)) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const min = String(d.getMinutes()).padStart(2, "0");
+      return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    }
+  }
+  return String(value);
 }

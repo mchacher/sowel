@@ -15,6 +15,7 @@ import { MotionLightDimmableRecipe } from "./recipes/motion-light-dimmable.js";
 import { SwitchLightRecipe } from "./recipes/switch-light.js";
 import { PresenceThermostatRecipe } from "./recipes/presence-thermostat.js";
 import { PresenceHeaterRecipe } from "./recipes/presence-heater.js";
+import { StateWatchRecipe } from "./recipes/state-watch.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -148,6 +149,7 @@ async function main() {
   recipeManager.register(SwitchLightRecipe);
   recipeManager.register(PresenceThermostatRecipe);
   recipeManager.register(PresenceHeaterRecipe);
+  recipeManager.register(StateWatchRecipe);
 
   // 12b. Create Notification Publisher Manager & Service
   const notificationPublisherManager = new NotificationPublisherManager(db, eventBus, logger);
