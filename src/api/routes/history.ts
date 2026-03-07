@@ -76,11 +76,9 @@ export function registerHistoryRoutes(
     if (reachable && authenticated) {
       return { success: true, message: "InfluxDB connection successful" };
     } else if (reachable && !authenticated) {
-      return reply
-        .status(422)
-        .send({
-          error: "InfluxDB reachable but authentication failed — check token, org and bucket",
-        });
+      return reply.status(422).send({
+        error: "InfluxDB reachable but authentication failed — check token, org and bucket",
+      });
     } else {
       return reply.status(503).send({ error: "InfluxDB not reachable — check URL" });
     }
