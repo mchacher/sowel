@@ -330,7 +330,7 @@ export interface RecipeSlotDef {
   id: string;
   name: string;
   description: string;
-  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text";
+  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text" | "data-key";
   required: boolean;
   list?: boolean;
   defaultValue?: unknown;

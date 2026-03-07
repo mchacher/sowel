@@ -30,7 +30,7 @@ export class StateWatchRecipe extends Recipe {
       id: "dataKey",
       name: "Data Key",
       description: "Data binding alias to watch (e.g., contact, state)",
-      type: "text",
+      type: "data-key",
       required: true,
     },
     {
