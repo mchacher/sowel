@@ -31,6 +31,7 @@ const BACKUP_TABLES = [
   "button_action_bindings",
   "mqtt_publishers",
   "mqtt_publisher_mappings",
+  "chart_configs",
 ] as const;
 
 // Reverse order for deletion (children first)
