@@ -583,15 +583,6 @@ function PublisherCard({
     }
   };
 
-  const handleRemoveMapping = async (mappingId: string) => {
-    try {
-      await removeMqttPublisherMapping(publisher.id, mappingId);
-      onRefresh();
-    } catch {
-      // ignore
-    }
-  };
-
   const resolveSourceLabel = (mapping: MqttPublisherMapping): string => {
     if (mapping.sourceType === "equipment") {
       const eq = equipments.find((e) => e.id === mapping.sourceId);
