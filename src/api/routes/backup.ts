@@ -1,9 +1,12 @@
+import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import type { Logger } from "../../core/logger.js";
+import type { HistoryWriter } from "../../history/history-writer.js";
 
 interface BackupDeps {
   db: Database.Database;
+  historyWriter: HistoryWriter;
   logger: Logger;
 }
 
@@ -26,6 +29,8 @@ const BACKUP_TABLES = [
   "calendar_profiles",
   "calendar_slots",
   "button_action_bindings",
+  "mqtt_publishers",
+  "mqtt_publisher_mappings",
 ] as const;
 
 // Reverse order for deletion (children first)
@@ -38,34 +43,96 @@ interface BackupPayload {
 }
 
 export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): void {
-  const { db, logger: parentLogger } = deps;
+  const { db, historyWriter, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "backup" });
 
-  // GET /api/v1/backup — Export full configuration as JSON
+  // GET /api/v1/backup — Export full configuration as ZIP (SQLite JSON + InfluxDB CSV)
   app.get("/api/v1/backup", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {
       return reply.code(403).send({ error: "Admin access required" });
     }
 
+    // Build SQLite JSON payload
     const tables: Record<string, unknown[]> = {};
     for (const table of BACKUP_TABLES) {
       tables[table] = db.prepare(`SELECT * FROM ${table}`).all();
     }
 
-    const payload: BackupPayload = {
+    const sqlitePayload: BackupPayload = {
       version: 1,
       exportedAt: new Date().toISOString(),
       tables,
     };
 
-    logger.info("Configuration exported");
+    // Export InfluxDB data if connected
+    const influxClient = historyWriter.getInfluxClient();
+    const influxConfig = influxClient.getConfig();
+    const influxConnected = influxClient.isConnected() && influxConfig;
 
-    return reply
-      .header(
-        "Content-Disposition",
-        `attachment; filename="sowel-backup-${new Date().toISOString().slice(0, 10)}.json"`,
-      )
-      .send(payload);
+    const influxCsvs: { name: string; csv: string }[] = [];
+    if (influxConnected) {
+      const client = influxClient.getClient();
+      if (client) {
+        const queryApi = client.getQueryApi(influxConfig.org);
+        const buckets = [
+          { name: "influx-raw.csv", bucket: influxConfig.bucket, range: "-7d" },
+          { name: "influx-hourly.csv", bucket: `${influxConfig.bucket}-hourly`, range: "-90d" },
+          { name: "influx-daily.csv", bucket: `${influxConfig.bucket}-daily`, range: "-5y" },
+        ];
+
+        for (const b of buckets) {
+          try {
+            const flux = `from(bucket: "${b.bucket}")
+  |> range(start: ${b.range})
+  |> filter(fn: (r) => r._measurement == "equipment_data")`;
+
+            const csv = await queryApi.queryRaw(flux);
+
+            if (csv.trim().length > 0) {
+              influxCsvs.push({ name: b.name, csv });
+            }
+          } catch (err) {
+            logger.warn({ err, bucket: b.bucket }, "Failed to export InfluxDB bucket");
+          }
+        }
+      }
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    // If no InfluxDB data, return JSON directly (backward compatible)
+    if (influxCsvs.length === 0) {
+      logger.info("Configuration exported (JSON only, no InfluxDB data)");
+      return reply
+        .header("Content-Disposition", `attachment; filename="sowel-backup-${dateStr}.json"`)
+        .send(sqlitePayload);
+    }
+
+    // Build ZIP archive with SQLite JSON + InfluxDB CSVs
+    logger.info(
+      { influxFiles: influxCsvs.map((f) => f.name) },
+      "Configuration exported (ZIP with InfluxDB data)",
+    );
+
+    const archive = archiver("zip", { zlib: { level: 6 } });
+
+    reply
+      .header("Content-Type", "application/zip")
+      .header("Content-Disposition", `attachment; filename="sowel-backup-${dateStr}.zip"`);
+
+    // Append SQLite JSON
+    archive.append(JSON.stringify(sqlitePayload, null, 2), {
+      name: "sowel-backup.json",
+    });
+
+    // Append InfluxDB CSVs
+    for (const f of influxCsvs) {
+      archive.append(f.csv, { name: f.name });
+    }
+
+    archive.finalize();
+
+    return reply.send(archive);
   });
 
   // POST /api/v1/backup — Restore configuration from JSON

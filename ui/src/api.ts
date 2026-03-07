@@ -491,7 +491,7 @@ export async function refreshIntegration(id: string): Promise<{ success: boolean
 // Backup (admin)
 // ============================================================
 
-export async function exportBackup(): Promise<Blob> {
+export async function exportBackup(): Promise<{ blob: Blob; isZip: boolean }> {
   const headers: Record<string, string> = {};
   if (_accessToken) {
     headers["Authorization"] = `Bearer ${_accessToken}`;
@@ -500,7 +500,9 @@ export async function exportBackup(): Promise<Blob> {
   if (!response.ok) {
     throw new Error(`Export failed: ${response.statusText}`);
   }
-  return response.blob();
+  const contentType = response.headers.get("Content-Type") ?? "";
+  const blob = await response.blob();
+  return { blob, isZip: contentType.includes("zip") };
 }
 
 export async function importBackup(file: File): Promise<{ success: boolean }> {
