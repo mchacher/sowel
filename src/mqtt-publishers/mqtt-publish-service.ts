@@ -113,7 +113,7 @@ export class MqttPublishService {
     }
 
     this.client = mqtt.connect(brokerUrl, {
-      clientId: "winch-publisher",
+      clientId: "sowel-publisher",
       username,
       password,
       clean: true,

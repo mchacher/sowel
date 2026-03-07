@@ -11,7 +11,7 @@ import { useEquipments } from "../../store/useEquipments";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
 import { LogOut, User } from "lucide-react";
-import { WinchLogo } from "./WinchLogo";
+import { SowelLogo } from "./SowelLogo";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 
 export function AppLayout() {
@@ -49,7 +49,7 @@ export function AppLayout() {
           <div className="flex items-center gap-4">
             {/* Mobile logo */}
             <div className="flex md:hidden items-center gap-2">
-              <WinchLogo size={28} />
+              <SowelLogo size={28} />
               <span className="font-semibold text-[15px] text-text">{t("app.name")}</span>
             </div>
             {/* Sunlight banner — visible on desktop */}

@@ -71,7 +71,7 @@
 
 1. Start engine with `npm run dev`
 2. Verify pino-pretty logs appear in console with module context
-3. Check `data/logs/` directory is created and `winch.log` exists (production mode)
+3. Check `data/logs/` directory is created and `sowel.log` exists (production mode)
 4. Call `GET /api/v1/logs` — verify entries returned
 5. Call `GET /api/v1/logs?level=warn` — verify filtering works
 6. Call `GET /api/v1/logs?module=mqtt` — verify module filter works

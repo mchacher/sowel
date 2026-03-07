@@ -22,7 +22,7 @@ The system builds on the existing Pino logger with minimal changes to current lo
 
 - [ ] Pino logger outputs to 3 destinations simultaneously: stdout, file (pino-roll), in-memory ring buffer
 - [ ] File transport rotates daily + at 10 MB, keeps 14 days of history
-- [ ] Log files written to `data/logs/winch.log` with auto-created directory
+- [ ] Log files written to `data/logs/sowel.log` with auto-created directory
 - [ ] Ring buffer holds last 2000 entries in memory (configurable)
 - [ ] Ring buffer captures at `debug` level; file transport at `info` level
 - [ ] Sensitive fields (password, token, secret, apiKey) are redacted with `[REDACTED]`

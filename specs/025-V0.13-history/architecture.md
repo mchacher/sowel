@@ -3,7 +3,7 @@
 ## Design Principles
 
 1. **Zero performance impact** — The history writer is a passive observer. It subscribes to events, buffers, and writes asynchronously. It never blocks the event loop or slows down the reactive pipeline.
-2. **Optional dependency** — Winch boots and operates fully without InfluxDB. History features are hidden when not configured.
+2. **Optional dependency** — Sowel boots and operates fully without InfluxDB. History features are hidden when not configured.
 3. **Per-binding granularity** — Users opt-in per equipment data binding. No unnecessary storage.
 4. **Iterative UI** — Charts appear progressively: first inline in equipment detail, then sparklines everywhere, then a full analyse page.
 
@@ -29,7 +29,7 @@
 | hourly | 90 days  | 1 hour      | InfluxDB task  |
 | daily  | 5 years  | 1 day       | InfluxDB task  |
 
-Downsampling tasks compute `mean`, `min`, `max`, `count` per window and write to dedicated buckets (`winch-hourly`, `winch-daily`).
+Downsampling tasks compute `mean`, `min`, `max`, `count` per window and write to dedicated buckets (`sowel-hourly`, `sowel-daily`).
 
 ## SQLite Changes
 
@@ -94,8 +94,8 @@ InfluxDB connection stored in `settings` table with prefix `history.`:
 | --------------------- | --------------------- |
 | history.influx.url    | http://localhost:8086 |
 | history.influx.token  | my-super-secret-token |
-| history.influx.org    | winch                 |
-| history.influx.bucket | winch                 |
+| history.influx.org    | sowel                 |
+| history.influx.bucket | sowel                 |
 | history.enabled       | true                  |
 
 ## Backend Architecture
@@ -341,7 +341,7 @@ Add InfluxDB service:
 services:
   influxdb:
     image: influxdb:2.7
-    container_name: winch-influxdb
+    container_name: sowel-influxdb
     restart: unless-stopped
     ports:
       - "8086:8086"
@@ -349,11 +349,11 @@ services:
       - influxdb-data:/var/lib/influxdb2
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=winch
-      - DOCKER_INFLUXDB_INIT_PASSWORD=winch-secret
-      - DOCKER_INFLUXDB_INIT_ORG=winch
-      - DOCKER_INFLUXDB_INIT_BUCKET=winch
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=winch-dev-token
+      - DOCKER_INFLUXDB_INIT_USERNAME=sowel
+      - DOCKER_INFLUXDB_INIT_PASSWORD=sowel-secret
+      - DOCKER_INFLUXDB_INIT_ORG=sowel
+      - DOCKER_INFLUXDB_INIT_BUCKET=sowel
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-dev-token
 
 volumes:
   influxdb-data:

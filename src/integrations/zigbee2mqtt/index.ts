@@ -70,7 +70,7 @@ export class Zigbee2MqttIntegration implements IntegrationPlugin {
         label: "MQTT Client ID",
         type: "text",
         required: false,
-        defaultValue: "winch",
+        defaultValue: "sowel",
       },
       {
         key: "base_topic",
@@ -91,7 +91,7 @@ export class Zigbee2MqttIntegration implements IntegrationPlugin {
     const mqttUrl = this.getSetting("mqtt_url")!;
     const mqttUsername = this.getSetting("mqtt_username") || undefined;
     const mqttPassword = this.getSetting("mqtt_password") || undefined;
-    const mqttClientId = this.getSetting("mqtt_client_id") ?? "winch";
+    const mqttClientId = this.getSetting("mqtt_client_id") ?? "sowel";
     const baseTopic = this.getSetting("base_topic") ?? "zigbee2mqtt";
 
     try {

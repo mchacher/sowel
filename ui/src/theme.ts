@@ -7,7 +7,7 @@
 
 export type ThemeSetting = "light" | "dark" | "system";
 
-const STORAGE_KEY = "winch_theme";
+const STORAGE_KEY = "sowel_theme";
 
 let mediaQuery: MediaQueryList | null = null;
 let mediaListener: (() => void) | null = null;

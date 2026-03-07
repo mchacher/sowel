@@ -1,5 +1,5 @@
 {
-  "app.name": "Winch",
+  "app.name": "Sowel",
 
   "nav.home": "Maison",
   "nav.devices": "Appareils",
@@ -105,7 +105,7 @@
   "devices.col.updated": "Mis à jour",
   "devices.col.range": "Plage / Valeurs",
   "devices.col.topic": "Topic",
-  "devices.deleteConfirm": "Supprimer cet appareil de Winch ? Il sera redécouvert automatiquement s'il est toujours actif sur le bridge.",
+  "devices.deleteConfirm": "Supprimer cet appareil de Sowel ? Il sera redécouvert automatiquement s'il est toujours actif sur le bridge.",
 
   "zones.title": "Topologie",
   "zones.subtitle": "Définissez la topologie de votre maison",
@@ -426,7 +426,7 @@
   "settings.sunsetOffsetHelp": "Minutes avant le coucher pour anticiper la nuit",
 
   "backup.title": "Sauvegarde / Restauration",
-  "backup.description": "Exportez ou importez la configuration complète de Winch (zones, appareils, équipements, utilisateurs, recettes, intégrations).",
+  "backup.description": "Exportez ou importez la configuration complète de Sowel (zones, appareils, équipements, utilisateurs, recettes, intégrations).",
   "backup.export": "Exporter",
   "backup.import": "Importer",
   "backup.exported": "Sauvegarde exportée avec succès",

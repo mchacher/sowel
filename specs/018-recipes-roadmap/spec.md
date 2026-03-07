@@ -1,6 +1,6 @@
 # Recipes Roadmap
 
-Specification of future recipes to implement for Winch.
+Specification of future recipes to implement for Sowel.
 
 ## Design Principles
 

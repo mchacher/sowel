@@ -41,7 +41,7 @@ async function main() {
   const logBuffer = new LogRingBuffer();
   const logHandle = createLogger(config.log.level, logBuffer);
   const logger = logHandle.logger;
-  logger.info("Winch — Founded by Marc Chachereau — AGPL-3.0");
+  logger.info("Sowel — Founded by Marc Chachereau — AGPL-3.0");
 
   // 3. Open SQLite database and run migrations
   const db = openDatabase(config.sqlite.path, logger);
@@ -205,7 +205,7 @@ async function main() {
   await server.listen({ port: config.api.port, host: config.api.host });
   logger.info(
     { port: config.api.port, host: config.api.host },
-    `Winch API listening on http://${config.api.host}:${config.api.port}`,
+    `Sowel API listening on http://${config.api.host}:${config.api.port}`,
   );
 
   // 16. Start Sunlight Manager (before system.started so aggregation has sunlight data)
@@ -232,7 +232,7 @@ async function main() {
     logger.info("No users found — setup required. Navigate to the UI to create the first admin.");
   }
 
-  logger.info("Winch engine started successfully");
+  logger.info("Sowel engine started successfully");
 
   // Graceful shutdown — each step is isolated so one failure doesn't block the rest
   const shutdown = async () => {

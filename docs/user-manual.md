@@ -1,16 +1,16 @@
-# Winch — User Manual
+# Sowel — User Manual
 
 > Updated: 2026-02-24 — V0.11 Logging
 
 ---
 
-## Why Winch?
+## Why Sowel?
 
 Home automation platforms are powerful but complex. Home Assistant drowns users in YAML and flat entity lists. Jeedom buries features behind paid plugins. Both demand hours of configuration before anything works.
 
-Winch takes the opposite approach: **structure first, simplicity always**.
+Sowel takes the opposite approach: **structure first, simplicity always**.
 
-|                     | Home Assistant                                                    | Jeedom                               | **Winch**                                                                            |
+|                     | Home Assistant                                                    | Jeedom                               | **Sowel**                                                                            |
 | ------------------- | ----------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
 | **Architecture**    | Flat entity list (thousands of `sensor.`, `light.`, `switch.`...) | Nested objects & commands            | **3 clear layers**: Device → Equipment → Zone                                        |
 | **Device setup**    | Integration + entity config per device                            | Plugin per protocol (often paid)     | **Zero config** — auto-discovery from configured integrations                        |
@@ -24,7 +24,7 @@ Winch takes the opposite approach: **structure first, simplicity always**.
 
 > A **Device** is what's on the network. An **Equipment** is what's in the room. The user thinks _"Spots Salon"_, not _"IKEA TRADFRI LED1837R5 0x00158D00062B1234"_.
 
-Winch separates the physical (Device) from the functional (Equipment), then organizes everything spatially (Zone). This is what makes aggregation, recipes, and modes possible without any configuration.
+Sowel separates the physical (Device) from the functional (Equipment), then organizes everything spatially (Zone). This is what makes aggregation, recipes, and modes possible without any configuration.
 
 ---
 
@@ -32,7 +32,7 @@ Winch separates the physical (Device) from the functional (Equipment), then orga
 
 ### 1. Devices — auto-discovered, never configured
 
-Devices are physical hardware discovered from configured integrations (Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, Netatmo Home Control, etc.). Winch discovers everything automatically: sensors, lights, switches, shutters, buttons, thermostats. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
+Devices are physical hardware discovered from configured integrations (Zigbee2MQTT, Panasonic Comfort Cloud, MCZ Maestro, Netatmo Home Control, etc.). Sowel discovers everything automatically: sensors, lights, switches, shutters, buttons, thermostats. Each device exposes **Data** (readable properties like temperature, state, brightness) and **Orders** (writable commands).
 
 You never configure a Device. You just look at the list, and they're there.
 
@@ -56,7 +56,7 @@ An Equipment is what the user actually interacts with. "Spots Salon" is an Equip
 
 Zones form a tree: `Maison → Étage 1 → Salon`. Each Equipment belongs to exactly one Zone.
 
-**Automatic aggregation**: Winch computes real-time status for every zone:
+**Automatic aggregation**: Sowel computes real-time status for every zone:
 
 - **Temperature, humidity, luminosity** — averaged across all sensors in the zone
 - **Motion** — OR across all motion sensors (plus duration tracking)
@@ -77,7 +77,7 @@ A Recipe is a pre-built automation template. Instead of writing rules from scrat
 - Pick a light (Spots Salon)
 - Set a timeout (10 minutes)
 
-That's it. Winch handles all the edge cases: motion detected → light ON, motion stops → start timer, timer expires → light OFF, manual turn-on → start timer if no motion, manual turn-off → cancel timer.
+That's it. Sowel handles all the edge cases: motion detected → light ON, motion stops → start timer, timer expires → light OFF, manual turn-on → start timer if no motion, manual turn-off → cancel timer.
 
 ### 5. Modes — house-level operating states
 
@@ -170,7 +170,7 @@ Browse auto-discovered hardware:
 
 - Sortable table (name, manufacturer, model, battery, LQI, last seen)
 - Click for detail: raw data, orders, expose viewer
-- Delete removes from Winch only (re-discovered if still active)
+- Delete removes from Sowel only (re-discovered if still active)
 
 ### Administration > Integrations
 
@@ -203,7 +203,7 @@ Configure device source connections:
 
 ```bash
 git clone <repo>
-cd winch
+cd sowel
 npm install
 ```
 
@@ -212,7 +212,7 @@ npm install
 Optionally edit `.env` for engine settings:
 
 ```env
-SQLITE_PATH=./data/winch.db
+SQLITE_PATH=./data/sowel.db
 API_PORT=3000
 JWT_SECRET=your-secret-here
 LOG_LEVEL=info
@@ -358,9 +358,9 @@ curl -X POST http://localhost:3000/api/v1/recipe-instances \
 ### Backup / Restore
 
 ```bash
-curl http://localhost:3000/api/v1/backup -o winch-backup.json
+curl http://localhost:3000/api/v1/backup -o sowel-backup.json
 curl -X POST http://localhost:3000/api/v1/backup \
-  -H "Content-Type: application/json" -d @winch-backup.json
+  -H "Content-Type: application/json" -d @sowel-backup.json
 ```
 
 ### WebSocket

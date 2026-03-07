@@ -6,8 +6,8 @@ Reorganize the UI sidebar into two distinct sections: **Maison** (a dynamic zone
 
 ## Reference
 
-- Spec sections: V0.5 (winch-spec.md lines 1241-1257)
-- Design system: §15 (winch-spec.md)
+- Spec sections: V0.5 (sowel-spec.md lines 1241-1257)
+- Design system: §15 (sowel-spec.md)
 
 ## Acceptance Criteria
 

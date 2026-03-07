@@ -3,7 +3,7 @@
 ## Communication Protocol
 
 ```
-Winch Engine
+Sowel Engine
   └─ MczMaestroIntegration (IntegrationPlugin)
        └─ MczPoller (periodic polling loop)
             └─ MczBridge (Socket.IO client)

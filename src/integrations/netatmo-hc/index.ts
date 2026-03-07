@@ -16,7 +16,7 @@ const BOOLEAN_PARAMS = new Set(["on"]);
 /** Numeric params expected by Netatmo setstate API. */
 const NUMERIC_PARAMS = new Set(["brightness", "target_position"]);
 
-/** Coerce Winch order value to the type Netatmo API expects. */
+/** Coerce Sowel order value to the type Netatmo API expects. */
 function coerceValue(param: string, value: unknown): unknown {
   if (BOOLEAN_PARAMS.has(param)) {
     if (typeof value === "boolean") return value;

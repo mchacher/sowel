@@ -2,7 +2,7 @@
 
 ## Summary
 
-Refactor Winch's device layer to support multiple data source integrations beyond MQTT. Introduce an `IntegrationPlugin` interface that abstracts device discovery, data updates, and order execution. The existing Zigbee2MQTT code becomes the first built-in plugin. This is a pure architectural refactoring — zero functional change for the end user.
+Refactor Sowel's device layer to support multiple data source integrations beyond MQTT. Introduce an `IntegrationPlugin` interface that abstracts device discovery, data updates, and order execution. The existing Zigbee2MQTT code becomes the first built-in plugin. This is a pure architectural refactoring — zero functional change for the end user.
 
 ## Reference
 
