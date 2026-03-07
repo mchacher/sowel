@@ -175,7 +175,10 @@ export class NotificationPublishService {
   // ── Throttle logic ──────────────────────────────────────────
 
   private shouldNotify(ref: MappingRef, value: unknown, previous: unknown): boolean {
-    // Boolean/enum state transitions: always notify immediately
+    // Never notify if value hasn't changed
+    if (value === previous) return false;
+
+    // Boolean/enum state transitions: notify immediately on change
     if (
       typeof value === "boolean" ||
       value === "ON" ||
@@ -183,10 +186,10 @@ export class NotificationPublishService {
       value === "open" ||
       value === "closed"
     ) {
-      return value !== previous;
+      return true;
     }
 
-    // Throttle check for other types
+    // Throttle check for other types (value has changed, but rate-limit)
     const last = this.lastSent.get(ref.mappingId);
     if (!last) return true;
 
