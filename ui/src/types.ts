@@ -581,6 +581,40 @@ export interface MqttPublisherWithMappings extends MqttPublisher {
 }
 
 // ============================================================
+// Notification Publishers
+// ============================================================
+
+export interface TelegramChannelConfig {
+  botToken: string;
+  chatId: string;
+}
+
+export interface NotificationPublisher {
+  id: string;
+  name: string;
+  channelType: "telegram";
+  channelConfig: TelegramChannelConfig;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPublisherMapping {
+  id: string;
+  publisherId: string;
+  message: string;
+  sourceType: "equipment" | "zone" | "recipe";
+  sourceId: string;
+  sourceKey: string;
+  throttleMs: number;
+  createdAt: string;
+}
+
+export interface NotificationPublisherWithMappings extends NotificationPublisher {
+  mappings: NotificationPublisherMapping[];
+}
+
+// ============================================================
 // Integration
 // ============================================================
 

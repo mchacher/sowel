@@ -15,6 +15,7 @@ import {
   ScrollText,
   DatabaseBackup,
   Send,
+  Bell,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,6 +38,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: "/calendar", label: "nav.calendar", icon: <Calendar size={18} strokeWidth={1.5} /> },
   { to: "/integrations", label: "nav.integrations", icon: <Plug size={18} strokeWidth={1.5} /> },
   { to: "/mqtt-publishers", label: "nav.mqttPublishers", icon: <Send size={18} strokeWidth={1.5} /> },
+  { to: "/notification-publishers", label: "nav.notificationPublishers", icon: <Bell size={18} strokeWidth={1.5} /> },
   { to: "/logs", label: "nav.logs", icon: <ScrollText size={18} strokeWidth={1.5} /> },
   { to: "/backup", label: "nav.backup", icon: <DatabaseBackup size={18} strokeWidth={1.5} /> },
 ];
