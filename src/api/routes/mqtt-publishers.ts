@@ -112,6 +112,30 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
     }
   });
 
+  // PUT /api/v1/mqtt-publishers/:id/mappings/:mappingId
+  app.put<{
+    Params: { id: string; mappingId: string };
+    Body: {
+      publishKey?: string;
+      sourceType?: "equipment" | "zone" | "recipe";
+      sourceId?: string;
+      sourceKey?: string;
+    };
+  }>("/api/v1/mqtt-publishers/:id/mappings/:mappingId", async (request, reply) => {
+    try {
+      const mapping = mqttPublisherManager.updateMapping(
+        request.params.id,
+        request.params.mappingId,
+        request.body ?? {},
+      );
+      return mapping;
+    } catch (err) {
+      if (err instanceof MqttPublisherError)
+        return reply.code(err.status).send({ error: err.message });
+      throw err;
+    }
+  });
+
   // DELETE /api/v1/mqtt-publishers/:id/mappings/:mappingId
   app.delete<{ Params: { id: string; mappingId: string } }>(
     "/api/v1/mqtt-publishers/:id/mappings/:mappingId",
