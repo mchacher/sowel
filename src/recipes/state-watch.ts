@@ -199,12 +199,25 @@ export class StateWatchRecipe extends Recipe {
         ? String(params.checkTime)
         : null;
 
-    // Initialize all state keys so they are visible in notification publisher mappings
-    if (ctx.state.get("alarm") === undefined) {
-      ctx.state.set("alarm", false);
-      ctx.state.set("alarmSince", null);
-      ctx.state.set("alarmCount", 0);
-      ctx.state.set("currentValue", null);
+    // Ensure all state keys exist in DB so they appear in notification publisher dropdowns.
+    // Only write defaults for keys not yet set (alarm=false/true distinguishes from null=missing).
+    const defaults: Record<string, unknown> = {
+      alarm: false,
+      alarmSince: null,
+      alarmCount: 0,
+      currentValue: null,
+    };
+    for (const [key, defaultVal] of Object.entries(defaults)) {
+      const current = ctx.state.get(key);
+      // state.get() returns null both for missing keys and for keys set to null.
+      // For "alarm", check specifically — false/true means it was already set.
+      if (key === "alarm" && (current === true || current === false)) continue;
+      // For others, always write to ensure the row exists in recipe_state table.
+      if (key !== "alarm") {
+        ctx.state.set(key, current ?? defaultVal);
+      } else {
+        ctx.state.set(key, defaultVal);
+      }
     }
 
     // Subscribe to equipment data changes
