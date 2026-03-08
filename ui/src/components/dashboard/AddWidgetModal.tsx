@@ -24,38 +24,7 @@ export function AddWidgetModal({
   const [tab, setTab] = useState<"equipment" | "zone">("equipment");
   const [selectedZoneId, setSelectedZoneId] = useState<string>("");
   const [selectedFamily, setSelectedFamily] = useState<WidgetFamily>("lights");
-
-  // Group equipments by zone
-  const equipmentsByZone = useMemo(() => {
-    const map = new Map<string, { zoneName: string; equipments: EquipmentWithDetails[] }>();
-
-    function flattenZones(zoneList: ZoneWithChildren[], prefix = ""): Map<string, string> {
-      const result = new Map<string, string>();
-      for (const zone of zoneList) {
-        const name = prefix ? `${prefix} > ${zone.name}` : zone.name;
-        result.set(zone.id, name);
-        for (const [id, n] of flattenZones(zone.children, name)) {
-          result.set(id, n);
-        }
-      }
-      return result;
-    }
-
-    const zoneNames = flattenZones(zones);
-
-    for (const eq of equipments) {
-      const existing = map.get(eq.zoneId);
-      if (existing) {
-        existing.equipments.push(eq);
-      } else {
-        map.set(eq.zoneId, {
-          zoneName: zoneNames.get(eq.zoneId) ?? eq.zoneId,
-          equipments: [eq],
-        });
-      }
-    }
-    return map;
-  }, [equipments, zones]);
+  const [eqZoneId, setEqZoneId] = useState<string>("");
 
   // Flatten zones for zone picker
   const flatZones = useMemo(() => {
@@ -111,13 +80,29 @@ export function AddWidgetModal({
         <div className="flex-1 overflow-y-auto p-4">
           {tab === "equipment" && (
             <div className="space-y-4">
-              {Array.from(equipmentsByZone.entries()).map(([zoneId, { zoneName, equipments: zoneEqs }]) => (
-                <div key={zoneId}>
-                  <h3 className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider mb-1.5 px-1">
-                    {zoneName}
-                  </h3>
-                  <div className="space-y-0.5">
-                    {zoneEqs.map((eq) => (
+              {/* Zone selector */}
+              <div>
+                <label className="block text-[12px] font-medium text-text-secondary mb-1">{t("dashboard.selectZone")}</label>
+                <select
+                  value={eqZoneId}
+                  onChange={(e) => setEqZoneId(e.target.value)}
+                  className="w-full px-3 py-2 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                >
+                  <option value="">{t("dashboard.chooseZone")}</option>
+                  {flatZones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {"  ".repeat(z.depth)}{z.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Equipment list filtered by zone */}
+              {eqZoneId && (
+                <div className="space-y-0.5">
+                  {equipments
+                    .filter((eq) => eq.zoneId === eqZoneId)
+                    .map((eq) => (
                       <button
                         key={eq.id}
                         onClick={() => {
@@ -130,11 +115,10 @@ export function AddWidgetModal({
                         <span className="ml-2 text-[11px] text-text-tertiary">{eq.type}</span>
                       </button>
                     ))}
-                  </div>
+                  {equipments.filter((eq) => eq.zoneId === eqZoneId).length === 0 && (
+                    <p className="text-[13px] text-text-tertiary text-center py-4">{t("dashboard.noEquipmentsAvailable")}</p>
+                  )}
                 </div>
-              ))}
-              {equipmentsByZone.size === 0 && (
-                <p className="text-[13px] text-text-tertiary text-center py-4">{t("dashboard.noEquipmentsAvailable")}</p>
               )}
             </div>
           )}

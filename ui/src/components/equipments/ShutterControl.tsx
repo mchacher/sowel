@@ -55,6 +55,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               min={0}
               max={100}
               value={position}
+              onPointerDown={(e) => { e.stopPropagation(); slider.onStart(); }}
               onChange={(e) => { e.stopPropagation(); slider.onChange(Number(e.target.value)); }}
               onMouseUp={handlePositionCommit}
               onTouchEnd={handlePositionCommit}
@@ -120,6 +121,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               min={0}
               max={100}
               value={position}
+              onPointerDown={slider.onStart}
               onChange={(e) => slider.onChange(Number(e.target.value))}
               onMouseUp={handlePositionCommit}
               onTouchEnd={handlePositionCommit}

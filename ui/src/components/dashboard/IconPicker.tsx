@@ -1,14 +1,16 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, createElement } from "react";
 import { useTranslation } from "react-i18next";
-import { ICON_MAP, ICON_CATEGORIES } from "./widget-icons";
+import { CUSTOM_ICON_REGISTRY } from "./widget-icons";
 
 interface IconPickerProps {
   currentIcon?: string;
+  /** Equipment type or widget family — used to filter relevant custom icons */
+  equipmentType?: string;
   onSelect: (iconName: string) => void;
   onClose: () => void;
 }
 
-export function IconPicker({ currentIcon, onSelect, onClose }: IconPickerProps) {
+export function IconPicker({ currentIcon, equipmentType, onSelect, onClose }: IconPickerProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -23,42 +25,79 @@ export function IconPicker({ currentIcon, onSelect, onClose }: IconPickerProps) 
     return () => document.removeEventListener("mousedown", handleClick);
   }, [onClose]);
 
+  // Filter custom icons relevant to this equipment type
+  const relevantIcons = Object.entries(CUSTOM_ICON_REGISTRY).filter(
+    ([, entry]) => !equipmentType || entry.types.includes(equipmentType),
+  );
+
+  // Also show all icons if no type filter
+  const otherIcons = Object.entries(CUSTOM_ICON_REGISTRY).filter(
+    ([, entry]) => equipmentType && !entry.types.includes(equipmentType),
+  );
+
   return (
     <div
       ref={ref}
-      className="absolute z-20 top-full left-0 mt-1 bg-surface border border-border rounded-[10px] shadow-lg p-3 w-[280px]"
+      className="absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-border rounded-[10px] shadow-lg p-3 w-[280px]"
     >
       <h3 className="text-[12px] font-medium text-text-secondary mb-2">{t("dashboard.chooseIcon")}</h3>
-      {ICON_CATEGORIES.map((cat) => (
-        <div key={cat.label} className="mb-2">
-          <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider mb-1">
-            {cat.label}
-          </p>
+
+      {/* Relevant custom icons */}
+      {relevantIcons.length > 0 && (
+        <div className="mb-2">
           <div className="flex flex-wrap gap-1">
-            {cat.icons.map((name) => {
-              const Icon = ICON_MAP[name];
-              if (!Icon) return null;
-              return (
-                <button
-                  key={name}
-                  onClick={() => {
-                    onSelect(name);
-                    onClose();
-                  }}
-                  title={name}
-                  className={`w-8 h-8 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer ${
-                    currentIcon === name
-                      ? "bg-primary-light text-primary"
-                      : "text-text-secondary hover:bg-border-light hover:text-text"
-                  }`}
-                >
-                  <Icon size={16} strokeWidth={1.5} />
-                </button>
-              );
-            })}
+            {relevantIcons.map(([key, entry]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  onSelect(key);
+                  onClose();
+                }}
+                title={entry.label}
+                className={`w-12 h-12 flex items-center justify-center rounded-[6px] transition-colors cursor-pointer ${
+                  currentIcon === key
+                    ? "bg-primary-light ring-2 ring-primary/30"
+                    : "hover:bg-border-light"
+                }`}
+              >
+                <div className="scale-[0.45] origin-center">
+                  {createElement(entry.component, entry.previewProps)}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-      ))}
+      )}
+
+      {/* Other custom icons */}
+      {otherIcons.length > 0 && (
+        <div className="mb-1">
+          <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider mb-1">
+            {t("dashboard.otherIcons")}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {otherIcons.map(([key, entry]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  onSelect(key);
+                  onClose();
+                }}
+                title={entry.label}
+                className={`w-12 h-12 flex items-center justify-center rounded-[6px] transition-colors cursor-pointer ${
+                  currentIcon === key
+                    ? "bg-primary-light ring-2 ring-primary/30"
+                    : "hover:bg-border-light"
+                }`}
+              >
+                <div className="scale-[0.45] origin-center">
+                  {createElement(entry.component, entry.previewProps)}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

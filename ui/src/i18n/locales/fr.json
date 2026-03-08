@@ -136,6 +136,7 @@
   "zones.commands.allLightsOn": "Allumer les lumières",
   "zones.commands.allLightsOff": "Éteindre les lumières",
   "zones.commands.allShuttersOpen": "Ouvrir les volets",
+  "zones.commands.allShuttersStop": "Stop",
   "zones.commands.allShuttersClose": "Fermer les volets",
 
   "equipments.title": "Équipements",
@@ -735,6 +736,8 @@
   "dashboard.addZoneWidget": "Ajouter le widget zone",
   "dashboard.noEquipmentsAvailable": "Aucun équipement disponible",
   "dashboard.chooseIcon": "Choisir une icône",
+  "dashboard.otherIcons": "Autres icônes",
+  "dashboard.visibleData": "Données affichées",
   "dashboard.family.lights": "Lumières",
   "dashboard.family.shutters": "Volets",
   "dashboard.family.heating": "Chauffage",

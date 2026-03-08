@@ -13,53 +13,104 @@
 
 ### Phase 1: Backend (types, DB, API)
 
-1. [ ] Add `DashboardWidget`, `WidgetFamily` types to `src/shared/types.ts`
-2. [ ] Add `WIDGET_FAMILY_TYPES` constant to `src/shared/constants.ts`
-3. [ ] Create migration `migrations/031_dashboard_widgets.sql` (table with label, icon, family columns, ON DELETE CASCADE)
-4. [ ] Create `src/api/routes/dashboard.ts` with all endpoints:
+1. [x] Add `DashboardWidget`, `WidgetFamily` types to `src/shared/types.ts`
+2. [x] Add `WIDGET_FAMILY_TYPES` constant to `src/shared/constants.ts`
+3. [x] Create migration `migrations/031_dashboard_widgets.sql` (table with label, icon, family columns, ON DELETE CASCADE)
+4. [x] Create `src/api/routes/dashboard.ts` with all endpoints:
    - GET `/api/v1/dashboard/widgets` (list ordered)
    - POST `/api/v1/dashboard/widgets` (create equipment or zone widget)
    - PATCH `/api/v1/dashboard/widgets/:id` (update label, icon)
    - DELETE `/api/v1/dashboard/widgets/:id` (remove)
    - PUT `/api/v1/dashboard/widgets/order` (batch reorder)
-5. [ ] Register routes in `src/api/server.ts`
-6. [ ] Verify: `npx tsc --noEmit` passes
+5. [x] Register routes in `src/api/server.ts`
+6. [x] Verify: `npx tsc --noEmit` passes
 
 ### Phase 2: Frontend store & API
 
-7. [ ] Add `DashboardWidget`, `WidgetFamily` types to `ui/src/types.ts`
-8. [ ] Add dashboard API functions to `ui/src/api.ts` (list, create, update, delete, reorder)
-9. [ ] Create `ui/src/store/useDashboard.ts` (Zustand store: fetch, create, update, delete, reorder)
-10. [ ] Verify: `cd ui && npx tsc --noEmit` passes
+7. [x] Add `DashboardWidget`, `WidgetFamily` types to `ui/src/types.ts`
+8. [x] Add dashboard API functions to `ui/src/api.ts` (list, create, update, delete, reorder)
+9. [x] Create `ui/src/store/useDashboard.ts` (Zustand store: fetch, create, update, delete, reorder)
+10. [x] Verify: `cd ui && npx tsc --noEmit` passes
 
 ### Phase 3: Dashboard page & widgets
 
-11. [ ] Create `ui/src/pages/DashboardPage.tsx` with responsive grid (2/3/4 cols)
-12. [ ] Create `ui/src/components/dashboard/EquipmentWidget.tsx` (reuses LightControl, ShutterControl, etc.)
-13. [ ] Create `ui/src/components/dashboard/ZoneWidget.tsx` (equipment list by family + grouped actions)
-14. [ ] Create `ui/src/components/dashboard/WidgetGrid.tsx` (responsive CSS grid container)
-15. [ ] Add `/dashboard` route to `ui/src/App.tsx`, redirect `/` to `/dashboard`
-16. [ ] Add "Dashboard" item to sidebar navigation (first position)
-17. [ ] Verify: widgets render correctly, real-time updates work
+11. [x] Create `ui/src/pages/DashboardPage.tsx` with responsive grid (2/3/4 cols)
+12. [x] Create `ui/src/components/dashboard/EquipmentWidget.tsx` with per-type sub-components:
+    - `LightOnOffEquipmentWidget`, `LightDimmableEquipmentWidget`, `ShutterEquipmentWidget`
+    - `ThermostatEquipmentWidget`, `GateEquipmentWidget`, `HeaterEquipmentWidget`
+    - `SwitchEquipmentWidget`, `SensorEquipmentWidget`, `ButtonEquipmentWidget`
+13. [x] Create `ui/src/components/dashboard/ZoneWidget.tsx` with per-family sub-components:
+    - `ZoneLightsWidget`, `ZoneShutterWidget`, `ZoneHeatingWidget`, `ZoneSensorsWidget`
+14. [x] Create `ui/src/components/dashboard/WidgetGrid.tsx` (responsive CSS grid + drag & drop + edit overlays)
+15. [x] Add `/dashboard` route to `ui/src/App.tsx`, redirect `/` to `/dashboard`
+16. [x] Add "Dashboard" item to sidebar navigation (first position)
+17. [x] Verify: widgets render correctly, real-time updates work
 
 ### Phase 4: Edit mode & configuration
 
-18. [ ] Add edit mode toggle (admin only) to dashboard header
-19. [ ] Create `ui/src/components/dashboard/AddWidgetModal.tsx` (Tab 1: equipment picker grouped by zone, Tab 2: zone + family picker)
-20. [ ] Install `@dnd-kit/core` + `@dnd-kit/sortable`, implement drag & drop reordering
-21. [ ] Add delete button (X corner) on widgets in edit mode
-22. [ ] Add inline label rename (tap label in edit mode)
-23. [ ] Create `ui/src/components/dashboard/widget-icons.ts` (curated ~40 icons list + default icon mapping)
-24. [ ] Create `ui/src/components/dashboard/IconPicker.tsx` (popover with icon grid, updates via PATCH)
-25. [ ] Handle edge cases: deleted equipment/zone (CASCADE), empty state, no data
+18. [x] Add edit mode toggle (admin only) to dashboard header
+19. [x] Create `ui/src/components/dashboard/AddWidgetModal.tsx` (Tab 1: equipment picker grouped by zone, Tab 2: zone + family picker)
+20. [x] Install `@dnd-kit/core` + `@dnd-kit/sortable`, implement drag & drop reordering
+21. [x] Add delete button (X corner) on widgets in edit mode
+22. [x] Add inline label rename (tap label in edit mode → input with auto-focus/select, commit on blur/Enter, cancel on Escape)
+23. [x] Create `ui/src/components/dashboard/widget-icons.ts` (custom SVG icon registry + Lucide fallback map + defaults)
+24. [x] Create `ui/src/components/dashboard/IconPicker.tsx` (custom SVG icon picker, type-filtered, popover)
+25. [x] Create `ui/src/components/dashboard/WidgetIcons.tsx` (11 custom SVG icon components at 96×96)
+26. [x] Handle edge cases: deleted equipment/zone (CASCADE), empty state, no data
 
-### Phase 5: Polish & test
+### Phase 5: Zone Heating Widget Enhancement
 
-26. [ ] Add i18n keys for dashboard labels (fr + en)
-27. [ ] Mobile responsive testing (2-col grid, touch targets ≥ 44x44px)
-28. [ ] Dark mode verification
-29. [ ] TypeScript compile check (backend + frontend, zero errors)
-30. [ ] Manual test: add widgets, reorder, rename, change icon, delete, real-time updates
+27. [x] Add zone orders to `EquipmentManager.ZONE_ORDERS`:
+
+- `allThermostatsPowerOn` (types: thermostat, alias: power, value: true)
+- `allThermostatsPowerOff` (types: thermostat, alias: power, value: false)
+- `allThermostatsSetpoint` (types: thermostat, alias: setpoint, value: FROM_BODY)
+
+28. [x] Enhance `ThermometerIcon` in `WidgetIcons.tsx`: add `level` prop (0–1) for mercury fill height
+29. [x] Implement `ZoneHeatingWidget` in `ZoneWidget.tsx`:
+
+- Horizontal layout: thermometer (mercury = setpoint level) + avg temperature + power button to the right
+- Setpoint display with −/+ buttons (step 0.5°C, range 16–30°C)
+- Call `executeZoneOrder` for `allThermostatsSetpoint` and `allThermostatsPowerOn/Off`
+
+30. [x] Add i18n keys for heating controls (fr + en)
+
+### Phase 6: UI Polish
+
+31. [x] Horizontal widget layout with `grid-cols-[1fr_auto_1fr]` for centered icons
+32. [x] Custom SVG icons at 96×96 with state-driven appearance
+33. [x] Fixed card height `h-[240px]` with vertical centering (`my-auto`)
+34. [x] Vertical slim slider for dimmable lights (`slider-slim` CSS class)
+35. [x] Shutter "Ouvert"/"Fermé" labels at extremes (0%/100%)
+36. [x] Thermostat: power button next to temperature, setpoint −/+ in bottom zone
+37. [x] Gate icon variants: swing gate, sliding gate, garage door (selectable via icon picker)
+38. [x] Add i18n keys for dashboard labels, icon picker (fr + en)
+
+### Phase 7: Sensor icons enrichment
+
+39. [ ] Replace `SensorWidgetIcon` (gauge) with `MultiSensorIcon` (box with signal waves) as default sensor icon
+40. [ ] Add new sensor SVG icons to `WidgetIcons.tsx`:
+
+- `MultiSensorIcon` — multi-sensor box with signal waves
+- `HumiditySensorIcon` — water droplet with fill level
+- `LuminositySensorIcon` — sun with radiating rays
+- `WaterLeakSensorIcon` — droplet falling into puddle
+- `SmokeSensorIcon` — round detector with smoke cloud
+- `Co2SensorIcon` — cloud with CO₂ text
+- `PressureSensorIcon` — barometer dial with needle
+
+41. [ ] Register new icons in `CUSTOM_ICON_REGISTRY` (widget-icons.ts)
+42. [ ] Update imports in `WidgetIcons.tsx` exports and `widget-icons.ts`
+43. [ ] TypeScript compile check (zero errors)
+
+### Phase 8: Final validation
+
+44. [x] TypeScript compile check (backend + frontend, zero errors)
+45. [ ] Mobile responsive testing (2-col grid, touch targets)
+46. [ ] Dark mode verification
+47. [ ] Manual test: add widgets, reorder, rename, change icon, delete, real-time updates
+48. [ ] Manual test: zone heating widget — setpoint +/-, power on/off, mercury level updates
+49. [ ] Verify PATCH API route for icon/label update works correctly
 
 ---
 

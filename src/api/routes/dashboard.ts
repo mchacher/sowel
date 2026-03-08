@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import { toISOUtc } from "../../core/database.js";
-import type { DashboardWidget, WidgetFamily } from "../../shared/types.js";
+import type { DashboardWidget, WidgetConfig, WidgetFamily } from "../../shared/types.js";
 
 interface DashboardDeps {
   db: Database.Database;
@@ -15,6 +15,7 @@ interface WidgetRow {
   equipment_id: string | null;
   zone_id: string | null;
   family: string | null;
+  config: string | null;
   display_order: number;
   created_at: string;
 }
@@ -31,6 +32,13 @@ function rowToWidget(row: WidgetRow): DashboardWidget {
   if (row.equipment_id) widget.equipmentId = row.equipment_id;
   if (row.zone_id) widget.zoneId = row.zone_id;
   if (row.family) widget.family = row.family as WidgetFamily;
+  if (row.config) {
+    try {
+      widget.config = JSON.parse(row.config) as WidgetConfig;
+    } catch {
+      /* ignore bad JSON */
+    }
+  }
   return widget;
 }
 
@@ -123,7 +131,7 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
   // PATCH /api/v1/dashboard/widgets/:id — Update label, icon (admin only)
   app.patch<{
     Params: { id: string };
-    Body: { label?: string | null; icon?: string | null };
+    Body: { label?: string | null; icon?: string | null; config?: WidgetConfig | null };
   }>("/api/v1/dashboard/widgets/:id", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {
       return reply.code(403).send({ error: "Admin access required" });
@@ -136,7 +144,7 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
       return reply.code(404).send({ error: "Widget not found" });
     }
 
-    const { label, icon } = request.body ?? {};
+    const { label, icon, config } = request.body ?? {};
     const updates: string[] = [];
     const values: unknown[] = [];
 
@@ -147,6 +155,10 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
     if (icon !== undefined) {
       updates.push("icon = ?");
       values.push(icon);
+    }
+    if (config !== undefined) {
+      updates.push("config = ?");
+      values.push(config ? JSON.stringify(config) : null);
     }
 
     if (updates.length === 0) {
