@@ -1,4 +1,4 @@
-import type { DataCategory, DataType } from "./types.js";
+import type { DataCategory, DataType, EquipmentType, WidgetFamily } from "./types.js";
 
 // ============================================================
 // Root Zone — "Maison" is the root of the zone hierarchy
@@ -160,3 +160,14 @@ export const LIGHT_INDICATOR_PROPERTIES = new Set([
   "color_xy",
   "color_hs",
 ]);
+
+// ============================================================
+// Widget Family → EquipmentType mapping
+// ============================================================
+
+export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
+  lights: ["light_onoff", "light_dimmable", "light_color"],
+  shutters: ["shutter"],
+  heating: ["thermostat", "heater"],
+  sensors: ["sensor"],
+};

@@ -16,6 +16,7 @@ import {
   DatabaseBackup,
   Send,
   Bell,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -69,8 +70,27 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Maison section — scrollable */}
+      {/* Navigation sections — scrollable */}
       <div className="flex-1 overflow-y-auto py-3 px-2">
+        {/* Dashboard */}
+        <NavLink
+          to="/dashboard"
+          className={({ isActive }) => `
+            flex items-center gap-3 px-3 py-2 rounded-[6px] mb-1
+            transition-colors duration-150 ease-out
+            ${collapsed ? "justify-center" : ""}
+            ${isActive
+              ? "bg-primary-light text-primary font-medium"
+              : "text-text-secondary hover:bg-border-light hover:text-text"
+            }
+          `}
+          title={collapsed ? t("nav.dashboard") : undefined}
+        >
+          <LayoutDashboard size={20} strokeWidth={1.5} />
+          {!collapsed && <span className="text-[13px] font-medium">{t("nav.dashboard")}</span>}
+        </NavLink>
+
+        {/* Maison */}
         {collapsed ? (
           <NavLink
             to="/home"

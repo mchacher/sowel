@@ -15,6 +15,7 @@ import type {
   SavedChart, SavedChartConfig,
   MqttBroker,
   MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
+  DashboardWidget, WidgetFamily,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -1023,4 +1024,49 @@ export async function removeNotificationPublisherMapping(
     `${API_BASE}/notification-publishers/${publisherId}/mappings/${mappingId}`,
     { method: "DELETE" },
   );
+}
+
+// ============================================================
+// Dashboard Widgets
+// ============================================================
+
+export async function getDashboardWidgets(): Promise<DashboardWidget[]> {
+  return fetchJSON(`${API_BASE}/dashboard/widgets`);
+}
+
+export async function createDashboardWidget(data: {
+  type: "equipment" | "zone";
+  equipmentId?: string;
+  zoneId?: string;
+  family?: WidgetFamily;
+  label?: string;
+  icon?: string;
+}): Promise<DashboardWidget> {
+  return fetchJSON(`${API_BASE}/dashboard/widgets`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDashboardWidget(
+  id: string,
+  data: { label?: string | null; icon?: string | null },
+): Promise<DashboardWidget> {
+  return fetchJSON(`${API_BASE}/dashboard/widgets/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDashboardWidget(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/dashboard/widgets/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function reorderDashboardWidgets(order: string[]): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/dashboard/widgets/order`, {
+    method: "PUT",
+    body: JSON.stringify({ order }),
+  });
 }
