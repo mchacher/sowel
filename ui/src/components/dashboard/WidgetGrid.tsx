@@ -25,7 +25,8 @@ import { BindingsPicker } from "./BindingsPicker";
 import { MobileWidgetCard } from "./MobileWidgetCard";
 import { LightBulbIcon, ShutterWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
-import { EquipmentDetailSheet, ZoneDetailSheet, needsDetailSheet } from "./WidgetDetailSheet";
+import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
+import { needsDetailSheet } from "./widget-utils";
 import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { getSensorBindings } from "../equipments/sensorUtils";
@@ -77,15 +78,8 @@ export function WidgetGrid({
 
   const ids = widgets.map((w) => w.id);
 
-  // Find the widget being shown in bottom sheet
-  const detailWidget = detailWidgetId ? widgets.find((w) => w.id === detailWidgetId) : null;
-
-  // Close sheet if widget was deleted
-  useEffect(() => {
-    if (detailWidgetId && !widgets.some((w) => w.id === detailWidgetId)) {
-      setDetailWidgetId(null);
-    }
-  }, [widgets, detailWidgetId]);
+  // Find the widget being shown in bottom sheet (auto-clears if widget was deleted)
+  const detailWidget = detailWidgetId ? widgets.find((w) => w.id === detailWidgetId) ?? null : null;
 
   if (!editMode) {
     return (
