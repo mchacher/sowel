@@ -18,7 +18,7 @@ export function SetupPage() {
   const { t } = useTranslation();
 
   if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (setupRequired === false) {

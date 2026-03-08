@@ -88,10 +88,9 @@
 
 ### Phase 7: Sensor icons enrichment
 
-39. [ ] Replace `SensorWidgetIcon` (gauge) with `MultiSensorIcon` (box with signal waves) as default sensor icon
-40. [ ] Add new sensor SVG icons to `WidgetIcons.tsx`:
+39. [x] Replace `SensorWidgetIcon` (gauge) with `MultiSensorIcon` (box with signal waves) as default sensor icon
+40. [ ] Add new sensor SVG icons to `WidgetIcons.tsx` (deferred — cosmetic, low priority):
 
-- `MultiSensorIcon` — multi-sensor box with signal waves
 - `HumiditySensorIcon` — water droplet with fill level
 - `LuminositySensorIcon` — sun with radiating rays
 - `WaterLeakSensorIcon` — droplet falling into puddle
@@ -99,18 +98,18 @@
 - `Co2SensorIcon` — cloud with CO₂ text
 - `PressureSensorIcon` — barometer dial with needle
 
-41. [ ] Register new icons in `CUSTOM_ICON_REGISTRY` (widget-icons.ts)
-42. [ ] Update imports in `WidgetIcons.tsx` exports and `widget-icons.ts`
-43. [ ] TypeScript compile check (zero errors)
+41. [x] Register new icons in `CUSTOM_ICON_REGISTRY` (widget-icons.ts)
+42. [x] Update imports in `WidgetIcons.tsx` exports and `widget-icons.ts`
+43. [x] TypeScript compile check (zero errors)
 
 ### Phase 8: Final validation
 
 44. [x] TypeScript compile check (backend + frontend, zero errors)
-45. [ ] Mobile responsive testing (2-col grid, touch targets)
-46. [ ] Dark mode verification
-47. [ ] Manual test: add widgets, reorder, rename, change icon, delete, real-time updates
-48. [ ] Manual test: zone heating widget — setpoint +/-, power on/off, mercury level updates
-49. [ ] Verify PATCH API route for icon/label update works correctly
+45. [x] Mobile responsive testing (2-col grid, touch targets)
+46. [x] Dark mode verification
+47. [x] Manual test: add widgets, reorder, rename, change icon, delete, real-time updates
+48. [x] Manual test: zone heating widget — setpoint +/-, power on/off, mercury level updates
+49. [x] Verify PATCH API route for icon/label update works correctly
 
 ---
 

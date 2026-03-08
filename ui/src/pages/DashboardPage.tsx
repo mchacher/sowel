@@ -73,7 +73,7 @@ export function DashboardPage() {
   // Empty state
   if (widgets.length === 0 && !editMode) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
             <LayoutDashboard size={28} strokeWidth={1.5} className="text-text-tertiary" />
@@ -106,10 +106,10 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        {/* Desktop header */}
+        <div className="hidden sm:flex items-center justify-between mb-5">
           <h1 className="text-[22px] font-semibold text-text leading-[28px]">
             {t("dashboard.title")}
           </h1>
@@ -147,6 +147,30 @@ export function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Mobile FAB — bottom right, above bottom nav */}
+        {isAdmin && (
+          <div className="sm:hidden fixed bottom-[72px] right-4 z-30 flex flex-col items-end gap-2">
+            {editMode && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="w-11 h-11 flex items-center justify-center rounded-full bg-primary-light text-primary border border-primary/20 shadow-lg active:scale-95 transition-transform"
+              >
+                <Plus size={18} strokeWidth={1.5} />
+              </button>
+            )}
+            <button
+              onClick={() => setEditMode(!editMode)}
+              className={`w-11 h-11 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-transform ${
+                editMode
+                  ? "bg-primary text-white"
+                  : "bg-surface text-text-secondary border border-border"
+              }`}
+            >
+              {editMode ? <Check size={18} strokeWidth={1.5} /> : <Pencil size={18} strokeWidth={1.5} />}
+            </button>
+          </div>
+        )}
 
         {/* Widget grid */}
         <WidgetGrid

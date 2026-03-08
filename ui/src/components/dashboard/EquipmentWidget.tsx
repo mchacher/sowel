@@ -8,7 +8,6 @@ import {
   Square,
   Minus,
   Plus,
-  DoorOpen,
   Flame,
   Snowflake,
 } from "lucide-react";
@@ -66,7 +65,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
 
 function WidgetCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[240px] overflow-hidden">
+    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden">
       {/* Zone 1: Titre */}
       <span className="text-[17px] font-semibold text-text truncate mb-2 text-center">{label}</span>
       {children}
@@ -429,9 +428,11 @@ function GateEquipmentWidget({
 
   const commandBinding = equipment.orderBindings.find((ob) => ob.alias === "command");
   const hasCommand = !!commandBinding;
+  const enumValues = commandBinding?.enumValues ?? [];
+  const hasSingleAction = hasCommand && enumValues.length <= 1;
 
   const handleCommand = async () => {
-    if (executing || !commandBinding) return;
+    if (executing || !hasCommand || !hasSingleAction) return;
     setExecuting(true);
     try {
       await onExecuteOrder("command", null);
@@ -440,44 +441,42 @@ function GateEquipmentWidget({
     }
   };
 
+  const IconComp = (iconKey && GATE_ICON_MAP[iconKey]) || GateWidgetIcon;
+
   return (
-    <WidgetCard label={label}>
-      {/* Zone 2: Picto + État horizontal */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
-        <div />
-        {(() => {
-          const IconComp = (iconKey && GATE_ICON_MAP[iconKey]) || GateWidgetIcon;
-          return <IconComp open={isOpen} />;
-        })()}
-        <div className="pl-2">
-          <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
-              isOpen
-                ? "bg-warning/10 text-warning"
-                : gateState === "closed"
-                  ? "bg-success/10 text-success"
-                  : "bg-text-tertiary/10 text-text-tertiary"
-            }`}
-          >
-            {t(`controls.gate.${gateState}`)}
-          </span>
-        </div>
+    <div
+      onClick={hasSingleAction ? handleCommand : undefined}
+      className={`bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
+        hasSingleAction ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
+      }`}
+    >
+      {/* Label */}
+      <span className="text-[17px] font-semibold text-text truncate mb-2 text-center">{label}</span>
+
+      {/* Icon centered */}
+      <div className="flex-1 flex items-center justify-center">
+        {executing ? (
+          <Loader2 size={32} className="animate-spin text-text-tertiary" />
+        ) : (
+          <IconComp open={isOpen} />
+        )}
       </div>
 
-      {/* Zone 3: Bouton — command */}
-      {hasCommand && equipment.enabled && (
-        <div className="flex justify-center gap-3 mt-auto pt-1">
-          <button
-            onClick={handleCommand}
-            disabled={executing}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("controls.gate.command")}
-          >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <DoorOpen size={16} strokeWidth={1.5} />}
-          </button>
-        </div>
-      )}
-    </WidgetCard>
+      {/* State text */}
+      <div className="flex justify-center mt-auto pt-1">
+        <span
+          className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+            isOpen
+              ? "bg-warning/10 text-warning"
+              : gateState === "closed"
+                ? "bg-success/10 text-success"
+                : "bg-text-tertiary/10 text-text-tertiary"
+          }`}
+        >
+          {t(`controls.gate.${gateState}`)}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -590,9 +589,9 @@ function SensorEquipmentWidget({
     ? createElement(customEntry.component, customEntry.previewProps)
     : <MultiSensorIcon />;
 
-  // Filter bindings if config specifies visible ones
+  // Filter and order bindings according to visibleBindings config
   const filteredBindings = visibleBindings && visibleBindings.length > 0
-    ? sensorBindings.filter((b) => visibleBindings.includes(b.alias))
+    ? visibleBindings.map((alias) => sensorBindings.find((b) => b.alias === alias)).filter((b): b is typeof sensorBindings[number] => !!b)
     : sensorBindings;
 
   return (

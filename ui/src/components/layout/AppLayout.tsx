@@ -1,5 +1,5 @@
-import { Outlet } from "react-router-dom";
-import { useEffect } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -10,9 +10,12 @@ import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import { LogOut, User } from "lucide-react";
+import { Home, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
 import { SowelLogo } from "./SowelLogo";
+import { OfflineBanner } from "./OfflineBanner";
+import { InstallPrompt } from "./InstallPrompt";
 import { ROOT_ZONE_ID } from "../../lib/constants";
+import { getSettings } from "../../api";
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -25,6 +28,7 @@ export function AppLayout() {
   const logout = useAuth((s) => s.logout);
   const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
   const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
+  const [homeName, setHomeName] = useState("");
 
   useEffect(() => {
     fetchDevices();
@@ -32,6 +36,7 @@ export function AppLayout() {
     fetchEquipments();
     fetchAggregation();
     connect();
+    getSettings().then((s) => setHomeName(s["home.name"] ?? "")).catch(() => {});
     return () => disconnect();
   }, [fetchDevices, fetchZones, fetchEquipments, fetchAggregation, connect, disconnect]);
 
@@ -44,24 +49,35 @@ export function AppLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="flex items-center justify-between h-[60px] px-6 border-b border-border bg-surface/80 backdrop-blur-sm">
+        {/* Safe area spacer for iOS PWA */}
+        <div className="header-tint flex-shrink-0" style={{ height: "env(safe-area-inset-top, 0px)" }} />
+        {/* Top bar — compact on mobile, full on desktop */}
+        <header
+          className="flex items-center justify-between min-h-[44px] sm:min-h-[60px] px-4 sm:px-6 border-b border-border header-tint backdrop-blur-sm"
+        >
           <div className="flex items-center gap-4">
-            {/* Mobile logo */}
-            <div className="flex md:hidden items-center gap-2">
-              <SowelLogo size={28} />
-              <span className="font-semibold text-[15px] text-text">{t("app.name")}</span>
+            {/* Mobile: logo + home name + sunlight */}
+            <div className="flex sm:hidden items-center gap-2">
+              <SowelLogo size={24} />
+              {homeName && (
+                <span className="text-[14px] font-semibold text-text truncate max-w-[140px]">{homeName}</span>
+              )}
+              <SunlightBanner data={rootAgg} compact />
             </div>
-            {/* Sunlight banner — visible on desktop */}
-            <div className="hidden md:block">
+            {/* Desktop: home name + sunlight banner */}
+            <div className="hidden md:flex items-center gap-3">
+              {homeName && (
+                <span className="text-[15px] font-semibold text-text">{homeName}</span>
+              )}
               <SunlightBanner data={rootAgg} />
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <ConnectionStatus />
+            {/* User info — desktop only */}
             {user && (
-              <div className="flex items-center gap-2 ml-2">
+              <div className="hidden sm:flex items-center gap-2 ml-2">
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-text-secondary">
                   <User size={14} strokeWidth={1.5} />
                   <span className="text-[12px] font-medium">{user.displayName}</span>
@@ -83,6 +99,9 @@ export function AppLayout() {
           </div>
         </header>
 
+        {/* Offline banner */}
+        <OfflineBanner />
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
@@ -91,6 +110,9 @@ export function AppLayout() {
         {/* Mobile bottom navigation */}
         <MobileNav />
       </div>
+
+      {/* PWA install prompt */}
+      <InstallPrompt />
     </div>
   );
 }
@@ -98,36 +120,32 @@ export function AppLayout() {
 function MobileNav() {
   const { t } = useTranslation();
   return (
-    <nav className="flex md:hidden items-center justify-around h-[56px] border-t border-border bg-surface px-2">
-      <MobileNavLink to="/home" label={t("nav.maison")} active />
-      <MobileNavLink to="/devices" label={t("nav.devices")} />
-      <MobileNavLink to="/equipments" label={t("nav.equipments")} />
-      <MobileNavLink to="/zones" label={t("nav.zones")} />
-      <MobileNavLink to="/settings" label={t("nav.settings")} />
+    <nav
+      className="flex md:hidden flex-col border-t border-border bg-surface"
+    >
+      <div className="flex items-center justify-around min-h-[56px] px-2">
+        <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={<LayoutDashboard size={18} strokeWidth={1.5} />} />
+        <MobileNavLink to="/home" label={t("nav.maison")} icon={<Home size={18} strokeWidth={1.5} />} />
+        <MobileNavLink to="/settings" label={t("nav.settings")} icon={<Settings size={18} strokeWidth={1.5} />} />
+      </div>
+      {/* Safe area spacer for iOS PWA home indicator */}
+      <div className="bg-surface flex-shrink-0" style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
     </nav>
   );
 }
 
-function MobileNavLink({
-  label,
-  active,
-  disabled,
-}: {
-  to: string;
-  label: string;
-  active?: boolean;
-  disabled?: boolean;
-}) {
+function MobileNavLink({ to, label, icon }: { to: string; label: string; icon?: React.ReactNode }) {
   return (
-    <div
-      className={`
-        flex flex-col items-center justify-center py-1 px-3 rounded-[6px]
-        text-[11px] font-medium
-        ${disabled ? "text-text-tertiary opacity-40" : ""}
-        ${active ? "text-primary" : "text-text-secondary"}
-      `}
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-[11px] font-medium ${
+          isActive ? "text-primary" : "text-text-secondary"
+        }`
+      }
     >
+      {icon && <span className="mb-0.5">{icon}</span>}
       <span className="text-[11px]">{label}</span>
-    </div>
+    </NavLink>
   );
 }
