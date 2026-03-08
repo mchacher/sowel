@@ -135,10 +135,11 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
     },
   );
   // POST /api/v1/zones/:id/orders/:orderKey — Execute zone-level order
-  app.post<{ Params: { id: string; orderKey: string } }>(
+  app.post<{ Params: { id: string; orderKey: string }; Body: { value?: unknown } }>(
     "/api/v1/zones/:id/orders/:orderKey",
     async (request, reply) => {
       const { id, orderKey } = request.params;
+      const body = (request.body ?? {}) as { value?: unknown };
 
       const zone = zoneManager.getById(id);
       if (!zone) {
@@ -147,7 +148,7 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
 
       try {
         const zoneIds = zoneManager.getDescendantIds(id);
-        const result = equipmentManager.executeZoneOrder(zoneIds, orderKey);
+        const result = equipmentManager.executeZoneOrder(zoneIds, orderKey, body.value);
         return result;
       } catch (err) {
         return handleZoneError(err, reply);

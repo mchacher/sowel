@@ -49,6 +49,7 @@ import { registerChartRoutes } from "./routes/charts.js";
 import { registerMqttBrokerRoutes } from "./routes/mqtt-brokers.js";
 import { registerMqttPublisherRoutes } from "./routes/mqtt-publishers.js";
 import { registerNotificationPublisherRoutes } from "./routes/notification-publishers.js";
+import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -157,6 +158,7 @@ export async function createServer(deps: ServerDeps) {
     notificationPublisherManager,
     notificationPublishService,
   });
+  registerDashboardRoutes(app, { db });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

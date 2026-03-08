@@ -295,6 +295,16 @@ export class DeviceManager {
       .prepare("SELECT id, source_device_id, name FROM devices WHERE integration_id = ?")
       .all(integrationId) as { id: string; source_device_id: string; name: string }[];
 
+    // Safety guard: refuse to purge all devices when the active set is empty
+    // but devices exist in DB — this indicates a failed or empty discovery response
+    if (activeDeviceIds.size === 0 && allDevices.length > 0) {
+      this.logger.warn(
+        { integrationId, existingCount: allDevices.length },
+        "Skipping stale device cleanup — active set is empty, likely incomplete discovery",
+      );
+      return;
+    }
+
     for (const device of allDevices) {
       if (!activeDeviceIds.has(device.source_device_id)) {
         this.stmts.deleteDevice.run(device.id);

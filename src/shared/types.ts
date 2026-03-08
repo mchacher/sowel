@@ -718,6 +718,30 @@ export interface NotificationPublisherWithMappings extends NotificationPublisher
 }
 
 // ============================================================
+// Dashboard Widget
+// ============================================================
+
+export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors";
+
+export interface WidgetConfig {
+  /** Sensor widget: list of binding aliases to display (undefined = show all) */
+  visibleBindings?: string[];
+}
+
+export interface DashboardWidget {
+  id: string;
+  type: "equipment" | "zone";
+  label?: string;
+  icon?: string;
+  config?: WidgetConfig;
+  equipmentId?: string;
+  zoneId?: string;
+  family?: WidgetFamily;
+  displayOrder: number;
+  createdAt: string;
+}
+
+// ============================================================
 // Config
 // ============================================================
 

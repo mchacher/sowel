@@ -74,6 +74,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
               min={0}
               max={254}
               value={brightness}
+              onPointerDown={(e) => { e.stopPropagation(); slider.onStart(); }}
               onChange={(e) => slider.onChange(Number(e.target.value))}
               onMouseUp={handleBrightnessCommit}
               onTouchEnd={handleBrightnessCommit}
@@ -136,6 +137,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             min={0}
             max={254}
             value={brightness}
+            onPointerDown={slider.onStart}
             onChange={(e) => slider.onChange(Number(e.target.value))}
             onMouseUp={handleBrightnessCommit}
             onTouchEnd={handleBrightnessCommit}

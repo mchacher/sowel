@@ -11,7 +11,9 @@ const DEFAULT_SETTLE_MS = 2000;
  */
 export function useSliderOverride(settleMs = DEFAULT_SETTLE_MS) {
   const [localValue, setLocalValue] = useState<number | null>(null);
+  const localValueRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draggingRef = useRef(false);
 
   /** Returns the display value: local override if active, otherwise device value. */
   const displayValue = useCallback(
@@ -20,10 +22,20 @@ export function useSliderOverride(settleMs = DEFAULT_SETTLE_MS) {
     [localValue],
   );
 
+  /** Call on pointerDown / touchStart to mark drag as active. */
+  const onStart = useCallback(() => {
+    draggingRef.current = true;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
   /** Call on every slider change event (drag). */
   const onChange = useCallback(
     (newValue: number) => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      localValueRef.current = newValue;
       setLocalValue(newValue);
     },
     [],
@@ -32,19 +44,22 @@ export function useSliderOverride(settleMs = DEFAULT_SETTLE_MS) {
   /** Call on mouseUp / touchEnd — sends value then clears after settle delay. */
   const onCommit = useCallback(
     async (sendFn: (value: number) => Promise<void>) => {
-      if (localValue === null) return;
+      draggingRef.current = false;
+      const val = localValueRef.current;
+      if (val === null) return;
       try {
-        await sendFn(localValue);
+        await sendFn(val);
       } catch {
         // Ignore — caller handles errors if needed
       }
       timerRef.current = setTimeout(() => {
         setLocalValue(null);
+        localValueRef.current = null;
         timerRef.current = null;
       }, settleMs);
     },
-    [localValue, settleMs],
+    [settleMs],
   );
 
-  return { displayValue, onChange, onCommit };
+  return { displayValue, onStart, onChange, onCommit };
 }

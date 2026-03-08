@@ -14,11 +14,14 @@ import { computeElapsed, formatElapsed } from "./useEquipmentState";
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
   batteryBindings: DataBindingWithValue[];
+  /** "row" (default) = horizontal, "column" = stacked vertically */
+  layout?: "row" | "column";
 }
 
 export function SensorValues({
   sensorBindings,
   batteryBindings,
+  layout = "row",
 }: SensorValuesProps) {
   const { t } = useTranslation();
 
@@ -41,7 +44,7 @@ export function SensorValues({
     <>
       {/* Sensor values */}
       {sensorBindings.length > 0 && (
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className={layout === "column" ? "flex flex-col gap-0.5" : "flex items-center gap-2 flex-shrink-0"}>
           {sensorBindings.map((b) => (
             <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
