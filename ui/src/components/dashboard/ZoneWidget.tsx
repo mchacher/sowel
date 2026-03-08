@@ -23,7 +23,6 @@ interface ZoneWidgetProps {
   widget: DashboardWidget;
   zone: ZoneWithChildren | null;
   equipments: EquipmentWithDetails[];
-  onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
 }
 
 function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
@@ -34,7 +33,7 @@ function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
   return ids;
 }
 
-export function ZoneWidget({ widget, zone, equipments, onExecuteOrder }: ZoneWidgetProps) {
+export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
   const { t } = useTranslation();
   const [commandLoading, setCommandLoading] = useState<string | null>(null);
 
@@ -58,7 +57,7 @@ export function ZoneWidget({ widget, zone, equipments, onExecuteOrder }: ZoneWid
   const familyLabel = t(`dashboard.family.${family}`);
   const label = widget.label || `${familyLabel} - ${zoneName}`;
 
-  const IconComponent = getWidgetIcon(widget.icon, family);
+  const IconComponent = useMemo(() => getWidgetIcon(widget.icon, family), [widget.icon, family]);
 
   const handleZoneCommand = useCallback(async (orderKey: string) => {
     if (!widget.zoneId) return;
@@ -96,7 +95,7 @@ export function ZoneWidget({ widget, zone, equipments, onExecuteOrder }: ZoneWid
       ) : (
         <div className="flex flex-col gap-0.5">
           {filteredEquipments.map((eq) => (
-            <ZoneEquipmentRow key={eq.id} equipment={eq} family={family} onExecuteOrder={onExecuteOrder} />
+            <ZoneEquipmentRow key={eq.id} equipment={eq} family={family} />
           ))}
         </div>
       )}
@@ -153,11 +152,9 @@ export function ZoneWidget({ widget, zone, equipments, onExecuteOrder }: ZoneWid
 function ZoneEquipmentRow({
   equipment,
   family,
-  onExecuteOrder,
 }: {
   equipment: EquipmentWithDetails;
   family: WidgetFamily;
-  onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const { isOn, stateBinding, shutterPosition, sensorBindings } = useEquipmentState(equipment);

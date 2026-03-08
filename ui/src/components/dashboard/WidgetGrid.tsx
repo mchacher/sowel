@@ -186,7 +186,6 @@ function WidgetRenderer({
         widget={widget}
         zone={zone}
         equipments={equipments}
-        onExecuteOrder={onExecuteOrder}
       />
     );
   }
