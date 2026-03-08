@@ -17,10 +17,10 @@ import { useSliderOverride } from "../../hooks/useSliderOverride";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
-  shutterLevel,
   ThermometerIcon,
   MultiSensorIcon,
 } from "./WidgetIcons";
+import { shutterLevel } from "./widget-icons";
 
 
 const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
@@ -63,7 +63,6 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
   }, [equipments, zoneIds, familyTypes]);
 
   const zoneName = zone?.name ?? t("dashboard.unknownZone");
-  const familyLabel = t(`dashboard.family.${family}`);
   const label = widget.label || zoneName;
 
   const handleZoneCommand = useCallback(async (orderKey: string, value?: unknown) => {

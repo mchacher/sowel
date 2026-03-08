@@ -8,8 +8,6 @@ import {
   Square,
   Minus,
   Plus,
-  Lightbulb,
-  LightbulbOff,
   DoorOpen,
   Flame,
   Snowflake,
@@ -23,7 +21,6 @@ import { createElement } from "react";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
-  shutterLevel,
   ThermometerIcon,
   MultiSensorIcon,
   GateWidgetIcon,
@@ -31,7 +28,7 @@ import {
   SlidingGateIcon,
   GarageDoorIcon,
 } from "./WidgetIcons";
-import { CUSTOM_ICON_REGISTRY } from "./widget-icons";
+import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 
 
 interface EquipmentWidgetProps {
