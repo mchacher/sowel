@@ -70,6 +70,19 @@ import {
 } from "./WidgetIcons";
 
 // ============================================================
+// Utility — shutter level bucket (moved from WidgetIcons.tsx to avoid react-refresh lint)
+// ============================================================
+
+/** Returns a shutter level bucket: 0, 25, 50, 75, or 100 */
+export function shutterLevel(position: number): number {
+  if (position <= 12) return 0;
+  if (position <= 37) return 25;
+  if (position <= 62) return 50;
+  if (position <= 87) return 75;
+  return 100;
+}
+
+// ============================================================
 // Custom SVG icon registry — rich icons with state
 // ============================================================
 

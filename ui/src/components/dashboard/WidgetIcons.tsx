@@ -75,15 +75,6 @@ export function LightBulbIcon({ on }: { on: boolean }) {
 // Shutter icon — 5 levels (0%, 25%, 50%, 75%, 100%)
 // ============================================================
 
-/** Returns a shutter level bucket: 0, 25, 50, 75, or 100 */
-export function shutterLevel(position: number): number {
-  if (position <= 12) return 0;
-  if (position <= 37) return 25;
-  if (position <= 62) return 50;
-  if (position <= 87) return 75;
-  return 100;
-}
-
 export function ShutterWidgetIcon({ level }: { level: number | null }) {
   const id = useId();
   const slatGradId = `shutter-slat-${id}`;
