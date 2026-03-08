@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Box, Map } from "lucide-react";
+import { X, Box, Map as MapIcon } from "lucide-react";
 import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
 
 interface AddWidgetModalProps {
@@ -102,7 +102,7 @@ export function AddWidgetModal({
                 : "text-text-secondary hover:text-text"
             }`}
           >
-            <Map size={14} strokeWidth={1.5} />
+            <MapIcon size={14} strokeWidth={1.5} />
             {t("dashboard.tabZone")}
           </button>
         </div>
