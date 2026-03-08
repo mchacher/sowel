@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
@@ -162,8 +163,9 @@ export async function createServer(deps: ServerDeps) {
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 
-  // Serve UI static files (production: ui/dist is copied alongside dist/)
-  const uiDir = resolve(import.meta.dirname ?? ".", "../ui-dist");
+  // Serve UI static files from project root ui-dist/
+  const currentDir = import.meta.dirname ?? dirname(fileURLToPath(import.meta.url));
+  const uiDir = resolve(currentDir, "../../ui-dist");
   if (existsSync(uiDir)) {
     await app.register(fastifyStatic, {
       root: uiDir,
