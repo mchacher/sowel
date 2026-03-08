@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
@@ -34,7 +35,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
   } = useEquipmentState(equipment);
 
   const label = widget.label || equipment.name;
-  const IconComponent = getWidgetIcon(widget.icon, equipment.type);
+  const IconComponent = useMemo(() => getWidgetIcon(widget.icon, equipment.type), [widget.icon, equipment.type]);
 
   const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate
     ? equipment.dataBindings[0] ?? null
