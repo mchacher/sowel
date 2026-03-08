@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
@@ -9,7 +8,7 @@ import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
-import { getWidgetIcon } from "./widget-icons";
+import { renderWidgetIcon } from "./widget-icons";
 
 interface EquipmentWidgetProps {
   widget: DashboardWidget;
@@ -35,7 +34,6 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
   } = useEquipmentState(equipment);
 
   const label = widget.label || equipment.name;
-  const IconComponent = useMemo(() => getWidgetIcon(widget.icon, equipment.type), [widget.icon, equipment.type]);
 
   const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate
     ? equipment.dataBindings[0] ?? null
@@ -48,7 +46,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
       {/* Header: icon + label */}
       <div className="flex items-center gap-2">
         <div className={`flex-shrink-0 w-7 h-7 rounded-[5px] flex items-center justify-center ${iconColor}`}>
-          <IconComponent size={16} strokeWidth={1.5} />
+          {renderWidgetIcon(widget.icon, equipment.type, { size: 16, strokeWidth: 1.5 })}
         </div>
         <span className="text-[13px] font-medium text-text truncate flex-1">{label}</span>
       </div>
