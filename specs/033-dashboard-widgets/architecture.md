@@ -55,6 +55,42 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
 };
 ```
 
+## Zone Orders (backend)
+
+New zone-level orders to add to `EquipmentManager.ZONE_ORDERS`:
+
+```typescript
+allThermostatsPowerOn: {
+  types: ["thermostat"],
+  alias: "power",
+  value: true,
+},
+allThermostatsPowerOff: {
+  types: ["thermostat"],
+  alias: "power",
+  value: false,
+},
+allThermostatsSetpoint: {
+  types: ["thermostat"],
+  alias: "setpoint",
+  value: "FROM_BODY",  // receives numeric setpoint value from request body
+},
+```
+
+These follow the same pattern as existing `allLightsOn/Off` and `allLightsBrightness` orders.
+
+## ThermometerIcon Enhancement
+
+The `ThermometerIcon` SVG component in `WidgetIcons.tsx` must be enhanced to accept a `level` prop (0–1) representing the mercury fill level inside the thermometer:
+
+```typescript
+export function ThermometerIcon({ warm, level }: { warm: boolean; level?: number });
+```
+
+- `level` maps the setpoint to a 0–1 range: `(setpoint - 16) / (30 - 16)`
+- The mercury fill height is proportional to `level`
+- When `level` is undefined (e.g. no thermostats), show empty thermometer
+
 ## Event Bus Events
 
 No new event bus events needed. The dashboard relies on existing events:
@@ -164,16 +200,17 @@ No new WebSocket events. The dashboard page subscribes to existing topics (`equi
 
 ### New files
 
-| File                                              | Description                           |
-| ------------------------------------------------- | ------------------------------------- |
-| `ui/src/pages/DashboardPage.tsx`                  | Main dashboard page (default landing) |
-| `ui/src/components/dashboard/EquipmentWidget.tsx` | Single equipment widget card          |
-| `ui/src/components/dashboard/ZoneWidget.tsx`      | Zone family widget card               |
-| `ui/src/components/dashboard/AddWidgetModal.tsx`  | Modal to add a new widget             |
-| `ui/src/components/dashboard/WidgetGrid.tsx`      | Responsive grid + drag & drop         |
-| `ui/src/components/dashboard/IconPicker.tsx`      | Curated icon selector (popover)       |
-| `ui/src/components/dashboard/widget-icons.ts`     | Curated icon list + defaults          |
-| `ui/src/store/useDashboard.ts`                    | Zustand store for widget config       |
+| File                                              | Description                                            |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `ui/src/pages/DashboardPage.tsx`                  | Main dashboard page (default landing)                  |
+| `ui/src/components/dashboard/EquipmentWidget.tsx` | Single equipment widget card (per-type sub-components) |
+| `ui/src/components/dashboard/ZoneWidget.tsx`      | Zone family widget card (per-family sub-components)    |
+| `ui/src/components/dashboard/AddWidgetModal.tsx`  | Modal to add a new widget                              |
+| `ui/src/components/dashboard/WidgetGrid.tsx`      | Responsive grid + drag & drop + edit mode overlays     |
+| `ui/src/components/dashboard/IconPicker.tsx`      | Custom SVG icon selector (popover, type-filtered)      |
+| `ui/src/components/dashboard/widget-icons.ts`     | Icon registry, Lucide map, defaults, categories        |
+| `ui/src/components/dashboard/WidgetIcons.tsx`     | Custom SVG icon components (17 icons, state-driven)    |
+| `ui/src/store/useDashboard.ts`                    | Zustand store for widget config                        |
 
 ### Modified files
 
@@ -215,14 +252,25 @@ DashboardPage
 
 ### Widget rendering strategy
 
-The `EquipmentWidget` reuses existing control components (`LightControl`, `ShutterControl`, `ThermostatCard`, `GateControl`, `HeaterControl`, `SensorValues`) from `ui/src/components/equipments/`. This avoids duplicating control logic.
+The `EquipmentWidget` has per-type sub-components (`LightEquipmentWidget`, `ShutterEquipmentWidget`, `ThermostatEquipmentWidget`, etc.) each following the 4-zone layout pattern.
 
 The `ZoneWidget` collects equipments from `useEquipments` store:
 
 1. Get all descendant zone IDs (recursive from selected zone)
 2. Filter equipments by zone IDs + family types (`WIDGET_FAMILY_TYPES[family]`)
-3. Render equipment list with states
+3. Render aggregated values (avg temp, avg brightness, avg position, etc.)
 4. Add grouped action buttons using existing `executeZoneOrder` API
+
+#### Zone Heating Widget — Special Layout
+
+Unlike other zone widgets that follow the standard vertical 4-zone layout, the zone heating widget uses a horizontal arrangement for zones 2+3:
+
+- **Zone 2+3 (Picto + Info)**: Thermometer SVG on the left, current avg temperature on the right (side by side)
+- The thermometer SVG mercury level represents the **setpoint** (not current temp)
+- Below the picto row: setpoint value displayed between `−` and `+` buttons
+- **Zone 4 (Bouton)**: Power on/off toggle at the bottom
+
+The `ThermometerIcon` component receives a `level` prop (0–1) that drives the mercury height inside the SVG.
 
 ### Drag & drop
 
@@ -235,4 +283,49 @@ The `ZoneWidget` collects equipments from `useEquipments` store:
 
 ### Icon Picker
 
-Small popover component showing the curated ~40 icons in a grid. Clicking an icon updates the widget via `PATCH`. The icon list is defined in `widget-icons.ts` as a simple array of Lucide icon names, grouped by category for display.
+Popover component showing **custom SVG icons** from `CUSTOM_ICON_REGISTRY`, filtered by equipment type or widget family. Icons are rendered at `scale-[0.45]` inside 48×48 buttons. Clicking an icon updates the widget via `PATCH`. The registry is defined in `widget-icons.ts` with component references, preview props, and type filters.
+
+The picker shows relevant icons first (matching the widget's equipment type), then remaining icons in a separate "Other icons" section.
+
+### Custom SVG Icon System
+
+Custom SVG icons are defined in `WidgetIcons.tsx` as React components with state-driven props:
+
+| Component              | Props                                | Description                                              |
+| ---------------------- | ------------------------------------ | -------------------------------------------------------- |
+| `LightBulbIcon`        | `on: boolean`                        | Light bulb with glow effect when on                      |
+| `ShutterWidgetIcon`    | `level: number (0-4)`                | Shutter with configurable slat level                     |
+| `ThermometerIcon`      | `warm: boolean, level: number (0-1)` | Mercury thermometer with fill level                      |
+| `MultiSensorIcon`      | `{}`                                 | Multi-sensor box with signal waves (default for sensors) |
+| `HumiditySensorIcon`   | `{}`                                 | Water droplet with fill level                            |
+| `LuminositySensorIcon` | `{}`                                 | Sun with radiating rays                                  |
+| `WaterLeakSensorIcon`  | `{}`                                 | Droplet falling into puddle                              |
+| `SmokeSensorIcon`      | `{}`                                 | Round detector with smoke cloud                          |
+| `Co2SensorIcon`        | `{}`                                 | Cloud with CO₂ text                                      |
+| `PressureSensorIcon`   | `{}`                                 | Barometer dial with needle                               |
+| `GateWidgetIcon`       | `open: boolean`                      | Swing gate (battant)                                     |
+| `SlidingGateIcon`      | `open: boolean`                      | Sliding gate (coulissant)                                |
+| `GarageDoorIcon`       | `open: boolean`                      | Garage door (oscillo-battante)                           |
+| `HeaterWidgetIcon`     | `comfort: boolean`                   | Radiator with heat waves                                 |
+| `PlugWidgetIcon`       | `on: boolean`                        | Power plug with glow                                     |
+| `MotionSensorIcon`     | `active: boolean`                    | Motion sensor with detection waves                       |
+| `ContactSensorIcon`    | `open: boolean`                      | Door/window contact sensor                               |
+
+All icons render at 96×96 with `viewBox="0 0 56 56"` and use `useId()` for unique gradient IDs.
+
+### Widget Rename
+
+Inline rename in edit mode:
+
+- Transparent button overlay on title area triggers rename on click
+- Input field appears with auto-focus and text selection
+- Commit on blur/Enter via `updateWidget(id, { label })`, cancel on Escape
+- Uses `useDashboard` store's `updateWidget` which calls `PATCH /api/v1/dashboard/widgets/:id`
+
+### CSS Additions
+
+`slider-slim` class in `ui/src/index.css` for thinner range inputs:
+
+- Track height: 3px (vs default)
+- Thumb size: 12×12px
+- Used by dimmable light vertical sliders

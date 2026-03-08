@@ -107,7 +107,7 @@ export function DashboardPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-[1200px] mx-auto">
+      <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h1 className="text-[22px] font-semibold text-text leading-[28px]">

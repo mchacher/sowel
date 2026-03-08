@@ -73,22 +73,38 @@ export function Sidebar() {
       {/* Navigation sections — scrollable */}
       <div className="flex-1 overflow-y-auto py-3 px-2">
         {/* Dashboard */}
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) => `
-            flex items-center gap-3 px-3 py-2 rounded-[6px] mb-1
-            transition-colors duration-150 ease-out
-            ${collapsed ? "justify-center" : ""}
-            ${isActive
-              ? "bg-primary-light text-primary font-medium"
-              : "text-text-secondary hover:bg-border-light hover:text-text"
-            }
-          `}
-          title={collapsed ? t("nav.dashboard") : undefined}
-        >
-          <LayoutDashboard size={20} strokeWidth={1.5} />
-          {!collapsed && <span className="text-[13px] font-medium">{t("nav.dashboard")}</span>}
-        </NavLink>
+        <div className="mb-1 pb-2 border-b border-border-light">
+          {collapsed ? (
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => `
+                flex items-center justify-center px-3 py-2.5 rounded-[6px]
+                transition-colors duration-150 ease-out
+                ${isActive
+                  ? "bg-primary-light text-primary font-medium"
+                  : "text-text-secondary hover:bg-border-light hover:text-text"
+                }
+              `}
+              title={t("nav.dashboard")}
+            >
+              <LayoutDashboard size={20} strokeWidth={1.5} />
+            </NavLink>
+          ) : (
+            <NavLink
+              to="/dashboard"
+              className={() => `flex items-center gap-2 px-3 py-1.5 min-w-0 group`}
+            >
+              {({ isActive }) => (
+                <>
+                  <LayoutDashboard size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                    {t("nav.dashboard")}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          )}
+        </div>
 
         {/* Maison */}
         {collapsed ? (

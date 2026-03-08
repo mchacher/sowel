@@ -136,6 +136,7 @@
   "zones.commands.allLightsOn": "All lights on",
   "zones.commands.allLightsOff": "All lights off",
   "zones.commands.allShuttersOpen": "Open all shutters",
+  "zones.commands.allShuttersStop": "Stop",
   "zones.commands.allShuttersClose": "Close all shutters",
 
   "equipments.title": "Equipments",
@@ -735,6 +736,8 @@
   "dashboard.addZoneWidget": "Add zone widget",
   "dashboard.noEquipmentsAvailable": "No equipments available",
   "dashboard.chooseIcon": "Choose an icon",
+  "dashboard.otherIcons": "Other icons",
+  "dashboard.visibleData": "Visible data",
   "dashboard.family.lights": "Lights",
   "dashboard.family.shutters": "Shutters",
   "dashboard.family.heating": "Heating",

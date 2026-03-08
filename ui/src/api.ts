@@ -15,7 +15,7 @@ import type {
   SavedChart, SavedChartConfig,
   MqttBroker,
   MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
-  DashboardWidget, WidgetFamily,
+  DashboardWidget, WidgetConfig, WidgetFamily,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -286,10 +286,16 @@ export async function reorderZones(parentId: string | null, orderedIds: string[]
 export async function executeZoneOrder(
   zoneId: string,
   orderKey: string,
+  value?: unknown,
 ): Promise<{ executed: number; errors: number }> {
   return fetchJSON<{ executed: number; errors: number }>(
     `${API_BASE}/zones/${zoneId}/orders/${orderKey}`,
-    { method: "POST" },
+    {
+      method: "POST",
+      ...(value !== undefined && {
+        body: JSON.stringify({ value }),
+      }),
+    },
   );
 }
 
@@ -1050,7 +1056,7 @@ export async function createDashboardWidget(data: {
 
 export async function updateDashboardWidget(
   id: string,
-  data: { label?: string | null; icon?: string | null },
+  data: { label?: string | null; icon?: string | null; config?: WidgetConfig | null },
 ): Promise<DashboardWidget> {
   return fetchJSON(`${API_BASE}/dashboard/widgets/${id}`, {
     method: "PATCH",
