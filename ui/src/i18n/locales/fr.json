@@ -418,7 +418,9 @@
   "settings.deleteUserConfirm": "Supprimer l'utilisateur « {{name}} » ?",
   "settings.cannotDeleteSelf": "Vous ne pouvez pas supprimer votre propre compte",
   "settings.home": "Maison",
-  "settings.homeDescription": "Localisation géographique pour le calcul lever/coucher du soleil",
+  "settings.homeName": "Nom de la maison",
+  "settings.homeNamePlaceholder": "Ma Maison",
+  "settings.homeDescription": "Nom et localisation géographique pour le calcul lever/coucher du soleil",
   "settings.latitude": "Latitude",
   "settings.longitude": "Longitude",
   "settings.sunriseOffset": "Décalage lever (min)",
@@ -741,5 +743,25 @@
   "dashboard.family.lights": "Lumières",
   "dashboard.family.shutters": "Volets",
   "dashboard.family.heating": "Chauffage",
-  "dashboard.family.sensors": "Capteurs"
+  "dashboard.family.sensors": "Capteurs",
+
+  "app.offline": "Vous êtes hors ligne",
+  "app.installBanner": "Installez Sowel pour une meilleure expérience",
+  "app.install": "Installer",
+  "app.notNow": "Plus tard",
+
+  "settings.mobile": "Application mobile",
+  "settings.mobileDescription": "Scannez le QR code depuis votre téléphone pour vous connecter",
+  "settings.generateQr": "Générer un QR code",
+  "settings.regenerateQr": "Régénérer",
+  "settings.qrExpiry": "Expiration du token",
+  "settings.qrExpiry7d": "7 jours",
+  "settings.qrExpiry30d": "30 jours",
+  "settings.qrExpiryNever": "Sans expiration",
+  "settings.qrInstructions": "1. Scannez le QR code avec votre téléphone\n2. Ajoutez à l'écran d'accueil\n3. C'est prêt !",
+
+  "qrLogin.connecting": "Connexion en cours...",
+  "qrLogin.invalidToken": "Token invalide ou expiré",
+  "qrLogin.goToLogin": "Aller à la page de connexion",
+  "qrLogin.error": "Échec de la connexion"
 }

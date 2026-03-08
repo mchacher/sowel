@@ -156,10 +156,10 @@ export async function getMyTokens(): Promise<ApiToken[]> {
   return fetchJSON<ApiToken[]>(`${API_BASE}/me/tokens`);
 }
 
-export async function createMyToken(name: string): Promise<{ token: string; id: string }> {
+export async function createMyToken(name: string, expiresAt?: string): Promise<{ token: string; id: string }> {
   return fetchJSON(`${API_BASE}/me/tokens`, {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, expiresAt }),
   });
 }
 
