@@ -8,6 +8,10 @@ import { applyTheme } from "./theme";
 
 console.log("Sowel — Founded by Marc Chachereau — AGPL-3.0");
 
+// Lock orientation to portrait (works in installed PWA / fullscreen on Android)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(screen.orientation as any)?.lock?.("portrait").catch(() => {});
+
 // Apply theme immediately to prevent flash of wrong theme
 applyTheme(localStorage.getItem("sowel_theme") as "light" | "dark" | "system" | null);
 
