@@ -21,6 +21,8 @@ import {
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
 import type { ApiToken, User, UserRole, HistoryStatus, RetentionStatus } from "../types";
+import { MobileSection } from "../components/settings/MobileSection";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -28,29 +30,24 @@ export function SettingsPage() {
   const updatePreferences = useAuth((s) => s.updatePreferences);
   const fetchMe = useAuth((s) => s.fetchMe);
   const isAdmin = user?.role === "admin";
+  const isMobile = useIsMobile();
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Page header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
-          <Settings size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+      <div className="mb-5">
+        <div className="flex items-center gap-2 sm:gap-2.5 mb-1">
+          <Settings size={18} strokeWidth={1.5} className="text-text-secondary sm:hidden" />
+          <Settings size={22} strokeWidth={1.5} className="text-text-secondary hidden sm:block" />
+          <h1 className="text-[17px] sm:text-[22px] font-semibold text-text leading-[24px] sm:leading-[28px]">
             {t("settings.title")}
           </h1>
         </div>
       </div>
 
-      {/* Two-column grid on desktop, single column on mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column: Home + Profile + Preferences + Password */}
+      {isMobile ? (
+        /* Mobile: only Preferences + Password (no profile — read-only, useless on mobile) */
         <div className="space-y-6">
-          {isAdmin && <HomeSettingsSection />}
-          <ProfileSection user={user} onSave={async (displayName) => {
-            await updateMe({ displayName });
-            await fetchMe();
-          }} />
-
           <PreferencesSection
             language={user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")}
             onLanguageChange={async (lang) => {
@@ -71,14 +68,47 @@ export function SettingsPage() {
 
           <ChangePasswordSection />
         </div>
+      ) : (
+        /* Desktop: Two-column grid with all sections */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left column: Home + Profile + Preferences + Password */}
+          <div className="space-y-6">
+            {isAdmin && <HomeSettingsSection />}
+            <ProfileSection user={user} onSave={async (displayName) => {
+              await updateMe({ displayName });
+              await fetchMe();
+            }} />
 
-        {/* Right column: API Tokens + User Management + InfluxDB */}
-        <div className="space-y-6">
-          <ApiTokensSection />
-          {isAdmin && <UserManagementSection currentUserId={user?.id ?? ""} />}
-          {isAdmin && <InfluxDbSettingsSection />}
+            <PreferencesSection
+              language={user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")}
+              onLanguageChange={async (lang) => {
+                i18n.changeLanguage(lang);
+                localStorage.setItem("sowel_language", lang);
+                if (user) {
+                  await updatePreferences({ ...user.preferences, language: lang });
+                }
+              }}
+              theme={user?.preferences?.theme ?? (localStorage.getItem("sowel_theme") as ThemeSetting | null) ?? "system"}
+              onThemeChange={async (theme) => {
+                setTheme(theme);
+                if (user) {
+                  await updatePreferences({ ...user.preferences, theme });
+                }
+              }}
+            />
+
+            <ChangePasswordSection />
+          </div>
+
+          {/* Right column: Mobile + API Tokens + User Management + InfluxDB */}
+          <div className="space-y-6">
+            {isAdmin && <MobileSection />}
+            <ApiTokensSection />
+            {isAdmin && <UserManagementSection currentUserId={user?.id ?? ""} />}
+            {isAdmin && <InfluxDbSettingsSection />}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -91,39 +121,43 @@ function HomeSettingsSection() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [homeName, setHomeName] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [sunriseOffset, setSunriseOffset] = useState("30");
   const [sunsetOffset, setSunsetOffset] = useState("45");
-  const [initial, setInitial] = useState({ latitude: "", longitude: "", sunriseOffset: "30", sunsetOffset: "45" });
+  const [initial, setInitial] = useState({ homeName: "", latitude: "", longitude: "", sunriseOffset: "30", sunsetOffset: "45" });
 
   useEffect(() => {
     getSettings().then((all) => {
+      const name = all["home.name"] ?? "";
       const lat = all["home.latitude"] ?? "";
       const lon = all["home.longitude"] ?? "";
       const sr = all["home.sunriseOffset"] ?? "30";
       const ss = all["home.sunsetOffset"] ?? "45";
+      setHomeName(name);
       setLatitude(lat);
       setLongitude(lon);
       setSunriseOffset(sr);
       setSunsetOffset(ss);
-      setInitial({ latitude: lat, longitude: lon, sunriseOffset: sr, sunsetOffset: ss });
+      setInitial({ homeName: name, latitude: lat, longitude: lon, sunriseOffset: sr, sunsetOffset: ss });
     }).finally(() => setLoading(false));
   }, []);
 
-  const dirty = latitude !== initial.latitude || longitude !== initial.longitude
+  const dirty = homeName !== initial.homeName || latitude !== initial.latitude || longitude !== initial.longitude
     || sunriseOffset !== initial.sunriseOffset || sunsetOffset !== initial.sunsetOffset;
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await updateSettings({
+        "home.name": homeName,
         "home.latitude": latitude,
         "home.longitude": longitude,
         "home.sunriseOffset": sunriseOffset,
         "home.sunsetOffset": sunsetOffset,
       });
-      setInitial({ latitude, longitude, sunriseOffset, sunsetOffset });
+      setInitial({ homeName, latitude, longitude, sunriseOffset, sunsetOffset });
     } finally {
       setSaving(false);
     }
@@ -143,6 +177,18 @@ function HomeSettingsSection() {
       <h2 className="text-[14px] font-semibold text-text mb-1">{t("settings.home")}</h2>
       <p className="text-[12px] text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
       <div className="space-y-3">
+        <div>
+          <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+            {t("settings.homeName")}
+          </label>
+          <input
+            type="text"
+            value={homeName}
+            onChange={(e) => setHomeName(e.target.value)}
+            placeholder={t("settings.homeNamePlaceholder")}
+            className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+          />
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">

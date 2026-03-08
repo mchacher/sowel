@@ -418,7 +418,9 @@
   "settings.deleteUserConfirm": "Delete user \"{{name}}\"?",
   "settings.cannotDeleteSelf": "Cannot delete your own account",
   "settings.home": "Home",
-  "settings.homeDescription": "Geographic location for sunrise/sunset calculation",
+  "settings.homeName": "Home name",
+  "settings.homeNamePlaceholder": "My Home",
+  "settings.homeDescription": "Name and geographic location for sunrise/sunset calculation",
   "settings.latitude": "Latitude",
   "settings.longitude": "Longitude",
   "settings.sunriseOffset": "Sunrise offset (min)",
@@ -741,5 +743,25 @@
   "dashboard.family.lights": "Lights",
   "dashboard.family.shutters": "Shutters",
   "dashboard.family.heating": "Heating",
-  "dashboard.family.sensors": "Sensors"
+  "dashboard.family.sensors": "Sensors",
+
+  "app.offline": "You are offline",
+  "app.installBanner": "Install Sowel for a better experience",
+  "app.install": "Install",
+  "app.notNow": "Not now",
+
+  "settings.mobile": "Mobile app",
+  "settings.mobileDescription": "Scan the QR code from your phone to connect",
+  "settings.generateQr": "Generate QR code",
+  "settings.regenerateQr": "Regenerate",
+  "settings.qrExpiry": "Token expiry",
+  "settings.qrExpiry7d": "7 days",
+  "settings.qrExpiry30d": "30 days",
+  "settings.qrExpiryNever": "No expiry",
+  "settings.qrInstructions": "1. Scan the QR code with your phone\n2. Add to home screen\n3. You're all set!",
+
+  "qrLogin.connecting": "Connecting...",
+  "qrLogin.invalidToken": "Invalid or expired token",
+  "qrLogin.goToLogin": "Go to login page",
+  "qrLogin.error": "Connection failed"
 }

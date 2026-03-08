@@ -5,11 +5,16 @@ import {
   Loader2,
   Home,
   ChevronDown,
+  ChevronRight,
   Lightbulb,
   LightbulbOff,
   ArrowUpFromLine,
   ArrowDownToLine,
   Plus,
+  Menu,
+  X,
+  Layers,
+  DoorOpen,
 } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
@@ -93,6 +98,8 @@ export function HomePage() {
     }
   }, [zoneId]);
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const loading = zonesLoading || equipmentsLoading;
 
   // No zone ID and no zones exist
@@ -117,12 +124,33 @@ export function HomePage() {
   if (!currentZone) return null;
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
+      {/* Mobile zone drawer */}
+      {drawerOpen && (
+        <MobileZoneDrawer
+          tree={tree}
+          currentZoneId={zoneId}
+          onSelect={(id) => { navigate(`/home/${id}`); setDrawerOpen(false); }}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
+
       {/* Zone header + status bar */}
       <div className="max-w-[720px] mb-5">
-        <h1 className="text-[22px] font-semibold text-text leading-[28px]">
-          {currentZone.name}
-        </h1>
+        <div className="flex items-center gap-1.5">
+          {/* Mobile burger button */}
+          {tree.length > 0 && (
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="md:hidden p-1 -ml-1 rounded-[6px] text-text-secondary hover:bg-border-light transition-colors"
+            >
+              <Menu size={18} strokeWidth={1.5} />
+            </button>
+          )}
+          <h1 className="text-[17px] sm:text-[22px] font-semibold text-text leading-[24px] sm:leading-[28px]">
+            {currentZone.name}
+          </h1>
+        </div>
         {currentZone.description && (
           <p className="text-[13px] text-text-secondary mt-0.5">
             {currentZone.description}
@@ -338,6 +366,113 @@ function CollapsibleSection({
       </div>
       {!collapsed && children}
     </section>
+  );
+}
+
+function MobileZoneDrawer({
+  tree,
+  currentZoneId,
+  onSelect,
+  onClose,
+}: {
+  tree: ZoneWithChildren[];
+  currentZoneId: string | undefined;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="fixed inset-0 z-50 md:hidden">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      {/* Drawer panel */}
+      <div className="fixed inset-y-0 left-0 w-[280px] bg-surface border-r border-border shadow-lg animate-slide-left overflow-y-auto">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Home size={18} strokeWidth={1.5} className="text-primary" />
+            <span className="text-[15px] font-semibold text-text">{t("nav.maison")}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors"
+          >
+            <X size={18} strokeWidth={1.5} />
+          </button>
+        </div>
+        <nav className="py-2">
+          {tree.map((zone) => (
+            <ZoneTreeItem
+              key={zone.id}
+              zone={zone}
+              currentZoneId={currentZoneId}
+              onSelect={onSelect}
+              depth={0}
+            />
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+function ZoneTreeItem({
+  zone,
+  currentZoneId,
+  onSelect,
+  depth,
+}: {
+  zone: ZoneWithChildren;
+  currentZoneId: string | undefined;
+  onSelect: (id: string) => void;
+  depth: number;
+}) {
+  const isActive = zone.id === currentZoneId;
+  const hasChildren = zone.children.length > 0;
+  const [expanded, setExpanded] = useState(true);
+  const Icon = hasChildren ? Layers : DoorOpen;
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          if (hasChildren) {
+            setExpanded(!expanded);
+          }
+          onSelect(zone.id);
+        }}
+        className={`w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors ${
+          isActive
+            ? "bg-primary/8 text-primary font-medium"
+            : "text-text hover:bg-border-light"
+        }`}
+        style={{ paddingLeft: `${16 + depth * 16}px` }}
+      >
+        {hasChildren && (
+          <ChevronRight
+            size={14}
+            strokeWidth={2}
+            className={`text-text-tertiary transition-transform duration-200 flex-shrink-0 ${expanded ? "rotate-90" : ""}`}
+          />
+        )}
+        {!hasChildren && <span className="w-[14px] flex-shrink-0" />}
+        <Icon size={16} strokeWidth={1.5} className={isActive ? "text-primary" : "text-text-tertiary"} />
+        <span className="text-[14px] truncate">{zone.name}</span>
+      </button>
+      {hasChildren && expanded && (
+        <div>
+          {zone.children.map((child) => (
+            <ZoneTreeItem
+              key={child.id}
+              zone={child}
+              currentZoneId={currentZoneId}
+              onSelect={onSelect}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

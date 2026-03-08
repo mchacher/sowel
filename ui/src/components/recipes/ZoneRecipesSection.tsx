@@ -11,6 +11,7 @@ import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel } from "../../lib/recipe-i18n";
 import type { RecipeSlotDef } from "../../types";
 
+
 function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
   const types = Array.isArray(constraint) ? constraint : [constraint];
   return types.some((t) => t === eqType);
@@ -443,83 +444,89 @@ function RecipeInstanceRow({
 
   return (
     <div className={instance.enabled ? "" : "opacity-50"}>
-      <div className="flex items-center gap-3 px-4 py-2.5">
-        <div className={`w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0 ${instance.enabled ? "bg-accent/10" : "bg-border-light"}`}>
-          <ChefHat size={14} strokeWidth={1.5} className={instance.enabled ? "text-accent" : "text-text-tertiary"} />
-        </div>
-        <button
-          onClick={handleStartEdit}
-          className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity duration-150"
-          title="Edit"
-        >
-          <div className="text-[13px] font-medium text-text truncate">
-            {displayName}
+      <div className="px-4 py-2.5">
+        {/* Row 1: icon + name + toggle */}
+        <div className="flex items-center gap-3">
+          <div className={`w-7 h-7 rounded-[6px] flex items-center justify-center flex-shrink-0 ${instance.enabled ? "bg-accent/10" : "bg-border-light"}`}>
+            <ChefHat size={14} strokeWidth={1.5} className={instance.enabled ? "text-accent" : "text-text-tertiary"} />
           </div>
-          {paramsSummary && (
-            <div className="text-[11px] text-text-tertiary truncate">
-              {paramsSummary}
-            </div>
-          )}
-        </button>
-        {!!instance.state?.timerExpiresAt && instance.enabled && (
-          <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
-        )}
-        {!!instance.state?.overrideMode && instance.enabled && (
-          <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0"
-            style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
-            title={t("recipes.overrideActive", "Override active")}
+          <button
+            onClick={handleStartEdit}
+            className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity duration-150"
+            title="Edit"
           >
-            <ShieldOff size={10} strokeWidth={2} />
-            Override
-          </span>
-        )}
-        {recipe?.actions?.filter((a) => a.type === "cycle").map((action) => (
-          <ModeCyclePill
-            key={action.id}
-            instance={instance}
-            recipe={recipe}
-            action={action}
-            lang={lang}
-            sendAction={sendAction}
-          />
-        ))}
-        <button
-          onClick={handleToggleEnabled}
-          disabled={toggling}
-          className="relative w-8 h-[18px] rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
-          style={{ backgroundColor: instance.enabled ? "var(--color-primary)" : "var(--color-border)" }}
-          title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
-          role="switch"
-          aria-checked={instance.enabled}
-        >
-          <span
-            className="absolute top-[2px] left-[2px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
-            style={{ transform: instance.enabled ? "translateX(14px)" : "translateX(0)" }}
-          />
-        </button>
-        <button
-          onClick={handleShowLog}
-          className="p-1.5 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
-          title={t("recipes.viewLog")}
-        >
-          <ScrollText size={14} strokeWidth={1.5} />
-        </button>
-        <button
-          onClick={() => setShowDuplicate(true)}
-          className="p-1.5 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-          title={t("recipes.duplicate")}
-        >
-          <Copy size={14} strokeWidth={1.5} />
-        </button>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="p-1.5 rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
-          title={t("common.delete")}
-        >
-          <Trash2 size={14} strokeWidth={1.5} />
-        </button>
+            <div className="text-[13px] font-medium text-text truncate">
+              {displayName}
+            </div>
+            {paramsSummary && (
+              <div className="text-[11px] text-text-tertiary truncate">
+                {paramsSummary}
+              </div>
+            )}
+          </button>
+          {!!instance.state?.timerExpiresAt && instance.enabled && (
+            <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
+          )}
+          {!!instance.state?.overrideMode && instance.enabled && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0"
+              style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
+              title={t("recipes.overrideActive", "Override active")}
+            >
+              <ShieldOff size={10} strokeWidth={2} />
+              Override
+            </span>
+          )}
+          {recipe?.actions?.filter((a) => a.type === "cycle").map((action) => (
+            <ModeCyclePill
+              key={action.id}
+              instance={instance}
+              recipe={recipe}
+              action={action}
+              lang={lang}
+              sendAction={sendAction}
+            />
+          ))}
+          <button
+            onClick={handleToggleEnabled}
+            disabled={toggling}
+            className="relative w-8 h-[18px] rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
+            style={{ backgroundColor: instance.enabled ? "var(--color-primary)" : "var(--color-border)" }}
+            title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
+            role="switch"
+            aria-checked={instance.enabled}
+          >
+            <span
+              className="absolute top-[2px] left-[2px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
+              style={{ transform: instance.enabled ? "translateX(14px)" : "translateX(0)" }}
+            />
+          </button>
+        </div>
+        {/* Row 2: action buttons — desktop only */}
+        <div className="hidden sm:flex items-center gap-1 mt-1.5 ml-10">
+          <button
+            onClick={handleShowLog}
+            className="p-1.5 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
+            title={t("recipes.viewLog")}
+          >
+            <ScrollText size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => setShowDuplicate(true)}
+            className="p-1.5 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+            title={t("recipes.duplicate")}
+          >
+            <Copy size={14} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="p-1.5 rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
+            title={t("common.delete")}
+          >
+            <Trash2 size={14} strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
 
       {/* Duplicate modal */}
