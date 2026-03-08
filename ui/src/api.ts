@@ -22,17 +22,18 @@ const API_BASE = "/api/v1";
 
 // Token management — used by useAuth store
 let _accessToken: string | null = null;
-let _onUnauthorized: (() => void) | null = null;
+let _onUnauthorized: (() => Promise<boolean>) | null = null;
+let _refreshing: Promise<boolean> | null = null;
 
 export function setAccessToken(token: string | null): void {
   _accessToken = token;
 }
 
-export function setOnUnauthorized(handler: () => void): void {
+export function setOnUnauthorized(handler: () => Promise<boolean>): void {
   _onUnauthorized = handler;
 }
 
-async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
+async function fetchJSON<T>(url: string, options?: RequestInit, isRetry = false): Promise<T> {
   const headers: Record<string, string> = {};
   if (_accessToken) {
     headers["Authorization"] = `Bearer ${_accessToken}`;
@@ -46,8 +47,16 @@ async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
     ...options,
   });
 
-  if (response.status === 401 && _onUnauthorized) {
-    _onUnauthorized();
+  if (response.status === 401 && _onUnauthorized && !isRetry) {
+    // Deduplicate concurrent refresh attempts
+    if (!_refreshing) {
+      _refreshing = _onUnauthorized().finally(() => { _refreshing = null; });
+    }
+    const success = await _refreshing;
+    if (success) {
+      // Retry with new token
+      return fetchJSON<T>(url, options, true);
+    }
     throw new Error("Session expired");
   }
 

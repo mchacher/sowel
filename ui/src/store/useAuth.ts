@@ -58,12 +58,13 @@ export const useAuth = create<AuthState>((set, get) => {
     setAccessToken(storedToken);
   }
 
-  // Register 401 handler
+  // Register 401 handler — returns true if refresh succeeded (request will be retried)
   setOnUnauthorized(async () => {
     const success = await get().refreshSession();
     if (!success) {
       get().logout();
     }
+    return success;
   });
 
   return {
