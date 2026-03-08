@@ -182,6 +182,26 @@ input[type="range"].slider-active::-moz-range-thumb {
   background: var(--color-active);
 }
 
+/* Slim variant — smaller thumb + thinner track for dashboard widgets */
+input[type="range"].slider-slim::-webkit-slider-runnable-track {
+  height: 3px;
+}
+
+input[type="range"].slider-slim::-moz-range-track {
+  height: 3px;
+}
+
+input[type="range"].slider-slim::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
+}
+
+input[type="range"].slider-slim::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+}
+
 /* ============================================================
    Native time/date picker — adapt icons to dark mode
    ============================================================ */

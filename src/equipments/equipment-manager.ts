@@ -583,7 +583,7 @@ export class EquipmentManager {
   /** Valid zone order keys and their mapping to equipment types + order alias + value. */
   private static readonly ZONE_ORDERS: Record<
     string,
-    { types: string[]; alias: string; value: unknown }
+    { types: string[]; alias: string; value: unknown | "FROM_BODY" }
   > = {
     allLightsOn: {
       types: ["light_onoff", "light_dimmable", "light_color"],
@@ -595,20 +595,42 @@ export class EquipmentManager {
       alias: "state",
       value: "OFF",
     },
+    allLightsBrightness: {
+      types: ["light_dimmable", "light_color"],
+      alias: "brightness",
+      value: "FROM_BODY",
+    },
     allShuttersOpen: { types: ["shutter"], alias: "position", value: 100 },
+    allShuttersStop: { types: ["shutter"], alias: "state", value: "STOP" },
     allShuttersClose: { types: ["shutter"], alias: "position", value: 0 },
+    allThermostatsPowerOn: { types: ["thermostat"], alias: "power", value: true },
+    allThermostatsPowerOff: { types: ["thermostat"], alias: "power", value: false },
+    allThermostatsSetpoint: { types: ["thermostat"], alias: "setpoint", value: "FROM_BODY" },
   };
 
   static readonly VALID_ZONE_ORDER_KEYS = Object.keys(EquipmentManager.ZONE_ORDERS);
 
   /**
    * Execute a zone-level order on all matching equipments across the given zone IDs.
+   * For parametric orders (value === "FROM_BODY"), the bodyValue parameter is used.
    * Returns a summary of executed and errored orders.
    */
-  executeZoneOrder(zoneIds: string[], orderKey: string): { executed: number; errors: number } {
+  executeZoneOrder(
+    zoneIds: string[],
+    orderKey: string,
+    bodyValue?: unknown,
+  ): { executed: number; errors: number } {
     const mapping = EquipmentManager.ZONE_ORDERS[orderKey];
     if (!mapping) {
       throw new EquipmentError(`Invalid zone order key: ${orderKey}`, 400);
+    }
+
+    const resolvedValue = mapping.value === "FROM_BODY" ? bodyValue : mapping.value;
+    if (resolvedValue === undefined) {
+      throw new EquipmentError(
+        `Zone order '${orderKey}' requires a value in the request body`,
+        400,
+      );
     }
 
     let executed = 0;
@@ -621,7 +643,7 @@ export class EquipmentManager {
         if (!mapping.types.includes(eq.type)) continue;
 
         try {
-          this.executeOrder(eq.id, mapping.alias, mapping.value);
+          this.executeOrder(eq.id, mapping.alias, resolvedValue);
           executed++;
         } catch (err) {
           errors++;

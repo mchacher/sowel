@@ -246,8 +246,7 @@ export class NetatmoPoller {
     const homesData = await this.bridge.getHomesData();
     const home = homesData.body.homes.find((h) => h.id === this.homeId);
     if (!home) {
-      this.logger.warn({ homeId: this.homeId }, "Home not found in homesdata");
-      return new Set<string>();
+      throw new Error(`Home ${this.homeId} not found in homesdata response`);
     }
 
     const modules = home.modules ?? [];
@@ -257,8 +256,7 @@ export class NetatmoPoller {
     );
 
     if (modules.length === 0) {
-      this.logger.warn("Legrand H+C discovery: no modules found — check API response");
-      return new Set<string>();
+      throw new Error("Legrand H+C discovery returned 0 modules — API response may be incomplete");
     }
 
     const activeIds = new Set<string>();

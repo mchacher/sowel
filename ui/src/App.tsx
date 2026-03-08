@@ -21,6 +21,7 @@ import { BackupPage } from "./pages/BackupPage";
 import { AnalysePage } from "./pages/AnalysePage";
 import { MqttPublishersPage } from "./pages/MqttPublishersPage";
 import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
+import { DashboardPage } from "./pages/DashboardPage";
 
 export default function App() {
   return (
@@ -39,7 +40,10 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          {/* Maison — primary daily view */}
+          {/* Dashboard — default landing page */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+
+          {/* Maison — zone-based view */}
           <Route path="/home" element={<HomePage />} />
           <Route path="/home/:zoneId" element={<HomePage />} />
 
@@ -62,8 +66,8 @@ export default function App() {
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/backup" element={<BackupPage />} />
 
-          {/* Default redirect to Maison */}
-          <Route path="*" element={<Navigate to="/home" replace />} />
+          {/* Default redirect to Dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
