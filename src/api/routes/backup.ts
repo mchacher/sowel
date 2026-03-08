@@ -35,6 +35,7 @@ const BACKUP_TABLES = [
   "chart_configs",
   "notification_publishers",
   "notification_publisher_mappings",
+  "dashboard_widgets",
 ] as const;
 
 // Reverse order for deletion (children first)
