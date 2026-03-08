@@ -10,7 +10,7 @@ import {
 import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
 import { executeZoneOrder } from "../../api";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
-import { getWidgetIcon } from "./widget-icons";
+import { renderWidgetIcon } from "./widget-icons";
 
 const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],
@@ -57,8 +57,6 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
   const familyLabel = t(`dashboard.family.${family}`);
   const label = widget.label || `${familyLabel} - ${zoneName}`;
 
-  const IconComponent = useMemo(() => getWidgetIcon(widget.icon, family), [widget.icon, family]);
-
   const handleZoneCommand = useCallback(async (orderKey: string) => {
     if (!widget.zoneId) return;
     setCommandLoading(orderKey);
@@ -84,7 +82,7 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
       {/* Header */}
       <div className="flex items-center gap-2">
         <div className={`flex-shrink-0 w-7 h-7 rounded-[5px] flex items-center justify-center ${iconColor}`}>
-          <IconComponent size={16} strokeWidth={1.5} />
+          {renderWidgetIcon(widget.icon, family, { size: 16, strokeWidth: 1.5 })}
         </div>
         <span className="text-[13px] font-medium text-text truncate flex-1">{label}</span>
       </div>

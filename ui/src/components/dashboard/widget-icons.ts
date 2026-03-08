@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import {
   Lightbulb,
   LampDesk,
@@ -143,4 +144,13 @@ export function getWidgetIcon(
   if (famDefault && ICON_MAP[famDefault]) return ICON_MAP[famDefault];
   // Fallback
   return Home;
+}
+
+export function renderWidgetIcon(
+  iconName: string | undefined,
+  equipmentTypeOrFamily: EquipmentType | WidgetFamily,
+  props: { size: number; strokeWidth: number },
+) {
+  const Icon = getWidgetIcon(iconName, equipmentTypeOrFamily);
+  return createElement(Icon, props);
 }
