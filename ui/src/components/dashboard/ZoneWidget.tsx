@@ -129,7 +129,7 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
 function ZoneWidgetCard({ label, children, empty }: { label: string; children: React.ReactNode; empty?: boolean }) {
   const { t } = useTranslation();
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[240px] overflow-hidden">
+    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden">
       <span className="text-[17px] font-semibold text-text truncate mb-2 text-center">{label}</span>
       {empty ? (
         <span className="text-[12px] text-text-tertiary text-center">{t("dashboard.noEquipments")}</span>

@@ -39,11 +39,11 @@ The feature is split into **two milestones**:
 
 ### Milestone B — PWA & Mobile Login (separate spec)
 
-- [ ] `manifest.json` with app name, icons, theme color, `display: standalone`
-- [ ] Service Worker via `vite-plugin-pwa` (Workbox): cache-first for assets, network-first for API
-- [ ] QR code login: admin generates a QR code on desktop containing an API token, mobile scans to authenticate
-- [ ] "Add to Home Screen" prompt/banner
-- [ ] Offline shell: cached UI loads immediately, shows "offline" banner when API is unreachable
+- [x] `manifest.json` with app name, icons, theme color, `display: standalone`
+- [x] Service Worker via `vite-plugin-pwa` (Workbox): cache-first for assets, network-first for API
+- [x] QR code login: admin generates a QR code on desktop containing an API token, mobile scans to authenticate
+- [x] "Add to Home Screen" prompt/banner
+- [x] Offline shell: cached UI loads immediately, shows "offline" banner when API is unreachable
 
 ## Scope
 

@@ -22,6 +22,7 @@ import { AnalysePage } from "./pages/AnalysePage";
 import { MqttPublishersPage } from "./pages/MqttPublishersPage";
 import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { QrLoginPage } from "./pages/QrLoginPage";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />
+        <Route path="/qr-login" element={<QrLoginPage />} />
 
         {/* Protected routes — wrapped in AppLayout */}
         <Route

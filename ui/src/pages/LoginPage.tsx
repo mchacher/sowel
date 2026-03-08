@@ -15,7 +15,7 @@ export function LoginPage() {
   const { t } = useTranslation();
 
   if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

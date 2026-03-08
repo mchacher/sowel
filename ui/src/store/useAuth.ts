@@ -22,6 +22,7 @@ interface AuthState {
   // Actions
   checkStatus: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   setup: (data: { username: string; password: string; displayName: string; language?: "fr" | "en" }) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
@@ -100,6 +101,17 @@ export const useAuth = create<AuthState>((set, get) => {
       const tokens = await authLogin(username, password);
       saveTokens(tokens.accessToken, tokens.refreshToken);
       set({ user: tokens.user, isAuthenticated: true, loading: false });
+    },
+
+    loginWithToken: async (token) => {
+      // Store API token as the access token (no refresh token for API tokens)
+      localStorage.setItem(STORAGE_KEY_ACCESS, token);
+      setAccessToken(token);
+      set({ accessToken: token });
+
+      // Validate token and fetch user info
+      const user = await getMe();
+      set({ user, isAuthenticated: true, loading: false, setupRequired: false });
     },
 
     setup: async (data) => {

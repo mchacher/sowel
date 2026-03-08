@@ -8,9 +8,10 @@ interface IconPickerProps {
   equipmentType?: string;
   onSelect: (iconName: string) => void;
   onClose: () => void;
+  mobile?: boolean;
 }
 
-export function IconPicker({ currentIcon, equipmentType, onSelect, onClose }: IconPickerProps) {
+export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobile }: IconPickerProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,7 +39,11 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose }: Ic
   return (
     <div
       ref={ref}
-      className="absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-border rounded-[10px] shadow-lg p-3 w-[280px]"
+      className={`bg-surface border border-border rounded-[10px] shadow-lg p-3 ${
+        mobile
+          ? "relative z-50 w-[300px] max-h-[60vh] overflow-y-auto"
+          : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[280px]"
+      }`}
     >
       <h3 className="text-[12px] font-medium text-text-secondary mb-2">{t("dashboard.chooseIcon")}</h3>
 
