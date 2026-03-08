@@ -149,13 +149,12 @@ export function ZoneDetailSheet({ widget, zone, equipments, onClose }: ZoneDetai
     return new Set(getDescendantZoneIds(zone));
   }, [zone]);
 
-  const familyTypes = family ? WIDGET_FAMILY_TYPES[family] ?? [] : [];
-
   const filteredEquipments = useMemo(() => {
+    const types = family ? WIDGET_FAMILY_TYPES[family] ?? [] : [];
     return equipments.filter(
-      (eq) => zoneIds.has(eq.zoneId) && familyTypes.includes(eq.type),
+      (eq) => zoneIds.has(eq.zoneId) && types.includes(eq.type),
     );
-  }, [equipments, zoneIds, familyTypes]);
+  }, [equipments, zoneIds, family]);
 
   const [commandLoading, setCommandLoading] = useState<string | null>(null);
 
@@ -1056,16 +1055,3 @@ function SensorDetailContent({
   );
 }
 
-// ============================================================
-// Helper: does this widget need a detail sheet on mobile?
-// ============================================================
-
-export function needsDetailSheet(equipmentType: string): boolean {
-  return [
-    "light_dimmable",
-    "light_color",
-    "shutter",
-    "thermostat",
-    "heater",
-  ].includes(equipmentType);
-}
