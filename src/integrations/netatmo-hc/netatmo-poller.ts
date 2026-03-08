@@ -330,54 +330,55 @@ export class NetatmoPoller {
 
   /** Discover and poll weather station data via getstationsdata. */
   private async pollWeatherStation(): Promise<void> {
-    try {
-      const stationsData = await this.bridge.getStationsData();
-      const devices = stationsData.body.devices;
+    const stationsData = await this.bridge.getStationsData();
+    const devices = stationsData.body.devices;
 
-      if (devices.length === 0) {
-        this.logger.debug("No weather stations found");
-        return;
-      }
-
-      this.weatherNames.clear();
-
-      for (const station of devices) {
-        // Discover + update base station (NAMain)
-        const baseName = station.module_name || station.station_name;
-        const baseDiscovered = mapWeatherStationToDiscovered(station);
-        this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", baseDiscovered);
-        this.weatherNames.add(baseName);
-
-        // Update base station data (always call to refresh lastSeen)
-        const basePayload = extractWeatherPayload(station.dashboard_data, station.type);
-        this.deviceManager.updateDeviceData("netatmo_hc", baseName, basePayload);
-
-        // Discover + update each sub-module
-        for (const mod of station.modules ?? []) {
-          const modName = mod.module_name || mod._id;
-          const modDiscovered = mapWeatherModuleToDiscovered(mod);
-          this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", modDiscovered);
-          this.weatherNames.add(modName);
-
-          // Build combined payload: sensor data + battery
-          const modPayload: Record<string, unknown> = mod.dashboard_data
-            ? extractWeatherPayload(mod.dashboard_data, mod.type)
-            : {};
-          if (mod.battery_percent !== undefined) {
-            modPayload.battery = mod.battery_percent;
-          }
-          // Always call to refresh lastSeen even if payload is empty
-          this.deviceManager.updateDeviceData("netatmo_hc", modName, modPayload);
-        }
-      }
-
-      this.logger.info(
-        { stationCount: devices.length, weatherDevices: this.weatherNames.size },
-        "Weather station poll complete",
-      );
-    } catch (err) {
-      this.logger.warn({ err }, "Weather station poll failed");
+    if (devices.length === 0) {
+      this.logger.debug("No weather stations found");
+      return;
     }
+
+    // Build new set first, only replace this.weatherNames on full success
+    // to avoid partial clear that would cause stale device cleanup to delete weather devices
+    const newNames = new Set<string>();
+
+    for (const station of devices) {
+      // Discover + update base station (NAMain)
+      const baseName = station.module_name || station.station_name;
+      const baseDiscovered = mapWeatherStationToDiscovered(station);
+      this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", baseDiscovered);
+      newNames.add(baseName);
+
+      // Update base station data (always call to refresh lastSeen)
+      const basePayload = extractWeatherPayload(station.dashboard_data, station.type);
+      this.deviceManager.updateDeviceData("netatmo_hc", baseName, basePayload);
+
+      // Discover + update each sub-module
+      for (const mod of station.modules ?? []) {
+        const modName = mod.module_name || mod._id;
+        const modDiscovered = mapWeatherModuleToDiscovered(mod);
+        this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", modDiscovered);
+        newNames.add(modName);
+
+        // Build combined payload: sensor data + battery
+        const modPayload: Record<string, unknown> = mod.dashboard_data
+          ? extractWeatherPayload(mod.dashboard_data, mod.type)
+          : {};
+        if (mod.battery_percent !== undefined) {
+          modPayload.battery = mod.battery_percent;
+        }
+        // Always call to refresh lastSeen even if payload is empty
+        this.deviceManager.updateDeviceData("netatmo_hc", modName, modPayload);
+      }
+    }
+
+    // Only update weatherNames after full success
+    this.weatherNames = newNames;
+
+    this.logger.info(
+      { stationCount: devices.length, weatherDevices: this.weatherNames.size },
+      "Weather station poll complete",
+    );
   }
 
   /** Fetch cumulative energy for each energy meter via getMeasure. */

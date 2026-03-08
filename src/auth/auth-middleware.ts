@@ -46,7 +46,8 @@ export function registerAuthMiddleware(
   const { authService, userManager } = deps;
 
   app.addHook("onRequest", async (request, reply) => {
-    // Skip auth for public routes and WebSocket upgrade
+    // Skip auth for static UI files, public routes and WebSocket upgrade
+    if (!request.url.startsWith("/api/")) return;
     if (isPublicRoute(request.url)) return;
     if (request.url.startsWith("/ws")) return; // WS auth handled separately
 
