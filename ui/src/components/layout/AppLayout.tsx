@@ -42,8 +42,8 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar — hidden on mobile, shown on desktop */}
-      <div className="hidden md:flex">
+      {/* Sidebar — desktop only (lg: 1024px+, unreachable on phones) */}
+      <div className="hidden lg:flex">
         <Sidebar />
       </div>
 
@@ -65,7 +65,7 @@ export function AppLayout() {
               <SunlightBanner data={rootAgg} compact />
             </div>
             {/* Desktop: home name + sunlight banner */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
               {homeName && (
                 <span className="text-[15px] font-semibold text-text">{homeName}</span>
               )}
@@ -121,7 +121,7 @@ function MobileNav() {
   const { t } = useTranslation();
   return (
     <nav
-      className="flex md:hidden flex-col border-t border-border bg-surface"
+      className="flex lg:hidden flex-col border-t border-border bg-surface"
     >
       <div className="flex items-center justify-around min-h-[56px] px-2">
         <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={<LayoutDashboard size={18} strokeWidth={1.5} />} />
