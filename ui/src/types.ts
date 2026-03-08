@@ -640,3 +640,21 @@ export interface IntegrationInfo {
   settingValues: Record<string, string>;
   polling?: { lastPollAt: string; intervalMs: number };
 }
+
+// ============================================================
+// Dashboard Widget
+// ============================================================
+
+export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors";
+
+export interface DashboardWidget {
+  id: string;
+  type: "equipment" | "zone";
+  label?: string;
+  icon?: string;
+  equipmentId?: string;
+  zoneId?: string;
+  family?: WidgetFamily;
+  displayOrder: number;
+  createdAt: string;
+}
