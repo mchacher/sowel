@@ -10,7 +10,7 @@ import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import { Home, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
+import { Home, Layers, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
 import { InstallPrompt } from "./InstallPrompt";
@@ -126,6 +126,7 @@ function MobileNav() {
       <div className="flex items-center justify-around min-h-[56px] px-2">
         <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={<LayoutDashboard size={18} strokeWidth={1.5} />} />
         <MobileNavLink to="/home" label={t("nav.maison")} icon={<Home size={18} strokeWidth={1.5} />} />
+        <MobileNavLink to="/modes" label={t("nav.modes")} icon={<Layers size={18} strokeWidth={1.5} />} />
         <MobileNavLink to="/settings" label={t("nav.settings")} icon={<Settings size={18} strokeWidth={1.5} />} />
       </div>
       {/* Safe area spacer for iOS PWA home indicator */}
