@@ -173,7 +173,7 @@ export function EquipmentDetailPage() {
   const { isLight, isShutter, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Back link */}
       {fromZone ? (
         <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
@@ -188,13 +188,13 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-4 sm:mb-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-[8px] bg-primary-light flex items-center justify-center text-primary">
             {TYPE_ICONS[equipment.type]}
           </div>
           <div>
-            <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+            <h1 className="text-[18px] sm:text-[24px] font-semibold text-text leading-[24px] sm:leading-[32px]">
               {equipment.name}
             </h1>
             <p className="text-[13px] text-text-secondary">
@@ -218,18 +218,20 @@ export function EquipmentDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
-            className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
-            {t("common.edit")}
+            <span className="hidden sm:inline ml-2">{t("common.edit")}</span>
           </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+            className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+            title={t("common.delete")}
           >
             <Trash2 size={14} strokeWidth={1.5} />
-            {deleting ? t("common.deleting") : t("common.delete")}
+            <span className="hidden sm:inline ml-2">{deleting ? t("common.deleting") : t("common.delete")}</span>
           </button>
         </div>
       </div>
