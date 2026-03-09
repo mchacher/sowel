@@ -126,7 +126,7 @@ export function ModeDetailPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Back link */}
       <Link
         to="/modes"
@@ -137,29 +137,29 @@ export function ModeDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8 max-w-[720px]">
-        <div className="flex items-center gap-4">
+      <div className="flex items-start justify-between mb-4 sm:mb-8 max-w-[720px]">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <div
-            className={`w-12 h-12 rounded-[10px] flex items-center justify-center ${
+            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[8px] sm:rounded-[10px] flex items-center justify-center flex-shrink-0 ${
               mode.active ? "bg-primary/10" : "bg-border-light"
             }`}
           >
             {mode.active ? (
-              <ToggleRight size={24} strokeWidth={1.5} className="text-primary" />
+              <ToggleRight size={20} strokeWidth={1.5} className="text-primary" />
             ) : (
-              <ToggleLeft size={24} strokeWidth={1.5} className="text-text-tertiary" />
+              <ToggleLeft size={20} strokeWidth={1.5} className="text-text-tertiary" />
             )}
           </div>
-          <div>
-            <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+          <div className="min-w-0">
+            <h1 className="text-[18px] sm:text-[24px] font-semibold text-text leading-[24px] sm:leading-[32px] truncate">
               {mode.name}
             </h1>
             {mode.description && (
-              <p className="text-[13px] text-text-secondary mt-0.5">{mode.description}</p>
+              <p className="text-[13px] text-text-secondary mt-0.5 truncate">{mode.description}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={handleToggle}
             className="relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer"
@@ -175,17 +175,17 @@ export function ModeDetailPage() {
           </button>
           <button
             onClick={() => setShowEditForm(true)}
-            className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="p-2 text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
-            {t("common.edit")}
           </button>
           <button
             onClick={handleDelete}
-            className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150"
+            className="p-2 text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150"
+            title={t("common.delete")}
           >
             <Trash2 size={14} strokeWidth={1.5} />
-            {t("common.delete")}
           </button>
         </div>
       </div>
@@ -209,7 +209,7 @@ export function ModeDetailPage() {
         />
 
         {/* Zone impacts section */}
-        <section className="bg-surface rounded-[10px] border border-border p-5">
+        <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
           <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
             <MapPin size={16} strokeWidth={1.5} className="text-primary" />
             {t("modes.impacts")}
@@ -366,7 +366,7 @@ function ButtonTriggersSection({
   if (triggers.length === 0) return null;
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
       <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
         <Zap size={16} strokeWidth={1.5} className="text-accent" />
         {t("modes.triggers")}
@@ -460,7 +460,7 @@ function CalendarScheduleSection({
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
       <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
         <Clock size={16} strokeWidth={1.5} className="text-accent" />
         {t("modes.schedule")}

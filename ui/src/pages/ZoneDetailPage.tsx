@@ -154,7 +154,7 @@ export function ZoneDetailPage() {
 
   if (error || !zone) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <Link to="/zones" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("zones.backToZones")}
@@ -186,7 +186,7 @@ export function ZoneDetailPage() {
   const breadcrumb = buildBreadcrumb(zone.id, tree);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-[13px] text-text-secondary mb-4">
         <Link to="/zones" className="hover:text-text transition-colors">{t("zones.title")}</Link>
@@ -205,10 +205,10 @@ export function ZoneDetailPage() {
       </div>
 
       {/* Zone header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-4 sm:mb-8">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+            <h1 className="text-[18px] sm:text-[24px] font-semibold text-text leading-[24px] sm:leading-[32px]">
               {zone.name}
             </h1>
             {/* Recipe mode pills */}
@@ -236,19 +236,21 @@ export function ZoneDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
-            className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
-            {t("common.edit")}
+            <span className="hidden sm:inline ml-2">{t("common.edit")}</span>
           </button>
           {zone.id !== ROOT_ZONE_ID && (
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+              className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+              title={t("common.delete")}
             >
               <Trash2 size={14} strokeWidth={1.5} />
-              {deleting ? t("common.deleting") : t("common.delete")}
+              <span className="hidden sm:inline ml-2">{deleting ? t("common.deleting") : t("common.delete")}</span>
             </button>
           )}
         </div>

@@ -63,24 +63,24 @@ export function ModesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h1 className="text-[24px] font-semibold text-text leading-[32px]">
+          <h1 className="text-[18px] sm:text-[24px] font-semibold text-text leading-[24px] sm:leading-[32px]">
             {t("modes.title")}
           </h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">
+          <p className="text-[13px] text-text-secondary mt-0.5 hidden sm:block">
             {t("modes.subtitle")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
-            {t("modes.addMode")}
+            <span className="hidden sm:inline">{t("modes.addMode")}</span>
           </button>
           <span className="text-[13px] font-medium text-primary bg-primary-light px-3 py-1.5 rounded-[6px] tabular-nums">
             {modes.length}
