@@ -142,11 +142,6 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
         <span className="text-[11px] text-text-tertiary">
           {historizedBindings.length}
         </span>
-        {open && (
-          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-            <TimeRangeSelector value={range} onChange={setRange} />
-          </div>
-        )}
       </button>
 
       {open && <div className="px-4 pb-4 space-y-1">
@@ -194,6 +189,9 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                     </div>
                   ) : (
                     <>
+                      <div className="flex justify-end mb-2">
+                        <TimeRangeSelector value={range} onChange={setRange} />
+                      </div>
                       <TimeSeriesChart
                         points={chart?.points ?? []}
                         range={range}
