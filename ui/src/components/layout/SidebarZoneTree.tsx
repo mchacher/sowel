@@ -60,7 +60,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
       <div>
         <NavLink
           to={`/home/${zone.id}`}
-          className={() => `flex items-center gap-2 px-3 py-1.5 min-w-0 group`}
+          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-[6px] mx-1 group transition-colors duration-150 ${linkActive ? "bg-primary-light" : ""}`}
         >
           {({ isActive: linkActive }) => (
             <>

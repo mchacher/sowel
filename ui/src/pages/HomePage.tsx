@@ -487,9 +487,5 @@ function findZoneById(zones: ZoneWithChildren[], id: string): ZoneWithChildren |
 
 function getFirstLeafZone(zones: ZoneWithChildren[]): ZoneWithChildren | null {
   if (zones.length === 0) return null;
-  const first = zones[0];
-  if (first.children.length > 0) {
-    return first.children[0];
-  }
-  return first;
+  return zones[0];
 }
