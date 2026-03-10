@@ -449,6 +449,21 @@ export abstract class MotionLightBase extends Recipe {
       this.cancelOffTimer();
       this.clearOffTimerState();
     } else if (!lightOn) {
+      // Manual turn-off while motion active → enter override mode
+      // Must check BEFORE resetting lightsOnByRecipe
+      if (this.lightsOnByRecipe && motion && Date.now() >= this.turnOffGraceUntil) {
+        this.lightsOnByRecipe = false;
+        this.overrideMode = true;
+        this.ctx.state.set("overrideMode", true);
+        this.ctx.notifyStateChanged();
+        this.cancelOffTimer();
+        this.cancelFailsafeTimer();
+        this.clearOffTimerState();
+        this.clearFailsafeTimerState();
+        this.startOffTimerForOverrideClear();
+        this.ctx.log("Light turned off manually while motion active — entering override mode");
+        return;
+      }
       this.lightsOnByRecipe = false;
       if (this.offTimer || this.failsafeTimer) {
         this.cancelOffTimer();
@@ -457,8 +472,6 @@ export abstract class MotionLightBase extends Recipe {
         this.clearFailsafeTimerState();
         this.ctx.log("Light turned off externally — timers cancelled");
       }
-      // Note: manual-off override detection is handled in onZoneChanged
-      // (which fires first) using the lightsOnByRecipe flag.
     }
   }
 
