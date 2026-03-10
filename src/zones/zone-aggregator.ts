@@ -5,6 +5,7 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { SunlightManager } from "./sunlight-manager.js";
 import type {
   DataCategory,
+  EquipmentType,
   ZoneAggregatedData,
   DataBindingWithValue,
   Zone,
@@ -431,7 +432,7 @@ export class ZoneAggregator {
     for (const equipment of equipments) {
       if (equipment.type === "weather") continue; // Exclude weather from zone aggregation
       const bindings = this.equipmentManager.getDataBindingsWithValues(equipment.id);
-      this.accumulateBindings(acc, bindings);
+      this.accumulateBindings(acc, bindings, equipment.type);
     }
 
     return acc;
@@ -440,7 +441,17 @@ export class ZoneAggregator {
   /**
    * Accumulate data bindings into an accumulator.
    */
-  private accumulateBindings(acc: Accumulator, bindings: DataBindingWithValue[]): void {
+  private static readonly LIGHT_EQUIPMENT_TYPES: ReadonlySet<EquipmentType> = new Set([
+    "light_onoff",
+    "light_dimmable",
+    "light_color",
+  ]);
+
+  private accumulateBindings(
+    acc: Accumulator,
+    bindings: DataBindingWithValue[],
+    equipmentType: EquipmentType,
+  ): void {
     for (const binding of bindings) {
       const category: DataCategory = binding.category;
       const value = binding.value;
@@ -499,9 +510,11 @@ export class ZoneAggregator {
           break;
 
         case "light_state":
-          acc.lightsTotal += 1;
-          if (isBooleanActive(value)) {
-            acc.lightsOn += 1;
+          if (ZoneAggregator.LIGHT_EQUIPMENT_TYPES.has(equipmentType)) {
+            acc.lightsTotal += 1;
+            if (isBooleanActive(value)) {
+              acc.lightsOn += 1;
+            }
           }
           break;
 
