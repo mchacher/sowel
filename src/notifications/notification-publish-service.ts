@@ -151,10 +151,17 @@ export class NotificationPublishService {
     const dedupKey = `recipe:${instanceId}`;
     const now = Date.now();
     const last = this.lastEventTs.get(dedupKey);
-    if (last && now - last < 1000) return;
+    if (last && now - last < 1000) {
+      this.logger.warn({ instanceId, gap: now - last }, "Recipe event deduped (burst < 1s)");
+      return;
+    }
     this.lastEventTs.set(dedupKey, now);
 
     const state = this.recipeManager.getInstanceState(instanceId);
+    this.logger.info(
+      { instanceId, stateKeys: Object.keys(state) },
+      "Processing recipe state change",
+    );
     for (const [stateKey, value] of Object.entries(state)) {
       this.handleSourceChanged("recipe", instanceId, stateKey, value, undefined);
     }
@@ -185,7 +192,10 @@ export class NotificationPublishService {
     }
 
     if (sent > 0) {
-      this.logger.debug({ sourceType, sourceId, sourceKey, sent }, "Notifications dispatched");
+      this.logger.info(
+        { sourceType, sourceId, sourceKey, value, refsCount: refs.length, sent },
+        "Notifications dispatched",
+      );
     }
   }
 
