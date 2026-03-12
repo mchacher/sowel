@@ -744,6 +744,10 @@ export class PresenceThermostatRecipe extends Recipe {
 
   private setComfort(reason: string): void {
     const target = this.getTargetComfortTemp();
+    // Set mode in DB FIRST — helpers like clearTimerState/clearCocoonState may trigger
+    // notifyStateChanged, and the notification service reads currentMode from DB at that point.
+    this.currentMode = "comfort";
+    this.ctx.state.set("currentMode", "comfort");
     this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = target;
     try {
@@ -751,14 +755,15 @@ export class PresenceThermostatRecipe extends Recipe {
     } catch (err) {
       this.ctx.log(`Error setting comfort setpoint: ${String(err)}`, "error");
     }
-    this.currentMode = "comfort";
-    this.ctx.state.set("currentMode", "comfort");
     this.clearCocoonState();
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${target}°C (comfort)`);
   }
 
   private setEco(reason: string): void {
+    // Set mode in DB FIRST — helpers may trigger notifyStateChanged before we get to ours.
+    this.currentMode = "eco";
+    this.ctx.state.set("currentMode", "eco");
     this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = this.ecoTemp;
     try {
@@ -766,8 +771,6 @@ export class PresenceThermostatRecipe extends Recipe {
     } catch (err) {
       this.ctx.log(`Error setting eco setpoint: ${String(err)}`, "error");
     }
-    this.currentMode = "eco";
-    this.ctx.state.set("currentMode", "eco");
     this.clearCocoonState();
     this.clearOverrideMode();
     this.ctx.notifyStateChanged();
@@ -775,6 +778,11 @@ export class PresenceThermostatRecipe extends Recipe {
   }
 
   private setCocoon(reason: string): void {
+    // Set mode in DB FIRST — clearTimerState triggers notifyStateChanged, and the notification
+    // service reads currentMode from DB at that point. Without this, it would read the old mode.
+    this.currentMode = "cocoon";
+    this.ctx.state.set("currentMode", "cocoon");
+    this.ctx.state.set("cocoonMode", true);
     this.cancelEcoTimer();
     this.clearTimerState();
     this.setpointGraceUntil = Date.now() + 5000;
@@ -784,14 +792,14 @@ export class PresenceThermostatRecipe extends Recipe {
     } catch (err) {
       this.ctx.log(`Error setting cocoon setpoint: ${String(err)}`, "error");
     }
-    this.currentMode = "cocoon";
-    this.ctx.state.set("currentMode", "cocoon");
-    this.ctx.state.set("cocoonMode", true);
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.cocoonTemp}°C (cocoon)`);
   }
 
   private setNight(reason: string): void {
+    // Set mode in DB FIRST — helpers may trigger notifyStateChanged before we get to ours.
+    this.currentMode = "night";
+    this.ctx.state.set("currentMode", "night");
     this.cancelEcoTimer();
     this.clearTimerState();
     this.setpointGraceUntil = Date.now() + 5000;
@@ -801,8 +809,6 @@ export class PresenceThermostatRecipe extends Recipe {
     } catch (err) {
       this.ctx.log(`Error setting night setpoint: ${String(err)}`, "error");
     }
-    this.currentMode = "night";
-    this.ctx.state.set("currentMode", "night");
     this.clearCocoonState();
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.nightTemp}°C (night)`);

@@ -36,6 +36,9 @@ export class NotificationPublishService {
   /** Throttle state: mappingId → last sent timestamp */
   private lastSent: Map<string, number> = new Map();
 
+  /** Last notified value per mapping — used to detect real changes when previous is unknown */
+  private lastValue: Map<string, unknown> = new Map();
+
   /** Dedup: last processed timestamp per recipe/zone instance — prevents burst duplicates */
   private lastEventTs: Map<string, number> = new Map();
 
@@ -183,11 +186,16 @@ export class NotificationPublishService {
     let sent = 0;
     for (const ref of refs) {
       if (!ref.enabled) continue;
-      if (!this.shouldNotify(ref, value, previous)) continue;
+
+      // When previous is unknown (recipe events), fall back to last notified value
+      const effectivePrevious =
+        previous !== undefined ? previous : this.lastValue.get(ref.mappingId);
+      if (!this.shouldNotify(ref, value, effectivePrevious)) continue;
 
       const text = formatNotificationText(ref.message, value);
       this.sendNotification(ref, text);
       this.lastSent.set(ref.mappingId, Date.now());
+      this.lastValue.set(ref.mappingId, value);
       sent++;
     }
 
@@ -205,18 +213,12 @@ export class NotificationPublishService {
     // Never notify if value hasn't changed
     if (value === previous) return false;
 
-    // Boolean/enum state transitions: notify immediately on change
-    if (
-      typeof value === "boolean" ||
-      value === "ON" ||
-      value === "OFF" ||
-      value === "open" ||
-      value === "closed"
-    ) {
+    // Discrete state transitions (boolean, string enums): notify immediately on change
+    if (typeof value === "boolean" || typeof value === "string") {
       return true;
     }
 
-    // Throttle check for other types (value has changed, but rate-limit)
+    // Throttle check for numeric/other types (value has changed, but rate-limit)
     const last = this.lastSent.get(ref.mappingId);
     if (!last) return true;
 
