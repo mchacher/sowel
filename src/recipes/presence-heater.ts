@@ -392,6 +392,9 @@ export class PresenceHeaterRecipe extends Recipe {
 
   // Fil pilote: comfort = relay OFF
   private setComfort(reason: string): void {
+    // Set mode in DB FIRST — notification service reads currentMode when notifyStateChanged fires.
+    this.currentMode = "comfort";
+    this.ctx.state.set("currentMode", "comfort");
     this.stateGraceUntil = Date.now() + 5000;
     const comfortValue = "off" as const;
     for (const heaterId of this.heaterIds) {
@@ -405,8 +408,6 @@ export class PresenceHeaterRecipe extends Recipe {
         this.ctx.log(`Error setting heater to comfort: ${String(err)}`, "error");
       }
     }
-    this.currentMode = "comfort";
-    this.ctx.state.set("currentMode", "comfort");
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — heaters set to comfort`);
     this.startFailsafeTimer();
@@ -414,6 +415,9 @@ export class PresenceHeaterRecipe extends Recipe {
 
   // Fil pilote: eco = relay ON
   private setEco(reason: string): void {
+    // Set mode in DB FIRST — notification service reads currentMode when notifyStateChanged fires.
+    this.currentMode = "eco";
+    this.ctx.state.set("currentMode", "eco");
     this.stateGraceUntil = Date.now() + 5000;
     const ecoValue = "on" as const;
     for (const heaterId of this.heaterIds) {
@@ -427,10 +431,8 @@ export class PresenceHeaterRecipe extends Recipe {
         this.ctx.log(`Error setting heater to eco: ${String(err)}`, "error");
       }
     }
-    this.currentMode = "eco";
     this.clearOverrideMode();
     this.cancelFailsafeTimer();
-    this.ctx.state.set("currentMode", "eco");
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — heaters set to eco`);
   }
