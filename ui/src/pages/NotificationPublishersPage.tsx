@@ -367,13 +367,22 @@ function PublisherCard({
   const resolveSourceLabel = (mapping: NotificationPublisherMapping): string => {
     if (mapping.sourceType === "equipment") {
       const eq = equipments.find((e) => e.id === mapping.sourceId);
-      return eq ? `${eq.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
+      if (!eq) return `??? → ${mapping.sourceKey}`;
+      const zone = flatZones.find((z) => z.id === eq.zoneId);
+      const zoneName = zone ? zone.name : "";
+      return zoneName
+        ? `${eq.name} (${zoneName}) → ${mapping.sourceKey}`
+        : `${eq.name} → ${mapping.sourceKey}`;
     }
     if (mapping.sourceType === "recipe") {
       const inst = recipeInstances.find((i) => i.id === mapping.sourceId);
       const recipe = inst ? recipes.find((r) => r.id === inst.recipeId) : undefined;
       const label = recipe ? recipe.name : "???";
-      return `${label} → ${mapping.sourceKey}`;
+      const zoneId = inst?.params?.zone as string | undefined;
+      const zone = zoneId ? flatZones.find((z) => z.id === zoneId) : undefined;
+      return zone
+        ? `${label} (${zone.name}) → ${mapping.sourceKey}`
+        : `${label} → ${mapping.sourceKey}`;
     }
     const zone = flatZones.find((z) => z.id === mapping.sourceId);
     return zone ? `${zone.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
