@@ -36,6 +36,9 @@ export class NotificationPublishService {
   /** Throttle state: mappingId → last sent timestamp */
   private lastSent: Map<string, number> = new Map();
 
+  /** Dedup: last processed timestamp per recipe/zone instance — prevents burst duplicates */
+  private lastEventTs: Map<string, number> = new Map();
+
   /** Channel providers by type */
   private readonly channels: Record<string, NotificationChannel> = {
     telegram: new TelegramChannel(),
@@ -130,6 +133,13 @@ export class NotificationPublishService {
   }
 
   private handleZoneDataChanged(zoneId: string, aggregatedData: ZoneAggregatedData): void {
+    // Dedup: ignore repeated zone events within 1 second (can fire multiple times per pipeline cycle)
+    const dedupKey = `zone:${zoneId}`;
+    const now = Date.now();
+    const last = this.lastEventTs.get(dedupKey);
+    if (last && now - last < 1000) return;
+    this.lastEventTs.set(dedupKey, now);
+
     const entries = Object.entries(aggregatedData) as [keyof ZoneAggregatedData, unknown][];
     for (const [field, value] of entries) {
       this.handleSourceChanged("zone", zoneId, field, value, undefined);
@@ -137,6 +147,13 @@ export class NotificationPublishService {
   }
 
   private handleRecipeStateChanged(instanceId: string): void {
+    // Dedup: ignore repeated recipe events within 1 second (can fire multiple times per state change)
+    const dedupKey = `recipe:${instanceId}`;
+    const now = Date.now();
+    const last = this.lastEventTs.get(dedupKey);
+    if (last && now - last < 1000) return;
+    this.lastEventTs.set(dedupKey, now);
+
     const state = this.recipeManager.getInstanceState(instanceId);
     for (const [stateKey, value] of Object.entries(state)) {
       this.handleSourceChanged("recipe", instanceId, stateKey, value, undefined);
