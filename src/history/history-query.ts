@@ -344,7 +344,11 @@ export async function queryZoneSparkline(
   |> filter(fn: (r) => r.zoneId == "${params.zoneId}")
   |> filter(fn: (r) => r.category == "${params.category}")
   |> filter(fn: (r) => r._field == "value_number")
+  |> filter(fn: (r) => r.alias != "setpoint")
   |> aggregateWindow(every: 30m, fn: mean, createEmpty: false)
+  |> group(columns: ["_time"])
+  |> mean()
+  |> group()
   |> sort(columns: ["_time"])
   |> limit(n: 48)`;
 
