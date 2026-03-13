@@ -116,6 +116,10 @@ export class NetatmoPoller {
     return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
   }
 
+  isPollHealthy(): boolean {
+    return !this.pollFailed;
+  }
+
   /** Rapid status polling after an order: first at 1s, then every 1s, stops on confirmation or 10s timeout. */
   scheduleOnDemandPoll(expected?: { moduleId: string; param: string; value: unknown }): void {
     this.stopRapidPoll();

@@ -94,6 +94,10 @@ export class PanasonicPoller {
     return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
   }
 
+  isPollHealthy(): boolean {
+    return !this.pollFailed;
+  }
+
   scheduleOnDemandPoll(delayMs?: number): void {
     const delay = delayMs ?? this.onDemandDelayMs;
     this.logger.debug({ delayMs: delay }, "Scheduling on-demand poll");
