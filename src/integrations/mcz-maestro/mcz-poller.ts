@@ -6,6 +6,7 @@
  */
 
 import type { Logger } from "../../core/logger.js";
+import type { EventBus } from "../../core/event-bus.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { DiscoveredDevice } from "../../devices/device-manager.js";
 import type { DataType, DataCategory } from "../../shared/types.js";
@@ -29,6 +30,7 @@ const DEFAULT_ON_DEMAND_DELAY_MS = 5_000; // 5 seconds
 export class MczPoller {
   private bridge: MczBridge;
   private deviceManager: DeviceManager;
+  private eventBus: EventBus;
   private logger: Logger;
   private serialNumber: string;
   private pollIntervalMs: number;
@@ -36,12 +38,14 @@ export class MczPoller {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private polling = false;
+  private pollFailed = false;
   private lastPollAt: string | null = null;
   private staggerTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     bridge: MczBridge,
     deviceManager: DeviceManager,
+    eventBus: EventBus,
     logger: Logger,
     serialNumber: string,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
@@ -49,6 +53,7 @@ export class MczPoller {
   ) {
     this.bridge = bridge;
     this.deviceManager = deviceManager;
+    this.eventBus = eventBus;
     this.logger = logger.child({ module: "mcz-poller" });
     this.serialNumber = serialNumber;
     this.pollIntervalMs = pollIntervalMs;
@@ -125,8 +130,28 @@ export class MczPoller {
       this.updateDeviceData(frame);
 
       this.logger.debug({ frame }, "MCZ poll complete");
+
+      if (this.pollFailed) {
+        this.pollFailed = false;
+        this.eventBus.emit({
+          type: "system.alarm.resolved",
+          alarmId: "poll-fail:mcz_maestro",
+          source: "MCZ Maestro",
+          message: "Communication rétablie",
+        });
+      }
     } catch (err) {
       this.logger.error({ err }, "MCZ poll failed");
+      if (!this.pollFailed) {
+        this.pollFailed = true;
+        this.eventBus.emit({
+          type: "system.alarm.raised",
+          alarmId: "poll-fail:mcz_maestro",
+          level: "error",
+          source: "MCZ Maestro",
+          message: `Poll en échec : ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     } finally {
       this.polling = false;
     }
