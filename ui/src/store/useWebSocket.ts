@@ -11,9 +11,17 @@ export type WsTopic = "devices" | "equipments" | "zones" | "modes" | "recipes" |
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
+export interface SystemAlarm {
+  alarmId: string;
+  level: "warning" | "error";
+  source: string;
+  message: string;
+}
+
 interface WebSocketState {
   status: ConnectionStatus;
   integrationStatuses: Record<string, string>;
+  alarms: Map<string, SystemAlarm>;
   connect: () => void;
   disconnect: () => void;
   subscribe: (topics: WsTopic[]) => void;
@@ -127,12 +135,32 @@ function handleEvent(event: EngineEvent): void {
         integrationStatuses: { ...s.integrationStatuses, [event.integrationId]: "disconnected" },
       }));
       break;
+    case "system.alarm.raised":
+      useWebSocket.setState((s) => {
+        const alarms = new Map(s.alarms);
+        alarms.set(event.alarmId, {
+          alarmId: event.alarmId,
+          level: event.level,
+          source: event.source,
+          message: event.message,
+        });
+        return { alarms };
+      });
+      break;
+    case "system.alarm.resolved":
+      useWebSocket.setState((s) => {
+        const alarms = new Map(s.alarms);
+        alarms.delete(event.alarmId);
+        return { alarms };
+      });
+      break;
   }
 }
 
 export const useWebSocket = create<WebSocketState>((set) => ({
   status: "disconnected",
   integrationStatuses: {},
+  alarms: new Map(),
 
   connect: () => {
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) {
@@ -212,7 +240,7 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       ws.close();
       ws = null;
     }
-    set({ status: "disconnected", integrationStatuses: {} });
+    set({ status: "disconnected", integrationStatuses: {}, alarms: new Map() });
   },
 
   subscribe: (topics) => {

@@ -141,7 +141,14 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     const { value } = request.body ?? {};
 
     try {
-      equipmentManager.executeOrder(request.params.id, request.params.alias, value);
+      const result = await equipmentManager.executeOrder(
+        request.params.id,
+        request.params.alias,
+        value,
+      );
+      if (!result.success) {
+        return reply.code(502).send({ error: result.error });
+      }
       return { success: true };
     } catch (err) {
       return handleEquipmentError(reply, err);

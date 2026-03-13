@@ -7,6 +7,7 @@
  */
 
 import type { Logger } from "../../core/logger.js";
+import type { EventBus } from "../../core/event-bus.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { NetatmoBridge } from "./netatmo-bridge.js";
 import {
@@ -27,6 +28,7 @@ const RAPID_POLL_DURATION_MS = 10_000; // stop after 10s
 export class NetatmoPoller {
   private bridge: NetatmoBridge;
   private deviceManager: DeviceManager;
+  private eventBus: EventBus;
   private logger: Logger;
   private homeId: string;
   private pollIntervalMs: number;
@@ -36,6 +38,7 @@ export class NetatmoPoller {
   private rapidTimeout: ReturnType<typeof setTimeout> | null = null;
   private rapidStopTimeout: ReturnType<typeof setTimeout> | null = null;
   private polling = false;
+  private pollFailed = false;
   private rapidPolling = false;
   private lastPollAt: string | null = null;
   private staggerTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -54,6 +57,7 @@ export class NetatmoPoller {
   constructor(
     bridge: NetatmoBridge,
     deviceManager: DeviceManager,
+    eventBus: EventBus,
     homeId: string,
     logger: Logger,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
@@ -62,6 +66,7 @@ export class NetatmoPoller {
   ) {
     this.bridge = bridge;
     this.deviceManager = deviceManager;
+    this.eventBus = eventBus;
     this.homeId = homeId;
     this.logger = logger.child({ module: "legrand-hc-poller" });
     this.pollIntervalMs = pollIntervalMs;
@@ -109,6 +114,10 @@ export class NetatmoPoller {
   getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
     if (!this.lastPollAt) return null;
     return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
+  }
+
+  isPollHealthy(): boolean {
+    return !this.pollFailed;
   }
 
   /** Rapid status polling after an order: first at 1s, then every 1s, stops on confirmation or 10s timeout. */
@@ -234,8 +243,28 @@ export class NetatmoPoller {
         { phase1Ms: t1 - t0, phase2Ms: t2 - t1, totalMs: t2 - t0 },
         "Legrand H+C poll timing",
       );
+
+      if (this.pollFailed) {
+        this.pollFailed = false;
+        this.eventBus.emit({
+          type: "system.alarm.resolved",
+          alarmId: "poll-fail:netatmo_hc",
+          source: "Legrand Home+Control",
+          message: "Communication rétablie",
+        });
+      }
     } catch (err) {
       this.logger.error({ err }, "Legrand H+C poll cycle failed");
+      if (!this.pollFailed) {
+        this.pollFailed = true;
+        this.eventBus.emit({
+          type: "system.alarm.raised",
+          alarmId: "poll-fail:netatmo_hc",
+          level: "error",
+          source: "Legrand Home+Control",
+          message: `Poll en échec : ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     } finally {
       this.polling = false;
     }

@@ -750,11 +750,12 @@ export class PresenceThermostatRecipe extends Recipe {
     this.ctx.state.set("currentMode", "comfort");
     this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = target;
-    try {
-      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", target);
-    } catch (err) {
-      this.ctx.log(`Error setting comfort setpoint: ${String(err)}`, "error");
-    }
+    this.ctx.equipmentManager
+      .executeOrder(this.thermostatId, "setpoint", target)
+      .then((r) => {
+        if (!r.success) this.ctx.log(`Setpoint → ${target}°C FAILED: ${r.error}`, "error");
+      })
+      .catch((err) => this.ctx.log(`Error setting comfort setpoint: ${String(err)}`, "error"));
     this.clearCocoonState();
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${target}°C (comfort)`);
@@ -766,11 +767,12 @@ export class PresenceThermostatRecipe extends Recipe {
     this.ctx.state.set("currentMode", "eco");
     this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = this.ecoTemp;
-    try {
-      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.ecoTemp);
-    } catch (err) {
-      this.ctx.log(`Error setting eco setpoint: ${String(err)}`, "error");
-    }
+    this.ctx.equipmentManager
+      .executeOrder(this.thermostatId, "setpoint", this.ecoTemp)
+      .then((r) => {
+        if (!r.success) this.ctx.log(`Setpoint → ${this.ecoTemp}°C FAILED: ${r.error}`, "error");
+      })
+      .catch((err) => this.ctx.log(`Error setting eco setpoint: ${String(err)}`, "error"));
     this.clearCocoonState();
     this.clearOverrideMode();
     this.ctx.notifyStateChanged();
@@ -787,11 +789,12 @@ export class PresenceThermostatRecipe extends Recipe {
     this.clearTimerState();
     this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = this.cocoonTemp!;
-    try {
-      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.cocoonTemp!);
-    } catch (err) {
-      this.ctx.log(`Error setting cocoon setpoint: ${String(err)}`, "error");
-    }
+    this.ctx.equipmentManager
+      .executeOrder(this.thermostatId, "setpoint", this.cocoonTemp!)
+      .then((r) => {
+        if (!r.success) this.ctx.log(`Setpoint → ${this.cocoonTemp}°C FAILED: ${r.error}`, "error");
+      })
+      .catch((err) => this.ctx.log(`Error setting cocoon setpoint: ${String(err)}`, "error"));
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.cocoonTemp}°C (cocoon)`);
   }
@@ -804,11 +807,12 @@ export class PresenceThermostatRecipe extends Recipe {
     this.clearTimerState();
     this.setpointGraceUntil = Date.now() + 5000;
     this.lastSentSetpoint = this.nightTemp!;
-    try {
-      this.ctx.equipmentManager.executeOrder(this.thermostatId, "setpoint", this.nightTemp!);
-    } catch (err) {
-      this.ctx.log(`Error setting night setpoint: ${String(err)}`, "error");
-    }
+    this.ctx.equipmentManager
+      .executeOrder(this.thermostatId, "setpoint", this.nightTemp!)
+      .then((r) => {
+        if (!r.success) this.ctx.log(`Setpoint → ${this.nightTemp}°C FAILED: ${r.error}`, "error");
+      })
+      .catch((err) => this.ctx.log(`Error setting night setpoint: ${String(err)}`, "error"));
     this.clearCocoonState();
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.nightTemp}°C (night)`);

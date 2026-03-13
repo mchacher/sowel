@@ -1,4 +1,5 @@
 import type { Logger } from "../../core/logger.js";
+import type { EventBus } from "../../core/event-bus.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { PanasonicBridge } from "./panasonic-bridge.js";
 import type { BridgeDevice } from "./panasonic-types.js";
@@ -19,6 +20,7 @@ const DEFAULT_ON_DEMAND_DELAY_MS = 10_000; // 10 seconds
 export class PanasonicPoller {
   private bridge: PanasonicBridge;
   private deviceManager: DeviceManager;
+  private eventBus: EventBus;
   private logger: Logger;
   private email: string;
   private password: string;
@@ -27,12 +29,14 @@ export class PanasonicPoller {
   private interval: ReturnType<typeof setInterval> | null = null;
   private pendingTimers: Set<ReturnType<typeof setTimeout>> = new Set();
   private polling = false;
+  private pollFailed = false;
   private lastPollAt: string | null = null;
   private staggerTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     bridge: PanasonicBridge,
     deviceManager: DeviceManager,
+    eventBus: EventBus,
     logger: Logger,
     email: string,
     password: string,
@@ -41,6 +45,7 @@ export class PanasonicPoller {
   ) {
     this.bridge = bridge;
     this.deviceManager = deviceManager;
+    this.eventBus = eventBus;
     this.logger = logger.child({ module: "panasonic-poller" });
     this.email = email;
     this.password = password;
@@ -89,6 +94,10 @@ export class PanasonicPoller {
     return { lastPollAt: this.lastPollAt, intervalMs: this.pollIntervalMs };
   }
 
+  isPollHealthy(): boolean {
+    return !this.pollFailed;
+  }
+
   scheduleOnDemandPoll(delayMs?: number): void {
     const delay = delayMs ?? this.onDemandDelayMs;
     this.logger.debug({ delayMs: delay }, "Scheduling on-demand poll");
@@ -120,8 +129,28 @@ export class PanasonicPoller {
       }
 
       this.logger.debug({ deviceCount: response.devices.length }, "Panasonic poll complete");
+
+      if (this.pollFailed) {
+        this.pollFailed = false;
+        this.eventBus.emit({
+          type: "system.alarm.resolved",
+          alarmId: "poll-fail:panasonic_cc",
+          source: "Panasonic Comfort Cloud",
+          message: "Communication rétablie",
+        });
+      }
     } catch (err) {
       this.logger.error({ err }, "Panasonic poll failed");
+      if (!this.pollFailed) {
+        this.pollFailed = true;
+        this.eventBus.emit({
+          type: "system.alarm.raised",
+          alarmId: "poll-fail:panasonic_cc",
+          level: "error",
+          source: "Panasonic Comfort Cloud",
+          message: `Poll en échec : ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     } finally {
       this.polling = false;
     }

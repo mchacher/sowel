@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
 import { LogRingBuffer } from "./core/log-buffer.js";
@@ -37,7 +38,55 @@ import { NotificationPublisherManager } from "./notifications/notification-publi
 import { NotificationPublishService } from "./notifications/notification-publish-service.js";
 import { createServer } from "./api/server.js";
 
+/**
+ * Ensure only one Sowel instance runs at a time.
+ * Writes a PID file; if it already exists with a live process, exits immediately.
+ */
+function acquirePidLock(dataDir: string): string {
+  mkdirSync(dataDir, { recursive: true });
+  const pidFile = resolve(dataDir, "sowel.pid");
+
+  if (existsSync(pidFile)) {
+    const existingPid = parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
+    if (!isNaN(existingPid)) {
+      try {
+        // signal 0 = check if process exists without killing it
+        process.kill(existingPid, 0);
+        // Process is alive — abort
+        console.error(
+          `Another Sowel instance is already running (PID ${existingPid}). Remove ${pidFile} if this is stale.`,
+        );
+        process.exit(1);
+      } catch {
+        // Process not found — stale PID file, overwrite it
+      }
+    }
+  }
+
+  writeFileSync(pidFile, String(process.pid), { mode: 0o644 });
+  return pidFile;
+}
+
 async function main() {
+  // 0. Ensure single instance via PID lock
+  const pidFile = acquirePidLock("./data");
+  const cleanupPid = () => {
+    try {
+      unlinkSync(pidFile);
+    } catch {
+      // Ignore — file may already be gone
+    }
+  };
+  process.on("exit", cleanupPid);
+  process.on("SIGINT", () => {
+    cleanupPid();
+    process.exit(0);
+  });
+  process.on("SIGTERM", () => {
+    cleanupPid();
+    process.exit(0);
+  });
+
   // 1. Load configuration
   const config = loadConfig();
 

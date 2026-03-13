@@ -190,7 +190,14 @@ export class ButtonActionManager {
         const targetEquipmentId = config.equipmentId as string;
         const orderAlias = config.orderAlias as string;
         const orderValue = config.value;
-        this.equipmentManager.executeOrder(targetEquipmentId, orderAlias, orderValue);
+        this.equipmentManager
+          .executeOrder(targetEquipmentId, orderAlias, orderValue)
+          .catch((err) => {
+            this.logger.error(
+              { err, targetEquipmentId, orderAlias },
+              "Button order dispatch failed",
+            );
+          });
         break;
       }
 
