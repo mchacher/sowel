@@ -398,15 +398,12 @@ export class PresenceHeaterRecipe extends Recipe {
     this.stateGraceUntil = Date.now() + 5000;
     const comfortValue = "off" as const;
     for (const heaterId of this.heaterIds) {
-      try {
-        this.ctx.equipmentManager.executeOrder(
-          heaterId,
-          "state",
-          this.resolveEnumValue(heaterId, comfortValue),
-        );
-      } catch (err) {
-        this.ctx.log(`Error setting heater to comfort: ${String(err)}`, "error");
-      }
+      this.ctx.equipmentManager
+        .executeOrder(heaterId, "state", this.resolveEnumValue(heaterId, comfortValue))
+        .then((r) => {
+          if (!r.success) this.ctx.log(`Heater ${heaterId} comfort FAILED: ${r.error}`, "error");
+        })
+        .catch((err) => this.ctx.log(`Error setting heater to comfort: ${String(err)}`, "error"));
     }
     this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — heaters set to comfort`);
@@ -421,15 +418,12 @@ export class PresenceHeaterRecipe extends Recipe {
     this.stateGraceUntil = Date.now() + 5000;
     const ecoValue = "on" as const;
     for (const heaterId of this.heaterIds) {
-      try {
-        this.ctx.equipmentManager.executeOrder(
-          heaterId,
-          "state",
-          this.resolveEnumValue(heaterId, ecoValue),
-        );
-      } catch (err) {
-        this.ctx.log(`Error setting heater to eco: ${String(err)}`, "error");
-      }
+      this.ctx.equipmentManager
+        .executeOrder(heaterId, "state", this.resolveEnumValue(heaterId, ecoValue))
+        .then((r) => {
+          if (!r.success) this.ctx.log(`Heater ${heaterId} eco FAILED: ${r.error}`, "error");
+        })
+        .catch((err) => this.ctx.log(`Error setting heater to eco: ${String(err)}`, "error"));
     }
     this.clearOverrideMode();
     this.cancelFailsafeTimer();

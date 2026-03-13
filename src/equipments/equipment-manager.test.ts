@@ -438,7 +438,7 @@ describe("EquipmentManager", () => {
   // ============================================================
 
   describe("executeOrder", () => {
-    it("publishes MQTT message to bound device", () => {
+    it("publishes MQTT message to bound device", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
       const { orderIds } = seedDevice(db, {
@@ -448,7 +448,7 @@ describe("EquipmentManager", () => {
       manager.addOrderBinding(eq.id, orderIds[0], "state");
 
       events = [];
-      manager.executeOrder(eq.id, "state", "ON");
+      await manager.executeOrder(eq.id, "state", "ON");
 
       expect(mockPublished).toHaveLength(1);
       expect(mockPublished[0].topic).toBe("z2m/Switch/set");
@@ -458,7 +458,7 @@ describe("EquipmentManager", () => {
       expect(execEvents).toHaveLength(1);
     });
 
-    it("dispatches to multiple devices (multi-device)", () => {
+    it("dispatches to multiple devices (multi-device)", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "All Lights", type: "light_onoff", zoneId: zone.id });
       const d1 = seedDevice(db, { name: "L1", orderKeys: [{ key: "state", payloadKey: "state" }] });
@@ -466,38 +466,34 @@ describe("EquipmentManager", () => {
       manager.addOrderBinding(eq.id, d1.orderIds[0], "state");
       manager.addOrderBinding(eq.id, d2.orderIds[0], "state");
 
-      manager.executeOrder(eq.id, "state", "ON");
+      await manager.executeOrder(eq.id, "state", "ON");
 
       expect(mockPublished).toHaveLength(2);
       expect(mockPublished.map((p) => p.topic).sort()).toEqual(["z2m/L1/set", "z2m/L2/set"]);
     });
 
-    it("throws for non-existent equipment", () => {
-      expect(() => {
-        manager.executeOrder("non-existent", "state", "ON");
-      }).toThrow(EquipmentError);
+    it("throws for non-existent equipment", async () => {
+      await expect(manager.executeOrder("non-existent", "state", "ON")).rejects.toThrow(
+        EquipmentError,
+      );
     });
 
-    it("throws for disabled equipment", () => {
+    it("throws for disabled equipment", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
       manager.update(eq.id, { enabled: false });
 
-      expect(() => {
-        manager.executeOrder(eq.id, "state", "ON");
-      }).toThrow(/disabled/i);
+      await expect(manager.executeOrder(eq.id, "state", "ON")).rejects.toThrow(/disabled/i);
     });
 
-    it("throws for non-existent alias", () => {
+    it("throws for non-existent alias", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
 
-      expect(() => {
-        manager.executeOrder(eq.id, "non-existent", "ON");
-      }).toThrow(/not found/i);
+      await expect(manager.executeOrder(eq.id, "non-existent", "ON")).rejects.toThrow(/not found/i);
     });
 
-    it("throws when integration not found", () => {
+    it("throws when integration not found", async () => {
       // Create a manager with a registry that returns undefined (no integration)
       const emptyRegistry = { getById: () => undefined };
       const noIntegrationManager = new EquipmentManager(
@@ -516,9 +512,9 @@ describe("EquipmentManager", () => {
       const { orderIds } = seedDevice(db, { orderKeys: [{ key: "state" }] });
       noIntegrationManager.addOrderBinding(eq.id, orderIds[0], "state");
 
-      expect(() => {
-        noIntegrationManager.executeOrder(eq.id, "state", "ON");
-      }).toThrow(/integration/i);
+      await expect(noIntegrationManager.executeOrder(eq.id, "state", "ON")).rejects.toThrow(
+        /integration/i,
+      );
     });
   });
 

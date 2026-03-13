@@ -110,7 +110,7 @@ export class MczBridge {
    * Request the full stove status via RecuperoInfo.
    */
   async getStatus(): Promise<MczStatusFrame> {
-    if (!this.socket || !this.connected) {
+    if (!this.socket || !this.connected || !this.socket.connected) {
       throw new Error("MCZ bridge not connected");
     }
 
@@ -167,7 +167,7 @@ export class MczBridge {
    * Send a control command to the stove.
    */
   async sendCommand(commandId: number, value: number): Promise<void> {
-    if (!this.socket || !this.connected) {
+    if (!this.socket || !this.connected || !this.socket.connected) {
       throw new Error("MCZ bridge not connected");
     }
 

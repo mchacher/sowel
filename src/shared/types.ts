@@ -494,6 +494,13 @@ export type EngineEvent =
       orderAlias: string;
       value: unknown;
     }
+  | {
+      type: "equipment.order.failed";
+      equipmentId: string;
+      orderAlias: string;
+      value: unknown;
+      error: string;
+    }
   // Recipe events
   | { type: "recipe.instance.created"; instanceId: string; recipeId: string }
   | { type: "recipe.instance.removed"; instanceId: string; recipeId: string }
@@ -537,7 +544,15 @@ export type EngineEvent =
   | { type: "system.started" }
   | { type: "system.integration.connected"; integrationId: string }
   | { type: "system.integration.disconnected"; integrationId: string }
-  | { type: "system.error"; error: string };
+  | { type: "system.error"; error: string }
+  | {
+      type: "system.alarm.raised";
+      alarmId: string;
+      level: "warning" | "error";
+      source: string;
+      message: string;
+    }
+  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string };
 
 // ============================================================
 // zigbee2mqtt types (parser internal)
