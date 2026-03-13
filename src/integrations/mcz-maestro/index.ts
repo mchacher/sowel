@@ -112,6 +112,7 @@ export class MczMaestroIntegration implements IntegrationPlugin {
       this.poller = new MczPoller(
         this.bridge,
         this.deviceManager,
+        this.eventBus,
         this.logger,
         serialNumber,
         pollingIntervalMs,

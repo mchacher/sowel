@@ -104,6 +104,7 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
       this.poller = new PanasonicPoller(
         this.bridge,
         this.deviceManager,
+        this.eventBus,
         this.logger,
         email,
         password,

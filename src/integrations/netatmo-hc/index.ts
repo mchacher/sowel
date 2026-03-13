@@ -175,6 +175,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
       this.poller = new NetatmoPoller(
         this.bridge,
         this.deviceManager,
+        this.eventBus,
         homeId,
         this.logger,
         pollingIntervalMs,
