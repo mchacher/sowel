@@ -59,6 +59,9 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
 
   getStatus(): IntegrationStatus {
     if (!this.isConfigured()) return "not_configured";
+    if (this.status === "connected" && this.poller && !this.poller.isPollHealthy()) {
+      return "error";
+    }
     return this.status;
   }
 
@@ -175,6 +178,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
       this.poller = new NetatmoPoller(
         this.bridge,
         this.deviceManager,
+        this.eventBus,
         homeId,
         this.logger,
         pollingIntervalMs,

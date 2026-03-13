@@ -128,6 +128,14 @@ export class NotificationPublishService {
           case "notification-publisher.mapping.removed":
             this.rebuildIndex();
             break;
+
+          case "system.alarm.raised":
+            this.sendSystemAlarm(`⚠️ ${event.source} : ${event.message}`);
+            break;
+
+          case "system.alarm.resolved":
+            this.sendSystemAlarm(`✅ ${event.source} : ${event.message}`);
+            break;
         }
       } catch (err) {
         this.logger.error({ err }, "Error in notification publish service event handler");
@@ -240,6 +248,22 @@ export class NotificationPublishService {
         { err, publisherId: ref.publisherId, channelType: ref.channelType },
         "Notification send failed",
       );
+    });
+  }
+
+  // ── System alarm notifications ──────────────────────────────
+
+  private sendSystemAlarm(text: string): void {
+    // Send to the first enabled Telegram publisher found
+    const publishers = this.publisherManager.getAllWithMappings();
+    const telegramPub = publishers.find((p) => p.channelType === "telegram" && p.enabled);
+    if (!telegramPub) return;
+
+    const channel = this.channels.telegram;
+    if (!channel) return;
+
+    channel.send(telegramPub.channelConfig, text).catch((err) => {
+      this.logger.error({ err }, "System alarm notification send failed");
     });
   }
 

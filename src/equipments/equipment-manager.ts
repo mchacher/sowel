@@ -72,6 +72,9 @@ export class EquipmentManager {
   /** Gate equipments with a pending command — state is "unknown" until next sensor update */
   private pendingToggles = new Set<string>();
 
+  /** Tracks integrations with recent order failures — for alarm raise/resolve. */
+  private failedIntegrations = new Set<string>();
+
   constructor(
     db: Database.Database,
     eventBus: EventBus,
@@ -455,7 +458,11 @@ export class EquipmentManager {
   // Order execution
   // ============================================================
 
-  executeOrder(equipmentId: string, alias: string, value: unknown): void {
+  async executeOrder(
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+  ): Promise<{ success: boolean; error?: string }> {
     const equipment = this.getById(equipmentId);
     if (!equipment) {
       throw new EquipmentError("Equipment not found", 404);
@@ -490,6 +497,9 @@ export class EquipmentManager {
     }
 
     // Dispatch to all bound device orders via their integration plugins
+    let successes = 0;
+    let lastError: string | undefined;
+
     for (const binding of bindings) {
       const device = this.deviceManager.getById(binding.device_id);
       if (!device) {
@@ -515,52 +525,104 @@ export class EquipmentManager {
         }
       }
 
-      integration.executeOrder(device, dispatchConfig, resolvedValue).catch((err) => {
+      // Dispatch with 1 retry (2s delay) for transient failures
+      let dispatched = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await integration.executeOrder(device, dispatchConfig, resolvedValue);
+          dispatched = true;
+          break;
+        } catch (err) {
+          lastError = err instanceof Error ? err.message : String(err);
+          if (attempt < 2) {
+            this.logger.warn(
+              { err, equipmentId, alias, deviceId: device.id, attempt },
+              "Order dispatch failed, retrying in 2s",
+            );
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+      }
+
+      if (dispatched) {
+        successes++;
+        this.logger.debug(
+          {
+            equipmentId,
+            equipmentName: equipment.name,
+            alias,
+            integrationId: device.integrationId,
+            deviceId: device.id,
+            deviceName: device.name,
+          },
+          "Order dispatched to integration",
+        );
+
+        // Resolve alarm if this integration was previously failing
+        if (this.failedIntegrations.delete(device.integrationId)) {
+          this.eventBus.emit({
+            type: "system.alarm.resolved",
+            alarmId: `order-fail:${device.integrationId}`,
+            source: device.integrationId,
+            message: `${device.integrationId} order dispatch recovered`,
+          });
+        }
+      } else {
         this.logger.error(
           {
-            err,
             equipmentId,
             equipmentName: equipment.name,
             alias,
             deviceId: device.id,
             deviceName: device.name,
+            error: lastError,
           },
-          "Integration order dispatch failed",
+          "Integration order dispatch failed after retry",
         );
-      });
 
-      this.logger.debug(
+        // Raise alarm on first failure for this integration
+        if (!this.failedIntegrations.has(device.integrationId)) {
+          this.failedIntegrations.add(device.integrationId);
+          this.eventBus.emit({
+            type: "system.alarm.raised",
+            alarmId: `order-fail:${device.integrationId}`,
+            level: "error",
+            source: device.integrationId,
+            message: `Order dispatch failed: ${equipment.name} ${alias} — ${lastError}`,
+          });
+        }
+      }
+    }
+
+    if (successes > 0) {
+      this.logger.info(
         {
           equipmentId,
           equipmentName: equipment.name,
           alias,
-          integrationId: device.integrationId,
-          deviceId: device.id,
-          deviceName: device.name,
+          value: resolvedValue,
+          targets: bindings.length,
         },
-        "Order dispatched to integration",
+        "Equipment order executed",
       );
+      this.eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId,
+        orderAlias: alias,
+        value: resolvedValue,
+      });
+    } else if (lastError) {
+      this.eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId,
+        orderAlias: alias,
+        value: resolvedValue,
+        error: lastError,
+      });
     }
 
-    this.logger.info(
-      {
-        equipmentId,
-        equipmentName: equipment.name,
-        alias,
-        value: resolvedValue,
-        targets: bindings.length,
-      },
-      "Equipment order executed",
-    );
-    this.eventBus.emit({
-      type: "equipment.order.executed",
-      equipmentId,
-      orderAlias: alias,
-      value: resolvedValue,
-    });
-
     // Gate command: mark state as "unknown" until next sensor update
-    if (equipment.type === "gate" && alias === "command") {
+    if (successes > 0 && equipment.type === "gate" && alias === "command") {
       this.pendingToggles.add(equipmentId);
       this.eventBus.emit({
         type: "equipment.data.changed",
@@ -574,6 +636,11 @@ export class EquipmentManager {
         "Gate command — state set to unknown",
       );
     }
+
+    if (successes === 0 && lastError) {
+      return { success: false, error: lastError };
+    }
+    return { success: true };
   }
 
   // ============================================================
@@ -615,11 +682,11 @@ export class EquipmentManager {
    * For parametric orders (value === "FROM_BODY"), the bodyValue parameter is used.
    * Returns a summary of executed and errored orders.
    */
-  executeZoneOrder(
+  async executeZoneOrder(
     zoneIds: string[],
     orderKey: string,
     bodyValue?: unknown,
-  ): { executed: number; errors: number } {
+  ): Promise<{ executed: number; errors: number }> {
     const mapping = EquipmentManager.ZONE_ORDERS[orderKey];
     if (!mapping) {
       throw new EquipmentError(`Invalid zone order key: ${orderKey}`, 400);
@@ -643,8 +710,16 @@ export class EquipmentManager {
         if (!mapping.types.includes(eq.type)) continue;
 
         try {
-          this.executeOrder(eq.id, mapping.alias, resolvedValue);
-          executed++;
+          const result = await this.executeOrder(eq.id, mapping.alias, resolvedValue);
+          if (result.success) {
+            executed++;
+          } else {
+            errors++;
+            this.logger.warn(
+              { equipmentId: eq.id, equipmentName: eq.name, orderKey, error: result.error },
+              "Zone order dispatch failed for equipment",
+            );
+          }
         } catch (err) {
           errors++;
           this.logger.warn(

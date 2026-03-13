@@ -40,7 +40,9 @@ export function turnOnLights(lightIds: string[], ctx: RecipeContext): string[] {
   const errors: string[] = [];
   for (const lightId of lightIds) {
     try {
-      ctx.equipmentManager.executeOrder(lightId, "state", resolveEnumValue(lightId, ctx, "on"));
+      ctx.equipmentManager
+        .executeOrder(lightId, "state", resolveEnumValue(lightId, ctx, "on"))
+        .catch(() => {});
     } catch (err) {
       errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -56,7 +58,9 @@ export function turnOffLights(lightIds: string[], ctx: RecipeContext): string[] 
   const errors: string[] = [];
   for (const lightId of lightIds) {
     try {
-      ctx.equipmentManager.executeOrder(lightId, "state", resolveEnumValue(lightId, ctx, "off"));
+      ctx.equipmentManager
+        .executeOrder(lightId, "state", resolveEnumValue(lightId, ctx, "off"))
+        .catch(() => {});
     } catch (err) {
       errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -81,7 +85,7 @@ export function setLightsBrightness(
     const hasBrightnessOrder = equipment.orderBindings.some((ob) => ob.alias === "brightness");
     if (!hasBrightnessOrder) continue;
     try {
-      ctx.equipmentManager.executeOrder(lightId, "brightness", brightness);
+      ctx.equipmentManager.executeOrder(lightId, "brightness", brightness).catch(() => {});
     } catch (err) {
       errors.push(`${lightId}: ${err instanceof Error ? err.message : String(err)}`);
     }

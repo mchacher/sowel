@@ -320,6 +320,9 @@ export type EngineEvent =
   | { type: "system.integration.connected"; integrationId: string }
   | { type: "system.integration.disconnected"; integrationId: string }
   | { type: "system.error"; error: string }
+  | { type: "system.alarm.raised"; alarmId: string; level: "warning" | "error"; source: string; message: string }
+  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
+  | { type: "equipment.order.failed"; equipmentId: string; orderAlias: string; value: unknown; error: string }
   | { type: "connected"; message: string; version: string };
 
 // ============================================================

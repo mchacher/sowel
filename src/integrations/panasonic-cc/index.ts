@@ -41,6 +41,9 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
 
   getStatus(): IntegrationStatus {
     if (!this.isConfigured()) return "not_configured";
+    if (this.status === "connected" && this.poller && !this.poller.isPollHealthy()) {
+      return "error";
+    }
     return this.status;
   }
 
@@ -104,6 +107,7 @@ export class PanasonicCCIntegration implements IntegrationPlugin {
       this.poller = new PanasonicPoller(
         this.bridge,
         this.deviceManager,
+        this.eventBus,
         this.logger,
         email,
         password,
