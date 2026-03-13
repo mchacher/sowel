@@ -1,6 +1,8 @@
+ajouter une température pour la préchauffe
 Retirer le script temporaire de nettoyage du service worker dans ui/index.html (désinscription SW + vidage caches) — à faire une fois que tous les clients ont chargé la nouvelle version (après ~1 semaine)
 Notifications : problème UI sur la config, et fréquence 300 min
 
+Watchdog de fraîcheur des devices : timer périodique qui vérifie last_seen et marque offline les devices silencieux (cas lora2mqtt down alors que le broker MQTT reste connecté). Émettre system.alarm.raised sur timeout.
 Alarme batterie
 Google Home
 Plugin / modularité
