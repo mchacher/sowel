@@ -204,7 +204,27 @@ export class ModeManager {
     switch (action.type) {
       case "order": {
         const eq = this.equipmentManager.getById(action.equipmentId);
-        this.equipmentManager.executeOrder(action.equipmentId, action.orderAlias, action.value);
+        this.equipmentManager
+          .executeOrder(action.equipmentId, action.orderAlias, action.value)
+          .then((result) => {
+            if (!result.success) {
+              this.logger.warn(
+                {
+                  equipmentId: action.equipmentId,
+                  alias: action.orderAlias,
+                  error: result.error,
+                  modeName,
+                },
+                "Mode order dispatch failed",
+              );
+            }
+          })
+          .catch((err) => {
+            this.logger.warn(
+              { err, equipmentId: action.equipmentId, modeName },
+              "Mode order failed",
+            );
+          });
         this.logger.debug(
           {
             equipmentId: action.equipmentId,
@@ -213,7 +233,7 @@ export class ModeManager {
             value: action.value,
             modeName,
           },
-          "Mode order executed",
+          "Mode order dispatched",
         );
         break;
       }

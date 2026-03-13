@@ -148,7 +148,7 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
 
       try {
         const zoneIds = zoneManager.getDescendantIds(id);
-        const result = equipmentManager.executeZoneOrder(zoneIds, orderKey, body.value);
+        const result = await equipmentManager.executeZoneOrder(zoneIds, orderKey, body.value);
         return result;
       } catch (err) {
         return handleZoneError(err, reply);

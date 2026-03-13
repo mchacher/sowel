@@ -13,6 +13,7 @@ import { useAuth } from "../../store/useAuth";
 import { Home, Layers, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
+import { AlarmBanner } from "./AlarmBanner";
 import { InstallPrompt } from "./InstallPrompt";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 import { getSettings } from "../../api";
@@ -101,6 +102,8 @@ export function AppLayout() {
 
         {/* Offline banner */}
         <OfflineBanner />
+        {/* System alarm banner */}
+        <AlarmBanner />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
