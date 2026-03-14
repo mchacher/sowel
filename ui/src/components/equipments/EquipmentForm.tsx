@@ -16,6 +16,8 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "weather", labelKey: "equipments.type.weather" },
   { value: "gate", labelKey: "equipments.type.gate" },
   { value: "heater", labelKey: "equipments.type.heater" },
+  { value: "energy_meter", labelKey: "equipments.type.energy_meter" },
+  { value: "main_energy_meter", labelKey: "equipments.type.main_energy_meter" },
 ];
 
 interface EquipmentFormProps {
@@ -35,9 +37,11 @@ interface EquipmentFormProps {
   }) => Promise<void>;
   onClose: () => void;
   boundDeviceIds?: Set<string>;
+  /** Equipment types to exclude from the type selector (e.g. singleton types already created). */
+  excludeTypes?: Set<EquipmentType>;
 }
 
-export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds }: EquipmentFormProps) {
+export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, excludeTypes }: EquipmentFormProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
@@ -48,7 +52,10 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
   const [error, setError] = useState<string | null>(null);
 
   const flatZones = flattenZones(zones);
-  const sortedTypes = [...EQUIPMENT_TYPE_KEYS].sort((a, b) =>
+  const availableTypes = excludeTypes
+    ? EQUIPMENT_TYPE_KEYS.filter((et) => !excludeTypes.has(et.value))
+    : EQUIPMENT_TYPE_KEYS;
+  const sortedTypes = [...availableTypes].sort((a, b) =>
     t(a.labelKey).localeCompare(t(b.labelKey)),
   );
 

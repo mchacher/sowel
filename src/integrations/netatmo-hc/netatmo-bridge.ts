@@ -210,6 +210,7 @@ export class NetatmoBridge {
     type: string,
     scale: string,
     dateBegin?: number,
+    dateEnd?: number,
   ): Promise<NetatmoGetMeasureResponse> {
     const params = new URLSearchParams({
       device_id: deviceId,
@@ -220,6 +221,9 @@ export class NetatmoBridge {
     });
     if (dateBegin !== undefined) {
       params.set("date_begin", String(dateBegin));
+    }
+    if (dateEnd !== undefined) {
+      params.set("date_end", String(dateEnd));
     }
     return this.apiGet<NetatmoGetMeasureResponse>(`/api/getmeasure?${params.toString()}`);
   }

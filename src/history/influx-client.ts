@@ -16,6 +16,12 @@ export const DEFAULT_RETENTION = {
   daily: 5 * 365 * 86_400, // 5 years
 } as const;
 
+/** Energy-specific retention — longer than general sensors. */
+export const ENERGY_RETENTION = {
+  hourly: 2 * 365 * 86_400, // 2 years
+  daily: 10 * 365 * 86_400, // 10 years
+} as const;
+
 export interface RetentionStatus {
   buckets: {
     raw: { name: string; retentionSeconds: number } | null;
@@ -311,6 +317,68 @@ export class InfluxClient {
   }
 
   // ============================================================
+  // Energy Buckets & Tasks
+  // ============================================================
+
+  /**
+   * Ensure energy-specific buckets and sum aggregation tasks exist.
+   * Energy needs sum (not mean) aggregation and longer retention.
+   */
+  async ensureEnergyBuckets(): Promise<void> {
+    if (!this.config) return;
+
+    try {
+      const orgId = await this.getOrgId();
+      if (!orgId) {
+        this.logger.warn("Could not resolve InfluxDB org ID — skipping energy bucket setup");
+        return;
+      }
+
+      const rawBucket = this.config.bucket;
+      const energyHourly = `${rawBucket}-energy-hourly`;
+      const energyDaily = `${rawBucket}-energy-daily`;
+
+      // Create energy buckets with extended retention
+      await this.ensureBucket(energyHourly, ENERGY_RETENTION.hourly, orgId);
+      await this.ensureBucket(energyDaily, ENERGY_RETENTION.daily, orgId);
+
+      // Create energy sum aggregation tasks (raw → hourly, hourly → daily)
+      const hourlyFlux = buildEnergySumHourlyFlux(rawBucket, energyHourly, this.config.org);
+      await this.ensureTask("sowel-energy-sum-hourly", hourlyFlux, orgId);
+
+      const dailyFlux = buildEnergySumDailyFlux(energyHourly, energyDaily, this.config.org);
+      await this.ensureTask("sowel-energy-sum-daily", dailyFlux, orgId);
+
+      this.logger.info(
+        {
+          hourlyRetentionYears: ENERGY_RETENTION.hourly / (365 * 86_400),
+          dailyRetentionYears: ENERGY_RETENTION.daily / (365 * 86_400),
+        },
+        "Energy buckets and sum aggregation tasks configured",
+      );
+    } catch (err) {
+      this.logger.warn(
+        { err },
+        "Failed to ensure energy buckets — continuing without energy aggregation",
+      );
+    }
+  }
+
+  /**
+   * Get a WriteApi targeting the energy-hourly bucket (for backfill).
+   * Caller is responsible for flushing/closing.
+   */
+  getEnergyHourlyWriteApi(): WriteApi | null {
+    if (!this.client || !this.config) return null;
+    const energyHourly = `${this.config.bucket}-energy-hourly`;
+    return this.client.getWriteApi(this.config.org, energyHourly, "s", {
+      batchSize: 500,
+      flushInterval: 10000,
+      maxRetries: 3,
+    });
+  }
+
+  // ============================================================
   // Private: InfluxDB v2 HTTP API helpers
   // ============================================================
 
@@ -567,6 +635,33 @@ max_data = data
 
 union(tables: [mean_data, min_data, max_data])
   |> to(bucket: "${dailyBucket}", org: "${org}")`;
+}
+
+// ============================================================
+// Energy sum aggregation Flux tasks
+// ============================================================
+
+function buildEnergySumHourlyFlux(rawBucket: string, energyHourly: string, org: string): string {
+  return `option task = {name: "sowel-energy-sum-hourly", every: 1h}
+
+from(bucket: "${rawBucket}")
+  |> range(start: -7h)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)
+  |> to(bucket: "${energyHourly}", org: "${org}")`;
+}
+
+function buildEnergySumDailyFlux(energyHourly: string, energyDaily: string, org: string): string {
+  return `option task = {name: "sowel-energy-sum-daily", every: 1d}
+
+from(bucket: "${energyHourly}")
+  |> range(start: -2d)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.category == "energy")
+  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)
+  |> to(bucket: "${energyDaily}", org: "${org}")`;
 }
 
 // Re-export Point for convenience

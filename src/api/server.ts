@@ -46,6 +46,7 @@ import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerButtonActionRoutes } from "./routes/button-actions.js";
 import { registerLogRoutes } from "./routes/logs.js";
 import { registerHistoryRoutes } from "./routes/history.js";
+import { registerEnergyRoutes } from "./routes/energy.js";
 import { registerChartRoutes } from "./routes/charts.js";
 import { registerMqttBrokerRoutes } from "./routes/mqtt-brokers.js";
 import { registerMqttPublisherRoutes } from "./routes/mqtt-publishers.js";
@@ -158,6 +159,11 @@ export async function createServer(deps: ServerDeps) {
   registerNotificationPublisherRoutes(app, {
     notificationPublisherManager,
     notificationPublishService,
+  });
+  registerEnergyRoutes(app, {
+    equipmentManager,
+    influxClient: historyWriter.getInfluxClient(),
+    logger,
   });
   registerDashboardRoutes(app, { db });
   registerLogRoutes(app, { logBuffer, logger });

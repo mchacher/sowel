@@ -329,6 +329,8 @@ export class DeviceManager {
     integrationId: string,
     sourceDeviceId: string,
     payload: Record<string, unknown>,
+    /** Optional source timestamp (epoch seconds) for aligned time-series writes. */
+    sourceTimestamp?: number,
   ): void {
     const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
       | DeviceRow
@@ -406,6 +408,7 @@ export class DeviceManager {
         value,
         previous: previous !== null ? JSON.parse(previous) : null,
         timestamp: new Date().toISOString(),
+        ...(sourceTimestamp !== undefined && { sourceTimestamp }),
       });
     }
   }

@@ -5,8 +5,11 @@ import type { Logger } from "../../core/logger.js";
 import type { EventBus } from "../../core/event-bus.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
+import type { EquipmentManager } from "../../equipments/equipment-manager.js";
+import type { InfluxClient } from "../../history/influx-client.js";
 import { NetatmoBridge } from "./netatmo-bridge.js";
 import { NetatmoPoller } from "./netatmo-poller.js";
+import { backfillEnergyIfNeeded } from "./energy-backfill.js";
 
 const SETTINGS_PREFIX = "integration.netatmo_hc.";
 const DEFAULT_DATA_DIR = resolve(process.cwd(), "data");
@@ -117,6 +120,13 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         required: false,
         defaultValue: "false",
       },
+      {
+        key: "enable_energy",
+        label: "Enable Energy Monitoring",
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+      },
     ];
   }
 
@@ -143,6 +153,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     const pollingIntervalMs = (isNaN(pollingIntervalSec) ? 300 : pollingIntervalSec) * 1000;
     const enableHomeControl = this.getSetting("enable_home_control") !== "false"; // default true
     const enableWeather = this.getSetting("enable_weather") === "true";
+    const enableEnergy = this.getSetting("enable_energy") === "true";
 
     try {
       // Create bridge with token rotation callback
@@ -178,12 +189,14 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
       this.poller = new NetatmoPoller(
         this.bridge,
         this.deviceManager,
+        this.settingsManager,
         this.eventBus,
         homeId,
         this.logger,
         pollingIntervalMs,
         enableHomeControl,
         enableWeather,
+        enableEnergy,
       );
       await this.poller.start(options?.pollOffset ?? 0);
 
@@ -281,6 +294,30 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
 
   getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
     return this.poller?.getPollingInfo() ?? null;
+  }
+
+  /**
+   * Run energy backfill if needed (first run only).
+   * Must be called after integrations start and Equipment bindings are set up.
+   */
+  async runEnergyBackfillIfNeeded(
+    equipmentManager: EquipmentManager,
+    influxClient: InfluxClient,
+  ): Promise<void> {
+    const enableEnergy = this.getSetting("enable_energy") === "true";
+    if (!enableEnergy || !this.bridge || this.status !== "connected") return;
+
+    const bridgeId = this.poller?.getBridgeId();
+    if (!bridgeId) return;
+
+    await backfillEnergyIfNeeded({
+      bridge: this.bridge,
+      bridgeId,
+      influxClient,
+      settingsManager: this.settingsManager,
+      equipmentManager,
+      logger: this.logger,
+    });
   }
 
   private getSetting(key: string): string | undefined {

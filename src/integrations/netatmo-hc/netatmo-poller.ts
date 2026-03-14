@@ -8,6 +8,7 @@
 
 import type { Logger } from "../../core/logger.js";
 import type { EventBus } from "../../core/event-bus.js";
+import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { NetatmoBridge } from "./netatmo-bridge.js";
 import {
@@ -24,6 +25,9 @@ const DEFAULT_POLL_INTERVAL_MS = 300_000; // 5 min
 const RAPID_POLL_FIRST_MS = 1_000; // first rapid poll 1s after order
 const RAPID_POLL_INTERVAL_MS = 1_000; // then every 1s
 const RAPID_POLL_DURATION_MS = 10_000; // stop after 10s
+
+/** Sliding window: query last 6h of energy data on each poll cycle. */
+const ENERGY_LOOKBACK_S = 6 * 3600;
 
 export class NetatmoPoller {
   private bridge: NetatmoBridge;
@@ -45,24 +49,32 @@ export class NetatmoPoller {
 
   /** Map of moduleId → friendlyName, built during discovery. */
   private moduleNames = new Map<string, string>();
-  /** Energy meters: moduleId → { bridge, friendlyName } */
-  private energyMeters = new Map<string, { bridge: string; friendlyName: string }>();
   /** Weather station friendly names tracked for stale device removal. */
   private weatherNames = new Set<string>();
   /** Enable Home+Control device polling (homesdata / homestatus). */
   private enableHomeControl: boolean;
   /** Enable weather station polling (read_station scope). */
   private enableWeather: boolean;
+  /** Enable energy monitoring (bridge-level 5min polling). */
+  private enableEnergy: boolean;
+  /** Bridge ID discovered from energy meters — used for bridge-level queries. */
+  private bridgeId: string | null = null;
+  /** Friendly name of the NLPC module that receives bridge-level energy data. */
+  private mainMeterName: string | null = null;
+  /** High-water mark: highest window timestamp emitted to EnergyAggregator this session. */
+  private lastEmittedWindowTs = 0;
 
   constructor(
     bridge: NetatmoBridge,
     deviceManager: DeviceManager,
+    _settingsManager: SettingsManager,
     eventBus: EventBus,
     homeId: string,
     logger: Logger,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
     enableHomeControl = true,
     enableWeather = false,
+    enableEnergy = false,
   ) {
     this.bridge = bridge;
     this.deviceManager = deviceManager;
@@ -72,6 +84,7 @@ export class NetatmoPoller {
     this.pollIntervalMs = pollIntervalMs;
     this.enableHomeControl = enableHomeControl;
     this.enableWeather = enableWeather;
+    this.enableEnergy = enableEnergy;
   }
 
   async start(pollOffset = 0): Promise<void> {
@@ -118,6 +131,10 @@ export class NetatmoPoller {
 
   isPollHealthy(): boolean {
     return !this.pollFailed;
+  }
+
+  getBridgeId(): string | null {
+    return this.bridgeId;
   }
 
   /** Rapid status polling after an order: first at 1s, then every 1s, stops on confirmation or 10s timeout. */
@@ -300,6 +317,25 @@ export class NetatmoPoller {
         continue;
       }
 
+      // Energy meters: capture bridgeId + identify main meter for bridge-level energy injection
+      if (METER_TYPES.has(mod.type)) {
+        if (mod.bridge && !this.bridgeId) {
+          this.bridgeId = mod.bridge;
+          this.logger.info(
+            { moduleId: mod.id, bridge: mod.bridge, type: mod.type },
+            "Energy meter detected — bridge ID captured",
+          );
+        }
+        // First NLPC with a bridge becomes the main meter (receives bridge-level energy)
+        if (this.enableEnergy && !this.mainMeterName && mod.bridge) {
+          this.mainMeterName = mod.name || mod.id;
+          this.logger.info(
+            { moduleId: mod.id, name: this.mainMeterName },
+            "Main energy meter identified for bridge-level data",
+          );
+        }
+      }
+
       const discovered = mapModuleToDiscovered(mod, this.homeId);
       this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", discovered);
 
@@ -309,14 +345,6 @@ export class NetatmoPoller {
       const name = mod.name || mod.id;
       this.moduleNames.set(mod.id, name);
       activeIds.add(name); // sourceDeviceId = friendlyName
-
-      if (METER_TYPES.has(mod.type) && mod.bridge) {
-        this.energyMeters.set(mod.id, { bridge: mod.bridge, friendlyName: name });
-        this.logger.info(
-          { name, moduleId: mod.id, bridge: mod.bridge, type: mod.type },
-          "Energy meter discovered",
-        );
-      }
     }
 
     this.logger.info(
@@ -410,28 +438,97 @@ export class NetatmoPoller {
     );
   }
 
-  /** Fetch cumulative energy for each energy meter via getMeasure. */
-  private async pollEnergyMeters(): Promise<void> {
-    if (this.energyMeters.size === 0) return;
+  /**
+   * Poll bridge-level energy data (30-min granularity).
+   * Queries aligned 30-min windows after lastEnergyTimestamp.
+   * Writes raw energy (Wh) and demand_30min (W) to device data.
+   * Cumuls (day/hour/month/year) are handled by EnergyAggregator at equipment level.
+   */
+  /**
+   * Query a 30-min energy window and return total Wh.
+   */
+  private async queryEnergyWindow(windowStart: number, windowEnd: number): Promise<number> {
+    const ENERGY_TYPES =
+      "sum_energy_buy_from_grid$1,sum_energy_buy_from_grid$2,sum_energy_self_consumption";
 
-    for (const [moduleId, { bridge, friendlyName }] of this.energyMeters) {
-      try {
-        // device_id = gateway, module_id = NLPC, no date_begin = oldest available
-        const res = await this.bridge.getMeasure(bridge, moduleId, "sum_energy_elec", "1day");
-        // body is Record<timestamp, (number|null)[]> — get the last non-null value
-        const timestamps = Object.keys(res.body).sort();
-        for (let i = timestamps.length - 1; i >= 0; i--) {
-          const values = res.body[timestamps[i]];
-          if (values.length > 0 && values[0] !== null) {
-            this.deviceManager.updateDeviceData("netatmo_hc", friendlyName, {
-              sum_energy_elec: values[0],
-            });
-            break;
-          }
+    const res = await this.bridge.getMeasure(
+      this.bridgeId!,
+      this.bridgeId!,
+      ENERGY_TYPES,
+      "5min",
+      windowStart,
+      windowEnd,
+    );
+
+    const timestamps = Object.keys(res.body);
+    if (timestamps.length === 0) return 0;
+
+    let windowWh = 0;
+    for (const ts of timestamps) {
+      const values = res.body[ts];
+      windowWh += (values[0] ?? 0) + (values[1] ?? 0) + (values[2] ?? 0);
+    }
+    return windowWh;
+  }
+
+  private async pollEnergyMeters(): Promise<void> {
+    if (!this.enableEnergy || !this.bridgeId || !this.mainMeterName) return;
+
+    try {
+      const nowTs = Math.floor(Date.now() / 1000);
+      const HALF_HOUR = 1800;
+
+      // Sliding window: always query last 6h of aligned 30-min windows.
+      // InfluxDB overwrites existing points (same tags + timestamp = idempotent).
+      // No data lag guard needed: if Netatmo returns partial data for the latest
+      // window, the next poll cycle will overwrite it with the final value.
+      const lookbackStart = Math.floor((nowTs - ENERGY_LOOKBACK_S) / HALF_HOUR) * HALF_HOUR;
+
+      let newBuckets = 0;
+      let lastBucketEnergy = 0;
+
+      for (let windowStart = lookbackStart; windowStart < nowTs; windowStart += HALF_HOUR) {
+        const windowEnd = windowStart + HALF_HOUR;
+        // Only process windows that have ended
+        if (windowEnd > nowTs) break;
+
+        const windowWh = await this.queryEnergyWindow(windowStart, windowEnd);
+        if (windowWh <= 0) continue;
+
+        // Pass sourceTimestamp = windowStart so HistoryWriter writes at the
+        // aligned 30-min boundary, not at "now".
+        // InfluxDB overwrites if the point already exists (idempotent).
+        this.deviceManager.updateDeviceData(
+          "netatmo_hc",
+          this.mainMeterName!,
+          {
+            energy: windowWh,
+          },
+          windowStart,
+        );
+
+        if (windowStart > this.lastEmittedWindowTs) {
+          newBuckets++;
+          lastBucketEnergy = windowWh;
+          this.lastEmittedWindowTs = windowStart;
         }
-      } catch (err) {
-        this.logger.warn({ err, moduleId, friendlyName }, "Failed to fetch energy measure");
       }
+
+      // Write demand_30min (instantaneous power from last bucket)
+      if (lastBucketEnergy > 0) {
+        this.deviceManager.updateDeviceData("netatmo_hc", this.mainMeterName!, {
+          demand_30min: Math.round(lastBucketEnergy * 2), // Wh/30min → W
+        });
+      }
+
+      if (newBuckets > 0) {
+        this.logger.debug(
+          { newBuckets, demand30minW: Math.round(lastBucketEnergy * 2) },
+          "Energy poll: new 30-min buckets processed",
+        );
+      }
+    } catch (err) {
+      this.logger.warn({ err }, "Failed to poll bridge-level energy data");
     }
   }
 }

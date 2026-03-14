@@ -155,7 +155,9 @@ export type EquipmentType =
   | "thermostat"
   | "weather"
   | "gate"
-  | "heater";
+  | "heater"
+  | "energy_meter"
+  | "main_energy_meter";
 
 export interface Equipment {
   id: string;
@@ -250,9 +252,20 @@ export interface OrderBindingWithDetails extends OrderBinding {
   unit?: string;
 }
 
+/** A computed data value not backed by a device binding (e.g. energy cumuls). */
+export interface ComputedDataEntry {
+  alias: string;
+  value: unknown;
+  unit?: string;
+  category?: DataCategory;
+  lastUpdated: string | null;
+}
+
 export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
+  /** Computed data not backed by device bindings (e.g. energy aggregator cumuls). */
+  computedData?: ComputedDataEntry[];
 }
 
 // ============================================================
@@ -466,6 +479,8 @@ export type EngineEvent =
       value: unknown;
       previous: unknown;
       timestamp: string;
+      /** Optional source timestamp (epoch seconds) for aligned time-series writes. */
+      sourceTimestamp?: number;
     }
   | {
       type: "device.heartbeat";
@@ -487,6 +502,8 @@ export type EngineEvent =
       alias: string;
       value: unknown;
       previous: unknown;
+      /** Optional source timestamp (epoch seconds) for aligned time-series writes. */
+      sourceTimestamp?: number;
     }
   | {
       type: "equipment.order.executed";
@@ -779,4 +796,32 @@ export interface AppConfig {
   cors: {
     origins: string[];
   };
+}
+
+// ============================================================
+// Energy Dashboard
+// ============================================================
+
+export interface EnergyPoint {
+  time: string;
+  consumption: number; // Wh
+}
+
+export interface EnergyTotals {
+  total_consumption: number; // Wh
+}
+
+export interface EnergyHistoryResponse {
+  period: string;
+  from: string;
+  to: string;
+  resolution: "5min" | "1h" | "1d";
+  points: EnergyPoint[];
+  totals: EnergyTotals;
+}
+
+export interface EnergyStatus {
+  available: boolean;
+  sources: string[];
+  lastDataAt: string | null;
 }
