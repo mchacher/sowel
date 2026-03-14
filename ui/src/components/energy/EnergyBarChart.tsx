@@ -236,9 +236,9 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
             borderRadius: "6px",
             fontSize: "12px",
           }}
-          formatter={(value: number) => [formatKWh(value), "Consommation"]}
-          labelFormatter={(_label: string, payload: Array<{ payload?: ChartDatum }>) =>
-            payload[0]?.payload?.tooltipLabel ?? _label
+          formatter={(value: number | undefined) => [formatKWh(value ?? 0), "Consommation"]}
+          labelFormatter={(_label: unknown, payload: ReadonlyArray<{ payload?: ChartDatum }>) =>
+            payload[0]?.payload?.tooltipLabel ?? String(_label)
           }
         />
         <Bar
