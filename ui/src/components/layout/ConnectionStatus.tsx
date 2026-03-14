@@ -1,7 +1,7 @@
 import { useWebSocket } from "../../store/useWebSocket";
 import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { INTEGRATION_LABELS } from "../../constants";
+import { INTEGRATION_LABELS, INTEGRATION_SHORT_LABELS } from "../../constants";
 
 export function ConnectionStatus() {
   const { t } = useTranslation();
@@ -27,16 +27,18 @@ export function ConnectionStatus() {
   }
 
   // status === "connected" — check if any integration has issues
-  const disconnectedNames = Object.entries(integrationStatuses)
-    .filter(([, s]) => s === "disconnected" || s === "error")
-    .map(([id]) => INTEGRATION_LABELS[id] ?? id);
+  const errorEntries = Object.entries(integrationStatuses)
+    .filter(([, s]) => s === "disconnected" || s === "error");
+  const shortNames = errorEntries.map(([id]) => INTEGRATION_SHORT_LABELS[id] ?? id);
+  const fullNames = errorEntries.map(([id]) => INTEGRATION_LABELS[id] ?? id);
 
-  if (disconnectedNames.length > 0) {
+  if (errorEntries.length > 0) {
     return (
       <div className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-warning/10 text-warning">
         <AlertTriangle size={14} strokeWidth={1.5} />
-        <span className="text-[12px] font-medium hidden sm:inline">
-          {t("status.integrationWarning", { names: disconnectedNames.join(", ") })}
+        <span className="text-[12px] font-medium">
+          <span className="sm:hidden">{shortNames.join(", ")}</span>
+          <span className="hidden sm:inline">{t("status.integrationWarning", { names: fullNames.join(", ") })}</span>
         </span>
       </div>
     );
