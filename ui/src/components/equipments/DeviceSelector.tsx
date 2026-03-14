@@ -16,6 +16,8 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise"],
   gate: ["generic", "contact_door"],
   heater: ["generic", "light_state"],
+  energy_meter: ["energy"],
+  main_energy_meter: ["energy"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */

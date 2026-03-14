@@ -777,6 +777,49 @@ export function MotionSensorIcon({ active }: { active: boolean }) {
 // Contact sensor icon — capteur d'ouverture porte/fenêtre
 // ============================================================
 
+export function EnergyMeterIcon() {
+  const id = useId();
+  const bodyGrad = `energy-body-${id}`;
+  const screenGrad = `energy-screen-${id}`;
+
+  return (
+    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className="text-accent">
+      <defs>
+        <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.06" />
+        </linearGradient>
+        <linearGradient id={screenGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
+
+      {/* Meter body */}
+      <rect x="10" y="8" width="36" height="40" rx="4" fill={`url(#${bodyGrad})`} stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.25" />
+
+      {/* Display screen */}
+      <rect x="14" y="13" width="28" height="14" rx="2" fill={`url(#${screenGrad})`} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" />
+
+      {/* kWh digits hint */}
+      <text x="28" y="24" textAnchor="middle" fill="currentColor" opacity="0.45" fontSize="8" fontWeight="700" fontFamily="monospace">
+        kWh
+      </text>
+
+      {/* Lightning bolt */}
+      <path
+        d="M25 32 L29 32 L27 37 L31 37 L24 46 L26 40 L23 40 Z"
+        fill="currentColor"
+        opacity="0.35"
+      />
+    </svg>
+  );
+}
+
+// ============================================================
+// Contact sensor icon — capteur d'ouverture porte/fenêtre
+// ============================================================
+
 export function ContactSensorIcon({ open }: { open: boolean }) {
   return (
     <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className={open ? "text-warning" : "text-primary"}>

@@ -7,6 +7,7 @@ import { TimeRangeSelector } from "./TimeRangeSelector";
 import { rangeToFrom } from "./history-utils";
 import type { TimeRange } from "./history-utils";
 import { TimeSeriesChart } from "./TimeSeriesChart";
+import { HistoryBarChart } from "./HistoryBarChart";
 
 interface HistoryPanelProps {
   equipmentId: string;
@@ -17,6 +18,7 @@ interface ChartState {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
   dataType?: string;
+  category?: string;
   loading: boolean;
   error: string | null;
   fetchTime: number;
@@ -47,7 +49,10 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
       .catch(() => setHistoryEnabled(false));
   }, []);
 
-  const historizedBindings = bindings.filter((b) => b.effectiveOn);
+  // Filter: historized bindings only, exclude internal metrics (energy delta used for aggregation only)
+  const INTERNAL_ALIASES = new Set(["energy"]);
+  const historizedBindings = bindings
+    .filter((b) => b.effectiveOn && !INTERNAL_ALIASES.has(b.alias));
 
   const fetchChart = useCallback(
     async (alias: string, timeRange: TimeRange) => {
@@ -67,6 +72,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
             points: result.points,
             resolution: result.resolution,
             dataType: result.dataType,
+            category: result.category,
             loading: false,
             error: null,
             fetchTime: Date.now(),
@@ -192,14 +198,24 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                       <div className="flex justify-end mb-2">
                         <TimeRangeSelector value={range} onChange={setRange} />
                       </div>
-                      <TimeSeriesChart
-                        points={chart?.points ?? []}
-                        range={range}
-                        resolution={chart?.resolution ?? "raw"}
-                        unit={unit}
-                        fetchTime={chart?.fetchTime}
-                        dataType={chart?.dataType}
-                      />
+                      {chart?.category === "energy" ? (
+                        <HistoryBarChart
+                          points={chart?.points ?? []}
+                          range={range}
+                          resolution={chart?.resolution ?? "raw"}
+                          unit={unit}
+                        />
+                      ) : (
+                        <TimeSeriesChart
+                          points={chart?.points ?? []}
+                          range={range}
+                          resolution={chart?.resolution ?? "raw"}
+                          unit={unit}
+                          fetchTime={chart?.fetchTime}
+                          dataType={chart?.dataType}
+                          category={chart?.category}
+                        />
+                      )}
                       {chart?.resolution && (
                         <div className="text-[10px] text-text-tertiary text-right mt-1">
                           {t("history.resolution")}: {t(RESOLUTION_I18N[chart.resolution])}

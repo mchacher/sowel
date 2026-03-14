@@ -5,12 +5,20 @@ import type { HistoryPoint, HistoryQueryResult } from "../shared/types.js";
 type Resolution = "raw" | "1h" | "1d";
 
 /**
- * Auto-select resolution based on time range.
- * ≤6h → raw, ≤7d → 1h, >7d → 1d
+ * Auto-select resolution based on time range and category.
+ * Default: ≤6h → raw, ≤7d → 1h, >7d → 1d
+ * Power: ≤7d → raw (5min data, ~2000 points max), >7d → 1h
  */
-function autoResolution(fromMs: number, toMs: number): Resolution {
+function autoResolution(fromMs: number, toMs: number, category?: string): Resolution {
   const rangeMs = toMs - fromMs;
   const hours = rangeMs / 3_600_000;
+
+  if (category === "power") {
+    // Power data (5min intervals) — keep raw granularity up to 24h (~288 points)
+    if (hours <= 24) return "raw";
+    return "1h";
+  }
+
   if (hours <= 6) return "raw";
   if (hours <= 168) return "1h"; // 7 days
   return "1d";
@@ -36,12 +44,16 @@ function parseFrom(from: string): Date {
 }
 
 /**
- * Resolve the bucket name based on resolution.
- * - raw → base bucket (e.g. "sowel")
- * - 1h  → base bucket + "-hourly" (e.g. "sowel-hourly")
- * - 1d  → base bucket + "-daily" (e.g. "sowel-daily")
+ * Resolve the bucket name based on resolution and category.
+ * Energy category uses dedicated buckets (e.g. "sowel-energy-hourly").
+ * Other categories use the standard downsampled buckets (e.g. "sowel-hourly").
  */
-function resolveBucket(baseBucket: string, resolution: Resolution): string {
+function resolveBucket(baseBucket: string, resolution: Resolution, category?: string): string {
+  if (category === "energy") {
+    if (resolution === "1h") return `${baseBucket}-energy-hourly`;
+    if (resolution === "1d") return `${baseBucket}-energy-daily`;
+    return baseBucket;
+  }
   if (resolution === "1h") return `${baseBucket}-hourly`;
   if (resolution === "1d") return `${baseBucket}-daily`;
   return baseBucket;
@@ -76,8 +88,8 @@ function buildFluxQuery(params: {
   |> filter(fn: (r) => r._field == "value_number")`;
 
   if (resolution === "raw") {
-    // Raw data — higher limit for discrete state data over long ranges
-    const limit = isDiscrete ? 2000 : 500;
+    // Raw data — higher limits for discrete state and power data over long ranges
+    const limit = isDiscrete ? 2000 : 2500;
     query += `
   |> sort(columns: ["_time"])
   |> limit(n: ${limit})`;
@@ -159,6 +171,7 @@ export async function queryHistory(
     to?: string;
     aggregation?: "raw" | "1h" | "1d" | "auto";
     dataType?: string;
+    category?: string;
   },
   logger: Logger,
 ): Promise<HistoryQueryResult> {
@@ -176,14 +189,15 @@ export async function queryHistory(
   const resolution = isDiscrete
     ? ("raw" as Resolution)
     : params.aggregation === "auto" || !params.aggregation
-      ? autoResolution(fromDate.getTime(), toDate.getTime())
+      ? autoResolution(fromDate.getTime(), toDate.getTime(), params.category)
       : params.aggregation;
 
   const queryApi = client.getQueryApi(config.org);
   const points: HistoryPoint[] = [];
 
   // Resolve target bucket based on resolution (raw, hourly, or daily)
-  const targetBucket = resolveBucket(config.bucket, resolution);
+  // Energy category uses dedicated energy buckets
+  const targetBucket = resolveBucket(config.bucket, resolution, params.category);
 
   try {
     if (resolution === "raw") {
@@ -204,6 +218,50 @@ export async function queryHistory(
         const value = o._value as number | undefined;
         if (time && typeof value === "number") {
           points.push({ time, value });
+        }
+      }
+    } else if (params.category === "energy") {
+      // Energy buckets store value_number (not mean/min/max) — simple query
+      const flux = buildFluxQuery({
+        bucket: targetBucket,
+        equipmentId: params.equipmentId,
+        alias: params.alias,
+        from: fromDate,
+        to: toDate,
+        resolution,
+      });
+
+      for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
+        const o = tableMeta.toObject(values);
+        const time = o._time as string | undefined;
+        const value = o._value as number | undefined;
+        if (time && typeof value === "number") {
+          points.push({ time, value });
+        }
+      }
+
+      // Fallback: energy bucket has no data for this alias → try raw bucket with on-the-fly aggregation
+      if (points.length === 0 && targetBucket !== config.bucket) {
+        logger.debug(
+          { bucket: targetBucket, equipmentId: params.equipmentId, alias: params.alias },
+          "No data in energy bucket, falling back to raw",
+        );
+        const fallbackFlux = buildFluxQuery({
+          bucket: config.bucket,
+          equipmentId: params.equipmentId,
+          alias: params.alias,
+          from: fromDate,
+          to: toDate,
+          resolution,
+        });
+
+        for await (const { values, tableMeta } of queryApi.iterateRows(fallbackFlux)) {
+          const o = tableMeta.toObject(values);
+          const time = o._time as string | undefined;
+          const value = o._value as number | undefined;
+          if (time && typeof value === "number") {
+            points.push({ time, value });
+          }
         }
       }
     } else {

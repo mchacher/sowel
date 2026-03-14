@@ -28,7 +28,7 @@ import { ZoneModesSection } from "../components/home/ZoneModesSection";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
-import type { ZoneWithChildren } from "../types";
+import type { EquipmentType, ZoneWithChildren } from "../types";
 
 export function HomePage() {
   useWsSubscription(["zones", "equipments", "modes", "recipes"]);
@@ -262,6 +262,11 @@ export function HomePage() {
           title={t("equipments.createEquipment")}
           defaultZoneId={zoneId}
           zones={tree}
+          excludeTypes={(() => {
+            const exclude = new Set<EquipmentType>();
+            if (equipments.some((eq) => eq.type === "main_energy_meter")) exclude.add("main_energy_meter");
+            return exclude;
+          })()}
           boundDeviceIds={new Set(equipments.flatMap((e) => [
             ...e.dataBindings.map((b) => b.deviceId),
             ...e.orderBindings.map((b) => b.deviceId),

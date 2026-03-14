@@ -5,7 +5,7 @@ import { useZones } from "../store/useZones";
 import { EquipmentCard } from "../components/equipments/EquipmentCard";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
-import type { EquipmentWithDetails, ZoneWithChildren } from "../types";
+import type { EquipmentType, EquipmentWithDetails, ZoneWithChildren } from "../types";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
@@ -118,6 +118,7 @@ export function EquipmentsPage() {
         <EquipmentForm
           title={t("equipments.createEquipment")}
           zones={tree}
+          excludeTypes={singletonExcludeTypes(equipments)}
           boundDeviceIds={new Set(equipments.flatMap((e) => [
             ...e.dataBindings.map((b) => b.deviceId),
             ...e.orderBindings.map((b) => b.deviceId),
@@ -140,6 +141,17 @@ export function EquipmentsPage() {
       )}
     </div>
   );
+}
+
+/** Singleton equipment types — only one instance allowed. */
+const SINGLETON_TYPES: EquipmentType[] = ["main_energy_meter"];
+
+function singletonExcludeTypes(equipments: EquipmentWithDetails[]): Set<EquipmentType> {
+  const exclude = new Set<EquipmentType>();
+  for (const t of SINGLETON_TYPES) {
+    if (equipments.some((eq) => eq.type === t)) exclude.add(t);
+  }
+  return exclude;
 }
 
 function groupByZone(

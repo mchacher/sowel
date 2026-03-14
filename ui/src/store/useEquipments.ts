@@ -121,14 +121,29 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
     set((state) => ({
       equipments: state.equipments.map((eq) => {
         if (eq.id !== equipmentId) return eq;
-        return {
-          ...eq,
-          dataBindings: eq.dataBindings.map((db) => {
-            if (db.alias !== alias) return db;
-            const valueChanged = JSON.stringify(db.value) !== JSON.stringify(value);
-            return { ...db, value, lastUpdated: now, lastChanged: valueChanged ? now : db.lastChanged };
-          }),
-        };
+
+        // Check if alias matches a data binding
+        const hasBinding = eq.dataBindings.some((db) => db.alias === alias);
+
+        if (hasBinding) {
+          return {
+            ...eq,
+            dataBindings: eq.dataBindings.map((db) => {
+              if (db.alias !== alias) return db;
+              const valueChanged = JSON.stringify(db.value) !== JSON.stringify(value);
+              return { ...db, value, lastUpdated: now, lastChanged: valueChanged ? now : db.lastChanged };
+            }),
+          };
+        }
+
+        // No binding found — update computedData (e.g. energy cumuls from EnergyAggregator)
+        const existing = eq.computedData ?? [];
+        const idx = existing.findIndex((c) => c.alias === alias);
+        const entry = { alias, value, lastUpdated: now, unit: idx >= 0 ? existing[idx].unit : undefined, category: idx >= 0 ? existing[idx].category : undefined };
+        const updated = idx >= 0
+          ? existing.map((c, i) => (i === idx ? { ...c, value, lastUpdated: now } : c))
+          : [...existing, entry];
+        return { ...eq, computedData: updated };
       }),
     }));
   },

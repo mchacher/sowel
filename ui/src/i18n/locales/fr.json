@@ -157,8 +157,9 @@
   "equipments.bindings": "Liaisons",
   "equipments.bindingCount_one": "{{count}} liaison",
   "equipments.bindingCount_other": "{{count}} liaisons",
-  "equipments.dataBindings": "Liaisons données",
-  "equipments.orderBindings": "Liaisons commandes",
+  "equipments.dataBindings": "Données",
+  "equipments.orderBindings": "Commandes",
+  "equipments.computedData": "Données calculées",
   "equipments.dataCount_one": "{{count}} donnée",
   "equipments.dataCount_other": "{{count}} données",
   "equipments.orderCount_one": "{{count}} commande",
@@ -188,10 +189,13 @@
   "equipments.type.weather": "Station Météo",
   "equipments.type.gate": "Ouvrant",
   "equipments.type.heater": "Radiateur électrique",
+  "equipments.type.energy_meter": "Compteur d'Énergie (sous-compteur)",
+  "equipments.type.main_energy_meter": "Compteur d'Énergie (principal)",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
   "equipments.group.climate": "Thermostat",
+  "equipments.group.energy": "Énergie",
   "equipments.group.sensors": "Capteurs",
   "equipments.group.weather": "Météo",
   "equipments.group.other": "Autres",
@@ -763,5 +767,18 @@
   "qrLogin.connecting": "Connexion en cours...",
   "qrLogin.invalidToken": "Token invalide ou expiré",
   "qrLogin.goToLogin": "Aller à la page de connexion",
-  "qrLogin.error": "Échec de la connexion"
+  "qrLogin.error": "Échec de la connexion",
+
+  "nav.energy": "Énergie",
+  "nav.energy.consumption": "Consommation",
+
+  "energy.consumption": "Consommation",
+  "energy.today": "Aujourd'hui",
+  "energy.hour": "1h",
+  "energy.month": "Mois",
+  "energy.cumuls": "Consommation énergie",
+  "energy.cumul.hour": "Heure en cours",
+  "energy.cumul.day": "Aujourd'hui",
+  "energy.cumul.month": "Ce mois",
+  "energy.cumul.year": "Cette année"
 }

@@ -19,6 +19,7 @@ import { autoCreateBindings, removeAllBindings } from "../components/equipments/
 import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
+import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import {
   ArrowLeft,
   Loader2,
@@ -37,6 +38,7 @@ import {
   X,
   Database,
   Settings,
+  Activity,
 } from "lucide-react";
 import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails, HistoryBindingState } from "../types";
@@ -298,6 +300,11 @@ export function EquipmentDetailPage() {
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
+      {/* Energy cumuls */}
+      {equipment.type === "main_energy_meter" && equipment.computedData && (
+        <EnergyDataPanel computedData={equipment.computedData} />
+      )}
+
       {/* Button actions */}
       {equipment.type === "button" && (
         <ButtonActionsSection equipmentId={equipment.id} />
@@ -379,6 +386,28 @@ export function EquipmentDetailPage() {
                   </div>
                 )}
               </div>
+
+              {/* Computed Data (e.g. energy cumuls) */}
+              {equipment.computedData && equipment.computedData.length > 0 && (
+                <div>
+                  <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5 mb-2">
+                    <Activity size={13} strokeWidth={1.5} />
+                    {t("equipments.computedData", "Computed Data")}
+                  </h4>
+                  <div className="space-y-1">
+                    {equipment.computedData.map((cd) => (
+                      <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-accent/5 border border-accent/15 text-[12px]">
+                        <span className="font-mono font-medium text-accent">{cd.alias}</span>
+                        {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
+                        <span className="ml-auto font-mono text-text">
+                          {cd.value !== null && cd.value !== undefined ? String(Math.round(cd.value as number)) : "—"}
+                          {cd.unit && <span className="text-text-tertiary ml-0.5">{cd.unit}</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Order Bindings */}
               <div>
