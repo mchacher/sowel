@@ -9,3 +9,15 @@ export const INTEGRATION_LABELS: Record<string, string> = {
   shelly: "Shelly",
   custom_mqtt: "MQTT",
 };
+
+/** Short labels for mobile / compact display. */
+export const INTEGRATION_SHORT_LABELS: Record<string, string> = {
+  zigbee2mqtt: "Z2M",
+  panasonic_cc: "Panasonic",
+  mcz_maestro: "MCZ",
+  netatmo_hc: "Legrand",
+  tasmota: "Tasmota",
+  esphome: "ESPHome",
+  shelly: "Shelly",
+  custom_mqtt: "MQTT",
+};

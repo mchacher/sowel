@@ -6,6 +6,7 @@ import { useEquipments } from "./useEquipments";
 import { useZoneAggregation } from "./useZoneAggregation";
 import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
+import { INTEGRATION_LABELS } from "../constants";
 
 export type WsTopic = "devices" | "equipments" | "zones" | "modes" | "recipes" | "calendar" | "system";
 
@@ -192,10 +193,21 @@ export const useWebSocket = create<WebSocketState>((set) => ({
         .then((data: { integrations?: Record<string, { status: string }> }) => {
           if (data.integrations) {
             const statuses: Record<string, string> = {};
+            const alarms = new Map<string, SystemAlarm>();
             for (const [id, info] of Object.entries(data.integrations)) {
               statuses[id] = info.status;
+              // Restore alarm banner for integrations in error state
+              if (info.status === "error") {
+                const label = INTEGRATION_LABELS[id] ?? id;
+                alarms.set(`poll-fail:${id}`, {
+                  alarmId: `poll-fail:${id}`,
+                  level: "error",
+                  source: label,
+                  message: "Communication en échec",
+                });
+              }
             }
-            set({ integrationStatuses: statuses });
+            set({ integrationStatuses: statuses, alarms });
           }
         })
         .catch(() => {
