@@ -4,8 +4,10 @@ import { useEnergy } from "../../store/useEnergy";
 import { PeriodSelector } from "./PeriodSelector";
 import { EnergyBarChart } from "./EnergyBarChart";
 
-function formatKWh(wh: number): string {
-  return (wh / 1000).toFixed(2);
+function formatKWh(wh: number, period: string): string {
+  const kwh = wh / 1000;
+  if (period === "day") return kwh.toFixed(2);
+  return Math.round(kwh).toString();
 }
 
 export function EnergyPage() {
@@ -39,7 +41,7 @@ export function EnergyPage() {
           <div className="flex items-center justify-end mb-4">
             {history && (
               <span className="text-[18px] font-bold text-text tabular-nums">
-                {formatKWh(history.totals.total_consumption)}
+                {formatKWh(history.totals.total_consumption, period)}
                 <span className="text-[13px] font-medium text-text-secondary ml-1">kWh</span>
               </span>
             )}
