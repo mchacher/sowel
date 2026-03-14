@@ -649,7 +649,7 @@ from(bucket: "${rawBucket}")
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
-  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)
+  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
   |> to(bucket: "${energyHourly}", org: "${org}")`;
 }
 
@@ -660,7 +660,7 @@ from(bucket: "${energyHourly}")
   |> range(start: -2d)
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.category == "energy")
-  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)
+  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start")
   |> to(bucket: "${energyDaily}", org: "${org}")`;
 }
 

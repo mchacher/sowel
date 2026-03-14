@@ -89,6 +89,16 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
           { name: "influx-raw.csv", bucket: influxConfig.bucket, range: "-7d" },
           { name: "influx-hourly.csv", bucket: `${influxConfig.bucket}-hourly`, range: "-90d" },
           { name: "influx-daily.csv", bucket: `${influxConfig.bucket}-daily`, range: "-5y" },
+          {
+            name: "influx-energy-hourly.csv",
+            bucket: `${influxConfig.bucket}-energy-hourly`,
+            range: "-2y",
+          },
+          {
+            name: "influx-energy-daily.csv",
+            bucket: `${influxConfig.bucket}-energy-daily`,
+            range: "-10y",
+          },
         ];
 
         for (const b of buckets) {
