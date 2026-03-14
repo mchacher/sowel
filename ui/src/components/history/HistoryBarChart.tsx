@@ -110,7 +110,7 @@ export function HistoryBarChart({ points, range, height = 200 }: HistoryBarChart
             borderRadius: "6px",
             fontSize: "12px",
           }}
-          formatter={(value: number) => [formatKWh(value), "Consommation"]}
+          formatter={(value: number | undefined) => [formatKWh(value ?? 0), "Consommation"]}
           labelFormatter={(_, payload) => {
             if (payload?.[0]?.payload?.time) {
               return formatTooltipTime(payload[0].payload.time as string);
