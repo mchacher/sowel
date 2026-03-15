@@ -60,7 +60,7 @@ export function EnergyPage() {
                   </span>
                   {hasHpHc && (
                     <span className="text-text-tertiary">
-                      ({t("energy.peakHours")} : {formatKWh(history.totals.total_hp, period)} — {t("energy.offPeakHours")} : {formatKWh(history.totals.total_hc, period)})
+                      ({t("energy.peakHours")} : {formatKWh(history.totals.total_hp, period)} kWh — {t("energy.offPeakHours")} : {formatKWh(history.totals.total_hc, period)} kWh)
                     </span>
                   )}
                   {hasProduction && history.totals.total_autoconso > 0 && (
