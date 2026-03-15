@@ -1,14 +1,9 @@
 # Scripts utilitaires
 
-## `fetch-logs.py`
+## `logs/`
 
-Récupère les logs Sowel via l'API REST (ring buffer en mémoire).
-
-```bash
-python3 scripts/fetch-logs.py [module] [level] [limit]
-python3 scripts/fetch-logs.py netatmo-poller debug 50
-python3 scripts/fetch-logs.py energy-api info 20
-```
+Scripts d'analyse et récupération des logs Sowel.
+Voir [logs/README.md](logs/README.md).
 
 ## `energy/`
 
