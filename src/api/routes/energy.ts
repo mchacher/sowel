@@ -1,22 +1,33 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
+import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
+import type { TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { InfluxClient } from "../../history/influx-client.js";
 import type {
   EnergyPoint,
   EnergyTotals,
   EnergyHistoryResponse,
   EnergyStatus,
+  TariffConfig,
 } from "../../shared/types.js";
 
 interface EnergyDeps {
   equipmentManager: EquipmentManager;
   influxClient: InfluxClient;
+  settingsManager: SettingsManager;
+  tariffClassifier: TariffClassifier;
   logger: Logger;
 }
 
 export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): void {
-  const { equipmentManager, influxClient, logger: parentLogger } = deps;
+  const {
+    equipmentManager,
+    influxClient,
+    settingsManager,
+    tariffClassifier,
+    logger: parentLogger,
+  } = deps;
   const logger = parentLogger.child({ module: "energy-api" });
 
   // ============================================================
@@ -28,6 +39,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       available: eqId !== null,
       sources: eqId ? ["legrand"] : [],
       lastDataAt: null, // TODO: query InfluxDB for latest point
+      tariffConfigured: tariffClassifier.getConfig() !== null,
     };
   });
 
@@ -58,29 +70,60 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);
 
     try {
-      let points = await queryEnergyPoints(
-        client,
-        config.org,
-        bucket,
-        equipmentId,
-        from,
-        to,
-        resolution,
-      );
-
-      // For day view reading from raw bucket: if no data found (e.g. raw expired
-      // but hourly exists from backfill), fall back to hourly bucket
-      if (points.length === 0 && period === "day" && !bucket.includes("-energy-")) {
-        points = await queryEnergyPoints(
-          client,
-          config.org,
-          `${config.bucket}-energy-hourly`,
-          equipmentId,
-          from,
-          to,
-          resolution,
-        );
+      // Query HP/HC points and legacy (total energy) points, then merge.
+      // For timestamps with HP/HC data, use those. For timestamps with only
+      // legacy data (pre-migration or written before tariff config), use legacy as HP.
+      const buckets = [bucket];
+      if (period === "day" && !bucket.includes("-energy-")) {
+        buckets.push(`${config.bucket}-energy-hourly`);
       }
+
+      let hpHcPoints: EnergyPoint[] = [];
+      let legacyPoints: EnergyPoint[] = [];
+
+      for (const b of buckets) {
+        if (hpHcPoints.length === 0) {
+          hpHcPoints = await queryEnergyHpHcPoints(
+            client,
+            config.org,
+            b,
+            equipmentId,
+            from,
+            to,
+            resolution,
+          );
+        }
+        if (legacyPoints.length === 0) {
+          legacyPoints = await queryEnergyLegacyPoints(
+            client,
+            config.org,
+            b,
+            equipmentId,
+            from,
+            to,
+            resolution,
+          );
+        }
+        if (hpHcPoints.length > 0 || legacyPoints.length > 0) break;
+      }
+
+      // Merge: HP/HC points take priority; fill gaps with legacy
+      const hpHcByTime = new Map(hpHcPoints.map((p) => [p.time, p]));
+      const points: EnergyPoint[] = [];
+      const allTimes = new Set([
+        ...hpHcPoints.map((p) => p.time),
+        ...legacyPoints.map((p) => p.time),
+      ]);
+      for (const time of allTimes) {
+        const hpHc = hpHcByTime.get(time);
+        if (hpHc) {
+          points.push(hpHc);
+        } else {
+          const legacy = legacyPoints.find((p) => p.time === time);
+          if (legacy) points.push(legacy);
+        }
+      }
+      points.sort((a, b) => a.time.localeCompare(b.time));
 
       const totals = computeTotals(points);
 
@@ -99,27 +142,68 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.status(500).send({ error: "Failed to query energy data" });
     }
   });
+
+  // ============================================================
+  // GET /api/v1/settings/energy/tariff
+  // ============================================================
+  app.get("/api/v1/settings/energy/tariff", async () => {
+    const config = tariffClassifier.getConfig();
+    return config ?? { schedules: [], prices: { hp: 0, hc: 0 } };
+  });
+
+  // ============================================================
+  // PUT /api/v1/settings/energy/tariff
+  // ============================================================
+  app.put<{ Body: TariffConfig }>("/api/v1/settings/energy/tariff", async (request, reply) => {
+    const config = request.body;
+
+    // Validate structure
+    if (!config || !Array.isArray(config.schedules) || !config.prices) {
+      return reply
+        .status(400)
+        .send({ error: "Invalid tariff config: missing schedules or prices" });
+    }
+
+    // Validate prices
+    if (typeof config.prices.hp !== "number" || typeof config.prices.hc !== "number") {
+      return reply.status(400).send({ error: "Invalid prices: hp and hc must be numbers" });
+    }
+
+    // Validate schedules
+    for (const schedule of config.schedules) {
+      if (!Array.isArray(schedule.days) || !Array.isArray(schedule.slots)) {
+        return reply.status(400).send({ error: "Invalid schedule: missing days or slots" });
+      }
+      for (const day of schedule.days) {
+        if (typeof day !== "number" || day < 0 || day > 6) {
+          return reply.status(400).send({ error: "Invalid day: must be 0-6" });
+        }
+      }
+      for (const slot of schedule.slots) {
+        if (!slot.start || !slot.end || !["hp", "hc"].includes(slot.tariff)) {
+          return reply
+            .status(400)
+            .send({ error: "Invalid slot: must have start, end, and tariff (hp/hc)" });
+        }
+      }
+    }
+
+    settingsManager.set("energy.tariff", JSON.stringify(config));
+    logger.info("Tariff configuration updated");
+    return { ok: true };
+  });
 }
 
 // ============================================================
 // Helpers
 // ============================================================
 
-/**
- * Find the Equipment ID for the main energy meter.
- */
 function findEnergyEquipmentId(equipmentManager: EquipmentManager): string | null {
   const equipments = equipmentManager.getAll();
   const meter = equipments.find((eq) => eq.type === "main_energy_meter");
   return meter?.id ?? null;
 }
 
-/**
- * Compute time range and resolution based on period.
- *
- * Day/week views read from the energy-hourly bucket (populated by InfluxDB task).
- * Month/year views read from the energy-daily bucket.
- */
 function computeRange(
   period: string,
   dateStr: string,
@@ -132,10 +216,8 @@ function computeRange(
       const from = new Date(date);
       const to = new Date(date);
       to.setDate(to.getDate() + 1);
-      // Raw bucket has 7-day retention; use it for recent days (real-time data),
-      // fall back to hourly bucket for older days
       const ageMs = Date.now() - from.getTime();
-      const isRecent = ageMs < 6 * 24 * 60 * 60 * 1000; // < 6 days (safe margin)
+      const isRecent = ageMs < 6 * 24 * 60 * 60 * 1000;
       return {
         from,
         to,
@@ -172,9 +254,9 @@ function computeRange(
 }
 
 /**
- * Query energy points from InfluxDB.
+ * Query energy_hp and energy_hc points from InfluxDB, merge by timestamp.
  */
-async function queryEnergyPoints(
+async function queryEnergyHpHcPoints(
   client: import("@influxdata/influxdb-client").InfluxDB,
   org: string,
   bucket: string,
@@ -184,10 +266,73 @@ async function queryEnergyPoints(
   _resolution: "5min" | "1h" | "1d",
 ): Promise<EnergyPoint[]> {
   const queryApi = client.getQueryApi(org);
+  const needsAggregation = _resolution === "1h" && !bucket.includes("-energy-");
 
-  const field = "value_number";
+  // Query both energy_hp and energy_hc in a single Flux query using alias filter
+  const aliasFilter = `r.alias == "energy_hp" or r.alias == "energy_hc"`;
+  const flux = needsAggregation
+    ? `from(bucket: "${bucket}")
+  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => ${aliasFilter})
+  |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
+  |> sort(columns: ["_time"])`
+    : `from(bucket: "${bucket}")
+  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => ${aliasFilter})
+  |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> sort(columns: ["_time"])`;
 
-  // When reading raw 30-min data for day/week views, aggregate to hourly in the query
+  // Collect HP and HC values indexed by timestamp
+  const hpMap = new Map<string, number>();
+  const hcMap = new Map<string, number>();
+
+  const rows = queryApi.iterateRows(flux);
+  for await (const { values, tableMeta } of rows) {
+    const row = tableMeta.toObject(values) as { _time: string; _value: number; alias: string };
+    if (row._value == null) continue;
+    if (row.alias === "energy_hp") {
+      hpMap.set(row._time, (hpMap.get(row._time) ?? 0) + row._value);
+    } else if (row.alias === "energy_hc") {
+      hcMap.set(row._time, (hcMap.get(row._time) ?? 0) + row._value);
+    }
+  }
+
+  // Merge into EnergyPoint array
+  const allTimes = new Set([...hpMap.keys(), ...hcMap.keys()]);
+  const points: EnergyPoint[] = [];
+  for (const time of allTimes) {
+    const hp = hpMap.get(time) ?? 0;
+    const hc = hcMap.get(time) ?? 0;
+    if (hp + hc > 0) {
+      points.push({ time, hp, hc });
+    }
+  }
+
+  points.sort((a, b) => a.time.localeCompare(b.time));
+  return points;
+}
+
+/**
+ * Fallback: query legacy `energy` alias (pre-HP/HC migration).
+ * Returns all consumption as HP.
+ */
+async function queryEnergyLegacyPoints(
+  client: import("@influxdata/influxdb-client").InfluxDB,
+  org: string,
+  bucket: string,
+  equipmentId: string,
+  from: Date,
+  to: Date,
+  _resolution: "5min" | "1h" | "1d",
+): Promise<EnergyPoint[]> {
+  const queryApi = client.getQueryApi(org);
   const needsAggregation = _resolution === "1h" && !bucket.includes("-energy-");
 
   const flux = needsAggregation
@@ -197,7 +342,7 @@ async function queryEnergyPoints(
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "${field}")
+  |> filter(fn: (r) => r._field == "value_number")
   |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
   |> sort(columns: ["_time"])`
     : `from(bucket: "${bucket}")
@@ -206,32 +351,31 @@ async function queryEnergyPoints(
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "${field}")
+  |> filter(fn: (r) => r._field == "value_number")
   |> sort(columns: ["_time"])`;
 
   const points: EnergyPoint[] = [];
-
   const rows = queryApi.iterateRows(flux);
   for await (const { values, tableMeta } of rows) {
     const row = tableMeta.toObject(values) as { _time: string; _value: number };
     if (row._value != null && row._value > 0) {
-      points.push({
-        time: row._time,
-        consumption: row._value,
-      });
+      points.push({ time: row._time, hp: row._value, hc: 0 });
     }
   }
 
   return points;
 }
 
-/**
- * Compute totals from energy points.
- */
 function computeTotals(points: EnergyPoint[]): EnergyTotals {
-  let totalConsumption = 0;
+  let totalHp = 0;
+  let totalHc = 0;
   for (const p of points) {
-    totalConsumption += p.consumption;
+    totalHp += p.hp;
+    totalHc += p.hc;
   }
-  return { total_consumption: totalConsumption };
+  return {
+    total_consumption: totalHp + totalHc,
+    total_hp: totalHp,
+    total_hc: totalHc,
+  };
 }

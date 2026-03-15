@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ResponsiveContainer,
   BarChart,
@@ -22,10 +23,12 @@ interface ChartDatum {
   label: string;
   /** Tooltip label — e.g. "14h00 – 15h00" for day view */
   tooltipLabel?: string;
-  consumption: number; // always in kWh for display
+  hp: number; // kWh
+  hc: number; // kWh
 }
 
-const CONSUMPTION_COLOR = "#4F7BE8";
+const HP_COLOR = "#4F7BE8";
+const HC_COLOR = "#93B5F0";
 
 // ============================================================
 // Aggregation: collapse raw points into period-appropriate bars
@@ -33,39 +36,41 @@ const CONSUMPTION_COLOR = "#4F7BE8";
 
 /** Day view: always 24 bars (00:00–23:00), empty bars for hours without data */
 function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
-  const byHour = new Map<number, number>();
+  const hpByHour = new Map<number, number>();
+  const hcByHour = new Map<number, number>();
 
   for (const p of points) {
     const d = new Date(p.time);
     const hour = d.getHours();
-    byHour.set(hour, (byHour.get(hour) ?? 0) + p.consumption);
+    hpByHour.set(hour, (hpByHour.get(hour) ?? 0) + p.hp);
+    hcByHour.set(hour, (hcByHour.get(hour) ?? 0) + p.hc);
   }
 
   return Array.from({ length: 24 }, (_, hour) => ({
     label: `${String(hour).padStart(2, "0")}h`,
     tooltipLabel: `${String(hour).padStart(2, "0")}h00 – ${String((hour + 1) % 24).padStart(2, "0")}h00`,
-    consumption: (byHour.get(hour) ?? 0) / 1000,
+    hp: (hpByHour.get(hour) ?? 0) / 1000,
+    hc: (hcByHour.get(hour) ?? 0) / 1000,
   }));
 }
 
 /** Week view: always 7 bars (Mon–Sun), empty bars for days without data */
 function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  // Sum hourly points by local date
-  const byDay = new Map<string, number>();
+  const hpByDay = new Map<string, number>();
+  const hcByDay = new Map<string, number>();
   for (const p of points) {
     const d = new Date(p.time);
     const key = localDateKey(d);
-    byDay.set(key, (byDay.get(key) ?? 0) + p.consumption);
+    hpByDay.set(key, (hpByDay.get(key) ?? 0) + p.hp);
+    hcByDay.set(key, (hcByDay.get(key) ?? 0) + p.hc);
   }
 
-  // Compute Monday of the week containing the given date
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
   const dayOfWeek = ref.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(ref);
   monday.setDate(monday.getDate() + mondayOffset);
 
-  // Generate 7 days
   return Array.from({ length: 7 }, (_, i) => {
     const day = new Date(monday);
     day.setDate(day.getDate() + i);
@@ -79,18 +84,21 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     return {
       label,
       tooltipLabel,
-      consumption: (byDay.get(key) ?? 0) / 1000,
+      hp: (hpByDay.get(key) ?? 0) / 1000,
+      hc: (hcByDay.get(key) ?? 0) / 1000,
     };
   });
 }
 
 /** Month view: always N bars (1 per day of the month), empty bars for days without data */
 function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  const byDay = new Map<string, number>();
+  const hpByDay = new Map<string, number>();
+  const hcByDay = new Map<string, number>();
   for (const p of points) {
     const d = new Date(p.time);
     const key = localDateKey(d);
-    byDay.set(key, (byDay.get(key) ?? 0) + p.consumption);
+    hpByDay.set(key, (hpByDay.get(key) ?? 0) + p.hp);
+    hcByDay.set(key, (hcByDay.get(key) ?? 0) + p.hc);
   }
 
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
@@ -107,7 +115,8 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     return {
       label: String(i + 1),
       tooltipLabel,
-      consumption: (byDay.get(key) ?? 0) / 1000,
+      hp: (hpByDay.get(key) ?? 0) / 1000,
+      hc: (hcByDay.get(key) ?? 0) / 1000,
     };
   });
 }
@@ -117,10 +126,12 @@ function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
   const year = ref.getFullYear();
 
-  const monthTotals = new Array<number>(12).fill(0);
+  const hpTotals = new Array<number>(12).fill(0);
+  const hcTotals = new Array<number>(12).fill(0);
   for (const p of points) {
     const d = new Date(p.time);
-    monthTotals[d.getMonth()] += p.consumption;
+    hpTotals[d.getMonth()] += p.hp;
+    hcTotals[d.getMonth()] += p.hc;
   }
 
   return Array.from({ length: 12 }, (_, i) => {
@@ -131,7 +142,8 @@ function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     return {
       label: capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "short" })),
       tooltipLabel,
-      consumption: monthTotals[i] / 1000,
+      hp: hpTotals[i] / 1000,
+      hc: hcTotals[i] / 1000,
     };
   });
 }
@@ -182,7 +194,12 @@ function formatYAxis(kwh: number): string {
 // ============================================================
 
 export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBarChartProps) {
+  const { t } = useTranslation();
   const data = useMemo(() => buildChartData(points, period, date), [points, period, date]);
+
+  const hasHpHc = useMemo(() => {
+    return data.some((d) => d.hc > 0);
+  }, [data]);
 
   // Fixed gridline intervals per period
   const yTicks = useMemo(() => {
@@ -193,7 +210,7 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
       year: 500,
     };
     const step = stepByPeriod[period] ?? 1;
-    const max = Math.ceil(Math.max(...data.map((d) => d.consumption), step) / step) * step;
+    const max = Math.ceil(Math.max(...data.map((d) => d.hp + d.hc), step) / step) * step;
     return Array.from({ length: max / step + 1 }, (_, i) => i * step);
   }, [data, period]);
 
@@ -236,18 +253,56 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
             borderRadius: "6px",
             fontSize: "12px",
           }}
-          formatter={(value: number | undefined) => [formatKWh(value ?? 0), "Consommation"]}
+          formatter={(value: number | undefined, name: string | undefined) => {
+            const n = name ?? "";
+            const label = n === "hp" ? t("energy.peakHours") : n === "hc" ? t("energy.offPeakHours") : n;
+            return [formatKWh(value ?? 0), label];
+          }}
           labelFormatter={(_label: unknown, payload: ReadonlyArray<{ payload?: ChartDatum }>) =>
             payload[0]?.payload?.tooltipLabel ?? String(_label)
           }
         />
-        <Bar
-          dataKey="consumption"
-          fill={CONSUMPTION_COLOR}
-          activeBar={{ fill: "#6B93F0" }}
-          radius={[4, 4, 0, 0]}
-          maxBarSize={period === "day" ? 20 : 40}
-        />
+        {hasHpHc ? (
+          <>
+            <Bar
+              dataKey="hp"
+              stackId="energy"
+              fill={HP_COLOR}
+              maxBarSize={period === "day" ? 20 : 40}
+              name="hp"
+              shape={(props: unknown) => {
+                const p = props as Record<string, unknown>;
+                const x = p.x as number, y = p.y as number, width = p.width as number, height = p.height as number;
+                const f = p.fill as string, hcVal = p.hc as number;
+                if (!height || height <= 0) return null;
+                const r = hcVal > 0 ? 0 : 4;
+                return (
+                  <path
+                    d={`M${x},${y + height}V${y + r}${r ? `Q${x},${y} ${x + r},${y}` : ""}H${x + width - r}${r ? `Q${x + width},${y} ${x + width},${y + r}` : ""}V${y + height}Z`}
+                    fill={f as string}
+                  />
+                );
+              }}
+            />
+            <Bar
+              dataKey="hc"
+              stackId="energy"
+              fill={HC_COLOR}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={period === "day" ? 20 : 40}
+              name="hc"
+            />
+          </>
+        ) : (
+          <Bar
+            dataKey="hp"
+            fill={HP_COLOR}
+            activeBar={{ fill: "#6B93F0" }}
+            radius={[4, 4, 0, 0]}
+            maxBarSize={period === "day" ? 20 : 40}
+            name="hp"
+          />
+        )}
       </BarChart>
     </ResponsiveContainer>
   );

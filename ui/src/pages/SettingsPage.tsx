@@ -22,6 +22,7 @@ import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
 import type { ApiToken, User, UserRole, HistoryStatus, RetentionStatus } from "../types";
 import { MobileSection } from "../components/settings/MobileSection";
+import { TariffSettings } from "../components/settings/TariffSettings";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 export function SettingsPage() {
@@ -106,6 +107,7 @@ export function SettingsPage() {
             <ApiTokensSection />
             {isAdmin && <UserManagementSection currentUserId={user?.id ?? ""} />}
             {isAdmin && <InfluxDbSettingsSection />}
+            {isAdmin && <TariffSettings />}
           </div>
         </div>
       )}
