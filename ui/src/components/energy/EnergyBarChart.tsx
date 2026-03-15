@@ -253,8 +253,9 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
             borderRadius: "6px",
             fontSize: "12px",
           }}
-          formatter={(value: number | undefined, name: string) => {
-            const label = name === "hp" ? t("energy.peakHours") : name === "hc" ? t("energy.offPeakHours") : name;
+          formatter={(value: number | undefined, name: string | undefined) => {
+            const n = name ?? "";
+            const label = n === "hp" ? t("energy.peakHours") : n === "hc" ? t("energy.offPeakHours") : n;
             return [formatKWh(value ?? 0), label];
           }}
           labelFormatter={(_label: unknown, payload: ReadonlyArray<{ payload?: ChartDatum }>) =>
@@ -269,10 +270,10 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
               fill={HP_COLOR}
               maxBarSize={period === "day" ? 20 : 40}
               name="hp"
-              shape={(props: Record<string, unknown>) => {
-                const { x, y, width, height, fill: f, hc: hcVal } = props as {
-                  x: number; y: number; width: number; height: number; fill: string; hc: number;
-                };
+              shape={(props: unknown) => {
+                const p = props as Record<string, unknown>;
+                const x = p.x as number, y = p.y as number, width = p.width as number, height = p.height as number;
+                const f = p.fill as string, hcVal = p.hc as number;
                 if (!height || height <= 0) return null;
                 const r = hcVal > 0 ? 0 : 4;
                 return (
