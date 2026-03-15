@@ -205,39 +205,111 @@ On first setup (no `energy.legrand.lastBackfill` setting):
 
 **Important**: backfill bypasses the standard pipeline because raw retention is only 7 days. Historical hourly data is written directly to the pre-aggregated bucket. The `energy_sum_daily` task will then aggregate it into `sowel-energy-daily`.
 
-## Tariff Configuration
+## Tariff Configuration (IT2)
 
 ### Settings keys
 
 ```
-energy.tariff.schedule = JSON string
+energy.tariff = JSON string
 ```
 
 Schema:
 
 ```typescript
-interface TariffSchedule {
+interface TariffConfig {
+  schedules: DaySchedule[];
+  prices: TariffPrices;
+}
+
+interface DaySchedule {
+  days: number[]; // 0=Sunday..6=Saturday
   slots: TariffSlot[];
-  defaultTariff: "hp" | "hc";
 }
 
 interface TariffSlot {
-  start: string; // "HH:MM" (e.g., "22:30")
-  end: string; // "HH:MM" (e.g., "06:30")
+  start: string; // "HH:MM" (e.g., "06:00")
+  end: string; // "HH:MM" (e.g., "15:00")
   tariff: "hp" | "hc";
-  days?: number[]; // 0=Sunday..6=Saturday — if omitted, all days
+}
+
+interface TariffPrices {
+  hp: number; // €/kWh (e.g., 0.2146)
+  hc: number; // €/kWh (e.g., 0.1696)
+}
+```
+
+Example (from Legrand screenshot):
+
+```json
+{
+  "schedules": [
+    {
+      "days": [0, 1, 2, 3, 4, 5, 6],
+      "slots": [
+        { "start": "00:00", "end": "06:00", "tariff": "hc" },
+        { "start": "06:00", "end": "15:00", "tariff": "hp" },
+        { "start": "15:00", "end": "17:00", "tariff": "hc" },
+        { "start": "17:00", "end": "00:00", "tariff": "hp" }
+      ]
+    }
+  ],
+  "prices": { "hp": 0.2146, "hc": 0.1696 }
 }
 ```
 
 Default (no config): all hours are HP.
 
-### Classification
+Slots must cover 00:00→00:00 without gaps or overlaps. Different `days` arrays can have different slot configurations (e.g., weekend = all HC).
 
-Applied at query time in the energy API. For each energy data point, the timestamp is checked against the tariff schedule to classify as HP or HC.
+### Classification — at write time, not query time
+
+Classification happens in the **HistoryWriter**, not in the energy API. When the HistoryWriter receives an `equipment.data.changed` event with `alias=energy` and `category=energy`, it:
+
+1. Reads the tariff schedule from settings
+2. Determines the day-of-week from `sourceTimestamp` (or current time)
+3. Finds which tariff slot(s) the 30-min window falls into
+4. Applies prorata if the window straddles a tariff transition
+5. Writes 2 additional points: `energy_hp` and `energy_hc` with the same tags (except alias) and same `sourceTimestamp`
+
+### Prorata for mid-window transitions
+
+A 30-min energy window (e.g., 06:00-06:30) may straddle a tariff transition (e.g., HC→HP at 06:15):
+
+```
+Window: 06:00-06:30, energy = 500 Wh
+Transition: HC→HP at 06:15
+→ energy_hc = 500 × 15/30 = 250 Wh (06:00-06:15 = HC)
+→ energy_hp = 500 × 15/30 = 250 Wh (06:15-06:30 = HP)
+```
+
+Energy is assumed to be distributed uniformly within the 30-min window (linear prorata).
+
+## TariffClassifier module (IT2)
+
+New module: `src/energy/tariff-classifier.ts`
+
+```typescript
+interface TariffSplit {
+  hp: number; // Wh attributed to HP
+  hc: number; // Wh attributed to HC
+}
+
+class TariffClassifier {
+  constructor(settingsManager: SettingsManager, logger: Logger);
+
+  /** Classify a 30-min energy window. Returns HP/HC split with prorata. */
+  classify(totalWh: number, windowStartEpoch: number): TariffSplit;
+
+  /** Get the current tariff config (for API). */
+  getConfig(): TariffConfig | null;
+}
+```
+
+The classifier is injected into the HistoryWriter at construction. The HistoryWriter calls `classify()` for every energy point it writes.
 
 ## API Endpoints
 
-### `GET /api/v1/energy/history`
+### `GET /api/v1/energy/history` (updated for IT2)
 
 Query params:
 
@@ -246,21 +318,85 @@ Query params:
 
 Resolution mapping:
 
-- `day` → reads `sowel-energy-hourly` (hourly sums)
-- `week` → reads `sowel-energy-hourly` (hourly sums)
-- `month` / `year` → reads `sowel-energy-daily` (daily sums)
+- `day` → reads raw bucket (recent) or `sowel-energy-hourly` (older)
+- `week` → reads `sowel-energy-hourly`
+- `month` / `year` → reads `sowel-energy-daily`
+
+**IT2 change**: queries `energy_hp` and `energy_hc` aliases instead of `energy`. Returns:
+
+```typescript
+interface EnergyPoint {
+  time: string;
+  hp: number; // Wh attributed to Heures Pleines
+  hc: number; // Wh attributed to Heures Creuses
+}
+
+interface EnergyTotals {
+  total_consumption: number; // hp + hc
+  total_hp: number;
+  total_hc: number;
+}
+```
+
+For raw bucket day view, aggregates 30-min windows to hourly with `aggregateWindow(every: 1h, fn: sum)` — one query per alias (`energy_hp`, `energy_hc`), results merged by timestamp.
+
+For pre-aggregated buckets (hourly, daily), reads `energy_hp` and `energy_hc` directly (already aggregated by InfluxDB tasks).
 
 ### `GET /api/v1/energy/status`
 
 ```typescript
 interface EnergyStatus {
   available: boolean;
-  hasSolar: boolean;
   sources: string[];
   lastDataAt: string | null;
   tariffConfigured: boolean;
 }
 ```
+
+### `GET /api/v1/settings/energy/tariff` (new — IT2)
+
+Returns the current tariff configuration.
+
+```typescript
+// Response: TariffConfig | null
+```
+
+### `PUT /api/v1/settings/energy/tariff` (new — IT2)
+
+Updates the tariff configuration. Validates:
+
+- Slots cover 00:00→00:00 without gaps
+- Days arrays are valid (0-6)
+- Prices are positive numbers
+
+```typescript
+// Body: TariffConfig
+// Response: { ok: true }
+```
+
+## Migration Script: `scripts/energy/classify-hphc.ts` (IT2)
+
+One-time script to classify existing historical `energy` data into `energy_hp`/`energy_hc`.
+
+### Pre-requisites
+
+1. **Backup InfluxDB** before running (mandatory)
+2. Tariff schedule must be configured in settings before running
+
+### Algorithm
+
+1. Read all `energy` points from raw bucket (last 7 days)
+2. Read all `energy` points from `sowel-energy-hourly` (all data)
+3. Read all `energy` points from `sowel-energy-daily` (all data)
+4. For each point: classify using the current tariff schedule → compute `energy_hp` and `energy_hc`
+5. Write `energy_hp` and `energy_hc` points with same tags + timestamp to same bucket
+6. Summary: report total points processed per bucket
+
+### Important
+
+- Uses the **current** tariff schedule for all historical data (since no schedule history exists before IT2)
+- After IT2 goes live, future data is classified at write time — this script is only for bootstrapping
+- Idempotent: re-running overwrites existing `energy_hp`/`energy_hc` points (same tags + timestamp)
 
 ## UI Components
 
@@ -268,12 +404,32 @@ interface EnergyStatus {
 
 Displays 4 cumul tiles (hour/day/month/year) in 2x2 grid for `main_energy_meter` equipment type. Data comes from EnergyAggregator computed data (aliases: `energy_hour`, `energy_day`, `energy_month`, `energy_year`).
 
-### `/energy` page
+### `/energy` page (IT2 updates)
 
 Period selectors: Jour / Semaine / Mois / Annee with date navigation.
-Bar chart showing consumption per period unit (hour for day/week, day for month/year).
+
+**IT2 changes:**
+
+- **Stacked bars**: each bar has 2 segments — HP (`#4F7BE8` blue) + HC (`#93B5F0` light blue)
+- **Day view**: each hourly bar is either fully HP or fully HC (transitions on hour boundaries) or split if transition is mid-hour
+- **Week/month/year view**: each bar (day) is stacked HP + HC
+- **Total**: global total in large font at top right (unchanged)
+- **Legend**: below chart, shows `● H. pleines : XX kWh   ● H. creuses : YY kWh`
+- **No tariff configured**: bars display single color (all HP), legend shows only "Total"
+
+### Settings > Énergie (new — IT2)
+
+Tariff configuration form:
+
+- Day selector (all days / weekdays / weekends / individual days)
+- Time slot list: start time, end time, tariff type (HP/HC)
+- Add/remove slots
+- Price fields: HP €/kWh, HC €/kWh
+- Save button → `PUT /api/v1/settings/energy/tariff`
 
 ## File Changes
+
+### IT1 (done)
 
 | File                                               | Change                                                                              |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -290,3 +446,18 @@ Bar chart showing consumption per period unit (hour for day/week, day for month/
 | `ui/src/components/energy/EnergyBarChart.tsx`      | Bar chart component                                                                 |
 | `ui/src/components/energy/EnergyPage.tsx`          | Main energy page                                                                    |
 | `ui/src/components/energy/PeriodSelector.tsx`      | Period/date navigation                                                              |
+
+### IT2 — HP/HC tariff classification
+
+| File                                            | Change                                                                                                                                                   |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/types.ts`                           | Add `TariffConfig`, `DaySchedule`, `TariffSlot`, `TariffPrices` types. Update `EnergyPoint` (`hp`, `hc` fields), `EnergyTotals` (`total_hp`, `total_hc`) |
+| `src/energy/tariff-classifier.ts`               | **New** — TariffClassifier: reads schedule from settings, classifies 30-min windows with prorata                                                         |
+| `src/history/history-writer.ts`                 | On `energy` write, also writes `energy_hp` and `energy_hc` using TariffClassifier                                                                        |
+| `src/api/routes/energy.ts`                      | Query `energy_hp`/`energy_hc` instead of `energy`. New tariff CRUD endpoints                                                                             |
+| `ui/src/components/energy/EnergyBarChart.tsx`   | Stacked bars (HP blue + HC light blue)                                                                                                                   |
+| `ui/src/components/energy/EnergyPage.tsx`       | Legend with HP/HC totals below chart                                                                                                                     |
+| `ui/src/components/settings/TariffSettings.tsx` | **New** — Tariff configuration form                                                                                                                      |
+| `ui/src/store/useEnergy.ts`                     | Update types for HP/HC points                                                                                                                            |
+| `ui/src/api.ts`                                 | Add tariff API functions                                                                                                                                 |
+| `scripts/energy/classify-hphc.ts`               | **New** — Migration script: classify existing data into HP/HC                                                                                            |

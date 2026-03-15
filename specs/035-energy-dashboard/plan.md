@@ -62,20 +62,50 @@ Scope: bridge-level consumption only. No solar, no HP/HC, no individual NLPCs.
 
 ## IT2 — HP/HC tariff classification — `feat/035b-energy-hphc`
 
-Scope: add tariff schedule configuration, classify energy data as HP/HC at query time, stacked bar chart.
+Scope: tariff schedule configuration, HP/HC classification at write time, stacked bar chart, historical data migration.
 
-### Backend
+### Backend — Types & Tariff Classifier
 
-1. [ ] Add `TariffSchedule`, `TariffSlot` types to `src/shared/types.ts`
-2. [ ] Create `src/energy/tariff.ts` — classify timestamp → `hp` | `hc` given a schedule
-3. [ ] Add tariff endpoints to `energy.ts`
-4. [ ] Update `GET /api/v1/energy/history` — apply tariff classification to each point
+1. [ ] Add `TariffConfig`, `DaySchedule`, `TariffSlot`, `TariffPrices` types to `src/shared/types.ts`
+2. [ ] Update `EnergyPoint` type: `{ time, hp, hc }` instead of `{ time, consumption }`
+3. [ ] Update `EnergyTotals` type: add `total_hp`, `total_hc`
+4. [ ] Create `src/energy/tariff-classifier.ts` — classify 30-min window → HP/HC split with prorata
 
-### UI
+### Backend — HistoryWriter integration
 
-5. [ ] Update `EnergyBarChart.tsx` — stacked bars: H.pleines + H.creuses + Autoconso
-6. [ ] Add legend with totals per category
-7. [ ] Add tariff configuration UI in Settings
+5. [ ] Inject `TariffClassifier` into `HistoryWriter`
+6. [ ] On `energy` point write (category=energy, alias=energy): also write `energy_hp` and `energy_hc` points
+7. [ ] Add `energy_hp` and `energy_hc` to `ALIAS_DEFAULTS_ON` (or handle via category default)
+
+### Backend — API
+
+8. [ ] Add tariff CRUD endpoints: `GET/PUT /api/v1/settings/energy/tariff`
+9. [ ] Update `GET /api/v1/energy/history`: query `energy_hp`/`energy_hc`, return `{ time, hp, hc }`
+10. [ ] Update `EnergyStatus` to include `tariffConfigured`
+
+### UI — Stacked bars
+
+11. [ ] Update `EnergyBarChart.tsx`: stacked bars HP (`#4F7BE8`) + HC (`#93B5F0`)
+12. [ ] Update `EnergyPage.tsx`: legend with HP/HC totals below chart
+13. [ ] Update `useEnergy.ts` store: new point format `{ time, hp, hc }`
+14. [ ] Update `ui/src/api.ts`: tariff API functions
+
+### UI — Settings
+
+15. [ ] Create `TariffSettings.tsx`: time slot editor per day of week + prices
+16. [ ] Integrate into Settings page (section Énergie)
+
+### Migration
+
+17. [ ] Create `scripts/energy/classify-hphc.ts`: classify existing historical data
+18. [ ] Script must backup data before migration (or prompt user to backup)
+19. [ ] Script reads tariff from settings, processes raw + hourly + daily buckets
+
+### Validation
+
+20. [ ] TypeScript compilation — zero errors (backend + frontend)
+21. [ ] HP + HC totals = total consumption (consistency check)
+22. [ ] Stacked bars render correctly for all periods (day/week/month/year)
 
 ---
 

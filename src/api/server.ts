@@ -163,6 +163,8 @@ export async function createServer(deps: ServerDeps) {
   registerEnergyRoutes(app, {
     equipmentManager,
     influxClient: historyWriter.getInfluxClient(),
+    settingsManager,
+    tariffClassifier: historyWriter.getTariffClassifier(),
     logger,
   });
   registerDashboardRoutes(app, { db });

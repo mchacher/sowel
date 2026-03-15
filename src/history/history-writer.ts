@@ -4,6 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { DataCategory } from "../shared/types.js";
+import { TariffClassifier } from "../energy/tariff-classifier.js";
 import { InfluxClient, Point } from "./influx-client.js";
 
 // ============================================================
@@ -70,6 +71,7 @@ export class HistoryWriter {
   private settingsManager: SettingsManager;
   private equipmentManager: EquipmentManager;
   private influxClient: InfluxClient;
+  private tariffClassifier: TariffClassifier;
   private unsubscribe: (() => void) | null = null;
 
   /** Cache of historized binding IDs for fast lookup. */
@@ -99,6 +101,7 @@ export class HistoryWriter {
     this.equipmentManager = equipmentManager;
     this.logger = logger.child({ module: "history-writer" });
     this.influxClient = new InfluxClient(logger);
+    this.tariffClassifier = new TariffClassifier(settingsManager, logger);
   }
 
   /** Initialize: connect to InfluxDB if configured, subscribe to events. */
@@ -346,8 +349,61 @@ export class HistoryWriter {
 
     this.influxClient.writePoint(point);
 
+    // Write HP/HC split for energy data points
+    if (meta.category === "energy" && alias === "energy" && typeof value === "number") {
+      this.writeEnergyHpHc(equipmentId, meta, value, sourceTimestamp);
+    }
+
     // Update last written
     this.lastWritten.set(bindingId, { value, timestamp: Date.now() });
+  }
+
+  /** Get the TariffClassifier instance (for API routes). */
+  getTariffClassifier(): TariffClassifier {
+    return this.tariffClassifier;
+  }
+
+  // ============================================================
+  // Private: energy HP/HC classification
+  // ============================================================
+
+  /**
+   * Write energy_hp and energy_hc points based on tariff classification.
+   * Called after the main `energy` point is written.
+   */
+  private writeEnergyHpHc(
+    equipmentId: string,
+    meta: BindingMeta,
+    totalWh: number,
+    sourceTimestamp?: number,
+  ): void {
+    const windowEpoch = sourceTimestamp ?? Math.floor(Date.now() / 1000);
+    const split = this.tariffClassifier.classify(totalWh, windowEpoch);
+
+    for (const [alias, value] of [
+      ["energy_hp", split.hp],
+      ["energy_hc", split.hc],
+    ] as const) {
+      const hpHcPoint = new Point("equipment_data")
+        .tag("equipmentId", equipmentId)
+        .tag("alias", alias)
+        .tag("category", meta.category)
+        .tag("zoneId", meta.zoneId)
+        .tag("type", meta.type);
+
+      hpHcPoint.floatField("value_number", value);
+
+      if (sourceTimestamp !== undefined) {
+        hpHcPoint.timestamp(sourceTimestamp);
+      }
+
+      this.influxClient.writePoint(hpHcPoint);
+    }
+
+    this.logger.trace(
+      { equipmentId, totalWh, hp: split.hp, hc: split.hc },
+      "Energy HP/HC points written",
+    );
   }
 
   // ============================================================

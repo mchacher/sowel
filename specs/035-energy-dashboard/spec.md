@@ -59,13 +59,15 @@ An Energy Meter Equipment has the same Data model regardless of the source (Legr
 | Alias          | Unit | Category | Historized | Description                                            |
 | -------------- | ---- | -------- | ---------- | ------------------------------------------------------ |
 | `energy`       | Wh   | energy   | **yes**    | Wh per 30-min bucket — the real measurement            |
+| `energy_hp`    | Wh   | energy   | **yes**    | HP portion of energy (IT2 — written by HistoryWriter)  |
+| `energy_hc`    | Wh   | energy   | **yes**    | HC portion of energy (IT2 — written by HistoryWriter)  |
 | `demand_30min` | W    | power    | no         | Average power over last 30 min (`energy x 2`)          |
 | `energy_day`   | Wh   | energy   | no         | Today's cumulative (EnergyAggregator → InfluxDB query) |
 | `energy_hour`  | Wh   | energy   | no         | Current hour cumulative                                |
 | `energy_month` | Wh   | energy   | no         | Current month cumulative                               |
 | `energy_year`  | Wh   | energy   | no         | Current year cumulative                                |
 
-Only `energy` (Wh per 30 min) is historized. Cumuls are computed live by the EnergyAggregator from InfluxDB.
+`energy` (total), `energy_hp`, and `energy_hc` are historized. `energy_hp + energy_hc = energy` always. Cumuls are computed live by the EnergyAggregator from InfluxDB.
 
 Two Equipment types, distinguished by a `energyMeterType` field on the Equipment:
 
@@ -82,18 +84,33 @@ Two Equipment types, distinguished by a `energyMeterType` field on the Equipment
 
 All sources produce the same `energy` data: Wh per aligned 30-min interval, written with `sourceTimestamp` for clean aggregation.
 
-### HP/HC is a Sowel feature
+### HP/HC is a Sowel feature — classification at write time
 
 Tariff time slots (Heures Pleines / Heures Creuses) are configured in Sowel settings, not derived from the energy source. This means:
 
 - Any energy source benefits from HP/HC classification
-- User can change tariff schedule without reconfiguring integration
 - Works even if the source doesn't know about tariffs (e.g., Shelly)
-- Classification is applied at query time — no data rewrite needed
+- Classification happens **at write time** in the HistoryWriter
+- Three aliases stored in InfluxDB: `energy` (total), `energy_hp`, `energy_hc`
+- Historical data is immutable: when the tariff schedule changes, only future writes use the new schedule — no rewrite of existing data
+
+### Write-time classification (not query-time)
+
+Initial design considered query-time classification (apply schedule retroactively at each API request). This was rejected because:
+
+- A tariff schedule change would retroactively reclassify historical data — incorrect for billing
+- Historical data should reflect the actual tariff in effect at the time of consumption
+- Write-time classification is simpler: the HistoryWriter reads the current schedule and splits each `energy` point into `energy_hp` and `energy_hc` at write time
+
+The HistoryWriter applies **prorata** when a 30-min window straddles a tariff transition. Example: transition at 06:15, window 06:00-06:30 with 500 Wh → `energy_hp=250 Wh` (15 min) + `energy_hc=250 Wh` (15 min).
+
+### Tariff schedule with per-day configuration
+
+The schedule supports different time slots per day of the week (e.g., different weekend tariffs). Prices (€/kWh) are stored alongside the schedule for future cost calculation (IT4).
 
 ### Legrand-specific: reverse calculation (calcul inverse)
 
-Legrand provides HP/HC breakdown via `buy_from_grid$1` (HP) and `$2` (HC). We **do NOT store the HP/HC split** — we sum them back into a single total consumption. Sowel re-classifies HP/HC at query time based on the user's configured tariff schedule.
+Legrand provides HP/HC breakdown via `buy_from_grid$1` (HP) and `$2` (HC). We **do NOT use** the Legrand HP/HC split — we sum them back into a single total consumption. Sowel re-classifies HP/HC based on the user's configured tariff schedule.
 
 ## Acceptance Criteria
 
@@ -111,28 +128,35 @@ Legrand provides HP/HC breakdown via `buy_from_grid$1` (HP) and `$2` (HC). We **
 - [ ] Handles missing/null values gracefully
 - [ ] Totals validated against home.netatmo.com (+-1%)
 
-### IT2 — Energy API + tariff configuration
+### IT2 — HP/HC tariff classification — `feat/035b-energy-hphc`
 
 - [x] `GET /api/v1/energy/history` — returns energy time-series from InfluxDB (sum-aggregated buckets)
 - [x] `GET /api/v1/energy/status` — detect energy data availability
-- [ ] `GET /api/v1/settings/energy/tariff` — tariff schedule CRUD (HP/HC time slots)
-- [ ] HP/HC classification applied at query time based on configured schedule
+- [ ] Tariff schedule configuration: per-day HP/HC time slots + unit prices (€/kWh)
+- [ ] `GET/PUT /api/v1/settings/energy/tariff` — tariff schedule CRUD
+- [ ] HistoryWriter: on `energy` write, also writes `energy_hp` and `energy_hc` (prorata for mid-window transitions)
+- [ ] InfluxDB tasks automatically aggregate `energy_hp`/`energy_hc` (no task changes — alias tag preserved)
+- [ ] Energy API: query `energy_hp` and `energy_hc` separately, return `{ time, hp, hc }`
+- [ ] Migration script: classify existing historical `energy` data into `energy_hp`/`energy_hc`
+- [ ] Stacked bars: H. pleines (`#4F7BE8`) + H. creuses (`#93B5F0`)
+- [ ] Total global en haut + légende HP/HC avec totaux sous le chart
+- [ ] Settings UI: section Énergie — config créneaux par jour de semaine + prix €/kWh
 
-### IT3 — Energy Dashboard UI
+### IT3 — Energy Dashboard UI (remaining)
 
 - [x] New `/energy` page in sidebar, visible only if energy data exists
 - [x] Bar chart with period selectors: Jour / Semaine / Mois / Annee
 - [x] Date navigation with arrows
 - [x] Total kWh displayed (2 decimal places)
-- [ ] Stacked bars: Autoconso (green) + H. pleines (blue) + H. creuses (light blue)
-- [ ] Production chart (hidden if no solar)
-- [ ] Legend with totals per category
+- [ ] Production chart (hidden if no solar) — deferred to IT4
+- [ ] Autoconsumption as separate category — deferred to IT4
 
 ### IT4 (future) — Solar production + costs
 
 - [ ] Virtual device `legrand_energy_production`
 - [ ] `energyMeterType` field on Equipment (consumption/production)
 - [ ] Cost calculation from HP/HC unit prices
+- [ ] Autoconsumption stacking (green) in consumption chart
 
 ## Scope
 
@@ -173,5 +197,6 @@ Legrand provides HP/HC breakdown via `buy_from_grid$1` (HP) and `$2` (HC). We **
 - Backend restart → poller replays 6h sliding window, InfluxDB overwrites (idempotent)
 - Backend down for <6h → poller fills the gap automatically on restart
 - Backend down for >6h → gap in raw data, but hourly task (-7h) re-aggregates what's available
-- Tariff schedule not configured → all consumption shown as "Heures Pleines" (default)
-- Tariff schedule changed → no need to rewrite InfluxDB data (classification is at query time)
+- Tariff schedule not configured → all consumption written as `energy_hp` (default: everything is HP)
+- Tariff schedule changed → only future writes use new schedule; historical data stays unchanged
+- Migration script: must backup InfluxDB data before reclassifying historical points
