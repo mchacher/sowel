@@ -62,7 +62,7 @@ export function ProductionPage() {
                   {t("energy.gridInjection")} : {formatKWh(history.totals.total_injection, period)} kWh
                 </span>
               </div>
-              <div className="text-[15px] font-semibold text-text tabular-nums">
+              <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
                 Total : {formatKWh(history.totals.total_production, period)} kWh
               </div>
             </div>
