@@ -152,7 +152,8 @@ export type EquipmentType =
   | "gate"
   | "heater"
   | "energy_meter"
-  | "main_energy_meter";
+  | "main_energy_meter"
+  | "energy_production_meter";
 
 export interface Equipment {
   id: string;
@@ -689,12 +690,18 @@ export interface EnergyPoint {
   time: string;
   hp: number; // Wh attributed to Heures Pleines
   hc: number; // Wh attributed to Heures Creuses
+  prod: number; // Wh total production
+  autoconso: number; // min(prod, consumption) Wh
+  injection: number; // max(0, prod - consumption) Wh
 }
 
 export interface EnergyTotals {
   total_consumption: number; // hp + hc (Wh)
   total_hp: number; // Wh
   total_hc: number; // Wh
+  total_production: number; // Wh
+  total_autoconso: number; // Wh
+  total_injection: number; // Wh
 }
 
 export interface EnergyHistoryResponse {
@@ -708,6 +715,7 @@ export interface EnergyHistoryResponse {
 
 export interface EnergyStatus {
   available: boolean;
+  hasProduction: boolean;
   sources: string[];
   lastDataAt: string | null;
   tariffConfigured: boolean;

@@ -22,6 +22,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   heater: ["generic", "light_state"],
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy", "power"],
+  energy_production_meter: ["energy", "power"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -38,6 +39,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   heater: ["state", "on", "R1", "R2", "R3", "R4"],
   energy_meter: [],
   main_energy_meter: [],
+  energy_production_meter: [],
 };
 
 /**

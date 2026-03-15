@@ -38,6 +38,7 @@
   "common.create": "Créer",
   "common.retry": "Réessayer",
   "common.loading": "Chargement...",
+  "common.noData": "Aucune donnée",
   "common.saving": "Enregistrement...",
   "common.creating": "Création...",
   "common.deleting": "Suppression...",
@@ -191,6 +192,7 @@
   "equipments.type.heater": "Radiateur électrique",
   "equipments.type.energy_meter": "Compteur d'Énergie (sous-compteur)",
   "equipments.type.main_energy_meter": "Compteur d'Énergie (principal)",
+  "equipments.type.energy_production_meter": "Compteur d'Énergie (production)",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
@@ -771,6 +773,7 @@
 
   "nav.energy": "Énergie",
   "nav.energy.consumption": "Consommation",
+  "nav.energy.production": "Production",
 
   "energy.consumption": "Consommation",
   "energy.today": "Aujourd'hui",
@@ -784,6 +787,11 @@
   "energy.totalConsumption": "Consommation totale",
   "energy.peakHours": "H. pleines",
   "energy.offPeakHours": "H. creuses",
+  "energy.production": "Production solaire",
+  "energy.totalProduction": "Production totale",
+  "energy.autoconsumption": "Autoconsommation",
+  "energy.gridInjection": "Injection réseau",
+  "energy.gridConsumption": "Réseau",
 
   "tariff.title": "Tarifs énergie",
   "tariff.priceHp": "Prix HP (€/kWh)",

@@ -144,7 +144,7 @@ export function EquipmentsPage() {
 }
 
 /** Singleton equipment types — only one instance allowed. */
-const SINGLETON_TYPES: EquipmentType[] = ["main_energy_meter"];
+const SINGLETON_TYPES: EquipmentType[] = ["main_energy_meter", "energy_production_meter"];
 
 function singletonExcludeTypes(equipments: EquipmentWithDetails[]): Set<EquipmentType> {
   const exclude = new Set<EquipmentType>();
