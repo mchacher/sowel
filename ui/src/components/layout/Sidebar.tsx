@@ -77,10 +77,12 @@ export function Sidebar() {
     () => getSectionForPath(location.pathname)
   );
 
-  // Auto-update expanded section when route changes
-  useEffect(() => {
+  // Auto-update expanded section when route changes (React recommended pattern)
+  const [prevPath, setPrevPath] = useState(location.pathname);
+  if (prevPath !== location.pathname) {
+    setPrevPath(location.pathname);
     setExpandedSection(getSectionForPath(location.pathname));
-  }, [location.pathname]);
+  }
 
   const toggleSection = (section: SidebarSection) => {
     setExpandedSection((prev) => (prev === section ? null : section));
