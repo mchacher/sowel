@@ -529,43 +529,41 @@ export function PressureSensorIcon() {
 // ============================================================
 
 export function GateWidgetIcon({ open }: { open: boolean }) {
-  const id = useId();
-  const postGrad = `gate-post-${id}`;
-
   return (
-    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className={open ? "text-warning" : "text-primary"}>
-      <defs>
-        <linearGradient id={postGrad} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.2" />
-        </linearGradient>
-      </defs>
-
-      <rect x="6" y="10" width="5" height="38" rx="1.5" fill={`url(#${postGrad})`} />
-      <rect x="5" y="8" width="7" height="4" rx="1" fill="currentColor" opacity="0.3" />
-
-      <rect x="45" y="10" width="5" height="38" rx="1.5" fill={`url(#${postGrad})`} />
-      <rect x="44" y="8" width="7" height="4" rx="1" fill="currentColor" opacity="0.3" />
+    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className="text-primary">
+      {/* Left pillar */}
+      <rect x="4" y="10" width="6" height="36" rx="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="currentColor" fillOpacity="0.06" />
+      <circle cx="7" cy="10" r="3.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5" />
+      {/* Right pillar */}
+      <rect x="46" y="10" width="6" height="36" rx="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="currentColor" fillOpacity="0.06" />
+      <circle cx="49" cy="10" r="3.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5" />
 
       {open ? (
         <>
-          <path d="M11 14 L11 44 L17 40 L17 18 Z" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
-          <path d="M45 14 L45 44 L39 40 L39 18 Z" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
-          <line x1="11" y1="26" x2="17" y2="28" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15" />
-          <line x1="45" y1="26" x2="39" y2="28" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15" />
+          {/* Left door (open — perspective) */}
+          <path d="M10 16 L16 20 L16 40 L10 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.06" />
+          <line x1="13" y1="18" x2="13" y2="42" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
+          {/* Right door (open — perspective) */}
+          <path d="M46 16 L40 20 L40 40 L46 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.06" />
+          <line x1="43" y1="18" x2="43" y2="42" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
         </>
       ) : (
         <>
-          <rect x="11" y="14" width="17" height="30" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
-          <rect x="28" y="14" width="17" height="30" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
-          <line x1="11" y1="26" x2="28" y2="26" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15" />
-          <line x1="28" y1="26" x2="45" y2="26" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.15" />
-          <circle cx="26" cy="30" r="1.2" fill="currentColor" opacity="0.3" />
-          <circle cx="30" cy="30" r="1.2" fill="currentColor" opacity="0.3" />
+          {/* Left door */}
+          <path d="M10 16 L27 16 L27 44 L10 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.04" />
+          <line x1="15" y1="16" x2="15" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
+          <line x1="21" y1="16" x2="21" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
+          <line x1="10" y1="30" x2="27" y2="30" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          {/* Right door */}
+          <path d="M29 16 L46 16 L46 44 L29 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.04" />
+          <line x1="35" y1="16" x2="35" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
+          <line x1="41" y1="16" x2="41" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
+          <line x1="29" y1="30" x2="46" y2="30" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
         </>
       )}
 
-      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1" strokeOpacity="0.1" />
+      {/* Ground */}
+      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.1" />
     </svg>
   );
 }
@@ -622,54 +620,42 @@ export function HeaterWidgetIcon({ comfort }: { comfort: boolean }) {
 // ============================================================
 
 export function SlidingGateIcon({ open }: { open: boolean }) {
-  const id = useId();
-  const panelGrad = `sgate-panel-${id}`;
-
   return (
-    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className={open ? "text-warning" : "text-primary"}>
-      <defs>
-        <linearGradient id={panelGrad} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.08" />
-        </linearGradient>
-      </defs>
-
-      {/* Left post */}
-      <rect x="4" y="10" width="4" height="36" rx="1" fill="currentColor" opacity="0.3" />
-      <rect x="3" y="8" width="6" height="3" rx="1" fill="currentColor" opacity="0.25" />
-
-      {/* Right post */}
-      <rect x="48" y="10" width="4" height="36" rx="1" fill="currentColor" opacity="0.3" />
-      <rect x="47" y="8" width="6" height="3" rx="1" fill="currentColor" opacity="0.25" />
-
-      {/* Rail (bottom track) */}
-      <line x1="8" y1="46" x2="48" y2="46" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" />
+    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className="text-primary">
+      {/* Left pillar */}
+      <rect x="3" y="10" width="5" height="34" rx="2.5" stroke="currentColor" strokeWidth="1.8" fill="currentColor" fillOpacity="0.08" />
+      {/* Right pillar */}
+      <rect x="48" y="10" width="5" height="34" rx="2.5" stroke="currentColor" strokeWidth="1.8" fill="currentColor" fillOpacity="0.08" />
+      {/* Rail */}
+      <line x1="8" y1="44" x2="48" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.2" />
 
       {open ? (
         <>
-          {/* Panel slid to the left */}
-          <rect x="8" y="14" width="14" height="31" rx="1" fill={`url(#${panelGrad})`} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" />
-          {/* Vertical bars on panel */}
-          {[0, 1, 2].map((i) => (
-            <line key={i} x1={11 + i * 4} y1="16" x2={11 + i * 4} y2="43" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.12" />
-          ))}
+          {/* Panel slid left */}
+          <rect x="8" y="14" width="16" height="29" rx="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.06" />
+          <line x1="13" y1="16" x2="13" y2="41" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" strokeLinecap="round" />
+          <line x1="18" y1="16" x2="18" y2="41" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" strokeLinecap="round" />
           {/* Arrow hint */}
-          <path d="M30 29 L25 29 M27 26 L25 29 L27 32" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M32 28 L27 28 M29 25 L27 28 L29 31" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.25" strokeLinecap="round" strokeLinejoin="round" />
         </>
       ) : (
         <>
           {/* Full panel closed */}
-          <rect x="8" y="14" width="40" height="31" rx="1" fill={`url(#${panelGrad})`} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
+          <rect x="8" y="14" width="40" height="29" rx="2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.04" />
           {/* Vertical bars */}
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <line key={i} x1={12 + i * 5} y1="16" x2={12 + i * 5} y2="43" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.12" />
-          ))}
-          {/* Handle */}
-          <circle cx="44" cy="30" r="1.2" fill="currentColor" opacity="0.3" />
+          <line x1="14" y1="16" x2="14" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="20" y1="16" x2="20" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="26" y1="16" x2="26" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="32" y1="16" x2="32" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="38" y1="16" x2="38" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="44" y1="16" x2="44" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          {/* Horizontal bar */}
+          <line x1="8" y1="28" x2="48" y2="28" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.15" strokeLinecap="round" />
         </>
       )}
 
-      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1" strokeOpacity="0.1" />
+      {/* Ground */}
+      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.1" />
     </svg>
   );
 }
@@ -679,49 +665,34 @@ export function SlidingGateIcon({ open }: { open: boolean }) {
 // ============================================================
 
 export function GarageDoorIcon({ open }: { open: boolean }) {
-  const id = useId();
-  const wallGrad = `gdoor-wall-${id}`;
-  const panelGrad = `gdoor-panel-${id}`;
-
   return (
-    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className={open ? "text-warning" : "text-primary"}>
-      <defs>
-        <linearGradient id={wallGrad} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.08" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.04" />
-        </linearGradient>
-        <linearGradient id={panelGrad} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.1" />
-        </linearGradient>
-      </defs>
-
-      {/* Garage frame */}
-      <path d="M4 10 L28 4 L52 10 L52 48 L4 48 Z" fill={`url(#${wallGrad})`} stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
+    <svg width="96" height="96" viewBox="0 0 56 56" fill="none" className="text-primary">
+      {/* Roof */}
+      <path d="M6 16 L28 6 L50 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {/* Walls */}
+      <path d="M8 16 L8 48 L48 48 L48 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.03" />
 
       {open ? (
         <>
-          {/* Door rolled up at top */}
-          <rect x="10" y="12" width="36" height="8" rx="1" fill={`url(#${panelGrad})`} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
-          {/* Horizontal section lines (rolled) */}
-          <line x1="10" y1="14" x2="46" y2="14" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.12" />
-          <line x1="10" y1="17" x2="46" y2="17" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.12" />
-          {/* Empty opening */}
-          <rect x="10" y="20" width="36" height="26" rx="0" fill="currentColor" opacity="0.03" />
+          {/* Door rolled up */}
+          <rect x="13" y="19" width="30" height="7" rx="2" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <line x1="13" y1="22.5" x2="43" y2="22.5" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.18" strokeLinecap="round" />
         </>
       ) : (
         <>
-          {/* Full door with horizontal sections */}
-          <rect x="10" y="12" width="36" height="34" rx="1" fill={`url(#${panelGrad})`} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" />
-          {[0, 1, 2, 3, 4].map((i) => (
-            <line key={i} x1="10" y1={18 + i * 6} x2="46" y2={18 + i * 6} stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.12" />
-          ))}
+          {/* Door closed */}
+          <rect x="13" y="20" width="30" height="26" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Sections */}
+          <line x1="13" y1="26.5" x2="43" y2="26.5" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="13" y1="33" x2="43" y2="33" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
+          <line x1="13" y1="39.5" x2="43" y2="39.5" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
           {/* Handle */}
-          <rect x="26" y="38" width="4" height="2" rx="0.5" fill="currentColor" opacity="0.25" />
+          <line x1="26" y1="42" x2="30" y2="42" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3" />
         </>
       )}
 
-      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1" strokeOpacity="0.1" />
+      {/* Ground */}
+      <line x1="4" y1="48" x2="52" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.12" />
     </svg>
   );
 }
