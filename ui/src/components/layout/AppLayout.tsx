@@ -10,7 +10,7 @@ import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import { Home, Layers, LayoutDashboard, LogOut, Menu, Settings, User, Zap, X, Radio, Box, Map, Calendar, Plug, Send, Bell, ScrollText, DatabaseBackup, BarChart3, ChevronRight } from "lucide-react";
+import { Home, Layers, LayoutDashboard, LogOut, Menu, Settings, User, Zap, X, Calendar, Plug, Send, Bell, BarChart3, ChevronRight } from "lucide-react";
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
 import { AlarmBanner } from "./AlarmBanner";
