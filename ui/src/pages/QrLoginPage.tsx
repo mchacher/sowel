@@ -53,8 +53,7 @@ export function QrLoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="flex flex-col items-center gap-6 p-8">
-        <SowelLogo size={48} />
-        <h1 className="text-[20px] font-semibold text-text">Sowel</h1>
+        <SowelLogo size={160} showText animated />
 
         {displayError ? (
           <div className="flex flex-col items-center gap-4">
