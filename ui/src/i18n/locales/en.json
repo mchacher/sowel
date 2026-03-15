@@ -780,5 +780,19 @@
   "energy.cumul.hour": "Current hour",
   "energy.cumul.day": "Today",
   "energy.cumul.month": "This month",
-  "energy.cumul.year": "This year"
+  "energy.cumul.year": "This year",
+  "energy.totalConsumption": "Total consumption",
+  "energy.peakHours": "Peak hours",
+  "energy.offPeakHours": "Off-peak hours",
+
+  "tariff.title": "Energy tariffs",
+  "tariff.priceHp": "Peak price (€/kWh)",
+  "tariff.priceHc": "Off-peak price (€/kWh)",
+  "tariff.timeSlots": "Time slots",
+  "tariff.addSlot": "Add slot",
+  "tariff.delete": "Delete",
+  "tariff.saving": "Saving...",
+  "tariff.save": "Save",
+  "tariff.saved": "Tariffs saved",
+  "tariff.saveError": "Error saving tariffs"
 }

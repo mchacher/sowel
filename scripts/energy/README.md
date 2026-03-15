@@ -81,6 +81,23 @@ Affiche les points raw bruts pour un jour et les définitions Flux des tasks Inf
 npx tsx scripts/energy/raw-inspect.ts
 ```
 
+## Migration HP/HC
+
+### `classify-hphc.ts`
+
+Classifie les données energy historiques en `energy_hp` / `energy_hc` selon le schedule tarif configuré dans les settings.
+
+**Prérequis** : configurer le tarif dans Settings > Énergie **avant** d'exécuter. Faire une **sauvegarde InfluxDB** au préalable.
+
+```bash
+npx tsx scripts/energy/classify-hphc.ts
+```
+
+- Lit les points `energy` des 3 buckets (raw, hourly, daily)
+- Classifie chaque point selon le schedule courant (prorata si transition mid-window)
+- Écrit `energy_hp` et `energy_hc` avec les mêmes tags + timestamp
+- Idempotent : peut être relancé sans risque
+
 ## Administration InfluxDB
 
 ### `fix-task.ts`

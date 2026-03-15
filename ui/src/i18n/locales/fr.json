@@ -780,5 +780,19 @@
   "energy.cumul.hour": "Heure en cours",
   "energy.cumul.day": "Aujourd'hui",
   "energy.cumul.month": "Ce mois",
-  "energy.cumul.year": "Cette année"
+  "energy.cumul.year": "Cette année",
+  "energy.totalConsumption": "Consommation totale",
+  "energy.peakHours": "H. pleines",
+  "energy.offPeakHours": "H. creuses",
+
+  "tariff.title": "Tarifs énergie",
+  "tariff.priceHp": "Prix HP (€/kWh)",
+  "tariff.priceHc": "Prix HC (€/kWh)",
+  "tariff.timeSlots": "Créneaux horaires",
+  "tariff.addSlot": "Ajouter un créneau",
+  "tariff.delete": "Supprimer",
+  "tariff.saving": "Enregistrement...",
+  "tariff.save": "Enregistrer",
+  "tariff.saved": "Tarifs enregistrés",
+  "tariff.saveError": "Erreur lors de l'enregistrement"
 }
