@@ -36,6 +36,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   heater: <Heater size={18} strokeWidth={1.5} />,
   energy_meter: <Zap size={18} strokeWidth={1.5} />,
   main_energy_meter: <Zap size={18} strokeWidth={1.5} />,
+  energy_production_meter: <Zap size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -52,6 +53,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   heater: "equipments.type.heater",
   energy_meter: "equipments.type.energy_meter",
   main_energy_meter: "equipments.type.main_energy_meter",
+  energy_production_meter: "equipments.type.energy_production_meter",
 };
 
 interface EquipmentCardProps {

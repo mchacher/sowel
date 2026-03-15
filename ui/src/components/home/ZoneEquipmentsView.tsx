@@ -24,7 +24,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} />, headerBg: "bg-active/8", iconColor: "text-active-text" },
   { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ShutterClosedIcon size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.climate", types: ["thermostat", "heater"], icon: <Thermometer size={14} strokeWidth={1.5} />, headerBg: "bg-error/6", iconColor: "text-error" },
-  { labelKey: "equipments.group.energy", types: ["energy_meter", "main_energy_meter"], icon: <Zap size={14} strokeWidth={1.5} />, headerBg: "bg-accent/8", iconColor: "text-accent" },
+  { labelKey: "equipments.group.energy", types: ["energy_meter", "main_energy_meter", "energy_production_meter"], icon: <Zap size={14} strokeWidth={1.5} />, headerBg: "bg-accent/8", iconColor: "text-accent" },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.weather", types: ["weather"], icon: <CloudSun size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },

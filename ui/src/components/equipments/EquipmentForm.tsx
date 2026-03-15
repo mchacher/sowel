@@ -18,6 +18,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "heater", labelKey: "equipments.type.heater" },
   { value: "energy_meter", labelKey: "equipments.type.energy_meter" },
   { value: "main_energy_meter", labelKey: "equipments.type.main_energy_meter" },
+  { value: "energy_production_meter", labelKey: "equipments.type.energy_production_meter" },
 ];
 
 interface EquipmentFormProps {

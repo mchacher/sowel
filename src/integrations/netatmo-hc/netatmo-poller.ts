@@ -10,6 +10,7 @@ import type { Logger } from "../../core/logger.js";
 import type { EventBus } from "../../core/event-bus.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
+import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { NetatmoBridge } from "./netatmo-bridge.js";
 import {
   isSupportedModule,
@@ -32,6 +33,7 @@ const ENERGY_LOOKBACK_S = 6 * 3600;
 export class NetatmoPoller {
   private bridge: NetatmoBridge;
   private deviceManager: DeviceManager;
+  private equipmentManager: EquipmentManager;
   private eventBus: EventBus;
   private logger: Logger;
   private homeId: string;
@@ -67,6 +69,7 @@ export class NetatmoPoller {
   constructor(
     bridge: NetatmoBridge,
     deviceManager: DeviceManager,
+    equipmentManager: EquipmentManager,
     _settingsManager: SettingsManager,
     eventBus: EventBus,
     homeId: string,
@@ -78,6 +81,7 @@ export class NetatmoPoller {
   ) {
     this.bridge = bridge;
     this.deviceManager = deviceManager;
+    this.equipmentManager = equipmentManager;
     this.eventBus = eventBus;
     this.homeId = homeId;
     this.logger = logger.child({ module: "legrand-hc-poller" });
@@ -445,11 +449,16 @@ export class NetatmoPoller {
    * Cumuls (day/hour/month/year) are handled by EnergyAggregator at equipment level.
    */
   /**
-   * Query a 30-min energy window and return total Wh.
+   * Query a 30-min energy window and return consumption + production Wh.
+   * consumption = buy_from_grid$1 + buy_from_grid$2 + self_consumption (total house)
+   * production  = self_consumption + resell_to_grid (total solar)
    */
-  private async queryEnergyWindow(windowStart: number, windowEnd: number): Promise<number> {
+  private async queryEnergyWindow(
+    windowStart: number,
+    windowEnd: number,
+  ): Promise<{ consumption: number; production: number; autoconso: number; injection: number }> {
     const ENERGY_TYPES =
-      "sum_energy_buy_from_grid$1,sum_energy_buy_from_grid$2,sum_energy_self_consumption";
+      "sum_energy_buy_from_grid$1,sum_energy_buy_from_grid$2,sum_energy_self_consumption,sum_energy_resell_to_grid";
 
     const res = await this.bridge.getMeasure(
       this.bridgeId!,
@@ -461,14 +470,38 @@ export class NetatmoPoller {
     );
 
     const timestamps = Object.keys(res.body);
-    if (timestamps.length === 0) return 0;
+    if (timestamps.length === 0)
+      return { consumption: 0, production: 0, autoconso: 0, injection: 0 };
 
-    let windowWh = 0;
+    let consumption = 0;
+    let autoconso = 0;
+    let injection = 0;
     for (const ts of timestamps) {
       const values = res.body[ts];
-      windowWh += (values[0] ?? 0) + (values[1] ?? 0) + (values[2] ?? 0);
+      const hp = values[0] ?? 0;
+      const hc = values[1] ?? 0;
+      const selfConso = values[2] ?? 0;
+      const resellToGrid = values[3] ?? 0;
+      consumption += hp + hc + selfConso;
+      autoconso += selfConso;
+      injection += resellToGrid;
     }
-    return windowWh;
+    const production = autoconso + injection;
+    return { consumption, production, autoconso, injection };
+  }
+
+  /**
+   * Resolve the Device friendlyName bound to the energy_production_meter Equipment.
+   * Returns null if no production Equipment exists or has no energy binding.
+   */
+  private resolveProductionDeviceName(): string | null {
+    const eq = this.equipmentManager.getAll().find((e) => e.type === "energy_production_meter");
+    if (!eq) return null;
+    const binding = this.equipmentManager
+      .getDataBindingsWithValues(eq.id)
+      .find((b) => b.alias === "energy");
+    if (!binding) return null;
+    return binding.deviceName ?? null;
   }
 
   private async pollEnergyMeters(): Promise<void> {
@@ -486,30 +519,48 @@ export class NetatmoPoller {
 
       let newBuckets = 0;
       let lastBucketEnergy = 0;
+      let lastBucketProduction = 0;
 
       for (let windowStart = lookbackStart; windowStart < nowTs; windowStart += HALF_HOUR) {
         const windowEnd = windowStart + HALF_HOUR;
         // Only process windows that have ended
         if (windowEnd > nowTs) break;
 
-        const windowWh = await this.queryEnergyWindow(windowStart, windowEnd);
-        if (windowWh <= 0) continue;
+        const { consumption, production, autoconso, injection } = await this.queryEnergyWindow(
+          windowStart,
+          windowEnd,
+        );
+        if (consumption <= 0 && production <= 0) continue;
 
         // Pass sourceTimestamp = windowStart so HistoryWriter writes at the
         // aligned 30-min boundary, not at "now".
         // InfluxDB overwrites if the point already exists (idempotent).
-        this.deviceManager.updateDeviceData(
-          "netatmo_hc",
-          this.mainMeterName!,
-          {
-            energy: windowWh,
-          },
-          windowStart,
-        );
+        if (consumption > 0) {
+          this.deviceManager.updateDeviceData(
+            "netatmo_hc",
+            this.mainMeterName!,
+            { energy: consumption },
+            windowStart,
+          );
+        }
+
+        // Write production, autoconso, injection on the production Device
+        if (production > 0) {
+          const prodDeviceName = this.resolveProductionDeviceName();
+          if (prodDeviceName) {
+            this.deviceManager.updateDeviceData(
+              "netatmo_hc",
+              prodDeviceName,
+              { energy: production, autoconso, injection },
+              windowStart,
+            );
+          }
+        }
 
         if (windowStart > this.lastEmittedWindowTs) {
           newBuckets++;
-          lastBucketEnergy = windowWh;
+          lastBucketEnergy = consumption;
+          lastBucketProduction = production;
           this.lastEmittedWindowTs = windowStart;
         }
       }
@@ -523,7 +574,11 @@ export class NetatmoPoller {
 
       if (newBuckets > 0) {
         this.logger.debug(
-          { newBuckets, demand30minW: Math.round(lastBucketEnergy * 2) },
+          {
+            newBuckets,
+            demand30minW: Math.round(lastBucketEnergy * 2),
+            lastProdWh: lastBucketProduction,
+          },
           "Energy poll: new 30-min buckets processed",
         );
       }

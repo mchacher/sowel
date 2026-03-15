@@ -39,6 +39,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "heater",
   "energy_meter",
   "main_energy_meter",
+  "energy_production_meter",
 ]);
 
 // ============================================================
@@ -244,6 +245,14 @@ export class EquipmentManager {
       const existing = this.getAll().find((eq) => eq.type === "main_energy_meter");
       if (existing) {
         throw new EquipmentError("A main energy meter already exists", 409);
+      }
+    }
+
+    // Only one energy_production_meter allowed
+    if (input.type === "energy_production_meter") {
+      const existing = this.getAll().find((eq) => eq.type === "energy_production_meter");
+      if (existing) {
+        throw new EquipmentError("A production energy meter already exists", 409);
       }
     }
 

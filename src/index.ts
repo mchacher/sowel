@@ -141,14 +141,6 @@ async function main() {
   );
   integrationRegistry.register(mczMaestroIntegration);
 
-  const netatmoHCIntegration = new NetatmoHCIntegration(
-    settingsManager,
-    deviceManager,
-    eventBus,
-    logger,
-  );
-  integrationRegistry.register(netatmoHCIntegration);
-
   const lora2mqttIntegration = new Lora2MqttIntegration(
     settingsManager,
     deviceManager,
@@ -169,6 +161,16 @@ async function main() {
     deviceManager,
     logger,
   );
+
+  // Netatmo H+C needs equipmentManager to resolve production meter bindings
+  const netatmoHCIntegration = new NetatmoHCIntegration(
+    settingsManager,
+    deviceManager,
+    equipmentManager,
+    eventBus,
+    logger,
+  );
+  integrationRegistry.register(netatmoHCIntegration);
 
   // 10. Create Zone Aggregator + Sunlight Manager
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);

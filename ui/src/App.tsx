@@ -24,6 +24,7 @@ import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QrLoginPage } from "./pages/QrLoginPage";
 import { EnergyPage } from "./components/energy/EnergyPage";
+import { ProductionPage } from "./components/energy/ProductionPage";
 
 export default function App() {
   return (
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/energy" element={<Navigate to="/energy/consumption" replace />} />
           <Route path="/energy/consumption" element={<EnergyPage />} />
+          <Route path="/energy/production" element={<ProductionPage />} />
           <Route path="/analyse" element={<AnalysePage />} />
           <Route path="/analyse/:chartId" element={<AnalysePage />} />
           <Route path="/settings" element={<SettingsPage />} />

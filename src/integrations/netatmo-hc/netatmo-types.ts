@@ -252,6 +252,8 @@ export function mapModuleToDiscovered(mod: NetatmoModule, homeId: string): Disco
   } else if (METER_TYPES.has(mod.type)) {
     data.push({ key: "power", type: "number", category: "power", unit: "W" });
     data.push({ key: "energy", type: "number", category: "energy", unit: "Wh" });
+    data.push({ key: "autoconso", type: "number", category: "energy", unit: "Wh" });
+    data.push({ key: "injection", type: "number", category: "energy", unit: "Wh" });
     data.push({ key: "demand_30min", type: "number", category: "power", unit: "W" });
   } else if (GATEWAY_TYPES.has(mod.type)) {
     data.push({ key: "wifi_strength", type: "number", category: "generic" });

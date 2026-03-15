@@ -265,6 +265,7 @@ export function HomePage() {
           excludeTypes={(() => {
             const exclude = new Set<EquipmentType>();
             if (equipments.some((eq) => eq.type === "main_energy_meter")) exclude.add("main_energy_meter");
+            if (equipments.some((eq) => eq.type === "energy_production_meter")) exclude.add("energy_production_meter");
             return exclude;
           })()}
           boundDeviceIds={new Set(equipments.flatMap((e) => [

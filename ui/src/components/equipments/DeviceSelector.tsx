@@ -18,6 +18,7 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   heater: ["generic", "light_state"],
   energy_meter: ["energy"],
   main_energy_meter: ["energy"],
+  energy_production_meter: ["energy", "power"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */

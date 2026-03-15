@@ -42,6 +42,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
   private eventBus: EventBus;
   private settingsManager: SettingsManager;
   private deviceManager: DeviceManager;
+  private equipmentManager: EquipmentManager;
   private bridge: NetatmoBridge | null = null;
   private poller: NetatmoPoller | null = null;
   private status: IntegrationStatus = "disconnected";
@@ -51,11 +52,13 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
   constructor(
     settingsManager: SettingsManager,
     deviceManager: DeviceManager,
+    equipmentManager: EquipmentManager,
     eventBus: EventBus,
     logger: Logger,
   ) {
     this.settingsManager = settingsManager;
     this.deviceManager = deviceManager;
+    this.equipmentManager = equipmentManager;
     this.eventBus = eventBus;
     this.logger = logger.child({ module: "legrand-hc" });
   }
@@ -189,6 +192,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
       this.poller = new NetatmoPoller(
         this.bridge,
         this.deviceManager,
+        this.equipmentManager,
         this.settingsManager,
         this.eventBus,
         homeId,
