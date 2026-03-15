@@ -111,20 +111,70 @@ Scope: tariff schedule configuration, HP/HC classification at write time, stacke
 
 ## IT3 — Solar production + autoconsumption — `feat/035c-energy-solar`
 
-Scope: add production virtual device, distinguish consumption/production Equipments.
+Scope: production data collection, production chart, autoconsumption derivation at query time.
 
-### Backend
+Detailed spec: [spec-it3.md](spec-it3.md) | Architecture: [architecture-it3.md](architecture-it3.md)
 
-1. [ ] Add `energyMeterType` field to Equipment — DB migration + types
-2. [ ] Create virtual device `legrand_energy_production` from bridge data
-3. [ ] Backfill 6 months production data
-4. [ ] Update energy API: derive autoconsumption at query time
+### Backend — Types & Equipment
 
-### UI
+1. [ ] Add `energy_production_meter` to `EquipmentType` in `src/shared/types.ts` + `ui/src/types.ts`
+2. [ ] Update `EnergyPoint` and `EnergyTotals` types (add prod, autoconso, injection)
+3. [ ] Add `energy_production_meter` to `VALID_TYPES` + singleton enforcement in `equipment-manager.ts`
 
-5. [ ] Consumption chart with Autoconso stacking
-6. [ ] Production chart (hidden if no solar)
-7. [ ] `energyMeterType` dropdown in Equipment form
+### Backend — Poller
+
+4. [ ] Add `sum_energy_resell_to_grid` to Netatmo API query
+5. [ ] Compute production = self_consumption + resell_to_grid per 30-min window
+6. [ ] Write `energy_production` data on bridge Device with `sourceTimestamp`
+7. [ ] Write `demand_30min_production` for real-time power (production × 2)
+
+### Backend — Aggregation & API
+
+8. [ ] Extend EnergyAggregator to compute production cumuls (hour/day/month/year)
+9. [ ] Update `GET /api/v1/energy/history`: query production, compute autoconso/injection at query time
+10. [ ] Update `GET /api/v1/energy/status`: add `hasProduction` flag
+
+### UI — Equipment support
+
+11. [ ] Add `energy_production_meter` to EquipmentForm, EquipmentCard, bindingUtils, DeviceSelector, useEquipmentState
+12. [ ] Add to singleton types (EquipmentsPage, HomePage)
+13. [ ] Add to energy group in ZoneEquipmentsView
+14. [ ] Add i18n keys (fr + en)
+
+### UI — Step A: Production chart
+
+15. [ ] Create production bar chart: stacked autoconso (light green) + injection (dark green)
+16. [ ] Add to EnergyPage below consumption chart (hidden if no production Equipment)
+17. [ ] Legend with production totals (autoconso + injection)
+18. [ ] Update useEnergy store for new point format
+
+### Backfill — Step A.1: 1 day
+
+19. [ ] Script to backfill production for a single day (query Netatmo, write to InfluxDB)
+20. [ ] Validate pipeline end-to-end on 1 day of data
+
+### Backfill — Step A.2: 1 month
+
+21. [ ] Extend backfill script to a full month
+22. [ ] Validate aggregation (hourly/daily) over the month
+23. [ ] Compare totals with Legrand dashboard
+
+### UI — Step B: Autoconso in consumption chart
+
+24. [ ] Add autoconso segment (light green) on top of HP/HC bars
+25. [ ] Update legend with autoconso total
+26. [ ] Total = HP + HC + autoconso = total house consumption
+
+### Backfill — Step C: Full backfill (6 months)
+
+27. [ ] Full 6-month production backfill script
+28. [ ] Same pattern as consumption backfill (`energy-backfill.ts`)
+
+### Validation
+
+29. [ ] TypeScript compilation — zero errors (backend + frontend)
+30. [ ] Production + autoconso + injection values coherent
+31. [ ] Charts render correctly for all periods
 
 ---
 
