@@ -16,6 +16,7 @@ import type {
   MqttBroker,
   MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
   DashboardWidget, WidgetConfig, WidgetFamily,
+  EnergyHistoryResponse, EnergyStatus,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -1084,4 +1085,21 @@ export async function reorderDashboardWidgets(order: string[]): Promise<void> {
     method: "PUT",
     body: JSON.stringify({ order }),
   });
+}
+
+// ============================================================
+// Energy
+// ============================================================
+
+export async function getEnergyStatus(): Promise<EnergyStatus> {
+  return fetchJSON<EnergyStatus>(`${API_BASE}/energy/status`);
+}
+
+export async function getEnergyHistory(
+  period: string,
+  date: string,
+): Promise<EnergyHistoryResponse> {
+  return fetchJSON<EnergyHistoryResponse>(
+    `${API_BASE}/energy/history?period=${period}&date=${date}`,
+  );
 }

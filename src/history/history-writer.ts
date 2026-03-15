@@ -32,6 +32,9 @@ const CATEGORY_DEFAULTS_ON: ReadonlySet<string> = new Set([
 /** Aliases historized ON regardless of category (handles generic bindings). */
 const ALIAS_DEFAULTS_ON: ReadonlySet<string> = new Set(["setpoint", "power"]);
 
+/** Aliases forced OFF — live-only values, not useful as time series. */
+const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set(["demand_30min"]);
+
 /** Deadband thresholds by category — skip writes if delta is below this. */
 const DEADBAND: Record<string, number> = {
   temperature: 0.2,
@@ -125,6 +128,7 @@ export class HistoryWriter {
               event.alias,
               event.value,
               event.previous,
+              event.sourceTimestamp,
             );
             break;
           case "equipment.created":
@@ -189,9 +193,11 @@ export class HistoryWriter {
     // 1. Explicit override
     if (historize === 1) return true;
     if (historize === 0) return false;
-    // 2. Alias default
+    // 2. Alias exclusion (cumulative counters — not useful as time series)
+    if (ALIAS_DEFAULTS_OFF.has(alias)) return false;
+    // 3. Alias default
     if (ALIAS_DEFAULTS_ON.has(alias)) return true;
-    // 3. Category default
+    // 4. Category default
     if (CATEGORY_DEFAULTS_ON.has(category)) return true;
     return false;
   }
@@ -237,6 +243,7 @@ export class HistoryWriter {
     Promise.all([
       this.influxClient.ensureBuckets(retention),
       this.influxClient.ensureDownsamplingTasks(),
+      this.influxClient.ensureEnergyBuckets(),
     ]).catch((err) => {
       this.logger.warn({ err }, "Downsampling setup failed — will retry on next connect");
     });
@@ -289,6 +296,7 @@ export class HistoryWriter {
     alias: string,
     value: unknown,
     previous: unknown,
+    sourceTimestamp?: number,
   ): void {
     if (!this.influxClient.isConnected()) return;
     if (value === null || value === undefined) return;
@@ -307,8 +315,11 @@ export class HistoryWriter {
     if (!bindingId || !meta) return;
     if (!this.historizedBindings.has(bindingId)) return;
 
-    // Deduplication check
-    if (!this.shouldWrite(bindingId, meta, value, previous)) return;
+    // Skip deduplication for aligned historical writes (e.g. energy 30-min windows).
+    // These are idempotent by design (same tags + timestamp = overwrite in InfluxDB).
+    if (sourceTimestamp === undefined) {
+      if (!this.shouldWrite(bindingId, meta, value, previous)) return;
+    }
 
     // Build and write point
     const point = new Point("equipment_data")
@@ -326,6 +337,11 @@ export class HistoryWriter {
       point.floatField("value_number", boolVal ? 1 : 0);
     } else {
       point.stringField("value_string", String(value));
+    }
+
+    // Use aligned source timestamp when provided (e.g. energy 30-min windows)
+    if (sourceTimestamp !== undefined) {
+      point.timestamp(sourceTimestamp);
     }
 
     this.influxClient.writePoint(point);

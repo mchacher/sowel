@@ -16,6 +16,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
   const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
+  const isEnergyMeter = equipment.type === "energy_meter" || equipment.type === "main_energy_meter";
   const isThermostat = equipment.type === "thermostat";
   const isHeater = equipment.type === "heater";
   const isGate = equipment.type === "gate";
@@ -75,7 +76,9 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     : null;
   const gateIsOpen = gateStateBinding?.value === "open";
 
-  const iconColor = isSensor
+  const iconColor = isEnergyMeter
+    ? "bg-accent/10 text-accent"
+    : isSensor
     ? getSensorIconColor(equipment.dataBindings)
     : isThermostat
       ? isOn
@@ -103,6 +106,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isLight,
     isShutter,
     isSensor,
+    isEnergyMeter,
     isThermostat,
     isHeater,
     isGate,

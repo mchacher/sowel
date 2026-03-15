@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ResponsiveContainer,
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
-  Area,
   CartesianGrid,
 } from "recharts";
 import type { HistoryPoint } from "../../types";
@@ -23,6 +23,8 @@ interface TimeSeriesChartProps {
   fetchTime?: number;
   /** Data type — "boolean" or "enum" use step interpolation instead of smooth curves. */
   dataType?: string;
+  /** Data category — "power" renders as area chart with gradient fill. */
+  category?: string;
 }
 
 function formatTime(iso: string, range: TimeRange): string {
@@ -51,6 +53,11 @@ function formatValue(v: number, unit?: string): string {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
+function formatPower(w: number): string {
+  if (w >= 1000) return `${(w / 1000).toFixed(1)} kW`;
+  return `${Math.round(w)} W`;
+}
+
 /** Returns a human-readable relative time string, or null if gap < 5 minutes. */
 function formatRelativeTime(isoTime: string, now: number, tFn: (key: string) => string): string | null {
   const diffMs = now - new Date(isoTime).getTime();
@@ -75,9 +82,13 @@ function formatRelativeTime(isoTime: string, now: number, tFn: (key: string) => 
   return `${minutes}${tFn("time.min")}`;
 }
 
-export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime, dataType }: TimeSeriesChartProps) {
+const POWER_COLOR = "#D4963F";
+const POWER_GRADIENT_ID = "powerGradient";
+
+export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime, dataType, category }: TimeSeriesChartProps) {
   const { t } = useTranslation();
   const isDiscrete = dataType === "boolean" || dataType === "enum";
+  const isPower = category === "power";
 
   const { data, lastRealTime } = useMemo(() => {
     const mapped = points.map((p) => ({
@@ -120,7 +131,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
   const staleDuration = lastRealTime && fetchTime ? formatRelativeTime(lastRealTime, fetchTime, t) : null;
 
   // Use CSS variables for chart colors — works in both light and dark mode
-  const primaryColor = "var(--color-primary)";
+  const primaryColor = isPower ? POWER_COLOR : "var(--color-primary)";
   const primaryLightColor = "var(--color-primary-light)";
   const textSecondary = "var(--color-text-secondary)";
   const textTertiary = "var(--color-text-tertiary)";
@@ -129,7 +140,17 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
   return (
     <div>
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+      <ComposedChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+        {/* Gradient definition for power area fill */}
+        {isPower && (
+          <defs>
+            <linearGradient id={POWER_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={POWER_COLOR} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={POWER_COLOR} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+        )}
+
         <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
         <XAxis
           dataKey="label"
@@ -146,7 +167,9 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           width={48}
           {...(isDiscrete
             ? { domain: [0, 1], ticks: [0, 1], tickFormatter: (v: number) => (v === 1 ? "ON" : "OFF") }
-            : { tickFormatter: (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)) }
+            : isPower
+              ? { tickFormatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v))) }
+              : { tickFormatter: (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)) }
           )}
         />
         <Tooltip
@@ -165,14 +188,18 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           }}
           formatter={(value?: number, name?: string) => {
             const v = value ?? 0;
+            if (isPower) {
+              if (name === "min" || name === "max") return [formatPower(v), name];
+              return [formatPower(v), "Puissance"];
+            }
             if (name === "min" || name === "max") return [formatValue(v, unit), name];
             if (isDiscrete) return [v === 1 ? "ON" : "OFF", ""];
             return [formatValue(v, unit), ""];
           }}
         />
 
-        {/* Min/Max area fill for aggregated data */}
-        {hasMinMax && (
+        {/* Min/Max area fill for aggregated data (non-power) */}
+        {hasMinMax && !isPower && (
           <Area
             type="monotone"
             dataKey="max"
@@ -183,12 +210,23 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           />
         )}
 
+        {/* Power: area chart with gradient fill */}
+        {isPower && (
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke="none"
+            fill={`url(#${POWER_GRADIENT_ID})`}
+            isAnimationActive={false}
+          />
+        )}
+
         {/* Main value line */}
         <Line
           type={isDiscrete ? "stepAfter" : "monotone"}
           dataKey="value"
           stroke={primaryColor}
-          strokeWidth={1.5}
+          strokeWidth={isPower ? 2 : 1.5}
           dot={false}
           activeDot={{ r: 3, fill: primaryColor }}
           isAnimationActive={false}
@@ -218,7 +256,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
             isAnimationActive={false}
           />
         )}
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
     {staleDuration && (
       <div className="text-[10px] text-accent text-right mt-1">

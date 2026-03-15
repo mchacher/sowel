@@ -22,6 +22,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isLight,
     isShutter,
     isSensor,
+    isEnergyMeter,
     isThermostat,
     isHeater,
     isGate,
@@ -33,8 +34,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     iconColor,
   } = useEquipmentState(equipment);
 
-  // Find primary data value for non-light, non-sensor, non-shutter, non-thermostat, non-heater, non-gate equipments
-  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate
+  // Find primary data value for generic equipments
+  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -83,8 +84,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         />
       )}
 
+      {/* Energy meter values */}
+      {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
+
       {/* Primary value for other equipments */}
-      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && (
+      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -135,8 +139,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         />
       )}
 
-      {/* Boolean state badge for non-light, non-sensor, non-shutter, non-heater, non-gate equipments */}
-      {!isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && stateBinding && (
+      {/* Boolean state badge for generic equipments */}
+      {!isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
@@ -147,6 +151,35 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           `}
         >
           {isOn ? t("common.on") : t("common.off")}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
+  const computed = equipment.computedData ?? [];
+  const energyDay = computed.find((c) => c.alias === "energy_day");
+  const demandBinding = equipment.dataBindings.find((b) => b.alias === "demand_5min");
+  const demandW = typeof demandBinding?.value === "number" ? demandBinding.value : null;
+
+  const dayWh = typeof energyDay?.value === "number" ? energyDay.value : null;
+
+  return (
+    <div className="flex items-center gap-3 flex-shrink-0">
+      {demandW !== null && (
+        <span className="text-[13px] text-text-secondary tabular-nums font-mono">
+          {demandW >= 1000 ? (demandW / 1000).toFixed(1) : Math.round(demandW)}
+          <span className="text-[11px] text-text-tertiary ml-0.5">{demandW >= 1000 ? "kW" : "W"}</span>
+        </span>
+      )}
+      {dayWh !== null && (
+        <span className="text-[13px] text-accent tabular-nums font-mono font-semibold">
+          {dayWh >= 1000 ? (dayWh / 1000).toFixed(2) : Math.round(dayWh)}
+          <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
+            {dayWh >= 1000 ? "kWh" : "Wh"} {t("energy.today").toLowerCase()}
+          </span>
         </span>
       )}
     </div>
