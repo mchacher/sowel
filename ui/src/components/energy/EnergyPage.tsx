@@ -70,7 +70,7 @@ export function EnergyPage() {
                     </span>
                   )}
                 </div>
-                <div className="text-[13px] font-semibold text-text tabular-nums">
+                <div className="text-[15px] font-semibold text-text tabular-nums">
                   Total : {formatKWh(history.totals.total_consumption, period)} kWh
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">
