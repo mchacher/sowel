@@ -35,8 +35,7 @@ export function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-sm mx-4">
         <div className="text-center mb-8">
-          <SowelLogo size={48} className="inline-block mb-3" />
-          <h1 className="text-xl font-semibold text-text">{t("app.name")}</h1>
+          <SowelLogo size={160} showText animated className="inline-block mb-2" />
         </div>
 
         <form onSubmit={handleSubmit} className="bg-surface rounded-[10px] border border-border p-6">

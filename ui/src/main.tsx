@@ -23,3 +23,15 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>
 );
+
+// Hide PWA splash screen — show for at least 2s then fade out
+const splash = document.getElementById("splash");
+if (splash) {
+  const minDelay = 1600;
+  const started = Number(splash.dataset.ts) || Date.now();
+  const remaining = Math.max(0, minDelay - (Date.now() - started));
+  setTimeout(() => {
+    splash.style.opacity = "0";
+    setTimeout(() => splash.remove(), 400);
+  }, remaining);
+}

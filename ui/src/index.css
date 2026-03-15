@@ -11,6 +11,7 @@
 @theme {
   /* Colors — Light mode (Ocean palette) */
   --color-primary: #1A4F6E;
+  --color-primary-mid: #7FB8D4;
   --color-primary-light: #E6F0F6;
   --color-primary-hover: #13405A;
   --color-accent: #D4963F;
@@ -55,6 +56,7 @@
 
 .dark {
   --color-primary: #4A9FCC;
+  --color-primary-mid: #5CB3E0;
   --color-primary-light: #1A2E42;
   --color-primary-hover: #5CB3E0;
   --color-accent: #E0A84F;

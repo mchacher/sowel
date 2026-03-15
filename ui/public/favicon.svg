@@ -1,16 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <defs>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="0.5" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="#1A4F6E"/>
-  <!-- Concentric circles with glow diffusion -->
-  <circle cx="16" cy="16" r="2.85" fill="white" stroke="white" stroke-width="0.3"/>
-  <circle cx="16" cy="16" r="7" stroke="white" stroke-width="1.5" opacity="0.8" fill="none" filter="url(#glow)"/>
-  <circle cx="16" cy="16" r="11.5" stroke="white" stroke-width="1.2" opacity="0.45" fill="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="25 15 150 155" fill="none">
+  <path d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z"
+        fill="none" stroke="#1A4F6E" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M75 115 Q100 140 125 115" fill="none" stroke="#1A4F6E" stroke-width="9" stroke-linecap="round"/>
+  <path d="M78 95 Q83 87 88 95" fill="none" stroke="#1A4F6E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M112 95 Q117 87 122 95" fill="none" stroke="#1A4F6E" stroke-width="8" stroke-linecap="round"/>
 </svg>

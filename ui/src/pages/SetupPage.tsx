@@ -51,8 +51,7 @@ export function SetupPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-sm mx-4">
         <div className="text-center mb-8">
-          <SowelLogo size={48} className="inline-block mb-3" />
-          <h1 className="text-xl font-semibold text-text">{t("app.name")}</h1>
+          <SowelLogo size={160} showText animated className="inline-block mb-2" />
           <p className="text-[13px] text-text-secondary mt-2">
             {t("auth.setupTitle")}
           </p>
