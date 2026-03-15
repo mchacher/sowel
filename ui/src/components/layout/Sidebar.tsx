@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   Radio,
   Box,
@@ -9,6 +9,7 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Layers,
   Calendar,
   BarChart3,
@@ -29,6 +30,19 @@ import { SidebarChartList } from "./SidebarChartList";
 import { SowelLogo } from "./SowelLogo";
 import { useAuth } from "../../store/useAuth";
 import { useEnergy } from "../../store/useEnergy";
+
+type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
+
+const ADMIN_ROUTES = ["/devices", "/equipments", "/zones", "/calendar", "/integrations", "/mqtt-publishers", "/notification-publishers", "/logs", "/backup"];
+
+function getSectionForPath(pathname: string): SidebarSection | null {
+  if (pathname.startsWith("/home")) return "maison";
+  if (pathname.startsWith("/modes")) return "modes";
+  if (pathname.startsWith("/analyse")) return "analyse";
+  if (pathname.startsWith("/energy")) return "energy";
+  if (ADMIN_ROUTES.some((r) => pathname.startsWith(r))) return "admin";
+  return null;
+}
 
 interface NavItem {
   to: string;
@@ -51,11 +65,26 @@ const ADMIN_ITEMS: NavItem[] = [
 export function Sidebar() {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
   const energyAvailable = useEnergy((s) => s.available);
   const hasProduction = useEnergy((s) => s.hasProduction);
   const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
+
+  // Auto-collapse: only one section expanded at a time
+  const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
+    () => getSectionForPath(location.pathname)
+  );
+
+  // Auto-update expanded section when route changes
+  useEffect(() => {
+    setExpandedSection(getSectionForPath(location.pathname));
+  }, [location.pathname]);
+
+  const toggleSection = (section: SidebarSection) => {
+    setExpandedSection((prev) => (prev === section ? null : section));
+  };
 
   useEffect(() => {
     checkEnergyAvailability();
@@ -71,11 +100,11 @@ export function Sidebar() {
     >
       {/* Logo area */}
       <div className="flex items-center h-[60px] px-4 border-b border-border-light">
-        <div className="flex items-center gap-3 min-w-0">
-          <SowelLogo size={32} className="flex-shrink-0" />
+        <div className="flex items-center min-w-0">
+          <SowelLogo size={40} className="flex-shrink-0" />
           {!collapsed && (
-            <span className="font-semibold text-[16px] tracking-[-0.01em] text-text truncate">
-              {t("app.name")}
+            <span className="font-extrabold text-[18px] tracking-[0.18em] text-primary ml-2.5 mt-1" style={{ fontFamily: "Nunito, sans-serif" }}>
+              SOWEL
             </span>
           )}
         </div>
@@ -103,12 +132,12 @@ export function Sidebar() {
           ) : (
             <NavLink
               to="/dashboard"
-              className={() => `flex items-center gap-2 px-3 py-1.5 min-w-0 group`}
+              className={({ isActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-[6px] transition-colors duration-150 ease-out ${isActive ? "bg-primary-light" : "hover:bg-border-light"}`}
             >
               {({ isActive }) => (
                 <>
-                  <LayoutDashboard size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                  <LayoutDashboard size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`}>
                     {t("nav.dashboard")}
                   </span>
                 </>
@@ -134,27 +163,32 @@ export function Sidebar() {
             <Home size={20} strokeWidth={1.5} />
           </NavLink>
         ) : (
-          <SidebarZoneTree collapsed={collapsed} />
+          <>
+            {expandedSection === "maison" ? (
+              <SidebarZoneTree collapsed={collapsed} />
+            ) : (
+              <NavLink
+                to="/home"
+                onClick={(e) => {
+                  if (location.pathname.startsWith("/home")) {
+                    e.preventDefault();
+                    setExpandedSection("maison");
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 w-full rounded-[6px] transition-colors duration-150 ease-out hover:bg-border-light"
+              >
+                <Home size={14} strokeWidth={1.5} className="text-text-secondary" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+                  {t("nav.maison")}
+                </span>
+                <ChevronRight size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+              </NavLink>
+            )}
+          </>
         )}
 
         {/* Modes section */}
         <div className="mt-3 pt-2 border-t border-border-light">
-          {!collapsed && (
-            <NavLink
-              to="/modes"
-              end
-              className={() => `flex items-center gap-2 px-3 mb-2 group`}
-            >
-              {({ isActive }) => (
-                <>
-                  <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
-                    {t("nav.modes")}
-                  </span>
-                </>
-              )}
-            </NavLink>
-          )}
           {collapsed ? (
             <NavLink
               to="/modes"
@@ -171,7 +205,34 @@ export function Sidebar() {
               <Layers size={20} strokeWidth={1.5} />
             </NavLink>
           ) : (
-            <SidebarModeList collapsed={collapsed} />
+            <>
+              <NavLink
+                to="/modes"
+                end
+                onClick={(e) => {
+                  if (location.pathname.startsWith("/modes")) {
+                    e.preventDefault();
+                    toggleSection("modes");
+                  }
+                }}
+                className={({ isActive }) => `flex items-center gap-2 px-3 py-1.5 mb-1 w-full rounded-[6px] transition-colors duration-150 ease-out ${isActive ? "bg-primary-light" : "hover:bg-border-light"}`}
+              >
+                {({ isActive }) => (
+                  <>
+                    <Layers size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
+                    <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`}>
+                      {t("nav.modes")}
+                    </span>
+                    {expandedSection === "modes" ? (
+                      <ChevronDown size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                    ) : (
+                      <ChevronRight size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                    )}
+                  </>
+                )}
+              </NavLink>
+              {expandedSection === "modes" && <SidebarModeList collapsed={collapsed} />}
+            </>
           )}
         </div>
 
@@ -197,18 +258,29 @@ export function Sidebar() {
               <NavLink
                 to="/analyse"
                 end
-                className={() => `flex items-center gap-2 px-3 mb-2 group`}
+                onClick={(e) => {
+                  if (location.pathname.startsWith("/analyse")) {
+                    e.preventDefault();
+                    toggleSection("analyse");
+                  }
+                }}
+                className={({ isActive }) => `flex items-center gap-2 px-3 py-1.5 mb-1 w-full rounded-[6px] transition-colors duration-150 ease-out ${isActive ? "bg-primary-light" : "hover:bg-border-light"}`}
               >
                 {({ isActive }) => (
                   <>
-                    <BarChart3 size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-                    <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                    <BarChart3 size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
+                    <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`}>
                       {t("nav.analyse")}
                     </span>
+                    {expandedSection === "analyse" ? (
+                      <ChevronDown size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                    ) : (
+                      <ChevronRight size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                    )}
                   </>
                 )}
               </NavLink>
-              <SidebarChartList collapsed={collapsed} />
+              {expandedSection === "analyse" && <SidebarChartList collapsed={collapsed} />}
             </>
           )}
         </div>
@@ -233,37 +305,24 @@ export function Sidebar() {
               </NavLink>
             ) : (
               <>
-                <NavLink
-                  to="/energy/consumption"
-                  className={() => `flex items-center gap-2 px-3 py-1.5 group`}
+                <button
+                  onClick={() => toggleSection("energy")}
+                  className="flex items-center gap-2 px-3 py-1.5 mb-1 w-full rounded-[6px] transition-colors duration-150 ease-out hover:bg-border-light cursor-pointer"
                 >
-                  {({ isActive }) => (
-                    <>
-                      <Zap size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-                      <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
-                        {t("nav.energy")}
-                      </span>
-                    </>
+                  <Zap size={14} strokeWidth={1.5} className={`transition-colors ${location.pathname.startsWith("/energy") ? "text-primary" : "text-text-secondary"}`} />
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${location.pathname.startsWith("/energy") ? "text-primary" : "text-text-secondary"}`}>
+                    {t("nav.energy")}
+                  </span>
+                  {expandedSection === "energy" ? (
+                    <ChevronDown size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                  ) : (
+                    <ChevronRight size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
                   )}
-                </NavLink>
-                <div className="space-y-0.5 pl-2">
-                  <NavLink
-                    to="/energy/consumption"
-                    className={({ isActive }) => `
-                      flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
-                      text-[13px] transition-colors duration-150 ease-out
-                      ${isActive
-                        ? "bg-primary-light text-primary font-medium"
-                        : "text-text-secondary hover:bg-border-light hover:text-text"
-                      }
-                    `}
-                  >
-                    <PlugZap size={14} strokeWidth={1.5} />
-                    {t("nav.energy.consumption")}
-                  </NavLink>
-                  {hasProduction && (
+                </button>
+                {expandedSection === "energy" && (
+                  <div className="space-y-0.5 pl-2">
                     <NavLink
-                      to="/energy/production"
+                      to="/energy/consumption"
                       className={({ isActive }) => `
                         flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
                         text-[13px] transition-colors duration-150 ease-out
@@ -273,11 +332,27 @@ export function Sidebar() {
                         }
                       `}
                     >
-                      <Sun size={14} strokeWidth={1.5} />
-                      {t("nav.energy.production")}
+                      <PlugZap size={14} strokeWidth={1.5} />
+                      {t("nav.energy.consumption")}
                     </NavLink>
-                  )}
-                </div>
+                    {hasProduction && (
+                      <NavLink
+                        to="/energy/production"
+                        className={({ isActive }) => `
+                          flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
+                          text-[13px] transition-colors duration-150 ease-out
+                          ${isActive
+                            ? "bg-primary-light text-primary font-medium"
+                            : "text-text-secondary hover:bg-border-light hover:text-text"
+                          }
+                        `}
+                      >
+                        <Sun size={14} strokeWidth={1.5} />
+                        {t("nav.energy.production")}
+                      </NavLink>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -287,57 +362,86 @@ export function Sidebar() {
       {/* Administration section — admin only */}
       {isAdmin && (
         <div className="border-t border-border-light py-2 px-2">
-          {!collapsed && (
-            <div className="flex items-center gap-2 px-3 mb-1.5">
-              <Shield size={14} strokeWidth={1.5} className="text-text" />
-              <span className="text-[11px] font-semibold text-text uppercase tracking-wider">
-                {t("nav.administration")}
-              </span>
-            </div>
-          )}
-          <nav className="space-y-0.5">
-            {ADMIN_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `
-                  flex items-center gap-3 px-3 py-1.5 rounded-[6px]
-                  transition-colors duration-150 ease-out
-                  ${collapsed ? "justify-center" : ""}
-                  ${
-                    isActive
-                      ? "bg-primary-light text-primary font-medium"
-                      : "text-text-secondary hover:bg-border-light hover:text-text"
-                  }
-                `}
-                title={collapsed ? t(item.label) : undefined}
+          {collapsed ? (
+            <NavLink
+              to="/devices"
+              className={({ isActive }) => `
+                flex items-center justify-center px-3 py-2.5 rounded-[6px]
+                transition-colors duration-150 ease-out
+                ${isActive
+                  ? "bg-primary-light text-primary font-medium"
+                  : "text-text-secondary hover:bg-border-light hover:text-text"
+                }
+              `}
+              title={t("nav.administration")}
+            >
+              <Shield size={20} strokeWidth={1.5} />
+            </NavLink>
+          ) : (
+            <>
+              <button
+                onClick={() => toggleSection("admin")}
+                className="flex items-center gap-2 px-3 py-1.5 mb-1.5 w-full rounded-[6px] transition-colors duration-150 ease-out hover:bg-border-light cursor-pointer"
               >
-                <span className="flex-shrink-0">{item.icon}</span>
-                {!collapsed && <span className="text-[12px] font-medium">{t(item.label)}</span>}
-              </NavLink>
-            ))}
-          </nav>
+                <Shield size={14} strokeWidth={1.5} className={`transition-colors ${ADMIN_ROUTES.some((r) => location.pathname.startsWith(r)) ? "text-primary" : "text-text-secondary"}`} />
+                <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${ADMIN_ROUTES.some((r) => location.pathname.startsWith(r)) ? "text-primary" : "text-text-secondary"}`}>
+                  {t("nav.administration")}
+                </span>
+                {expandedSection === "admin" ? (
+                  <ChevronDown size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                ) : (
+                  <ChevronRight size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
+                )}
+              </button>
+              {expandedSection === "admin" && (
+                <nav className="space-y-0.5 pl-2">
+                  {ADMIN_ITEMS.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) => `
+                        flex items-center gap-3 px-3 py-1.5 rounded-[6px]
+                        transition-colors duration-150 ease-out
+                        ${
+                          isActive
+                            ? "bg-primary-light text-primary font-medium"
+                            : "text-text-secondary hover:bg-border-light hover:text-text"
+                        }
+                      `}
+                    >
+                      <span className="flex-shrink-0">{item.icon}</span>
+                      <span className="text-[12px] font-medium">{t(item.label)}</span>
+                    </NavLink>
+                  ))}
+                </nav>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      {/* Réglages section — all users */}
+      {/* Réglages — all users */}
       <div className="border-t border-border-light py-2 px-2">
         <NavLink
           to="/settings"
           className={({ isActive }) => `
-            flex items-center gap-3 px-3 py-1.5 rounded-[6px]
+            flex items-center gap-2 px-3 py-1.5 rounded-[6px]
             transition-colors duration-150 ease-out
             ${collapsed ? "justify-center" : ""}
-            ${
-              isActive
-                ? "bg-primary-light text-primary font-medium"
-                : "text-text-secondary hover:bg-border-light hover:text-text"
-            }
+            ${isActive ? "bg-primary-light" : "hover:bg-border-light"}
           `}
           title={collapsed ? t("nav.settings") : undefined}
         >
-          <span className="flex-shrink-0"><Settings size={18} strokeWidth={1.5} /></span>
-          {!collapsed && <span className="text-[12px] font-medium">{t("nav.settings")}</span>}
+          {({ isActive }) => (
+            <>
+              <Settings size={collapsed ? 18 : 14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
+              {!collapsed && (
+                <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`}>
+                  {t("nav.settings")}
+                </span>
+              )}
+            </>
+          )}
         </NavLink>
       </div>
 
