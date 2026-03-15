@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useEnergy } from "../../store/useEnergy";
 import { PeriodSelector } from "./PeriodSelector";
 import { EnergyBarChart } from "./EnergyBarChart";
+import { EnergyMobileNav } from "./EnergyMobileNav";
 
 function formatKWh(wh: number, period: string): string {
   const kwh = wh / 1000;
@@ -30,7 +31,10 @@ export function EnergyPage() {
     <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-        <h1 className="text-[18px] font-semibold text-text">{t("energy.consumption")}</h1>
+        <div className="flex items-center gap-1.5">
+          <EnergyMobileNav />
+          <h1 className="text-[18px] font-semibold text-text">{t("energy.consumption")}</h1>
+        </div>
         <PeriodSelector />
       </div>
 

@@ -181,6 +181,20 @@ export async function createServer(deps: ServerDeps) {
       wildcard: false,
     });
 
+    // Prevent iOS from aggressively caching PWA manifest and icons
+    app.addHook("onSend", (_req, reply, payload, done) => {
+      const url = _req.url;
+      if (
+        url.endsWith(".webmanifest") ||
+        url.endsWith("manifest.json") ||
+        url.includes("apple-touch-icon") ||
+        url.match(/pwa-.*\.png$/)
+      ) {
+        reply.header("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+      done(null, payload);
+    });
+
     // SPA fallback: serve index.html for non-API routes
     app.setNotFoundHandler((_req, reply) => {
       reply.sendFile("index.html");
