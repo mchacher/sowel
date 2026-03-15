@@ -18,6 +18,8 @@ import {
   Bell,
   LayoutDashboard,
   Zap,
+  PlugZap,
+  Sun,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +54,7 @@ export function Sidebar() {
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
   const energyAvailable = useEnergy((s) => s.available);
+  const hasProduction = useEnergy((s) => s.hasProduction);
   const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
 
   useEffect(() => {
@@ -255,8 +258,25 @@ export function Sidebar() {
                       }
                     `}
                   >
+                    <PlugZap size={14} strokeWidth={1.5} />
                     {t("nav.energy.consumption")}
                   </NavLink>
+                  {hasProduction && (
+                    <NavLink
+                      to="/energy/production"
+                      className={({ isActive }) => `
+                        flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
+                        text-[13px] transition-colors duration-150 ease-out
+                        ${isActive
+                          ? "bg-primary-light text-primary font-medium"
+                          : "text-text-secondary hover:bg-border-light hover:text-text"
+                        }
+                      `}
+                    >
+                      <Sun size={14} strokeWidth={1.5} />
+                      {t("nav.energy.production")}
+                    </NavLink>
+                  )}
                 </div>
               </>
             )}

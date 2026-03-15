@@ -301,7 +301,7 @@ export function EquipmentDetailPage() {
       ) : null}
 
       {/* Energy cumuls */}
-      {equipment.type === "main_energy_meter" && equipment.computedData && (
+      {(equipment.type === "main_energy_meter" || equipment.type === "energy_production_meter") && equipment.computedData && (
         <EnergyDataPanel computedData={equipment.computedData} />
       )}
 

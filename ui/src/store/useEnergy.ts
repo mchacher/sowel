@@ -9,6 +9,7 @@ interface EnergyState {
   date: string; // YYYY-MM-DD
   history: EnergyHistoryResponse | null;
   available: boolean | null; // null = not checked yet
+  hasProduction: boolean;
   loading: boolean;
   error: string | null;
 
@@ -72,6 +73,7 @@ export const useEnergy = create<EnergyState>((set, get) => ({
   date: todayStr(),
   history: null,
   available: null,
+  hasProduction: false,
   loading: false,
   error: null,
 
@@ -108,9 +110,9 @@ export const useEnergy = create<EnergyState>((set, get) => ({
   checkAvailability: async () => {
     try {
       const status = await getEnergyStatus();
-      set({ available: status.available });
+      set({ available: status.available, hasProduction: status.hasProduction });
     } catch {
-      set({ available: false });
+      set({ available: false, hasProduction: false });
     }
   },
 }));

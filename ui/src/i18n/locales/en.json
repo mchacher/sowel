@@ -38,6 +38,7 @@
   "common.create": "Create",
   "common.retry": "Retry",
   "common.loading": "Loading...",
+  "common.noData": "No data",
   "common.saving": "Saving...",
   "common.creating": "Creating...",
   "common.deleting": "Deleting...",
@@ -191,6 +192,7 @@
   "equipments.type.heater": "Electric Heater",
   "equipments.type.energy_meter": "Energy Meter (sub-meter)",
   "equipments.type.main_energy_meter": "Energy Meter (main)",
+  "equipments.type.energy_production_meter": "Energy Meter (production)",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",
@@ -771,6 +773,7 @@
 
   "nav.energy": "Energy",
   "nav.energy.consumption": "Consumption",
+  "nav.energy.production": "Production",
 
   "energy.consumption": "Consumption",
   "energy.today": "Today",
@@ -784,6 +787,11 @@
   "energy.totalConsumption": "Total consumption",
   "energy.peakHours": "Peak hours",
   "energy.offPeakHours": "Off-peak hours",
+  "energy.production": "Solar Production",
+  "energy.totalProduction": "Total production",
+  "energy.autoconsumption": "Self-consumption",
+  "energy.gridInjection": "Grid injection",
+  "energy.gridConsumption": "Grid",
 
   "tariff.title": "Energy tariffs",
   "tariff.priceHp": "Peak price (€/kWh)",
