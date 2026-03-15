@@ -804,11 +804,14 @@ export interface AppConfig {
 
 export interface EnergyPoint {
   time: string;
-  consumption: number; // Wh
+  hp: number; // Wh attributed to Heures Pleines
+  hc: number; // Wh attributed to Heures Creuses
 }
 
 export interface EnergyTotals {
-  total_consumption: number; // Wh
+  total_consumption: number; // hp + hc (Wh)
+  total_hp: number; // Wh
+  total_hc: number; // Wh
 }
 
 export interface EnergyHistoryResponse {
@@ -824,4 +827,35 @@ export interface EnergyStatus {
   available: boolean;
   sources: string[];
   lastDataAt: string | null;
+  tariffConfigured: boolean;
+}
+
+// ============================================================
+// Tariff Configuration
+// ============================================================
+
+export interface TariffSlot {
+  start: string; // "HH:MM"
+  end: string; // "HH:MM"
+  tariff: "hp" | "hc";
+}
+
+export interface DaySchedule {
+  days: number[]; // 0=Sunday..6=Saturday
+  slots: TariffSlot[];
+}
+
+export interface TariffPrices {
+  hp: number; // €/kWh
+  hc: number; // €/kWh
+}
+
+export interface TariffConfig {
+  schedules: DaySchedule[];
+  prices: TariffPrices;
+}
+
+export interface TariffSplit {
+  hp: number; // Wh attributed to HP
+  hc: number; // Wh attributed to HC
 }

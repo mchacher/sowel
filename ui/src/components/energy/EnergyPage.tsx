@@ -22,6 +22,8 @@ export function EnergyPage() {
     fetchHistory();
   }, [fetchHistory]);
 
+  const hasHpHc = history ? history.totals.total_hc > 0 : false;
+
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
@@ -37,16 +39,6 @@ export function EnergyPage() {
         </div>
       ) : (
         <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
-          {/* Total */}
-          <div className="flex items-center justify-end mb-4">
-            {history && (
-              <span className="text-[18px] font-bold text-text tabular-nums">
-                {formatKWh(history.totals.total_consumption, period)}
-                <span className="text-[13px] font-medium text-text-secondary ml-1">kWh</span>
-              </span>
-            )}
-          </div>
-
           {/* Chart */}
           <EnergyBarChart
             points={history?.points ?? []}
@@ -54,6 +46,27 @@ export function EnergyPage() {
             date={date}
             height={350}
           />
+
+          {/* Legend below chart */}
+          {history && (
+            <div className="flex flex-col items-center mt-3 gap-1">
+              {hasHpHc && (
+                <div className="flex items-center gap-4 text-[13px] text-text-secondary">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4F7BE8" }} />
+                    {t("energy.peakHours")} : {formatKWh(history.totals.total_hp, period)} kWh
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#93B5F0" }} />
+                    {t("energy.offPeakHours")} : {formatKWh(history.totals.total_hc, period)} kWh
+                  </span>
+                </div>
+              )}
+              <div className="text-[13px] font-semibold text-text tabular-nums">
+                Total : {formatKWh(history.totals.total_consumption, period)} kWh
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

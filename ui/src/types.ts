@@ -687,11 +687,14 @@ export interface DashboardWidget {
 
 export interface EnergyPoint {
   time: string;
-  consumption: number; // Wh
+  hp: number; // Wh attributed to Heures Pleines
+  hc: number; // Wh attributed to Heures Creuses
 }
 
 export interface EnergyTotals {
-  total_consumption: number; // Wh
+  total_consumption: number; // hp + hc (Wh)
+  total_hp: number; // Wh
+  total_hc: number; // Wh
 }
 
 export interface EnergyHistoryResponse {
@@ -707,4 +710,26 @@ export interface EnergyStatus {
   available: boolean;
   sources: string[];
   lastDataAt: string | null;
+  tariffConfigured: boolean;
+}
+
+export interface TariffSlot {
+  start: string;
+  end: string;
+  tariff: "hp" | "hc";
+}
+
+export interface DaySchedule {
+  days: number[];
+  slots: TariffSlot[];
+}
+
+export interface TariffPrices {
+  hp: number;
+  hc: number;
+}
+
+export interface TariffConfig {
+  schedules: DaySchedule[];
+  prices: TariffPrices;
 }
