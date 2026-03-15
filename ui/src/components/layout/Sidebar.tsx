@@ -17,14 +17,16 @@ import {
   Send,
   Bell,
   LayoutDashboard,
+  Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SidebarZoneTree } from "./SidebarZoneTree";
 import { SidebarModeList } from "./SidebarModeList";
 import { SidebarChartList } from "./SidebarChartList";
 import { SowelLogo } from "./SowelLogo";
 import { useAuth } from "../../store/useAuth";
+import { useEnergy } from "../../store/useEnergy";
 
 interface NavItem {
   to: string;
@@ -49,6 +51,12 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
+  const energyAvailable = useEnergy((s) => s.available);
+  const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
+
+  useEffect(() => {
+    checkEnergyAvailability();
+  }, [checkEnergyAvailability]);
 
   return (
     <aside
@@ -201,6 +209,59 @@ export function Sidebar() {
             </>
           )}
         </div>
+
+        {/* Énergie section — visible only when energy data available */}
+        {energyAvailable && (
+          <div className="mt-3 pt-2 border-t border-border-light">
+            {collapsed ? (
+              <NavLink
+                to="/energy/consumption"
+                className={({ isActive }) => `
+                  flex items-center justify-center px-3 py-2.5 rounded-[6px]
+                  transition-colors duration-150 ease-out
+                  ${isActive
+                    ? "bg-primary-light text-primary font-medium"
+                    : "text-text-secondary hover:bg-border-light hover:text-text"
+                  }
+                `}
+                title={t("nav.energy")}
+              >
+                <Zap size={20} strokeWidth={1.5} />
+              </NavLink>
+            ) : (
+              <>
+                <NavLink
+                  to="/energy/consumption"
+                  className={() => `flex items-center gap-2 px-3 py-1.5 group`}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <Zap size={14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
+                      <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+                        {t("nav.energy")}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+                <div className="space-y-0.5 pl-2">
+                  <NavLink
+                    to="/energy/consumption"
+                    className={({ isActive }) => `
+                      flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
+                      text-[13px] transition-colors duration-150 ease-out
+                      ${isActive
+                        ? "bg-primary-light text-primary font-medium"
+                        : "text-text-secondary hover:bg-border-light hover:text-text"
+                      }
+                    `}
+                  >
+                    {t("nav.energy.consumption")}
+                  </NavLink>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Administration section — admin only */}

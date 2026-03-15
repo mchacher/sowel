@@ -9,6 +9,7 @@ import type {
   Equipment,
   EquipmentType,
   EquipmentWithDetails,
+  ComputedDataEntry,
   DataBinding,
   DataBindingWithValue,
   OrderBinding,
@@ -16,6 +17,9 @@ import type {
   DataType,
   DataCategory,
 } from "../shared/types.js";
+
+/** A function that returns computed data entries for a given equipment. */
+export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
 
 // ============================================================
 // Valid EquipmentType values
@@ -33,6 +37,8 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "weather",
   "gate",
   "heater",
+  "energy_meter",
+  "main_energy_meter",
 ]);
 
 // ============================================================
@@ -69,6 +75,9 @@ export class EquipmentManager {
   private stmts: ReturnType<typeof this.prepareStatements>;
   private unsubscribe: (() => void) | null = null;
 
+  /** Registered computed data providers (e.g. EnergyAggregator). */
+  private computedDataProviders: ComputedDataProvider[] = [];
+
   /** Gate equipments with a pending command — state is "unknown" until next sensor update */
   private pendingToggles = new Set<string>();
 
@@ -93,7 +102,12 @@ export class EquipmentManager {
     this.unsubscribe = this.eventBus.on((event) => {
       if (event.type === "device.data.updated") {
         try {
-          this.handleDeviceDataUpdated(event.dataId, event.value, event.previous);
+          this.handleDeviceDataUpdated(
+            event.dataId,
+            event.value,
+            event.previous,
+            event.sourceTimestamp,
+          );
         } catch (err) {
           this.logger.error({ err }, "Error handling device.data.updated for equipment bindings");
         }
@@ -104,6 +118,24 @@ export class EquipmentManager {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+  }
+
+  /** Register a provider that supplies computed data entries for equipments. */
+  registerComputedDataProvider(provider: ComputedDataProvider): void {
+    this.computedDataProviders.push(provider);
+  }
+
+  /** Collect computed data from all registered providers for a given equipment. */
+  private getComputedData(equipmentId: string): ComputedDataEntry[] {
+    const entries: ComputedDataEntry[] = [];
+    for (const provider of this.computedDataProviders) {
+      try {
+        entries.push(...provider(equipmentId));
+      } catch {
+        // Providers must not break equipment queries
+      }
+    }
+    return entries;
   }
 
   private prepareStatements() {
@@ -207,6 +239,14 @@ export class EquipmentManager {
       throw new EquipmentError(`Invalid equipment type: ${input.type}`, 400);
     }
 
+    // Only one main_energy_meter allowed
+    if (input.type === "main_energy_meter") {
+      const existing = this.getAll().find((eq) => eq.type === "main_energy_meter");
+      if (existing) {
+        throw new EquipmentError("A main energy meter already exists", 409);
+      }
+    }
+
     // Validate zone exists
     if (!this.stmts.checkZoneExists.get(input.zoneId)) {
       throw new EquipmentError(`Zone not found: ${input.zoneId}`, 404);
@@ -288,20 +328,26 @@ export class EquipmentManager {
     const equipment = this.getById(id);
     if (!equipment) return null;
 
+    const computedData = this.getComputedData(id);
     return {
       ...equipment,
       dataBindings: this.getDataBindingsWithValues(id),
       orderBindings: this.getOrderBindingsWithDetails(id),
+      ...(computedData.length > 0 ? { computedData } : {}),
     };
   }
 
   getAllWithDetails(): EquipmentWithDetails[] {
     const equipments = this.getAll();
-    return equipments.map((eq) => ({
-      ...eq,
-      dataBindings: this.getDataBindingsWithValues(eq.id),
-      orderBindings: this.getOrderBindingsWithDetails(eq.id),
-    }));
+    return equipments.map((eq) => {
+      const computedData = this.getComputedData(eq.id);
+      return {
+        ...eq,
+        dataBindings: this.getDataBindingsWithValues(eq.id),
+        orderBindings: this.getOrderBindingsWithDetails(eq.id),
+        ...(computedData.length > 0 ? { computedData } : {}),
+      };
+    });
   }
 
   update(id: string, input: UpdateEquipmentInput): Equipment | null {
@@ -822,7 +868,12 @@ export class EquipmentManager {
   // Reactive pipeline: device.data.updated -> equipment.data.changed
   // ============================================================
 
-  private handleDeviceDataUpdated(dataId: string, value: unknown, previous: unknown): void {
+  private handleDeviceDataUpdated(
+    dataId: string,
+    value: unknown,
+    previous: unknown,
+    sourceTimestamp?: number,
+  ): void {
     const bindings = this.stmts.getDataBindingsByDeviceData.all(dataId) as DataBindingRow[];
 
     for (const binding of bindings) {
@@ -855,6 +906,7 @@ export class EquipmentManager {
         alias: binding.alias,
         value,
         previous,
+        ...(sourceTimestamp !== undefined && { sourceTimestamp }),
       });
 
       // For gates, also emit derived abstract state

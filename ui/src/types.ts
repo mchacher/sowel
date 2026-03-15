@@ -150,7 +150,9 @@ export type EquipmentType =
   | "thermostat"
   | "weather"
   | "gate"
-  | "heater";
+  | "heater"
+  | "energy_meter"
+  | "main_energy_meter";
 
 export interface Equipment {
   id: string;
@@ -204,9 +206,19 @@ export interface OrderBindingWithDetails extends OrderBinding {
   unit?: string;
 }
 
+/** A computed data value not backed by a device binding (e.g. energy cumuls). */
+export interface ComputedDataEntry {
+  alias: string;
+  value: unknown;
+  unit?: string;
+  category?: DataCategory;
+  lastUpdated: string | null;
+}
+
 export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
+  computedData?: ComputedDataEntry[];
 }
 
 // ============================================================
@@ -241,6 +253,7 @@ export interface HistoryQueryResult {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
   dataType?: string; // "number" | "boolean" | "enum"
+  category?: string;
 }
 
 export interface RetentionStatus {
@@ -666,4 +679,32 @@ export interface DashboardWidget {
   family?: WidgetFamily;
   displayOrder: number;
   createdAt: string;
+}
+
+// ============================================================
+// Energy Dashboard
+// ============================================================
+
+export interface EnergyPoint {
+  time: string;
+  consumption: number; // Wh
+}
+
+export interface EnergyTotals {
+  total_consumption: number; // Wh
+}
+
+export interface EnergyHistoryResponse {
+  period: string;
+  from: string;
+  to: string;
+  resolution: "5min" | "1h" | "1d";
+  points: EnergyPoint[];
+  totals: EnergyTotals;
+}
+
+export interface EnergyStatus {
+  available: boolean;
+  sources: string[];
+  lastDataAt: string | null;
 }

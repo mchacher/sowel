@@ -69,7 +69,11 @@ sowel/
 │       ├── components/          # By domain: dashboard/, devices/, equipments/, zones/, scenarios/
 │       └── pages/               # Dashboard, Devices, Equipments, Zones, Scenarios, Settings
 ├── recipes/                     # Built-in Recipe JSON templates
-└── migrations/                  # SQLite migration SQL files
+├── migrations/                  # SQLite migration SQL files
+├── specs/                       # Feature specifications (XXX-version-name/)
+└── scripts/                     # Maintenance & diagnostic scripts
+    ├── energy/                  # InfluxDB energy backfill, diagnostic, admin
+    └── logs/                    # Log retrieval via API
 ```
 
 ## Build & Run Commands
@@ -230,3 +234,26 @@ All settings are optional with sensible defaults — Sowel runs zero-config out 
 | `CORS_ORIGINS`    | `*`               | Comma-separated allowed origins                 |
 
 Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI (Administration > Integrations), not from `.env`.
+
+## Energy Monitoring (InfluxDB)
+
+### Architecture
+
+Energy data flows through a 3-bucket InfluxDB pipeline:
+
+```
+sowel (raw)              — 7-day retention  — 30-min points from Netatmo poller
+  ↓ task: sowel-energy-sum-hourly (every: 1h, lookback: -7h)
+sowel-energy-hourly      — 2-year retention — hourly sums
+  ↓ task: sowel-energy-sum-daily (every: 1d, lookback: -2d)
+sowel-energy-daily       — 10-year retention — daily sums
+```
+
+### Key Implementation Details
+
+- **`timeSrc: "_start"`**: All `aggregateWindow` calls (queries and tasks) must use `timeSrc: "_start"` to avoid a +1h timestamp offset. InfluxDB defaults to `_stop` (end of window).
+- **Day view query strategy**: For recent days (< 6 days), query raw bucket with `aggregateWindow(every: 1h, fn: sum)` for real-time accuracy. For older days, fall back to `energy-hourly` bucket. If raw returns 0 points, also fall back to hourly.
+- **Netatmo polling**: 30-min energy windows via `getMeasure` API (scale=5min, summed). Only processes completed windows (`windowEnd > nowTs` → skip). Sliding 6h lookback for idempotent overwrites.
+- **Timestamps**: Raw data stored in UTC. Local time (CET/CEST = UTC+1/+2) conversion happens in the UI. Day boundaries use local midnight (`new Date(dateStr + "T00:00:00")`).
+- **Backup**: Exports all 5 InfluxDB buckets (raw, hourly, daily, energy-hourly, energy-daily) as CSV in ZIP. Tasks are recreated automatically on startup via `ensureEnergyBuckets()`.
+- **Maintenance scripts**: See `scripts/energy/README.md` for backfill, diagnostic, and admin tools.

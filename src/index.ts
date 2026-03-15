@@ -29,6 +29,7 @@ import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
 import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
+import { EnergyAggregator } from "./equipments/energy-aggregator.js";
 import { HistoryWriter } from "./history/history-writer.js";
 import { ChartManager } from "./charts/chart-manager.js";
 import { MqttBrokerManager } from "./mqtt-publishers/mqtt-broker-manager.js";
@@ -243,6 +244,27 @@ async function main() {
   // 14. Start all configured integrations
   await integrationRegistry.startAll();
 
+  // 14b. Energy backfill (runs in background, non-blocking)
+  const netatmoPlugin = integrationRegistry.getById("netatmo_hc") as
+    | NetatmoHCIntegration
+    | undefined;
+  const tryEnergyBackfill = () => {
+    if (netatmoPlugin) {
+      netatmoPlugin
+        .runEnergyBackfillIfNeeded(equipmentManager, historyWriter.getInfluxClient())
+        .catch((err) => logger.warn({ err }, "Energy backfill failed"));
+    }
+  };
+  tryEnergyBackfill();
+
+  // Also trigger backfill when a main_energy_meter Equipment is created
+  // (backfill was deferred if no Equipment existed at startup)
+  eventBus.on((event) => {
+    if (event.type === "equipment.created" && event.equipment.type === "main_energy_meter") {
+      tryEnergyBackfill();
+    }
+  });
+
   // 15. Start Fastify server
   const server = await createServer({
     db,
@@ -288,6 +310,17 @@ async function main() {
 
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
+
+  // 18a. Start Energy Aggregator (must be after historyWriter.init — needs InfluxDB connected)
+  const energyAggregator = new EnergyAggregator(
+    equipmentManager,
+    historyWriter.getInfluxClient(),
+    eventBus,
+    logger,
+  );
+  await energyAggregator
+    .start()
+    .catch((err) => logger.warn({ err }, "Energy aggregator start failed"));
 
   // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
   mqttPublishService.init();

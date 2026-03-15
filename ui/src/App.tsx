@@ -23,6 +23,7 @@ import { MqttPublishersPage } from "./pages/MqttPublishersPage";
 import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { QrLoginPage } from "./pages/QrLoginPage";
+import { EnergyPage } from "./components/energy/EnergyPage";
 
 export default function App() {
   return (
@@ -59,6 +60,8 @@ export default function App() {
           <Route path="/modes" element={<ModesPage />} />
           <Route path="/modes/:id" element={<ModeDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/energy" element={<Navigate to="/energy/consumption" replace />} />
+          <Route path="/energy/consumption" element={<EnergyPage />} />
           <Route path="/analyse" element={<AnalysePage />} />
           <Route path="/analyse/:chartId" element={<AnalysePage />} />
           <Route path="/settings" element={<SettingsPage />} />

@@ -26,6 +26,7 @@ import {
   HeaterWidgetIcon,
   SlidingGateIcon,
   GarageDoorIcon,
+  EnergyMeterIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 
@@ -41,6 +42,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
     isLight,
     isShutter,
     isSensor,
+    isEnergyMeter,
     isThermostat,
     isHeater,
     isGate,
@@ -54,6 +56,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
   if (isThermostat) return <ThermostatEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isGate) return <GateEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
   if (isSensor) return <SensorEquipmentWidget label={label} equipment={equipment} iconKey={widget.icon} visibleBindings={widget.config?.visibleBindings} />;
 
   return <GenericEquipmentWidget label={label} equipment={equipment} />;
@@ -603,6 +606,91 @@ function SensorEquipmentWidget({
         <div className="flex flex-col items-start pl-2 overflow-y-auto max-h-full">
           <SensorValues sensorBindings={filteredBindings} batteryBindings={batteryBindings} layout="column" />
         </div>
+      </div>
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Energy meter widget (read-only — displays computed energy data)
+// ============================================================
+
+function EnergyMeterEquipmentWidget({
+  label,
+  equipment,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+}) {
+  const { t } = useTranslation();
+
+  // Get energy values from computedData (energy_day, energy_hour, energy_month)
+  const computed = equipment.computedData ?? [];
+  const energyDay = computed.find((c) => c.alias === "energy_day");
+  const energyHour = computed.find((c) => c.alias === "energy_hour");
+  const energyMonth = computed.find((c) => c.alias === "energy_month");
+
+  // Also check dataBindings for demand_5min (current power)
+  const demandBinding = equipment.dataBindings.find((b) => b.alias === "demand_5min");
+  const demandW = typeof demandBinding?.value === "number" ? demandBinding.value : null;
+
+  const formatWh = (wh: unknown): string => {
+    if (typeof wh !== "number") return "\u2014";
+    if (wh >= 1000) return (wh / 1000).toFixed(1);
+    return String(Math.round(wh));
+  };
+
+  const unitWh = (wh: unknown): string => {
+    if (typeof wh !== "number") return "";
+    return wh >= 1000 ? "kWh" : "Wh";
+  };
+
+  return (
+    <WidgetCard label={label}>
+      {/* Zone 2: Icon + primary value (today) */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        <EnergyMeterIcon />
+        <div className="flex flex-col items-start gap-1.5 pl-2">
+          {/* Today's consumption — primary value */}
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-[20px] font-semibold text-text tabular-nums leading-none font-mono">
+              {formatWh(energyDay?.value)}
+            </span>
+            <span className="text-[11px] font-medium text-text-tertiary">
+              {unitWh(energyDay?.value)}
+            </span>
+          </div>
+          <span className="text-[11px] text-text-tertiary">{t("energy.today")}</span>
+        </div>
+      </div>
+
+      {/* Zone 3: Secondary values */}
+      <div className="flex justify-center gap-4 mt-auto pt-1">
+        {demandW !== null && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+              {demandW >= 1000 ? (demandW / 1000).toFixed(1) : Math.round(demandW)}
+            </span>
+            <span className="text-[10px] text-text-tertiary">{demandW >= 1000 ? "kW" : "W"}</span>
+          </div>
+        )}
+        {energyHour?.value != null && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+              {formatWh(energyHour.value)}
+            </span>
+            <span className="text-[10px] text-text-tertiary">{t("energy.hour")}</span>
+          </div>
+        )}
+        {energyMonth?.value != null && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+              {formatWh(energyMonth.value)}
+            </span>
+            <span className="text-[10px] text-text-tertiary">{unitWh(energyMonth.value)}</span>
+          </div>
+        )}
       </div>
     </WidgetCard>
   );

@@ -250,6 +250,7 @@ export function registerHistoryRoutes(
     const bindings = equipmentManager.getDataBindingsWithValues(equipmentId);
     const binding = bindings.find((b) => b.alias === alias);
     const dataType = binding?.type ?? "number";
+    const category = binding?.category;
 
     const result = await queryHistory(
       influx,
@@ -260,11 +261,12 @@ export function registerHistoryRoutes(
         to,
         aggregation: (aggregation as "raw" | "1h" | "1d" | "auto") ?? "auto",
         dataType,
+        category,
       },
       logger,
     );
 
-    return { ...result, dataType };
+    return { ...result, dataType, category };
   });
 
   logger.debug("History routes registered");
