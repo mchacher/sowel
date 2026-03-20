@@ -17,7 +17,6 @@ import {
 
 const MCZ_CLOUD_URL = "http://app.mcz.it:9000";
 const REQUEST_TIMEOUT_MS = 15_000;
-const RECONNECT_WAIT_TIMEOUT_MS = 20_000;
 
 export class MczBridge {
   private socket: Socket | null = null;
@@ -125,44 +124,12 @@ export class MczBridge {
   }
 
   /**
-   * Wait for the socket to be connected, with a timeout.
-   * If already connected, resolves immediately.
-   * If disconnected but Socket.IO is reconnecting, waits for reconnection.
-   */
-  private waitForConnection(): Promise<void> {
-    if (this.connected && this.socket?.connected) {
-      return Promise.resolve();
-    }
-    if (!this.socket) {
-      return Promise.reject(new Error("MCZ bridge not initialized"));
-    }
-
-    this.logger.debug("Waiting for MCZ reconnection...");
-    return new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("MCZ bridge reconnection timeout"));
-      }, RECONNECT_WAIT_TIMEOUT_MS);
-
-      const onReconnect = () => {
-        cleanup();
-        resolve();
-      };
-
-      const cleanup = () => {
-        clearTimeout(timeout);
-        this.socket?.io.off("reconnect", onReconnect);
-      };
-
-      this.socket!.io.on("reconnect", onReconnect);
-    });
-  }
-
-  /**
    * Request the full stove status via RecuperoInfo.
    */
   async getStatus(): Promise<MczStatusFrame> {
-    await this.waitForConnection();
+    if (!this.socket || !this.connected || !this.socket.connected) {
+      throw new Error("MCZ bridge not connected");
+    }
 
     return new Promise<MczStatusFrame>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -217,7 +184,9 @@ export class MczBridge {
    * Send a control command to the stove.
    */
   async sendCommand(commandId: number, value: number): Promise<void> {
-    await this.waitForConnection();
+    if (!this.socket || !this.connected || !this.socket.connected) {
+      throw new Error("MCZ bridge not connected");
+    }
 
     const message =
       commandId === COMMAND_ID.RESET_ALARM
