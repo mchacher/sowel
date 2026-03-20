@@ -62,6 +62,13 @@ export class MczPoller {
 
   async start(pollOffset = 0): Promise<void> {
     this.logger.info({ intervalMs: this.pollIntervalMs, pollOffset }, "Starting MCZ poller");
+
+    // Schedule a recovery poll after each reconnection
+    this.bridge.onReconnect = () => {
+      this.logger.info("MCZ reconnected, scheduling recovery poll");
+      this.scheduleOnDemandPoll(2_000);
+    };
+
     // Immediate first poll — awaited so data is available at startup
     await this.poll();
     // Stagger recurring polls by pollOffset
