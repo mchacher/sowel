@@ -487,8 +487,17 @@ function computeTotals(points: EnergyPoint[]): EnergyTotals {
   let totalAutoconso = 0;
   let totalInjection = 0;
   for (const p of points) {
-    totalHp += p.hp;
-    totalHc += p.hc;
+    // hp and hc include autoconsumption (total household consumption split by tariff).
+    // Subtract autoconso per-point to get grid-only HP/HC, distributing proportionally
+    // when a point straddles a tariff boundary (both hp and hc > 0).
+    const conso = p.hp + p.hc;
+    if (conso > 0 && p.autoconso > 0) {
+      totalHp += Math.max(0, p.hp - p.autoconso * (p.hp / conso));
+      totalHc += Math.max(0, p.hc - p.autoconso * (p.hc / conso));
+    } else {
+      totalHp += p.hp;
+      totalHc += p.hc;
+    }
     totalProduction += p.prod;
     totalAutoconso += p.autoconso;
     totalInjection += p.injection;
