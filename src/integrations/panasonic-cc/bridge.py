@@ -77,15 +77,46 @@ def enum_to_str(mapping, val):
 
 from contextlib import asynccontextmanager
 
+MAX_RETRIES = 2
+RETRY_DELAYS = [2, 5]  # seconds
+
+
+async def _flush_token_file(client):
+    """Ensure any pending token save is flushed to disk before process exits.
+
+    The lib uses asyncio.ensure_future() for saves (fire-and-forget).
+    We drain pending tasks so the refreshed token is persisted."""
+    # Give pending asyncio tasks a chance to complete (token file writes)
+    await asyncio.sleep(0.1)
+    # Also await any remaining tasks in the event loop
+    pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task() and not t.done()]
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+
+
 @asynccontextmanager
 async def open_session(email, password, token_file):
     """Create, authenticate, and yield a Panasonic CC client. Always closes the HTTP session."""
     http_session = aiohttp.ClientSession()
+    client = None
     try:
         client = pcc.ApiClient(email, password, http_session, token_file_name=token_file)
-        await client.start_session()
+        last_error = None
+        for attempt in range(1 + MAX_RETRIES):
+            try:
+                await client.start_session()
+                last_error = None
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < MAX_RETRIES:
+                    await asyncio.sleep(RETRY_DELAYS[attempt])
+        if last_error is not None:
+            raise last_error
         yield client
     finally:
+        if client is not None:
+            await _flush_token_file(client)
         await http_session.close()
 
 
