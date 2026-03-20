@@ -17,6 +17,7 @@ import {
 
 const MCZ_CLOUD_URL = "http://app.mcz.it:9000";
 const REQUEST_TIMEOUT_MS = 15_000;
+const RECONNECT_WAIT_TIMEOUT_MS = 20_000;
 
 export class MczBridge {
   private socket: Socket | null = null;
@@ -24,6 +25,10 @@ export class MczBridge {
   private serialNumber = "";
   private macAddress = "";
   private connected = false;
+  private initialConnectDone = false;
+
+  /** Called after a successful reconnection (join completed). */
+  onReconnect: (() => void) | null = null;
 
   constructor(logger: Logger) {
     this.logger = logger.child({ module: "mcz-bridge" });
@@ -35,6 +40,7 @@ export class MczBridge {
   async connect(serialNumber: string, macAddress: string): Promise<void> {
     this.serialNumber = serialNumber;
     this.macAddress = macAddress;
+    this.initialConnectDone = false;
 
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -54,18 +60,26 @@ export class MczBridge {
       });
 
       this.socket.on("connect", () => {
-        this.logger.info({ socketId: this.socket?.id }, "Connected to MCZ cloud, joining...");
-        this.emitJoin();
-        this.connected = true;
-        clearTimeout(timeout);
-        resolve();
+        if (!this.initialConnectDone) {
+          // First connection — join and resolve the connect() promise
+          this.logger.info({ socketId: this.socket?.id }, "Connected to MCZ cloud, joining...");
+          this.emitJoin();
+          this.connected = true;
+          this.initialConnectDone = true;
+          clearTimeout(timeout);
+          resolve();
+        }
+        // Reconnections are handled by io.on("reconnect") below — do NOT
+        // emit a second join here, as both events fire on reconnect.
       });
 
       this.socket.on("connect_error", (err) => {
         this.logger.error({ err: err.message }, "MCZ cloud connection error");
         this.connected = false;
-        clearTimeout(timeout);
-        reject(new Error(`MCZ cloud connection failed: ${err.message}`));
+        if (!this.initialConnectDone) {
+          clearTimeout(timeout);
+          reject(new Error(`MCZ cloud connection failed: ${err.message}`));
+        }
       });
 
       this.socket.on("disconnect", (reason) => {
@@ -78,6 +92,9 @@ export class MczBridge {
         this.logger.info("Reconnected to MCZ cloud, re-joining...");
         this.emitJoin();
         this.connected = true;
+        if (this.onReconnect) {
+          this.onReconnect();
+        }
       });
 
       // Log incoming events at debug level
@@ -103,16 +120,49 @@ export class MczBridge {
       this.socket = null;
     }
     this.connected = false;
+    this.onReconnect = null;
     this.logger.info("Disconnected from MCZ cloud");
+  }
+
+  /**
+   * Wait for the socket to be connected, with a timeout.
+   * If already connected, resolves immediately.
+   * If disconnected but Socket.IO is reconnecting, waits for reconnection.
+   */
+  private waitForConnection(): Promise<void> {
+    if (this.connected && this.socket?.connected) {
+      return Promise.resolve();
+    }
+    if (!this.socket) {
+      return Promise.reject(new Error("MCZ bridge not initialized"));
+    }
+
+    this.logger.debug("Waiting for MCZ reconnection...");
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("MCZ bridge reconnection timeout"));
+      }, RECONNECT_WAIT_TIMEOUT_MS);
+
+      const onReconnect = () => {
+        cleanup();
+        resolve();
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        this.socket?.io.off("reconnect", onReconnect);
+      };
+
+      this.socket!.io.on("reconnect", onReconnect);
+    });
   }
 
   /**
    * Request the full stove status via RecuperoInfo.
    */
   async getStatus(): Promise<MczStatusFrame> {
-    if (!this.socket || !this.connected || !this.socket.connected) {
-      throw new Error("MCZ bridge not connected");
-    }
+    await this.waitForConnection();
 
     return new Promise<MczStatusFrame>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -167,9 +217,7 @@ export class MczBridge {
    * Send a control command to the stove.
    */
   async sendCommand(commandId: number, value: number): Promise<void> {
-    if (!this.socket || !this.connected || !this.socket.connected) {
-      throw new Error("MCZ bridge not connected");
-    }
+    await this.waitForConnection();
 
     const message =
       commandId === COMMAND_ID.RESET_ALARM
