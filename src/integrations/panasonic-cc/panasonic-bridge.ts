@@ -10,7 +10,7 @@ import type {
   BridgeResponse,
 } from "./panasonic-types.js";
 
-const BRIDGE_TIMEOUT_MS = 30_000;
+const BRIDGE_TIMEOUT_MS = 60_000;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_BRIDGE_PATH = resolve(__dirname, "bridge.py");
