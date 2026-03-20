@@ -310,7 +310,11 @@ export class StateWatchRecipe extends Recipe {
   // ============================================================
 
   private onValueChanged(value: unknown): void {
+    const previousValue = this.ctx.state.get("currentValue");
     this.ctx.state.set("currentValue", value);
+
+    // Skip processing if value hasn't actually changed
+    if (String(value) === String(previousValue)) return;
 
     if (this.matchesWatchValue(value)) {
       if (!this.ctx.state.get("watchStartedAt")) {
