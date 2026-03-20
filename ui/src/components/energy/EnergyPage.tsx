@@ -60,7 +60,7 @@ export function EnergyPage() {
                 <div className="flex items-center gap-4 text-[13px] text-text-secondary flex-wrap justify-center">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4F7BE8" }} />
-                    {t("energy.gridConsumption")} : {formatKWh((history.totals.total_consumption ?? 0) - (history.totals.total_autoconso ?? 0), period)} kWh
+                    {t("energy.gridConsumption")} : {formatKWh(history.totals.total_consumption, period)} kWh
                   </span>
                   {hasHpHc && (
                     <span className="text-text-tertiary">
@@ -75,10 +75,10 @@ export function EnergyPage() {
                   )}
                 </div>
                 <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                  Total : {formatKWh(history.totals.total_consumption, period)} kWh
+                  Total : {formatKWh(history.totals.total_consumption + (history.totals.total_autoconso ?? 0), period)} kWh
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">
-                      ({Math.round(history.totals.total_autoconso / history.totals.total_consumption * 100)}% {t("energy.autoconsumption").toLowerCase()})
+                      ({Math.round(history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso) * 100)}% {t("energy.autoconsumption").toLowerCase()})
                     </span>
                   )}
                 </div>
