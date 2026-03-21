@@ -2,6 +2,8 @@
 
 This guide explains how to create a third-party plugin for Sowel. A plugin is a self-contained integration that can be installed, enabled, disabled, and removed at runtime without restarting the Sowel engine.
 
+The `sowel-plugin-weather-forecast` plugin is used as the reference example throughout this document.
+
 ---
 
 ## Table of Contents
@@ -10,52 +12,54 @@ This guide explains how to create a third-party plugin for Sowel. A plugin is a 
 2. [Plugin Structure](#plugin-structure)
 3. [Manifest Schema](#manifest-schema)
 4. [PluginDeps API Reference](#plugindeps-api-reference)
-5. [Creating a Plugin Step by Step](#creating-a-plugin-step-by-step)
-6. [Device Discovery](#device-discovery)
-7. [Device Data Updates](#device-data-updates)
-8. [Order Execution](#order-execution)
-9. [Settings](#settings)
-10. [Publishing](#publishing)
-11. [Example: Minimal Plugin](#example-minimal-plugin)
+5. [IntegrationPlugin Interface](#integrationplugin-interface)
+6. [Creating a Plugin Step by Step](#creating-a-plugin-step-by-step)
+7. [Device Discovery](#device-discovery)
+8. [Device Data Updates](#device-data-updates)
+9. [Order Execution](#order-execution)
+10. [Settings](#settings)
+11. [Publishing and Versioning](#publishing-and-versioning)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-A Sowel plugin is a Node.js package that exports a factory function. When loaded, Sowel injects a `PluginDeps` object providing access to core services (logging, event bus, device management, settings, MQTT). The plugin uses these dependencies to discover devices, push data updates, and handle orders — exactly like built-in integrations.
+A Sowel plugin is an ESM (ECMAScript Module) Node.js package that exports a `createPlugin` factory function. When loaded, Sowel injects a `PluginDeps` object providing access to core services (logging, event bus, device management, settings). The plugin uses these dependencies to discover devices, push data updates, and handle orders -- exactly like built-in integrations.
 
-Plugins live in the `plugins/` directory at the Sowel root. Each plugin has its own subdirectory containing a `manifest.json` and compiled JavaScript.
+Plugins live in the `plugins/` directory at the Sowel root. Each plugin has its own subdirectory containing a `manifest.json` and compiled JavaScript in `dist/`.
 
 **Lifecycle:**
 
-1. Sowel reads `plugins/*/manifest.json` on startup
-2. For each enabled plugin, Sowel calls `require(pluginPath)` to load the factory
-3. The factory receives `PluginDeps` and returns an `IntegrationPlugin` instance
-4. Sowel calls `plugin.start()` to activate the integration
-5. On disable/uninstall, Sowel calls `plugin.stop()` to clean up
+1. Sowel reads the `plugins` database table on startup
+2. For each enabled plugin, Sowel dynamically imports `plugins/<id>/dist/index.js` (ESM)
+3. The exported `createPlugin` factory receives `PluginDeps` and returns an `IntegrationPlugin` instance
+4. Sowel registers the plugin with the `IntegrationRegistry`
+5. If the plugin is configured (`isConfigured()` returns true), Sowel calls `plugin.start()`
+6. On disable/uninstall, Sowel calls `plugin.stop()` and unregisters from the registry
 
 ---
 
 ## Plugin Structure
 
 ```
-plugins/
-  my-plugin/
-    manifest.json          # Plugin metadata and configuration
-    package.json           # Node.js package descriptor
-    dist/
-      index.js             # Compiled entry point (CommonJS)
-      index.js.map         # Source map (optional)
-    src/
-      index.ts             # TypeScript source (not loaded by Sowel)
-    node_modules/          # Plugin-specific dependencies (if any)
-    README.md              # Plugin documentation
+sowel-plugin-my-device/
+  manifest.json          # Plugin metadata (required)
+  package.json           # Node.js package descriptor ("type": "module")
+  tsconfig.json          # TypeScript config (module: "NodeNext")
+  dist/
+    index.js             # Compiled entry point (ESM)
+    index.js.map         # Source map (optional)
+  src/
+    index.ts             # TypeScript source (not loaded by Sowel)
 ```
 
 **Key rules:**
 
-- The `dist/index.js` file is the entry point loaded by Sowel
-- Use CommonJS format (`module.exports`) — Sowel uses `require()` to load plugins
+- The entry point is always `dist/index.js` -- this is hardcoded in the plugin loader
+- Use **ESM format** (`export { createPlugin }`) -- Sowel uses dynamic `import()` to load plugins
+- Set `"type": "module"` in `package.json`
+- Set `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` in `tsconfig.json`
 - The `src/` directory is for development only; Sowel never reads it
 - Plugin-specific `node_modules/` are isolated from Sowel's dependencies
 
@@ -63,66 +67,66 @@ plugins/
 
 ## Manifest Schema
 
-The `manifest.json` file describes the plugin to Sowel. All fields are required unless marked optional.
+The `manifest.json` file describes the plugin to Sowel. It lives at the root of the plugin directory.
+
+**Example** (from `sowel-plugin-weather-forecast`):
 
 ```json
 {
-  "id": "my-plugin",
-  "name": "My Plugin",
-  "version": "1.0.0",
-  "description": "Short description of what this plugin does",
-  "author": "Your Name",
-  "license": "MIT",
+  "id": "weather-forecast",
+  "name": "Weather Forecast",
+  "version": "0.2.0",
+  "description": "Weather forecast via Open-Meteo API (free, no API key)",
+  "icon": "CloudSun",
+  "author": "mchacher",
   "sowelVersion": ">=0.10.0",
-  "entry": "dist/index.js",
-  "integrationId": "my-plugin",
   "settings": [
     {
-      "key": "apiKey",
-      "label": "API Key",
-      "type": "string",
-      "required": true,
-      "secret": true
-    },
-    {
-      "key": "pollInterval",
-      "label": "Poll Interval (seconds)",
+      "key": "polling_interval",
+      "label": "Polling interval (minutes)",
       "type": "number",
       "required": false,
-      "default": 300
+      "defaultValue": "30",
+      "placeholder": "Min 15, default 30"
     }
-  ],
-  "repository": "https://github.com/user/sowel-plugin-my-plugin"
+  ]
 }
 ```
 
 ### Field Reference
 
-| Field           | Type   | Description                                                                                                                      |
-| --------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `id`            | string | Unique plugin identifier. Use lowercase with hyphens (e.g., `netatmo-security`). Must match the directory name under `plugins/`. |
-| `name`          | string | Human-readable display name shown in the UI.                                                                                     |
-| `version`       | string | SemVer version (e.g., `1.0.0`).                                                                                                  |
-| `description`   | string | Short description (one sentence) shown in the plugin store.                                                                      |
-| `author`        | string | Author name or organization.                                                                                                     |
-| `license`       | string | SPDX license identifier (e.g., `MIT`, `Apache-2.0`).                                                                             |
-| `sowelVersion`  | string | SemVer range of compatible Sowel versions (e.g., `>=0.10.0`).                                                                    |
-| `entry`         | string | Relative path to the compiled entry point (usually `dist/index.js`).                                                             |
-| `integrationId` | string | Integration identifier used in device source attribution. Typically same as `id`.                                                |
-| `settings`      | array  | (Optional) Array of setting definitions. See [Settings](#settings).                                                              |
-| `repository`    | string | (Optional) GitHub repository URL for linking and updates.                                                                        |
+| Field          | Type                    | Required | Description                                                                                                                 |
+| -------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`. |
+| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                |
+| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                        |
+| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                           |
+| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                      |
+| `author`       | string                  | No       | Author name or organization.                                                                                                |
+| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`).                                                                |
+| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                      |
+
+**Fields that do NOT exist in the manifest:** `entry`, `integrationId`, `license`, `repository`. Do not include these.
 
 ---
 
 ## PluginDeps API Reference
 
-When Sowel loads a plugin, it passes a `PluginDeps` object to the factory function. This is the plugin's gateway to all Sowel core services.
+When Sowel loads a plugin, it passes a `PluginDeps` object to the `createPlugin` factory function. This is the plugin's gateway to all Sowel core services.
+
+```typescript
+interface PluginDeps {
+  logger: Logger;
+  eventBus: EventBus;
+  settingsManager: SettingsManager;
+  deviceManager: DeviceManager;
+  pluginDir: string;
+}
+```
 
 ### `logger`
 
-**Type:** `pino.Logger`
-
-A child logger pre-configured with `{ module: "plugin:<pluginId>" }`. Use this for all logging — never use `console.log`.
+A pino child logger pre-configured with `{ module: "plugin:<pluginId>" }`. Use this for all logging -- never use `console.log`.
 
 ```typescript
 deps.logger.info({ deviceCount: 5 }, "Devices discovered");
@@ -132,123 +136,113 @@ deps.logger.error({ err }, "Poll failed");
 
 **Level guidelines:**
 
-- `info` — significant events (connected, discovered devices, poll completed)
-- `debug` — operational details (API responses, intermediate steps)
-- `trace` — high-volume data (every message, every data point)
-- `error` — operation failed, include `{ err }` with the Error object
-- `warn` — unexpected but handled (retry, fallback)
+| Level   | Usage                                                              |
+| ------- | ------------------------------------------------------------------ |
+| `info`  | Significant events: connected, devices discovered, poll completed  |
+| `debug` | Operational details: API responses, intermediate steps             |
+| `trace` | High-volume data: every message, every data point                  |
+| `error` | Operation failed -- always include `{ err }` with the Error object |
+| `warn`  | Unexpected but handled: retry, fallback, recoverable               |
 
 ### `eventBus`
 
-**Type:** `EventBus`
-
-The typed event emitter. Plugins can emit and listen to events.
+The typed event emitter. Plugins typically emit integration lifecycle events:
 
 ```typescript
-// Listen for equipment orders targeting your integration
-deps.eventBus.on("equipment.order.dispatched", (event) => {
-  if (event.integrationId === manifest.integrationId) {
-    // Handle the order
-  }
-});
+deps.eventBus.emit({ type: "system.integration.connected", integrationId: "my-plugin" });
+deps.eventBus.emit({ type: "system.integration.disconnected", integrationId: "my-plugin" });
 ```
-
-**Common events:**
-
-- `device.data.updated` — a device's data changed
-- `equipment.order.dispatched` — an order needs to be sent to a device
-- `integration.status.changed` — integration connection status changed
 
 ### `settingsManager`
 
-**Type:** `SettingsManager`
-
-Read and write integration settings stored in the SQLite `settings` table.
+Read and write settings stored in the SQLite `settings` table. Settings use a **full key** with the `integration.<pluginId>.` prefix.
 
 ```typescript
-// Read a setting
-const apiKey = deps.settingsManager.get("my-plugin", "apiKey");
+// Read a setting — returns string | undefined
+const interval = deps.settingsManager.get("integration.weather-forecast.polling_interval");
 
-// Read all settings for your integration
-const allSettings = deps.settingsManager.getAll("my-plugin");
+// Read a global Sowel setting (no prefix)
+const lat = deps.settingsManager.get("home.latitude");
 
 // Write a setting
-deps.settingsManager.set("my-plugin", "lastPollTime", Date.now().toString());
+deps.settingsManager.set("integration.weather-forecast.last_poll", Date.now().toString());
 ```
 
+**Important:** `get()` takes the **full key** (e.g. `integration.weather-forecast.polling_interval`) and returns `string | undefined` (not null). Settings declared in your manifest's `settings` array are automatically namespaced by Sowel under `integration.<pluginId>.<key>`.
+
 **Methods:**
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `get` | `(integrationId: string, key: string) => string \| undefined` | Get a single setting value |
-| `getAll` | `(integrationId: string) => Record<string, string>` | Get all settings for an integration |
-| `set` | `(integrationId: string, key: string, value: string) => void` | Set a setting value |
+
+| Method        | Signature                                    | Description                             |
+| ------------- | -------------------------------------------- | --------------------------------------- |
+| `get`         | `(key: string) => string \| undefined`       | Get a single setting by its full key    |
+| `set`         | `(key: string, value: string) => void`       | Set a single setting                    |
+| `getByPrefix` | `(prefix: string) => Record<string, string>` | Get all settings starting with a prefix |
+| `setMany`     | `(entries: Record<string, string>) => void`  | Set multiple settings at once           |
 
 ### `deviceManager`
 
-**Type:** `DeviceManager`
+Manage devices discovered by your plugin. Two main methods are used:
 
-Manage devices discovered by your plugin.
+| Method                | Signature                                                                                   | Description                                   |
+| --------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`             | Create or update a device from discovery data |
+| `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>) => void` | Push new data values for an existing device   |
 
-```typescript
-// Discover or update a device
-deps.deviceManager.upsertFromDiscovery({
-  sourceId: "netatmo:aa:bb:cc:dd:ee",
-  name: "Indoor Camera",
-  source: "netatmo-security",
-  category: "camera",
-  data: {
-    status: { value: "online", label: "Status" },
-    motionDetected: { value: false, label: "Motion" },
-  },
-  orders: ["setMonitoring"],
-});
-
-// Update device data (after initial discovery)
-deps.deviceManager.updateData("device-uuid", {
-  motionDetected: { value: true, label: "Motion" },
-});
-```
-
-**Methods:**
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `upsertFromDiscovery` | `(discovery: DeviceDiscovery) => Device` | Create or update a device from discovery data. Returns the Device object with its UUID. |
-| `updateData` | `(deviceId: string, data: Record<string, DataPoint>) => void` | Update one or more data points on an existing device. Triggers `device.data.updated` event. |
-| `getBySourceId` | `(sourceId: string) => Device \| undefined` | Look up a device by its integration-specific source ID. |
-| `getBySource` | `(source: string) => Device[]` | Get all devices from a given source/integration. |
-
-### `mqttConnector`
-
-**Type:** `MqttConnectorFactory`
-
-Factory to create MQTT client connections. Use this if your plugin needs to communicate via MQTT (e.g., for local device protocols).
-
-```typescript
-const client = await deps.mqttConnector.create({
-  brokerUrl: "mqtt://192.168.1.100:1883",
-  clientId: "sowel-my-plugin",
-  username: "optional",
-  password: "optional",
-});
-
-client.on("message", (topic, payload) => {
-  // Handle incoming MQTT messages
-});
-
-await client.subscribe("my-plugin/devices/#");
-```
-
-> **Note:** Most cloud-based plugins (REST APIs) do not need MQTT. Only use this if your integration communicates via an MQTT broker.
+See [Device Discovery](#device-discovery) and [Device Data Updates](#device-data-updates) for detailed usage.
 
 ### `pluginDir`
 
-**Type:** `string`
-
-Absolute path to the plugin's directory (e.g., `/app/plugins/my-plugin`). Use this for reading local files or storing plugin-specific data.
+Absolute path to the plugin's installed directory (e.g. `/app/plugins/weather-forecast`). Use this for reading local files or storing plugin-specific data.
 
 ```typescript
-const dataPath = path.join(deps.pluginDir, "cache.json");
+import { resolve } from "node:path";
+const cachePath = resolve(deps.pluginDir, "cache.json");
 ```
+
+**Note:** There is no `mqttConnector` in `PluginDeps`. If your plugin needs MQTT, use the `mqtt` npm package directly as a plugin dependency.
+
+---
+
+## IntegrationPlugin Interface
+
+The `createPlugin` factory must return an object implementing the `IntegrationPlugin` interface:
+
+```typescript
+interface IntegrationPlugin {
+  readonly id: string; // Unique integration ID (must match manifest.id)
+  readonly name: string; // Human-readable name
+  readonly description: string; // Short description for the UI
+  readonly icon: string; // Lucide icon name
+
+  getStatus(): IntegrationStatus;
+  isConfigured(): boolean;
+  getSettingsSchema(): IntegrationSettingDef[];
+  start(options?: { pollOffset?: number }): Promise<void>;
+  stop(): Promise<void>;
+  executeOrder(
+    device: Device,
+    dispatchConfig: Record<string, unknown>,
+    value: unknown,
+  ): Promise<void>;
+  refresh?(): Promise<void>;
+  getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+}
+
+type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "error";
+```
+
+### Method Reference
+
+| Method                | Required | Description                                                                                      |
+| --------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `getStatus()`         | Yes      | Return the current connection status. Return `"not_configured"` if `isConfigured()` is false.    |
+| `isConfigured()`      | Yes      | Return true if all required settings are present. Sowel only calls `start()` when this is true.  |
+| `getSettingsSchema()` | Yes      | Return the settings form definition (same as manifest `settings`).                               |
+| `start(options?)`     | Yes      | Start the integration. `pollOffset` is provided by Sowel to stagger multiple polling plugins.    |
+| `stop()`              | Yes      | Stop gracefully: cancel timers, close connections.                                               |
+| `executeOrder()`      | Yes      | Execute a command on a device. Throw an error if the plugin does not support orders.             |
+| `refresh()`           | No       | Force an immediate data refresh (e.g. re-poll the cloud API). Called from the UI refresh button. |
+| `getPollingInfo()`    | No       | Return last poll timestamp and interval. Shown in the integrations UI for polling-based plugins. |
 
 ---
 
@@ -260,110 +254,318 @@ const dataPath = path.join(deps.pluginDir, "cache.json");
 mkdir sowel-plugin-my-device
 cd sowel-plugin-my-device
 npm init -y
-npm install -D typescript @types/node
+npm install -D typescript
+```
+
+Edit `package.json` -- set `"type": "module"`:
+
+```json
+{
+  "name": "sowel-plugin-my-device",
+  "version": "0.1.0",
+  "description": "Sowel plugin: My Device integration",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
 ```
 
 ### 2. Configure TypeScript
 
-Create `tsconfig.json`:
+Create `tsconfig.json` -- use `NodeNext` module format:
 
 ```json
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
-    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "declaration": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "skipLibCheck": true
   },
   "include": ["src"]
 }
 ```
 
-### 3. Define the types
+### 3. Define local type interfaces
 
-You don't need to import Sowel types directly. Your plugin's factory function receives `PluginDeps` and returns an object conforming to `IntegrationPlugin`. Use the following interface as a reference:
+Plugins do **not** import from Sowel source code. Instead, define local interfaces matching the `PluginDeps` shape. This keeps the plugin fully decoupled.
 
 ```typescript
-// Reference types — these are provided by Sowel at runtime
-interface IntegrationPlugin {
-  id: string;
-  start(): Promise<void>;
-  stop(): Promise<void>;
-  getStatus(): IntegrationStatus;
-  executeOrder?(deviceId: string, order: string, params?: Record<string, unknown>): Promise<void>;
+// src/index.ts — local type definitions
+
+interface Logger {
+  child(bindings: Record<string, unknown>): Logger;
+  info(obj: Record<string, unknown>, msg: string): void;
+  info(msg: string): void;
+  warn(obj: Record<string, unknown>, msg: string): void;
+  warn(msg: string): void;
+  error(obj: Record<string, unknown>, msg: string): void;
+  error(msg: string): void;
+  debug(obj: Record<string, unknown>, msg: string): void;
+  debug(msg: string): void;
 }
 
-type IntegrationStatus = "connected" | "disconnected" | "connecting" | "error";
+interface EventBus {
+  emit(event: unknown): void;
+}
+
+interface SettingsManager {
+  get(key: string): string | undefined;
+  set(key: string, value: string): void;
+}
+
+interface DiscoveredDevice {
+  ieeeAddress?: string;
+  friendlyName: string;
+  manufacturer?: string;
+  model?: string;
+  data: {
+    key: string;
+    type: string;
+    category: string;
+    unit?: string;
+  }[];
+  orders: {
+    key: string;
+    type: string;
+    dispatchConfig: Record<string, unknown>;
+    min?: number;
+    max?: number;
+    enumValues?: string[];
+    unit?: string;
+  }[];
+}
+
+interface DeviceManager {
+  upsertFromDiscovery(integrationId: string, source: string, discovered: DiscoveredDevice): void;
+  updateDeviceData(
+    integrationId: string,
+    sourceDeviceId: string,
+    payload: Record<string, unknown>,
+  ): void;
+}
+
+interface Device {
+  id: string;
+  integrationId: string;
+  sourceDeviceId: string;
+  name: string;
+  manufacturer?: string;
+  model?: string;
+}
+
+interface PluginDeps {
+  logger: Logger;
+  eventBus: EventBus;
+  settingsManager: SettingsManager;
+  deviceManager: DeviceManager;
+  pluginDir: string;
+}
+
+type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "error";
+
+interface IntegrationSettingDef {
+  key: string;
+  label: string;
+  type: "text" | "password" | "number" | "boolean";
+  required: boolean;
+  placeholder?: string;
+  defaultValue?: string;
+}
+
+interface IntegrationPlugin {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly icon: string;
+  getStatus(): IntegrationStatus;
+  isConfigured(): boolean;
+  getSettingsSchema(): IntegrationSettingDef[];
+  start(options?: { pollOffset?: number }): Promise<void>;
+  stop(): Promise<void>;
+  executeOrder(
+    device: Device,
+    dispatchConfig: Record<string, unknown>,
+    value: unknown,
+  ): Promise<void>;
+  refresh?(): Promise<void>;
+  getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+}
 ```
 
 ### 4. Implement the plugin
 
-Create `src/index.ts`:
+Below the type definitions, implement your plugin class and export the factory:
 
 ```typescript
-interface PluginDeps {
-  logger: any;
-  eventBus: any;
-  settingsManager: any;
-  deviceManager: any;
-  mqttConnector?: any;
-  pluginDir: string;
-}
+const PLUGIN_ID = "my-device";
+const SETTINGS_PREFIX = `integration.${PLUGIN_ID}.`;
+const SOURCE_DEVICE_ID = "My Device"; // Must match friendlyName in DiscoveredDevice
 
-function createPlugin(deps: PluginDeps) {
-  const { logger, settingsManager, deviceManager } = deps;
-  let pollTimer: NodeJS.Timeout | null = null;
-  let status: "connected" | "disconnected" | "connecting" | "error" = "disconnected";
+class MyDevicePlugin implements IntegrationPlugin {
+  readonly id = PLUGIN_ID;
+  readonly name = "My Device";
+  readonly description = "Integration with My Device API";
+  readonly icon = "Cpu";
 
-  async function poll() {
+  private logger: Logger;
+  private settingsManager: SettingsManager;
+  private deviceManager: DeviceManager;
+  private eventBus: EventBus;
+
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastPollAt: string | null = null;
+  private pollIntervalMs = 300_000;
+  private status: IntegrationStatus = "disconnected";
+
+  constructor(deps: PluginDeps) {
+    this.logger = deps.logger.child({ module: PLUGIN_ID });
+    this.settingsManager = deps.settingsManager;
+    this.deviceManager = deps.deviceManager;
+    this.eventBus = deps.eventBus;
+  }
+
+  getStatus(): IntegrationStatus {
+    if (!this.isConfigured()) return "not_configured";
+    return this.status;
+  }
+
+  isConfigured(): boolean {
+    return !!this.settingsManager.get(`${SETTINGS_PREFIX}api_url`);
+  }
+
+  getSettingsSchema(): IntegrationSettingDef[] {
+    return [
+      {
+        key: "api_url",
+        label: "API URL",
+        type: "text",
+        required: true,
+        placeholder: "http://192.168.1.50/api",
+      },
+      {
+        key: "polling_interval",
+        label: "Polling interval (seconds)",
+        type: "number",
+        required: false,
+        defaultValue: "300",
+      },
+    ];
+  }
+
+  getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
+    return { lastPollAt: this.lastPollAt ?? "", intervalMs: this.pollIntervalMs };
+  }
+
+  async start(options?: { pollOffset?: number }): Promise<void> {
+    if (!this.isConfigured()) {
+      this.status = "not_configured";
+      return;
+    }
+
+    // Read polling interval from settings
+    const rawInterval = parseInt(
+      this.settingsManager.get(`${SETTINGS_PREFIX}polling_interval`) ?? "300",
+      10,
+    );
+    this.pollIntervalMs = Math.max(60_000, (isNaN(rawInterval) ? 300 : rawInterval) * 1000);
+
+    await this.poll();
+    this.schedulePoll(options?.pollOffset ?? 0);
+
+    this.status = "connected";
+    this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
+    this.logger.info({ pollIntervalMs: this.pollIntervalMs }, "Plugin started");
+  }
+
+  async stop(): Promise<void> {
+    if (this.pollTimer) {
+      clearTimeout(this.pollTimer);
+      this.pollTimer = null;
+    }
+    this.status = "disconnected";
+    this.eventBus.emit({ type: "system.integration.disconnected", integrationId: this.id });
+    this.logger.info("Plugin stopped");
+  }
+
+  async executeOrder(
+    _device: Device,
+    _dispatchConfig: Record<string, unknown>,
+    _value: unknown,
+  ): Promise<void> {
+    throw new Error("My Device plugin does not support orders");
+  }
+
+  async refresh(): Promise<void> {
+    await this.poll();
+  }
+
+  // --- Polling ---
+
+  private async poll(): Promise<void> {
     try {
-      // Fetch data from your API / device
-      // Update devices with deviceManager
-      status = "connected";
+      // 1. Fetch data from your API
+      // const data = await this.fetchData();
+
+      // 2. Upsert device definition
+      this.deviceManager.upsertFromDiscovery(PLUGIN_ID, PLUGIN_ID, {
+        friendlyName: SOURCE_DEVICE_ID,
+        manufacturer: "My Company",
+        model: "Sensor v2",
+        data: [
+          { key: "temperature", type: "number", category: "temperature", unit: "°C" },
+          { key: "humidity", type: "number", category: "humidity", unit: "%" },
+        ],
+        orders: [],
+      });
+
+      // 3. Update device data values
+      this.deviceManager.updateDeviceData(PLUGIN_ID, SOURCE_DEVICE_ID, {
+        temperature: 21.5,
+        humidity: 45,
+      });
+
+      this.lastPollAt = new Date().toISOString();
+      this.logger.info("Poll complete");
     } catch (err) {
-      logger.error({ err }, "Poll failed");
-      status = "error";
+      this.logger.error({ err }, "Poll failed");
+      throw err;
     }
   }
 
-  return {
-    id: "my-plugin",
-
-    async start() {
-      logger.info("Starting my-plugin");
-      status = "connecting";
-
-      const interval = Number(settingsManager.get("my-plugin", "pollInterval") || 300);
-      await poll();
-      pollTimer = setInterval(poll, interval * 1000);
-    },
-
-    async stop() {
-      logger.info("Stopping my-plugin");
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
+  private schedulePoll(offsetMs: number): void {
+    if (this.pollTimer) clearTimeout(this.pollTimer);
+    const delay = offsetMs > 0 ? offsetMs : this.pollIntervalMs;
+    this.pollTimer = setTimeout(async () => {
+      try {
+        await this.poll();
+      } catch {
+        /* already logged */
       }
-      status = "disconnected";
-    },
-
-    getStatus() {
-      return status;
-    },
-
-    async executeOrder(deviceId: string, order: string, params?: Record<string, unknown>) {
-      logger.info({ deviceId, order, params }, "Executing order");
-      // Send command to your device/API
-    },
-  };
+      this.schedulePoll(0);
+    }, delay);
+  }
 }
 
-module.exports = { createPlugin };
+// ============================================================
+// Plugin factory — this is the entry point Sowel calls
+// ============================================================
+
+export function createPlugin(deps: PluginDeps): IntegrationPlugin {
+  return new MyDevicePlugin(deps);
+}
 ```
 
 ### 5. Build
@@ -372,7 +574,7 @@ module.exports = { createPlugin };
 npx tsc
 ```
 
-This produces `dist/index.js` (CommonJS) ready for Sowel to load.
+This produces `dist/index.js` (ESM) ready for Sowel to load.
 
 ### 6. Create the manifest
 
@@ -380,33 +582,52 @@ Create `manifest.json` at the plugin root:
 
 ```json
 {
-  "id": "my-plugin",
-  "name": "My Plugin",
+  "id": "my-device",
+  "name": "My Device",
   "version": "0.1.0",
-  "description": "Integration with My Device",
+  "description": "Integration with My Device API",
+  "icon": "Cpu",
   "author": "Your Name",
-  "license": "MIT",
   "sowelVersion": ">=0.10.0",
-  "entry": "dist/index.js",
-  "integrationId": "my-plugin",
-  "settings": [],
-  "repository": "https://github.com/yourname/sowel-plugin-my-device"
+  "settings": [
+    {
+      "key": "api_url",
+      "label": "API URL",
+      "type": "text",
+      "required": true,
+      "placeholder": "http://192.168.1.50/api"
+    },
+    {
+      "key": "polling_interval",
+      "label": "Polling interval (seconds)",
+      "type": "number",
+      "required": false,
+      "defaultValue": "300"
+    }
+  ]
 }
 ```
 
 ### 7. Test locally
 
-Copy or symlink the plugin directory into Sowel's `plugins/` directory:
+Symlink the plugin directory into Sowel's `plugins/` directory:
 
 ```bash
 # From the Sowel root
-ln -s /path/to/sowel-plugin-my-device plugins/my-plugin
+ln -s /path/to/sowel-plugin-my-device plugins/my-device
 ```
 
-Start Sowel — it will detect and load the plugin automatically. Check the logs for your plugin's output:
+Then manually register it in the database (Sowel auto-loads from the `plugins` table):
+
+```bash
+# Using the Sowel API to install from a local path, or manually:
+sqlite3 data/sowel.db "INSERT INTO plugins (id, version, enabled, installed_at, manifest) VALUES ('my-device', '0.1.0', 1, datetime('now'), readfile('plugins/my-device/manifest.json'));"
+```
+
+Start Sowel -- it will detect and load the plugin automatically. Check the logs for your plugin's output:
 
 ```
-[info] plugin:my-plugin — Starting my-plugin
+[info] plugin:my-device — Plugin started
 ```
 
 ---
@@ -415,58 +636,115 @@ Start Sowel — it will detect and load the plugin automatically. Check the logs
 
 When your plugin detects devices (from an API, MQTT, or local scan), register them with `deviceManager.upsertFromDiscovery()`.
 
-```typescript
-const device = deps.deviceManager.upsertFromDiscovery({
-  sourceId: "my-plugin:device-001", // Unique within your integration
-  name: "Living Room Sensor", // Human-readable name
-  source: "my-plugin", // Must match your integrationId
-  category: "sensor", // Device category (see below)
-  data: {
-    temperature: { value: 21.5, label: "Temperature", unit: "C" },
-    humidity: { value: 45, label: "Humidity", unit: "%" },
-    battery: { value: 87, label: "Battery", unit: "%" },
-  },
-  orders: [], // Commands this device accepts
-});
+### Signature
 
-// device.id is the Sowel UUID — store it for future data updates
+```typescript
+deviceManager.upsertFromDiscovery(
+  integrationId: string,     // Your plugin ID (e.g. "weather-forecast")
+  source: string,            // Device source identifier (typically your plugin ID)
+  discovered: DiscoveredDevice,
+): void;
 ```
 
-**Device categories:** `light`, `shutter`, `sensor`, `thermostat`, `camera`, `lock`, `switch`, `gate`, `hvac`, `other`
+### DiscoveredDevice format
+
+```typescript
+interface DiscoveredDevice {
+  ieeeAddress?: string; // Optional hardware address (for Zigbee devices)
+  friendlyName: string; // Unique device name — used as sourceDeviceId for data updates
+  manufacturer?: string; // Device manufacturer
+  model?: string; // Device model
+  data: {
+    // Data points this device exposes
+    key: string; // Data point key (e.g. "temperature", "j1_condition")
+    type: string; // "number" | "boolean" | "text" | "enum"
+    category: string; // "temperature" | "humidity" | "motion" | "battery" | etc.
+    unit?: string; // Unit of measurement (e.g. "°C", "%", "km/h")
+  }[];
+  orders: {
+    // Commands this device accepts
+    key: string; // Order key (e.g. "set_monitoring")
+    type: string; // Value type: "boolean" | "number" | "enum" | "text"
+    dispatchConfig: Record<string, unknown>; // Integration-specific config for order dispatch
+    min?: number; // For numeric orders: minimum value
+    max?: number; // For numeric orders: maximum value
+    enumValues?: string[]; // For enum orders: allowed values
+    unit?: string; // Unit (e.g. "°C")
+  }[];
+}
+```
+
+### Example (from weather-forecast)
+
+```typescript
+const WEATHER_DISCOVERED_DEVICE: DiscoveredDevice = {
+  friendlyName: "Weather Forecast",
+  manufacturer: "Open-Meteo",
+  model: "Forecast API",
+  data: [
+    { key: "j1_condition", type: "enum", category: "weather_condition" },
+    { key: "j1_temp_min", type: "number", category: "temperature", unit: "°C" },
+    { key: "j1_temp_max", type: "number", category: "temperature", unit: "°C" },
+    { key: "j1_rain_prob", type: "number", category: "rain", unit: "%" },
+    { key: "j1_wind_gusts", type: "number", category: "wind", unit: "km/h" },
+    // ... j2 through j5
+  ],
+  orders: [],
+};
+
+// Call during poll
+this.deviceManager.upsertFromDiscovery(PLUGIN_ID, SOURCE_DEVICE_ID, WEATHER_DISCOVERED_DEVICE);
+```
 
 **Important:**
 
-- `sourceId` must be unique and stable across restarts (use the device's hardware ID or MAC address)
-- Call `upsertFromDiscovery()` on every poll cycle — it is idempotent (creates on first call, updates on subsequent calls)
-- Include all known data points in the initial discovery
+- `friendlyName` becomes the `source_device_id` in the database. It must match the `sourceDeviceId` argument used in `updateDeviceData()`.
+- Call `upsertFromDiscovery()` on every poll cycle -- it is idempotent (creates on first call, updates metadata on subsequent calls).
+- Include all data points and orders in the `DiscoveredDevice` definition. Stale data/order entries not in the current discovery are cleaned up automatically.
 
 ---
 
 ## Device Data Updates
 
-After initial discovery, push data updates when new values arrive. Use `deviceManager.updateData()` with the Sowel device UUID.
+After device discovery, push data updates when new values arrive. Use `deviceManager.updateDeviceData()`.
+
+### Signature
 
 ```typescript
-// On receiving new data from your device
-deps.deviceManager.updateData(device.id, {
-  temperature: { value: 22.1, label: "Temperature", unit: "C" },
-  humidity: { value: 43, label: "Humidity", unit: "%" },
-});
+deviceManager.updateDeviceData(
+  integrationId: string,                // Your plugin ID (e.g. "weather-forecast")
+  sourceDeviceId: string,               // Must match friendlyName from upsertFromDiscovery
+  payload: Record<string, unknown>,     // Flat key-value map of data points
+): void;
 ```
+
+### Example (from weather-forecast)
+
+```typescript
+const payload: Record<string, unknown> = {
+  j1_condition: "rainy",
+  j1_temp_min: 8.2,
+  j1_temp_max: 14.5,
+  j1_rain_prob: 75,
+  j1_wind_gusts: 42,
+  // ... j2 through j5
+};
+
+this.deviceManager.updateDeviceData(PLUGIN_ID, SOURCE_DEVICE_ID, payload);
+```
+
+**Critical:** the `sourceDeviceId` parameter must exactly match the `friendlyName` used in `upsertFromDiscovery()`. This is how Sowel looks up the device in the database. In the weather-forecast plugin, both are set to `"Weather Forecast"`.
+
+The payload is a **flat `Record<string, unknown>`** -- keys are data point names, values are the raw values (number, boolean, string). This is not a nested object with labels or units; those are defined once in `upsertFromDiscovery()`.
 
 This triggers the reactive pipeline:
 
-1. `device.data.updated` event is emitted
-2. Equipment bindings are re-evaluated
-3. Zone aggregations are updated
-4. Scenario triggers are checked
-5. UI receives WebSocket update
-
-**Tips:**
-
-- Only include data points that changed (partial updates are fine)
-- For boolean sensors (motion, contact), use `{ value: true/false }`
-- For enum states, use string values: `{ value: "home" }`, `{ value: "away" }`
+1. Device data is updated in SQLite
+2. `device.data.updated` event is emitted
+3. Equipment bindings are re-evaluated
+4. Zone aggregations are updated
+5. Scenario triggers are checked
+6. UI receives a WebSocket push
 
 ---
 
@@ -474,21 +752,32 @@ This triggers the reactive pipeline:
 
 When a user or scenario sends a command to a device managed by your plugin, Sowel calls `executeOrder()` on your plugin instance.
 
+### Signature
+
 ```typescript
-async executeOrder(deviceId: string, order: string, params?: Record<string, unknown>) {
-  const device = deps.deviceManager.getBySourceId(/* ... */);
+executeOrder(
+  device: Device,                             // The target device object
+  dispatchConfig: Record<string, unknown>,    // Integration-specific config from the order definition
+  value: unknown,                             // The value to set
+): Promise<void>;
+```
 
-  switch (order) {
-    case "setMonitoring":
-      await myApi.setMonitoring(device.sourceId, params?.enabled as boolean);
+### Example
+
+```typescript
+async executeOrder(
+  device: Device,
+  dispatchConfig: Record<string, unknown>,
+  value: unknown,
+): Promise<void> {
+  const action = dispatchConfig.action as string;
+
+  switch (action) {
+    case "set_monitoring":
+      await this.api.setMonitoring(device.sourceDeviceId, value as boolean);
       break;
-
-    case "setTemperature":
-      await myApi.setTemperature(device.sourceId, params?.temperature as number);
-      break;
-
     default:
-      deps.logger.warn({ order }, "Unknown order");
+      this.logger.warn({ action }, "Unknown order action");
   }
 }
 ```
@@ -497,270 +786,191 @@ async executeOrder(deviceId: string, order: string, params?: Record<string, unkn
 
 1. User taps a button in the UI or a scenario action fires
 2. Equipment dispatches order to the bound device
-3. Sowel routes the order to the plugin that owns the device
-4. Plugin's `executeOrder()` is called
+3. Sowel routes the order to the integration that owns the device
+4. Plugin's `executeOrder()` is called with the full Device object, the `dispatchConfig` from the order definition, and the value
 5. Plugin sends the command to the physical device
-6. On next poll (or push update), the new state is reflected
+6. On next poll (or immediate refresh), the new state is reflected
 
-**Best practices:**
+If your plugin does not support orders (e.g. a read-only weather plugin), throw an error:
 
-- Validate params before sending to the device
-- Log orders at `info` level
-- After executing, poll immediately if possible to confirm the state change
-- Throw an error if the order fails — Sowel will log it and notify the user
+```typescript
+async executeOrder(): Promise<void> {
+  throw new Error("Weather Forecast plugin does not support orders");
+}
+```
 
 ---
 
 ## Settings
 
-Plugins declare their settings in `manifest.json`. Sowel renders a settings form in the UI automatically based on this schema.
+Plugins declare their settings in `manifest.json` and return the same schema from `getSettingsSchema()`. Sowel renders a configuration form in the UI automatically.
 
-### Declaring Settings
+### Setting Definition Schema
+
+```typescript
+interface IntegrationSettingDef {
+  key: string; // Setting key (without prefix). Stored as "integration.<pluginId>.<key>"
+  label: string; // Display label in the UI
+  type: string; // One of: "text", "password", "number", "boolean"
+  required: boolean; // If true, must be filled before the plugin can start
+  placeholder?: string; // Placeholder text in the input field
+  defaultValue?: string; // Default value (always a string, even for numbers)
+}
+```
+
+### Example (from netatmo-security)
 
 ```json
 {
   "settings": [
     {
-      "key": "apiKey",
-      "label": "API Key",
-      "type": "string",
+      "key": "client_id",
+      "label": "Client ID",
+      "type": "text",
       "required": true,
-      "secret": true,
-      "description": "Your API key from the developer portal"
+      "placeholder": "From dev.netatmo.com"
     },
     {
-      "key": "pollInterval",
-      "label": "Poll Interval",
+      "key": "client_secret",
+      "label": "Client Secret",
+      "type": "password",
+      "required": true
+    },
+    {
+      "key": "refresh_token",
+      "label": "Refresh Token",
+      "type": "password",
+      "required": true,
+      "placeholder": "With camera scopes"
+    },
+    {
+      "key": "polling_interval",
+      "label": "Polling interval (seconds)",
       "type": "number",
       "required": false,
-      "default": 300,
-      "description": "How often to fetch data (seconds)"
-    },
-    {
-      "key": "region",
-      "label": "Region",
-      "type": "select",
-      "required": true,
-      "options": ["eu", "us", "asia"],
-      "default": "eu"
-    },
-    {
-      "key": "enableNotifications",
-      "label": "Enable Notifications",
-      "type": "boolean",
-      "required": false,
-      "default": false
+      "defaultValue": "300",
+      "placeholder": "Min 180, default 300"
     }
   ]
 }
 ```
 
-### Setting Field Schema
-
-| Field         | Type     | Description                                                   |
-| ------------- | -------- | ------------------------------------------------------------- |
-| `key`         | string   | Setting identifier (used in `settingsManager.get()`)          |
-| `label`       | string   | Display label in the UI                                       |
-| `type`        | string   | One of: `string`, `number`, `boolean`, `select`               |
-| `required`    | boolean  | Whether the setting must be filled before enabling the plugin |
-| `secret`      | boolean  | (Optional) If true, the value is masked in the UI             |
-| `default`     | any      | (Optional) Default value                                      |
-| `description` | string   | (Optional) Help text shown below the input                    |
-| `options`     | string[] | (Required for `select` type) Available choices                |
-
 ### Reading Settings at Runtime
 
-```typescript
-const apiKey = deps.settingsManager.get("my-plugin", "apiKey");
-if (!apiKey) {
-  deps.logger.warn("API key not configured, skipping poll");
-  return;
-}
+Settings are stored with the full key `integration.<pluginId>.<key>`:
 
-const pollInterval = Number(deps.settingsManager.get("my-plugin", "pollInterval") || "300");
+```typescript
+const SETTINGS_PREFIX = `integration.${PLUGIN_ID}.`;
+
+// Read a plugin-specific setting
+const interval = this.settingsManager.get(`${SETTINGS_PREFIX}polling_interval`);
+// Returns "300" (string) or undefined if not set
+
+// Read a global Sowel setting (no prefix)
+const lat = this.settingsManager.get("home.latitude");
+
+// Write a setting
+this.settingsManager.set(`${SETTINGS_PREFIX}last_token_refresh`, Date.now().toString());
 ```
+
+**Important notes:**
+
+- `get()` always returns `string | undefined` -- parse numbers with `parseInt()` / `parseFloat()`
+- The `defaultValue` in the settings schema is for UI display only; always handle undefined in code
+- Use `"password"` type for secrets -- the UI masks these values
+- There are no `"select"`, `"string"`, or `"secret"` types. The valid types are: `"text"`, `"password"`, `"number"`, `"boolean"`
 
 ---
 
-## Publishing
+## Publishing and Versioning
 
-To make your plugin available in the Sowel plugin store, create a GitHub release.
+### Creating a Release Tarball
 
-### 1. Prepare the release artifact
-
-Create a tarball containing the plugin files (without `src/` or `node_modules/` dev dependencies):
+Plugins are installed from GitHub release tarballs. The tarball **must include** `dist/` (compiled JS) and **must exclude** `src/` and `node_modules/`.
 
 ```bash
 # Build first
 npm run build
 
-# Create tarball
-tar -czf sowel-plugin-my-device-1.0.0.tar.gz \
+# Create the release tarball
+tar -czf sowel-plugin-my-device-0.1.0.tar.gz \
   manifest.json \
   package.json \
-  dist/ \
-  node_modules/   # only production dependencies, if any
+  dist/
 ```
 
-### 2. Create a GitHub release
+If your plugin has production dependencies (listed in `dependencies`, not `devDependencies`), also include `package.json` so that Sowel can run `npm install --production` after extraction. If there are no runtime dependencies, `package.json` is still recommended but `node_modules/` should not be included.
+
+### Creating a GitHub Release
 
 ```bash
-gh release create v1.0.0 \
-  sowel-plugin-my-device-1.0.0.tar.gz \
-  --title "v1.0.0" \
+gh release create v0.1.0 \
+  sowel-plugin-my-device-0.1.0.tar.gz \
+  --title "v0.1.0" \
   --notes "Initial release"
 ```
 
-### 3. Register in the Sowel plugin registry
+**Installation flow:** When a user clicks "Install" in the Sowel plugin store, Sowel:
 
-Submit a PR to the Sowel repository adding your plugin to `plugins/registry.json`:
+1. Fetches the latest release from the GitHub API
+2. Prefers an uploaded `.tar.gz` asset (which includes `dist/`); falls back to the GitHub source tarball
+3. Extracts to `plugins/<id>/`
+4. Runs `npm install --production` if `package.json` exists
+5. If `dist/` is missing but `tsconfig.json` exists, attempts `npx tsc` to build from source
+6. Registers the plugin in the database and loads it
+
+Best practice: **always upload a pre-built tarball** as a release asset. This avoids the need for the user's Sowel instance to have TypeScript installed.
+
+### Registering in the Plugin Store
+
+To make your plugin appear in the Sowel plugin store, submit a PR to the Sowel repository adding an entry to `plugins/registry.json`:
 
 ```json
 {
-  "id": "my-plugin",
-  "name": "My Plugin",
-  "description": "Integration with My Device",
+  "id": "my-device",
+  "name": "My Device",
+  "description": "Integration with My Device API",
+  "icon": "Cpu",
   "author": "Your Name",
-  "repository": "https://github.com/yourname/sowel-plugin-my-device",
-  "category": "sensor"
-}
-```
-
-Once merged, your plugin will appear in the Sowel plugin store UI.
-
-### Release naming convention
-
-- Tag: `v1.0.0` (SemVer with `v` prefix)
-- Asset: `sowel-plugin-<id>-<version>.tar.gz`
-- The version in the tarball's `manifest.json` must match the release tag
-
----
-
-## Example: Minimal Plugin
-
-A complete, minimal plugin that polls a fictional REST API every 5 minutes and exposes temperature sensors.
-
-**`manifest.json`:**
-
-```json
-{
-  "id": "weather-station",
-  "name": "Weather Station",
+  "repo": "yourname/sowel-plugin-my-device",
   "version": "0.1.0",
-  "description": "Reads temperature from a local weather station API",
-  "author": "Sowel Community",
-  "license": "MIT",
-  "sowelVersion": ">=0.10.0",
-  "entry": "dist/index.js",
-  "integrationId": "weather-station",
-  "settings": [
-    {
-      "key": "stationUrl",
-      "label": "Station URL",
-      "type": "string",
-      "required": true,
-      "description": "Base URL of the weather station API (e.g., http://192.168.1.50)"
-    },
-    {
-      "key": "pollInterval",
-      "label": "Poll Interval (seconds)",
-      "type": "number",
-      "required": false,
-      "default": 300
-    }
-  ]
+  "tags": ["sensor", "api"]
 }
 ```
 
-**`src/index.ts`:**
+#### Registry Entry Schema
 
-```typescript
-interface PluginDeps {
-  logger: any;
-  eventBus: any;
-  settingsManager: any;
-  deviceManager: any;
-  pluginDir: string;
-}
+| Field         | Type     | Required | Description                                                   |
+| ------------- | -------- | -------- | ------------------------------------------------------------- |
+| `id`          | string   | Yes      | Must match the plugin's `manifest.json` id                    |
+| `name`        | string   | Yes      | Display name in the store                                     |
+| `description` | string   | Yes      | Short description                                             |
+| `icon`        | string   | Yes      | Lucide icon name                                              |
+| `author`      | string   | Yes      | Author name                                                   |
+| `repo`        | string   | Yes      | GitHub `owner/repo` path (used to fetch releases)             |
+| `version`     | string   | No       | Latest available version (shown in the store "Available" tab) |
+| `tags`        | string[] | Yes      | Searchable tags (e.g. `["camera", "security"]`)               |
 
-interface StationReading {
-  temperature: number;
-  humidity: number;
-  pressure: number;
-}
+### Versioning
 
-function createPlugin(deps: PluginDeps) {
-  const { logger, settingsManager, deviceManager } = deps;
-  let pollTimer: NodeJS.Timeout | null = null;
-  let status: "connected" | "disconnected" | "connecting" | "error" = "disconnected";
+There are **two places** where the version matters, and they serve different purposes:
 
-  async function fetchReading(url: string): Promise<StationReading> {
-    const response = await fetch(`${url}/api/reading`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json() as Promise<StationReading>;
-  }
+1. **`manifest.json` (in the plugin repository)** -- the `version` field here is read when the plugin is installed. It is stored in Sowel's database and displayed in the **"Installed" tab** of the Plugins UI.
 
-  async function poll() {
-    const stationUrl = settingsManager.get("weather-station", "stationUrl");
-    if (!stationUrl) {
-      logger.warn("Station URL not configured");
-      return;
-    }
+2. **`plugins/registry.json` (in the Sowel repository)** -- the `version` field here is displayed in the **"Store" tab** of the Plugins UI, showing users what version is available for installation.
 
-    try {
-      const reading = await fetchReading(stationUrl);
+**Rules:**
 
-      deviceManager.upsertFromDiscovery({
-        sourceId: "weather-station:main",
-        name: "Weather Station",
-        source: "weather-station",
-        category: "sensor",
-        data: {
-          temperature: { value: reading.temperature, label: "Temperature", unit: "C" },
-          humidity: { value: reading.humidity, label: "Humidity", unit: "%" },
-          pressure: { value: reading.pressure, label: "Pressure", unit: "hPa" },
-        },
-        orders: [],
-      });
+- Update `manifest.json` version with **every release**. This is how Sowel knows what version is installed.
+- Update `plugins/registry.json` version in the Sowel repo when you publish a new release. This is how users see that an update is available.
+- Keep both versions in sync. If `manifest.json` says `0.2.0` but `registry.json` says `0.1.0`, the store will show an outdated version.
+- The version in the release tag (e.g. `v0.2.0`) should match `manifest.json`.
 
-      status = "connected";
-      logger.debug({ reading }, "Poll completed");
-    } catch (err) {
-      logger.error({ err }, "Poll failed");
-      status = "error";
-    }
-  }
+### Release Naming Convention
 
-  return {
-    id: "weather-station",
-
-    async start() {
-      logger.info("Starting weather-station plugin");
-      status = "connecting";
-
-      const interval = Number(settingsManager.get("weather-station", "pollInterval") || "300");
-
-      await poll();
-      pollTimer = setInterval(poll, interval * 1000);
-    },
-
-    async stop() {
-      logger.info("Stopping weather-station plugin");
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-      status = "disconnected";
-    },
-
-    getStatus() {
-      return status;
-    },
-  };
-}
-
-module.exports = { createPlugin };
-```
+- Git tag: `v0.2.0` (SemVer with `v` prefix)
+- Tarball asset: `sowel-plugin-<id>-<version>.tar.gz`
+- The `version` in the tarball's `manifest.json` must match the release tag
 
 ---
 
@@ -770,29 +980,41 @@ module.exports = { createPlugin };
 
 - Verify `plugins/<id>/manifest.json` exists and is valid JSON
 - Check that the `id` field matches the directory name
+- Check the `plugins` table in SQLite -- the plugin must have a row with `enabled = 1`
 
-**Plugin fails to start:**
+**Plugin fails to load:**
 
+- Ensure `dist/index.js` exists and exports a `createPlugin` function
 - Check Sowel logs for `plugin:<id>` entries
-- Verify all required settings are configured
-- Ensure `dist/index.js` exists and exports `{ createPlugin }`
+- Verify the plugin uses ESM (`export function createPlugin` or `export { createPlugin }`)
+- The loader also checks `mod.default?.createPlugin` as a fallback
+
+**Plugin loads but does not start:**
+
+- Verify `isConfigured()` returns true -- Sowel skips `start()` when it returns false
+- Check that all required settings are configured in the UI (Administration > Integrations)
 
 **Devices not appearing:**
 
-- Verify `source` in `upsertFromDiscovery()` matches your `integrationId`
-- Check that `sourceId` is non-empty and unique
+- Verify `integrationId` in `upsertFromDiscovery()` matches your plugin's `id`
+- Check that `friendlyName` is non-empty and unique
 - Look for errors in the device manager logs
+
+**Data updates not working:**
+
+- Verify `sourceDeviceId` in `updateDeviceData()` exactly matches the `friendlyName` used in `upsertFromDiscovery()`
+- Check that the data keys in the payload match the keys declared in the `DiscoveredDevice.data` array
 
 **Orders not received:**
 
-- Verify your plugin implements `executeOrder()`
-- Check that the device's `orders` array includes the order name
-- Look for `equipment.order.dispatched` events in trace logs
+- Verify your plugin implements `executeOrder()` with the correct signature: `(device: Device, dispatchConfig: Record<string, unknown>, value: unknown)`
+- Check that the device's `orders` array includes the order definition with a `dispatchConfig`
+- Look for order dispatch events in the logs
 
 ---
 
 ## Reference
 
-- [Sowel Specification](../sowel-spec.md) — Full system specification
-- [Recipe Developer Guide](../docs/recipe-developer-guide.md) — Writing automation recipes
-- [Integration Plugin Architecture](../specs/011-V0.10a-integration-plugin-architecture/) — Built-in integration design
+- [Sowel Specification](../sowel-spec.md) -- Full system specification
+- [Weather Forecast Plugin](https://github.com/mchacher/sowel-plugin-weather-forecast) -- Complete working example
+- [Netatmo Security Plugin](https://github.com/mchacher/sowel-plugin-netatmo-security) -- Plugin with OAuth and orders
