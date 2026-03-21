@@ -117,8 +117,13 @@ export class PluginManager {
       throw new Error(`GitHub API error: ${releaseRes.status} ${releaseRes.statusText}`);
     }
 
-    const release = (await releaseRes.json()) as { tarball_url: string };
-    const tarballUrl = release.tarball_url;
+    const release = (await releaseRes.json()) as {
+      tarball_url: string;
+      assets?: { name: string; browser_download_url: string }[];
+    };
+    // Prefer uploaded asset (includes dist/), fallback to source tarball
+    const asset = release.assets?.find((a) => a.name.endsWith(".tar.gz"));
+    const tarballUrl = asset?.browser_download_url ?? release.tarball_url;
 
     // 2. Download the tarball
     const tarballRes = await fetch(tarballUrl);
@@ -186,6 +191,18 @@ export class PluginManager {
           { err, pluginId: manifest.id },
           "npm install failed — plugin may still work if no dependencies needed",
         );
+      }
+    }
+
+    // 6b. If dist/ does not exist but tsconfig.json does, try to build
+    const distDir = resolve(pluginDir, "dist");
+    const tsconfigPath = resolve(pluginDir, "tsconfig.json");
+    if (!existsSync(distDir) && existsSync(tsconfigPath)) {
+      try {
+        await execFile("npx", ["tsc"], { cwd: pluginDir, timeout: 60_000 });
+        this.logger.debug({ pluginId: manifest.id }, "Plugin built from source");
+      } catch (err) {
+        this.logger.warn({ err, pluginId: manifest.id }, "Plugin build failed");
       }
     }
 
