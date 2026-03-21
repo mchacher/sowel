@@ -28,7 +28,6 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const isConnected = integration.status === "connected";
-  const isError = integration.status === "error";
   const isNotConfigured = integration.status === "not_configured";
   const hasRefresh = isConnected && !!integration.polling;
 
