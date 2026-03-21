@@ -390,7 +390,8 @@ export class PluginManager {
       throw new Error(`Plugin entry point not found: ${entryPath}`);
     }
 
-    const mod = (await import(pathToFileURL(entryPath).href)) as {
+    // Cache-bust: append timestamp to force fresh import after reinstall
+    const mod = (await import(`${pathToFileURL(entryPath).href}?t=${Date.now()}`)) as {
       createPlugin?: PluginFactory;
       default?: { createPlugin?: PluginFactory };
     };
