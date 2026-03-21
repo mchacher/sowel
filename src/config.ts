@@ -45,8 +45,11 @@ function resolveJwtSecret(dataDir: string): string {
 }
 
 /**
- * Resolve or auto-generate the InfluxDB token.
- * Priority: INFLUX_TOKEN env var > persisted file > generate new.
+ * Resolve the InfluxDB token.
+ * Priority: INFLUX_TOKEN env var > persisted file.
+ * Unlike JWT, InfluxDB tokens cannot be auto-generated — they must match
+ * a token created in InfluxDB itself. If no token is found, return empty
+ * string and let InfluxClient handle the connection failure gracefully.
  */
 function resolveInfluxToken(dataDir: string): string {
   const fromEnv = process.env["INFLUX_TOKEN"];
@@ -57,11 +60,7 @@ function resolveInfluxToken(dataDir: string): string {
     return readFileSync(tokenPath, "utf-8").trim();
   }
 
-  // First launch — generate and persist
-  mkdirSync(dataDir, { recursive: true });
-  const token = randomBytes(32).toString("hex");
-  writeFileSync(tokenPath, token, { mode: 0o600 });
-  return token;
+  return "";
 }
 
 export function loadConfig(): AppConfig {
