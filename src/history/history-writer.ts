@@ -179,8 +179,9 @@ export class HistoryWriter {
     // 1. Explicit override
     if (historize === 1) return true;
     if (historize === 0) return false;
-    // 2. Alias exclusion (cumulative counters — not useful as time series)
+    // 2. Alias exclusion (cumulative counters, forecast data — not useful as time series)
     if (ALIAS_DEFAULTS_OFF.has(alias)) return false;
+    if (/^j\d+_/.test(alias)) return false; // forecast jX_* bindings — not historized
     // 3. Alias default
     if (ALIAS_DEFAULTS_ON.has(alias)) return true;
     // 4. Category default
