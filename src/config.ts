@@ -44,6 +44,26 @@ function resolveJwtSecret(dataDir: string): string {
   return secret;
 }
 
+/**
+ * Resolve or auto-generate the InfluxDB token.
+ * Priority: INFLUX_TOKEN env var > persisted file > generate new.
+ */
+function resolveInfluxToken(dataDir: string): string {
+  const fromEnv = process.env["INFLUX_TOKEN"];
+  if (fromEnv) return fromEnv;
+
+  const tokenPath = resolve(dataDir, ".influx-token");
+  if (existsSync(tokenPath)) {
+    return readFileSync(tokenPath, "utf-8").trim();
+  }
+
+  // First launch — generate and persist
+  mkdirSync(dataDir, { recursive: true });
+  const token = randomBytes(32).toString("hex");
+  writeFileSync(tokenPath, token, { mode: 0o600 });
+  return token;
+}
+
 export function loadConfig(): AppConfig {
   const sqlitePath = env("SQLITE_PATH", "./data/sowel.db");
   const dataDir = dirname(resolve(sqlitePath));
@@ -68,6 +88,12 @@ export function loadConfig(): AppConfig {
       origins: env("CORS_ORIGINS", "*")
         .split(",")
         .map((s) => s.trim()),
+    },
+    influx: {
+      url: env("INFLUX_URL", "http://localhost:8086"),
+      token: resolveInfluxToken(dataDir),
+      org: env("INFLUX_ORG", "sowel"),
+      bucket: env("INFLUX_BUCKET", "sowel"),
     },
   };
 }

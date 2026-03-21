@@ -55,6 +55,7 @@ sowel/
 │   ├── integrations/            # Integration plugins (zigbee2mqtt, panasonic-cc, mcz-maestro, ...)
 │   ├── devices/                 # Device manager, auto-discovery, category inference
 │   ├── equipments/              # Equipment manager, bindings, computed engine, order dispatcher
+│   ├── energy/                  # Energy aggregator, tariff classifier (HP/HC)
 │   ├── zones/                   # Zone manager, auto-aggregation engine
 │   ├── scenarios/               # Scenario engine, triggers, conditions, actions, recipes
 │   ├── ai/                      # LLM integration (Claude/OpenAI/Ollama) — V1.0+
@@ -222,16 +223,22 @@ V0.1 Devices → V0.2 Zones → V0.3 Equipments+Bindings → V0.4 UI Home → V0
 
 All settings are optional with sensible defaults — Sowel runs zero-config out of the box. Override via `.env` if needed:
 
-| Variable          | Default           | Notes                                           |
-| ----------------- | ----------------- | ----------------------------------------------- |
-| `SQLITE_PATH`     | `./data/sowel.db` | SQLite database path                            |
-| `API_PORT`        | `3000`            | HTTP server port                                |
-| `API_HOST`        | `0.0.0.0`         | Bind address                                    |
-| `JWT_SECRET`      | auto-generated    | Persisted in `data/.jwt-secret` on first launch |
-| `JWT_ACCESS_TTL`  | `900`             | Access token TTL in seconds (15 min)            |
-| `JWT_REFRESH_TTL` | `2592000`         | Refresh token TTL in seconds (30 days)          |
-| `LOG_LEVEL`       | `info`            | Pino log level                                  |
-| `CORS_ORIGINS`    | `*`               | Comma-separated allowed origins                 |
+| Variable          | Default                 | Notes                                             |
+| ----------------- | ----------------------- | ------------------------------------------------- |
+| `SQLITE_PATH`     | `./data/sowel.db`       | SQLite database path                              |
+| `API_PORT`        | `3000`                  | HTTP server port                                  |
+| `API_HOST`        | `0.0.0.0`               | Bind address                                      |
+| `JWT_SECRET`      | auto-generated          | Persisted in `data/.jwt-secret` on first launch   |
+| `JWT_ACCESS_TTL`  | `900`                   | Access token TTL in seconds (15 min)              |
+| `JWT_REFRESH_TTL` | `2592000`               | Refresh token TTL in seconds (30 days)            |
+| `LOG_LEVEL`       | `info`                  | Pino log level                                    |
+| `CORS_ORIGINS`    | `*`                     | Comma-separated allowed origins                   |
+| `INFLUX_URL`      | `http://localhost:8086` | InfluxDB 2.x URL                                  |
+| `INFLUX_TOKEN`    | auto-generated          | Persisted in `data/.influx-token` on first launch |
+| `INFLUX_ORG`      | `sowel`                 | InfluxDB organization                             |
+| `INFLUX_BUCKET`   | `sowel`                 | InfluxDB primary bucket                           |
+
+InfluxDB is mandatory — Sowel connects on startup and auto-creates buckets, downsampling tasks, and energy aggregation tasks. No UI configuration needed.
 
 Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI (Administration > Integrations), not from `.env`.
 

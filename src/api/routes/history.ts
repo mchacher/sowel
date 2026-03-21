@@ -8,7 +8,7 @@ import {
   queryZoneSparkline,
 } from "../../history/history-query.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
-import type { SettingsManager } from "../../core/settings-manager.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 import type { EventBus } from "../../core/event-bus.js";
 import type { DataCategory } from "../../shared/types.js";
 
@@ -16,13 +16,13 @@ export function registerHistoryRoutes(
   app: FastifyInstance,
   deps: {
     historyWriter: HistoryWriter;
+    influxClient: InfluxClient;
     equipmentManager: EquipmentManager;
-    settingsManager: SettingsManager;
     eventBus: EventBus;
     logger: Logger;
   },
 ) {
-  const { historyWriter, equipmentManager, settingsManager, eventBus, logger: parentLogger } = deps;
+  const { historyWriter, influxClient, equipmentManager, eventBus, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "history-routes" });
 
   // ============================================================
@@ -30,19 +30,12 @@ export function registerHistoryRoutes(
   // ============================================================
 
   app.get("/api/v1/history/status", async () => {
-    const influx = historyWriter.getInfluxClient();
-    const configured =
-      !!settingsManager.get("history.influx.url") &&
-      !!settingsManager.get("history.influx.token") &&
-      !!settingsManager.get("history.influx.org") &&
-      !!settingsManager.get("history.influx.bucket");
-
     return {
-      configured,
-      connected: influx.isConnected(),
-      enabled: settingsManager.get("history.enabled") === "true",
+      configured: true,
+      connected: influxClient.isConnected(),
+      enabled: true,
       historizedBindings: historyWriter.getHistorizedCount(),
-      stats: influx.getStats(),
+      stats: influxClient.getStats(),
     };
   });
 
@@ -51,37 +44,14 @@ export function registerHistoryRoutes(
   // ============================================================
 
   app.get("/api/v1/history/retention", async () => {
-    const influx = historyWriter.getInfluxClient();
-    if (!influx.isConnected()) {
+    if (!influxClient.isConnected()) {
       return {
         buckets: { raw: null, hourly: null, daily: null },
         tasks: { hourly: null, daily: null },
         setupComplete: false,
       };
     }
-    return influx.getRetentionStatus();
-  });
-
-  // ============================================================
-  // POST /api/v1/history/test-connection
-  // ============================================================
-
-  app.post("/api/v1/history/test-connection", async (_req, reply) => {
-    const influx = historyWriter.getInfluxClient();
-    if (!influx.isConnected()) {
-      return reply.status(400).send({ error: "InfluxDB not configured or not connected" });
-    }
-
-    const { reachable, authenticated } = await influx.pingDetail();
-    if (reachable && authenticated) {
-      return { success: true, message: "InfluxDB connection successful" };
-    } else if (reachable && !authenticated) {
-      return reply.status(422).send({
-        error: "InfluxDB reachable but authentication failed — check token, org and bucket",
-      });
-    } else {
-      return reply.status(503).send({ error: "InfluxDB not reachable — check URL" });
-    }
+    return influxClient.getRetentionStatus();
   });
 
   // ============================================================
@@ -160,7 +130,7 @@ export function registerHistoryRoutes(
     async (req) => {
       const { zoneId, category } = req.params;
 
-      const influx = historyWriter.getInfluxClient();
+      const influx = influxClient;
       if (!influx.isConnected()) {
         return { values: [] };
       }
@@ -184,7 +154,7 @@ export function registerHistoryRoutes(
         return reply.status(404).send({ error: "Equipment not found" });
       }
 
-      const influx = historyWriter.getInfluxClient();
+      const influx = influxClient;
       if (!influx.isConnected()) {
         return { values: [] };
       }
@@ -207,7 +177,7 @@ export function registerHistoryRoutes(
         return reply.status(404).send({ error: "Equipment not found" });
       }
 
-      const influx = historyWriter.getInfluxClient();
+      const influx = influxClient;
       if (!influx.isConnected()) {
         return { aliases: [] };
       }
@@ -233,7 +203,7 @@ export function registerHistoryRoutes(
       return reply.status(404).send({ error: "Equipment not found" });
     }
 
-    const influx = historyWriter.getInfluxClient();
+    const influx = influxClient;
     if (!influx.isConnected()) {
       return { points: [], resolution: "raw" };
     }

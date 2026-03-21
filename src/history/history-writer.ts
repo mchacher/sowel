@@ -5,7 +5,8 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { DataCategory } from "../shared/types.js";
 import { TariffClassifier } from "../energy/tariff-classifier.js";
-import { InfluxClient, Point } from "./influx-client.js";
+import type { InfluxClient } from "../core/influx-client.js";
+import { Point } from "../core/influx-client.js";
 
 // ============================================================
 // History defaults — convention over configuration
@@ -94,19 +95,19 @@ export class HistoryWriter {
     eventBus: EventBus,
     settingsManager: SettingsManager,
     equipmentManager: EquipmentManager,
+    influxClient: InfluxClient,
     logger: Logger,
   ) {
     this.eventBus = eventBus;
     this.settingsManager = settingsManager;
     this.equipmentManager = equipmentManager;
+    this.influxClient = influxClient;
     this.logger = logger.child({ module: "history-writer" });
-    this.influxClient = new InfluxClient(logger);
     this.tariffClassifier = new TariffClassifier(settingsManager, logger);
   }
 
-  /** Initialize: connect to InfluxDB if configured, subscribe to events. */
+  /** Initialize: subscribe to events for writing history data. */
   init(): void {
-    this.tryConnect();
     this.refreshCache();
 
     // Read configurable intervals
@@ -139,11 +140,6 @@ export class HistoryWriter {
           case "equipment.removed":
             this.refreshCache();
             break;
-          case "settings.changed":
-            if (event.keys.some((k) => k.startsWith("history."))) {
-              this.tryConnect();
-            }
-            break;
         }
       } catch (err) {
         this.logger.error({ err }, "Error in history writer event handler");
@@ -156,23 +152,10 @@ export class HistoryWriter {
     );
   }
 
-  /** Graceful shutdown. */
-  async destroy(): Promise<void> {
+  /** Graceful shutdown — unsubscribes from events. InfluxDB lifecycle is managed externally. */
+  destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
-    await this.influxClient.disconnect();
-  }
-
-  /** Get the InfluxClient instance (for API routes). */
-  getInfluxClient(): InfluxClient {
-    return this.influxClient;
-  }
-
-  /** Check if history is enabled and InfluxDB connected. */
-  isEnabled(): boolean {
-    return (
-      this.settingsManager.get("history.enabled") === "true" && this.influxClient.isConnected()
-    );
   }
 
   /** Get the count of effectively historized bindings. */
@@ -203,53 +186,6 @@ export class HistoryWriter {
     // 4. Category default
     if (CATEGORY_DEFAULTS_ON.has(category)) return true;
     return false;
-  }
-
-  // ============================================================
-  // Private: connection
-  // ============================================================
-
-  private tryConnect(): void {
-    const url = this.settingsManager.get("history.influx.url")?.trim();
-    const token = this.settingsManager.get("history.influx.token")?.trim();
-    const org = this.settingsManager.get("history.influx.org")?.trim();
-    const bucket = this.settingsManager.get("history.influx.bucket")?.trim();
-    const enabled = this.settingsManager.get("history.enabled");
-
-    if (!url || !token || !org || !bucket || enabled !== "true") {
-      if (this.influxClient.isConnected()) {
-        this.influxClient.disconnect().catch((err) => {
-          this.logger.warn({ err }, "Error disconnecting InfluxDB");
-        });
-      }
-      return;
-    }
-
-    this.influxClient.connect({ url, token, org, bucket });
-
-    // Auto-setup downsampling buckets and tasks (fire-and-forget)
-    this.setupDownsampling();
-  }
-
-  private setupDownsampling(): void {
-    // Read configurable retention from settings (optional overrides)
-    const rawDays = parseInt(this.settingsManager.get("history.retention.rawDays") ?? "", 10);
-    const hourlyDays = parseInt(this.settingsManager.get("history.retention.hourlyDays") ?? "", 10);
-    const dailyDays = parseInt(this.settingsManager.get("history.retention.dailyDays") ?? "", 10);
-
-    const retention = {
-      rawSeconds: !isNaN(rawDays) && rawDays > 0 ? rawDays * 86_400 : undefined,
-      hourlySeconds: !isNaN(hourlyDays) && hourlyDays > 0 ? hourlyDays * 86_400 : undefined,
-      dailySeconds: !isNaN(dailyDays) && dailyDays > 0 ? dailyDays * 86_400 : undefined,
-    };
-
-    Promise.all([
-      this.influxClient.ensureBuckets(retention),
-      this.influxClient.ensureDownsamplingTasks(),
-      this.influxClient.ensureEnergyBuckets(),
-    ]).catch((err) => {
-      this.logger.warn({ err }, "Downsampling setup failed — will retry on next connect");
-    });
   }
 
   // ============================================================

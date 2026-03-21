@@ -11,7 +11,7 @@ import type {
   CalendarProfile, CalendarSlot, CalendarModeAction,
   IntegrationInfo,
   LogsResponse, LogLevel,
-  HistoryStatus, HistoryBindingState, HistoryQueryResult, RetentionStatus,
+  HistoryStatus, HistoryBindingState, HistoryQueryResult,
   SavedChart, SavedChartConfig,
   MqttBroker,
   MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
@@ -734,16 +734,6 @@ export async function setLogLevel(level: LogLevel): Promise<{ level: string; pre
 
 export async function getHistoryStatus(): Promise<HistoryStatus> {
   return fetchJSON<HistoryStatus>(`${API_BASE}/history/status`);
-}
-
-export async function testHistoryConnection(): Promise<{ success: boolean; message: string }> {
-  return fetchJSON<{ success: boolean; message: string }>(`${API_BASE}/history/test-connection`, {
-    method: "POST",
-  });
-}
-
-export async function getHistoryRetention(): Promise<RetentionStatus> {
-  return fetchJSON<RetentionStatus>(`${API_BASE}/history/retention`);
 }
 
 export async function getHistoryBindings(equipmentId: string): Promise<HistoryBindingState[]> {
