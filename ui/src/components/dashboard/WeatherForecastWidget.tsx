@@ -12,14 +12,24 @@ interface WeatherForecastWidgetProps {
   equipment: EquipmentWithDetails;
 }
 
-const CONDITION_LABELS: Record<string, { fr: string; en: string }> = {
-  sunny: { fr: "Ensoleillé", en: "Sunny" },
-  partly_cloudy: { fr: "Éclaircies", en: "Partly cloudy" },
-  cloudy: { fr: "Nuageux", en: "Cloudy" },
-  foggy: { fr: "Brouillard", en: "Foggy" },
-  rainy: { fr: "Pluie", en: "Rainy" },
-  snowy: { fr: "Neige", en: "Snowy" },
-  stormy: { fr: "Orage", en: "Stormy" },
+const CONDITION_LABELS_FR: Record<string, string> = {
+  sunny: "Ensoleillé",
+  partly_cloudy: "Éclaircies",
+  cloudy: "Nuageux",
+  foggy: "Brouillard",
+  rainy: "Pluie",
+  snowy: "Neige",
+  stormy: "Orage",
+};
+
+const CONDITION_LABELS_EN: Record<string, string> = {
+  sunny: "Sunny",
+  partly_cloudy: "Partly cloudy",
+  cloudy: "Cloudy",
+  foggy: "Foggy",
+  rainy: "Rainy",
+  snowy: "Snowy",
+  stormy: "Stormy",
 };
 
 export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidgetProps) {
@@ -27,7 +37,7 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
   const days = parseForecastDays(equipment.dataBindings);
   const tomorrow = days[0]; // J+1
   const locale = i18n.language === "fr" ? "fr-FR" : "en-US";
-  const lang = i18n.language === "fr" ? "fr" : "en";
+  const conditionLabels = i18n.language === "fr" ? CONDITION_LABELS_FR : CONDITION_LABELS_EN;
 
   if (!tomorrow) return null;
 
@@ -43,59 +53,60 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
     ? (CONDITION_COLORS[tomorrow.condition] ?? "text-text-tertiary")
     : "text-text-tertiary";
   const conditionLabel = tomorrow.condition
-    ? CONDITION_LABELS[tomorrow.condition]?.[lang] ?? tomorrow.condition
+    ? conditionLabels[tomorrow.condition] ?? tomorrow.condition
     : "";
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[13px] font-semibold text-text-secondary truncate">{label}</span>
-        <span className="text-[11px] text-text-tertiary">{capitalizedDay}</span>
-      </div>
+    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden">
+      {/* Zone 1: Titre — same as WidgetCard */}
+      <span className="text-[17px] font-semibold text-text truncate mb-2 text-center">{label}</span>
 
-      {/* Main content */}
-      <div className="flex items-center gap-3 flex-1">
+      {/* Zone 2: Content */}
+      <div className="flex items-center justify-center gap-4 flex-1 min-h-0">
         {/* Icon */}
         <div className={`${conditionColor} flex-shrink-0`}>
-          <ConditionIcon size={36} strokeWidth={1.5} />
+          <ConditionIcon size={40} strokeWidth={1.5} />
         </div>
 
-        {/* Temps + condition */}
-        <div className="flex-1 min-w-0">
+        {/* Data */}
+        <div className="flex flex-col items-start gap-1">
+          {/* Temperature */}
           <div className="flex items-baseline gap-1.5">
             {tomorrow.tempMax !== null && (
-              <span className="text-[24px] font-bold font-mono text-text tabular-nums leading-none">
-                {Math.round(tomorrow.tempMax)}°
+              <span className="text-[28px] font-bold font-mono text-text tabular-nums leading-none">
+                {Math.round(tomorrow.tempMax)}
               </span>
             )}
+            <span className="text-[14px] text-text-tertiary">°C</span>
             {tomorrow.tempMin !== null && (
-              <span className="text-[14px] font-mono text-text-tertiary tabular-nums leading-none">
+              <span className="text-[14px] font-mono text-text-tertiary tabular-nums ml-1">
                 {Math.round(tomorrow.tempMin)}°
               </span>
             )}
           </div>
-          <span className="text-[12px] text-text-secondary mt-0.5 block">{conditionLabel}</span>
-        </div>
 
-        {/* Rain + Wind */}
-        <div className="flex flex-col gap-1 flex-shrink-0">
-          {tomorrow.rainProb !== null && (
-            <div className="flex items-center gap-1">
-              <Droplets size={12} strokeWidth={1.5} className="text-primary" />
-              <span className="text-[12px] text-text-secondary font-mono tabular-nums">
-                {Math.round(tomorrow.rainProb)}%
-              </span>
-            </div>
-          )}
-          {tomorrow.windGusts !== null && (
-            <div className="flex items-center gap-1">
-              <Wind size={12} strokeWidth={1.5} className="text-text-tertiary" />
-              <span className="text-[12px] text-text-secondary font-mono tabular-nums">
-                {Math.round(tomorrow.windGusts)} km/h
-              </span>
-            </div>
-          )}
+          {/* Condition label + day */}
+          <span className="text-[12px] text-text-secondary">{conditionLabel} · {capitalizedDay}</span>
+
+          {/* Rain + Wind */}
+          <div className="flex items-center gap-3 mt-1">
+            {tomorrow.rainProb !== null && (
+              <div className="flex items-center gap-1">
+                <Droplets size={12} strokeWidth={1.5} className="text-primary" />
+                <span className="text-[12px] text-text-secondary font-mono tabular-nums">
+                  {Math.round(tomorrow.rainProb)}%
+                </span>
+              </div>
+            )}
+            {tomorrow.windGusts !== null && (
+              <div className="flex items-center gap-1">
+                <Wind size={12} strokeWidth={1.5} className="text-text-tertiary" />
+                <span className="text-[12px] text-text-secondary font-mono tabular-nums">
+                  {Math.round(tomorrow.windGusts)} km/h
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
