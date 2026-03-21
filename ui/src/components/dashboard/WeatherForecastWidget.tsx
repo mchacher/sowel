@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Cloud } from "lucide-react";
+import { Cloud, Droplets, Wind } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import {
   parseForecastDays,
@@ -12,49 +12,91 @@ interface WeatherForecastWidgetProps {
   equipment: EquipmentWithDetails;
 }
 
+const CONDITION_LABELS: Record<string, { fr: string; en: string }> = {
+  sunny: { fr: "Ensoleillé", en: "Sunny" },
+  partly_cloudy: { fr: "Éclaircies", en: "Partly cloudy" },
+  cloudy: { fr: "Nuageux", en: "Cloudy" },
+  foggy: { fr: "Brouillard", en: "Foggy" },
+  rainy: { fr: "Pluie", en: "Rainy" },
+  snowy: { fr: "Neige", en: "Snowy" },
+  stormy: { fr: "Orage", en: "Stormy" },
+};
+
 export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidgetProps) {
   const { i18n } = useTranslation();
   const days = parseForecastDays(equipment.dataBindings);
+  const tomorrow = days[0]; // J+1
   const locale = i18n.language === "fr" ? "fr-FR" : "en-US";
+  const lang = i18n.language === "fr" ? "fr" : "en";
+
+  if (!tomorrow) return null;
+
+  const dayDate = new Date();
+  dayDate.setDate(dayDate.getDate() + tomorrow.dayIndex);
+  const dayName = dayDate.toLocaleDateString(locale, { weekday: "long" });
+  const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+  const ConditionIcon = tomorrow.condition
+    ? CONDITION_ICONS[tomorrow.condition] ?? Cloud
+    : Cloud;
+  const conditionColor = tomorrow.condition
+    ? (CONDITION_COLORS[tomorrow.condition] ?? "text-text-tertiary")
+    : "text-text-tertiary";
+  const conditionLabel = tomorrow.condition
+    ? CONDITION_LABELS[tomorrow.condition]?.[lang] ?? tomorrow.condition
+    : "";
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden">
-      {/* Title */}
-      <span className="text-[17px] font-semibold text-text truncate mb-2 text-center">{label}</span>
+    <div className="bg-surface border border-border rounded-[10px] p-3 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[13px] font-semibold text-text-secondary truncate">{label}</span>
+        <span className="text-[11px] text-text-tertiary">{capitalizedDay}</span>
+      </div>
 
-      {/* Forecast mini-cards row */}
-      <div className="flex items-center justify-center gap-2 flex-1 min-h-0 overflow-x-auto">
-        {days.slice(0, 5).map((day) => {
-          const today = new Date();
-          const dayDate = new Date(today);
-          dayDate.setDate(today.getDate() + day.dayIndex);
-          const shortDay = dayDate.toLocaleDateString(locale, { weekday: "short" });
-          const capitalizedDay = shortDay.charAt(0).toUpperCase() + shortDay.slice(1);
+      {/* Main content */}
+      <div className="flex items-center gap-3 flex-1">
+        {/* Icon */}
+        <div className={`${conditionColor} flex-shrink-0`}>
+          <ConditionIcon size={36} strokeWidth={1.5} />
+        </div>
 
-          const ConditionIcon = day.condition ? CONDITION_ICONS[day.condition] ?? Cloud : Cloud;
-          const conditionColor = day.condition
-            ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
-            : "text-text-tertiary";
+        {/* Temps + condition */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            {tomorrow.tempMax !== null && (
+              <span className="text-[24px] font-bold font-mono text-text tabular-nums leading-none">
+                {Math.round(tomorrow.tempMax)}°
+              </span>
+            )}
+            {tomorrow.tempMin !== null && (
+              <span className="text-[14px] font-mono text-text-tertiary tabular-nums leading-none">
+                {Math.round(tomorrow.tempMin)}°
+              </span>
+            )}
+          </div>
+          <span className="text-[12px] text-text-secondary mt-0.5 block">{conditionLabel}</span>
+        </div>
 
-          return (
-            <div key={day.dayIndex} className="flex flex-col items-center gap-0.5 min-w-[48px]">
-              <span className="text-[10px] font-medium text-text-tertiary">{capitalizedDay}</span>
-              <div className={conditionColor}>
-                <ConditionIcon size={18} strokeWidth={1.5} />
-              </div>
-              {day.tempMax !== null && (
-                <span className="text-[12px] font-semibold text-text tabular-nums font-mono leading-none">
-                  {Math.round(day.tempMax)}&deg;
-                </span>
-              )}
-              {day.tempMin !== null && (
-                <span className="text-[10px] text-text-tertiary tabular-nums font-mono leading-none">
-                  {Math.round(day.tempMin)}&deg;
-                </span>
-              )}
+        {/* Rain + Wind */}
+        <div className="flex flex-col gap-1 flex-shrink-0">
+          {tomorrow.rainProb !== null && (
+            <div className="flex items-center gap-1">
+              <Droplets size={12} strokeWidth={1.5} className="text-primary" />
+              <span className="text-[12px] text-text-secondary font-mono tabular-nums">
+                {Math.round(tomorrow.rainProb)}%
+              </span>
             </div>
-          );
-        })}
+          )}
+          {tomorrow.windGusts !== null && (
+            <div className="flex items-center gap-1">
+              <Wind size={12} strokeWidth={1.5} className="text-text-tertiary" />
+              <span className="text-[12px] text-text-secondary font-mono tabular-nums">
+                {Math.round(tomorrow.windGusts)} km/h
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
