@@ -632,6 +632,30 @@ export interface NotificationPublisherWithMappings extends NotificationPublisher
 }
 
 // ============================================================
+// Plugin
+// ============================================================
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  icon: string;
+  author?: string;
+  sowelVersion?: string;
+  settings?: IntegrationSettingDef[];
+}
+
+export interface PluginInfo {
+  manifest: PluginManifest;
+  enabled: boolean;
+  installedAt: string;
+  status: IntegrationStatus;
+  deviceCount: number;
+  offlineDeviceCount: number;
+}
+
+// ============================================================
 // Integration
 // ============================================================
 

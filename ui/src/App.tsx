@@ -13,6 +13,7 @@ import { EquipmentDetailPage } from "./pages/EquipmentDetailPage";
 import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
+import { PluginsPage } from "./pages/PluginsPage";
 import { ModesPage } from "./pages/ModesPage";
 import { ModeDetailPage } from "./pages/ModeDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/analyse/:chartId" element={<AnalysePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/plugins" element={<PluginsPage />} />
           <Route path="/mqtt-publishers" element={<MqttPublishersPage />} />
           <Route path="/notification-publishers" element={<NotificationPublishersPage />} />
           <Route path="/logs" element={<LogsPage />} />

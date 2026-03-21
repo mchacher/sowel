@@ -30,6 +30,7 @@ import type { MqttPublisherManager } from "../mqtt-publishers/mqtt-publisher-man
 import type { MqttPublishService } from "../mqtt-publishers/mqtt-publish-service.js";
 import type { NotificationPublisherManager } from "../notifications/notification-publisher-manager.js";
 import type { NotificationPublishService } from "../notifications/notification-publish-service.js";
+import type { PluginManager } from "../plugins/plugin-manager.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -53,6 +54,7 @@ import { registerMqttBrokerRoutes } from "./routes/mqtt-brokers.js";
 import { registerMqttPublisherRoutes } from "./routes/mqtt-publishers.js";
 import { registerNotificationPublisherRoutes } from "./routes/notification-publishers.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
+import { registerPluginRoutes } from "./routes/plugins.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -76,6 +78,7 @@ interface ServerDeps {
   mqttPublishService: MqttPublishService;
   notificationPublisherManager: NotificationPublisherManager;
   notificationPublishService: NotificationPublishService;
+  pluginManager: PluginManager;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -105,6 +108,7 @@ export async function createServer(deps: ServerDeps) {
     mqttPublishService,
     notificationPublisherManager,
     notificationPublishService,
+    pluginManager,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -171,6 +175,7 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerDashboardRoutes(app, { db });
+  registerPluginRoutes(app, { pluginManager, logger });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

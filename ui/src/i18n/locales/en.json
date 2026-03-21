@@ -810,5 +810,27 @@
   "tariff.saving": "Saving...",
   "tariff.save": "Save",
   "tariff.saved": "Tariffs saved",
-  "tariff.saveError": "Error saving tariffs"
+  "tariff.saveError": "Error saving tariffs",
+
+  "nav.plugins": "Plugins",
+
+  "plugins.title": "Plugins",
+  "plugins.subtitle": "Install and manage extensions for Sowel.",
+  "plugins.installed": "Installed",
+  "plugins.store": "Store",
+  "plugins.noPlugins": "No plugins installed",
+  "plugins.install": "Install",
+  "plugins.installing": "Installing...",
+  "plugins.installed_badge": "Installed",
+  "plugins.uninstall": "Uninstall",
+  "plugins.uninstallConfirm": "Are you sure you want to uninstall this plugin?",
+  "plugins.enable": "Enable",
+  "plugins.disable": "Disable",
+  "plugins.enabled": "Plugin enabled",
+  "plugins.disabled": "Plugin disabled",
+  "plugins.installSuccess": "Plugin installed successfully",
+  "plugins.uninstallSuccess": "Plugin uninstalled",
+  "plugins.version": "Version",
+  "plugins.author": "Author",
+  "plugins.devices": "devices"
 }
