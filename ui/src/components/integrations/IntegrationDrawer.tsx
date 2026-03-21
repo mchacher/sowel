@@ -37,10 +37,16 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Reset form when integration changes
+  // Reset form when integration changes — fill defaults for empty fields
   useEffect(() => {
     if (integration) {
-      setValues(integration.settingValues);
+      const merged = { ...integration.settingValues };
+      for (const s of integration.settings) {
+        if (s.defaultValue && !merged[s.key]) {
+          merged[s.key] = s.defaultValue;
+        }
+      }
+      setValues(merged);
       setDirty(false);
       setMessage(null);
     }
