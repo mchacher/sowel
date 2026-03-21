@@ -65,7 +65,7 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
       <div className="flex items-center justify-center gap-4 flex-1 min-h-0">
         {/* Icon */}
         <div className={`${conditionColor} flex-shrink-0`}>
-          <ConditionIcon size={40} strokeWidth={1.5} />
+          <ConditionIcon size={56} strokeWidth={1.5} />
         </div>
 
         {/* Data */}
