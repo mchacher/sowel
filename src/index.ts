@@ -179,30 +179,8 @@ async function main() {
   zoneAggregator.setSunlightManager(sunlightManager);
 
   // 11. Create InfluxDB client and connect
-  //     Fallback: if no token from env/file, try legacy settings DB
   const influxClient = new InfluxClient(logger);
-  const influxConfig = { ...config.influx };
-  if (!influxConfig.token) {
-    const legacyToken = settingsManager.get("history.influx.token")?.trim();
-    if (legacyToken) {
-      influxConfig.token = legacyToken;
-      logger.info("InfluxDB token resolved from legacy settings");
-    }
-  }
-  if (!influxConfig.url) {
-    influxConfig.url = settingsManager.get("history.influx.url")?.trim() ?? "http://localhost:8086";
-  }
-  if (!influxConfig.org) {
-    influxConfig.org = settingsManager.get("history.influx.org")?.trim() ?? "sowel";
-  }
-  if (!influxConfig.bucket) {
-    influxConfig.bucket = settingsManager.get("history.influx.bucket")?.trim() ?? "sowel";
-  }
-  if (influxConfig.token) {
-    influxClient.connect(influxConfig);
-  } else {
-    logger.warn("InfluxDB token not configured — set INFLUX_TOKEN env var or data/.influx-token");
-  }
+  influxClient.connect(config.influx);
 
   // Setup downsampling buckets and tasks (fire-and-forget)
   Promise.all([

@@ -45,11 +45,17 @@ function resolveJwtSecret(dataDir: string): string {
 }
 
 /**
+ * Default InfluxDB admin token — matches DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+ * in docker-compose.yml. On a fresh install, both InfluxDB and Sowel use
+ * this token out of the box. Override with INFLUX_TOKEN env var or
+ * data/.influx-token file for custom setups.
+ */
+const DEFAULT_INFLUX_TOKEN =
+  "Uvht0Iez4HD5xu1BwhLFe9PI-ODIX9pTTdgYoNq1PQeSL2x3UKXHHRcQq5D-f2rkc0pnJGriuTzbO-kJKP3O8w==";
+
+/**
  * Resolve the InfluxDB token.
- * Priority: INFLUX_TOKEN env var > persisted file.
- * Unlike JWT, InfluxDB tokens cannot be auto-generated — they must match
- * a token created in InfluxDB itself. If no token is found, return empty
- * string and let InfluxClient handle the connection failure gracefully.
+ * Priority: INFLUX_TOKEN env var > persisted file > default (docker-compose token).
  */
 function resolveInfluxToken(dataDir: string): string {
   const fromEnv = process.env["INFLUX_TOKEN"];
@@ -60,7 +66,7 @@ function resolveInfluxToken(dataDir: string): string {
     return readFileSync(tokenPath, "utf-8").trim();
   }
 
-  return "";
+  return DEFAULT_INFLUX_TOKEN;
 }
 
 export function loadConfig(): AppConfig {
