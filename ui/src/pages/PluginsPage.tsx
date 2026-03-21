@@ -369,9 +369,11 @@ function StoreRow({
           <span className="text-[14px] font-semibold text-text truncate">
             {manifest.name}
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
-            {manifest.version}
-          </span>
+          {manifest.version && (
+            <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+              {manifest.version}
+            </span>
+          )}
         </div>
         <p className="text-[12px] text-text-secondary mt-0.5 line-clamp-1">
           {manifest.description}

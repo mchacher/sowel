@@ -31,6 +31,7 @@ interface RegistryEntry {
   icon: string;
   author: string;
   repo: string;
+  version?: string;
   tags: string[];
 }
 
@@ -350,7 +351,7 @@ export class PluginManager {
           (e): PluginManifest => ({
             id: e.id,
             name: e.name,
-            version: "", // version unknown until installed
+            version: e.version ?? "",
             description: e.description,
             icon: e.icon,
             author: e.author,
