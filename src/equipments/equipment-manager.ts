@@ -35,6 +35,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "button",
   "thermostat",
   "weather",
+  "weather_forecast",
   "gate",
   "heater",
   "energy_meter",

@@ -188,6 +188,7 @@
   "equipments.type.button": "Bouton / Télécommande",
   "equipments.type.thermostat": "Thermostat",
   "equipments.type.weather": "Station Météo",
+  "equipments.type.weather_forecast": "Prévisions Météo",
   "equipments.type.gate": "Ouvrant",
   "equipments.type.heater": "Radiateur électrique",
   "equipments.type.energy_meter": "Compteur d'Énergie (sous-compteur)",

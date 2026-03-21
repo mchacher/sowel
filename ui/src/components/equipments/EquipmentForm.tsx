@@ -14,6 +14,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "button", labelKey: "equipments.type.button" },
   { value: "thermostat", labelKey: "equipments.type.thermostat" },
   { value: "weather", labelKey: "equipments.type.weather" },
+  { value: "weather_forecast", labelKey: "equipments.type.weather_forecast" },
   { value: "gate", labelKey: "equipments.type.gate" },
   { value: "heater", labelKey: "equipments.type.heater" },
   { value: "energy_meter", labelKey: "equipments.type.energy_meter" },
