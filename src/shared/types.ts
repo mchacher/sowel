@@ -32,6 +32,9 @@ export type DataCategory =
   | "wind"
   | "action"
   | "gate_state"
+  | "weather_condition"
+  | "uv"
+  | "solar_radiation"
   | "generic";
 
 // ============================================================
