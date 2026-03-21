@@ -651,6 +651,7 @@ export interface PluginManifest {
   description: string;
   icon: string; // Lucide icon name
   author?: string;
+  repo?: string; // GitHub owner/repo — present in store entries
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
 }

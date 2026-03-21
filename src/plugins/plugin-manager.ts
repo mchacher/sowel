@@ -337,6 +337,7 @@ export class PluginManager {
             description: e.description,
             icon: e.icon,
             author: e.author,
+            repo: e.repo,
           }),
         );
     } catch (err) {
