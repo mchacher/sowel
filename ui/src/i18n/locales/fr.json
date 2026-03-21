@@ -455,6 +455,7 @@
   "integrations.mqttClientId": "Client ID",
   "integrations.z2mBaseTopic": "Topic de base Z2M",
   "integrations.start": "Démarrer",
+  "integrations.fillRequired": "Remplir les champs requis",
   "integrations.stop": "Arrêter",
   "integrations.saved": "Configuration enregistrée",
   "integrations.savedRestarted": "Configuration enregistrée — intégration redémarrée",
