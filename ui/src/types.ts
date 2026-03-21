@@ -656,6 +656,8 @@ export interface IntegrationInfo {
   settings: IntegrationSettingDef[];
   settingValues: Record<string, string>;
   polling?: { lastPollAt: string; intervalMs: number };
+  deviceCount: number;
+  offlineDeviceCount: number;
 }
 
 // ============================================================

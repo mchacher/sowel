@@ -100,6 +100,8 @@ export class IntegrationRegistry {
         settings: plugin.getSettingsSchema(),
         configured: plugin.isConfigured(),
         polling,
+        deviceCount: 0,
+        offlineDeviceCount: 0,
       };
     });
   }

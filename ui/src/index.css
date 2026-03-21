@@ -258,6 +258,15 @@ input[type="range"].slider-slim::-moz-range-thumb {
   animation: slide-left 0.2s ease-out;
 }
 
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s ease-out;
+}
+
 /* ============================================================
    iOS-style jiggle animation for mobile edit mode
    ============================================================ */
