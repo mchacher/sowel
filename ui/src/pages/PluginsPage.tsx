@@ -271,15 +271,17 @@ function PluginRow({
           disabled={actionLoading === "uninstall"}
           title={t("plugins.uninstall")}
           className={`
-            p-1.5 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50
+            flex items-center gap-1 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50
             ${confirmUninstall
-              ? "text-error bg-error/10"
-              : "text-text-tertiary hover:bg-border-light hover:text-error"
+              ? "text-error bg-error/10 px-2 py-1 text-xs font-medium"
+              : "p-1.5 text-text-tertiary hover:bg-border-light hover:text-error"
             }
           `}
         >
           {actionLoading === "uninstall" ? (
             <Loader2 size={14} className="animate-spin" />
+          ) : confirmUninstall ? (
+            <>{plugin.enabled ? t("plugins.uninstallConfirmActive") : t("plugins.uninstallConfirm")}</>
           ) : (
             <Trash2 size={14} />
           )}
