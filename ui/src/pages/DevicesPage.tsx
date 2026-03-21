@@ -129,7 +129,7 @@ export function DevicesPage() {
             return (
               <TabButton
                 key={integrationId}
-                label={INTEGRATION_LABELS[integrationId] ?? integrationId}
+                label={INTEGRATION_LABELS[integrationId] ?? integrationId.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
                 count={count}
                 active={resolvedTab === integrationId}
                 onClick={() => setActiveTab(integrationId)}
