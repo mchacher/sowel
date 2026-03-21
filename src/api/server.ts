@@ -23,6 +23,7 @@ import type { AuthService } from "../auth/auth-service.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { ButtonActionManager } from "../buttons/button-action-manager.js";
 import type { HistoryWriter } from "../history/history-writer.js";
+import type { InfluxClient } from "../core/influx-client.js";
 import type { ChartManager } from "../charts/chart-manager.js";
 import type { MqttBrokerManager } from "../mqtt-publishers/mqtt-broker-manager.js";
 import type { MqttPublisherManager } from "../mqtt-publishers/mqtt-publisher-manager.js";
@@ -68,6 +69,7 @@ interface ServerDeps {
   settingsManager: SettingsManager;
   buttonActionManager: ButtonActionManager;
   historyWriter: HistoryWriter;
+  influxClient: InfluxClient;
   chartManager: ChartManager;
   mqttBrokerManager: MqttBrokerManager;
   mqttPublisherManager: MqttPublisherManager;
@@ -96,6 +98,7 @@ export async function createServer(deps: ServerDeps) {
     settingsManager,
     buttonActionManager,
     historyWriter,
+    influxClient,
     chartManager,
     mqttBrokerManager,
     mqttPublisherManager,
@@ -142,14 +145,14 @@ export async function createServer(deps: ServerDeps) {
   registerRecipeRoutes(app, { recipeManager, logger });
   registerModeRoutes(app, { modeManager, buttonActionManager, logger });
   registerCalendarRoutes(app, { calendarManager, logger });
-  registerBackupRoutes(app, { db, historyWriter, logger });
+  registerBackupRoutes(app, { db, influxClient, logger });
   registerSettingsRoutes(app, { settingsManager, eventBus, logger });
   registerIntegrationRoutes(app, { integrationRegistry, settingsManager, deviceManager, logger });
   registerButtonActionRoutes(app, { buttonActionManager, logger });
   registerHistoryRoutes(app, {
     historyWriter,
+    influxClient,
     equipmentManager,
-    settingsManager,
     eventBus,
     logger,
   });
@@ -162,7 +165,7 @@ export async function createServer(deps: ServerDeps) {
   });
   registerEnergyRoutes(app, {
     equipmentManager,
-    influxClient: historyWriter.getInfluxClient(),
+    influxClient,
     settingsManager,
     tariffClassifier: historyWriter.getTariffClassifier(),
     logger,

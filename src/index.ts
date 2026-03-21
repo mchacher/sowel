@@ -29,8 +29,9 @@ import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
 import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
-import { EnergyAggregator } from "./equipments/energy-aggregator.js";
+import { EnergyAggregator } from "./energy/energy-aggregator.js";
 import { HistoryWriter } from "./history/history-writer.js";
+import { InfluxClient } from "./core/influx-client.js";
 import { ChartManager } from "./charts/chart-manager.js";
 import { MqttBrokerManager } from "./mqtt-publishers/mqtt-broker-manager.js";
 import { MqttPublisherManager } from "./mqtt-publishers/mqtt-publisher-manager.js";
@@ -177,8 +178,28 @@ async function main() {
   const sunlightManager = new SunlightManager(settingsManager, eventBus, logger);
   zoneAggregator.setSunlightManager(sunlightManager);
 
-  // 11. Create History Writer (passive observer — subscribes to events, writes to InfluxDB)
-  const historyWriter = new HistoryWriter(db, eventBus, settingsManager, equipmentManager, logger);
+  // 11. Create InfluxDB client and connect
+  const influxClient = new InfluxClient(logger);
+  influxClient.connect(config.influx);
+
+  // Setup downsampling buckets and tasks (fire-and-forget)
+  Promise.all([
+    influxClient.ensureBuckets(),
+    influxClient.ensureDownsamplingTasks(),
+    influxClient.ensureEnergyBuckets(),
+  ]).catch((err) => {
+    logger.warn({ err }, "InfluxDB bucket/task setup failed — will retry on next restart");
+  });
+
+  // 11a. Create History Writer (passive observer — subscribes to events, writes to InfluxDB)
+  const historyWriter = new HistoryWriter(
+    db,
+    eventBus,
+    settingsManager,
+    equipmentManager,
+    influxClient,
+    logger,
+  );
 
   // 11b. Create Chart Manager
   const chartManager = new ChartManager(db, logger);
@@ -246,27 +267,6 @@ async function main() {
   // 14. Start all configured integrations
   await integrationRegistry.startAll();
 
-  // 14b. Energy backfill (runs in background, non-blocking)
-  const netatmoPlugin = integrationRegistry.getById("netatmo_hc") as
-    | NetatmoHCIntegration
-    | undefined;
-  const tryEnergyBackfill = () => {
-    if (netatmoPlugin) {
-      netatmoPlugin
-        .runEnergyBackfillIfNeeded(equipmentManager, historyWriter.getInfluxClient())
-        .catch((err) => logger.warn({ err }, "Energy backfill failed"));
-    }
-  };
-  tryEnergyBackfill();
-
-  // Also trigger backfill when a main_energy_meter Equipment is created
-  // (backfill was deferred if no Equipment existed at startup)
-  eventBus.on((event) => {
-    if (event.type === "equipment.created" && event.equipment.type === "main_energy_meter") {
-      tryEnergyBackfill();
-    }
-  });
-
   // 15. Start Fastify server
   const server = await createServer({
     db,
@@ -282,6 +282,7 @@ async function main() {
     settingsManager,
     buttonActionManager,
     historyWriter,
+    influxClient,
     chartManager,
     mqttBrokerManager,
     mqttPublisherManager,
@@ -313,13 +314,8 @@ async function main() {
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
 
-  // 18a. Start Energy Aggregator (must be after historyWriter.init — needs InfluxDB connected)
-  const energyAggregator = new EnergyAggregator(
-    equipmentManager,
-    historyWriter.getInfluxClient(),
-    eventBus,
-    logger,
-  );
+  // 18a. Start Energy Aggregator
+  const energyAggregator = new EnergyAggregator(equipmentManager, influxClient, eventBus, logger);
   await energyAggregator
     .start()
     .catch((err) => logger.warn({ err }, "Energy aggregator start failed"));
@@ -370,9 +366,14 @@ async function main() {
       logger.error({ err }, "Error stopping MQTT publish service");
     }
     try {
-      await historyWriter.destroy();
+      historyWriter.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping history writer");
+    }
+    try {
+      await influxClient.disconnect();
+    } catch (err) {
+      logger.error({ err }, "Error disconnecting InfluxDB");
     }
     try {
       await server.close();

@@ -6,7 +6,7 @@ import type { EventBus } from "../../core/event-bus.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
-import type { InfluxClient } from "../../history/influx-client.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 import { NetatmoBridge } from "./netatmo-bridge.js";
 import { NetatmoPoller } from "./netatmo-poller.js";
 import { backfillEnergyIfNeeded } from "./energy-backfill.js";

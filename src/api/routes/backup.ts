@@ -2,11 +2,11 @@ import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import type { Logger } from "../../core/logger.js";
-import type { HistoryWriter } from "../../history/history-writer.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 
 interface BackupDeps {
   db: Database.Database;
-  historyWriter: HistoryWriter;
+  influxClient: InfluxClient;
   logger: Logger;
 }
 
@@ -48,7 +48,7 @@ interface BackupPayload {
 }
 
 export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): void {
-  const { db, historyWriter, logger: parentLogger } = deps;
+  const { db, influxClient, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "backup" });
 
   // GET /api/v1/backup — Export full configuration as ZIP (SQLite JSON + InfluxDB CSV)
@@ -76,7 +76,6 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
     };
 
     // Export InfluxDB data if connected
-    const influxClient = historyWriter.getInfluxClient();
     const influxConfig = influxClient.getConfig();
     const influxConnected = influxClient.isConnected() && influxConfig;
 

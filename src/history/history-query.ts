@@ -1,5 +1,5 @@
 import type { Logger } from "../core/logger.js";
-import type { InfluxClient } from "./influx-client.js";
+import type { InfluxClient } from "../core/influx-client.js";
 import type { HistoryPoint, HistoryQueryResult } from "../shared/types.js";
 
 type Resolution = "raw" | "1h" | "1d";

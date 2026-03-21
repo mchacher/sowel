@@ -14,8 +14,8 @@
 
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
-import type { InfluxClient } from "../history/influx-client.js";
-import type { EquipmentManager } from "./equipment-manager.js";
+import type { InfluxClient } from "../core/influx-client.js";
+import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ComputedDataEntry } from "../shared/types.js";
 
 /** Minimum interval between two InfluxDB refreshes per equipment (ms). */
