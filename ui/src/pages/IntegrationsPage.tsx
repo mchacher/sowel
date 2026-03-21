@@ -49,7 +49,7 @@ export function IntegrationsPage() {
         <p className="text-[13px] text-text-secondary mt-1">{t("integrations.subtitle")}</p>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 max-w-[720px]">
         {integrations.map((integration) => (
           <IntegrationRow
             key={integration.id}
