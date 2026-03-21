@@ -10,6 +10,7 @@ import type {
   ButtonActionBinding, ButtonEffectType,
   CalendarProfile, CalendarSlot, CalendarModeAction,
   IntegrationInfo,
+  PluginInfo, PluginManifest,
   LogsResponse, LogLevel,
   HistoryStatus, HistoryBindingState, HistoryQueryResult,
   SavedChart, SavedChartConfig,
@@ -509,6 +510,37 @@ export async function restartIntegration(
 
 export async function refreshIntegration(id: string): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/integrations/${id}/refresh`, { method: "POST" });
+}
+
+// ============================================================
+// Plugins (admin)
+// ============================================================
+
+export async function getPlugins(): Promise<PluginInfo[]> {
+  return fetchJSON<PluginInfo[]>(`${API_BASE}/plugins`);
+}
+
+export async function getPluginStore(): Promise<PluginManifest[]> {
+  return fetchJSON<PluginManifest[]>(`${API_BASE}/plugins/store`);
+}
+
+export async function installPlugin(repo: string): Promise<PluginManifest> {
+  return fetchJSON<PluginManifest>(`${API_BASE}/plugins/install`, {
+    method: "POST",
+    body: JSON.stringify({ repo }),
+  });
+}
+
+export async function uninstallPlugin(id: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${API_BASE}/plugins/${id}/uninstall`, { method: "POST" });
+}
+
+export async function enablePlugin(id: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${API_BASE}/plugins/${id}/enable`, { method: "POST" });
+}
+
+export async function disablePlugin(id: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${API_BASE}/plugins/${id}/disable`, { method: "POST" });
 }
 
 // ============================================================

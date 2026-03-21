@@ -80,6 +80,11 @@ export class IntegrationRegistry {
     this.logger.info({ integrationId: plugin.id, name: plugin.name }, "Integration registered");
   }
 
+  unregister(id: string): void {
+    this.plugins.delete(id);
+    this.logger.info({ integrationId: id }, "Integration unregistered");
+  }
+
   getById(id: string): IntegrationPlugin | undefined {
     return this.plugins.get(id);
   }

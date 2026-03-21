@@ -1,0 +1,12 @@
+[
+  {
+    "id": "netatmo-security",
+    "name": "Netatmo Security",
+    "description": "Netatmo cameras (Welcome, Presence, Doorbell) — monitoring on/off",
+    "icon": "Camera",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-netatmo-security",
+    "version": "0.2.0",
+    "tags": ["camera", "netatmo", "security"]
+  }
+]
