@@ -4,6 +4,7 @@ import {
   Box,
   Map,
   Plug,
+  Package,
   Settings,
   Shield,
   Home,
@@ -33,7 +34,7 @@ import { useEnergy } from "../../store/useEnergy";
 
 type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
 
-const ADMIN_ROUTES = ["/devices", "/equipments", "/zones", "/calendar", "/integrations", "/mqtt-publishers", "/notification-publishers", "/logs", "/backup"];
+const ADMIN_ROUTES = ["/devices", "/equipments", "/zones", "/calendar", "/integrations", "/plugins", "/mqtt-publishers", "/notification-publishers", "/logs", "/backup"];
 
 function getSectionForPath(pathname: string): SidebarSection | null {
   if (pathname.startsWith("/home")) return "maison";
@@ -56,6 +57,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { to: "/zones", label: "nav.zones", icon: <Map size={18} strokeWidth={1.5} /> },
   { to: "/calendar", label: "nav.calendar", icon: <Calendar size={18} strokeWidth={1.5} /> },
   { to: "/integrations", label: "nav.integrations", icon: <Plug size={18} strokeWidth={1.5} /> },
+  { to: "/plugins", label: "nav.plugins", icon: <Package size={18} strokeWidth={1.5} /> },
   { to: "/mqtt-publishers", label: "nav.mqttPublishers", icon: <Send size={18} strokeWidth={1.5} /> },
   { to: "/notification-publishers", label: "nav.notificationPublishers", icon: <Bell size={18} strokeWidth={1.5} /> },
   { to: "/logs", label: "nav.logs", icon: <ScrollText size={18} strokeWidth={1.5} /> },

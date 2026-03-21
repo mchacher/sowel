@@ -810,5 +810,27 @@
   "tariff.saving": "Enregistrement...",
   "tariff.save": "Enregistrer",
   "tariff.saved": "Tarifs enregistrés",
-  "tariff.saveError": "Erreur lors de l'enregistrement"
+  "tariff.saveError": "Erreur lors de l'enregistrement",
+
+  "nav.plugins": "Plugins",
+
+  "plugins.title": "Plugins",
+  "plugins.subtitle": "Installez et gérez des extensions pour Sowel.",
+  "plugins.installed": "Installés",
+  "plugins.store": "Store",
+  "plugins.noPlugins": "Aucun plugin installé",
+  "plugins.install": "Installer",
+  "plugins.installing": "Installation...",
+  "plugins.installed_badge": "Installé",
+  "plugins.uninstall": "Désinstaller",
+  "plugins.uninstallConfirm": "Voulez-vous vraiment désinstaller ce plugin ?",
+  "plugins.enable": "Activer",
+  "plugins.disable": "Désactiver",
+  "plugins.enabled": "Plugin activé",
+  "plugins.disabled": "Plugin désactivé",
+  "plugins.installSuccess": "Plugin installé avec succès",
+  "plugins.uninstallSuccess": "Plugin désinstallé",
+  "plugins.version": "Version",
+  "plugins.author": "Auteur",
+  "plugins.devices": "appareils"
 }
