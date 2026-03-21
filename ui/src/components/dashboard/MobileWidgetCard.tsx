@@ -16,7 +16,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
-import { Cloud, Droplets } from "lucide-react";
+import { Cloud } from "lucide-react";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;

@@ -36,15 +36,9 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
   const { i18n } = useTranslation();
   const days = parseForecastDays(equipment.dataBindings);
   const tomorrow = days[0]; // J+1
-  const locale = i18n.language === "fr" ? "fr-FR" : "en-US";
   const conditionLabels = i18n.language === "fr" ? CONDITION_LABELS_FR : CONDITION_LABELS_EN;
 
   if (!tomorrow) return null;
-
-  const dayDate = new Date();
-  dayDate.setDate(dayDate.getDate() + tomorrow.dayIndex);
-  const dayName = dayDate.toLocaleDateString(locale, { weekday: "long" });
-  const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
 
   const ConditionIcon = tomorrow.condition
     ? CONDITION_ICONS[tomorrow.condition] ?? Cloud
