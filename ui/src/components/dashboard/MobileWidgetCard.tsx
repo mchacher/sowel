@@ -15,6 +15,8 @@ import {
   PlugWidgetIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
+import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
+import { Cloud, Droplets } from "lucide-react";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
@@ -69,6 +71,7 @@ function useMobileState(
     isGate,
     isHeater,
     isSensor,
+    isWeatherForecast,
     isOn,
   } = useEquipmentState(equipment);
 
@@ -172,6 +175,33 @@ function useMobileState(
       }
     }
     return { icon: sensorIcon, stateLines: lines };
+  }
+
+  if (isWeatherForecast) {
+    const days = parseForecastDays(equipment.dataBindings);
+    const tomorrow = days[0];
+    if (tomorrow) {
+      const ConditionIcon = tomorrow.condition
+        ? CONDITION_ICONS[tomorrow.condition] ?? Cloud
+        : Cloud;
+      const conditionColor = tomorrow.condition
+        ? (CONDITION_COLORS[tomorrow.condition] ?? "text-text-tertiary")
+        : "text-text-tertiary";
+      const lines: string[] = [];
+      if (tomorrow.tempMax !== null) {
+        let tempStr = `${Math.round(tomorrow.tempMax)}°`;
+        if (tomorrow.tempMin !== null) tempStr += ` / ${Math.round(tomorrow.tempMin)}°`;
+        lines.push(tempStr);
+      }
+      if (tomorrow.rainProb !== null && tomorrow.rainProb > 0) {
+        lines.push(`💧${Math.round(tomorrow.rainProb)}%`);
+      }
+      return {
+        icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
+        stateLines: lines,
+      };
+    }
+    return { icon: <Cloud size={96} strokeWidth={1.2} className="text-text-tertiary" />, stateLines: [] };
   }
 
   // Switch / generic

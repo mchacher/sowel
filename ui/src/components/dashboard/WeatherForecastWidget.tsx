@@ -61,48 +61,49 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
       {/* Zone 1: Titre — same as WidgetCard */}
       <span className="text-[17px] font-semibold text-text truncate mb-2 text-center">{label}</span>
 
-      {/* Zone 2: Content */}
-      <div className="flex items-center justify-center gap-4 flex-1 min-h-0">
-        {/* Icon */}
+      {/* Zone 2: Content — vertical on mobile, horizontal on desktop */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 flex-1 min-h-0">
+        {/* Icon — 36px mobile, 72px desktop (wrapped in div for proper hide/show) */}
         <div className={`${conditionColor} flex-shrink-0`}>
-          <ConditionIcon size={72} strokeWidth={1.2} />
+          <span className="block sm:hidden"><ConditionIcon size={36} strokeWidth={1.2} /></span>
+          <span className="hidden sm:block"><ConditionIcon size={72} strokeWidth={1.2} /></span>
         </div>
 
         {/* Data */}
-        <div className="flex flex-col items-start gap-1">
+        <div className="flex flex-col items-center sm:items-start gap-0">
           {/* Temperature */}
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-1">
             {tomorrow.tempMax !== null && (
-              <span className="text-[28px] font-bold font-mono text-text tabular-nums leading-none">
+              <span className="text-[20px] sm:text-[28px] font-bold font-mono text-text tabular-nums leading-none">
                 {Math.round(tomorrow.tempMax)}
               </span>
             )}
-            <span className="text-[14px] text-text-tertiary">°C</span>
+            <span className="text-[12px] sm:text-[14px] text-text-tertiary">°C</span>
             {tomorrow.tempMin !== null && (
-              <span className="text-[14px] font-mono text-text-tertiary tabular-nums ml-1">
+              <span className="text-[12px] sm:text-[14px] font-mono text-text-tertiary tabular-nums ml-1">
                 {Math.round(tomorrow.tempMin)}°
               </span>
             )}
           </div>
 
           {/* Condition label + day */}
-          <span className="text-[12px] text-text-secondary">{conditionLabel} · {capitalizedDay}</span>
+          <span className="text-[10px] sm:text-[12px] text-text-secondary leading-tight">{conditionLabel}</span>
 
           {/* Rain + Wind */}
-          <div className="flex items-center gap-3 mt-1">
+          <div className="flex items-center gap-2 sm:gap-3">
             {tomorrow.rainProb !== null && (
-              <div className="flex items-center gap-1">
-                <Droplets size={12} strokeWidth={1.5} className="text-primary" />
-                <span className="text-[12px] text-text-secondary font-mono tabular-nums">
+              <div className="flex items-center gap-0.5">
+                <Droplets size={10} strokeWidth={1.5} className="text-primary" />
+                <span className="text-[10px] sm:text-[12px] text-text-secondary font-mono tabular-nums">
                   {Math.round(tomorrow.rainProb)}%
                 </span>
               </div>
             )}
             {tomorrow.windGusts !== null && (
-              <div className="flex items-center gap-1">
-                <Wind size={12} strokeWidth={1.5} className="text-text-tertiary" />
-                <span className="text-[12px] text-text-secondary font-mono tabular-nums">
-                  {Math.round(tomorrow.windGusts)} km/h
+              <div className="flex items-center gap-0.5">
+                <Wind size={10} strokeWidth={1.5} className="text-text-tertiary" />
+                <span className="text-[10px] sm:text-[12px] text-text-secondary font-mono tabular-nums">
+                  {Math.round(tomorrow.windGusts)}km/h
                 </span>
               </div>
             )}

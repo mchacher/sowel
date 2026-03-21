@@ -203,9 +203,16 @@ export async function createServer(deps: ServerDeps) {
       done(null, payload);
     });
 
-    // SPA fallback: serve index.html for non-API routes
+    // Serve static files (assets, service workers, fonts) and SPA fallback
     app.setNotFoundHandler((_req, reply) => {
-      reply.sendFile("index.html");
+      const pathname = _req.url.split("?")[0];
+      if (/\.\w+$/.test(pathname)) {
+        // Try serving as a static file from ui-dist
+        void reply.sendFile(pathname.slice(1));
+        return;
+      }
+      // SPA fallback for navigation routes (no file extension)
+      void reply.sendFile("index.html");
     });
 
     logger.info(`Serving UI from ${uiDir}`);
