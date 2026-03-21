@@ -8,6 +8,8 @@ import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
+import { Cloud } from "lucide-react";
+import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -26,6 +28,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isThermostat,
     isHeater,
     isGate,
+    isWeatherForecast,
     stateBinding,
     isOn,
     sensorBindings,
@@ -35,7 +38,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   } = useEquipmentState(equipment);
 
   // Find primary data value for generic equipments
-  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter
+  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter && !isWeatherForecast
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -83,6 +86,9 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
         />
       )}
+
+      {/* Weather forecast compact */}
+      {isWeatherForecast && <CompactForecast equipment={equipment} />}
 
       {/* Energy meter values */}
       {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
@@ -153,6 +159,30 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           {isOn ? t("common.on") : t("common.off")}
         </span>
       )}
+    </div>
+  );
+}
+
+function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
+  const days = parseForecastDays(equipment.dataBindings);
+  if (days.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {days.slice(0, 5).map((day) => {
+        const ConditionIcon = day.condition ? CONDITION_ICONS[day.condition] ?? Cloud : Cloud;
+        const color = day.condition ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary") : "text-text-tertiary";
+        return (
+          <div key={day.dayIndex} className="flex items-center gap-0.5">
+            <ConditionIcon size={14} strokeWidth={1.5} className={color} />
+            {day.tempMax !== null && (
+              <span className="text-[11px] font-mono tabular-nums text-text-secondary">
+                {Math.round(day.tempMax)}°
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
