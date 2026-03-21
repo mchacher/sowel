@@ -3,7 +3,7 @@ import type { Logger } from "../../core/logger.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
-import type { InfluxClient } from "../../history/influx-client.js";
+import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   EnergyPoint,
   EnergyTotals,

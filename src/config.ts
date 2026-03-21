@@ -44,6 +44,31 @@ function resolveJwtSecret(dataDir: string): string {
   return secret;
 }
 
+/**
+ * Default InfluxDB admin token — matches DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+ * in docker-compose.yml. On a fresh install, both InfluxDB and Sowel use
+ * this token out of the box. Override with INFLUX_TOKEN env var or
+ * data/.influx-token file for custom setups.
+ */
+const DEFAULT_INFLUX_TOKEN =
+  "Uvht0Iez4HD5xu1BwhLFe9PI-ODIX9pTTdgYoNq1PQeSL2x3UKXHHRcQq5D-f2rkc0pnJGriuTzbO-kJKP3O8w==";
+
+/**
+ * Resolve the InfluxDB token.
+ * Priority: INFLUX_TOKEN env var > persisted file > default (docker-compose token).
+ */
+function resolveInfluxToken(dataDir: string): string {
+  const fromEnv = process.env["INFLUX_TOKEN"];
+  if (fromEnv) return fromEnv;
+
+  const tokenPath = resolve(dataDir, ".influx-token");
+  if (existsSync(tokenPath)) {
+    return readFileSync(tokenPath, "utf-8").trim();
+  }
+
+  return DEFAULT_INFLUX_TOKEN;
+}
+
 export function loadConfig(): AppConfig {
   const sqlitePath = env("SQLITE_PATH", "./data/sowel.db");
   const dataDir = dirname(resolve(sqlitePath));
@@ -68,6 +93,12 @@ export function loadConfig(): AppConfig {
       origins: env("CORS_ORIGINS", "*")
         .split(",")
         .map((s) => s.trim()),
+    },
+    influx: {
+      url: env("INFLUX_URL", "http://localhost:8086"),
+      token: resolveInfluxToken(dataDir),
+      org: env("INFLUX_ORG", "sowel"),
+      bucket: env("INFLUX_BUCKET", "sowel"),
     },
   };
 }
