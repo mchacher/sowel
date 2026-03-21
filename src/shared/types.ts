@@ -641,6 +641,31 @@ export interface IntegrationInfo {
 }
 
 // ============================================================
+// Plugin Engine
+// ============================================================
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  icon: string; // Lucide icon name
+  author?: string;
+  repo?: string; // GitHub owner/repo — present in store entries
+  sowelVersion?: string;
+  settings?: IntegrationSettingDef[];
+}
+
+export interface PluginInfo {
+  manifest: PluginManifest;
+  enabled: boolean;
+  installedAt: string;
+  status: IntegrationStatus; // connected/disconnected/error/not_configured
+  deviceCount: number;
+  offlineDeviceCount: number;
+}
+
+// ============================================================
 // Logging
 // ============================================================
 

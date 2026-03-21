@@ -37,10 +37,16 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Reset form when integration changes
+  // Reset form when integration changes — fill defaults for empty fields
   useEffect(() => {
     if (integration) {
-      setValues(integration.settingValues);
+      const merged = { ...integration.settingValues };
+      for (const s of integration.settings) {
+        if (s.defaultValue && !merged[s.key]) {
+          merged[s.key] = s.defaultValue;
+        }
+      }
+      setValues(merged);
       setDirty(false);
       setMessage(null);
     }
@@ -65,6 +71,9 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const isConnected = integration.status === "connected";
   const isError = integration.status === "error";
   const hasRefresh = !!integration.polling;
+  const hasRequiredEmpty = integration.settings.some(
+    (s) => s.required && !values[s.key]?.trim(),
+  );
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[integration.icon] ?? Cpu;
@@ -240,10 +249,11 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
               ) : (
                 <ActionButton
                   icon={<Play size={14} />}
-                  label={t("integrations.start")}
+                  label={hasRequiredEmpty ? t("integrations.fillRequired") : t("integrations.start")}
                   loading={actionLoading === "start"}
                   onClick={() => handleAction("start")}
                   primary
+                  disabled={hasRequiredEmpty}
                 />
               )}
             </div>
@@ -304,17 +314,19 @@ function ActionButton({
   loading,
   onClick,
   primary,
+  disabled,
 }: {
   icon: React.ReactNode;
   label: string;
   loading: boolean;
   onClick: () => void;
   primary?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={loading}
+      disabled={loading || disabled}
       className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default ${
         primary
           ? "bg-primary text-white hover:bg-primary-hover"
@@ -364,7 +376,7 @@ function SettingField({
     <div>
       <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
         {setting.label}
-        {!setting.required && <span className="text-text-tertiary ml-1">(opt.)</span>}
+        {setting.required ? <span className="text-error ml-0.5">*</span> : <span className="text-text-tertiary ml-1">(opt.)</span>}
       </label>
       <input
         type={setting.type === "password" ? "password" : "text"}
