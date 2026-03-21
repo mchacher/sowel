@@ -1,84 +1,15 @@
+import { Droplets, Wind, Cloud } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  Sun,
-  CloudSun,
-  Cloud,
-  CloudFog,
-  CloudRain,
-  Snowflake,
-  CloudLightning,
-  Droplets,
-  Wind,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { DataBindingWithValue } from "../../types";
+import {
+  parseForecastDays,
+  CONDITION_ICONS,
+  CONDITION_COLORS,
+  type ForecastDay,
+} from "./weatherForecastUtils";
 
 interface WeatherForecastPanelProps {
   bindings: DataBindingWithValue[];
-}
-
-/** Map weather condition strings to Lucide icons. */
-const CONDITION_ICONS: Record<string, LucideIcon> = {
-  sunny: Sun,
-  partly_cloudy: CloudSun,
-  cloudy: Cloud,
-  foggy: CloudFog,
-  rainy: CloudRain,
-  snowy: Snowflake,
-  stormy: CloudLightning,
-};
-
-/** Map weather condition strings to Tailwind color classes. */
-const CONDITION_COLORS: Record<string, string> = {
-  sunny: "text-amber-500",
-  partly_cloudy: "text-amber-400",
-  cloudy: "text-text-tertiary",
-  foggy: "text-text-tertiary",
-  rainy: "text-primary",
-  snowy: "text-blue-400",
-  stormy: "text-purple-500",
-};
-
-interface ForecastDay {
-  dayIndex: number;
-  condition: string | null;
-  tempMin: number | null;
-  tempMax: number | null;
-  rainProb: number | null;
-  windGusts: number | null;
-}
-
-/** Parse bindings grouped by jN_ prefix into forecast day objects. */
-function parseForecastDays(bindings: DataBindingWithValue[]): ForecastDay[] {
-  const dayMap = new Map<number, ForecastDay>();
-
-  for (const b of bindings) {
-    const match = b.alias.match(/^j(\d+)_(.+)$/);
-    if (!match) continue;
-
-    const dayIndex = Number(match[1]);
-    const metric = match[2];
-
-    let day = dayMap.get(dayIndex);
-    if (!day) {
-      day = { dayIndex, condition: null, tempMin: null, tempMax: null, rainProb: null, windGusts: null };
-      dayMap.set(dayIndex, day);
-    }
-
-    if (metric === "condition" && typeof b.value === "string") {
-      day.condition = b.value;
-    } else if (metric === "temp_min" && typeof b.value === "number") {
-      day.tempMin = b.value;
-    } else if (metric === "temp_max" && typeof b.value === "number") {
-      day.tempMax = b.value;
-    } else if (metric === "rain_prob" && typeof b.value === "number") {
-      day.rainProb = b.value;
-    } else if (metric === "wind_gusts" && typeof b.value === "number") {
-      day.windGusts = b.value;
-    }
-  }
-
-  return [...dayMap.values()].sort((a, b) => a.dayIndex - b.dayIndex);
 }
 
 export function WeatherForecastPanel({ bindings }: WeatherForecastPanelProps) {
@@ -110,7 +41,9 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
   const capitalizedDayName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
 
   const ConditionIcon = day.condition ? CONDITION_ICONS[day.condition] ?? Cloud : Cloud;
-  const conditionColor = day.condition ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary") : "text-text-tertiary";
+  const conditionColor = day.condition
+    ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
+    : "text-text-tertiary";
 
   return (
     <div className="flex-shrink-0 min-w-[140px] bg-surface rounded-[10px] border border-border p-4 flex flex-col items-center gap-2">
@@ -164,5 +97,3 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
     </div>
   );
 }
-
-export { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS };
