@@ -295,7 +295,7 @@ function SortHeader({
 
   return (
     <th
-      className={`py-2 px-3 cursor-pointer select-none group ${className}`}
+      className={`py-2 px-3 cursor-pointer select-none group ${align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"} ${className}`}
       onClick={() => onSort(sortKey)}
     >
       <span className={`inline-flex items-center gap-1 ${alignClass}`}>
