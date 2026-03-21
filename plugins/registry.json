@@ -6,7 +6,7 @@
     "icon": "Camera",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-security",
-    "version": "0.1.3",
+    "version": "0.2.0",
     "tags": ["camera", "netatmo", "security"]
   }
 ]
