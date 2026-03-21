@@ -2,15 +2,17 @@ import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
+import type { DeviceManager } from "../../devices/device-manager.js";
 
 interface IntegrationsDeps {
   integrationRegistry: IntegrationRegistry;
   settingsManager: SettingsManager;
+  deviceManager: DeviceManager;
   logger: Logger;
 }
 
 export function registerIntegrationRoutes(app: FastifyInstance, deps: IntegrationsDeps): void {
-  const { integrationRegistry, settingsManager, logger: parentLogger } = deps;
+  const { integrationRegistry, settingsManager, deviceManager, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "integration-routes" });
 
   // GET /api/v1/integrations — List all integrations with status
@@ -20,8 +22,9 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
     }
 
     const integrations = integrationRegistry.getAllInfo();
+    const allDevices = deviceManager.getAll();
 
-    // Enrich with current setting values
+    // Enrich with current setting values and device counts
     return integrations.map((info) => ({
       ...info,
       settingValues: Object.fromEntries(
@@ -32,6 +35,10 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
           return [s.key, s.type === "password" && value ? "••••••••" : (value ?? "")];
         }),
       ),
+      deviceCount: allDevices.filter((d) => d.integrationId === info.id).length,
+      offlineDeviceCount: allDevices.filter(
+        (d) => d.integrationId === info.id && d.status === "offline",
+      ).length,
     }));
   });
 
@@ -87,6 +94,33 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
         logger.error({ err, integrationId: integration.id }, "Failed to refresh integration");
         return reply.code(500).send({
           error: err instanceof Error ? err.message : "Refresh failed",
+        });
+      }
+    },
+  );
+
+  // POST /api/v1/integrations/:id/restart — Restart an integration (stop + start)
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/integrations/:id/restart",
+    async (request, reply) => {
+      if (!request.auth || request.auth.role !== "admin") {
+        return reply.code(403).send({ error: "Admin access required" });
+      }
+
+      const integration = integrationRegistry.getById(request.params.id);
+      if (!integration) {
+        return reply.code(404).send({ error: "Integration not found" });
+      }
+
+      try {
+        await integration.stop();
+        await integration.start();
+        logger.info({ integrationId: integration.id }, "Integration restarted via API");
+        return { success: true, status: integration.getStatus() };
+      } catch (err) {
+        logger.error({ err, integrationId: integration.id }, "Failed to restart integration");
+        return reply.code(500).send({
+          error: err instanceof Error ? err.message : "Restart failed",
         });
       }
     },
