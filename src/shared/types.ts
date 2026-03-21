@@ -636,6 +636,8 @@ export interface IntegrationInfo {
   settings: IntegrationSettingDef[];
   configured: boolean;
   polling?: { lastPollAt: string; intervalMs: number };
+  deviceCount: number;
+  offlineDeviceCount: number;
 }
 
 // ============================================================

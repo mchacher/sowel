@@ -501,6 +501,12 @@ export async function stopIntegration(id: string): Promise<{ success: boolean; s
   return fetchJSON(`${API_BASE}/integrations/${id}/stop`, { method: "POST" });
 }
 
+export async function restartIntegration(
+  id: string,
+): Promise<{ success: boolean; status: string }> {
+  return fetchJSON(`${API_BASE}/integrations/${id}/restart`, { method: "POST" });
+}
+
 export async function refreshIntegration(id: string): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/integrations/${id}/refresh`, { method: "POST" });
 }
