@@ -1,36 +1,11 @@
 import { useTranslation } from "react-i18next";
-import {
-  Sun,
-  CloudSun,
-  Cloud,
-  CloudFog,
-  CloudRain,
-  Snowflake,
-  CloudLightning,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Cloud } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-import { parseForecastDays } from "../equipments/WeatherForecastPanel";
-
-const CONDITION_ICONS: Record<string, LucideIcon> = {
-  sunny: Sun,
-  partly_cloudy: CloudSun,
-  cloudy: Cloud,
-  foggy: CloudFog,
-  rainy: CloudRain,
-  snowy: Snowflake,
-  stormy: CloudLightning,
-};
-
-const CONDITION_COLORS: Record<string, string> = {
-  sunny: "text-amber-500",
-  partly_cloudy: "text-amber-400",
-  cloudy: "text-text-tertiary",
-  foggy: "text-text-tertiary",
-  rainy: "text-primary",
-  snowy: "text-blue-400",
-  stormy: "text-purple-500",
-};
+import {
+  parseForecastDays,
+  CONDITION_ICONS,
+  CONDITION_COLORS,
+} from "../equipments/weatherForecastUtils";
 
 interface WeatherForecastWidgetProps {
   label: string;
@@ -57,7 +32,9 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
           const capitalizedDay = shortDay.charAt(0).toUpperCase() + shortDay.slice(1);
 
           const ConditionIcon = day.condition ? CONDITION_ICONS[day.condition] ?? Cloud : Cloud;
-          const conditionColor = day.condition ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary") : "text-text-tertiary";
+          const conditionColor = day.condition
+            ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
+            : "text-text-tertiary";
 
           return (
             <div key={day.dayIndex} className="flex flex-col items-center gap-0.5 min-w-[48px]">
