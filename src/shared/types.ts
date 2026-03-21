@@ -799,6 +799,12 @@ export interface AppConfig {
   cors: {
     origins: string[];
   };
+  influx: {
+    url: string;
+    token: string;
+    org: string;
+    bucket: string;
+  };
 }
 
 // ============================================================
