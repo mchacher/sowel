@@ -28,6 +28,7 @@ import {
   GarageDoorIcon,
   EnergyMeterIcon,
 } from "./WidgetIcons";
+import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 
 
@@ -42,6 +43,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
     isLight,
     isShutter,
     isSensor,
+    isWeatherForecast,
     isEnergyMeter,
     isThermostat,
     isHeater,
@@ -57,6 +59,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
   if (isGate) return <GateEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
+  if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
   if (isSensor) return <SensorEquipmentWidget label={label} equipment={equipment} iconKey={widget.icon} visibleBindings={widget.config?.visibleBindings} />;
 
   return <GenericEquipmentWidget label={label} equipment={equipment} />;

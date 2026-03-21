@@ -15,6 +15,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     equipment.type === "light_dimmable" ||
     equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
+  const isWeatherForecast = equipment.type === "weather_forecast";
   const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
   const isEnergyMeter = equipment.type === "energy_meter" || equipment.type === "main_energy_meter" || equipment.type === "energy_production_meter";
   const isThermostat = equipment.type === "thermostat";
@@ -106,6 +107,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isLight,
     isShutter,
     isSensor,
+    isWeatherForecast,
     isEnergyMeter,
     isThermostat,
     isHeater,

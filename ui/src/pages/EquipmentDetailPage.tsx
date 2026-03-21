@@ -11,6 +11,7 @@ import { ShutterControl } from "../components/equipments/ShutterControl";
 import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { WeatherPanel } from "../components/equipments/WeatherPanel";
+import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
@@ -294,7 +295,9 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Sensor / Weather data */}
-      {equipment.type === "weather" ? (
+      {equipment.type === "weather_forecast" ? (
+        <WeatherForecastPanel bindings={equipment.dataBindings} />
+      ) : equipment.type === "weather" ? (
         <WeatherPanel bindings={equipment.dataBindings} />
       ) : isSensor ? (
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
