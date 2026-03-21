@@ -642,6 +642,7 @@ export interface PluginManifest {
   description: string;
   icon: string;
   author?: string;
+  repo?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
 }

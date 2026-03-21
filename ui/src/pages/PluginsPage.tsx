@@ -345,7 +345,7 @@ function StoreRow({
   const handleInstall = async () => {
     setInstalling(true);
     try {
-      await installPlugin(manifest.id);
+      await installPlugin(manifest.repo ?? manifest.id);
       onRefresh();
     } catch {
       // ignore
