@@ -24,6 +24,7 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
 const EQUIPMENT_TYPE_DATA_KEYS: Partial<Record<EquipmentType, string[]>> = {
   thermostat: ["targetTemperature"],
+  weather_forecast: ["j1_condition"],
 };
 
 interface DeviceSelectorProps {
