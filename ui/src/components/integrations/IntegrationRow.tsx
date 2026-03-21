@@ -84,7 +84,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       </div>
 
       {/* Quick actions — visible on hover (desktop), always visible (mobile) */}
-      <div className="flex items-center gap-0.5 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 shrink-0">
         {isConnected ? (
           <>
             <QuickAction
