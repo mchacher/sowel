@@ -8,5 +8,15 @@
     "repo": "mchacher/sowel-plugin-netatmo-security",
     "version": "0.2.0",
     "tags": ["camera", "netatmo", "security"]
+  },
+  {
+    "id": "weather-forecast",
+    "name": "Weather Forecast",
+    "description": "Weather forecast via Open-Meteo API (free, no API key)",
+    "icon": "CloudSun",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-weather-forecast",
+    "version": "0.1.0",
+    "tags": ["weather", "forecast", "open-meteo"]
   }
 ]
