@@ -149,6 +149,7 @@ export type EquipmentType =
   | "button"
   | "thermostat"
   | "weather"
+  | "weather_forecast"
   | "gate"
   | "heater"
   | "energy_meter"
