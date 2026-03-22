@@ -4,8 +4,12 @@ import urllib.request
 import json
 import sys
 
-BASE = "http://localhost:3000"
-PASSWORD = r"REDACTED_PASSWORD"
+import os
+
+BASE = os.environ.get("SOWEL_URL", "http://localhost:3000")
+PASSWORD = os.environ.get("SOWEL_PASSWORD", "")
+if not PASSWORD:
+    PASSWORD = input("Password: ")
 
 # Login
 data = json.dumps({"username": "admin", "password": PASSWORD}).encode()
