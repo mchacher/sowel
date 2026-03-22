@@ -14,7 +14,7 @@ import { Home, Layers, LayoutDashboard, LogOut, Menu, Settings, User, Zap, X, Ca
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
 import { AlarmBanner } from "./AlarmBanner";
-import { PluginUpdateBanner } from "./PluginUpdateBanner";
+import { usePluginUpdates } from "./usePluginUpdates";
 import { InstallPrompt } from "./InstallPrompt";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 import { useEnergy } from "../../store/useEnergy";
@@ -32,6 +32,7 @@ export function AppLayout() {
   const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
   const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
   const [homeName, setHomeName] = useState("");
+  const pluginUpdateCount = usePluginUpdates(user?.role === "admin");
 
   useEffect(() => {
     fetchDevices();
@@ -78,6 +79,16 @@ export function AppLayout() {
 
           <div className="flex items-center gap-3">
             <ConnectionStatus />
+            {pluginUpdateCount > 0 && (
+              <NavLink
+                to="/plugins"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-[11px] font-medium"
+                title={t("plugins.updatesAvailable", { count: pluginUpdateCount })}
+              >
+                <span className="w-1.5 h-1.5 bg-accent rounded-full" />
+                {pluginUpdateCount}
+              </NavLink>
+            )}
             {/* User info — desktop only */}
             {user && (
               <div className="hidden sm:flex items-center gap-2 ml-2">
@@ -106,9 +117,6 @@ export function AppLayout() {
         <OfflineBanner />
         {/* System alarm banner */}
         <AlarmBanner />
-        {/* Plugin update banner (admin only) */}
-        {user?.role === "admin" && <PluginUpdateBanner />}
-
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
