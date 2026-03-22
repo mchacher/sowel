@@ -655,6 +655,7 @@ export interface PluginInfo {
   status: IntegrationStatus;
   deviceCount: number;
   offlineDeviceCount: number;
+  latestVersion?: string;
 }
 
 // ============================================================

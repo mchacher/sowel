@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Package, Loader2, Download, Trash2, Cpu } from "lucide-react";
+import { Package, Loader2, Download, Trash2, Cpu, ArrowUpCircle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import {
   getPlugins,
@@ -9,6 +9,7 @@ import {
   uninstallPlugin,
   enablePlugin,
   disablePlugin,
+  updatePlugin,
 } from "../api";
 import type { PluginInfo, PluginManifest, IntegrationStatus } from "../types";
 
@@ -170,6 +171,21 @@ function PluginRow({
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[plugin.manifest.icon] ?? Cpu;
 
+  const hasUpdate = !!plugin.latestVersion;
+
+  const handleUpdate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActionLoading("update");
+    try {
+      await updatePlugin(plugin.manifest.id);
+      onRefresh();
+    } catch {
+      // ignore
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const action = plugin.enabled ? "disable" : "enable";
@@ -222,6 +238,12 @@ function PluginRow({
           <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
             {plugin.manifest.version}
           </span>
+          {hasUpdate && (
+            <span className="text-[10px] px-1.5 py-0.5 bg-accent/10 rounded-[4px] text-accent font-mono shrink-0 flex items-center gap-0.5">
+              <ArrowUpCircle size={10} />
+              {plugin.latestVersion}
+            </span>
+          )}
         </div>
         <StatusBadge status={plugin.status} />
       </div>
@@ -243,6 +265,24 @@ function PluginRow({
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
+        {/* Update */}
+        {hasUpdate && (
+          <button
+            onClick={handleUpdate}
+            disabled={actionLoading !== null}
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 text-accent hover:bg-accent/10"
+          >
+            {actionLoading === "update" ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <>
+                <ArrowUpCircle size={12} />
+                {t("plugins.update")}
+              </>
+            )}
+          </button>
+        )}
+
         {/* Toggle enable/disable */}
         <button
           onClick={handleToggle}

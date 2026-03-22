@@ -84,6 +84,27 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
   });
 
+  // POST /api/v1/plugins/:id/update
+  app.post<{ Params: { id: string } }>("/api/v1/plugins/:id/update", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+
+    try {
+      const manifest = await pluginManager.update(request.params.id);
+      logger.info(
+        { pluginId: request.params.id, version: manifest.version },
+        "Plugin updated via API",
+      );
+      return { success: true, manifest };
+    } catch (err) {
+      logger.error({ err, pluginId: request.params.id }, "Failed to update plugin");
+      return reply.code(500).send({
+        error: err instanceof Error ? err.message : "Update failed",
+      });
+    }
+  });
+
   // POST /api/v1/plugins/:id/enable
   app.post<{ Params: { id: string } }>("/api/v1/plugins/:id/enable", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {

@@ -835,5 +835,10 @@
   "plugins.uninstallSuccess": "Plugin uninstalled",
   "plugins.version": "Version",
   "plugins.author": "Author",
-  "plugins.devices": "devices"
+  "plugins.devices": "devices",
+  "plugins.update": "Update",
+  "plugins.updating": "Updating...",
+  "plugins.updateAvailable": "available",
+  "plugins.updatesAvailable_one": "{{count}} plugin update available",
+  "plugins.updatesAvailable_other": "{{count}} plugin updates available"
 }

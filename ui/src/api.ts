@@ -543,6 +543,10 @@ export async function disablePlugin(id: string): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/plugins/${id}/disable`, { method: "POST" });
 }
 
+export async function updatePlugin(id: string): Promise<{ success: boolean; manifest: PluginManifest }> {
+  return fetchJSON(`${API_BASE}/plugins/${id}/update`, { method: "POST" });
+}
+
 // ============================================================
 // Backup (admin)
 // ============================================================

@@ -108,130 +108,129 @@ export class PluginManager {
   async installFromGitHub(repo: string): Promise<PluginManifest> {
     this.logger.info({ repo }, "Installing plugin from GitHub");
 
-    // 1. Fetch latest release from GitHub API
-    const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
-    const releaseRes = await fetch(apiUrl, {
-      headers: { Accept: "application/vnd.github+json" },
-    });
-
-    if (!releaseRes.ok) {
-      throw new Error(`GitHub API error: ${releaseRes.status} ${releaseRes.statusText}`);
-    }
-
-    const release = (await releaseRes.json()) as {
-      tarball_url: string;
-      assets?: { name: string; browser_download_url: string }[];
-    };
-    // Prefer uploaded asset (includes dist/), fallback to source tarball
-    const asset = release.assets?.find((a) => a.name.endsWith(".tar.gz"));
-    const tarballUrl = asset?.browser_download_url ?? release.tarball_url;
-
-    // 2. Download the tarball
-    const tarballRes = await fetch(tarballUrl);
-    if (!tarballRes.ok || !tarballRes.body) {
-      throw new Error(`Failed to download tarball: ${tarballRes.status}`);
-    }
-
-    // Write to a temporary file
     const tmpDir = resolve(this.pluginsDir, ".tmp");
-    mkdirSync(tmpDir, { recursive: true });
-    const tarballPath = resolve(tmpDir, "plugin.tar.gz");
-
-    const fileStream = createWriteStream(tarballPath);
-    // Node 20+ fetch body is a ReadableStream; convert to Node stream
-    await pipeline(tarballRes.body as unknown as NodeJS.ReadableStream, fileStream);
-
-    // 3. Extract to a temp directory, then move to final location
-    const extractDir = resolve(tmpDir, "extract");
-    mkdirSync(extractDir, { recursive: true });
-
     try {
-      await execFile("tar", ["-xzf", tarballPath, "-C", extractDir, "--strip-components=1"]);
-    } catch (err) {
-      throw new Error(
-        `Failed to extract tarball: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      );
-    }
+      const extractDir = await this.downloadRelease(repo, tmpDir);
 
-    // 4. Read and validate manifest
-    const manifestPath = resolve(extractDir, "manifest.json");
-    if (!existsSync(manifestPath)) {
-      throw new Error("Plugin archive does not contain manifest.json");
-    }
+      // Read and validate manifest
+      const manifestPath = resolve(extractDir, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        throw new Error("Plugin archive does not contain manifest.json");
+      }
 
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
-    this.validateManifest(manifest);
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
+      this.validateManifest(manifest);
 
-    // Check if already installed
-    const existing = this.stmts.getById.get(manifest.id) as PluginRow | undefined;
-    if (existing) {
-      throw new Error(`Plugin "${manifest.id}" is already installed`);
-    }
+      // Check if already installed
+      const existing = this.stmts.getById.get(manifest.id) as PluginRow | undefined;
+      if (existing) {
+        throw new Error(`Plugin "${manifest.id}" is already installed`);
+      }
 
-    // 5. Move to final plugin directory
-    const pluginDir = resolve(this.pluginsDir, manifest.id);
-    if (existsSync(pluginDir)) {
-      rmSync(pluginDir, { recursive: true });
-    }
-    // Use rename via moving files
-    const { rename } = await import("node:fs/promises");
-    await rename(extractDir, pluginDir);
+      // Move to final plugin directory
+      const pluginDir = resolve(this.pluginsDir, manifest.id);
+      if (existsSync(pluginDir)) {
+        rmSync(pluginDir, { recursive: true });
+      }
+      const { rename } = await import("node:fs/promises");
+      await rename(extractDir, pluginDir);
 
-    // 6. If package.json exists, run npm install --production
-    const packageJsonPath = resolve(pluginDir, "package.json");
-    if (existsSync(packageJsonPath)) {
+      // Install dependencies and build if needed
+      await this.installAndBuild(pluginDir, manifest.id);
+
+      // Insert into plugins DB table
+      this.stmts.insert.run({
+        id: manifest.id,
+        version: manifest.version,
+        enabled: 1,
+        installedAt: new Date().toISOString(),
+        manifest: JSON.stringify(manifest),
+      });
+
+      // Load and start the plugin
       try {
-        await execFile("npm", ["install", "--production", "--no-audit", "--no-fund"], {
-          cwd: pluginDir,
-          timeout: 120_000,
-        });
-        this.logger.debug({ pluginId: manifest.id }, "npm install completed");
+        await this.loadPlugin(manifest.id);
       } catch (err) {
-        this.logger.warn(
-          { err, pluginId: manifest.id },
-          "npm install failed — plugin may still work if no dependencies needed",
-        );
+        this.logger.error({ err, pluginId: manifest.id }, "Failed to start plugin after install");
+      }
+
+      this.logger.info({ pluginId: manifest.id, version: manifest.version }, "Plugin installed");
+      return manifest;
+    } finally {
+      try {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
       }
     }
+  }
 
-    // 6b. If dist/ does not exist but tsconfig.json does, try to build
-    const distDir = resolve(pluginDir, "dist");
-    const tsconfigPath = resolve(pluginDir, "tsconfig.json");
-    if (!existsSync(distDir) && existsSync(tsconfigPath)) {
+  /**
+   * Update — stop plugin, replace files with latest release, update DB, restart.
+   * Settings, devices, and equipments are preserved.
+   */
+  async update(pluginId: string): Promise<PluginManifest> {
+    const row = this.stmts.getById.get(pluginId) as PluginRow | undefined;
+    if (!row) {
+      throw new Error(`Plugin "${pluginId}" is not installed`);
+    }
+
+    const currentManifest = JSON.parse(row.manifest) as PluginManifest;
+    const repo = currentManifest.repo;
+    if (!repo) {
+      throw new Error(`Plugin "${pluginId}" has no repo in manifest — cannot update`);
+    }
+
+    this.logger.info({ pluginId, from: row.version, repo }, "Updating plugin");
+
+    // 1. Stop the plugin
+    await this.unloadPlugin(pluginId);
+
+    const tmpDir = resolve(this.pluginsDir, ".tmp");
+    try {
+      // 2. Download new version
+      const extractDir = await this.downloadRelease(repo, tmpDir);
+
+      // 3. Read and validate new manifest
+      const manifestPath = resolve(extractDir, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        throw new Error("New plugin version does not contain manifest.json");
+      }
+      const newManifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
+      this.validateManifest(newManifest);
+
+      // 4. Replace plugin files
+      const pluginDir = resolve(this.pluginsDir, pluginId);
+      if (existsSync(pluginDir)) {
+        rmSync(pluginDir, { recursive: true });
+      }
+      const { rename } = await import("node:fs/promises");
+      await rename(extractDir, pluginDir);
+
+      // 5. Install dependencies and build if needed
+      await this.installAndBuild(pluginDir, pluginId);
+
+      // 6. Update DB (version + manifest, keep enabled/installed_at)
+      this.stmts.updateManifest.run(newManifest.version, JSON.stringify(newManifest), pluginId);
+
+      // 7. Reload if was enabled
+      if (row.enabled) {
+        try {
+          await this.loadPlugin(pluginId);
+        } catch (err) {
+          this.logger.error({ err, pluginId }, "Failed to start plugin after update");
+        }
+      }
+
+      this.logger.info({ pluginId, from: row.version, to: newManifest.version }, "Plugin updated");
+      return newManifest;
+    } finally {
       try {
-        await execFile("npx", ["tsc"], { cwd: pluginDir, timeout: 60_000 });
-        this.logger.debug({ pluginId: manifest.id }, "Plugin built from source");
-      } catch (err) {
-        this.logger.warn({ err, pluginId: manifest.id }, "Plugin build failed");
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
       }
     }
-
-    // 7. Insert into plugins DB table
-    this.stmts.insert.run({
-      id: manifest.id,
-      version: manifest.version,
-      enabled: 1,
-      installedAt: new Date().toISOString(),
-      manifest: JSON.stringify(manifest),
-    });
-
-    // 8. Load and start the plugin
-    try {
-      await this.loadPlugin(manifest.id);
-    } catch (err) {
-      this.logger.error({ err, pluginId: manifest.id }, "Failed to start plugin after install");
-    }
-
-    // Cleanup tmp
-    try {
-      rmSync(tmpDir, { recursive: true });
-    } catch {
-      // Ignore cleanup errors
-    }
-
-    this.logger.info({ pluginId: manifest.id, version: manifest.version }, "Plugin installed");
-    return manifest;
   }
 
   /**
@@ -295,11 +294,12 @@ export class PluginManager {
   }
 
   /**
-   * Get all installed plugins with status.
+   * Get all installed plugins with status and latest available version.
    */
   getInstalled(): PluginInfo[] {
     const rows = this.stmts.getAll.all() as PluginRow[];
     const allDevices = this.coreDeps.deviceManager.getAll();
+    const latestVersions = this.getLatestVersions();
 
     return rows.map((row) => {
       let manifest: PluginManifest;
@@ -321,6 +321,8 @@ export class PluginManager {
       const pluginDevices = allDevices.filter((d) => d.integrationId === row.id);
       const offlineDevices = pluginDevices.filter((d) => d.status === "offline");
 
+      const latest = latestVersions.get(row.id);
+
       return {
         manifest,
         enabled: row.enabled === 1,
@@ -328,6 +330,7 @@ export class PluginManager {
         status,
         deviceCount: pluginDevices.length,
         offlineDeviceCount: offlineDevices.length,
+        ...(latest && latest !== manifest.version ? { latestVersion: latest } : {}),
       };
     });
   }
@@ -367,6 +370,101 @@ export class PluginManager {
   // ============================================================
   // Internal helpers
   // ============================================================
+
+  /**
+   * Download latest release tarball from GitHub and extract to a temp directory.
+   * Returns the path to the extracted directory.
+   */
+  private async downloadRelease(repo: string, tmpDir: string): Promise<string> {
+    const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
+    const releaseRes = await fetch(apiUrl, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+
+    if (!releaseRes.ok) {
+      throw new Error(`GitHub API error: ${releaseRes.status} ${releaseRes.statusText}`);
+    }
+
+    const release = (await releaseRes.json()) as {
+      tarball_url: string;
+      assets?: { name: string; browser_download_url: string }[];
+    };
+    const asset = release.assets?.find((a) => a.name.endsWith(".tar.gz"));
+    const tarballUrl = asset?.browser_download_url ?? release.tarball_url;
+
+    const tarballRes = await fetch(tarballUrl);
+    if (!tarballRes.ok || !tarballRes.body) {
+      throw new Error(`Failed to download tarball: ${tarballRes.status}`);
+    }
+
+    mkdirSync(tmpDir, { recursive: true });
+    const tarballPath = resolve(tmpDir, "plugin.tar.gz");
+
+    const fileStream = createWriteStream(tarballPath);
+    await pipeline(tarballRes.body as unknown as NodeJS.ReadableStream, fileStream);
+
+    const extractDir = resolve(tmpDir, "extract");
+    mkdirSync(extractDir, { recursive: true });
+
+    try {
+      await execFile("tar", ["-xzf", tarballPath, "-C", extractDir, "--strip-components=1"]);
+    } catch (err) {
+      throw new Error(
+        `Failed to extract tarball: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
+    }
+
+    return extractDir;
+  }
+
+  /**
+   * Run npm install and build from source if needed.
+   */
+  private async installAndBuild(pluginDir: string, pluginId: string): Promise<void> {
+    const packageJsonPath = resolve(pluginDir, "package.json");
+    if (existsSync(packageJsonPath)) {
+      try {
+        await execFile("npm", ["install", "--production", "--no-audit", "--no-fund"], {
+          cwd: pluginDir,
+          timeout: 120_000,
+        });
+        this.logger.debug({ pluginId }, "npm install completed");
+      } catch (err) {
+        this.logger.warn({ err, pluginId }, "npm install failed");
+      }
+    }
+
+    const distDir = resolve(pluginDir, "dist");
+    const tsconfigPath = resolve(pluginDir, "tsconfig.json");
+    if (!existsSync(distDir) && existsSync(tsconfigPath)) {
+      try {
+        await execFile("npx", ["tsc"], { cwd: pluginDir, timeout: 60_000 });
+        this.logger.debug({ pluginId }, "Plugin built from source");
+      } catch (err) {
+        this.logger.warn({ err, pluginId }, "Plugin build failed");
+      }
+    }
+  }
+
+  /**
+   * Read registry.json and return a map of pluginId → latest version.
+   */
+  private getLatestVersions(): Map<string, string> {
+    const versions = new Map<string, string>();
+    const registryPath = resolve(this.pluginsDir, "registry.json");
+    if (!existsSync(registryPath)) return versions;
+
+    try {
+      const entries = JSON.parse(readFileSync(registryPath, "utf-8")) as RegistryEntry[];
+      for (const e of entries) {
+        if (e.version) versions.set(e.id, e.version);
+      }
+    } catch {
+      // Ignore registry read errors
+    }
+    return versions;
+  }
 
   private async loadPlugin(pluginId: string): Promise<void> {
     const pluginDir = resolve(this.pluginsDir, pluginId);

@@ -14,6 +14,7 @@ import { Home, Layers, LayoutDashboard, LogOut, Menu, Settings, User, Zap, X, Ca
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
 import { AlarmBanner } from "./AlarmBanner";
+import { PluginUpdateBanner } from "./PluginUpdateBanner";
 import { InstallPrompt } from "./InstallPrompt";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 import { useEnergy } from "../../store/useEnergy";
@@ -105,6 +106,8 @@ export function AppLayout() {
         <OfflineBanner />
         {/* System alarm banner */}
         <AlarmBanner />
+        {/* Plugin update banner (admin only) */}
+        {user?.role === "admin" && <PluginUpdateBanner />}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
