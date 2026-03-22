@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Power, Volume2, VolumeX, Monitor, Loader2 } from "lucide-react";
+import { Power, Monitor, Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
 interface MediaPlayerPanelProps {
@@ -13,20 +13,14 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
   const [executing, setExecuting] = useState<string | null>(null);
 
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
-  const volumeBinding = equipment.dataBindings.find((b) => b.alias === "volume");
-  const muteBinding = equipment.dataBindings.find((b) => b.alias === "mute");
   const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
   const pictureModeBinding = equipment.dataBindings.find((b) => b.alias === "picture_mode");
 
   const isOn = powerBinding?.value === true;
-  const volume = typeof volumeBinding?.value === "number" ? volumeBinding.value : 0;
-  const isMuted = muteBinding?.value === true;
   const currentSource = typeof sourceBinding?.value === "string" ? sourceBinding.value : "—";
   const pictureMode = typeof pictureModeBinding?.value === "string" ? pictureModeBinding.value : null;
 
   const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
-  const hasVolumeOrder = equipment.orderBindings.some((o) => o.alias === "volume");
-  const hasMuteOrder = equipment.orderBindings.some((o) => o.alias === "mute");
   const hasSourceOrder = equipment.orderBindings.some((o) => o.alias === "input_source");
 
   const exec = async (alias: string, value: unknown) => {
@@ -47,7 +41,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
       </h3>
 
       <div className="space-y-4">
-        {/* Power + Source row */}
+        {/* Power + Source */}
         <div className="flex items-center gap-4">
           {hasPowerOrder && (
             <button
@@ -101,42 +95,6 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
                 </button>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Volume + Mute */}
-        {isOn && hasVolumeOrder && (
-          <div className="flex items-center gap-3">
-            {hasMuteOrder && (
-              <button
-                onClick={() => exec("mute", !isMuted)}
-                disabled={executing !== null}
-                className={`p-1.5 rounded-[5px] transition-colors cursor-pointer ${
-                  isMuted
-                    ? "text-warning bg-warning/10"
-                    : "text-text-tertiary hover:text-text-secondary hover:bg-border-light"
-                } disabled:opacity-40`}
-              >
-                {executing === "mute" ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : isMuted ? (
-                  <VolumeX size={16} strokeWidth={1.5} />
-                ) : (
-                  <Volume2 size={16} strokeWidth={1.5} />
-                )}
-              </button>
-            )}
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={volume}
-              onChange={(e) => exec("volume", Number(e.target.value))}
-              className="flex-1 h-2 slider-active"
-            />
-            <span className="text-[13px] font-mono tabular-nums text-text-secondary w-8 text-right">
-              {volume}
-            </span>
           </div>
         )}
       </div>

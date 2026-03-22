@@ -42,7 +42,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   energy_meter: [],
   main_energy_meter: [],
   energy_production_meter: [],
-  media_player: ["power", "volume", "mute", "input_source"],
+  media_player: ["power", "input_source"],
   appliance: [],
 };
 

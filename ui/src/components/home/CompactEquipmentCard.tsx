@@ -8,7 +8,7 @@ import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
-import { Cloud, Volume2, VolumeX, Timer } from "lucide-react";
+import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 
 interface CompactEquipmentCardProps {
@@ -228,13 +228,9 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
 function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) {
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
-  const volumeBinding = equipment.dataBindings.find((b) => b.alias === "volume");
-  const muteBinding = equipment.dataBindings.find((b) => b.alias === "mute");
 
   const isOn = powerBinding?.value === true;
   const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
-  const volume = typeof volumeBinding?.value === "number" ? volumeBinding.value : null;
-  const isMuted = muteBinding?.value === true;
 
   if (!isOn) {
     return <span className="text-[11px] text-text-tertiary flex-shrink-0">OFF</span>;
@@ -244,12 +240,6 @@ function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) 
     <div className="flex items-center gap-2 flex-shrink-0">
       {source && (
         <span className="text-[12px] text-text-secondary font-medium">{source}</span>
-      )}
-      {volume !== null && (
-        <span className="flex items-center gap-0.5 text-[11px] text-text-tertiary tabular-nums">
-          {isMuted ? <VolumeX size={11} /> : <Volume2 size={11} />}
-          {isMuted ? "Mute" : volume}
-        </span>
       )}
     </div>
   );
