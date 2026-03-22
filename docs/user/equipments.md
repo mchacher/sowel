@@ -169,6 +169,32 @@ Solar panel or other production source. Only one allowed per system.
 
 ---
 
+### Media
+
+#### Media Player
+
+TV, soundbar, or media device (e.g., Samsung SmartThings TV).
+
+- **Controls:** Power on/off, volume, mute, input source selector
+- **Expected data:** power state, volume level, mute, current input source, picture mode
+- **Orders:** power on/off, set volume, toggle mute, change input source
+
+---
+
+### Appliances
+
+#### Appliance
+
+Smart home appliance such as a washing machine, dryer, or dishwasher (e.g., Samsung SmartThings Washer).
+
+- **Controls:** Read-only status display
+- **Expected data:** power state, operating state (ready/running/paused), current phase (wash/rinse/spin), progress (%), remaining time, energy consumption
+
+!!! tip "End-of-cycle notification"
+Use a state-watch recipe to get notified when the operating state changes from `running` to `ready`.
+
+---
+
 ### Other
 
 #### Switch / Plug
