@@ -47,6 +47,8 @@
   "common.none": "None",
   "common.on": "ON",
   "common.off": "OFF",
+  "common.running": "Running",
+  "common.paused": "Paused",
   "common.yes": "Yes",
   "common.no": "No",
   "common.name": "Name",

@@ -8,7 +8,7 @@ import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
-import { Cloud } from "lucide-react";
+import { Cloud, Volume2, VolumeX, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 
 interface CompactEquipmentCardProps {
@@ -29,6 +29,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isHeater,
     isGate,
     isWeatherForecast,
+    isMediaPlayer,
+    isAppliance,
     stateBinding,
     isOn,
     sensorBindings,
@@ -38,7 +40,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   } = useEquipmentState(equipment);
 
   // Find primary data value for generic equipments
-  const primaryBinding = !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter && !isWeatherForecast
+  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance;
+  const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
 
@@ -93,8 +96,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       {/* Energy meter values */}
       {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
 
+      {/* Media player compact */}
+      {isMediaPlayer && <CompactMediaPlayer equipment={equipment} />}
+
+      {/* Appliance compact */}
+      {isAppliance && <CompactAppliance equipment={equipment} />}
+
       {/* Primary value for other equipments */}
-      {primaryBinding && !isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter && (
+      {primaryBinding && !isKnownType && (
         <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
           {formatValue(primaryBinding.value, primaryBinding.unit)}
         </span>
@@ -146,7 +155,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       )}
 
       {/* Boolean state badge for generic equipments */}
-      {!isLight && !isSensor && !isShutter && !isThermostat && !isHeater && !isGate && !isEnergyMeter && stateBinding && (
+      {!isKnownType && stateBinding && (
         <span
           className={`
             text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
@@ -211,6 +220,74 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
             {dayWh >= 1000 ? "kWh" : "Wh"} {t("energy.today").toLowerCase()}
           </span>
         </span>
+      )}
+    </div>
+  );
+}
+
+function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) {
+  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
+  const volumeBinding = equipment.dataBindings.find((b) => b.alias === "volume");
+  const muteBinding = equipment.dataBindings.find((b) => b.alias === "mute");
+
+  const isOn = powerBinding?.value === true;
+  const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
+  const volume = typeof volumeBinding?.value === "number" ? volumeBinding.value : null;
+  const isMuted = muteBinding?.value === true;
+
+  if (!isOn) {
+    return <span className="text-[11px] text-text-tertiary flex-shrink-0">OFF</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {source && (
+        <span className="text-[12px] text-text-secondary font-medium">{source}</span>
+      )}
+      {volume !== null && (
+        <span className="flex items-center gap-0.5 text-[11px] text-text-tertiary tabular-nums">
+          {isMuted ? <VolumeX size={11} /> : <Volume2 size={11} />}
+          {isMuted ? "Mute" : volume}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
+  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
+  const remainingBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
+  const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
+
+  const isOn = powerBinding?.value === true;
+  const state = typeof stateBinding?.value === "string" ? stateBinding.value : null;
+  const remainingStr = typeof remainingBinding?.value === "string" ? remainingBinding.value : null;
+  const progress = typeof progressBinding?.value === "number" ? progressBinding.value : null;
+
+  if (!isOn || state === "off") {
+    return <span className="text-[11px] text-text-tertiary flex-shrink-0">OFF</span>;
+  }
+
+  const isRunning = state === "running";
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
+        isRunning ? "bg-accent/10 text-accent" : "bg-border-light text-text-tertiary"
+      }`}>
+        {state === "running" ? t("common.running") : state === "paused" ? t("common.paused") : state ?? "—"}
+      </span>
+      {isRunning && remainingStr && (
+        <span className="flex items-center gap-0.5 text-[11px] text-text-secondary tabular-nums">
+          <Timer size={10} />
+          {remainingStr}
+        </span>
+      )}
+      {isRunning && progress !== null && progress > 0 && (
+        <span className="text-[10px] text-text-tertiary tabular-nums">{progress}%</span>
       )}
     </div>
   );

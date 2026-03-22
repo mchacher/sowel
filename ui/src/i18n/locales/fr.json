@@ -47,6 +47,8 @@
   "common.none": "Aucun",
   "common.on": "ON",
   "common.off": "OFF",
+  "common.running": "En cours",
+  "common.paused": "En pause",
   "common.yes": "Oui",
   "common.no": "Non",
   "common.name": "Nom",
