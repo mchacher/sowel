@@ -733,8 +733,8 @@ function ApplianceEquipmentWidget({
       {/* Icon + state */}
       <div className="flex flex-col items-center justify-center flex-1 min-h-0 gap-1">
         <WashingMachine
-          size={80}
-          strokeWidth={1}
+          size={120}
+          strokeWidth={0.8}
           className={isRunning ? "text-accent animate-pulse" : isOn ? "text-text-secondary" : "text-text-tertiary"}
         />
 
