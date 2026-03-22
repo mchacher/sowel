@@ -26,7 +26,7 @@
     "icon": "Smartphone",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-smartthings",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "tags": ["samsung", "smartthings", "tv", "washer", "appliance"]
   }
 ]
