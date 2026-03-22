@@ -685,6 +685,7 @@ export interface IntegrationInfo {
   polling?: { lastPollAt: string; intervalMs: number };
   deviceCount: number;
   offlineDeviceCount: number;
+  pluginVersion?: string;
 }
 
 // ============================================================

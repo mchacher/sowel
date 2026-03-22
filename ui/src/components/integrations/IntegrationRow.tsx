@@ -56,9 +56,16 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
 
       {/* Name + status */}
       <div className="min-w-0 w-[180px] sm:w-[220px] shrink-0">
-        <span className="text-[14px] font-semibold text-text truncate block">
-          {integration.name}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[14px] font-semibold text-text truncate">
+            {integration.name}
+          </span>
+          {integration.pluginVersion && (
+            <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+              {integration.pluginVersion}
+            </span>
+          )}
+        </div>
         <StatusBadge status={integration.status} />
       </div>
 

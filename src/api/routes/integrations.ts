@@ -3,16 +3,24 @@ import type { Logger } from "../../core/logger.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
+import type { PluginManager } from "../../plugins/plugin-manager.js";
 
 interface IntegrationsDeps {
   integrationRegistry: IntegrationRegistry;
   settingsManager: SettingsManager;
   deviceManager: DeviceManager;
+  pluginManager?: PluginManager;
   logger: Logger;
 }
 
 export function registerIntegrationRoutes(app: FastifyInstance, deps: IntegrationsDeps): void {
-  const { integrationRegistry, settingsManager, deviceManager, logger: parentLogger } = deps;
+  const {
+    integrationRegistry,
+    settingsManager,
+    deviceManager,
+    pluginManager,
+    logger: parentLogger,
+  } = deps;
   const logger = parentLogger.child({ module: "integration-routes" });
 
   // GET /api/v1/integrations — List all integrations with status
@@ -23,6 +31,14 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
 
     const integrations = integrationRegistry.getAllInfo();
     const allDevices = deviceManager.getAll();
+
+    // Build plugin version map
+    const pluginVersions = new Map<string, string>();
+    if (pluginManager) {
+      for (const p of pluginManager.getInstalled()) {
+        pluginVersions.set(p.manifest.id, p.manifest.version);
+      }
+    }
 
     // Enrich with current setting values and device counts
     return integrations.map((info) => ({
@@ -39,6 +55,7 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
       offlineDeviceCount: allDevices.filter(
         (d) => d.integrationId === info.id && d.status === "offline",
       ).length,
+      ...(pluginVersions.has(info.id) ? { pluginVersion: pluginVersions.get(info.id) } : {}),
     }));
   });
 
