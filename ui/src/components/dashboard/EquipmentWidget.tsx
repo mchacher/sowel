@@ -10,6 +10,8 @@ import {
   Plus,
   Flame,
   Snowflake,
+  WashingMachine,
+  Timer,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
@@ -48,6 +50,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
     isThermostat,
     isHeater,
     isGate,
+    isAppliance,
   } = useEquipmentState(equipment);
 
   const label = widget.label || equipment.name;
@@ -60,6 +63,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
   if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
+  if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
   if (isSensor) return <SensorEquipmentWidget label={label} equipment={equipment} iconKey={widget.icon} visibleBindings={widget.config?.visibleBindings} />;
 
   return <GenericEquipmentWidget label={label} equipment={equipment} />;
@@ -693,6 +697,68 @@ function EnergyMeterEquipmentWidget({
             </span>
             <span className="text-[10px] text-text-tertiary">{unitWh(energyMonth.value)}</span>
           </div>
+        )}
+      </div>
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Appliance widget (washing machine, etc.)
+// ============================================================
+
+function ApplianceEquipmentWidget({
+  label,
+  equipment,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+}) {
+  const { t } = useTranslation();
+
+  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
+  const remainingTimeStrBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
+  const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
+
+  const isOn = powerBinding?.value === true;
+  const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
+  const remainingStr = typeof remainingTimeStrBinding?.value === "string" ? remainingTimeStrBinding.value : null;
+  const progress = typeof progressBinding?.value === "number" ? progressBinding.value : 0;
+
+  const isRunning = state === "running";
+
+  return (
+    <WidgetCard label={label}>
+      {/* Icon + state */}
+      <div className="flex flex-col items-center justify-center flex-1 min-h-0 gap-1">
+        <WashingMachine
+          size={48}
+          strokeWidth={1.2}
+          className={isRunning ? "text-accent animate-pulse" : isOn ? "text-text-secondary" : "text-text-tertiary/40"}
+        />
+
+        {!isOn || state === "off" ? (
+          <span className="text-[12px] text-text-tertiary">OFF</span>
+        ) : isRunning ? (
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-[12px] font-medium text-accent">{t("common.running")}</span>
+            {remainingStr && (
+              <span className="flex items-center gap-1 text-[13px] font-mono tabular-nums text-text">
+                <Timer size={12} />
+                {remainingStr}
+              </span>
+            )}
+            {progress > 0 && (
+              <div className="w-16 h-1.5 bg-border-light rounded-full overflow-hidden mt-0.5">
+                <div className="h-full bg-accent rounded-full" style={{ width: `${progress}%` }} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-[12px] text-text-secondary">
+            {state === "paused" ? t("common.paused") : state === "ready" ? "Ready" : state}
+          </span>
         )}
       </div>
     </WidgetCard>

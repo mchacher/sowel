@@ -21,6 +21,8 @@ import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
+import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
+import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
   ArrowLeft,
   Loader2,
@@ -292,6 +294,19 @@ export function EquipmentDetailPage() {
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
         </div>
+      )}
+
+      {/* Media player controls */}
+      {equipment.type === "media_player" && equipment.enabled && (
+        <MediaPlayerPanel
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+        />
+      )}
+
+      {/* Appliance status */}
+      {equipment.type === "appliance" && (
+        <AppliancePanel equipment={equipment} />
       )}
 
       {/* Sensor / Weather data */}

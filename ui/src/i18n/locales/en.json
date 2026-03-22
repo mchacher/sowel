@@ -49,6 +49,8 @@
   "common.off": "OFF",
   "common.running": "Running",
   "common.paused": "Paused",
+  "common.progress": "Progress",
+  "equipments.status": "Status",
   "common.yes": "Yes",
   "common.no": "No",
   "common.name": "Name",
