@@ -23,6 +23,8 @@ const RELEVANT_DATA: Record<string, string[]> = {
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy", "power"],
   energy_production_meter: ["energy", "power"],
+  media_player: ["generic"],
+  appliance: ["generic", "energy"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -40,6 +42,8 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   energy_meter: [],
   main_energy_meter: [],
   energy_production_meter: [],
+  media_player: ["power", "volume", "mute", "input_source"],
+  appliance: [],
 };
 
 /**
