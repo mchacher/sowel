@@ -135,6 +135,15 @@ export async function createServer(deps: ServerDeps) {
   // WebSocket
   await app.register(websocket);
 
+  // Prevent browser caching on time-sensitive API routes
+  const noCacheRoutes = ["/api/v1/energy/", "/api/v1/charts/", "/api/v1/logs"];
+  app.addHook("onSend", (_req, reply, payload, done) => {
+    if (noCacheRoutes.some((r) => _req.url.startsWith(r))) {
+      reply.header("Cache-Control", "no-store");
+    }
+    done(null, payload);
+  });
+
   // Auth middleware (must be registered before routes)
   registerAuthMiddleware(app, { authService, userManager, logger });
 
