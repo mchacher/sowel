@@ -50,8 +50,7 @@ function resolveJwtSecret(dataDir: string): string {
  * this token out of the box. Override with INFLUX_TOKEN env var or
  * data/.influx-token file for custom setups.
  */
-const DEFAULT_INFLUX_TOKEN =
-  "REDACTED_INFLUXDB_TOKEN";
+const DEFAULT_INFLUX_TOKEN = "REDACTED_INFLUXDB_TOKEN";
 
 /**
  * Resolve the InfluxDB token.
