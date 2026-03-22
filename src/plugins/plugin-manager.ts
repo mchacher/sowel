@@ -176,9 +176,10 @@ export class PluginManager {
     }
 
     const currentManifest = JSON.parse(row.manifest) as PluginManifest;
-    const repo = currentManifest.repo;
+    // Resolve repo: try manifest first, then fallback to registry
+    const repo = currentManifest.repo ?? this.getRepoFromRegistry(pluginId);
     if (!repo) {
-      throw new Error(`Plugin "${pluginId}" has no repo in manifest — cannot update`);
+      throw new Error(`Plugin "${pluginId}" has no repo in manifest or registry — cannot update`);
     }
 
     this.logger.info({ pluginId, from: row.version, repo }, "Updating plugin");
@@ -450,6 +451,17 @@ export class PluginManager {
   /**
    * Read registry.json and return a map of pluginId → latest version.
    */
+  private getRepoFromRegistry(pluginId: string): string | undefined {
+    const registryPath = resolve(this.pluginsDir, "registry.json");
+    if (!existsSync(registryPath)) return undefined;
+    try {
+      const entries = JSON.parse(readFileSync(registryPath, "utf-8")) as RegistryEntry[];
+      return entries.find((e) => e.id === pluginId)?.repo;
+    } catch {
+      return undefined;
+    }
+  }
+
   private getLatestVersions(): Map<string, string> {
     const versions = new Map<string, string>();
     const registryPath = resolve(this.pluginsDir, "registry.json");
