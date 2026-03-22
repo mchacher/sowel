@@ -16,7 +16,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
-import { Cloud, WashingMachine, Tv, Timer } from "lucide-react";
+import { Cloud, WashingMachine, Tv } from "lucide-react";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
