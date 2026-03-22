@@ -735,7 +735,7 @@ function ApplianceEquipmentWidget({
         <WashingMachine
           size={80}
           strokeWidth={1}
-          className={isRunning ? "text-accent animate-pulse" : isOn ? "text-text-secondary" : "text-text-tertiary/40"}
+          className={isRunning ? "text-accent animate-pulse" : isOn ? "text-text-secondary" : "text-text-tertiary"}
         />
 
         {!isOn || state === "off" ? (
