@@ -201,6 +201,8 @@
   "equipments.group.energy": "Énergie",
   "equipments.group.sensors": "Capteurs",
   "equipments.group.weather": "Météo",
+  "equipments.group.media": "Multimédia",
+  "equipments.group.appliances": "Électroménager",
   "equipments.group.other": "Autres",
 
   "equipments.noEquipments": "Aucun équipement",

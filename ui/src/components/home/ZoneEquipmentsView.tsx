@@ -6,6 +6,8 @@ import {
   ToggleRight,
   Thermometer,
   Zap,
+  Tv,
+  WashingMachine,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { useTranslation } from "react-i18next";
@@ -27,6 +29,8 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.energy", types: ["energy_meter", "main_energy_meter", "energy_production_meter"], icon: <Zap size={14} strokeWidth={1.5} />, headerBg: "bg-accent/8", iconColor: "text-accent" },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.weather", types: ["weather", "weather_forecast"], icon: <CloudSun size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
+  { labelKey: "equipments.group.media", types: ["media_player"], icon: <Tv size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
+  { labelKey: "equipments.group.appliances", types: ["appliance"], icon: <WashingMachine size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
   { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
 ];
 

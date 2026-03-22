@@ -154,7 +154,9 @@ export type EquipmentType =
   | "heater"
   | "energy_meter"
   | "main_energy_meter"
-  | "energy_production_meter";
+  | "energy_production_meter"
+  | "media_player"
+  | "appliance";
 
 export interface Equipment {
   id: string;
