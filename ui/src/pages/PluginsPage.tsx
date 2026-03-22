@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Package, Loader2, Download, Trash2, Cpu, ArrowUpCircle } from "lucide-react";
+import { refreshPluginUpdateCount } from "../components/layout/usePluginUpdates";
 import * as LucideIcons from "lucide-react";
 import {
   getPlugins,
@@ -30,6 +31,7 @@ export function PluginsPage() {
       ]);
       setPlugins(installedData);
       setStore(storeData);
+      refreshPluginUpdateCount();
     } catch {
       // ignore
     } finally {
@@ -178,6 +180,8 @@ function PluginRow({
     setActionLoading("update");
     try {
       await updatePlugin(plugin.manifest.id);
+      // Small delay to let the plugin restart before refreshing
+      await new Promise((r) => setTimeout(r, 1500));
       onRefresh();
     } catch {
       // ignore
