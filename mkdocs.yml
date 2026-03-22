@@ -1,0 +1,94 @@
+site_name: Sowel Documentation
+site_url: https://docs.sowel.org
+site_description: Documentation for Sowel — Open-source home automation engine
+site_author: Marc Chachereau
+repo_url: https://github.com/mchacher/sowel
+repo_name: mchacher/sowel
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  # - i18n:  # Uncomment when adding French translation
+  #     default_language: en
+  #     languages:
+  #       en: English
+  #       fr: Français
+
+nav:
+  - Home: index.md
+  - Technical Guide:
+    - technical/index.md
+    - Architecture: technical/architecture.md
+    - API Reference: technical/api-reference.md
+    - Plugin Development: technical/plugin-development.md
+    - Recipe Development: technical/recipe-development.md
+    - Data Model: technical/data-model.md
+    - Contributing: technical/contributing.md
+  - User Guide:
+    - user/index.md
+    - Getting Started: user/getting-started.md
+    - Equipments: user/equipments.md
+    - Dashboard: user/dashboard.md
+    - Zones & Rooms: user/zones.md
+    - Modes & Calendar: user/modes.md
+    - Energy Monitoring: user/energy.md
+    - Remote Access: user/remote-access.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/mchacher/sowel
+  generator: false

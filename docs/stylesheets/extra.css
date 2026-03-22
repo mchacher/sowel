@@ -1,0 +1,15 @@
+/* Sowel brand colors */
+:root {
+  --md-primary-fg-color: #1A4F6E;
+  --md-primary-fg-color--light: #E6F0F6;
+  --md-primary-fg-color--dark: #13405A;
+  --md-accent-fg-color: #D4963F;
+  --md-accent-fg-color--transparent: rgba(212, 150, 63, 0.1);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #1A4F6E;
+  --md-primary-fg-color--light: #1e5a7d;
+  --md-primary-fg-color--dark: #13405A;
+  --md-accent-fg-color: #D4963F;
+}

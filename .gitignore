@@ -9,6 +9,9 @@ data/
 coverage/
 .venv/
 
+# MkDocs build output
+site/
+
 # Local tool configs
 .claude/settings.json
 .mcp.json
