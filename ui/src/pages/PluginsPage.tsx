@@ -229,10 +229,10 @@ function PluginRow({
         <IconComponent size={18} className="text-accent" />
       </div>
 
-      {/* Name + status */}
-      <div className="min-w-0 w-[180px] sm:w-[220px] shrink-0">
+      {/* Name + meta */}
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-text truncate block">
+          <span className="text-[14px] font-semibold text-text truncate">
             {plugin.manifest.name}
           </span>
           <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
@@ -245,22 +245,15 @@ function PluginRow({
             </span>
           )}
         </div>
-        <StatusBadge status={plugin.status} />
-      </div>
-
-      {/* Stats */}
-      <div className="hidden sm:flex items-center gap-4 text-[12px] text-text-tertiary flex-1">
-        <span>
-          {plugin.deviceCount} {t("plugins.devices")}
-          {plugin.offlineDeviceCount > 0 && (
-            <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
-          )}
-        </span>
-      </div>
-
-      {/* Mobile stats */}
-      <div className="flex sm:hidden items-center gap-2 text-[11px] text-text-tertiary flex-1">
-        <span>{plugin.deviceCount} dev</span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <StatusBadge status={plugin.status} />
+          <span className="text-[11px] text-text-tertiary">
+            {plugin.deviceCount} {t("plugins.devices")}
+            {plugin.offlineDeviceCount > 0 && (
+              <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
+            )}
+          </span>
+        </div>
       </div>
 
       {/* Actions */}
