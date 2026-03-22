@@ -223,20 +223,20 @@ export function EquipmentDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
-            className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150 cursor-pointer"
             title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
-            <span className="hidden sm:inline ml-2">{t("common.edit")}</span>
+            <span className="hidden sm:inline">{t("common.edit")}</span>
           </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50 cursor-pointer"
             title={t("common.delete")}
           >
             <Trash2 size={14} strokeWidth={1.5} />
-            <span className="hidden sm:inline ml-2">{deleting ? t("common.deleting") : t("common.delete")}</span>
+            <span className="hidden sm:inline">{deleting ? t("common.deleting") : t("common.delete")}</span>
           </button>
         </div>
       </div>
