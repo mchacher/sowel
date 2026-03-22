@@ -194,6 +194,8 @@
   "equipments.type.energy_meter": "Energy Meter (sub-meter)",
   "equipments.type.main_energy_meter": "Energy Meter (main)",
   "equipments.type.energy_production_meter": "Energy Meter (production)",
+  "equipments.type.media_player": "Media Player",
+  "equipments.type.appliance": "Appliance",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",

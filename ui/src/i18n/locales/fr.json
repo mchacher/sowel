@@ -194,6 +194,8 @@
   "equipments.type.energy_meter": "Compteur d'Énergie (sous-compteur)",
   "equipments.type.main_energy_meter": "Compteur d'Énergie (principal)",
   "equipments.type.energy_production_meter": "Compteur d'Énergie (production)",
+  "equipments.type.media_player": "Lecteur Multimédia",
+  "equipments.type.appliance": "Électroménager",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",
