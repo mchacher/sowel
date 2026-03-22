@@ -31,6 +31,7 @@ import { SidebarChartList } from "./SidebarChartList";
 import { SowelLogo } from "./SowelLogo";
 import { useAuth } from "../../store/useAuth";
 import { useEnergy } from "../../store/useEnergy";
+import { usePluginUpdates } from "./usePluginUpdates";
 
 type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
 
@@ -73,6 +74,7 @@ export function Sidebar() {
   const energyAvailable = useEnergy((s) => s.available);
   const hasProduction = useEnergy((s) => s.hasProduction);
   const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
+  const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
 
   // Auto-collapse: only one section expanded at a time
   const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
@@ -413,8 +415,18 @@ export function Sidebar() {
                         }
                       `}
                     >
-                      <span className="flex-shrink-0">{item.icon}</span>
+                      <span className="flex-shrink-0 relative">
+                        {item.icon}
+                        {item.to === "/plugins" && pluginUpdateCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full" />
+                        )}
+                      </span>
                       <span className="text-[12px] font-medium">{t(item.label)}</span>
+                      {item.to === "/plugins" && pluginUpdateCount > 0 && (
+                        <span className="ml-auto text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">
+                          {pluginUpdateCount}
+                        </span>
+                      )}
                     </NavLink>
                   ))}
                 </nav>

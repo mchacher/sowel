@@ -921,6 +921,23 @@ gh release create v0.1.0 \
 
 Best practice: **always upload a pre-built tarball** as a release asset. This avoids the need for the user's Sowel instance to have TypeScript installed.
 
+### Updating a Plugin
+
+When a newer version is available in `registry.json` compared to the installed version, Sowel shows an update indicator in the UI (sidebar badge, header pill, and an "Update" button on the plugin card).
+
+**Update flow** (triggered by clicking "Update"):
+
+1. Stops the running plugin
+2. Downloads the latest release from GitHub (same logic as install)
+3. Replaces the plugin files in `plugins/<id>/`
+4. Runs `npm install` and builds if needed
+5. Updates the version and manifest in the database
+6. Restarts the plugin if it was enabled
+
+**What is preserved:** all plugin settings, discovered devices, equipment bindings, and historization configuration. The update only replaces the plugin code — it does not touch the database.
+
+**What changes:** the plugin files in `plugins/<id>/` and the version recorded in the `plugins` table.
+
 ### Registering in the Plugin Store
 
 To make your plugin appear in the Sowel plugin store, submit a PR to the Sowel repository adding an entry to `plugins/registry.json`:
@@ -962,7 +979,7 @@ There are **two places** where the version matters, and they serve different pur
 **Rules:**
 
 - Update `manifest.json` version with **every release**. This is how Sowel knows what version is installed.
-- Update `plugins/registry.json` version in the Sowel repo when you publish a new release. This is how users see that an update is available.
+- Update `plugins/registry.json` version in the Sowel repo when you publish a new release. This is how users see that an update is available — Sowel compares the installed version (from manifest) against the registry version and shows an update badge when they differ.
 - Keep both versions in sync. If `manifest.json` says `0.2.0` but `registry.json` says `0.1.0`, the store will show an outdated version.
 - The version in the release tag (e.g. `v0.2.0`) should match `manifest.json`.
 

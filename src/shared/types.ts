@@ -667,6 +667,7 @@ export interface PluginInfo {
   status: IntegrationStatus; // connected/disconnected/error/not_configured
   deviceCount: number;
   offlineDeviceCount: number;
+  latestVersion?: string; // set when a newer version is available in registry
 }
 
 // ============================================================
