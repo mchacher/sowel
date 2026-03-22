@@ -16,7 +16,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
-import { Cloud } from "lucide-react";
+import { Cloud, WashingMachine, Tv, Timer } from "lucide-react";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
@@ -72,6 +72,8 @@ function useMobileState(
     isHeater,
     isSensor,
     isWeatherForecast,
+    isMediaPlayer,
+    isAppliance,
     isOn,
   } = useEquipmentState(equipment);
 
@@ -202,6 +204,40 @@ function useMobileState(
       };
     }
     return { icon: <Cloud size={96} strokeWidth={1.2} className="text-text-tertiary" />, stateLines: [] };
+  }
+
+  if (isAppliance) {
+    const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+    const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
+    const remainingBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
+    const applianceOn = powerBinding?.value === true;
+    const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
+    const remainingStr = typeof remainingBinding?.value === "string" ? remainingBinding.value : null;
+    const isRunning = state === "running";
+
+    const lines: string[] = [];
+    if (!applianceOn || state === "off") {
+      lines.push("OFF");
+    } else if (isRunning && remainingStr) {
+      lines.push(remainingStr);
+    } else {
+      lines.push(state === "paused" ? t("common.paused") : state === "ready" ? "Ready" : state);
+    }
+    return {
+      icon: <WashingMachine size={96} strokeWidth={1} className={isRunning ? "text-accent" : "text-text-tertiary"} />,
+      stateLines: lines,
+    };
+  }
+
+  if (isMediaPlayer) {
+    const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+    const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
+    const tvOn = powerBinding?.value === true;
+    const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
+    return {
+      icon: <Tv size={96} strokeWidth={1} className={tvOn ? "text-primary" : "text-text-tertiary"} />,
+      stateLines: tvOn && source ? [source] : ["OFF"],
+    };
   }
 
   // Switch / generic
