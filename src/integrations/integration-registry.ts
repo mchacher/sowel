@@ -121,6 +121,7 @@ export class IntegrationRegistry {
         polling,
         deviceCount: 0,
         offlineDeviceCount: 0,
+        supportsOAuth: typeof plugin.getOAuthUrl === "function",
       };
     });
   }
