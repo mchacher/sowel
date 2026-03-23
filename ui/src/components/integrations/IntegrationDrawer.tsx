@@ -12,6 +12,8 @@ import {
   Loader2,
   Cpu,
   Timer,
+  ExternalLink,
+  CheckCircle,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import {
@@ -20,6 +22,7 @@ import {
   stopIntegration,
   restartIntegration,
   refreshIntegration,
+  getPluginOAuthUrl,
 } from "../../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../../types";
 
@@ -36,6 +39,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   // Reset form when integration changes — fill defaults for empty fields
   useEffect(() => {
@@ -67,6 +71,17 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   }, []);
 
   if (!integration) return null;
+
+  const handleOAuthConnect = async () => {
+    setOauthLoading(true);
+    try {
+      const { url } = await getPluginOAuthUrl(integration.id);
+      window.location.href = url;
+    } catch (err) {
+      showMessage("error", err instanceof Error ? err.message : t("common.error"));
+      setOauthLoading(false);
+    }
+  };
 
   const isConnected = integration.status === "connected";
   const isError = integration.status === "error";
@@ -284,6 +299,48 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
               ))}
             </div>
           </div>
+
+          {/* OAuth Authorization */}
+          {integration.supportsOAuth && (
+            <div>
+              <h3 className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-3">
+                {t("integrations.authorization")}
+              </h3>
+              {isConnected ? (
+                <div className="flex items-center justify-between bg-success/10 border border-success/20 rounded-[8px] px-4 py-3">
+                  <div className="flex items-center gap-2 text-success text-[13px] font-medium">
+                    <CheckCircle size={15} />
+                    {t("integrations.oauthConnected")}
+                  </div>
+                  <button
+                    onClick={handleOAuthConnect}
+                    disabled={oauthLoading}
+                    className="text-[12px] text-text-tertiary hover:text-text underline cursor-pointer disabled:opacity-50"
+                  >
+                    {t("integrations.oauthReconnect")}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleOAuthConnect}
+                  disabled={oauthLoading || hasRequiredEmpty}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-medium bg-primary text-white rounded-[8px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                >
+                  {oauthLoading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <ExternalLink size={15} />
+                  )}
+                  {t("integrations.oauthConnect")}
+                </button>
+              )}
+              {hasRequiredEmpty && !isConnected && (
+                <p className="text-[12px] text-text-tertiary mt-2">
+                  {t("integrations.oauthFillFirst")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

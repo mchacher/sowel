@@ -28,7 +28,10 @@ const PUBLIC_ROUTES = new Set([
 function isPublicRoute(url: string): boolean {
   // Strip query string
   const path = url.split("?")[0];
-  return PUBLIC_ROUTES.has(path);
+  if (PUBLIC_ROUTES.has(path)) return true;
+  // OAuth callbacks from external providers (no auth header available)
+  if (path.match(/^\/api\/v1\/plugins\/[^/]+\/oauth\/callback$/)) return true;
+  return false;
 }
 
 // ============================================================

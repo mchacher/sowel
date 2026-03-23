@@ -644,6 +644,8 @@ export interface IntegrationInfo {
   polling?: { lastPollAt: string; intervalMs: number };
   deviceCount: number;
   offlineDeviceCount: number;
+  /** True if the integration supports OAuth 2.0 authorization flow */
+  supportsOAuth?: boolean;
 }
 
 // ============================================================

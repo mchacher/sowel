@@ -58,6 +58,20 @@ export interface IntegrationPlugin {
    * Optional — only for polling-based integrations.
    */
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+
+  /**
+   * Return the OAuth 2.0 authorization URL to redirect the user to.
+   * Optional — only for OAuth-based integrations.
+   * Returns null if OAuth is not applicable or not yet configured.
+   */
+  getOAuthUrl?(): string | null;
+
+  /**
+   * Handle the OAuth 2.0 authorization code callback.
+   * Exchange the code for access_token + refresh_token and store them.
+   * Optional — only for OAuth-based integrations.
+   */
+  handleOAuthCallback?(code: string): Promise<void>;
 }
 
 // ============================================================
@@ -107,6 +121,7 @@ export class IntegrationRegistry {
         polling,
         deviceCount: 0,
         offlineDeviceCount: 0,
+        supportsOAuth: typeof plugin.getOAuthUrl === "function",
       };
     });
   }

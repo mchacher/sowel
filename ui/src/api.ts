@@ -512,6 +512,10 @@ export async function refreshIntegration(id: string): Promise<{ success: boolean
   return fetchJSON(`${API_BASE}/integrations/${id}/refresh`, { method: "POST" });
 }
 
+export async function getPluginOAuthUrl(pluginId: string): Promise<{ url: string }> {
+  return fetchJSON<{ url: string }>(`${API_BASE}/plugins/${pluginId}/oauth/url`);
+}
+
 // ============================================================
 // Plugins (admin)
 // ============================================================

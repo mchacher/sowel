@@ -1,11 +1,8 @@
 ---
 name: update-docs
 description: Update Sowel documentation site (MkDocs Material). Use when implementing features, fixing bugs, or when user asks to update/add documentation.
-user_invocable: true
-trigger: |
-  - User asks to "update docs", "add to docs", "document this"
-  - User says "mettre à jour la doc", "documenter", "ajouter à la doc"
-  - After implementing a feature that needs documentation
+user-invocable: true
+argument-hint: "[page-or-topic]"
 ---
 
 # Sowel Documentation Update Workflow
@@ -44,8 +41,6 @@ mkdocs.yml                      # Site config, navigation
 
 ### Step 1: Identify what needs updating
 
-Determine which page(s) need changes:
-
 | Change type         | Pages to update                                                  |
 | ------------------- | ---------------------------------------------------------------- |
 | New API endpoint    | `technical/api-reference.md`                                     |
@@ -69,7 +64,6 @@ Determine which page(s) need changes:
   - Tables for structured data
 - Keep the **user guide** non-technical, task-oriented
 - Keep the **technical guide** detailed with code examples
-- Add screenshots in `docs/assets/screenshots/` when useful for user guide
 
 **Writing style:**
 
@@ -79,31 +73,13 @@ Determine which page(s) need changes:
 
 ### Step 3: Update navigation if needed
 
-If you added a new page, update `mkdocs.yml` nav section:
-
-```yaml
-nav:
-  - Home: index.md
-  - Technical Guide:
-      - technical/index.md
-      - ...
-      - New Page: technical/new-page.md # Add here
-  - User Guide:
-      - user/index.md
-      - ...
-      - New Page: user/new-page.md # Add here
-```
+If you added a new page, update `mkdocs.yml` nav section.
 
 ### Step 4: Verify locally
 
 ```bash
-# Build and check for errors
 cd /Users/mchacher/Documents/01_Geekerie/Sowel
 mkdocs build --strict
-
-# Preview locally (optional)
-mkdocs serve
-# Opens at http://localhost:8000
 ```
 
 ### Step 5: Commit and deploy
@@ -115,52 +91,3 @@ git add docs/ mkdocs.yml
 git commit -m "docs: <description of changes>"
 git push
 ```
-
-The GitHub Action (`.github/workflows/docs.yml`) handles the build and deploy automatically.
-
-## Adding a New Page
-
-1. Create the `.md` file in the appropriate directory (`docs/technical/` or `docs/user/`)
-2. Add the page to `mkdocs.yml` nav
-3. Add a link from the section's `index.md`
-4. Build with `mkdocs build --strict` to verify
-
-## Markdown Quick Reference (MkDocs Material)
-
-### Admonitions
-
-```markdown
-!!! tip "Optional title"
-Content here.
-
-!!! warning
-Important warning.
-
-!!! note
-Additional information.
-```
-
-### Tabbed content
-
-````markdown
-=== "Docker"
-`bash
-    docker-compose up -d
-    `
-
-=== "Manual"
-`bash
-    npm install && npm run build && npm start
-    `
-````
-
-### Code blocks
-
-````markdown
-```typescript title="src/example.ts" hl_lines="3"
-function hello() {
-  const name = "Sowel";
-  console.log(name); // highlighted line
-}
-```
-````
