@@ -1,14 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import type { PluginManager } from "../../plugins/plugin-manager.js";
+import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 
 interface PluginsDeps {
   pluginManager: PluginManager;
+  integrationRegistry: IntegrationRegistry;
   logger: Logger;
 }
 
 export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): void {
-  const { pluginManager, logger: parentLogger } = deps;
+  const { pluginManager, integrationRegistry, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "plugin-routes" });
 
   // GET /api/v1/plugins — list installed
@@ -140,4 +142,59 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
       });
     }
   });
+
+  // GET /api/v1/plugins/:id/oauth/url — get OAuth authorization URL
+  app.get<{ Params: { id: string } }>("/api/v1/plugins/:id/oauth/url", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+
+    const plugin = integrationRegistry.getById(request.params.id);
+    if (!plugin) {
+      return reply.code(404).send({ error: "Integration not found" });
+    }
+    if (!plugin.getOAuthUrl) {
+      return reply.code(400).send({ error: "Integration does not support OAuth" });
+    }
+    const url = plugin.getOAuthUrl();
+    if (!url) {
+      return reply
+        .code(400)
+        .send({ error: "OAuth not configured (missing client_id or redirect_uri)" });
+    }
+    return { url };
+  });
+
+  // GET /api/v1/plugins/:id/oauth/callback — receive OAuth code from Samsung
+  // No auth required — called by Samsung's redirect after user authorization
+  app.get<{ Params: { id: string }; Querystring: { code?: string; error?: string } }>(
+    "/api/v1/plugins/:id/oauth/callback",
+    async (request, reply) => {
+      const { code, error } = request.query;
+
+      if (error) {
+        logger.warn({ pluginId: request.params.id, error }, "OAuth callback received error");
+        return reply.redirect("/settings/integrations?oauth_error=" + encodeURIComponent(error));
+      }
+
+      if (!code) {
+        return reply.redirect("/settings/integrations?oauth_error=missing_code");
+      }
+
+      const plugin = integrationRegistry.getById(request.params.id);
+      if (!plugin || !plugin.handleOAuthCallback) {
+        return reply.redirect("/settings/integrations?oauth_error=plugin_not_found");
+      }
+
+      try {
+        await plugin.handleOAuthCallback(code);
+        logger.info({ pluginId: request.params.id }, "OAuth callback handled successfully");
+        return reply.redirect("/settings/integrations?oauth_success=1");
+      } catch (err) {
+        logger.error({ err, pluginId: request.params.id }, "OAuth callback failed");
+        const msg = err instanceof Error ? err.message : "OAuth failed";
+        return reply.redirect("/settings/integrations?oauth_error=" + encodeURIComponent(msg));
+      }
+    },
+  );
 }

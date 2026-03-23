@@ -190,7 +190,7 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerDashboardRoutes(app, { db });
-  registerPluginRoutes(app, { pluginManager, logger });
+  registerPluginRoutes(app, { pluginManager, integrationRegistry, logger });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

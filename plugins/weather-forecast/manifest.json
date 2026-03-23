@@ -1,0 +1,19 @@
+{
+  "id": "weather-forecast",
+  "name": "Weather Forecast",
+  "version": "0.2.4",
+  "description": "Weather forecast via Open-Meteo API (free, no API key)",
+  "icon": "CloudSun",
+  "author": "mchacher",
+  "sowelVersion": ">=0.10.0",
+  "settings": [
+    {
+      "key": "polling_interval",
+      "label": "Polling interval (minutes)",
+      "type": "number",
+      "required": false,
+      "defaultValue": "30",
+      "placeholder": "Min 15, default 30"
+    }
+  ]
+}

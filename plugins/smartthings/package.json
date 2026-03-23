@@ -1,0 +1,15 @@
+{
+  "name": "sowel-plugin-smartthings",
+  "version": "0.4.0",
+  "description": "Sowel plugin: Samsung SmartThings integration",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  },
+  "license": "AGPL-3.0"
+}

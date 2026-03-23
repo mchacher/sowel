@@ -23,3 +23,4 @@ Voir si la séparation des droits entre admin et user est vraiment gérée corre
 Calendar dans Administration est ce vraiment le bon endroit
 Avoir aussi une synthèse de la maisonÉquipement virtuel ? (Bouton ?)Couper chauffage
 Poele en erreur granules
+Faire des recettes plugins
