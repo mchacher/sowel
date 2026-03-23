@@ -11,6 +11,7 @@ export function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<IntegrationInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [oauthMessage, setOauthMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -26,6 +27,21 @@ export function IntegrationsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("oauth_success")) {
+      setOauthMessage({ type: "success", text: t("integrations.oauthSuccess") });
+      window.history.replaceState({}, "", window.location.pathname);
+      load();
+      setTimeout(() => setOauthMessage(null), 5000);
+    } else if (params.has("oauth_error")) {
+      const msg = params.get("oauth_error") ?? t("common.error");
+      setOauthMessage({ type: "error", text: `${t("integrations.oauthError")}: ${msg}` });
+      window.history.replaceState({}, "", window.location.pathname);
+      setTimeout(() => setOauthMessage(null), 7000);
+    }
+  }, [t, load]);
 
   const selectedIntegration = integrations.find((i) => i.id === selectedId) ?? null;
 
@@ -48,6 +64,18 @@ export function IntegrationsPage() {
         </div>
         <p className="text-[13px] text-text-secondary mt-1">{t("integrations.subtitle")}</p>
       </div>
+
+      {oauthMessage && (
+        <div
+          className={`mb-4 max-w-[720px] px-4 py-3 rounded-[8px] text-[13px] font-medium ${
+            oauthMessage.type === "success"
+              ? "bg-success/10 border border-success/20 text-success"
+              : "bg-error/10 border border-error/20 text-error"
+          }`}
+        >
+          {oauthMessage.text}
+        </div>
+      )}
 
       <div className="space-y-2 max-w-[720px]">
         {integrations.map((integration) => (
