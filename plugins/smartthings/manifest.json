@@ -1,18 +1,32 @@
 {
   "id": "smartthings",
   "name": "Samsung SmartThings",
-  "version": "0.4.0",
+  "version": "0.5.1",
   "description": "Samsung SmartThings devices (TV, washing machine, and more)",
   "icon": "Smartphone",
   "author": "mchacher",
   "sowelVersion": ">=0.10.0",
   "settings": [
     {
-      "key": "token",
-      "label": "Personal Access Token (PAT)",
+      "key": "client_id",
+      "label": "OAuth Client ID",
+      "type": "text",
+      "required": true,
+      "placeholder": "From SmartThings developer portal"
+    },
+    {
+      "key": "client_secret",
+      "label": "OAuth Client Secret",
       "type": "password",
       "required": true,
-      "placeholder": "Generate at account.smartthings.com/tokens"
+      "placeholder": "From SmartThings developer portal"
+    },
+    {
+      "key": "redirect_uri",
+      "label": "Redirect URI",
+      "type": "text",
+      "required": true,
+      "placeholder": "https://your-sowel-url/api/v1/plugins/smartthings/oauth/callback"
     },
     {
       "key": "polling_interval",

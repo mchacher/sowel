@@ -2,7 +2,8 @@
  * Sowel Plugin: Samsung SmartThings
  *
  * Integrates Samsung SmartThings devices via the SmartThings REST API.
- * Uses a Personal Access Token (PAT) for authentication and polling for data updates.
+ * Uses OAuth 2.0 Authorization Code flow for authentication.
+ * Access tokens are auto-refreshed every 20h using the stored refresh token.
  *
  * Supported device types:
  * - Samsung OCF TV → media_player (power, volume, mute, input source, picture mode)
@@ -115,6 +116,8 @@ interface IntegrationPlugin {
   ): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
+  getOAuthUrl?(): string | null;
+  handleOAuthCallback?(code: string): Promise<void>;
 }
 
 // ============================================================
@@ -137,6 +140,13 @@ interface STDeviceStatus {
   components: Record<string, Record<string, Record<string, { value: unknown }>>>;
 }
 
+interface OAuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
 // ============================================================
 // Constants
 // ============================================================
@@ -144,16 +154,34 @@ interface STDeviceStatus {
 const INTEGRATION_ID = "smartthings";
 const SOURCE = "smartthings";
 const API_BASE = "https://api.smartthings.com/v1";
+const OAUTH_AUTHORIZE_URL = "https://api.smartthings.com/oauth/authorize";
+const OAUTH_TOKEN_URL = "https://api.smartthings.com/oauth/token";
 const MIN_POLL_INTERVAL = 60_000;
 const DEFAULT_POLL_INTERVAL = 300_000;
+/** Refresh access token when less than this many ms remain before expiry */
+const REFRESH_BUFFER_MS = 4 * 60 * 60 * 1000; // 4 hours before expiry
 
 const SETTINGS: IntegrationSettingDef[] = [
   {
-    key: "token",
-    label: "Personal Access Token (PAT)",
+    key: "client_id",
+    label: "OAuth Client ID",
+    type: "text",
+    required: true,
+    placeholder: "From SmartThings developer portal",
+  },
+  {
+    key: "client_secret",
+    label: "OAuth Client Secret",
     type: "password",
     required: true,
-    placeholder: "Generate at account.smartthings.com/tokens",
+    placeholder: "From SmartThings developer portal",
+  },
+  {
+    key: "redirect_uri",
+    label: "Redirect URI",
+    type: "text",
+    required: true,
+    placeholder: "https://your-sowel-url/api/v1/plugins/smartthings/oauth/callback",
   },
   {
     key: "polling_interval",
@@ -181,13 +209,12 @@ class SmartThingsPlugin implements IntegrationPlugin {
   private deviceManager: DeviceManager;
   private status: IntegrationStatus = "disconnected";
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private lastPollAt: string | null = null;
   private pollIntervalMs = DEFAULT_POLL_INTERVAL;
 
   /** SmartThings deviceId → STDevice */
   private knownDevices = new Map<string, STDevice>();
-
-  // previousEnergy is persisted in settings to survive restarts
 
   constructor(deps: PluginDeps) {
     this.logger = deps.logger;
@@ -207,7 +234,8 @@ class SmartThingsPlugin implements IntegrationPlugin {
   }
 
   isConfigured(): boolean {
-    return !!this.getSetting("token");
+    // Configured if we have credentials AND an access token (post-OAuth)
+    return !!(this.getSetting("client_id") && this.getSetting("client_secret") && this.getSetting("access_token"));
   }
 
   getPollingInfo() {
@@ -220,18 +248,152 @@ class SmartThingsPlugin implements IntegrationPlugin {
     return this.settingsManager.get(`integration.${INTEGRATION_ID}.${key}`);
   }
 
-  // ── API helpers ──────────────────────────────────────────
+  private setSetting(key: string, value: string): void {
+    this.settingsManager.set(`integration.${INTEGRATION_ID}.${key}`, value);
+  }
 
-  private getToken(): string {
-    const token = this.getSetting("token");
-    if (!token) throw new Error("SmartThings PAT not configured");
+  // ── OAuth ─────────────────────────────────────────────────
+
+  getOAuthUrl(): string | null {
+    const clientId = this.getSetting("client_id");
+    const redirectUri = this.getSetting("redirect_uri");
+    if (!clientId || !redirectUri) return null;
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "r:devices:* x:devices:*",
+    });
+    return `${OAUTH_AUTHORIZE_URL}?${params.toString()}`;
+  }
+
+  async handleOAuthCallback(code: string): Promise<void> {
+    const clientId = this.getSetting("client_id");
+    const clientSecret = this.getSetting("client_secret");
+    const redirectUri = this.getSetting("redirect_uri");
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new Error("OAuth credentials not configured");
+    }
+
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirectUri,
+    });
+
+    const credentials = btoa(`${clientId}:${clientSecret}`);
+    const res = await fetch(OAUTH_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${credentials}`,
+      },
+      body: body.toString(),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Token exchange failed ${res.status}: ${text}`);
+    }
+
+    const tokens = (await res.json()) as OAuthTokenResponse;
+    this.storeTokens(tokens);
+    this.logger.info("SmartThings OAuth tokens stored successfully");
+
+    // Start the integration if not already running
+    if (this.status !== "connected") {
+      await this.poll();
+      this.scheduleRefresh();
+    }
+  }
+
+  private storeTokens(tokens: OAuthTokenResponse): void {
+    const expiresAt = Date.now() + tokens.expires_in * 1000;
+    this.setSetting("access_token", tokens.access_token);
+    this.setSetting("refresh_token", tokens.refresh_token);
+    this.setSetting("token_expires_at", String(expiresAt));
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    const clientId = this.getSetting("client_id");
+    const clientSecret = this.getSetting("client_secret");
+    const refreshToken = this.getSetting("refresh_token");
+
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error("Cannot refresh: missing credentials or refresh token");
+    }
+
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    });
+
+    const credentials = btoa(`${clientId}:${clientSecret}`);
+    const res = await fetch(OAUTH_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${credentials}`,
+      },
+      body: body.toString(),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Token refresh failed ${res.status}: ${text}`);
+    }
+
+    const tokens = (await res.json()) as OAuthTokenResponse;
+    this.storeTokens(tokens);
+    this.logger.info("SmartThings access token refreshed");
+  }
+
+  private scheduleRefresh(): void {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+    }
+    // Refresh every 20h (token lasts 24h, we refresh 4h before expiry)
+    const REFRESH_INTERVAL_MS = 20 * 60 * 60 * 1000;
+    this.refreshTimer = setInterval(() => {
+      this.refreshAccessToken().catch((err: unknown) => {
+        this.logger.error(
+          { err: err instanceof Error ? { message: err.message } : {} },
+          "SmartThings token refresh failed — re-authorization required",
+        );
+        this.status = "error";
+      });
+    }, REFRESH_INTERVAL_MS);
+  }
+
+  private getAccessToken(): string {
+    // Check if token needs proactive refresh
+    const expiresAtStr = this.getSetting("token_expires_at");
+    if (expiresAtStr) {
+      const expiresAt = parseInt(expiresAtStr, 10);
+      if (!isNaN(expiresAt) && Date.now() > expiresAt - REFRESH_BUFFER_MS) {
+        // Fire-and-forget proactive refresh (don't block the current poll)
+        this.refreshAccessToken().catch((err: unknown) => {
+          this.logger.warn(
+            { err: err instanceof Error ? { message: err.message } : {} },
+            "Proactive token refresh failed",
+          );
+        });
+      }
+    }
+
+    const token = this.getSetting("access_token");
+    if (!token) throw new Error("SmartThings not authorized — click 'Connecter avec Samsung'");
     return token;
   }
+
+  // ── API helpers ──────────────────────────────────────────
 
   private async apiGet<T>(path: string): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
       headers: {
-        Authorization: `Bearer ${this.getToken()}`,
+        Authorization: `Bearer ${this.getAccessToken()}`,
         Accept: "application/json",
       },
     });
@@ -245,7 +407,7 @@ class SmartThingsPlugin implements IntegrationPlugin {
     const res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${this.getToken()}`,
+        Authorization: `Bearer ${this.getAccessToken()}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -284,7 +446,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
       );
       orders.push(
         { key: "power", type: "boolean", dispatchConfig: { command: "switch" } },
-        { key: "volume", type: "number", min: 0, max: 100, dispatchConfig: { command: "setVolume" } },
         { key: "mute", type: "boolean", dispatchConfig: { command: "mute" } },
         { key: "input_source", type: "enum", enumValues: [], dispatchConfig: { command: "setInputSource" } },
       );
@@ -299,7 +460,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
         { key: "energy", type: "number", category: "energy", unit: "Wh" },
       );
     } else {
-      // Generic: expose power
       const hasSwitchCap = device.components.some((c) =>
         c.capabilities.some((cap) => cap.id === "switch"),
       );
@@ -373,7 +533,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
     payload["power"] = isOn;
 
     if (isOn) {
-      // Only report cycle data when machine is powered on
       const operatingState =
         this.getAttr(main, "samsungce.washerOperatingState", "operatingState") ??
         this.getAttr(main, "washerOperatingState", "machineState");
@@ -394,7 +553,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
       if (remainingTimeStr !== null) payload["remaining_time_str"] = String(remainingTimeStr);
     }
     // When power=off, don't update state/progress/time — keep last known values.
-    // This prevents state-watch from seeing off→ready transitions on every poll cycle.
 
     // Energy — compute delta from cumulative counter, persisted in settings
     const powerConsumption = this.getAttr(main, "powerConsumptionReport", "powerConsumption") as {
@@ -406,7 +564,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
       const previousStr = this.settingsManager.get(settingsKey);
       const previousEnergy = previousStr !== undefined ? parseFloat(previousStr) : undefined;
 
-      // Always persist current value for next poll (survives restarts)
       this.settingsManager.set(settingsKey, String(currentEnergy));
 
       if (previousEnergy !== undefined && !isNaN(previousEnergy) && currentEnergy >= previousEnergy) {
@@ -415,7 +572,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
           payload["energy"] = delta;
         }
       }
-      // First poll or after restart: skip (no previous value to compute delta)
     }
 
     this.deviceManager.updateDeviceData(INTEGRATION_ID, deviceLabel, payload);
@@ -498,6 +654,9 @@ class SmartThingsPlugin implements IntegrationPlugin {
       });
     }, this.pollIntervalMs);
 
+    // Schedule token auto-refresh
+    this.scheduleRefresh();
+
     this.logger.info(
       { intervalMs: this.pollIntervalMs, devices: this.knownDevices.size },
       "SmartThings plugin started",
@@ -508,6 +667,10 @@ class SmartThingsPlugin implements IntegrationPlugin {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
+    }
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = null;
     }
     this.status = "disconnected";
     this.eventBus.emit({ type: "system.integration.disconnected", integrationId: INTEGRATION_ID });
@@ -525,7 +688,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
     dispatchConfig: Record<string, unknown>,
     value: unknown,
   ): Promise<void> {
-    // Find SmartThings device ID by sourceDeviceId (label)
     let targetDeviceId: string | null = null;
     for (const [id, stDevice] of this.knownDevices) {
       if ((stDevice.label ?? stDevice.name) === device.sourceDeviceId) {
@@ -551,14 +713,6 @@ class SmartThingsPlugin implements IntegrationPlugin {
           component: "main",
           capability: "switch",
           command: value ? "on" : "off",
-        });
-        break;
-      case "setVolume":
-        commands.push({
-          component: "main",
-          capability: "audioVolume",
-          command: "setVolume",
-          arguments: [Number(value)],
         });
         break;
       case "mute":
