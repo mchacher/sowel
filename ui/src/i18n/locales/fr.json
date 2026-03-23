@@ -480,6 +480,13 @@
   "integrations.actions": "Actions",
   "integrations.configuration": "Configuration",
   "integrations.configure": "Configurer",
+  "integrations.authorization": "Autorisation",
+  "integrations.oauthConnect": "Connecter avec Samsung",
+  "integrations.oauthConnected": "Autorisé",
+  "integrations.oauthReconnect": "Ré-autoriser",
+  "integrations.oauthFillFirst": "Remplissez les champs ci-dessus avant de connecter.",
+  "integrations.oauthSuccess": "Compte Samsung connecté avec succès.",
+  "integrations.oauthError": "Échec de l'autorisation",
 
   "calendar.title": "Calendrier",
   "calendar.subtitle": "Planifiez l'activation automatique des modes selon la semaine",

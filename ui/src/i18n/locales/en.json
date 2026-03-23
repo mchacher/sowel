@@ -480,6 +480,13 @@
   "integrations.actions": "Actions",
   "integrations.configuration": "Configuration",
   "integrations.configure": "Configure",
+  "integrations.authorization": "Authorization",
+  "integrations.oauthConnect": "Connect with Samsung",
+  "integrations.oauthConnected": "Authorized",
+  "integrations.oauthReconnect": "Re-authorize",
+  "integrations.oauthFillFirst": "Fill in the credentials above before connecting.",
+  "integrations.oauthSuccess": "Samsung account connected successfully.",
+  "integrations.oauthError": "Authorization failed",
 
   "calendar.title": "Calendar",
   "calendar.subtitle": "Schedule automatic mode activation throughout the week",

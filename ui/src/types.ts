@@ -688,6 +688,7 @@ export interface IntegrationInfo {
   deviceCount: number;
   offlineDeviceCount: number;
   pluginVersion?: string;
+  supportsOAuth?: boolean;
 }
 
 // ============================================================
