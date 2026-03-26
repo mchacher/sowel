@@ -169,7 +169,7 @@ export class NotificationPublishService {
     this.lastEventTs.set(dedupKey, now);
 
     const state = this.recipeManager.getInstanceState(instanceId);
-    this.logger.info(
+    this.logger.debug(
       { instanceId, stateKeys: Object.keys(state) },
       "Processing recipe state change",
     );
