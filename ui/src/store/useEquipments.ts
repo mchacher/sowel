@@ -130,7 +130,7 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
             ...eq,
             dataBindings: eq.dataBindings.map((db) => {
               if (db.alias !== alias) return db;
-              const valueChanged = JSON.stringify(db.value) !== JSON.stringify(value);
+              const valueChanged = JSON.stringify(db.value) !== JSON.stringify(value) || db.category === "action";
               return { ...db, value, lastUpdated: now, lastChanged: valueChanged ? now : db.lastChanged };
             }),
           };
