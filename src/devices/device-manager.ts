@@ -108,7 +108,7 @@ export class DeviceManager {
         "UPDATE device_data SET type = ?, category = ?, unit = ? WHERE id = ?",
       ),
       updateDeviceDataValue: this.db.prepare(
-        "UPDATE device_data SET value = ?, last_updated = datetime('now'), last_changed = CASE WHEN value IS NOT ? THEN datetime('now') ELSE last_changed END WHERE id = ?",
+        "UPDATE device_data SET value = ?, last_updated = datetime('now'), last_changed = CASE WHEN value IS NOT ? OR category = 'action' THEN datetime('now') ELSE last_changed END WHERE id = ?",
       ),
       deleteDeviceDataById: this.db.prepare("DELETE FROM device_data WHERE id = ?"),
       getDeviceDataIds: this.db.prepare("SELECT id, key FROM device_data WHERE device_id = ?"),

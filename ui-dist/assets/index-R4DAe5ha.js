@@ -43889,7 +43889,7 @@ const ca = vr((e, t) => ({
               ...d,
               dataBindings: d.dataBindings.map((k) => {
                 if (k.alias !== r) return k;
-                const M = JSON.stringify(k.value) !== JSON.stringify(i);
+                const M = JSON.stringify(k.value) !== JSON.stringify(i) || k.category === "action";
                 return { ...k, value: i, lastUpdated: s, lastChanged: M ? s : k.lastChanged };
               }),
             };
