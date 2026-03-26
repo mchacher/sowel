@@ -246,7 +246,6 @@ export abstract class MotionLightBase extends Recipe {
     this.overrideMode = false;
     this.lightsOnByRecipe = isAnyLightOn(this.lightIds, ctx);
     ctx.state.delete("overrideMode");
-    ctx.notifyStateChanged();
 
     // Listen to zone aggregation changes (for motion + luminosity)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
@@ -302,7 +301,6 @@ export abstract class MotionLightBase extends Recipe {
     this.ctx.state.delete("timerExpiresAt");
     this.ctx.state.delete("failsafeExpiresAt");
     this.stopExtra();
-    this.ctx.notifyStateChanged();
   }
 
   // ============================================================
@@ -383,7 +381,6 @@ export abstract class MotionLightBase extends Recipe {
         if (Date.now() < this.turnOffGraceUntil) return;
         this.overrideMode = true;
         this.ctx.state.set("overrideMode", true);
-        this.ctx.notifyStateChanged();
         this.startFailsafeTimer();
         this.ctx.log("Light turned on manually above lux threshold — entering override mode");
         return;
@@ -405,7 +402,6 @@ export abstract class MotionLightBase extends Recipe {
         // Manual turnoff while motion active → override
         this.overrideMode = true;
         this.ctx.state.set("overrideMode", true);
-        this.ctx.notifyStateChanged();
         this.startOffTimerForOverrideClear();
         this.ctx.log("Light turned off manually while motion active — entering override mode");
         return;
@@ -455,7 +451,6 @@ export abstract class MotionLightBase extends Recipe {
         this.lightsOnByRecipe = false;
         this.overrideMode = true;
         this.ctx.state.set("overrideMode", true);
-        this.ctx.notifyStateChanged();
         this.cancelOffTimer();
         this.cancelFailsafeTimer();
         this.clearOffTimerState();
@@ -543,7 +538,6 @@ export abstract class MotionLightBase extends Recipe {
 
       this.overrideMode = true;
       this.ctx.state.set("overrideMode", true);
-      this.ctx.notifyStateChanged();
       this.ctx.log("Button pressed — lights off, entering override mode");
 
       this.startOffTimerForOverrideClear();
@@ -561,7 +555,6 @@ export abstract class MotionLightBase extends Recipe {
     if (!this.overrideMode) return;
     this.overrideMode = false;
     this.ctx.state.delete("overrideMode");
-    this.ctx.notifyStateChanged();
   }
 
   private startOffTimerForOverrideClear(): void {
@@ -608,12 +601,10 @@ export abstract class MotionLightBase extends Recipe {
   private persistOffTimerState(): void {
     const expiresAt = new Date(Date.now() + this.timeoutMs).toISOString();
     this.ctx.state.set("timerExpiresAt", expiresAt);
-    this.ctx.notifyStateChanged();
   }
 
   private clearOffTimerState(): void {
     this.ctx.state.delete("timerExpiresAt");
-    this.ctx.notifyStateChanged();
   }
 
   // ============================================================
@@ -671,11 +662,9 @@ export abstract class MotionLightBase extends Recipe {
   private persistFailsafeTimerState(): void {
     const expiresAt = new Date(Date.now() + this.maxOnDurationMs!).toISOString();
     this.ctx.state.set("failsafeExpiresAt", expiresAt);
-    this.ctx.notifyStateChanged();
   }
 
   private clearFailsafeTimerState(): void {
     this.ctx.state.delete("failsafeExpiresAt");
-    this.ctx.notifyStateChanged();
   }
 }

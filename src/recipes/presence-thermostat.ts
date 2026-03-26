@@ -433,7 +433,6 @@ export class PresenceThermostatRecipe extends Recipe {
     ctx.state.delete("overrideMode");
     ctx.state.delete("cocoonMode");
     ctx.state.set("currentMode", "eco");
-    ctx.notifyStateChanged();
 
     // Subscribe to zone changes (motion)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
@@ -492,7 +491,6 @@ export class PresenceThermostatRecipe extends Recipe {
     this.ctx.state.delete("cocoonMode");
     this.ctx.state.delete("timerExpiresAt");
     this.ctx.state.delete("currentMode");
-    this.ctx.notifyStateChanged();
   }
 
   // ── Initial sync — force setpoint on activation ─────────
@@ -564,7 +562,6 @@ export class PresenceThermostatRecipe extends Recipe {
 
     this.overrideMode = true;
     this.ctx.state.set("overrideMode", true);
-    this.ctx.notifyStateChanged();
     this.ctx.log("Manual setpoint change detected — entering override mode");
   }
 
@@ -744,8 +741,6 @@ export class PresenceThermostatRecipe extends Recipe {
 
   private setComfort(reason: string): void {
     const target = this.getTargetComfortTemp();
-    // Set mode in DB FIRST — helpers like clearTimerState/clearCocoonState may trigger
-    // notifyStateChanged, and the notification service reads currentMode from DB at that point.
     this.currentMode = "comfort";
     this.ctx.state.set("currentMode", "comfort");
     this.setpointGraceUntil = Date.now() + 5000;
@@ -757,12 +752,10 @@ export class PresenceThermostatRecipe extends Recipe {
       })
       .catch((err) => this.ctx.log(`Error setting comfort setpoint: ${String(err)}`, "error"));
     this.clearCocoonState();
-    this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${target}°C (comfort)`);
   }
 
   private setEco(reason: string): void {
-    // Set mode in DB FIRST — helpers may trigger notifyStateChanged before we get to ours.
     this.currentMode = "eco";
     this.ctx.state.set("currentMode", "eco");
     this.setpointGraceUntil = Date.now() + 5000;
@@ -775,13 +768,10 @@ export class PresenceThermostatRecipe extends Recipe {
       .catch((err) => this.ctx.log(`Error setting eco setpoint: ${String(err)}`, "error"));
     this.clearCocoonState();
     this.clearOverrideMode();
-    this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.ecoTemp}°C (eco)`);
   }
 
   private setCocoon(reason: string): void {
-    // Set mode in DB FIRST — clearTimerState triggers notifyStateChanged, and the notification
-    // service reads currentMode from DB at that point. Without this, it would read the old mode.
     this.currentMode = "cocoon";
     this.ctx.state.set("currentMode", "cocoon");
     this.ctx.state.set("cocoonMode", true);
@@ -795,12 +785,10 @@ export class PresenceThermostatRecipe extends Recipe {
         if (!r.success) this.ctx.log(`Setpoint → ${this.cocoonTemp}°C FAILED: ${r.error}`, "error");
       })
       .catch((err) => this.ctx.log(`Error setting cocoon setpoint: ${String(err)}`, "error"));
-    this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.cocoonTemp}°C (cocoon)`);
   }
 
   private setNight(reason: string): void {
-    // Set mode in DB FIRST — helpers may trigger notifyStateChanged before we get to ours.
     this.currentMode = "night";
     this.ctx.state.set("currentMode", "night");
     this.cancelEcoTimer();
@@ -814,7 +802,6 @@ export class PresenceThermostatRecipe extends Recipe {
       })
       .catch((err) => this.ctx.log(`Error setting night setpoint: ${String(err)}`, "error"));
     this.clearCocoonState();
-    this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — setpoint → ${this.nightTemp}°C (night)`);
   }
 
@@ -830,7 +817,6 @@ export class PresenceThermostatRecipe extends Recipe {
     if (!this.overrideMode) return;
     this.overrideMode = false;
     this.ctx.state.delete("overrideMode");
-    this.ctx.notifyStateChanged();
   }
 
   private startEcoTimerForOverrideClear(): void {
@@ -865,12 +851,10 @@ export class PresenceThermostatRecipe extends Recipe {
   private persistTimerState(): void {
     const expiresAt = new Date(Date.now() + this.timeoutMs).toISOString();
     this.ctx.state.set("timerExpiresAt", expiresAt);
-    this.ctx.notifyStateChanged();
   }
 
   private clearTimerState(): void {
     this.ctx.state.delete("timerExpiresAt");
-    this.ctx.notifyStateChanged();
   }
 }
 

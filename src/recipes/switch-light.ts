@@ -173,7 +173,6 @@ export class SwitchLightRecipe extends Recipe {
     }
     this.unsubs = [];
     this.ctx.state.delete("failsafeExpiresAt");
-    this.ctx.notifyStateChanged();
   }
 
   // ============================================================
@@ -263,11 +262,9 @@ export class SwitchLightRecipe extends Recipe {
   private persistFailsafeTimerState(): void {
     const expiresAt = new Date(Date.now() + this.maxOnDurationMs!).toISOString();
     this.ctx.state.set("failsafeExpiresAt", expiresAt);
-    this.ctx.notifyStateChanged();
   }
 
   private clearFailsafeTimerState(): void {
     this.ctx.state.delete("failsafeExpiresAt");
-    this.ctx.notifyStateChanged();
   }
 }

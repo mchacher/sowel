@@ -432,7 +432,10 @@ export class RecipeManager {
   }
 
   private buildContext(instanceId: string, recipeId: string): RecipeContext {
-    const stateStore = new RecipeStateStore(this.db, instanceId);
+    const onChanged = () => {
+      this.eventBus.emit({ type: "recipe.instance.state.changed", instanceId, recipeId });
+    };
+    const stateStore = new RecipeStateStore(this.db, instanceId, onChanged);
     return {
       eventBus: this.eventBus,
       equipmentManager: this.equipmentManager,
@@ -445,9 +448,6 @@ export class RecipeManager {
         const recipeName = this.registry.get(recipeId)?.info.name;
         const childLogger = this.logger.child({ instanceId, recipeId, recipeName });
         childLogger[level]({ instanceId, recipeId, recipeName }, message);
-      },
-      notifyStateChanged: () => {
-        this.eventBus.emit({ type: "recipe.instance.state.changed", instanceId, recipeId });
       },
     };
   }

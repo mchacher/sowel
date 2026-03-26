@@ -252,7 +252,6 @@ export class StateWatchRecipe extends Recipe {
     this.ctx.state.delete("alarmCount");
     this.ctx.state.delete("currentValue");
     this.ctx.state.delete("watchStartedAt");
-    this.ctx.notifyStateChanged();
   }
 
   // ============================================================
@@ -275,7 +274,6 @@ export class StateWatchRecipe extends Recipe {
         this.ctx.state.set("alarmSince", null);
         this.ctx.state.set("alarmCount", 0);
         this.ctx.state.delete("watchStartedAt");
-        this.ctx.notifyStateChanged();
         this.ctx.log("Alarm cleared on restart");
       }
       return;
@@ -353,7 +351,6 @@ export class StateWatchRecipe extends Recipe {
       this.ctx.state.set("alarm", false);
       this.ctx.state.set("alarmSince", null);
       this.ctx.state.set("alarmCount", 0);
-      this.ctx.notifyStateChanged();
       this.ctx.log(`${this.dataKey}=${String(newValue)} — alarm cleared`);
     } else {
       this.ctx.log(`${this.dataKey}=${String(newValue)}`);
@@ -373,7 +370,6 @@ export class StateWatchRecipe extends Recipe {
       this.ctx.state.set("alarmSince", new Date().toISOString());
     }
     this.ctx.state.set("alarmCount", alarmCount);
-    this.ctx.notifyStateChanged();
 
     if (!wasInAlarm) {
       this.ctx.log(`ALARM: ${this.dataKey}=${this.watchValue}`);
@@ -428,7 +424,6 @@ export class StateWatchRecipe extends Recipe {
       this.ctx.state.set("alarmSince", new Date().toISOString());
     }
     this.ctx.state.set("alarmCount", alarmCount);
-    this.ctx.notifyStateChanged();
     this.ctx.log(
       `Check ${this.checkTimeStr}: ${this.dataKey}=${this.watchValue} — ALARM #${alarmCount}`,
     );

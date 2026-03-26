@@ -18,8 +18,6 @@ export interface RecipeContext {
   logger: Logger;
   state: RecipeStateStore;
   log: (message: string, level?: "info" | "warn" | "error") => void;
-  /** Notify UI that recipe state has changed (e.g. timer started/cancelled). */
-  notifyStateChanged: () => void;
 }
 
 // ============================================================

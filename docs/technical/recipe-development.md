@@ -157,15 +157,14 @@ Add a new key to the `i18n` record in your recipe class. No platform files to mo
 
 The `ctx` object injected into `validate()` and `start()` provides:
 
-| Property               | Type               | Purpose                                    |
-| ---------------------- | ------------------ | ------------------------------------------ |
-| `eventBus`             | `EventBus`         | Subscribe to typed events                  |
-| `equipmentManager`     | `EquipmentManager` | Query equipment state, execute orders      |
-| `zoneManager`          | `ZoneManager`      | Query zone definitions                     |
-| `zoneAggregator`       | `ZoneAggregator`   | Query aggregated zone data                 |
-| `state`                | `RecipeStateStore` | Persist key-value state (survives restart) |
-| `log(msg, level?)`     | function           | Write to recipe execution log              |
-| `notifyStateChanged()` | function           | Tell UI that state changed (timers)        |
+| Property           | Type               | Purpose                                                                   |
+| ------------------ | ------------------ | ------------------------------------------------------------------------- |
+| `eventBus`         | `EventBus`         | Subscribe to typed events                                                 |
+| `equipmentManager` | `EquipmentManager` | Query equipment state, execute orders                                     |
+| `zoneManager`      | `ZoneManager`      | Query zone definitions                                                    |
+| `zoneAggregator`   | `ZoneAggregator`   | Query aggregated zone data                                                |
+| `state`            | `RecipeStateStore` | Persist key-value state (survives restart, auto-notifies UI on mutations) |
+| `log(msg, level?)` | function           | Write to recipe execution log                                             |
 
 ## Shared Helpers
 

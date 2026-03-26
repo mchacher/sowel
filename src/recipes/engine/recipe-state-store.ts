@@ -6,10 +6,12 @@ import type Database from "better-sqlite3";
 
 export class RecipeStateStore {
   private stmts: ReturnType<typeof this.prepareStatements>;
+  private dirty = false;
 
   constructor(
     private db: Database.Database,
     private instanceId: string,
+    private onChanged?: () => void,
   ) {
     this.stmts = this.prepareStatements();
   }
@@ -26,6 +28,15 @@ export class RecipeStateStore {
     };
   }
 
+  private scheduleNotify(): void {
+    if (!this.onChanged || this.dirty) return;
+    this.dirty = true;
+    queueMicrotask(() => {
+      this.dirty = false;
+      this.onChanged!();
+    });
+  }
+
   get(key: string): unknown | null {
     const row = this.stmts.get.get(this.instanceId, key) as { value: string | null } | undefined;
     if (!row || row.value === null) return null;
@@ -39,13 +50,16 @@ export class RecipeStateStore {
   set(key: string, value: unknown): void {
     const serialized = value === undefined ? null : JSON.stringify(value);
     this.stmts.set.run(this.instanceId, key, serialized);
+    this.scheduleNotify();
   }
 
   delete(key: string): void {
     this.stmts.delete.run(this.instanceId, key);
+    this.scheduleNotify();
   }
 
   clear(): void {
     this.stmts.clear.run(this.instanceId);
+    this.scheduleNotify();
   }
 }

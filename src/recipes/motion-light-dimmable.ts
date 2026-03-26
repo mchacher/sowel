@@ -316,7 +316,6 @@ export class MotionLightDimmableRecipe extends MotionLightBase {
 
     this.overrideMode = true;
     this.ctx.state.set("overrideMode", true);
-    this.ctx.notifyStateChanged();
     this.ctx.log("Manual brightness change detected — entering override mode");
   }
 }

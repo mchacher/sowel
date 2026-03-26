@@ -214,7 +214,6 @@ export class PresenceHeaterRecipe extends Recipe {
     this.overrideMode = false;
     this.stateGraceUntil = 0;
     ctx.state.delete("overrideMode");
-    ctx.notifyStateChanged();
 
     // Subscribe to zone changes (motion)
     const unsubZone = ctx.eventBus.onType("zone.data.changed", (event) => {
@@ -261,7 +260,6 @@ export class PresenceHeaterRecipe extends Recipe {
     this.ctx.state.delete("timerExpiresAt");
     this.ctx.state.delete("failsafeExpiresAt");
     this.ctx.state.delete("currentMode");
-    this.ctx.notifyStateChanged();
   }
 
   // ── Initial sync ─────────────────────────────────────────
@@ -329,7 +327,6 @@ export class PresenceHeaterRecipe extends Recipe {
     ) {
       this.overrideMode = true;
       this.ctx.state.set("overrideMode", true);
-      this.ctx.notifyStateChanged();
       this.ctx.log("Manual relay change detected — entering override mode");
     }
   }
@@ -392,7 +389,6 @@ export class PresenceHeaterRecipe extends Recipe {
 
   // Fil pilote: comfort = relay OFF
   private setComfort(reason: string): void {
-    // Set mode in DB FIRST — notification service reads currentMode when notifyStateChanged fires.
     this.currentMode = "comfort";
     this.ctx.state.set("currentMode", "comfort");
     this.stateGraceUntil = Date.now() + 5000;
@@ -405,14 +401,12 @@ export class PresenceHeaterRecipe extends Recipe {
         })
         .catch((err) => this.ctx.log(`Error setting heater to comfort: ${String(err)}`, "error"));
     }
-    this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — heaters set to comfort`);
     this.startFailsafeTimer();
   }
 
   // Fil pilote: eco = relay ON
   private setEco(reason: string): void {
-    // Set mode in DB FIRST — notification service reads currentMode when notifyStateChanged fires.
     this.currentMode = "eco";
     this.ctx.state.set("currentMode", "eco");
     this.stateGraceUntil = Date.now() + 5000;
@@ -427,7 +421,6 @@ export class PresenceHeaterRecipe extends Recipe {
     }
     this.clearOverrideMode();
     this.cancelFailsafeTimer();
-    this.ctx.notifyStateChanged();
     this.ctx.log(`${reason} — heaters set to eco`);
   }
 
@@ -437,7 +430,6 @@ export class PresenceHeaterRecipe extends Recipe {
     if (!this.overrideMode) return;
     this.overrideMode = false;
     this.ctx.state.delete("overrideMode");
-    this.ctx.notifyStateChanged();
   }
 
   private startEcoTimerForOverrideClear(): void {
@@ -472,12 +464,10 @@ export class PresenceHeaterRecipe extends Recipe {
   private persistTimerState(): void {
     const expiresAt = new Date(Date.now() + this.timeoutMs).toISOString();
     this.ctx.state.set("timerExpiresAt", expiresAt);
-    this.ctx.notifyStateChanged();
   }
 
   private clearTimerState(): void {
     this.ctx.state.delete("timerExpiresAt");
-    this.ctx.notifyStateChanged();
   }
 
   // ── Failsafe timer management ────────────────────────────
@@ -496,7 +486,6 @@ export class PresenceHeaterRecipe extends Recipe {
     }, this.maxOnDurationMs);
     const expiresAt = new Date(Date.now() + this.maxOnDurationMs).toISOString();
     this.ctx.state.set("failsafeExpiresAt", expiresAt);
-    this.ctx.notifyStateChanged();
   }
 
   private cancelFailsafeTimer(): void {
@@ -504,7 +493,6 @@ export class PresenceHeaterRecipe extends Recipe {
       clearTimeout(this.failsafeTimer);
       this.failsafeTimer = null;
       this.ctx.state.delete("failsafeExpiresAt");
-      this.ctx.notifyStateChanged();
     }
   }
 }

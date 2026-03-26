@@ -163,7 +163,7 @@ export class NotificationPublishService {
     const now = Date.now();
     const last = this.lastEventTs.get(dedupKey);
     if (last && now - last < 1000) {
-      this.logger.warn({ instanceId, gap: now - last }, "Recipe event deduped (burst < 1s)");
+      this.logger.debug({ instanceId, gap: now - last }, "Recipe event deduped (burst < 1s)");
       return;
     }
     this.lastEventTs.set(dedupKey, now);
