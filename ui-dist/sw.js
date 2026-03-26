@@ -16,12 +16,12 @@ if (!self.define) {
       })
   );
   self.define = (s, r) => {
-    const o = e || ("document" in self ? document.currentScript.src : "") || location.href;
-    if (i[o]) return;
-    let d = {};
-    const t = (e) => n(e, o),
-      f = { module: { uri: o }, exports: d, require: t };
-    i[o] = Promise.all(s.map((e) => f[e] || t(e))).then((e) => (r(...e), d));
+    const d = e || ("document" in self ? document.currentScript.src : "") || location.href;
+    if (i[d]) return;
+    let o = {};
+    const t = (e) => n(e, d),
+      f = { module: { uri: d }, exports: o, require: t };
+    i[d] = Promise.all(s.map((e) => f[e] || t(e))).then((e) => (r(...e), o));
   };
 }
 define(["./workbox-3e722498"], function (e) {
@@ -31,9 +31,9 @@ define(["./workbox-3e722498"], function (e) {
     e.precacheAndRoute(
       [
         { url: "registerSW.js", revision: "1872c500de691dce40960bb85481de07" },
-        { url: "index.html", revision: "ff9c7fa97114690a99dbe305222ba8bd" },
+        { url: "index.html", revision: "86d9dd731e5f22f5b2345e0209d7707e" },
+        { url: "assets/index-R4DAe5ha.js", revision: null },
         { url: "assets/index-D3mxYKOT.css", revision: null },
-        { url: "assets/index-5yOyYKIg.js", revision: null },
         { url: "apple-touch-icon-180x180.png", revision: "df3e70f0e86dd1f9f57527ff6a84915c" },
         { url: "favicon.svg", revision: "6ea2ecf5dcba8e639b91707c9e559b8c" },
         { url: "pwa-192x192.png", revision: "7e1a4d770576c03eddf4351c6f3e7ee1" },
