@@ -313,6 +313,7 @@ export class PluginManager {
           version: row.version,
           description: "",
           icon: "Puzzle",
+          repo: this.getRepoFromRegistry(row.id) ?? "",
         };
       }
 
@@ -569,6 +570,9 @@ export class PluginManager {
     }
     if (!manifest.icon || typeof manifest.icon !== "string") {
       throw new Error("Plugin manifest missing 'icon'");
+    }
+    if (!manifest.repo || typeof manifest.repo !== "string") {
+      throw new Error("Plugin manifest missing 'repo' (GitHub owner/repo)");
     }
   }
 }

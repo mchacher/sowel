@@ -1,9 +1,10 @@
 {
   "id": "smartthings",
   "name": "Samsung SmartThings",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Samsung SmartThings devices (TV, washing machine, and more)",
   "icon": "Smartphone",
+  "repo": "mchacher/sowel-plugin-smartthings",
   "author": "mchacher",
   "sowelVersion": ">=0.10.0",
   "settings": [

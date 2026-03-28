@@ -1,9 +1,10 @@
 {
   "id": "weather-forecast",
   "name": "Weather Forecast",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Weather forecast via Open-Meteo API (free, no API key)",
   "icon": "CloudSun",
+  "repo": "mchacher/sowel-plugin-weather-forecast",
   "author": "mchacher",
   "sowelVersion": ">=0.10.0",
   "settings": [

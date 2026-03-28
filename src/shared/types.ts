@@ -658,8 +658,8 @@ export interface PluginManifest {
   version: string;
   description: string;
   icon: string; // Lucide icon name
+  repo: string; // GitHub owner/repo — required for backup/restore reinstall
   author?: string;
-  repo?: string; // GitHub owner/repo — present in store entries
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
 }

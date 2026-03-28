@@ -1169,6 +1169,9 @@ sowel/
 │   │   ├── panasonic-cc/           # Panasonic Comfort Cloud plugin (AC units)
 │   │   └── mcz-maestro/            # MCZ Maestro plugin (pellet stoves)
 │   │
+│   ├── plugins/
+│   │   └── plugin-manager.ts       # Plugin lifecycle: install, load, update, uninstall
+│   │
 │   ├── ai/
 │   │   ├── ai-manager.ts           # Orchestrator: intent detection, context building, response handling
 │   │   ├── context-builder.ts      # Build compact home context JSON for LLM prompts
@@ -1377,6 +1380,35 @@ sowel/
 - Dynamic settings per plugin (UI-configurable)
 - Order dispatch routes to correct plugin based on device source
 - **Deliverable**: extensible multi-source device support
+
+#### External Plugin System
+
+External plugins extend Sowel with community or third-party integrations. They are distributed as GitHub repositories, installed via the Plugin Manager, and managed from the UI.
+
+**Plugin Manifest (`manifest.json`)** — required at the root of every plugin repository:
+
+| Field          | Type                      | Required | Description                                          |
+| -------------- | ------------------------- | -------- | ---------------------------------------------------- |
+| `id`           | string                    | Yes      | Unique plugin ID (e.g., `"smartthings"`)             |
+| `name`         | string                    | Yes      | Human-readable name (e.g., `"Samsung SmartThings"`)  |
+| `version`      | string                    | Yes      | Semver version (e.g., `"0.5.2"`)                     |
+| `description`  | string                    | Yes      | Short description for UI display                     |
+| `icon`         | string                    | Yes      | Lucide icon name (e.g., `"Smartphone"`)              |
+| `repo`         | string                    | Yes      | GitHub `owner/repo` — used for updates and reinstall |
+| `author`       | string                    | No       | Plugin author name                                   |
+| `sowelVersion` | string                    | No       | Semver constraint for minimum Sowel version          |
+| `settings`     | `IntegrationSettingDef[]` | No       | Configuration schema (rendered in UI)                |
+
+**Plugin lifecycle:**
+
+1. **Install**: `POST /api/v1/plugins/install` with `{ repo: "owner/repo" }` → downloads latest GitHub release tarball, extracts, `npm install`, builds from source, registers in `plugins` table
+2. **Load** (startup): For each enabled plugin in `plugins` table, dynamic-import `plugins/{id}/dist/index.js` → calls `createPlugin(deps)` → registers with `IntegrationRegistry`
+3. **Update**: `POST /api/v1/plugins/{id}/update` → resolves repo from manifest `repo` field (or fallback to `registry.json`), downloads latest release, replaces files, reloads
+4. **Uninstall**: `DELETE /api/v1/plugins/{id}` → stops plugin, removes from `plugins` table, deletes `plugins/{id}/` directory
+
+**Plugin Store** (`plugins/registry.json`): A static JSON array listing available plugins with their `id`, `name`, `description`, `icon`, `repo`, `version`, and `tags`. Used by the UI to browse and install plugins.
+
+**Backup/Restore**: The `plugins` table is included in backup. On restore, if plugin files are missing on disk, they can be reinstalled from GitHub using the `repo` field stored in the manifest column.
 
 ### V0.10b — Panasonic Comfort Cloud Integration
 
