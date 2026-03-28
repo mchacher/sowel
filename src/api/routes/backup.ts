@@ -1,4 +1,7 @@
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { resolve, dirname } from "node:path";
 import archiver from "archiver";
+import AdmZip from "adm-zip";
 import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import type { Logger } from "../../core/logger.js";
@@ -8,6 +11,7 @@ interface BackupDeps {
   db: Database.Database;
   influxClient: InfluxClient;
   logger: Logger;
+  dataDir: string; // path to data/ directory
 }
 
 // Tables to export, in dependency order (parents first)
@@ -42,134 +46,217 @@ const BACKUP_TABLES = [
 // Reverse order for deletion (children first)
 const DELETE_ORDER = [...BACKUP_TABLES].reverse();
 
+// Data files to include in backup (relative to dataDir)
+const DATA_FILES = [".jwt-secret", "panasonic-tokens.json", "netatmo-tokens.json"];
+
 interface BackupPayload {
-  version: 1;
+  version: 2;
   exportedAt: string;
   tables: Record<string, unknown[]>;
 }
 
+// InfluxDB bucket definitions for export/restore
+interface InfluxBucketDef {
+  filename: string;
+  bucketSuffix: string; // "" for raw, "-hourly", "-daily", etc.
+  range: string;
+}
+
+const INFLUX_BUCKETS: InfluxBucketDef[] = [
+  { filename: "influx-raw.lp", bucketSuffix: "", range: "-7d" },
+  { filename: "influx-hourly.lp", bucketSuffix: "-hourly", range: "-90d" },
+  { filename: "influx-daily.lp", bucketSuffix: "-daily", range: "-5y" },
+  { filename: "influx-energy-hourly.lp", bucketSuffix: "-energy-hourly", range: "-2y" },
+  { filename: "influx-energy-daily.lp", bucketSuffix: "-energy-daily", range: "-10y" },
+];
+
+/**
+ * Convert a Flux query result row to InfluxDB line protocol.
+ * Format: measurement,tag1=val1,tag2=val2 field1=value1,field2="str" timestamp_ns
+ */
+function rowToLineProtocol(row: Record<string, string>): string | null {
+  const measurement = row["_measurement"];
+  const field = row["_field"];
+  const value = row["_value"];
+  const time = row["_time"];
+
+  if (!measurement || !field || value === undefined || value === "" || !time) return null;
+
+  // Collect tags (skip internal Flux columns)
+  const skipKeys = new Set([
+    "_measurement",
+    "_field",
+    "_value",
+    "_time",
+    "_start",
+    "_stop",
+    "result",
+    "table",
+    "",
+  ]);
+  const tags: string[] = [];
+  for (const [k, v] of Object.entries(row)) {
+    if (skipKeys.has(k) || v === undefined || v === "") continue;
+    tags.push(`${escapeTag(k)}=${escapeTag(v)}`);
+  }
+
+  // Build tag set
+  const tagSet = tags.length > 0 ? `,${tags.join(",")}` : "";
+
+  // Build field value: try number first, then string
+  const numVal = Number(value);
+  const fieldValue =
+    !isNaN(numVal) && value.trim() !== "" ? `${numVal}` : `"${escapeFieldString(value)}"`;
+
+  // Convert ISO timestamp to nanoseconds
+  const tsNs = new Date(time).getTime() * 1_000_000;
+
+  return `${escapeTag(measurement)}${tagSet} ${escapeTag(field)}=${fieldValue} ${tsNs}`;
+}
+
+function escapeTag(s: string): string {
+  return s.replace(/,/g, "\\,").replace(/ /g, "\\ ").replace(/=/g, "\\=");
+}
+
+function escapeFieldString(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): void {
-  const { db, influxClient, logger: parentLogger } = deps;
+  const { db, influxClient, logger: parentLogger, dataDir } = deps;
   const logger = parentLogger.child({ module: "backup" });
 
-  // GET /api/v1/backup — Export full configuration as ZIP (SQLite JSON + InfluxDB CSV)
+  // ============================================================
+  // GET /api/v1/backup — Export full system as ZIP
+  // ============================================================
   app.get("/api/v1/backup", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {
       return reply.code(403).send({ error: "Admin access required" });
     }
 
-    // Build SQLite JSON payload
+    // 1. Collect SQLite data
     const tables: Record<string, unknown[]> = {};
     let totalRows = 0;
     for (const table of BACKUP_TABLES) {
       tables[table] = db.prepare(`SELECT * FROM ${table}`).all();
       totalRows += tables[table].length;
     }
+
+    const sqlitePayload: BackupPayload = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      tables,
+    };
+
     logger.info(
       { tables: BACKUP_TABLES.length, totalRows },
       "Backup export — SQLite data collected",
     );
 
-    const sqlitePayload: BackupPayload = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      tables,
-    };
-
-    // Export InfluxDB data if connected
-    const influxConfig = influxClient.getConfig();
-    const influxConnected = influxClient.isConnected() && influxConfig;
-
-    const influxCsvs: { name: string; csv: string }[] = [];
-    if (influxConnected) {
-      const client = influxClient.getClient();
-      if (client) {
-        const queryApi = client.getQueryApi(influxConfig.org);
-        const buckets = [
-          { name: "influx-raw.csv", bucket: influxConfig.bucket, range: "-7d" },
-          { name: "influx-hourly.csv", bucket: `${influxConfig.bucket}-hourly`, range: "-90d" },
-          { name: "influx-daily.csv", bucket: `${influxConfig.bucket}-daily`, range: "-5y" },
-          {
-            name: "influx-energy-hourly.csv",
-            bucket: `${influxConfig.bucket}-energy-hourly`,
-            range: "-2y",
-          },
-          {
-            name: "influx-energy-daily.csv",
-            bucket: `${influxConfig.bucket}-energy-daily`,
-            range: "-10y",
-          },
-        ];
-
-        for (const b of buckets) {
-          try {
-            const flux = `from(bucket: "${b.bucket}")
-  |> range(start: ${b.range})
-  |> filter(fn: (r) => r._measurement == "equipment_data")`;
-
-            const csv = await queryApi.queryRaw(flux);
-
-            if (csv.trim().length > 0) {
-              influxCsvs.push({ name: b.name, csv });
-            }
-          } catch (err) {
-            logger.warn({ err, bucket: b.bucket }, "Failed to export InfluxDB bucket");
-          }
-        }
-      }
-    }
-
-    const dateStr = new Date().toISOString().slice(0, 10);
-
-    // If no InfluxDB data, return JSON directly (backward compatible)
-    if (influxCsvs.length === 0) {
-      logger.info("Configuration exported (JSON only, no InfluxDB data)");
-      return reply
-        .header("Content-Disposition", `attachment; filename="sowel-backup-${dateStr}.json"`)
-        .send(sqlitePayload);
-    }
-
-    // Build ZIP archive with SQLite JSON + InfluxDB CSVs
-    logger.info(
-      { influxFiles: influxCsvs.map((f) => f.name) },
-      "Configuration exported (ZIP with InfluxDB data)",
-    );
-
+    // 2. Build ZIP
     const archive = archiver("zip", { zlib: { level: 6 } });
+    const dateStr = new Date().toISOString().slice(0, 10);
 
     reply
       .header("Content-Type", "application/zip")
       .header("Content-Disposition", `attachment; filename="sowel-backup-${dateStr}.zip"`);
 
     // Append SQLite JSON
-    archive.append(JSON.stringify(sqlitePayload, null, 2), {
-      name: "sowel-backup.json",
-    });
+    archive.append(JSON.stringify(sqlitePayload, null, 2), { name: "sowel-backup.json" });
 
-    // Append InfluxDB CSVs
-    for (const f of influxCsvs) {
-      archive.append(f.csv, { name: f.name });
+    // 3. Export InfluxDB buckets as line protocol
+    const influxConfig = influxClient.getConfig();
+    if (influxClient.isConnected() && influxConfig) {
+      const client = influxClient.getClient();
+      if (client) {
+        const queryApi = client.getQueryApi(influxConfig.org);
+
+        for (const bucketDef of INFLUX_BUCKETS) {
+          try {
+            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
+            const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
+
+            const rows = await queryApi.collectRows<Record<string, string>>(flux);
+            if (rows.length === 0) continue;
+
+            const lines: string[] = [];
+            for (const row of rows) {
+              const line = rowToLineProtocol(row);
+              if (line) lines.push(line);
+            }
+
+            if (lines.length > 0) {
+              archive.append(lines.join("\n"), { name: bucketDef.filename });
+              logger.debug(
+                { bucket, lines: lines.length },
+                "InfluxDB bucket exported as line protocol",
+              );
+            }
+          } catch (err) {
+            logger.warn({ err, filename: bucketDef.filename }, "Failed to export InfluxDB bucket");
+          }
+        }
+      }
     }
 
+    // 4. Append data files (tokens, JWT secret)
+    for (const filename of DATA_FILES) {
+      const filePath = resolve(dataDir, filename);
+      if (existsSync(filePath)) {
+        try {
+          archive.append(readFileSync(filePath), { name: `data/${filename}` });
+        } catch (err) {
+          logger.warn({ err, filename }, "Failed to include data file in backup");
+        }
+      }
+    }
+
+    logger.info("Backup export completed — ZIP archive ready");
     archive.finalize();
 
     return reply.send(archive);
   });
 
-  // POST /api/v1/backup — Restore configuration from JSON
-  app.post<{ Body: BackupPayload }>("/api/v1/backup", async (request, reply) => {
+  // ============================================================
+  // POST /api/v1/backup — Restore from ZIP
+  // ============================================================
+  app.post("/api/v1/backup", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {
       return reply.code(403).send({ error: "Admin access required" });
     }
 
-    const payload = request.body;
-
-    // Validate structure
-    if (!payload || payload.version !== 1 || !payload.tables) {
-      return reply.code(400).send({ error: "Invalid backup format" });
+    // Accept multipart/form-data with a ZIP file
+    const data = await request.file();
+    if (!data) {
+      return reply.code(400).send({ error: "No file uploaded" });
     }
 
-    // Validate that all tables in the payload are known
+    const buffer = await data.toBuffer();
+    let zip: AdmZip;
+    try {
+      zip = new AdmZip(buffer);
+    } catch {
+      return reply.code(400).send({ error: "Invalid ZIP file" });
+    }
+
+    // 1. Extract and validate SQLite payload
+    const jsonEntry = zip.getEntry("sowel-backup.json");
+    if (!jsonEntry) {
+      return reply.code(400).send({ error: "ZIP missing sowel-backup.json" });
+    }
+
+    let payload: BackupPayload;
+    try {
+      payload = JSON.parse(jsonEntry.getData().toString("utf-8")) as BackupPayload;
+    } catch {
+      return reply.code(400).send({ error: "Invalid JSON in sowel-backup.json" });
+    }
+
+    if (!payload || payload.version !== 2 || !payload.tables) {
+      return reply.code(400).send({ error: "Invalid backup format (expected version 2)" });
+    }
+
+    // Validate table names
     for (const tableName of Object.keys(payload.tables)) {
       if (!(BACKUP_TABLES as readonly string[]).includes(tableName)) {
         return reply.code(400).send({ error: `Unknown table: ${tableName}` });
@@ -179,22 +266,19 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
       }
     }
 
+    // 2. Restore SQLite
     try {
       const restore = db.transaction(() => {
-        // Disable foreign keys during restore
         db.pragma("foreign_keys = OFF");
 
-        // Delete all data in reverse dependency order
         for (const table of DELETE_ORDER) {
           db.prepare(`DELETE FROM ${table}`).run();
         }
 
-        // Insert data in dependency order
         for (const table of BACKUP_TABLES) {
           const rows = payload.tables[table];
           if (!rows || rows.length === 0) continue;
 
-          // Get column names from the first row
           const firstRow = rows[0] as Record<string, unknown>;
           const columns = Object.keys(firstRow);
           const placeholders = columns.map(() => "?").join(", ");
@@ -208,7 +292,6 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
           }
         }
 
-        // Re-enable foreign keys and verify integrity
         db.pragma("foreign_keys = ON");
 
         const violations = db.pragma("foreign_key_check") as {
@@ -235,22 +318,100 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
         0,
       );
       logger.info(
-        {
-          tables: Object.keys(payload.tables).length,
-          totalRows: totalRestoredRows,
-          exportedAt: payload.exportedAt,
-        },
-        "Configuration restored from backup",
+        { tables: Object.keys(payload.tables).length, totalRows: totalRestoredRows },
+        "SQLite data restored",
       );
-
-      return { success: true, restoredAt: new Date().toISOString() };
     } catch (err) {
-      logger.error({ err }, "Backup restore failed");
-      // Re-enable foreign keys even on error
+      logger.error({ err }, "SQLite restore failed");
       db.pragma("foreign_keys = ON");
       return reply.code(500).send({
-        error: err instanceof Error ? err.message : "Restore failed",
+        error: err instanceof Error ? err.message : "SQLite restore failed",
       });
     }
+
+    // 3. Restore InfluxDB line protocol files
+    let influxPointsRestored = 0;
+    const influxConfig = influxClient.getConfig();
+    if (influxClient.isConnected() && influxConfig) {
+      for (const bucketDef of INFLUX_BUCKETS) {
+        const entry = zip.getEntry(bucketDef.filename);
+        if (!entry) continue;
+
+        const lp = entry.getData().toString("utf-8").trim();
+        if (!lp) continue;
+
+        const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
+        try {
+          const lines = lp.split("\n");
+          // Write in batches of 5000 lines via HTTP API
+          const batchSize = 5000;
+          for (let i = 0; i < lines.length; i += batchSize) {
+            const batch = lines.slice(i, i + batchSize).join("\n");
+            const resp = await fetch(
+              `${influxConfig.url}/api/v2/write?org=${encodeURIComponent(influxConfig.org)}&bucket=${encodeURIComponent(bucket)}&precision=ns`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Token ${influxConfig.token}`,
+                  "Content-Type": "text/plain",
+                },
+                body: batch,
+              },
+            );
+            if (!resp.ok) {
+              const text = await resp.text();
+              logger.warn(
+                { bucket, status: resp.status, body: text.slice(0, 200) },
+                "InfluxDB write batch failed",
+              );
+            }
+          }
+          influxPointsRestored += lines.length;
+          logger.debug({ bucket, lines: lines.length }, "InfluxDB bucket restored");
+        } catch (err) {
+          logger.warn({ err, bucket }, "Failed to restore InfluxDB bucket");
+        }
+      }
+
+      if (influxPointsRestored > 0) {
+        logger.info({ points: influxPointsRestored }, "InfluxDB data restored");
+      }
+    } else {
+      logger.warn("InfluxDB not connected — skipping time-series restore");
+    }
+
+    // 4. Restore data files
+    let filesRestored = 0;
+    for (const filename of DATA_FILES) {
+      const entry = zip.getEntry(`data/${filename}`);
+      if (!entry) continue;
+
+      try {
+        const filePath = resolve(dataDir, filename);
+        mkdirSync(dirname(filePath), { recursive: true });
+        writeFileSync(filePath, entry.getData());
+        filesRestored++;
+        logger.debug({ filename }, "Data file restored");
+      } catch (err) {
+        logger.warn({ err, filename }, "Failed to restore data file");
+      }
+    }
+
+    if (filesRestored > 0) {
+      logger.info({ filesRestored }, "Data files restored");
+    }
+
+    logger.info(
+      { exportedAt: payload.exportedAt, influxPointsRestored, filesRestored },
+      "Backup restore completed — restart server to reload",
+    );
+
+    return {
+      success: true,
+      restoredAt: new Date().toISOString(),
+      influxPointsRestored,
+      filesRestored,
+      restartRequired: true,
+    };
   });
 }

@@ -3,6 +3,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
@@ -84,6 +85,7 @@ interface ServerDeps {
   logBuffer: LogRingBuffer;
   logger: Logger;
   corsOrigins: string[];
+  dataDir: string;
 }
 
 export async function createServer(deps: ServerDeps) {
@@ -114,6 +116,7 @@ export async function createServer(deps: ServerDeps) {
     logBuffer,
     logger,
     corsOrigins,
+    dataDir,
   } = deps;
 
   const app = Fastify({
@@ -131,6 +134,9 @@ export async function createServer(deps: ServerDeps) {
     max: 300,
     timeWindow: "1 minute",
   });
+
+  // Multipart file uploads (for backup restore)
+  await app.register(multipart, { limits: { fileSize: 500 * 1024 * 1024 } }); // 500 MB
 
   // WebSocket
   await app.register(websocket);
@@ -158,7 +164,7 @@ export async function createServer(deps: ServerDeps) {
   registerRecipeRoutes(app, { recipeManager, logger });
   registerModeRoutes(app, { modeManager, buttonActionManager, logger });
   registerCalendarRoutes(app, { calendarManager, logger });
-  registerBackupRoutes(app, { db, influxClient, logger });
+  registerBackupRoutes(app, { db, influxClient, logger, dataDir });
   registerSettingsRoutes(app, { settingsManager, eventBus, logger });
   registerIntegrationRoutes(app, {
     integrationRegistry,

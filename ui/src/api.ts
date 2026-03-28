@@ -555,7 +555,7 @@ export async function updatePlugin(id: string): Promise<{ success: boolean; mani
 // Backup (admin)
 // ============================================================
 
-export async function exportBackup(): Promise<{ blob: Blob; isZip: boolean }> {
+export async function exportBackup(): Promise<{ blob: Blob }> {
   const headers: Record<string, string> = {};
   if (_accessToken) {
     headers["Authorization"] = `Bearer ${_accessToken}`;
@@ -564,18 +564,27 @@ export async function exportBackup(): Promise<{ blob: Blob; isZip: boolean }> {
   if (!response.ok) {
     throw new Error(`Export failed: ${response.statusText}`);
   }
-  const contentType = response.headers.get("Content-Type") ?? "";
   const blob = await response.blob();
-  return { blob, isZip: contentType.includes("zip") };
+  return { blob };
 }
 
 export async function importBackup(file: File): Promise<{ success: boolean }> {
-  const text = await file.text();
-  const payload = JSON.parse(text);
-  return fetchJSON(`${API_BASE}/backup`, {
+  const formData = new FormData();
+  formData.append("file", file);
+  const headers: Record<string, string> = {};
+  if (_accessToken) {
+    headers["Authorization"] = `Bearer ${_accessToken}`;
+  }
+  const response = await fetch(`${API_BASE}/backup`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    headers,
+    body: formData,
   });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? response.statusText);
+  }
+  return response.json() as Promise<{ success: boolean }>;
 }
 
 // ============================================================
