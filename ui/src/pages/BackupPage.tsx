@@ -21,7 +21,7 @@ export function BackupPage() {
       const a = document.createElement("a");
       a.href = url;
       const dateStr = new Date().toISOString().slice(0, 10);
-      a.download = `sowel-backup-${dateStr}.${resp.isZip ? "zip" : "json"}`;
+      a.download = `sowel-backup-${dateStr}.zip`;
       a.click();
       URL.revokeObjectURL(url);
       setSuccess(t("backup.exported"));
@@ -113,7 +113,7 @@ export function BackupPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json,.zip"
+              accept=".zip"
               onChange={handleImport}
               className="hidden"
             />

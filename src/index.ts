@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
@@ -305,6 +305,7 @@ async function main() {
     logBuffer,
     logger,
     corsOrigins: config.cors.origins,
+    dataDir: dirname(resolve(config.sqlite.path)),
   });
 
   await server.listen({ port: config.api.port, host: config.api.host });
