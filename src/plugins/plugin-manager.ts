@@ -1,10 +1,10 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync, readFileSync, mkdirSync, rmSync } from "node:fs";
-import { execFile as execFileCb } from "node:child_process";
-import { promisify } from "node:util";
 import { pipeline } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type {
@@ -103,14 +103,14 @@ export class PluginManager {
   }
 
   /**
-   * Install from GitHub — download tarball, extract, npm install, register in DB.
+   * Install from GitHub — download pre-built tarball, extract, register in DB.
    */
   async installFromGitHub(repo: string): Promise<PluginManifest> {
     this.logger.info({ repo }, "Installing plugin from GitHub");
 
     const tmpDir = resolve(this.pluginsDir, ".tmp");
     try {
-      const extractDir = await this.downloadRelease(repo, tmpDir);
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir);
 
       // Read and validate manifest
       const manifestPath = resolve(extractDir, "manifest.json");
@@ -134,9 +134,6 @@ export class PluginManager {
       }
       const { rename } = await import("node:fs/promises");
       await rename(extractDir, pluginDir);
-
-      // Install dependencies and build if needed
-      await this.installAndBuild(pluginDir, manifest.id);
 
       // Insert into plugins DB table
       this.stmts.insert.run({
@@ -166,7 +163,7 @@ export class PluginManager {
   }
 
   /**
-   * Update — stop plugin, replace files with latest release, update DB, restart.
+   * Update — stop plugin, replace files with latest pre-built release, update DB, restart.
    * Settings, devices, and equipments are preserved.
    */
   async update(pluginId: string): Promise<PluginManifest> {
@@ -189,8 +186,8 @@ export class PluginManager {
 
     const tmpDir = resolve(this.pluginsDir, ".tmp");
     try {
-      // 2. Download new version
-      const extractDir = await this.downloadRelease(repo, tmpDir);
+      // 2. Download new pre-built version
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir);
 
       // 3. Read and validate new manifest
       const manifestPath = resolve(extractDir, "manifest.json");
@@ -208,13 +205,10 @@ export class PluginManager {
       const { rename } = await import("node:fs/promises");
       await rename(extractDir, pluginDir);
 
-      // 5. Install dependencies and build if needed
-      await this.installAndBuild(pluginDir, pluginId);
-
-      // 6. Update DB (version + manifest, keep enabled/installed_at)
+      // 5. Update DB (version + manifest, keep enabled/installed_at)
       this.stmts.updateManifest.run(newManifest.version, JSON.stringify(newManifest), pluginId);
 
-      // 7. Reload if was enabled
+      // 6. Reload if was enabled
       if (row.enabled) {
         try {
           await this.loadPlugin(pluginId);
@@ -374,10 +368,11 @@ export class PluginManager {
   // ============================================================
 
   /**
-   * Download latest release tarball from GitHub and extract to a temp directory.
+   * Download latest pre-built tarball asset from GitHub release.
+   * Looks for an asset named `sowel-plugin-*-*.tar.gz`.
    * Returns the path to the extracted directory.
    */
-  private async downloadRelease(repo: string, tmpDir: string): Promise<string> {
+  private async downloadPrebuiltAsset(repo: string, tmpDir: string): Promise<string> {
     const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
     const releaseRes = await fetch(apiUrl, {
       headers: { Accept: "application/vnd.github+json" },
@@ -388,15 +383,28 @@ export class PluginManager {
     }
 
     const release = (await releaseRes.json()) as {
-      tarball_url: string;
+      tag_name: string;
       assets?: { name: string; browser_download_url: string }[];
     };
-    const asset = release.assets?.find((a) => a.name.endsWith(".tar.gz"));
-    const tarballUrl = asset?.browser_download_url ?? release.tarball_url;
 
-    const tarballRes = await fetch(tarballUrl);
+    // Find the pre-built tarball asset (sowel-plugin-*-*.tar.gz)
+    const asset = release.assets?.find(
+      (a) => a.name.startsWith("sowel-plugin-") && a.name.endsWith(".tar.gz"),
+    );
+    if (!asset) {
+      throw new Error(
+        `Release ${release.tag_name} for ${repo} has no pre-built tarball asset (sowel-plugin-*.tar.gz)`,
+      );
+    }
+
+    this.logger.debug(
+      { repo, asset: asset.name, tag: release.tag_name },
+      "Downloading pre-built plugin asset",
+    );
+
+    const tarballRes = await fetch(asset.browser_download_url);
     if (!tarballRes.ok || !tarballRes.body) {
-      throw new Error(`Failed to download tarball: ${tarballRes.status}`);
+      throw new Error(`Failed to download asset: ${tarballRes.status}`);
     }
 
     mkdirSync(tmpDir, { recursive: true });
@@ -409,7 +417,8 @@ export class PluginManager {
     mkdirSync(extractDir, { recursive: true });
 
     try {
-      await execFile("tar", ["-xzf", tarballPath, "-C", extractDir, "--strip-components=1"]);
+      // Pre-built tarballs are flat (no wrapper directory), so no --strip-components
+      await execFile("tar", ["-xzf", tarballPath, "-C", extractDir]);
     } catch (err) {
       throw new Error(
         `Failed to extract tarball: ${err instanceof Error ? err.message : String(err)}`,
@@ -418,35 +427,6 @@ export class PluginManager {
     }
 
     return extractDir;
-  }
-
-  /**
-   * Run npm install and build from source if needed.
-   */
-  private async installAndBuild(pluginDir: string, pluginId: string): Promise<void> {
-    const packageJsonPath = resolve(pluginDir, "package.json");
-    if (existsSync(packageJsonPath)) {
-      try {
-        await execFile("npm", ["install", "--production", "--no-audit", "--no-fund"], {
-          cwd: pluginDir,
-          timeout: 120_000,
-        });
-        this.logger.debug({ pluginId }, "npm install completed");
-      } catch (err) {
-        this.logger.warn({ err, pluginId }, "npm install failed");
-      }
-    }
-
-    const distDir = resolve(pluginDir, "dist");
-    const tsconfigPath = resolve(pluginDir, "tsconfig.json");
-    if (!existsSync(distDir) && existsSync(tsconfigPath)) {
-      try {
-        await execFile("npx", ["tsc"], { cwd: pluginDir, timeout: 60_000 });
-        this.logger.debug({ pluginId }, "Plugin built from source");
-      } catch (err) {
-        this.logger.warn({ err, pluginId }, "Plugin build failed");
-      }
-    }
   }
 
   /**
