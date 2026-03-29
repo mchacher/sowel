@@ -1,5 +1,15 @@
 [
   {
+    "id": "mcz_maestro",
+    "name": "MCZ Maestro",
+    "description": "MCZ pellet stoves via Maestro cloud (Socket.IO)",
+    "icon": "Flame",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-mcz-maestro",
+    "version": "1.0.0",
+    "tags": ["mcz", "pellet", "stove", "heating"]
+  },
+  {
     "id": "legrand_energy",
     "name": "Legrand Energy",
     "description": "Legrand energy monitoring — NLPC meters, consumption + solar production",

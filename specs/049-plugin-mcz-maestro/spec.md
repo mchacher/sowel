@@ -14,10 +14,13 @@ Migrate the MCZ Maestro pellet stove integration from `src/integrations/mcz-maes
 
 ## Acceptance Criteria
 
-- [ ] New repo `mchacher/sowel-plugin-mcz-maestro`
-- [ ] `socket.io-client` dependency in plugin's package.json (removed from Sowel core)
-- [ ] All features preserved: cloud connection, device discovery, orders
-- [ ] Pre-built tarball release via GitHub Actions
-- [ ] Added to `plugins/registry.json`
-- [ ] Built-in code removed from `src/integrations/mcz-maestro/`
-- [ ] No user-facing regression
+- [x] New repo `mchacher/sowel-plugin-mcz-maestro`
+- [x] `socket.io-client` dependency in plugin's package.json (removed from Sowel core)
+- [x] All features preserved: cloud connection, device discovery, orders
+- [x] Pre-built tarball release via GitHub Actions
+- [x] Added to `plugins/registry.json`
+- [x] Device migration: 1 device from `mcz_maestro` to `mcz_maestro` by model "Maestro" (preserves UUID, bindings)
+- [x] Built-in code removed from `src/integrations/mcz-maestro/`
+- [x] Built-in registration removed from `src/index.ts`
+- [x] `socket.io-client` removed from Sowel core package.json
+- [x] No user-facing regression (Poele equipment bindings intact)
