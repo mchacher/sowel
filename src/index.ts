@@ -24,7 +24,6 @@ import { ModeManager } from "./modes/mode-manager.js";
 import { CalendarManager } from "./modes/calendar-manager.js";
 import { ButtonActionManager } from "./buttons/button-action-manager.js";
 import { IntegrationRegistry } from "./integrations/integration-registry.js";
-import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
 import { EnergyAggregator } from "./energy/energy-aggregator.js";
 import { HistoryWriter } from "./history/history-writer.js";
 import { InfluxClient } from "./core/influx-client.js";
@@ -114,14 +113,6 @@ async function main() {
 
   // 7. Create Integration Registry and register plugins
   const integrationRegistry = new IntegrationRegistry(logger);
-
-  const zigbee2mqttIntegration = new Zigbee2MqttIntegration(
-    settingsManager,
-    deviceManager,
-    eventBus,
-    logger,
-  );
-  integrationRegistry.register(zigbee2mqttIntegration);
 
   // 8. Create Zone Manager & ensure root zone exists
   const zoneManager = new ZoneManager(db, eventBus, logger);
