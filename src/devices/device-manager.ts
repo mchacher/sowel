@@ -550,6 +550,47 @@ export class DeviceManager {
       "Device summary",
     );
   }
+
+  /**
+   * Migrate devices from one integration ID to another, filtered by device model.
+   * Used when a built-in integration is externalized as a plugin.
+   * Preserves device UUIDs, equipment bindings, and history.
+   *
+   * Uses DB data only (no API calls) — safe to call before authentication.
+   * Runs in a transaction for consistency.
+   *
+   * @param oldIntegrationId - The current integration_id to migrate from
+   * @param newIntegrationId - The new integration_id to migrate to
+   * @param models - If provided, only migrate devices with these model values. If omitted, migrate ALL.
+   * @returns The number of devices migrated
+   */
+  migrateIntegrationId(
+    oldIntegrationId: string,
+    newIntegrationId: string,
+    models?: string[],
+  ): number {
+    const migrate = this.db.transaction(() => {
+      const stmt =
+        models && models.length > 0
+          ? this.db.prepare(
+              `UPDATE devices SET integration_id = ?, source = ?, updated_at = datetime('now')
+             WHERE integration_id = ? AND model IN (${models.map(() => "?").join(", ")})`,
+            )
+          : this.db.prepare(
+              `UPDATE devices SET integration_id = ?, source = ?, updated_at = datetime('now')
+             WHERE integration_id = ?`,
+            );
+
+      const args =
+        models && models.length > 0
+          ? [newIntegrationId, newIntegrationId, oldIntegrationId, ...models]
+          : [newIntegrationId, newIntegrationId, oldIntegrationId];
+
+      return stmt.run(...args).changes;
+    });
+
+    return migrate();
+  }
 }
 
 // ============================================================

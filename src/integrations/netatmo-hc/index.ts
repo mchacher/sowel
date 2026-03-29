@@ -117,13 +117,6 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         defaultValue: "true",
       },
       {
-        key: "enable_weather",
-        label: "Enable Weather Station",
-        type: "boolean",
-        required: false,
-        defaultValue: "false",
-      },
-      {
         key: "enable_energy",
         label: "Enable Energy Monitoring",
         type: "boolean",
@@ -155,7 +148,6 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     const pollingIntervalSec = parseInt(this.getSetting("polling_interval") ?? "300", 10);
     const pollingIntervalMs = (isNaN(pollingIntervalSec) ? 300 : pollingIntervalSec) * 1000;
     const enableHomeControl = this.getSetting("enable_home_control") !== "false"; // default true
-    const enableWeather = this.getSetting("enable_weather") === "true";
     const enableEnergy = this.getSetting("enable_energy") === "true";
 
     try {
@@ -199,7 +191,6 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         this.logger,
         pollingIntervalMs,
         enableHomeControl,
-        enableWeather,
         enableEnergy,
       );
       await this.poller.start(options?.pollOffset ?? 0);
