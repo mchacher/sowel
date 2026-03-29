@@ -263,10 +263,8 @@ async function main() {
   );
   await pluginManager.loadAll();
 
-  // 15. Start all configured integrations (built-in)
-  await integrationRegistry.startAll();
-
-  // 16. Start Fastify server
+  // 15. Start Fastify server BEFORE integrations (UI available immediately)
+  // Integrations start in background with staggered polling
   const server = await createServer({
     db,
     deviceManager,
@@ -337,6 +335,12 @@ async function main() {
   }
 
   logger.info("Sowel engine started successfully");
+
+  // 20. Start all integrations in background with staggered polling
+  // This runs after the server is listening — UI is already accessible
+  integrationRegistry.startAll().catch((err) => {
+    logger.error({ err }, "Failed to start integrations");
+  });
 
   // Graceful shutdown — each step is isolated so one failure doesn't block the rest
   const shutdown = async () => {

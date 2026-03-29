@@ -127,7 +127,7 @@ export class IntegrationRegistry {
   }
 
   async startAll(): Promise<void> {
-    const STAGGER_MS = 5_000;
+    const STAGGER_MS = 10_000;
     let pollerIndex = 0;
 
     for (const plugin of this.plugins.values()) {
