@@ -1,5 +1,15 @@
 [
   {
+    "id": "zigbee2mqtt",
+    "name": "Zigbee2MQTT",
+    "description": "Zigbee devices via Zigbee2MQTT MQTT bridge",
+    "icon": "Radio",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-zigbee2mqtt",
+    "version": "1.0.1",
+    "tags": ["zigbee", "mqtt", "z2m", "sensors", "lights", "switches"]
+  },
+  {
     "id": "lora2mqtt",
     "name": "LoRa2MQTT",
     "description": "LoRa devices via lora2mqtt MQTT bridge",
