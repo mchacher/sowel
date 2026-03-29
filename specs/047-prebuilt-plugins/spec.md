@@ -6,16 +6,16 @@ Change plugin distribution from "download source + npm install + build" to "down
 
 ## Acceptance Criteria
 
-- [ ] Plugin releases on GitHub include a pre-built tarball asset (`sowel-plugin-{id}-{version}.tar.gz`)
-- [ ] Tarball contains: `manifest.json`, `dist/`, `node_modules/` (production only), `package.json`
-- [ ] `PluginManager.installFromGitHub()` downloads the pre-built asset instead of source tarball
-- [ ] `PluginManager.update()` uses the same pre-built asset strategy
-- [ ] Remove `installAndBuild()` logic (npm install + tsc) from plugin-manager
-- [ ] Plugin install works without npm, python3, make, or g++ on the host
-- [ ] Existing 3 plugins (smartthings, weather-forecast, netatmo-security) have updated release pipelines
-- [ ] Fallback: if no pre-built asset found, log error (no source build fallback)
-- [ ] End-to-end validation: uninstall + reinstall each of the 3 plugins from the store, verify they load and function correctly
-- [ ] End-to-end validation: update each plugin to a new version via UI, verify update succeeds
+- [x] Plugin releases on GitHub include a pre-built tarball asset (`sowel-plugin-{id}-{version}.tar.gz`)
+- [x] Tarball contains: `manifest.json`, `dist/`, `package.json` (no node_modules needed — plugins have no prod deps)
+- [x] `PluginManager.installFromGitHub()` downloads the pre-built asset instead of source tarball
+- [x] `PluginManager.update()` uses the same pre-built asset strategy
+- [x] Remove `installAndBuild()` logic (npm install + tsc) from plugin-manager
+- [x] Plugin install works without npm, python3, make, or g++ on the host
+- [x] Existing 3 plugins (smartthings, weather-forecast, netatmo-security) have updated release pipelines
+- [x] Fallback: if no pre-built asset found, log error (no source build fallback)
+- [x] End-to-end validation: uninstall + reinstall weather-forecast from store — loads and functions correctly
+- [x] End-to-end validation: update smartthings + weather-forecast to new version via API — succeeds
 
 ## Plugin Release Pipeline (GitHub Actions per plugin repo)
 

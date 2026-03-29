@@ -6,7 +6,7 @@
     "icon": "Camera",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-security",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "tags": ["camera", "netatmo", "security"]
   },
   {
@@ -16,7 +16,7 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-weather-forecast",
-    "version": "0.3.0",
+    "version": "0.4.1",
     "tags": ["weather", "forecast", "open-meteo"]
   },
   {
@@ -26,7 +26,7 @@
     "icon": "Smartphone",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-smartthings",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "tags": ["samsung", "smartthings", "tv", "washer", "appliance"]
   }
 ]
