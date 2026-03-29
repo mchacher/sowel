@@ -27,7 +27,6 @@ import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
 import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { MczMaestroIntegration } from "./integrations/mcz-maestro/index.js";
-import { NetatmoHCIntegration } from "./integrations/netatmo-hc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
 import { EnergyAggregator } from "./energy/energy-aggregator.js";
 import { HistoryWriter } from "./history/history-writer.js";
@@ -163,16 +162,6 @@ async function main() {
     deviceManager,
     logger,
   );
-
-  // Netatmo H+C needs equipmentManager to resolve production meter bindings
-  const netatmoHCIntegration = new NetatmoHCIntegration(
-    settingsManager,
-    deviceManager,
-    equipmentManager,
-    eventBus,
-    logger,
-  );
-  integrationRegistry.register(netatmoHCIntegration);
 
   // 10. Create Zone Aggregator + Sunlight Manager
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);

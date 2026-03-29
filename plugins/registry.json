@@ -1,5 +1,15 @@
 [
   {
+    "id": "legrand_energy",
+    "name": "Legrand Energy",
+    "description": "Legrand energy monitoring — NLPC meters, consumption + solar production",
+    "icon": "Zap",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-legrand-energy",
+    "version": "1.0.0",
+    "tags": ["legrand", "energy", "consumption", "solar", "production"]
+  },
+  {
     "id": "legrand_control",
     "name": "Legrand Control",
     "description": "Legrand Home+Control — lights, shutters, plugs, contactors",
