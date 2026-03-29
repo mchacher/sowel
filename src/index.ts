@@ -25,7 +25,6 @@ import { CalendarManager } from "./modes/calendar-manager.js";
 import { ButtonActionManager } from "./buttons/button-action-manager.js";
 import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { Zigbee2MqttIntegration } from "./integrations/zigbee2mqtt/index.js";
-import { PanasonicCCIntegration } from "./integrations/panasonic-cc/index.js";
 import { Lora2MqttIntegration } from "./integrations/lora2mqtt/index.js";
 import { EnergyAggregator } from "./energy/energy-aggregator.js";
 import { HistoryWriter } from "./history/history-writer.js";
@@ -124,14 +123,6 @@ async function main() {
     logger,
   );
   integrationRegistry.register(zigbee2mqttIntegration);
-
-  const panasonicCCIntegration = new PanasonicCCIntegration(
-    settingsManager,
-    deviceManager,
-    eventBus,
-    logger,
-  );
-  integrationRegistry.register(panasonicCCIntegration);
 
   const lora2mqttIntegration = new Lora2MqttIntegration(
     settingsManager,

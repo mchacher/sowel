@@ -20,10 +20,12 @@ Migrate the Panasonic Comfort Cloud integration from `src/integrations/panasonic
 
 ## Acceptance Criteria
 
-- [ ] New repo `mchacher/sowel-plugin-panasonic-cc`
-- [ ] Python bridge script included in tarball
-- [ ] All features preserved: device discovery, AC control, polling
-- [ ] Pre-built tarball release via GitHub Actions
-- [ ] Added to `plugins/registry.json`
-- [ ] Built-in code removed from `src/integrations/panasonic-cc/`
-- [ ] No user-facing regression
+- [x] New repo `mchacher/sowel-plugin-panasonic-cc`
+- [x] Python bridge script (`bridge.py`) included in tarball
+- [x] All features preserved: device discovery, AC control, polling
+- [x] Pre-built tarball release via GitHub Actions (tarball includes bridge.py)
+- [x] Added to `plugins/registry.json`
+- [x] Built-in code removed from `src/integrations/panasonic-cc/`
+- [x] Built-in registration removed from `src/index.ts`
+- [x] No device migration needed (same integration ID `panasonic_cc`)
+- [x] No user-facing regression (PAC equipment bindings intact, 10 bindings)
