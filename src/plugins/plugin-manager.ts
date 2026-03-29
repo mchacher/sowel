@@ -495,21 +495,9 @@ export class PluginManager {
 
     const plugin = factory(deps);
 
-    // Register with integration registry
+    // Register with integration registry (start is handled by startAll with staggering)
     this.integrationRegistry.register(plugin);
     this.loadedPlugins.set(pluginId, plugin);
-
-    // Start the plugin if it is configured
-    if (plugin.isConfigured()) {
-      try {
-        await plugin.start();
-        this.logger.info({ pluginId }, "Plugin started");
-      } catch (err) {
-        this.logger.error({ err, pluginId }, "Plugin start failed");
-      }
-    } else {
-      this.logger.info({ pluginId }, "Plugin loaded but not configured — skipping start");
-    }
 
     // Update manifest in DB if it changed
     const row = this.stmts.getById.get(pluginId) as PluginRow | undefined;
