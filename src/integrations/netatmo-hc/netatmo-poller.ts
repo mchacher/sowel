@@ -17,9 +17,6 @@ import {
   mapModuleToDiscovered,
   extractStatusPayload,
   METER_TYPES,
-  mapWeatherStationToDiscovered,
-  mapWeatherModuleToDiscovered,
-  extractWeatherPayload,
 } from "./netatmo-types.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 300_000; // 5 min
@@ -51,12 +48,8 @@ export class NetatmoPoller {
 
   /** Map of moduleId → friendlyName, built during discovery. */
   private moduleNames = new Map<string, string>();
-  /** Weather station friendly names tracked for stale device removal. */
-  private weatherNames = new Set<string>();
   /** Enable Home+Control device polling (homesdata / homestatus). */
   private enableHomeControl: boolean;
-  /** Enable weather station polling (read_station scope). */
-  private enableWeather: boolean;
   /** Enable energy monitoring (bridge-level 5min polling). */
   private enableEnergy: boolean;
   /** Bridge ID discovered from energy meters — used for bridge-level queries. */
@@ -76,7 +69,6 @@ export class NetatmoPoller {
     logger: Logger,
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
     enableHomeControl = true,
-    enableWeather = false,
     enableEnergy = false,
   ) {
     this.bridge = bridge;
@@ -87,7 +79,6 @@ export class NetatmoPoller {
     this.logger = logger.child({ module: "legrand-hc-poller" });
     this.pollIntervalMs = pollIntervalMs;
     this.enableHomeControl = enableHomeControl;
-    this.enableWeather = enableWeather;
     this.enableEnergy = enableEnergy;
   }
 
@@ -205,41 +196,21 @@ export class NetatmoPoller {
       this.lastPollAt = new Date().toISOString();
       const t0 = Date.now();
 
-      // Phase 1: independent discovery calls in parallel
+      // Phase 1: discovery
       let hcActiveIds: Set<string> = new Set();
-      let hcDiscoveryOk = !this.enableHomeControl; // true if HC not enabled
-      let weatherDiscoveryOk = !this.enableWeather; // true if weather not enabled
-      const phase1: Promise<void>[] = [];
+      let hcDiscoveryOk = !this.enableHomeControl;
       if (this.enableHomeControl) {
-        phase1.push(
-          this.discoverModules()
-            .then((ids) => {
-              hcActiveIds = ids;
-              hcDiscoveryOk = true;
-            })
-            .catch((err) => this.logger.error({ err }, "Home+Control discovery failed")),
-        );
-      }
-      if (this.enableWeather) {
-        phase1.push(
-          this.pollWeatherStation()
-            .then(() => {
-              weatherDiscoveryOk = true;
-            })
-            .catch((err) => this.logger.warn({ err }, "Weather station poll failed (phase 1)")),
-        );
-      }
-      await Promise.all(phase1);
-
-      // Stale device cleanup AFTER all discovery is complete
-      // Only run if ALL enabled discoveries succeeded — avoids purging
-      // devices when the API is temporarily unavailable
-      if (hcDiscoveryOk && weatherDiscoveryOk) {
-        const allActiveIds = new Set(hcActiveIds);
-        for (const name of this.weatherNames) {
-          allActiveIds.add(name);
+        try {
+          hcActiveIds = await this.discoverModules();
+          hcDiscoveryOk = true;
+        } catch (err) {
+          this.logger.error({ err }, "Home+Control discovery failed");
         }
-        this.deviceManager.removeStaleDevices("netatmo_hc", allActiveIds);
+      }
+
+      // Stale device cleanup AFTER discovery is complete
+      if (hcDiscoveryOk) {
+        this.deviceManager.removeStaleDevices("netatmo_hc", hcActiveIds);
       } else {
         this.logger.warn("Skipping stale device cleanup — discovery incomplete");
       }
@@ -387,59 +358,6 @@ export class NetatmoPoller {
 
     this.logger.info({ updated, total: modules.length }, "Legrand H+C status poll complete");
     return confirmed;
-  }
-
-  /** Discover and poll weather station data via getstationsdata. */
-  private async pollWeatherStation(): Promise<void> {
-    const stationsData = await this.bridge.getStationsData();
-    const devices = stationsData.body.devices;
-
-    if (devices.length === 0) {
-      this.logger.debug("No weather stations found");
-      return;
-    }
-
-    // Build new set first, only replace this.weatherNames on full success
-    // to avoid partial clear that would cause stale device cleanup to delete weather devices
-    const newNames = new Set<string>();
-
-    for (const station of devices) {
-      // Discover + update base station (NAMain)
-      const baseName = station.module_name || station.station_name;
-      const baseDiscovered = mapWeatherStationToDiscovered(station);
-      this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", baseDiscovered);
-      newNames.add(baseName);
-
-      // Update base station data (always call to refresh lastSeen)
-      const basePayload = extractWeatherPayload(station.dashboard_data, station.type);
-      this.deviceManager.updateDeviceData("netatmo_hc", baseName, basePayload);
-
-      // Discover + update each sub-module
-      for (const mod of station.modules ?? []) {
-        const modName = mod.module_name || mod._id;
-        const modDiscovered = mapWeatherModuleToDiscovered(mod);
-        this.deviceManager.upsertFromDiscovery("netatmo_hc", "netatmo_hc", modDiscovered);
-        newNames.add(modName);
-
-        // Build combined payload: sensor data + battery
-        const modPayload: Record<string, unknown> = mod.dashboard_data
-          ? extractWeatherPayload(mod.dashboard_data, mod.type)
-          : {};
-        if (mod.battery_percent !== undefined) {
-          modPayload.battery = mod.battery_percent;
-        }
-        // Always call to refresh lastSeen even if payload is empty
-        this.deviceManager.updateDeviceData("netatmo_hc", modName, modPayload);
-      }
-    }
-
-    // Only update weatherNames after full success
-    this.weatherNames = newNames;
-
-    this.logger.info(
-      { stationCount: devices.length, weatherDevices: this.weatherNames.size },
-      "Weather station poll complete",
-    );
   }
 
   /**

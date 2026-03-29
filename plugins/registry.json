@@ -1,5 +1,15 @@
 [
   {
+    "id": "netatmo_weather",
+    "name": "Netatmo Weather",
+    "description": "Netatmo Weather Station — temperature, humidity, pressure, CO2, wind, rain",
+    "icon": "CloudSun",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-netatmo-weather",
+    "version": "1.0.0",
+    "tags": ["weather", "netatmo", "temperature", "humidity", "rain", "wind"]
+  },
+  {
     "id": "netatmo-security",
     "name": "Netatmo Security",
     "description": "Netatmo cameras (Welcome, Presence, Doorbell) — monitoring on/off",

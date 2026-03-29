@@ -14,7 +14,6 @@ import type {
   NetatmoHomeStatusResponse,
   NetatmoGetMeasureResponse,
   NetatmoSetStateRequest,
-  NetatmoStationsDataResponse,
 } from "./netatmo-types.js";
 
 const BASE_URL = "https://api.netatmo.com";
@@ -198,10 +197,6 @@ export class NetatmoBridge {
     return this.apiGet<NetatmoHomeStatusResponse>(
       `/api/homestatus?home_id=${encodeURIComponent(homeId)}`,
     );
-  }
-
-  async getStationsData(): Promise<NetatmoStationsDataResponse> {
-    return this.apiGet<NetatmoStationsDataResponse>("/api/getstationsdata");
   }
 
   async getMeasure(

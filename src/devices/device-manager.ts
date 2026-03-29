@@ -550,6 +550,33 @@ export class DeviceManager {
       "Device summary",
     );
   }
+
+  /**
+   * Migrate devices from one integration ID to another.
+   * Used when a built-in integration is externalized as a plugin.
+   * Preserves device UUIDs, equipment bindings, and history.
+   * Returns the number of devices migrated.
+   */
+  migrateIntegrationId(
+    oldIntegrationId: string,
+    newIntegrationId: string,
+    sourceDeviceIds: string[],
+  ): number {
+    if (sourceDeviceIds.length === 0) return 0;
+
+    const placeholders = sourceDeviceIds.map(() => "?").join(", ");
+    const stmt = this.db.prepare(
+      `UPDATE devices SET integration_id = ?, source = ?, updated_at = datetime('now')
+       WHERE integration_id = ? AND source_device_id IN (${placeholders})`,
+    );
+    const result = stmt.run(
+      newIntegrationId,
+      newIntegrationId,
+      oldIntegrationId,
+      ...sourceDeviceIds,
+    );
+    return result.changes;
+  }
 }
 
 // ============================================================
