@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import type { Device, DeviceData } from "../../types";
 import { sourceLabel } from "../../lib/format";
 import { RelativeTime } from "../RelativeTime";
@@ -19,6 +19,8 @@ interface DeviceListProps {
   deviceData: Record<string, DeviceData[]>;
   /** Active integration tab (null = all devices). Controls which columns are shown. */
   activeTab: string | null;
+  /** Map of deviceId → associated equipments with zone info */
+  deviceEquipmentMap: Map<string, { id: string; name: string; zoneName?: string; zoneId?: string }[]>;
 }
 
 type SortKey =
@@ -92,7 +94,7 @@ function compareSortKey(
   }
 }
 
-export function DeviceList({ devices, deviceData, activeTab }: DeviceListProps) {
+export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap }: DeviceListProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -157,6 +159,11 @@ export function DeviceList({ devices, deviceData, activeTab }: DeviceListProps) 
               align="left"
               className="hidden md:table-cell"
             />
+            <th className="py-2 px-3 text-left hidden md:table-cell">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+                {t("devices.col.equipment")}
+              </span>
+            </th>
             {showSource && (
               <SortHeader
                 label={t("devices.col.source")}
@@ -236,6 +243,9 @@ export function DeviceList({ devices, deviceData, activeTab }: DeviceListProps) 
                   <span className="text-[12px] text-text-secondary truncate block max-w-[180px]">
                     {device.model ?? "—"}
                   </span>
+                </td>
+                <td className="py-2.5 px-3 hidden md:table-cell">
+                  <EquipmentCell equipments={deviceEquipmentMap.get(device.id)} />
                 </td>
                 {showSource && (
                   <td className="py-2.5 px-3 hidden sm:table-cell">
@@ -362,6 +372,40 @@ function LqiCell({ value }: { value: unknown }) {
     <span className={`inline-flex items-center gap-1 ${color}`}>
       <Signal size={13} strokeWidth={1.5} />
       <span className="text-[11px] font-mono">{lqi}</span>
+    </span>
+  );
+}
+
+function EquipmentCell({ equipments }: { equipments?: { id: string; name: string; zoneName?: string; zoneId?: string }[] }) {
+  if (!equipments || equipments.length === 0) {
+    return <span className="text-[11px] text-text-tertiary">—</span>;
+  }
+
+  return (
+    <span className="flex flex-col gap-0.5">
+      {equipments.map((eq) => (
+        <span key={eq.id} className="text-[12px] truncate max-w-[220px]">
+          {eq.zoneName && eq.zoneId && (
+            <>
+              <Link
+                to={`/home/${eq.zoneId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-text-secondary hover:text-primary hover:underline"
+              >
+                {eq.zoneName}
+              </Link>
+              <span className="text-text-tertiary mx-0.5">›</span>
+            </>
+          )}
+          <Link
+            to={`/equipments/${eq.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-primary hover:text-primary-hover hover:underline"
+          >
+            {eq.name}
+          </Link>
+        </span>
+      ))}
     </span>
   );
 }

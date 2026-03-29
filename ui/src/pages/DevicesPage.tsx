@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
+import { useEquipments } from "../store/useEquipments";
+import { useZones } from "../store/useZones";
 import { DeviceList } from "../components/devices/DeviceList";
+import type { ZoneWithChildren } from "../types";
 import { Radio, Loader2, Search, X } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { INTEGRATION_LABELS } from "../constants";
@@ -10,12 +13,44 @@ import { INTEGRATION_LABELS } from "../constants";
 const ALL_TAB = "__all__";
 
 export function DevicesPage() {
-  useWsSubscription(["devices"]);
+  useWsSubscription(["devices", "equipments", "zones"]);
   const { t } = useTranslation();
   const devices = useDevices((s) => s.devices);
   const deviceData = useDevices((s) => s.deviceData);
   const loading = useDevices((s) => s.loading);
   const error = useDevices((s) => s.error);
+  const equipments = useEquipments((s) => s.equipments);
+  const zoneTree = useZones((s) => s.tree);
+
+  // Flatten zone tree into id → name map
+  const zoneNames = useMemo(() => {
+    const map = new Map<string, string>();
+    const walk = (zones: ZoneWithChildren[]) => {
+      for (const z of zones) {
+        map.set(z.id, z.name);
+        if (z.children) walk(z.children);
+      }
+    };
+    walk(zoneTree);
+    return map;
+  }, [zoneTree]);
+
+  // Build map: deviceId → list of equipments that reference it via bindings
+  const deviceEquipmentMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; zoneName?: string; zoneId?: string }[]>();
+    for (const eq of equipments) {
+      const deviceIds = new Set<string>();
+      for (const b of eq.dataBindings ?? []) {
+        if (b.deviceId) deviceIds.add(b.deviceId);
+      }
+      const zoneName = eq.zoneId ? zoneNames.get(eq.zoneId) : undefined;
+      for (const deviceId of deviceIds) {
+        if (!map.has(deviceId)) map.set(deviceId, []);
+        map.get(deviceId)!.push({ id: eq.id, name: eq.name, zoneName, zoneId: eq.zoneId });
+      }
+    }
+    return map;
+  }, [equipments, zoneNames]);
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = searchParams.get("q") ?? "";
   const activeTab = searchParams.get("tab") ?? ALL_TAB;
@@ -151,6 +186,7 @@ export function DevicesPage() {
           devices={filtered}
           deviceData={deviceData}
           activeTab={resolvedTab === ALL_TAB ? null : resolvedTab}
+          deviceEquipmentMap={deviceEquipmentMap}
         />
       )}
     </div>
