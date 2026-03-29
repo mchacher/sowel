@@ -19,11 +19,11 @@ Migrate the LoRa2MQTT integration from `src/integrations/lora2mqtt/` to an exter
 
 ## Acceptance Criteria
 
-- [ ] New repo `mchacher/sowel-plugin-lora2mqtt`
-- [ ] Parser code embedded in plugin
-- [ ] mqtt.js in plugin's package.json
-- [ ] All features preserved: MQTT connection, device discovery, data parsing
-- [ ] Pre-built tarball release via GitHub Actions
-- [ ] Added to `plugins/registry.json`
-- [ ] Built-in code removed from `src/integrations/lora2mqtt/`
-- [ ] No user-facing regression
+- [x] New repo `mchacher/sowel-plugin-lora2mqtt`
+- [x] Parser code embedded in plugin
+- [x] mqtt.js in plugin's package.json
+- [x] All features preserved: MQTT connection, device discovery, data parsing
+- [x] Pre-built tarball release via GitHub Actions
+- [x] Added to `plugins/registry.json`
+- [x] Built-in code removed from `src/integrations/lora2mqtt/`
+- [x] No user-facing regression
