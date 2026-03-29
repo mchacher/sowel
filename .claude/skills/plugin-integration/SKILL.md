@@ -1,21 +1,24 @@
 ---
 name: plugin-integration
-description: Create a new plugin integration for Sowel — covers plugin code, new equipment types, UI bindings, zone cards, dashboard widgets, and all required touchpoints. Use when creating a new plugin, adding a new device source, or adding new equipment types.
-user-invocable: true
+description: |
+  Create a new plugin integration for Sowel — covers plugin code, new equipment types, UI bindings, zone cards, dashboard widgets, and all required touchpoints. Use when creating a new plugin, adding a new device source, or adding new equipment types.
+disable-model-invocation: true
 argument-hint: "[plugin-name]"
 ---
 
 # Sowel Plugin Integration Workflow
 
-Follows the same process as `/sowel-feature`: spec → user approval → branch → implement → test → PR → user approval → merge.
+Plugin to create: $ARGUMENTS
+
+Follow EVERY phase below IN ORDER. Each phase has a GATE. Do NOT skip gates.
+
+All conventions are in `CLAUDE.md`. For the full UI touchpoint checklist, see [reference.md](reference.md).
 
 ---
 
 ## Phase 1: Understand & Clarify
 
 ### 1.1 Read Essential Documentation
-
-Before starting, read these files:
 
 | Document                                   | Purpose                                     |
 | ------------------------------------------ | ------------------------------------------- |
@@ -32,7 +35,7 @@ Also study an existing plugin for reference:
 
 ### 1.2 Deep-Dive Requirements
 
-**IMPORTANT**: Do not assume. Ask clarifying questions until requirements are crystal clear.
+**Do not assume. Ask clarifying questions.**
 
 | Topic               | Questions to ask                                                   |
 | ------------------- | ------------------------------------------------------------------ |
@@ -43,94 +46,50 @@ Also study an existing plugin for reference:
 | **Polling**         | What interval? What data changes frequently vs. rarely?            |
 | **Energy**          | Does the device expose energy data? Cumulative or delta?           |
 | **Edge cases**      | API down? Device offline? Token expired? Rate limited?             |
-| **Testing**         | Does the user have real devices to test with? API credentials?     |
-
-**Continue asking until you can write a complete spec without assumptions.**
+| **Testing**         | Does the user have real devices? API credentials?                  |
 
 ### 1.3 Test the API First
 
-Before writing a spec, test the external API with a script:
+Before writing a spec, test the external API with a script to confirm scope.
 
-```bash
-# Create scripts/<api>-test.py to explore the API
-# List devices, check capabilities, test commands
-# Share results with user to confirm scope
-```
+> **GATE 1**: Requirements are crystal clear. You can describe every device type, data point, and order.
 
 ---
 
 ## Phase 2: Document the Spec
 
-Every plugin MUST be documented in `specs/`. Use English only.
-
-### 2.1 Create Spec Folder
+### 2.1 Create Spec
 
 ```bash
-ls specs/ | tail -1  # Find last number
+ls specs/ | tail -1
 mkdir specs/XXX-plugin-<name>
 ```
 
-### 2.2 Create spec.md
+Write `spec.md` with: Summary, Acceptance Criteria, Scope (In/Out), Edge Cases.
 
-```markdown
-# Plugin: <Name>
-
-## Summary
-
-Brief description.
-
-## Acceptance Criteria
-
-- [ ] Plugin discovers devices
-- [ ] Data polling works at configured interval
-- [ ] Orders execute correctly
-- [ ] New equipment types display in UI (if applicable)
-
-## Scope
-
-### In Scope
-
-- ...
-
-### Out of Scope
-
-- ...
-
-## Edge Cases
-
-- API auth failure
-- Device offline
-- Rate limiting
-```
-
----
-
-## Phase 2b: User Validation (REQUIRED)
-
-**CRITICAL**: Do NOT proceed to implementation without explicit user approval.
-
-Present a summary:
+### 2.2 Present Summary
 
 ```
-## Résumé de la spécification
+## Résumé
 
 **Plugin**: [Name]
 **Devices**: [What will be discovered]
 **Data**: [Key data points per device type]
 **Orders**: [Commands available]
 **New equipment types**: [If any]
-**Polling**: [Interval]
 
 Voulez-vous que j'implémente ce plugin ?
 ```
 
-Wait for approval before proceeding.
+> **GATE 2**: User has explicitly approved the spec.
 
 ---
 
 ## Phase 3: Branch & Implement
 
-### 3.1 Create Feature Branch (in Sowel repo if core changes needed)
+### 3.1 Create Feature Branch (MANDATORY)
+
+**ALWAYS create a branch. NEVER commit directly to main.**
 
 ```bash
 git checkout main && git pull
@@ -146,8 +105,7 @@ sowel-plugin-<name>/
 ├── manifest.json
 ├── package.json
 ├── tsconfig.json
-├── README.md
-├── .gitignore          # node_modules/ dist/
+├── .gitignore
 └── src/
     └── index.ts
 ```
@@ -159,16 +117,16 @@ interface IntegrationPlugin {
   readonly id: string;
   readonly name: string;
   readonly description: string;
-  readonly icon: string; // Lucide icon name
+  readonly icon: string;
 
-  getStatus(): IntegrationStatus; // NOT getState()
+  getStatus(): IntegrationStatus;
   isConfigured(): boolean;
   getSettingsSchema(): IntegrationSettingDef[]; // NOT getSettings()
 
   start(options?: { pollOffset?: number }): Promise<void>;
   stop(): Promise<void>;
 
-  executeOrder( // NOT executeOrder(sourceId, key, value)
+  executeOrder( // NOT (sourceId, key, value)
     device: Device,
     dispatchConfig: Record<string, unknown>,
     value: unknown,
@@ -184,11 +142,7 @@ interface IntegrationPlugin {
 - `getSettings()` must be `getSettingsSchema()`
 - `executeOrder(deviceSourceId, key, value)` must be `executeOrder(device, dispatchConfig, value)`
 - Missing `eventBus.emit()` for connect/disconnect events
-- `SettingsManager.get()` returns `undefined` not `null` — use `!!` for truthy checks
-
-#### Type definitions
-
-Copy local type definitions from `sowel-plugin-smartthings/src/index.ts`. These types mirror Sowel's internal types without importing them.
+- `SettingsManager.get()` returns `undefined` not `null`
 
 #### Device discovery
 
@@ -197,190 +151,76 @@ deviceManager.upsertFromDiscovery(INTEGRATION_ID, SOURCE, discoveredDevice);
 deviceManager.updateDeviceData(INTEGRATION_ID, sourceDeviceId, { key1: value1 });
 ```
 
-#### Orders with dispatchConfig
+### 3.3 New Equipment Types (if needed)
 
-```typescript
-orders: [
-  { key: "power", type: "boolean", dispatchConfig: { command: "switch" } },
-  { key: "input_source", type: "enum", enumValues: [...], dispatchConfig: { command: "setInputSource" } },
-]
-```
-
-### 3.3 New Equipment Types (Sowel Core — if needed)
-
-**Every new equipment type requires changes in ALL of the following files. Missing any will cause broken UI.**
-
-| #   | File                                                | What to add                                                      |
-| --- | --------------------------------------------------- | ---------------------------------------------------------------- |
-| 1   | `src/shared/types.ts`                               | Add to `EquipmentType` union type                                |
-| 2   | `src/equipments/equipment-manager.ts`               | Add to `VALID_EQUIPMENT_TYPES` set                               |
-| 3   | `ui/src/types.ts`                                   | Add to `EquipmentType` union type (mirror backend)               |
-| 4   | `ui/src/components/equipments/EquipmentForm.tsx`    | Add to `EQUIPMENT_TYPE_KEYS` array with label + i18n key         |
-| 5   | `ui/src/components/equipments/EquipmentCard.tsx`    | Add to `TYPE_ICONS` and `TYPE_LABELS` records                    |
-| 6   | `ui/src/components/equipments/DeviceSelector.tsx`   | Add to `EQUIPMENT_TYPE_CATEGORIES` or `EQUIPMENT_TYPE_DATA_KEYS` |
-| 7   | `ui/src/components/equipments/bindingUtils.ts`      | Add to `RELEVANT_DATA` and `RELEVANT_ORDERS`                     |
-| 8   | `ui/src/components/equipments/useEquipmentState.ts` | Add `isXxx` boolean flag                                         |
-| 9   | `ui/src/components/home/ZoneEquipmentsView.tsx`     | Add to `EQUIPMENT_GROUPS` (or existing group)                    |
-| 10  | `ui/src/components/home/CompactEquipmentCard.tsx`   | Add compact info card rendering for zone view                    |
-| 11  | `ui/src/components/dashboard/EquipmentWidget.tsx`   | Add desktop widget rendering                                     |
-| 12  | `ui/src/components/dashboard/MobileWidgetCard.tsx`  | Add mobile widget rendering                                      |
-| 13  | `ui/src/pages/EquipmentDetailPage.tsx`              | Add detail panel dispatcher                                      |
-| 14  | `ui/src/components/equipments/<Type>Panel.tsx`      | Create detail panel component (if interactive)                   |
-| 15  | `ui/src/i18n/locales/en.json`                       | Add `equipments.type.<type>` key                                 |
-| 16  | `ui/src/i18n/locales/fr.json`                       | Same key in French                                               |
-
-#### DeviceSelector filtering
-
-- **By category** (`EQUIPMENT_TYPE_CATEGORIES`): when data category is specific (e.g., `light_state`)
-- **By data keys** (`EQUIPMENT_TYPE_DATA_KEYS`): when category is too broad (e.g., `generic`). Use specific keys.
-
-#### Zone info card (CompactEquipmentCard.tsx)
-
-Show the most relevant 1-2 values per equipment type.
-
-#### Dashboard widget (EquipmentWidget.tsx + MobileWidgetCard.tsx)
-
-Desktop: full `WidgetCard` (h-[160px] sm:h-[240px]) with icon + data + controls.
-Mobile: compact button with icon + primary value.
-
-#### Detail page panel
-
-Interactive controls for the equipment type. Create a dedicated `<Type>Panel.tsx` component.
+**Every new equipment type requires changes in ALL touchpoints listed in [reference.md](reference.md).**
+Missing any touchpoint will cause broken UI. Check the list before considering the task done.
 
 ### 3.4 Registry
 
-Add entry to `plugins/registry.json`:
+Add entry to `plugins/registry.json` with `id`, `name`, `description`, `icon`, `repo`, `version`, `tags`.
 
-```json
-{
-  "id": "<plugin-id>",
-  "name": "Plugin Name",
-  "description": "Short description",
-  "icon": "LucideIconName",
-  "author": "author",
-  "repo": "owner/sowel-plugin-<name>",
-  "version": "0.1.0",
-  "tags": ["tag1", "tag2"]
-}
-```
-
-### 3.5 Implementation Rules
-
-Same rules as `/sowel-feature`:
-
-- TypeScript strict, no `any`
-- Pino structured logging (never `console.*`)
-- Tailwind only, Lucide icons
-- All types in `src/shared/types.ts`
+> **GATE 3**: Code is on a feature branch. Plugin repo is created. Verify with `git branch --show-current`.
 
 ---
 
-## Phase 4: Test & Validate
+## Phase 4: Test & Validate (MANDATORY)
 
-### 4.1 TypeScript Compilation (MUST pass)
-
-```bash
-npx tsc --noEmit          # Backend
-cd ui && npx tsc --noEmit  # Frontend
-```
-
-### 4.2 Run Tests
+### 4.1 ALL checks must pass
 
 ```bash
-npm run test
+npx tsc --noEmit                                              # Backend
+cd ui && npx tsc --noEmit                                     # Frontend
+cd /Users/mchacher/Documents/01_Geekerie/Sowel && npx vitest run  # Tests
+npx eslint src/ --ext .ts                                     # Lint
 ```
 
-### 4.3 Functional Test Checklist
+### 4.2 Functional Test Checklist
 
 1. Install plugin from store
-2. Configure settings (token, etc.)
+2. Configure settings
 3. Start integration → devices appear
-4. Create equipment with new type → **auto-binding works** (data + orders)
-5. Equipment detail page shows **data + interactive controls**
-6. Zone/home view shows **compact info card**
-7. Dashboard widget renders on **desktop and mobile**
-8. Orders work (power, source, etc.)
-9. Historization works (if applicable)
-10. Plugin update works (bump version, update from UI)
+4. Create equipment → auto-binding works
+5. Equipment detail page shows data + controls
+6. Zone/home view shows compact info card
+7. Dashboard widget renders (desktop + mobile)
+8. Orders work
+9. Plugin update works
 
-### 4.4 Lint
-
-```bash
-npx eslint src/ --ext .ts
-cd ui && npx eslint src/ --ext .ts,.tsx
-```
+> **GATE 4**: TypeScript + tests + lint pass with zero errors. Functional checklist completed.
 
 ---
 
-## Phase 5: Documentation & Commit
+## Phase 5: Commit, PR & Merge
 
-### 5.1 Update Documentation
-
-Use `/update-docs` to update:
-
-| Document                               | What to update                 |
-| -------------------------------------- | ------------------------------ |
-| `docs/user/equipments.md`              | New equipment type description |
-| `docs/technical/plugin-development.md` | If new patterns introduced     |
-| `specs/XXX-plugin-<name>/spec.md`      | Mark acceptance criteria [x]   |
-
-### 5.2 Plugin Release
+### 5.1 Plugin Release
 
 ```bash
 cd sowel-plugin-<name>
 npm run build
 git add -A && git commit -m "feat: v0.1.0"
 git tag v0.1.0 && git push && git push --tags
-tar -czf /tmp/sowel-plugin-<name>-0.1.0.tar.gz --exclude=node_modules --exclude=.git .
-gh release create v0.1.0 /tmp/sowel-plugin-<name>-0.1.0.tar.gz --title "v0.1.0" --notes "Initial release"
+gh release create v0.1.0 --title "v0.1.0" --notes "Initial release"
 ```
 
----
-
-## Phase 6: Pull Request & Merge
-
-### 6.1 Push Branch
+### 5.2 Sowel PR
 
 ```bash
 git push -u origin feat/plugin-<name>
+gh pr create --title "feat: plugin <name> integration" --body "..."
 ```
 
-### 6.2 Create Pull Request
+### 5.3 Wait for Merge Approval
 
-```bash
-gh pr create --title "feat: plugin <name> integration" --body "$(cat <<'EOF'
-## Summary
-- Plugin: ...
-- New equipment types: ...
-- Devices: ...
+**CRITICAL: Do NOT merge without explicit user confirmation.**
 
-## Changes
-- Plugin repo: ...
-- Core: new types, UI components
-- Registry: updated
-
-## Test plan
-- [x] TypeScript compiles (zero errors)
-- [x] All tests pass
-- [x] Plugin installs from store
-- [x] Devices discovered
-- [x] Equipment creation + auto-binding
-- [x] Detail page + controls
-- [x] Zone card + dashboard widget (desktop + mobile)
-- [x] Orders work
-EOF
-)"
+```
+PR créée: [URL]. Voulez-vous que je merge dans main ?
 ```
 
-### 6.3 Wait for User Approval
+> **GATE 5**: User has explicitly approved the merge.
 
-**Do NOT merge without user confirmation.**
-
-Ask: "PR créée: [URL]. Voulez-vous que je merge dans main ?"
-
-### 6.4 Merge & Cleanup
-
-Once user approves:
+### 5.4 Merge
 
 ```bash
 gh pr merge <number> --merge --delete-branch
