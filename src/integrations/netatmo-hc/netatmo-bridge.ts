@@ -13,7 +13,6 @@ import type {
   NetatmoHomesDataResponse,
   NetatmoHomeStatusResponse,
   NetatmoGetMeasureResponse,
-  NetatmoSetStateRequest,
 } from "./netatmo-types.js";
 
 const BASE_URL = "https://api.netatmo.com";
@@ -221,22 +220,6 @@ export class NetatmoBridge {
       params.set("date_end", String(dateEnd));
     }
     return this.apiGet<NetatmoGetMeasureResponse>(`/api/getmeasure?${params.toString()}`);
-  }
-
-  async setState(request: NetatmoSetStateRequest): Promise<void> {
-    const res = await this.apiFetch(`${BASE_URL}/api/setstate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`setstate failed (${res.status}): ${text}`);
-    }
   }
 
   // ============================================================

@@ -1,5 +1,15 @@
 [
   {
+    "id": "legrand_control",
+    "name": "Legrand Control",
+    "description": "Legrand Home+Control — lights, shutters, plugs, contactors",
+    "icon": "PlugZap",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-legrand-control",
+    "version": "1.0.0",
+    "tags": ["legrand", "netatmo", "light", "shutter", "plug"]
+  },
+  {
     "id": "netatmo_weather",
     "name": "Netatmo Weather",
     "description": "Netatmo Weather Station — temperature, humidity, pressure, CO2, wind, rain",

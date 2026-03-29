@@ -14,29 +14,16 @@ import { backfillEnergyIfNeeded } from "./energy-backfill.js";
 const SETTINGS_PREFIX = "integration.netatmo_hc.";
 const DEFAULT_DATA_DIR = resolve(process.cwd(), "data");
 
-/** Boolean params expected by Netatmo setstate API. */
-const BOOLEAN_PARAMS = new Set(["on"]);
-/** Numeric params expected by Netatmo setstate API. */
-const NUMERIC_PARAMS = new Set(["brightness", "target_position"]);
-
-/** Coerce Sowel order value to the type Netatmo API expects. */
-function coerceValue(param: string, value: unknown): unknown {
-  if (BOOLEAN_PARAMS.has(param)) {
-    if (typeof value === "boolean") return value;
-    if (typeof value === "string") return value.toUpperCase() === "ON" || value === "true";
-    return Boolean(value);
-  }
-  if (NUMERIC_PARAMS.has(param)) {
-    return typeof value === "number" ? value : Number(value);
-  }
-  return value;
-}
-
+/**
+ * Netatmo HC integration — now only handles energy monitoring (NLPC meters).
+ * Home+Control devices are handled by the legrand_control plugin.
+ * Weather data is handled by the netatmo_weather plugin.
+ */
 export class NetatmoHCIntegration implements IntegrationPlugin {
   readonly id = "netatmo_hc";
-  readonly name = "Legrand Home+Control";
-  readonly description = "Netatmo Connect API integration";
-  readonly icon = "PlugZap";
+  readonly name = "Legrand Energy";
+  readonly description = "Legrand energy monitoring (NLPC meters)";
+  readonly icon = "Zap";
 
   private logger: Logger;
   private eventBus: EventBus;
@@ -72,7 +59,9 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
   }
 
   isConfigured(): boolean {
+    const enableEnergy = this.getSetting("enable_energy") === "true";
     return (
+      enableEnergy &&
       this.getSetting("client_id") !== undefined &&
       this.getSetting("client_secret") !== undefined &&
       this.getSetting("refresh_token") !== undefined
@@ -88,12 +77,7 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         required: true,
         placeholder: "From dev.netatmo.com",
       },
-      {
-        key: "client_secret",
-        label: "Client Secret",
-        type: "password",
-        required: true,
-      },
+      { key: "client_secret", label: "Client Secret", type: "password", required: true },
       {
         key: "refresh_token",
         label: "Refresh Token",
@@ -110,13 +94,6 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         placeholder: "300",
       },
       {
-        key: "enable_home_control",
-        label: "Enable Home+Control devices",
-        type: "boolean",
-        required: false,
-        defaultValue: "true",
-      },
-      {
         key: "enable_energy",
         label: "Enable Energy Monitoring",
         type: "boolean",
@@ -127,7 +104,6 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
   }
 
   async start(options?: { pollOffset?: number }): Promise<void> {
-    // Clean up previous state before (re)starting
     if (this.poller) {
       this.poller.stop();
       this.poller = null;
@@ -147,11 +123,8 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     const refreshToken = this.getSetting("refresh_token")!;
     const pollingIntervalSec = parseInt(this.getSetting("polling_interval") ?? "300", 10);
     const pollingIntervalMs = (isNaN(pollingIntervalSec) ? 300 : pollingIntervalSec) * 1000;
-    const enableHomeControl = this.getSetting("enable_home_control") !== "false"; // default true
-    const enableEnergy = this.getSetting("enable_energy") === "true";
 
     try {
-      // Create bridge with token rotation callback
       this.bridge = new NetatmoBridge(
         clientId,
         clientSecret,
@@ -159,28 +132,20 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         this.logger,
         DEFAULT_DATA_DIR,
         (newToken) => {
-          // Persist the rotated refresh_token to settings
           this.settingsManager.set(`${SETTINGS_PREFIX}refresh_token`, newToken);
         },
       );
 
-      // Authenticate (refresh token → get access token)
       await this.bridge.authenticate();
-      this.logger.info("Legrand H+C authentication successful");
+      this.logger.info("Legrand Energy authentication successful");
 
-      // Discover home ID (use first home) — needed for Home+Control
-      let homeId = "";
-      if (enableHomeControl) {
-        const homesData = await this.bridge.getHomesData();
-        const homes = homesData.body.homes;
-        if (homes.length === 0) {
-          throw new Error("No homes found in Legrand H+C account");
-        }
-        homeId = homes[0].id;
-        this.logger.info({ homeId, homeName: homes[0].name }, "Using Legrand H+C home");
-      }
+      // Discover home ID for energy polling
+      const homesData = await this.bridge.getHomesData();
+      const homes = homesData.body.homes;
+      if (homes.length === 0) throw new Error("No homes found");
+      const homeId = homes[0].id;
 
-      // Start polling
+      // Start energy-only poller
       this.poller = new NetatmoPoller(
         this.bridge,
         this.deviceManager,
@@ -190,18 +155,16 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
         homeId,
         this.logger,
         pollingIntervalMs,
-        enableHomeControl,
-        enableEnergy,
       );
       await this.poller.start(options?.pollOffset ?? 0);
 
       this.status = "connected";
       this.retryCount = 0;
       this.eventBus.emit({ type: "system.integration.connected", integrationId: this.id });
-      this.logger.info({ pollingIntervalMs }, "Legrand H+C integration started");
+      this.logger.info({ pollingIntervalMs }, "Legrand Energy started");
     } catch (err) {
       this.status = "error";
-      this.logger.error({ err }, "Failed to start Legrand H+C integration");
+      this.logger.error({ err }, "Failed to start Legrand Energy");
       this.scheduleRetry();
     }
   }
@@ -218,18 +181,17 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
     }
     this.status = "disconnected";
     this.eventBus.emit({ type: "system.integration.disconnected", integrationId: this.id });
-    this.logger.info("Legrand H+C integration stopped");
+    this.logger.info("Legrand Energy stopped");
   }
 
-  /** Schedule an automatic retry with exponential backoff (30s, 60s, 120s, ... max 10min). */
   private scheduleRetry(): void {
     this.cancelRetry();
     this.retryCount++;
     const delaySec = Math.min(30 * Math.pow(2, this.retryCount - 1), 600);
-    this.logger.warn({ retryCount: this.retryCount, delaySec }, "Scheduling automatic retry");
+    this.logger.warn({ retryCount: this.retryCount, delaySec }, "Scheduling retry");
     this.retryTimeout = setTimeout(() => {
       this.retryTimeout = null;
-      this.start().catch((err) => this.logger.error({ err }, "Retry start failed"));
+      this.start().catch((err) => this.logger.error({ err }, "Retry failed"));
     }, delaySec * 1000);
   }
 
@@ -242,59 +204,21 @@ export class NetatmoHCIntegration implements IntegrationPlugin {
 
   async executeOrder(
     _device: Device,
-    dispatchConfig: Record<string, unknown>,
-    value: unknown,
+    _dispatchConfig: Record<string, unknown>,
+    _value: unknown,
   ): Promise<void> {
-    if (!this.bridge || this.status !== "connected") {
-      throw new Error("Legrand H+C integration not connected");
-    }
-
-    const homeId = dispatchConfig.homeId as string;
-    const moduleId = dispatchConfig.moduleId as string;
-    const param = dispatchConfig.param as string;
-    const bridge = dispatchConfig.bridge as string | undefined;
-
-    if (!homeId || !moduleId || !param) {
-      throw new Error("Invalid dispatch config: missing homeId, moduleId, or param");
-    }
-
-    // Coerce value to the type expected by Netatmo API
-    const apiValue = coerceValue(param, value);
-
-    const modulePayload: Record<string, unknown> = { id: moduleId, [param]: apiValue };
-    if (bridge) modulePayload.bridge = bridge;
-
-    await this.bridge.setState({
-      home: {
-        id: homeId,
-        modules: [modulePayload],
-      },
-    });
-
-    this.logger.info({ moduleId, param, value }, "Legrand H+C order executed");
-
-    // Rapid-poll status until the expected state is confirmed (or 10s timeout)
-    if (this.poller) {
-      this.poller.scheduleOnDemandPoll({ moduleId, param, value: apiValue });
-    }
+    throw new Error("Legrand Energy does not support orders");
   }
 
   async refresh(): Promise<void> {
-    if (!this.poller || this.status !== "connected") {
-      throw new Error("Legrand H+C integration not connected");
-    }
+    if (!this.poller || this.status !== "connected") throw new Error("Not connected");
     await this.poller.refresh();
-    this.logger.info("Legrand H+C manual refresh completed");
   }
 
   getPollingInfo(): { lastPollAt: string; intervalMs: number } | null {
     return this.poller?.getPollingInfo() ?? null;
   }
 
-  /**
-   * Run energy backfill if needed (first run only).
-   * Must be called after integrations start and Equipment bindings are set up.
-   */
   async runEnergyBackfillIfNeeded(
     equipmentManager: EquipmentManager,
     influxClient: InfluxClient,
