@@ -6,7 +6,7 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-weather",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "tags": ["weather", "netatmo", "temperature", "humidity", "rain", "wind"]
   },
   {

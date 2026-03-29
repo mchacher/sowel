@@ -552,30 +552,44 @@ export class DeviceManager {
   }
 
   /**
-   * Migrate devices from one integration ID to another.
+   * Migrate devices from one integration ID to another, filtered by device model.
    * Used when a built-in integration is externalized as a plugin.
    * Preserves device UUIDs, equipment bindings, and history.
-   * Returns the number of devices migrated.
+   *
+   * Uses DB data only (no API calls) — safe to call before authentication.
+   * Runs in a transaction for consistency.
+   *
+   * @param oldIntegrationId - The current integration_id to migrate from
+   * @param newIntegrationId - The new integration_id to migrate to
+   * @param models - If provided, only migrate devices with these model values. If omitted, migrate ALL.
+   * @returns The number of devices migrated
    */
   migrateIntegrationId(
     oldIntegrationId: string,
     newIntegrationId: string,
-    sourceDeviceIds: string[],
+    models?: string[],
   ): number {
-    if (sourceDeviceIds.length === 0) return 0;
+    const migrate = this.db.transaction(() => {
+      const stmt =
+        models && models.length > 0
+          ? this.db.prepare(
+              `UPDATE devices SET integration_id = ?, source = ?, updated_at = datetime('now')
+             WHERE integration_id = ? AND model IN (${models.map(() => "?").join(", ")})`,
+            )
+          : this.db.prepare(
+              `UPDATE devices SET integration_id = ?, source = ?, updated_at = datetime('now')
+             WHERE integration_id = ?`,
+            );
 
-    const placeholders = sourceDeviceIds.map(() => "?").join(", ");
-    const stmt = this.db.prepare(
-      `UPDATE devices SET integration_id = ?, source = ?, updated_at = datetime('now')
-       WHERE integration_id = ? AND source_device_id IN (${placeholders})`,
-    );
-    const result = stmt.run(
-      newIntegrationId,
-      newIntegrationId,
-      oldIntegrationId,
-      ...sourceDeviceIds,
-    );
-    return result.changes;
+      const args =
+        models && models.length > 0
+          ? [newIntegrationId, newIntegrationId, oldIntegrationId, ...models]
+          : [newIntegrationId, newIntegrationId, oldIntegrationId];
+
+      return stmt.run(...args).changes;
+    });
+
+    return migrate();
   }
 }
 
