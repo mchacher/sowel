@@ -89,6 +89,7 @@
   "devices.col.name": "Name",
   "devices.col.manufacturer": "Manufacturer",
   "devices.col.model": "Model",
+  "devices.col.equipment": "Equipment",
   "devices.col.source": "Source",
   "devices.col.battery": "Battery",
   "devices.col.lqi": "LQI",
