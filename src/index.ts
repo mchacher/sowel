@@ -11,11 +11,6 @@ import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
-import { MotionLightRecipe } from "./recipes/motion-light.js";
-import { MotionLightDimmableRecipe } from "./recipes/motion-light-dimmable.js";
-import { PresenceThermostatRecipe } from "./recipes/presence-thermostat.js";
-import { PresenceHeaterRecipe } from "./recipes/presence-heater.js";
-import { StateWatchRecipe } from "./recipes/state-watch.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
@@ -172,11 +167,7 @@ async function main() {
     zoneAggregator,
     logger,
   );
-  recipeManager.register(MotionLightRecipe);
-  recipeManager.register(MotionLightDimmableRecipe);
-  recipeManager.register(PresenceThermostatRecipe);
-  recipeManager.register(PresenceHeaterRecipe);
-  recipeManager.register(StateWatchRecipe);
+  // All recipes are now external packages loaded by RecipeLoader
 
   // 12b. Create Notification Publisher Manager & Service
   const notificationPublisherManager = new NotificationPublisherManager(db, eventBus, logger);

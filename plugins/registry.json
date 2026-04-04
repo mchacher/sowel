@@ -125,5 +125,90 @@
         "description": "Allume ou éteint les lumières d'une pièce via un interrupteur ou une télécommande Zigbee."
       }
     }
+  },
+  {
+    "id": "state-watch",
+    "type": "recipe",
+    "name": "State Watch",
+    "description": "Monitor an equipment data key and raise an alarm when the value stays in a watched state",
+    "icon": "Eye",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-state-watch",
+    "version": "1.0.0",
+    "tags": ["automation", "monitoring", "alarm", "state"],
+    "i18n": {
+      "fr": {
+        "name": "Surveillance d'état",
+        "description": "Surveille une donnée d'équipement et déclenche une alarme si la valeur reste dans un état donné."
+      }
+    }
+  },
+  {
+    "id": "presence-heater",
+    "type": "recipe",
+    "name": "Presence Heater",
+    "description": "Switches electric heaters to comfort on motion, eco after absence timeout",
+    "icon": "Heater",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-presence-heater",
+    "version": "1.0.0",
+    "tags": ["automation", "heating", "presence", "heater"],
+    "i18n": {
+      "fr": {
+        "name": "Chauffage présence",
+        "description": "Passe les radiateurs en confort sur détection de mouvement, éco après un délai sans présence."
+      }
+    }
+  },
+  {
+    "id": "presence-thermostat",
+    "type": "recipe",
+    "name": "Presence Thermostat",
+    "description": "Adjusts thermostat setpoint based on zone presence with night mode, preheat windows, and cocoon boost",
+    "icon": "Thermometer",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-presence-thermostat",
+    "version": "1.0.0",
+    "tags": ["automation", "heating", "thermostat", "presence"],
+    "i18n": {
+      "fr": {
+        "name": "Thermostat présence",
+        "description": "Ajuste la consigne du thermostat selon la présence dans la zone, avec mode nuit, préchauffe et cocoon."
+      }
+    }
+  },
+  {
+    "id": "motion-light",
+    "type": "recipe",
+    "name": "Motion Light",
+    "description": "Turns on lights when motion is detected, turns off after a timeout with no motion",
+    "icon": "Lightbulb",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-motion-light",
+    "version": "1.0.0",
+    "tags": ["automation", "motion", "light"],
+    "i18n": {
+      "fr": {
+        "name": "Lumière sur mouvement",
+        "description": "Allume les lumières sur détection de mouvement, éteint après un délai sans mouvement."
+      }
+    }
+  },
+  {
+    "id": "motion-light-dimmable",
+    "type": "recipe",
+    "name": "Motion Light (Dimmable)",
+    "description": "Turns on dimmable lights when motion is detected with brightness control and time slots",
+    "icon": "SunDim",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-motion-light-dimmable",
+    "version": "1.0.0",
+    "tags": ["automation", "motion", "light", "dimmable", "brightness"],
+    "i18n": {
+      "fr": {
+        "name": "Lumière dimmable sur mouvement",
+        "description": "Allume les lumières dimmables sur mouvement avec contrôle de luminosité et plages horaires."
+      }
+    }
   }
 ]
