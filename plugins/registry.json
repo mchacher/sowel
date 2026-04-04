@@ -121,8 +121,8 @@
     "tags": ["automation", "button", "light", "toggle"],
     "i18n": {
       "fr": {
-        "name": "Lumiere sur interrupteur",
-        "description": "Les lumieres suivent les commandes manuelles — un appui sur un bouton bascule les lumieres on/off"
+        "name": "Lumière sur interrupteur",
+        "description": "Allume ou éteint les lumières d'une pièce via un interrupteur ou une télécommande Zigbee."
       }
     }
   }

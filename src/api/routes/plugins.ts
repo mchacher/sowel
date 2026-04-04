@@ -22,7 +22,20 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      return pluginLoader.getInstalled();
+      // Integration packages (enriched with runtime status + device counts)
+      const integrations = pluginLoader.getInstalled();
+
+      // Recipe packages (no runtime status — just manifest + enabled)
+      const recipes = packageManager.getInstalledByType("recipe").map((pkg) => ({
+        manifest: pkg.manifest,
+        enabled: pkg.enabled,
+        installedAt: pkg.installedAt,
+        status: "connected" as const,
+        deviceCount: 0,
+        offlineDeviceCount: 0,
+      }));
+
+      return [...integrations, ...recipes];
     } catch (err) {
       logger.error({ err }, "Failed to list plugins");
       return reply.code(500).send({

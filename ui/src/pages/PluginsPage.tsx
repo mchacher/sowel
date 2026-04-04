@@ -15,7 +15,7 @@ import {
 import type { PluginInfo, PluginManifest, IntegrationStatus, PackageType } from "../types";
 
 type Tab = "installed" | "store";
-type CategoryFilter = "all" | "integration" | "recipe";
+type CategoryFilter = "integration" | "recipe";
 
 function getManifestType(manifest: PluginManifest): PackageType {
   return manifest.type ?? "integration";
@@ -38,7 +38,7 @@ export function PluginsPage() {
   const [store, setStore] = useState<PluginManifest[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("installed");
-  const [category, setCategory] = useState<CategoryFilter>("all");
+  const [category, setCategory] = useState<CategoryFilter>("integration");
 
   const load = useCallback(async () => {
     try {
@@ -76,15 +76,8 @@ export function PluginsPage() {
     store.some((m) => getManifestType(m) === "recipe");
 
   // Filter by category
-  const filteredPlugins =
-    category === "all"
-      ? plugins
-      : plugins.filter((p) => getManifestType(p.manifest) === category);
-
-  const filteredStore =
-    category === "all"
-      ? store
-      : store.filter((m) => getManifestType(m) === category);
+  const filteredPlugins = plugins.filter((p) => getManifestType(p.manifest) === category);
+  const filteredStore = store.filter((m) => getManifestType(m) === category);
 
   // Counts per category
   const integrationCount =
@@ -125,15 +118,9 @@ export function PluginsPage() {
         />
       </div>
 
-      {/* Category filter: All / Integrations / Recipes */}
+      {/* Category filter: Integrations / Recipes */}
       {hasRecipes && (
         <div className="flex items-center gap-1 mb-4 border-b border-border max-w-[720px]">
-          <CategoryTab
-            label={t("common.all")}
-            count={activeTab === "installed" ? plugins.length : store.length}
-            active={category === "all"}
-            onClick={() => setCategory("all")}
-          />
           <CategoryTab
             label={t("plugins.integrations")}
             count={integrationCount}
@@ -356,14 +343,9 @@ function PluginRow({
               {plugin.latestVersion}
             </span>
           )}
-          {isRecipe && (
-            <span className="text-[9px] px-1.5 py-0.5 bg-primary-light rounded-[4px] text-primary font-semibold uppercase tracking-wide shrink-0">
-              {t("plugins.recipe_badge")}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          {!isRecipe && (
+          {!isRecipe ? (
             <>
               <StatusBadge status={plugin.status} />
               <span className="text-[11px] text-text-tertiary">
@@ -373,8 +355,7 @@ function PluginRow({
                 )}
               </span>
             </>
-          )}
-          {isRecipe && (
+          ) : (
             <span className="text-[11px] text-text-tertiary">
               {getLocalizedDescription(plugin.manifest, lang)}
             </span>
@@ -504,7 +485,6 @@ function StoreRow({
 }) {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
-  const isRecipe = getManifestType(manifest) === "recipe";
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[manifest.icon] ?? Cpu;
@@ -537,11 +517,6 @@ function StoreRow({
           {manifest.version && (
             <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
               {manifest.version}
-            </span>
-          )}
-          {isRecipe && (
-            <span className="text-[9px] px-1.5 py-0.5 bg-primary-light rounded-[4px] text-primary font-semibold uppercase tracking-wide shrink-0">
-              {t("plugins.recipe_badge")}
             </span>
           )}
         </div>
