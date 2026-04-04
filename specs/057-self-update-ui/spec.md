@@ -1,4 +1,4 @@
-# 056 — Self-Update from UI
+# 057 — Self-Update from UI
 
 ## Summary
 
@@ -33,7 +33,7 @@ User clicks "Update to v1.1.0"
 
 - Docker socket mounted: `/var/run/docker.sock:/var/run/docker.sock`
 - Library: `dockerode` (Node.js Docker client) or direct HTTP to Unix socket
-- Requires: ghcr.io images from spec 054
+- Requires: ghcr.io images from spec 055
 
 ## Edge Cases
 

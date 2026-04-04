@@ -1,16 +1,18 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
-import type { PluginManager } from "../../plugins/plugin-manager.js";
+import type { PackageManager } from "../../packages/package-manager.js";
+import type { PluginLoader } from "../../plugins/plugin-loader.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 
 interface PluginsDeps {
-  pluginManager: PluginManager;
+  packageManager: PackageManager;
+  pluginLoader: PluginLoader;
   integrationRegistry: IntegrationRegistry;
   logger: Logger;
 }
 
 export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): void {
-  const { pluginManager, integrationRegistry, logger: parentLogger } = deps;
+  const { packageManager, pluginLoader, integrationRegistry, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "plugin-routes" });
 
   // GET /api/v1/plugins — list installed
@@ -20,7 +22,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      return pluginManager.getInstalled();
+      return pluginLoader.getInstalled();
     } catch (err) {
       logger.error({ err }, "Failed to list plugins");
       return reply.code(500).send({
@@ -36,7 +38,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      return pluginManager.getStore();
+      return packageManager.getStore();
     } catch (err) {
       logger.error({ err }, "Failed to list plugin store");
       return reply.code(500).send({
@@ -57,7 +59,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      const manifest = await pluginManager.installFromGitHub(repo);
+      const manifest = await pluginLoader.install(repo);
       logger.info({ pluginId: manifest.id, repo }, "Plugin installed via API");
       return { success: true, manifest };
     } catch (err) {
@@ -75,7 +77,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      await pluginManager.uninstall(request.params.id);
+      await pluginLoader.uninstall(request.params.id);
       logger.info({ pluginId: request.params.id }, "Plugin uninstalled via API");
       return { success: true };
     } catch (err) {
@@ -93,7 +95,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      const manifest = await pluginManager.update(request.params.id);
+      const manifest = await pluginLoader.update(request.params.id);
       logger.info(
         { pluginId: request.params.id, version: manifest.version },
         "Plugin updated via API",
@@ -114,7 +116,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      await pluginManager.enable(request.params.id);
+      await pluginLoader.enable(request.params.id);
       logger.info({ pluginId: request.params.id }, "Plugin enabled via API");
       return { success: true };
     } catch (err) {
@@ -132,7 +134,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      await pluginManager.disable(request.params.id);
+      await pluginLoader.disable(request.params.id);
       logger.info({ pluginId: request.params.id }, "Plugin disabled via API");
       return { success: true };
     } catch (err) {
@@ -165,8 +167,8 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     return { url };
   });
 
-  // GET /api/v1/plugins/:id/oauth/callback — receive OAuth code from Samsung
-  // No auth required — called by Samsung's redirect after user authorization
+  // GET /api/v1/plugins/:id/oauth/callback — receive OAuth code
+  // No auth required — called by provider's redirect after user authorization
   app.get<{ Params: { id: string }; Querystring: { code?: string; error?: string } }>(
     "/api/v1/plugins/:id/oauth/callback",
     async (request, reply) => {

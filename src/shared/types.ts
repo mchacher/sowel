@@ -649,8 +649,10 @@ export interface IntegrationInfo {
 }
 
 // ============================================================
-// Plugin Engine
+// Package / Plugin Engine
 // ============================================================
+
+export type PackageType = "integration" | "recipe";
 
 export interface PluginManifest {
   id: string;
@@ -659,11 +661,21 @@ export interface PluginManifest {
   description: string;
   icon: string; // Lucide icon name
   repo: string; // GitHub owner/repo — required for backup/restore reinstall
+  type?: PackageType; // defaults to "integration" for backward compat
   author?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
 }
 
+/** Raw package data from DB — no runtime info */
+export interface InstalledPackage {
+  manifest: PluginManifest;
+  enabled: boolean;
+  installedAt: string;
+  type: PackageType;
+}
+
+/** Enriched with runtime integration info (status, device counts) */
 export interface PluginInfo {
   manifest: PluginManifest;
   enabled: boolean;
