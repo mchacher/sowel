@@ -31,7 +31,8 @@ import type { MqttPublisherManager } from "../mqtt-publishers/mqtt-publisher-man
 import type { MqttPublishService } from "../mqtt-publishers/mqtt-publish-service.js";
 import type { NotificationPublisherManager } from "../notifications/notification-publisher-manager.js";
 import type { NotificationPublishService } from "../notifications/notification-publish-service.js";
-import type { PluginManager } from "../plugins/plugin-manager.js";
+import type { PackageManager } from "../packages/package-manager.js";
+import type { PluginLoader } from "../plugins/plugin-loader.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -79,7 +80,8 @@ interface ServerDeps {
   mqttPublishService: MqttPublishService;
   notificationPublisherManager: NotificationPublisherManager;
   notificationPublishService: NotificationPublishService;
-  pluginManager: PluginManager;
+  packageManager: PackageManager;
+  pluginLoader: PluginLoader;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -110,7 +112,8 @@ export async function createServer(deps: ServerDeps) {
     mqttPublishService,
     notificationPublisherManager,
     notificationPublishService,
-    pluginManager,
+    packageManager,
+    pluginLoader,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -170,7 +173,7 @@ export async function createServer(deps: ServerDeps) {
     integrationRegistry,
     settingsManager,
     deviceManager,
-    pluginManager,
+    pluginLoader,
     logger,
   });
   registerButtonActionRoutes(app, { buttonActionManager, logger });
@@ -196,7 +199,7 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerDashboardRoutes(app, { db });
-  registerPluginRoutes(app, { pluginManager, integrationRegistry, logger });
+  registerPluginRoutes(app, { packageManager, pluginLoader, integrationRegistry, logger });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

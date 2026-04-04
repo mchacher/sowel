@@ -33,7 +33,8 @@ import { MqttPublisherManager } from "./mqtt-publishers/mqtt-publisher-manager.j
 import { MqttPublishService } from "./mqtt-publishers/mqtt-publish-service.js";
 import { NotificationPublisherManager } from "./notifications/notification-publisher-manager.js";
 import { NotificationPublishService } from "./notifications/notification-publish-service.js";
-import { PluginManager } from "./plugins/plugin-manager.js";
+import { PackageManager } from "./packages/package-manager.js";
+import { PluginLoader } from "./plugins/plugin-loader.js";
 import { createServer } from "./api/server.js";
 
 /**
@@ -218,14 +219,15 @@ async function main() {
   const userManager = new UserManager(db, logger);
   const authService = new AuthService(db, userManager, config.jwt, logger);
 
-  // 14. Create Plugin Manager and load plugins
-  const pluginManager = new PluginManager(
-    db,
+  // 14. Create Package Manager + Plugin Loader and load plugins
+  const packageManager = new PackageManager(db, logger);
+  const pluginLoader = new PluginLoader(
+    packageManager,
     integrationRegistry,
     { logger, eventBus, settingsManager, deviceManager },
     logger,
   );
-  await pluginManager.loadAll();
+  await pluginLoader.loadAll();
 
   // 15. Start Fastify server BEFORE integrations (UI available immediately)
   // Integrations start in background with staggered polling
@@ -250,7 +252,8 @@ async function main() {
     mqttPublishService,
     notificationPublisherManager,
     notificationPublishService,
-    pluginManager,
+    packageManager,
+    pluginLoader,
     eventBus,
     integrationRegistry,
     logBuffer,

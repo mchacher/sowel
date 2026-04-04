@@ -1,0 +1,1 @@
+ALTER TABLE plugins ADD COLUMN type TEXT NOT NULL DEFAULT 'integration';

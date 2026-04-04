@@ -1,102 +1,112 @@
 [
   {
     "id": "zigbee2mqtt",
+    "type": "integration",
     "name": "Zigbee2MQTT",
     "description": "Zigbee devices via Zigbee2MQTT MQTT bridge",
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-zigbee2mqtt",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "tags": ["zigbee", "mqtt", "z2m", "sensors", "lights", "switches"]
   },
   {
     "id": "lora2mqtt",
+    "type": "integration",
     "name": "LoRa2MQTT",
     "description": "LoRa devices via lora2mqtt MQTT bridge",
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-lora2mqtt",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "tags": ["lora", "mqtt", "iot", "sensors"]
   },
   {
     "id": "panasonic_cc",
+    "type": "integration",
     "name": "Panasonic Comfort Cloud",
     "description": "Panasonic AC units via Comfort Cloud API",
     "icon": "AirVent",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-panasonic-cc",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "tags": ["panasonic", "ac", "heating", "cooling", "comfort-cloud"]
   },
   {
     "id": "mcz_maestro",
+    "type": "integration",
     "name": "MCZ Maestro",
     "description": "MCZ pellet stoves via Maestro cloud (Socket.IO)",
     "icon": "Flame",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-mcz-maestro",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "tags": ["mcz", "pellet", "stove", "heating"]
   },
   {
     "id": "legrand_energy",
+    "type": "integration",
     "name": "Legrand Energy",
     "description": "Legrand energy monitoring — NLPC meters, consumption + solar production",
     "icon": "Zap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-energy",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "tags": ["legrand", "energy", "consumption", "solar", "production"]
   },
   {
     "id": "legrand_control",
+    "type": "integration",
     "name": "Legrand Control",
     "description": "Legrand Home+Control — lights, shutters, plugs, contactors",
     "icon": "PlugZap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-control",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "tags": ["legrand", "netatmo", "light", "shutter", "plug"]
   },
   {
     "id": "netatmo_weather",
+    "type": "integration",
     "name": "Netatmo Weather",
     "description": "Netatmo Weather Station — temperature, humidity, pressure, CO2, wind, rain",
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-weather",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "tags": ["weather", "netatmo", "temperature", "humidity", "rain", "wind"]
   },
   {
     "id": "netatmo-security",
+    "type": "integration",
     "name": "Netatmo Security",
     "description": "Netatmo cameras (Welcome, Presence, Doorbell) — monitoring on/off",
     "icon": "Camera",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-security",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "tags": ["camera", "netatmo", "security"]
   },
   {
     "id": "weather-forecast",
+    "type": "integration",
     "name": "Weather Forecast",
     "description": "Weather forecast via Open-Meteo API (free, no API key)",
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-weather-forecast",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "tags": ["weather", "forecast", "open-meteo"]
   },
   {
     "id": "smartthings",
+    "type": "integration",
     "name": "Samsung SmartThings",
     "description": "Samsung SmartThings devices (TV, washing machine, and more)",
     "icon": "Smartphone",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-smartthings",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "tags": ["samsung", "smartthings", "tv", "washer", "appliance"]
   }
 ]

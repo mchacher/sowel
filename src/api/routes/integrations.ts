@@ -3,13 +3,13 @@ import type { Logger } from "../../core/logger.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
-import type { PluginManager } from "../../plugins/plugin-manager.js";
+import type { PluginLoader } from "../../plugins/plugin-loader.js";
 
 interface IntegrationsDeps {
   integrationRegistry: IntegrationRegistry;
   settingsManager: SettingsManager;
   deviceManager: DeviceManager;
-  pluginManager?: PluginManager;
+  pluginLoader?: PluginLoader;
   logger: Logger;
 }
 
@@ -18,7 +18,7 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
     integrationRegistry,
     settingsManager,
     deviceManager,
-    pluginManager,
+    pluginLoader,
     logger: parentLogger,
   } = deps;
   const logger = parentLogger.child({ module: "integration-routes" });
@@ -34,8 +34,8 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
 
     // Build plugin version map
     const pluginVersions = new Map<string, string>();
-    if (pluginManager) {
-      for (const p of pluginManager.getInstalled()) {
+    if (pluginLoader) {
+      for (const p of pluginLoader.getInstalled()) {
         pluginVersions.set(p.manifest.id, p.manifest.version);
       }
     }
