@@ -3,7 +3,12 @@ import type { Logger } from "../../core/logger.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
-import type { RecipeSlotDef, RecipeActionDef, RecipeLangPack } from "../../shared/types.js";
+import type {
+  RecipeSlotDef,
+  RecipeActionDef,
+  RecipeLangPack,
+  RecipeHelpers,
+} from "../../shared/types.js";
 import type { RecipeStateStore } from "./recipe-state-store.js";
 
 // ============================================================
@@ -18,6 +23,7 @@ export interface RecipeContext {
   logger: Logger;
   state: RecipeStateStore;
   log: (message: string, level?: "info" | "warn" | "error") => void;
+  helpers: RecipeHelpers;
 }
 
 // ============================================================

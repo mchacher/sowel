@@ -12,16 +12,33 @@ import {
   disablePlugin,
   updatePlugin,
 } from "../api";
-import type { PluginInfo, PluginManifest, IntegrationStatus } from "../types";
+import type { PluginInfo, PluginManifest, IntegrationStatus, PackageType } from "../types";
 
 type Tab = "installed" | "store";
+type CategoryFilter = "all" | "integration" | "recipe";
+
+function getManifestType(manifest: PluginManifest): PackageType {
+  return manifest.type ?? "integration";
+}
+
+/** Get localized name from manifest i18n if available */
+function getLocalizedName(manifest: PluginManifest, lang: string): string {
+  return manifest.i18n?.[lang]?.name ?? manifest.name;
+}
+
+/** Get localized description from manifest i18n if available */
+function getLocalizedDescription(manifest: PluginManifest, lang: string): string {
+  return manifest.i18n?.[lang]?.description ?? manifest.description;
+}
 
 export function PluginsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language?.split("-")[0] ?? "en";
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [store, setStore] = useState<PluginManifest[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("installed");
+  const [category, setCategory] = useState<CategoryFilter>("all");
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +70,32 @@ export function PluginsPage() {
 
   const installedIds = new Set(plugins.map((p) => p.manifest.id));
 
+  // Check if there are any recipes (to show/hide category filter)
+  const hasRecipes =
+    plugins.some((p) => getManifestType(p.manifest) === "recipe") ||
+    store.some((m) => getManifestType(m) === "recipe");
+
+  // Filter by category
+  const filteredPlugins =
+    category === "all"
+      ? plugins
+      : plugins.filter((p) => getManifestType(p.manifest) === category);
+
+  const filteredStore =
+    category === "all"
+      ? store
+      : store.filter((m) => getManifestType(m) === category);
+
+  // Counts per category
+  const integrationCount =
+    activeTab === "installed"
+      ? plugins.filter((p) => getManifestType(p.manifest) === "integration").length
+      : store.filter((m) => getManifestType(m) === "integration").length;
+  const recipeCount =
+    activeTab === "installed"
+      ? plugins.filter((p) => getManifestType(p.manifest) === "recipe").length
+      : store.filter((m) => getManifestType(m) === "recipe").length;
+
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
@@ -66,7 +109,7 @@ export function PluginsPage() {
         <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs: Installed / Store */}
       <div className="flex gap-1 mb-4 max-w-[720px]">
         <TabButton
           active={activeTab === "installed"}
@@ -82,12 +125,36 @@ export function PluginsPage() {
         />
       </div>
 
+      {/* Category filter: All / Integrations / Recipes */}
+      {hasRecipes && (
+        <div className="flex items-center gap-1 mb-4 border-b border-border max-w-[720px]">
+          <CategoryTab
+            label={t("common.all")}
+            count={activeTab === "installed" ? plugins.length : store.length}
+            active={category === "all"}
+            onClick={() => setCategory("all")}
+          />
+          <CategoryTab
+            label={t("plugins.integrations")}
+            count={integrationCount}
+            active={category === "integration"}
+            onClick={() => setCategory("integration")}
+          />
+          <CategoryTab
+            label={t("plugins.recipes")}
+            count={recipeCount}
+            active={category === "recipe"}
+            onClick={() => setCategory("recipe")}
+          />
+        </div>
+      )}
+
       {/* Content */}
       <div className="max-w-[720px]">
         {activeTab === "installed" ? (
-          <InstalledTab plugins={plugins} onRefresh={load} />
+          <InstalledTab plugins={filteredPlugins} lang={lang} onRefresh={load} />
         ) : (
-          <StoreTab store={store} installedIds={installedIds} onRefresh={load} />
+          <StoreTab store={filteredStore} installedIds={installedIds} lang={lang} onRefresh={load} />
         )}
       </div>
     </div>
@@ -128,13 +195,51 @@ function TabButton({
   );
 }
 
+// ── Category Tab ─────────────────────────────────────────────
+
+function CategoryTab({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        px-3 py-2 text-[13px] font-medium transition-colors duration-150
+        border-b-2 -mb-px cursor-pointer
+        ${
+          active
+            ? "border-primary text-primary"
+            : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
+        }
+      `}
+    >
+      {label}
+      <span
+        className={`ml-1.5 text-[11px] tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
 // ── Installed Tab ────────────────────────────────────────────
 
 function InstalledTab({
   plugins,
+  lang,
   onRefresh,
 }: {
   plugins: PluginInfo[];
+  lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -151,7 +256,7 @@ function InstalledTab({
   return (
     <div className="space-y-2">
       {plugins.map((plugin) => (
-        <PluginRow key={plugin.manifest.id} plugin={plugin} onRefresh={onRefresh} />
+        <PluginRow key={plugin.manifest.id} plugin={plugin} lang={lang} onRefresh={onRefresh} />
       ))}
     </div>
   );
@@ -161,9 +266,11 @@ function InstalledTab({
 
 function PluginRow({
   plugin,
+  lang,
   onRefresh,
 }: {
   plugin: PluginInfo;
+  lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -174,6 +281,7 @@ function PluginRow({
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[plugin.manifest.icon] ?? Cpu;
 
   const hasUpdate = !!plugin.latestVersion;
+  const isRecipe = getManifestType(plugin.manifest) === "recipe";
 
   const handleUpdate = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -237,7 +345,7 @@ function PluginRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-[14px] font-semibold text-text truncate">
-            {plugin.manifest.name}
+            {getLocalizedName(plugin.manifest, lang)}
           </span>
           <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
             {plugin.manifest.version}
@@ -248,15 +356,29 @@ function PluginRow({
               {plugin.latestVersion}
             </span>
           )}
+          {isRecipe && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-primary-light rounded-[4px] text-primary font-semibold uppercase tracking-wide shrink-0">
+              {t("plugins.recipe_badge")}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <StatusBadge status={plugin.status} />
-          <span className="text-[11px] text-text-tertiary">
-            {plugin.deviceCount} {t("plugins.devices")}
-            {plugin.offlineDeviceCount > 0 && (
-              <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
-            )}
-          </span>
+          {!isRecipe && (
+            <>
+              <StatusBadge status={plugin.status} />
+              <span className="text-[11px] text-text-tertiary">
+                {plugin.deviceCount} {t("plugins.devices")}
+                {plugin.offlineDeviceCount > 0 && (
+                  <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
+                )}
+              </span>
+            </>
+          )}
+          {isRecipe && (
+            <span className="text-[11px] text-text-tertiary">
+              {getLocalizedDescription(plugin.manifest, lang)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -333,10 +455,12 @@ function PluginRow({
 function StoreTab({
   store,
   installedIds,
+  lang,
   onRefresh,
 }: {
   store: PluginManifest[];
   installedIds: Set<string>;
+  lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -357,6 +481,7 @@ function StoreTab({
           key={manifest.id}
           manifest={manifest}
           installed={installedIds.has(manifest.id)}
+          lang={lang}
           onRefresh={onRefresh}
         />
       ))}
@@ -369,14 +494,17 @@ function StoreTab({
 function StoreRow({
   manifest,
   installed,
+  lang,
   onRefresh,
 }: {
   manifest: PluginManifest;
   installed: boolean;
+  lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
+  const isRecipe = getManifestType(manifest) === "recipe";
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[manifest.icon] ?? Cpu;
@@ -404,16 +532,21 @@ function StoreRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-[14px] font-semibold text-text truncate">
-            {manifest.name}
+            {getLocalizedName(manifest, lang)}
           </span>
           {manifest.version && (
             <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
               {manifest.version}
             </span>
           )}
+          {isRecipe && (
+            <span className="text-[9px] px-1.5 py-0.5 bg-primary-light rounded-[4px] text-primary font-semibold uppercase tracking-wide shrink-0">
+              {t("plugins.recipe_badge")}
+            </span>
+          )}
         </div>
         <p className="text-[12px] text-text-secondary mt-0.5 line-clamp-1">
-          {manifest.description}
+          {getLocalizedDescription(manifest, lang)}
         </p>
         {manifest.author && (
           <span className="text-[11px] text-text-tertiary">

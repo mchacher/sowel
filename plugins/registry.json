@@ -108,5 +108,22 @@
     "repo": "mchacher/sowel-plugin-smartthings",
     "version": "0.8.0",
     "tags": ["samsung", "smartthings", "tv", "washer", "appliance"]
+  },
+  {
+    "id": "switch-light",
+    "type": "recipe",
+    "name": "Switch Light",
+    "description": "Lights follow manual commands — any button press toggles lights on/off",
+    "icon": "ToggleRight",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-switch-light",
+    "version": "1.0.0",
+    "tags": ["automation", "button", "light", "toggle"],
+    "i18n": {
+      "fr": {
+        "name": "Lumiere sur interrupteur",
+        "description": "Les lumieres suivent les commandes manuelles — un appui sur un bouton bascule les lumieres on/off"
+      }
+    }
   }
 ]

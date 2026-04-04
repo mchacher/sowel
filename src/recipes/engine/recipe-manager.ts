@@ -5,10 +5,22 @@ import type { EventBus } from "../../core/event-bus.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
-import type { RecipeInfo, RecipeInstance, RecipeLogEntry } from "../../shared/types.js";
-import type { Recipe, RecipeContext } from "./recipe.js";
+import type {
+  RecipeInfo,
+  RecipeInstance,
+  RecipeLogEntry,
+  RecipeDefinition,
+  RecipeInstanceHandle,
+  RecipeHelpers,
+  RecipeSlotDef,
+  RecipeActionDef,
+  RecipeLangPack,
+} from "../../shared/types.js";
+import { Recipe, type RecipeContext } from "./recipe.js";
 import { toISOUtc } from "../../core/database.js";
 import { RecipeStateStore } from "./recipe-state-store.js";
+import { isAnyLightOn, turnOnLights, turnOffLights, setLightsBrightness } from "./light-helpers.js";
+import { parseDuration, formatDuration } from "./duration.js";
 
 // ============================================================
 // Types
@@ -99,6 +111,29 @@ export class RecipeManager {
       create: () => new RecipeClass(),
     });
     this.logger.info({ recipeId: sample.id }, "Recipe registered");
+  }
+
+  /**
+   * Register an external recipe from a recipe package.
+   * Wraps the RecipeDefinition factory into the internal RegisteredRecipe format.
+   */
+  registerExternal(definition: RecipeDefinition): void {
+    this.registry.set(definition.id, {
+      info: {
+        id: definition.id,
+        name: definition.name,
+        description: definition.description,
+        slots: definition.slots,
+        ...(definition.actions && definition.actions.length > 0
+          ? { actions: definition.actions }
+          : {}),
+        ...(definition.i18n && Object.keys(definition.i18n).length > 0
+          ? { i18n: definition.i18n }
+          : {}),
+      },
+      create: () => new ExternalRecipeAdapter(definition),
+    });
+    this.logger.info({ recipeId: definition.id }, "External recipe registered");
   }
 
   // ============================================================
@@ -431,6 +466,15 @@ export class RecipeManager {
     });
   }
 
+  private readonly helpers: RecipeHelpers = {
+    isAnyLightOn,
+    turnOnLights,
+    turnOffLights,
+    setLightsBrightness,
+    parseDuration,
+    formatDuration,
+  };
+
   private buildContext(instanceId: string, recipeId: string): RecipeContext {
     const onChanged = () => {
       this.eventBus.emit({ type: "recipe.instance.state.changed", instanceId, recipeId });
@@ -449,6 +493,7 @@ export class RecipeManager {
         const childLogger = this.logger.child({ instanceId, recipeId, recipeName });
         childLogger[level]({ instanceId, recipeId, recipeName }, message);
       },
+      helpers: this.helpers,
     };
   }
 
@@ -462,6 +507,52 @@ export class RecipeManager {
     } catch (err) {
       this.logger.error({ err, instanceId }, "Failed to write recipe log");
     }
+  }
+}
+
+// ============================================================
+// External recipe adapter — wraps RecipeDefinition into Recipe
+// ============================================================
+
+class ExternalRecipeAdapter extends Recipe {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly slots: RecipeSlotDef[];
+  override readonly actions: RecipeActionDef[];
+  override readonly i18n: Record<string, RecipeLangPack>;
+
+  private definition: RecipeDefinition;
+  private handle: RecipeInstanceHandle | null = null;
+
+  constructor(definition: RecipeDefinition) {
+    super();
+    this.definition = definition;
+    this.id = definition.id;
+    this.name = definition.name;
+    this.description = definition.description;
+    this.slots = definition.slots;
+    this.actions = definition.actions ?? [];
+    this.i18n = definition.i18n ?? {};
+  }
+
+  validate(params: Record<string, unknown>, ctx: RecipeContext): void {
+    this.definition.validate(params, ctx);
+  }
+
+  start(params: Record<string, unknown>, ctx: RecipeContext): void {
+    this.handle = this.definition.createInstance(params, ctx);
+  }
+
+  stop(): void {
+    if (this.handle) {
+      this.handle.stop();
+      this.handle = null;
+    }
+  }
+
+  override onAction(action: string, payload?: Record<string, unknown>): void {
+    this.handle?.onAction?.(action, payload);
   }
 }
 
