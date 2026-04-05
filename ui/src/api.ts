@@ -94,6 +94,26 @@ async function fetchPublic<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 // ============================================================
+// System
+// ============================================================
+
+export interface SystemVersionInfo {
+  current: string;
+  latest: string | null;
+  updateAvailable: boolean;
+  releaseUrl: string | null;
+  dockerAvailable: boolean;
+}
+
+export async function getSystemVersion(): Promise<SystemVersionInfo> {
+  return fetchJSON(`${API_BASE}/system/version`);
+}
+
+export async function triggerSystemUpdate(): Promise<{ success: boolean; message: string }> {
+  return fetchJSON(`${API_BASE}/system/update`, { method: "POST" });
+}
+
+// ============================================================
 // Auth
 // ============================================================
 

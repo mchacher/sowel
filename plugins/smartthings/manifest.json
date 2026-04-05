@@ -1,7 +1,8 @@
 {
   "id": "smartthings",
+  "type": "integration",
   "name": "Samsung SmartThings",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "description": "Samsung SmartThings devices (TV, washing machine, and more)",
   "icon": "Smartphone",
   "repo": "mchacher/sowel-plugin-smartthings",

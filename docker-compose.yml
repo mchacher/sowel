@@ -18,6 +18,7 @@ services:
     volumes:
       - sowel-data:/app/data
       - sowel-plugins:/app/plugins
+      - /var/run/docker.sock:/var/run/docker.sock # self-update
     depends_on:
       - influxdb
 

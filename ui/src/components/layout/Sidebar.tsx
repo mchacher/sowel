@@ -30,6 +30,7 @@ import { SidebarModeList } from "./SidebarModeList";
 import { SidebarChartList } from "./SidebarChartList";
 import { SowelLogo } from "./SowelLogo";
 import { useAuth } from "../../store/useAuth";
+import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { useEnergy } from "../../store/useEnergy";
 import { usePluginUpdates } from "./usePluginUpdates";
 
@@ -71,6 +72,7 @@ export function Sidebar() {
   const location = useLocation();
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
+  const updateAvailable = useUpdateAvailable();
   const energyAvailable = useEnergy((s) => s.available);
   const hasProduction = useEnergy((s) => s.hasProduction);
   const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
@@ -450,7 +452,12 @@ export function Sidebar() {
         >
           {({ isActive }) => (
             <>
-              <Settings size={collapsed ? 18 : 14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
+              <div className="relative flex-shrink-0">
+                <Settings size={collapsed ? 18 : 14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
+                {updateAvailable && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-accent rounded-full" />
+                )}
+              </div>
               {!collapsed && (
                 <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`}>
                   {t("nav.settings")}
