@@ -458,7 +458,9 @@ export class ZoneAggregator {
 
       switch (category) {
         case "temperature":
-          if (typeof value === "number") {
+          // Only aggregate actual temperature readings (alias "temperature"),
+          // not setpoints or outside temperatures from thermostats
+          if (typeof value === "number" && binding.alias === "temperature") {
             acc.temperatureSum += value;
             acc.temperatureCount += 1;
           }
