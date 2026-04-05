@@ -12,12 +12,7 @@ import type { CalendarModeAction, EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of [
-    "002_zones.sql",
-    "007_settings.sql",
-    "010_modes.sql",
-    "014_calendar_mode_actions.sql",
-  ]) {
+  for (const file of ["001_initial.sql"]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),
       "utf-8",
