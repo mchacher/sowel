@@ -1,13 +1,9 @@
-# ── Stage 1: Build UI ──────────────────────────────────────
-FROM node:20-slim AS ui-build
-WORKDIR /app/ui
-COPY ui/package.json ui/package-lock.json ./
-RUN npm ci
-COPY ui/ ./
-RUN npm run build
+# ============================================================
+# Sowel — Multi-stage Docker build
+# ============================================================
 
-# ── Stage 2: Build Backend ─────────────────────────────────
-FROM node:20-slim AS backend-build
+# ── Stage 1: Build Backend ────────────────────────────────
+FROM node:20 AS backend-build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -15,16 +11,25 @@ COPY tsconfig.json ./
 COPY src/ src/
 RUN npx tsc
 
-# ── Stage 3: Production ───────────────────────────────────
-FROM node:20-slim AS production
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
+# ── Stage 2: Build UI ────────────────────────────────────
+FROM node:20-slim AS ui-build
+WORKDIR /app/ui
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci
+COPY ui/ ./
+RUN npm run build
+
+# ── Stage 3: Production runtime ──────────────────────────
+FROM node:20-slim
 WORKDIR /app
+
+# Install production dependencies (includes native module compilation)
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-# Clean up build tools after native modules are compiled
-RUN apt-get purge -y python3 make g++ && apt-get autoremove -y
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && npm ci --omit=dev --ignore-scripts \
+    && npm rebuild better-sqlite3 \
+    && apt-get purge -y python3 make g++ && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* /root/.npm
 
 # Copy compiled backend
 COPY --from=backend-build /app/dist/ dist/
@@ -32,12 +37,15 @@ COPY --from=backend-build /app/dist/ dist/
 # Copy built UI
 COPY --from=ui-build /app/ui/dist/ ui-dist/
 
-# Copy migrations and recipes
+# Copy migrations + plugin registry
 COPY migrations/ migrations/
-COPY recipes/ recipes/
+COPY plugins/registry.json plugins/registry.json
 
-# Data volume (SQLite + JWT secret)
-VOLUME /app/data
+# Copy package.json (for version reading)
+COPY package.json ./
+
+# Prepare directories
+RUN mkdir -p data plugins
 
 ENV NODE_ENV=production
 ENV SQLITE_PATH=/app/data/sowel.db

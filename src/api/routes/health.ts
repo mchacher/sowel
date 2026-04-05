@@ -1,7 +1,13 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 import type { Logger } from "../../core/logger.js";
+
+const pkg = JSON.parse(
+  readFileSync(resolve(import.meta.dirname ?? ".", "../../../package.json"), "utf-8"),
+) as { version: string };
 
 interface HealthDeps {
   deviceManager: DeviceManager;
@@ -37,7 +43,7 @@ export function registerHealthRoutes(app: FastifyInstance, deps: HealthDeps): vo
         offline: statusCounts.offline ?? 0,
         unknown: statusCounts.unknown ?? 0,
       },
-      version: "0.10.0",
+      version: pkg.version,
     };
   });
 }

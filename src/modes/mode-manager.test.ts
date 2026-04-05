@@ -11,14 +11,7 @@ function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
   // Load required migrations
-  for (const file of [
-    "001_devices.sql",
-    "002_zones.sql",
-    "003_equipments.sql",
-    "010_modes.sql",
-    "013_button_action_bindings.sql",
-    "020_history.sql",
-  ]) {
+  for (const file of ["001_initial.sql"]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),
       "utf-8",

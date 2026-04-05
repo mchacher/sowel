@@ -2,6 +2,7 @@ node_modules
 dist
 ui/node_modules
 ui/dist
+ui-dist
 data
 .env
 .git
@@ -9,3 +10,7 @@ data
 *.md
 !README.md
 specs
+scripts
+plugins/*/
+!plugins/registry.json
+.github

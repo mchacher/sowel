@@ -13,36 +13,9 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  const migration1 = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/001_devices.sql"),
-    "utf-8",
+  db.exec(
+    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
   );
-  const migration2 = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/002_zones.sql"),
-    "utf-8",
-  );
-  const migration3 = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/003_equipments.sql"),
-    "utf-8",
-  );
-  const migration7 = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/007_settings.sql"),
-    "utf-8",
-  );
-  const migration11 = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/011_integration_architecture.sql"),
-    "utf-8",
-  );
-  const migration20 = readFileSync(
-    resolve(import.meta.dirname ?? ".", "../../migrations/020_history.sql"),
-    "utf-8",
-  );
-  db.exec(migration1);
-  db.exec(migration2);
-  db.exec(migration3);
-  db.exec(migration7);
-  db.exec(migration11);
-  db.exec(migration20);
   return db;
 }
 
