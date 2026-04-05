@@ -638,16 +638,20 @@ export interface NotificationPublisherWithMappings extends NotificationPublisher
 // Plugin
 // ============================================================
 
+export type PackageType = "integration" | "recipe";
+
 export interface PluginManifest {
   id: string;
   name: string;
   version: string;
   description: string;
   icon: string;
+  type?: PackageType;
   author?: string;
   repo?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
+  i18n?: Record<string, { name: string; description: string }>;
 }
 
 export interface PluginInfo {

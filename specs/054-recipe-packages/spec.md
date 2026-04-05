@@ -2,32 +2,35 @@
 
 ## Summary
 
-Add `type: "recipe"` support to the PackageManager (from spec 053). Create a **RecipeLoader** that loads recipe packages and registers them with RecipeManager. Externalize the 6 built-in recipes as individual packages (one repo per recipe). Remove built-in recipe code from core. Update the admin UI to distinguish integrations from recipes.
+Add `type: "recipe"` support to the PackageManager (from spec 053). Create a **RecipeLoader** that loads recipe packages and registers them with RecipeManager. Externalize recipes as individual packages (one repo per recipe). Expose shared helpers via RecipeContext.
+
+**Incremental approach**: start with **switch-light** only to validate the full pipeline. Remaining 5 recipes externalized in follow-up PRs.
 
 ## Prerequisites
 
 - Spec 053 completed (PackageManager extracted, `type` field in manifests)
+
+## Decisions
+
+- **Helpers in RecipeContext** — `duration` and `light-helpers` exposed via `ctx.helpers` (no code duplication in packages)
+- **i18n in manifest** — multilingual name/description in manifest.json for store display before install
+- **Coexistence** — `registerExternal()` for external recipes + `register(RecipeClass)` for built-in (temporary, until all 6 are externalized)
+- **No UI changes** — admin UI stays as-is for now (recipes appear alongside integrations in the store)
 
 ## Recipe Package Interface
 
 A recipe package exports a **factory function** — no dependency on core base class:
 
 ```typescript
-// sowel-plugin-motion-light/src/index.ts
+// sowel-recipe-switch-light/src/index.ts
 export function createRecipe(): RecipeDefinition {
   return {
-    id: "motion-light",
-    name: "Motion Light",
-    description: "Turn on light on motion, off after timeout",
-    slots: [
-      /* RecipeSlotDef[] */
-    ],
-    actions: [
-      /* RecipeActionDef[] — optional */
-    ],
-    i18n: {
-      /* optional */
-    },
+    id: "switch-light",
+    name: "Switch Light",
+    description: "Lights follow manual commands...",
+    slots: [ /* RecipeSlotDef[] */ ],
+    actions: [ /* RecipeActionDef[] — optional */ ],
+    i18n: { fr: { name: "...", description: "...", slots: {...} } },
 
     validate(params, ctx) {
       // throw Error if invalid
@@ -35,14 +38,10 @@ export function createRecipe(): RecipeDefinition {
 
     createInstance(params, ctx) {
       // subscribe to events, set up timers, etc.
-      // ctx = { eventBus, equipmentManager, zoneManager, zoneAggregator, logger, state, log }
+      // ctx includes: eventBus, equipmentManager, zoneManager, zoneAggregator, logger, state, log, helpers
       return {
-        stop() {
-          /* cleanup */
-        },
-        onAction(action, payload) {
-          /* optional */
-        },
+        stop() { /* cleanup */ },
+        onAction(action, payload) { /* optional */ },
       };
     },
   };
@@ -54,8 +53,25 @@ export function createRecipe(): RecipeDefinition {
 - **Factory function** (`createRecipe`) — same pattern as `createPlugin` for integrations
 - **No base class** — recipe returns a plain object conforming to `RecipeDefinition` interface
 - **`createInstance()`** replaces the current `start()` + class instance pattern — returns a `{ stop(), onAction?() }` handle
-- **RecipeContext** injected by RecipeManager, unchanged from today
+- **`ctx.helpers`** — shared utilities (turnOnLights, turnOffLights, isAnyLightOn, parseDuration, formatDuration, setLightsBrightness) injected via RecipeContext
 - **Recipe IDs stay identical** — existing instances in SQLite continue to work
+
+## RecipeContext.helpers
+
+New `helpers` field added to RecipeContext:
+
+```typescript
+interface RecipeHelpers {
+  turnOnLights(lightIds: string[], ctx: RecipeContext): string[];
+  turnOffLights(lightIds: string[], ctx: RecipeContext): string[];
+  isAnyLightOn(lightIds: string[], ctx: RecipeContext): boolean;
+  setLightsBrightness(lightIds: string[], ctx: RecipeContext, brightness: number): string[];
+  parseDuration(value: unknown): number;
+  formatDuration(ms: number): string;
+}
+```
+
+Built-in recipes can also use these helpers (optional refactor later).
 
 ## RecipeLoader
 
@@ -69,11 +85,10 @@ class RecipeLoader {
     private logger: Logger,
   ) {}
 
-  /** Load all installed recipe packages and register with RecipeManager */
   async loadAll(): Promise<void> {
     const packages = this.packageManager.getInstalledByType("recipe");
     for (const pkg of packages) {
-      const mod = await import(pkg.entryPoint);
+      // dynamic import of dist/index.js
       const definition = mod.createRecipe();
       this.recipeManager.registerExternal(definition);
     }
@@ -83,113 +98,62 @@ class RecipeLoader {
 
 ## RecipeManager Adaptation
 
-RecipeManager needs a new `registerExternal(definition: RecipeDefinition)` method that wraps the external definition into the internal recipe lifecycle (replaces the current `register(RecipeClass)` for external recipes).
+- New `registerExternal(definition: RecipeDefinition)` wraps factory definition into internal lifecycle
+- Existing `register(RecipeClass)` stays for built-in recipes (temporary coexistence)
+- On `init()`, both built-in and external recipes start their instances
 
-The existing `register(RecipeClass)` can coexist during migration but will be removed once all recipes are external.
+## Manifest i18n
 
-## Recipe Packages (6 repos)
-
-| Package                            | Repo                                        | Recipe ID             | Current version |
-| ---------------------------------- | ------------------------------------------- | --------------------- | --------------- |
-| sowel-recipe-motion-light          | mchacher/sowel-recipe-motion-light          | motion-light          | 1.0.0           |
-| sowel-recipe-motion-light-dimmable | mchacher/sowel-recipe-motion-light-dimmable | motion-light-dimmable | 1.0.0           |
-| sowel-recipe-switch-light          | mchacher/sowel-recipe-switch-light          | switch-light          | 1.0.0           |
-| sowel-recipe-presence-heater       | mchacher/sowel-recipe-presence-heater       | presence-heater       | 1.0.0           |
-| sowel-recipe-presence-thermostat   | mchacher/sowel-recipe-presence-thermostat   | presence-thermostat   | 1.0.0           |
-| sowel-recipe-state-watch           | mchacher/sowel-recipe-state-watch           | state-watch           | 1.0.0           |
-
-### Naming Convention
-
-- Repos: `sowel-recipe-<id>` (not `sowel-plugin-` — distinguishes recipe packages from integrations)
-- Package IDs match existing recipe IDs exactly (migration safety)
-
-### Manifest Example
+Recipe package manifest includes multilingual descriptions for the store:
 
 ```json
 {
-  "id": "motion-light",
-  "name": "Motion Light",
+  "id": "switch-light",
   "type": "recipe",
-  "description": "Turn on light on motion detection, off after timeout",
-  "icon": "Lightbulb",
+  "name": "Switch Light",
+  "description": "Lights follow manual commands — any button press toggles lights on/off",
+  "icon": "ToggleRight",
   "author": "mchacher",
-  "repo": "mchacher/sowel-recipe-motion-light",
+  "repo": "mchacher/sowel-recipe-switch-light",
   "version": "1.0.0",
-  "tags": ["automation", "motion", "light"]
+  "tags": ["automation", "button", "light", "toggle"],
+  "i18n": {
+    "fr": {
+      "name": "Lumière sur interrupteur",
+      "description": "Les lumières suivent les commandes manuelles — un appui sur un bouton bascule les lumières on/off"
+    }
+  }
 }
 ```
 
-### Shared Code
+## Phase 1: switch-light (this PR)
 
-`motion-light` and `motion-light-dimmable` share a base (currently `motion-light-base.ts`). Two options:
+### Scope
 
-- **A.** Duplicate the shared code in each package (simple, no shared dependency)
-- **B.** Extract a `sowel-recipe-utils` package imported by both
+- RecipeDefinition interface in types.ts
+- RecipeHelpers interface + implementation in RecipeContext
+- RecipeLoader
+- RecipeManager.registerExternal()
+- `sowel-recipe-switch-light` repo + GitHub Actions release
+- Remove built-in SwitchLightRecipe from core
+- Add to registry.json
+- Wire in index.ts
 
-**Recommended: A** — the shared code is ~200 lines. Duplication is simpler than managing a shared package for 2 consumers.
+### Not in scope (follow-up PRs)
 
-### Helper Utilities
+- 5 remaining recipes (motion-light, motion-light-dimmable, presence-heater, presence-thermostat, state-watch)
+- Admin UI tabs for integrations vs recipes
+- Remove Recipe base class (only after all 6 are external)
 
-`duration.ts` and `light-helpers.ts` are used by multiple recipes. Options:
+## Acceptance Criteria (Phase 1)
 
-- **A.** Copy into each recipe package that needs them
-- **B.** Keep in core and have recipe packages import from a known path
-- **C.** Publish as `sowel-recipe-utils` npm package
-
-**Recommended: A** — keep each recipe self-contained. The utility code is small.
-
-## Registry Update
-
-Add all 6 recipe packages to `plugins/registry.json`:
-
-```json
-{
-  "id": "motion-light",
-  "type": "recipe",
-  "name": "Motion Light",
-  "description": "Turn on light on motion detection, off after timeout",
-  "icon": "Lightbulb",
-  "author": "mchacher",
-  "repo": "mchacher/sowel-recipe-motion-light",
-  "version": "1.0.0",
-  "tags": ["automation", "motion", "light"]
-}
-```
-
-## Admin UI Evolution
-
-The current "Plugins" admin page shows only integrations. It needs to:
-
-1. Rename to "Packages" (or keep "Extensions" / "Plugins" as user-facing name)
-2. Add tabs or sections: **Integrations** | **Recipes**
-3. Each section shows installed + available packages of that type
-4. Recipe packages show: name, description, version, installed/available status
-5. Install/update/uninstall actions work the same as integrations
-
-## Migration
-
-- **Data**: Zero migration needed — `recipe_instances.recipe_id` values stay identical
-- **Code**: Remove from core: `src/recipes/motion-light.ts`, `motion-light-dimmable.ts`, `switch-light.ts`, `presence-heater.ts`, `presence-thermostat.ts`, `state-watch.ts`, `engine/motion-light-base.ts`, `engine/light-helpers.ts`, `engine/duration.ts`
-- **Keep in core**: `src/recipes/engine/recipe-manager.ts`, `recipe.ts`, `recipe-state-store.ts`
-- **Startup**: Recipe packages are loaded after PackageManager.loadAll(), before `recipeManager.init()`
-- **First restart**: recipes auto-installed from registry (same as integration plugins)
-
-## Acceptance Criteria
-
-- [ ] `RecipeDefinition` interface defined in `src/shared/types.ts`
+- [ ] `RecipeDefinition` + `RecipeHelpers` interfaces in `src/shared/types.ts`
 - [ ] `RecipeLoader` loads recipe packages and registers with RecipeManager
 - [ ] `RecipeManager.registerExternal()` wraps factory definitions
-- [ ] 6 recipe repos created with GitHub Actions release workflow
-- [ ] All 6 recipes produce working pre-built tarballs
-- [ ] Built-in recipe code removed from `src/recipes/` (only engine remains)
-- [ ] Existing recipe instances continue to work (same IDs, no data migration)
-- [ ] `registry.json` includes all 6 recipe packages with `type: "recipe"`
-- [ ] Admin UI distinguishes integrations and recipes (tabs or sections)
-- [ ] Install/update/uninstall works for recipe packages
+- [ ] `ctx.helpers` exposes light-helpers + duration utils
+- [ ] `sowel-recipe-switch-light` repo created with GitHub Actions release
+- [ ] Built-in `SwitchLightRecipe` removed from core + `src/index.ts`
+- [ ] 3 existing switch-light instances continue to work (same IDs)
+- [ ] `registry.json` includes switch-light with `type: "recipe"` + `i18n`
 - [ ] TypeScript compiles, all tests pass, lint clean
-
-## Open Questions
-
-- Should recipe tests stay in core (they test the engine) or move to recipe repos?
-- Admin page naming: "Plugins", "Packages", or "Extensions"?
-- Should motion-light and motion-light-dimmable share code (option B) or duplicate (option A)?
+- [ ] Manual test: button press toggles light via external recipe

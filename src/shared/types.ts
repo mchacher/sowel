@@ -339,6 +339,37 @@ export interface RecipeLogEntry {
   level: "info" | "warn" | "error";
 }
 
+/** Handle returned by RecipeDefinition.createInstance() */
+export interface RecipeInstanceHandle {
+  stop(): void;
+  onAction?(action: string, payload?: Record<string, unknown>): void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RecipeCtx = any; // RecipeContext at runtime — external packages can't import the concrete type
+
+/** External recipe definition — returned by createRecipe() factory in recipe packages */
+export interface RecipeDefinition {
+  id: string;
+  name: string;
+  description: string;
+  slots: RecipeSlotDef[];
+  actions?: RecipeActionDef[];
+  i18n?: Record<string, RecipeLangPack>;
+  validate(params: Record<string, unknown>, ctx: RecipeCtx): void;
+  createInstance(params: Record<string, unknown>, ctx: RecipeCtx): RecipeInstanceHandle;
+}
+
+/** Helpers exposed to recipe packages via ctx.helpers */
+export interface RecipeHelpers {
+  isAnyLightOn(lightIds: string[], ctx: RecipeCtx): boolean;
+  turnOnLights(lightIds: string[], ctx: RecipeCtx): string[];
+  turnOffLights(lightIds: string[], ctx: RecipeCtx): string[];
+  setLightsBrightness(lightIds: string[], ctx: RecipeCtx, brightness: number): string[];
+  parseDuration(value: unknown): number;
+  formatDuration(ms: number): string;
+}
+
 // ============================================================
 // Mode
 // ============================================================
