@@ -1,6 +1,6 @@
 {
   "name": "sowel-plugin-smartthings",
-  "version": "0.4.0",
+  "version": "0.8.0",
   "description": "Sowel plugin: Samsung SmartThings integration",
   "type": "module",
   "main": "dist/index.js",

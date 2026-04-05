@@ -57,6 +57,7 @@ import { registerMqttPublisherRoutes } from "./routes/mqtt-publishers.js";
 import { registerNotificationPublisherRoutes } from "./routes/notification-publishers.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerPluginRoutes } from "./routes/plugins.js";
+import { registerSystemRoutes } from "./routes/system.js";
 import { registerWebSocket } from "./websocket.js";
 
 interface ServerDeps {
@@ -82,6 +83,8 @@ interface ServerDeps {
   notificationPublishService: NotificationPublishService;
   packageManager: PackageManager;
   pluginLoader: PluginLoader;
+  versionChecker: import("../core/version-checker.js").VersionChecker;
+  updateManager: import("../core/update-manager.js").UpdateManager;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -114,6 +117,8 @@ export async function createServer(deps: ServerDeps) {
     notificationPublishService,
     packageManager,
     pluginLoader,
+    versionChecker,
+    updateManager,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -200,6 +205,7 @@ export async function createServer(deps: ServerDeps) {
   });
   registerDashboardRoutes(app, { db });
   registerPluginRoutes(app, { packageManager, pluginLoader, integrationRegistry, logger });
+  registerSystemRoutes(app, { versionChecker, updateManager, logger });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

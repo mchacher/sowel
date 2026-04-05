@@ -12,6 +12,8 @@ import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
+import { VersionChecker } from "./core/version-checker.js";
+import { UpdateManager } from "./core/update-manager.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -223,6 +225,10 @@ async function main() {
   const recipeLoader = new RecipeLoader(packageManager, recipeManager, logger);
   await recipeLoader.loadAll();
 
+  // 14c. Create version checker + update manager
+  const versionChecker = new VersionChecker(eventBus, logger);
+  const updateManager = new UpdateManager(eventBus, logger);
+
   // 15. Start Fastify server BEFORE integrations (UI available immediately)
   // Integrations start in background with staggered polling
   const server = await createServer({
@@ -248,6 +254,8 @@ async function main() {
     notificationPublishService,
     packageManager,
     pluginLoader,
+    versionChecker,
+    updateManager,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -264,6 +272,9 @@ async function main() {
 
   // 16. Start Sunlight Manager (before system.started so aggregation has sunlight data)
   sunlightManager.start();
+
+  // 16b. Start version checker (polls GitHub releases for updates)
+  versionChecker.start();
 
   // 17. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
@@ -310,6 +321,11 @@ async function main() {
       sunlightManager.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping sunlight manager");
+    }
+    try {
+      versionChecker.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping version checker");
     }
     try {
       calendarManager.stopAll();

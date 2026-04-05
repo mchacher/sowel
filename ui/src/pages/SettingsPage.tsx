@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plus, Trash2, Copy, Check, Eye, EyeOff, Settings } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Settings,
+  ArrowUpCircle,
+  ExternalLink,
+} from "lucide-react";
 import { useAuth } from "../store/useAuth";
 import {
   updateMe,
@@ -14,13 +25,17 @@ import {
   deleteUser,
   getSettings,
   updateSettings,
+  getSystemVersion,
+  triggerSystemUpdate,
 } from "../api";
+import type { SystemVersionInfo } from "../api";
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
 import type { ApiToken, User, UserRole } from "../types";
 import { MobileSection } from "../components/settings/MobileSection";
 import { TariffSettings } from "../components/settings/TariffSettings";
-import { useIsMobile } from "../hooks/useIsMobile";
+
+type SettingsTab = "general" | "account" | "system" | "admin";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -28,57 +43,72 @@ export function SettingsPage() {
   const updatePreferences = useAuth((s) => s.updatePreferences);
   const fetchMe = useAuth((s) => s.fetchMe);
   const isAdmin = user?.role === "admin";
-  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? "general" : "account");
+
+  const tabs: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
+    { id: "general", label: t("settings.tabs.general"), adminOnly: true },
+    { id: "account", label: t("settings.tabs.account") },
+    { id: "system", label: t("settings.tabs.system") },
+    { id: "admin", label: t("settings.tabs.admin"), adminOnly: true },
+  ];
+
+  const visibleTabs = tabs.filter((tab) => !tab.adminOnly || isAdmin);
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Page header */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 sm:gap-2.5 mb-1">
-          <Settings size={18} strokeWidth={1.5} className="text-text-secondary sm:hidden" />
-          <Settings size={22} strokeWidth={1.5} className="text-text-secondary hidden sm:block" />
-          <h1 className="text-[17px] sm:text-[22px] font-semibold text-text leading-[24px] sm:leading-[28px]">
+      {/* Page header + version inline */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <Settings size={22} strokeWidth={1.5} className="text-text-secondary" />
+          <h1 className="text-[20px] sm:text-[22px] font-semibold text-text leading-[28px]">
             {t("settings.title")}
           </h1>
         </div>
+        {isAdmin && <VersionBadge />}
       </div>
 
-      {isMobile ? (
-        /* Mobile: only Preferences + Password (no profile — read-only, useless on mobile) */
-        <div className="space-y-6">
-          <PreferencesSection
-            language={user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")}
-            onLanguageChange={async (lang) => {
-              i18n.changeLanguage(lang);
-              localStorage.setItem("sowel_language", lang);
-              if (user) {
-                await updatePreferences({ ...user.preferences, language: lang });
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-6 border-b border-border">
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`
+              px-3 py-2 text-[13px] font-medium transition-colors duration-150
+              border-b-2 -mb-px cursor-pointer
+              ${
+                activeTab === tab.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
               }
-            }}
-            theme={user?.preferences?.theme ?? (localStorage.getItem("sowel_theme") as ThemeSetting | null) ?? "system"}
-            onThemeChange={async (theme) => {
-              setTheme(theme);
-              if (user) {
-                await updatePreferences({ ...user.preferences, theme });
-              }
-            }}
-          />
+            `}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          <ChangePasswordSection />
-        </div>
-      ) : (
-        /* Desktop: Two-column grid with all sections */
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left column: Home + Profile + Preferences + Password */}
+      {/* Tab content */}
+      <div className="max-w-[720px]">
+        {activeTab === "general" && isAdmin && (
           <div className="space-y-6">
-            {isAdmin && <HomeSettingsSection />}
-            <ProfileSection user={user} onSave={async (displayName) => {
-              await updateMe({ displayName });
-              await fetchMe();
-            }} />
+            <HomeSettingsSection />
+          </div>
+        )}
 
+        {activeTab === "account" && (
+          <div className="space-y-6">
+            <ProfileSection
+              user={user}
+              onSave={async (displayName) => {
+                await updateMe({ displayName });
+                await fetchMe();
+              }}
+            />
             <PreferencesSection
-              language={user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")}
+              language={
+                user?.preferences?.language ?? (i18n.language.startsWith("fr") ? "fr" : "en")
+              }
               onLanguageChange={async (lang) => {
                 i18n.changeLanguage(lang);
                 localStorage.setItem("sowel_language", lang);
@@ -86,7 +116,11 @@ export function SettingsPage() {
                   await updatePreferences({ ...user.preferences, language: lang });
                 }
               }}
-              theme={user?.preferences?.theme ?? (localStorage.getItem("sowel_theme") as ThemeSetting | null) ?? "system"}
+              theme={
+                user?.preferences?.theme ??
+                (localStorage.getItem("sowel_theme") as ThemeSetting | null) ??
+                "system"
+              }
               onThemeChange={async (theme) => {
                 setTheme(theme);
                 if (user) {
@@ -94,19 +128,24 @@ export function SettingsPage() {
                 }
               }}
             />
-
             <ChangePasswordSection />
           </div>
+        )}
 
-          {/* Right column: Mobile + API Tokens + User Management */}
+        {activeTab === "system" && (
           <div className="space-y-6">
             {isAdmin && <MobileSection />}
             <ApiTokensSection />
-            {isAdmin && <UserManagementSection currentUserId={user?.id ?? ""} />}
-            {isAdmin && <TariffSettings />}
           </div>
-        </div>
-      )}
+        )}
+
+        {activeTab === "admin" && isAdmin && (
+          <div className="space-y-6">
+            <UserManagementSection currentUserId={user?.id ?? ""} />
+            <TariffSettings />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -124,26 +163,44 @@ function HomeSettingsSection() {
   const [longitude, setLongitude] = useState("");
   const [sunriseOffset, setSunriseOffset] = useState("30");
   const [sunsetOffset, setSunsetOffset] = useState("45");
-  const [initial, setInitial] = useState({ homeName: "", latitude: "", longitude: "", sunriseOffset: "30", sunsetOffset: "45" });
+  const [initial, setInitial] = useState({
+    homeName: "",
+    latitude: "",
+    longitude: "",
+    sunriseOffset: "30",
+    sunsetOffset: "45",
+  });
 
   useEffect(() => {
-    getSettings().then((all) => {
-      const name = all["home.name"] ?? "";
-      const lat = all["home.latitude"] ?? "";
-      const lon = all["home.longitude"] ?? "";
-      const sr = all["home.sunriseOffset"] ?? "30";
-      const ss = all["home.sunsetOffset"] ?? "45";
-      setHomeName(name);
-      setLatitude(lat);
-      setLongitude(lon);
-      setSunriseOffset(sr);
-      setSunsetOffset(ss);
-      setInitial({ homeName: name, latitude: lat, longitude: lon, sunriseOffset: sr, sunsetOffset: ss });
-    }).finally(() => setLoading(false));
+    getSettings()
+      .then((all) => {
+        const name = all["home.name"] ?? "";
+        const lat = all["home.latitude"] ?? "";
+        const lon = all["home.longitude"] ?? "";
+        const sr = all["home.sunriseOffset"] ?? "30";
+        const ss = all["home.sunsetOffset"] ?? "45";
+        setHomeName(name);
+        setLatitude(lat);
+        setLongitude(lon);
+        setSunriseOffset(sr);
+        setSunsetOffset(ss);
+        setInitial({
+          homeName: name,
+          latitude: lat,
+          longitude: lon,
+          sunriseOffset: sr,
+          sunsetOffset: ss,
+        });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const dirty = homeName !== initial.homeName || latitude !== initial.latitude || longitude !== initial.longitude
-    || sunriseOffset !== initial.sunriseOffset || sunsetOffset !== initial.sunsetOffset;
+  const dirty =
+    homeName !== initial.homeName ||
+    latitude !== initial.latitude ||
+    longitude !== initial.longitude ||
+    sunriseOffset !== initial.sunriseOffset ||
+    sunsetOffset !== initial.sunsetOffset;
 
   const handleSave = async () => {
     setSaving(true);
@@ -259,7 +316,13 @@ function HomeSettingsSection() {
 // Profile
 // ============================================================
 
-function ProfileSection({ user, onSave }: { user: User | null; onSave: (displayName: string) => Promise<void> }) {
+function ProfileSection({
+  user,
+  onSave,
+}: {
+  user: User | null;
+  onSave: (displayName: string) => Promise<void>;
+}) {
   const { t } = useTranslation();
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [saving, setSaving] = useState(false);
@@ -303,7 +366,11 @@ function ProfileSection({ user, onSave }: { user: User | null; onSave: (displayN
           <button
             onClick={async () => {
               setSaving(true);
-              try { await onSave(displayName); } finally { setSaving(false); }
+              try {
+                await onSave(displayName);
+              } finally {
+                setSaving(false);
+              }
             }}
             disabled={saving}
             className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
@@ -320,7 +387,12 @@ function ProfileSection({ user, onSave }: { user: User | null; onSave: (displayN
 // Preferences
 // ============================================================
 
-function PreferencesSection({ language, onLanguageChange, theme, onThemeChange }: {
+function PreferencesSection({
+  language,
+  onLanguageChange,
+  theme,
+  onThemeChange,
+}: {
   language: string;
   onLanguageChange: (lang: "fr" | "en") => Promise<void>;
   theme: ThemeSetting;
@@ -418,7 +490,10 @@ function ChangePasswordSection() {
       await changeMyPassword(currentPassword, newPassword);
       setSuccess(true);
       reset();
-      setTimeout(() => { setOpen(false); setSuccess(false); }, 2000);
+      setTimeout(() => {
+        setOpen(false);
+        setSuccess(false);
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
@@ -432,7 +507,10 @@ function ChangePasswordSection() {
         <h2 className="text-[14px] font-semibold text-text">{t("settings.changePassword")}</h2>
         {!open && (
           <button
-            onClick={() => { setOpen(true); reset(); }}
+            onClick={() => {
+              setOpen(true);
+              reset();
+            }}
             className="text-[13px] text-primary hover:text-primary-hover font-medium cursor-pointer"
           >
             {t("common.edit")}
@@ -499,7 +577,10 @@ function ChangePasswordSection() {
               {saving ? t("common.saving") : t("common.save")}
             </button>
             <button
-              onClick={() => { setOpen(false); reset(); }}
+              onClick={() => {
+                setOpen(false);
+                reset();
+              }}
               className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
             >
               {t("common.cancel")}
@@ -508,6 +589,72 @@ function ChangePasswordSection() {
         </div>
       )}
     </section>
+  );
+}
+
+// ============================================================
+// Version Badge (compact, in header)
+// ============================================================
+
+function VersionBadge() {
+  const [info, setInfo] = useState<SystemVersionInfo | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSystemVersion()
+      .then((data) => { if (!cancelled) setInfo(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!info) return null;
+
+  const handleUpdate = async () => {
+    if (!info.updateAvailable) return;
+    setUpdating(true);
+    try {
+      await triggerSystemUpdate();
+    } catch {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[13px] font-mono font-semibold text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
+        v{info.current}
+      </span>
+      {info.updateAvailable && info.latest && (
+        <>
+          {info.dockerAvailable ? (
+            <button
+              onClick={handleUpdate}
+              disabled={updating}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {updating ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <ArrowUpCircle size={12} />
+              )}
+              v{info.latest}
+            </button>
+          ) : (
+            <a
+              href={info.releaseUrl ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors"
+            >
+              <ArrowUpCircle size={12} />
+              v{info.latest}
+              <ExternalLink size={10} />
+            </a>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -529,13 +676,15 @@ function ApiTokensSection() {
       const data = await getMyTokens();
       setTokens(data);
     } catch {
-      // Ignore — tokens will remain empty
+      // ignore
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const handleCreate = async () => {
     if (!tokenName.trim()) return;
@@ -608,11 +757,17 @@ function ApiTokensSection() {
       ) : (
         <div className="space-y-2">
           {tokens.map((token) => (
-            <div key={token.id} className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border">
+            <div
+              key={token.id}
+              className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
+            >
               <div>
                 <span className="text-[13px] font-medium text-text">{token.name}</span>
                 <span className="text-[11px] text-text-tertiary ml-2">
-                  {t("settings.lastUsed")}: {token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleDateString() : t("settings.never")}
+                  {t("settings.lastUsed")}:{" "}
+                  {token.lastUsedAt
+                    ? new Date(token.lastUsedAt).toLocaleDateString()
+                    : t("settings.never")}
                 </span>
               </div>
               <button
@@ -650,20 +805,27 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
       const data = await getUsers();
       setUsers(data);
     } catch {
-      // Ignore — users will remain empty
+      // ignore
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const handleCreate = async () => {
     setError("");
     if (!newUsername || !newDisplayName || !newPassword) return;
     setCreating(true);
     try {
-      await createUser({ username: newUsername, displayName: newDisplayName, password: newPassword, role: newRole });
+      await createUser({
+        username: newUsername,
+        displayName: newDisplayName,
+        password: newPassword,
+        role: newRole,
+      });
       setShowAdd(false);
       setNewUsername("");
       setNewDisplayName("");
@@ -781,7 +943,10 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
       ) : (
         <div className="space-y-2">
           {users.map((u) => (
-            <div key={u.id} className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border">
+            <div
+              key={u.id}
+              className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
+            >
               <div className="flex items-center gap-3">
                 <div>
                   <span className="text-[13px] font-medium text-text">{u.displayName}</span>
@@ -800,9 +965,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                   onClick={() => handleToggleEnabled(u)}
                   disabled={u.id === currentUserId}
                   className={`text-[11px] px-2 py-0.5 rounded font-medium cursor-pointer ${
-                    u.enabled
-                      ? "bg-success/10 text-success"
-                      : "bg-error/10 text-error"
+                    u.enabled ? "bg-success/10 text-success" : "bg-error/10 text-error"
                   } ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {u.enabled ? t("settings.enabled") : t("common.disabled")}
@@ -824,5 +987,3 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
     </section>
   );
 }
-
-

@@ -607,7 +607,11 @@ export type EngineEvent =
       source: string;
       message: string;
     }
-  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string };
+  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
+  // Self-update events
+  | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
+  | { type: "system.update.progress"; step: string; message: string }
+  | { type: "system.update.error"; error: string };
 
 // ============================================================
 // zigbee2mqtt types (parser internal)

@@ -859,5 +859,19 @@
   "plugins.updating": "Mise à jour...",
   "plugins.updateAvailable": "disponible",
   "plugins.updatesAvailable_one": "{{count}} mise à jour plugin disponible",
-  "plugins.updatesAvailable_other": "{{count}} mises à jour plugins disponibles"
+  "plugins.updatesAvailable_other": "{{count}} mises à jour plugins disponibles",
+
+  "settings.tabs.general": "Général",
+  "settings.tabs.account": "Compte",
+  "settings.tabs.system": "Système",
+  "settings.tabs.admin": "Administration",
+  "settings.version.title": "Version",
+  "settings.version.current": "Version actuelle",
+  "settings.version.newAvailable": "Version {{version}} disponible",
+  "settings.version.releaseNotes": "Notes de version",
+  "settings.version.update": "Mettre à jour vers v{{version}}",
+  "settings.version.updating": "Mise à jour en cours...",
+  "settings.version.updateStarted": "Mise à jour lancée — Sowel va redémarrer...",
+  "settings.version.upToDate": "Sowel est à jour",
+  "settings.version.noDocker": "Docker non disponible. Mettez à jour manuellement :"
 }
