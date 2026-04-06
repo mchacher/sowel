@@ -29,7 +29,7 @@
     "icon": "AirVent",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-panasonic-cc",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "tags": ["panasonic", "ac", "heating", "cooling", "comfort-cloud"]
   },
   {
@@ -47,7 +47,7 @@
     "id": "legrand_energy",
     "type": "integration",
     "name": "Legrand Energy",
-    "description": "Legrand energy monitoring — NLPC meters, consumption + solar production",
+    "description": "Legrand energy monitoring \u2014 NLPC meters, consumption + solar production",
     "icon": "Zap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-energy",
@@ -58,7 +58,7 @@
     "id": "legrand_control",
     "type": "integration",
     "name": "Legrand Control",
-    "description": "Legrand Home+Control — lights, shutters, plugs, contactors",
+    "description": "Legrand Home+Control \u2014 lights, shutters, plugs, contactors",
     "icon": "PlugZap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-control",
@@ -69,7 +69,7 @@
     "id": "netatmo_weather",
     "type": "integration",
     "name": "Netatmo Weather",
-    "description": "Netatmo Weather Station — temperature, humidity, pressure, CO2, wind, rain",
+    "description": "Netatmo Weather Station \u2014 temperature, humidity, pressure, CO2, wind, rain",
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-weather",
@@ -80,7 +80,7 @@
     "id": "netatmo-security",
     "type": "integration",
     "name": "Netatmo Security",
-    "description": "Netatmo cameras (Welcome, Presence, Doorbell) — monitoring on/off",
+    "description": "Netatmo cameras (Welcome, Presence, Doorbell) \u2014 monitoring on/off",
     "icon": "Camera",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-security",
@@ -113,7 +113,7 @@
     "id": "switch-light",
     "type": "recipe",
     "name": "Switch Light",
-    "description": "Lights follow manual commands — any button press toggles lights on/off",
+    "description": "Lights follow manual commands \u2014 any button press toggles lights on/off",
     "icon": "ToggleRight",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-switch-light",
@@ -121,8 +121,8 @@
     "tags": ["automation", "button", "light", "toggle"],
     "i18n": {
       "fr": {
-        "name": "Lumière sur interrupteur",
-        "description": "Allume ou éteint les lumières d'une pièce via un interrupteur ou une télécommande Zigbee."
+        "name": "Lumi\u00e8re sur interrupteur",
+        "description": "Allume ou \u00e9teint les lumi\u00e8res d'une pi\u00e8ce via un interrupteur ou une t\u00e9l\u00e9commande Zigbee."
       }
     }
   },
@@ -138,8 +138,8 @@
     "tags": ["automation", "monitoring", "alarm", "state"],
     "i18n": {
       "fr": {
-        "name": "Surveillance d'état",
-        "description": "Surveille une donnée d'équipement et déclenche une alarme si la valeur reste dans un état donné."
+        "name": "Surveillance d'\u00e9tat",
+        "description": "Surveille une donn\u00e9e d'\u00e9quipement et d\u00e9clenche une alarme si la valeur reste dans un \u00e9tat donn\u00e9."
       }
     }
   },
@@ -155,8 +155,8 @@
     "tags": ["automation", "heating", "presence", "heater"],
     "i18n": {
       "fr": {
-        "name": "Chauffage présence",
-        "description": "Passe les radiateurs en confort sur détection de mouvement, éco après un délai sans présence."
+        "name": "Chauffage pr\u00e9sence",
+        "description": "Passe les radiateurs en confort sur d\u00e9tection de mouvement, \u00e9co apr\u00e8s un d\u00e9lai sans pr\u00e9sence."
       }
     }
   },
@@ -172,8 +172,8 @@
     "tags": ["automation", "heating", "thermostat", "presence"],
     "i18n": {
       "fr": {
-        "name": "Thermostat présence",
-        "description": "Ajuste la consigne du thermostat selon la présence dans la zone, avec mode nuit, préchauffe et cocoon."
+        "name": "Thermostat pr\u00e9sence",
+        "description": "Ajuste la consigne du thermostat selon la pr\u00e9sence dans la zone, avec mode nuit, pr\u00e9chauffe et cocoon."
       }
     }
   },
@@ -189,8 +189,8 @@
     "tags": ["automation", "motion", "light"],
     "i18n": {
       "fr": {
-        "name": "Lumière sur mouvement",
-        "description": "Allume les lumières sur détection de mouvement, éteint après un délai sans mouvement."
+        "name": "Lumi\u00e8re sur mouvement",
+        "description": "Allume les lumi\u00e8res sur d\u00e9tection de mouvement, \u00e9teint apr\u00e8s un d\u00e9lai sans mouvement."
       }
     }
   },
@@ -206,8 +206,8 @@
     "tags": ["automation", "motion", "light", "dimmable", "brightness"],
     "i18n": {
       "fr": {
-        "name": "Lumière dimmable sur mouvement",
-        "description": "Allume les lumières dimmables sur mouvement avec contrôle de luminosité et plages horaires."
+        "name": "Lumi\u00e8re dimmable sur mouvement",
+        "description": "Allume les lumi\u00e8res dimmables sur mouvement avec contr\u00f4le de luminosit\u00e9 et plages horaires."
       }
     }
   }
