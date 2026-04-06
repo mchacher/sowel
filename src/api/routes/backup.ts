@@ -26,6 +26,7 @@ const BACKUP_TABLES = [
   "order_bindings",
   "users",
   "api_tokens",
+  "refresh_tokens",
   "recipe_instances",
   "recipe_state",
   "modes",
