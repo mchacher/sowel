@@ -354,6 +354,13 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
     let influxPointsRestored = 0;
     const influxConfig = influxClient.getConfig();
     if (influxClient.isConnected() && influxConfig) {
+      // Ensure all buckets exist before writing (critical for fresh InfluxDB)
+      try {
+        await influxClient.ensureBuckets();
+        await influxClient.ensureEnergyBuckets();
+      } catch (err) {
+        logger.warn({ err }, "Failed to ensure InfluxDB buckets before restore");
+      }
       for (const bucketDef of INFLUX_BUCKETS) {
         const entry = zip.getEntry(bucketDef.filename);
         if (!entry) continue;
