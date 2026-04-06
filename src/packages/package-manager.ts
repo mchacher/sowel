@@ -10,6 +10,9 @@ import type { PluginManifest, InstalledPackage, PackageType } from "../shared/ty
 
 const execFile = promisify(execFileCb);
 
+const REGISTRY_URL = "https://raw.githubusercontent.com/mchacher/sowel/main/plugins/registry.json";
+const REGISTRY_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 interface PackageRow {
   id: string;
   version: string;
@@ -41,6 +44,8 @@ export class PackageManager {
   private logger: Logger;
   private pluginsDir: string;
   private stmts: ReturnType<typeof this.prepareStatements>;
+  private registryCache: RegistryEntry[] | null = null;
+  private registryCacheTime = 0;
 
   constructor(db: Database.Database, logger: Logger) {
     this.db = db;
@@ -103,31 +108,23 @@ export class PackageManager {
    * Get available packages from registry (not yet installed).
    */
   getStore(): PluginManifest[] {
-    const registryPath = resolve(this.pluginsDir, "registry.json");
-    if (!existsSync(registryPath)) return [];
+    const entries = this.getRegistryEntries();
+    const installedIds = new Set((this.stmts.getAll.all() as PackageRow[]).map((r) => r.id));
 
-    try {
-      const entries = JSON.parse(readFileSync(registryPath, "utf-8")) as RegistryEntry[];
-      const installedIds = new Set((this.stmts.getAll.all() as PackageRow[]).map((r) => r.id));
-
-      return entries
-        .filter((e) => !installedIds.has(e.id))
-        .map(
-          (e): PluginManifest => ({
-            id: e.id,
-            name: e.name,
-            version: e.version ?? "",
-            description: e.description,
-            icon: e.icon,
-            author: e.author,
-            repo: e.repo,
-            type: (e.type as PackageType) ?? "integration",
-          }),
-        );
-    } catch (err) {
-      this.logger.error({ err }, "Failed to read plugin registry");
-      return [];
-    }
+    return entries
+      .filter((e) => !installedIds.has(e.id))
+      .map(
+        (e): PluginManifest => ({
+          id: e.id,
+          name: e.name,
+          version: e.version ?? "",
+          description: e.description,
+          icon: e.icon,
+          author: e.author,
+          repo: e.repo,
+          type: (e.type as PackageType) ?? "integration",
+        }),
+      );
   }
 
   /** Get available packages from registry filtered by type */
@@ -306,33 +303,66 @@ export class PackageManager {
     this.stmts.updateEnabled.run(enabled ? 1 : 0, packageId);
   }
 
-  /** Read registry.json and return a map of packageId → latest version */
+  /** Read registry and return a map of packageId → latest version */
   getLatestVersions(): Map<string, string> {
     const versions = new Map<string, string>();
-    const registryPath = resolve(this.pluginsDir, "registry.json");
-    if (!existsSync(registryPath)) return versions;
-
-    try {
-      const entries = JSON.parse(readFileSync(registryPath, "utf-8")) as RegistryEntry[];
-      for (const e of entries) {
-        if (e.version) versions.set(e.id, e.version);
-      }
-    } catch {
-      // Ignore registry read errors
+    for (const e of this.getRegistryEntries()) {
+      if (e.version) versions.set(e.id, e.version);
     }
     return versions;
   }
 
   /** Lookup repo URL from registry */
   getRepoFromRegistry(packageId: string): string | undefined {
+    return this.getRegistryEntries().find((e) => e.id === packageId)?.repo;
+  }
+
+  /**
+   * Fetch registry entries — remote first (cached 1h), fallback to local file.
+   * Uses synchronous cache to avoid async in getStore()/getLatestVersions().
+   * Remote fetch runs in background to refresh cache.
+   */
+  private getRegistryEntries(): RegistryEntry[] {
+    // Return cache if fresh
+    if (this.registryCache && Date.now() - this.registryCacheTime < REGISTRY_CACHE_TTL_MS) {
+      return this.registryCache;
+    }
+
+    // Trigger background refresh
+    this.fetchRemoteRegistry();
+
+    // Return stale cache or local fallback
+    if (this.registryCache) return this.registryCache;
+    return this.readLocalRegistry();
+  }
+
+  private readLocalRegistry(): RegistryEntry[] {
     const registryPath = resolve(this.pluginsDir, "registry.json");
-    if (!existsSync(registryPath)) return undefined;
+    if (!existsSync(registryPath)) return [];
     try {
       const entries = JSON.parse(readFileSync(registryPath, "utf-8")) as RegistryEntry[];
-      return entries.find((e) => e.id === packageId)?.repo;
+      this.registryCache = entries;
+      this.registryCacheTime = Date.now();
+      return entries;
     } catch {
-      return undefined;
+      return [];
     }
+  }
+
+  private fetchRemoteRegistry(): void {
+    fetch(REGISTRY_URL, { headers: { Accept: "application/json" } })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const entries = (await res.json()) as RegistryEntry[];
+        if (Array.isArray(entries) && entries.length > 0) {
+          this.registryCache = entries;
+          this.registryCacheTime = Date.now();
+          this.logger.debug({ count: entries.length }, "Remote registry refreshed");
+        }
+      })
+      .catch(() => {
+        // Silently fall back to cache/local
+      });
   }
 
   // ============================================================

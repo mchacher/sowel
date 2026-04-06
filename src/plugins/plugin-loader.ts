@@ -10,6 +10,17 @@ import type { PluginManifest, PluginInfo } from "../shared/types.js";
 import type { PluginDeps, PluginFactory } from "../shared/plugin-api.js";
 import type { PackageManager } from "../packages/package-manager.js";
 
+/** Simple semver comparison: returns true if a > b */
+function isNewerVersion(a: string, b: string): boolean {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true;
+    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false;
+  }
+  return false;
+}
+
 /**
  * Integration-specific plugin loader.
  * Uses PackageManager for distribution, handles integration lifecycle
@@ -193,7 +204,9 @@ export class PluginLoader {
         status,
         deviceCount: pluginDevices.length,
         offlineDeviceCount: offlineDevices.length,
-        ...(latest && latest !== pkg.manifest.version ? { latestVersion: latest } : {}),
+        ...(latest && isNewerVersion(latest, pkg.manifest.version)
+          ? { latestVersion: latest }
+          : {}),
       };
     });
   }
