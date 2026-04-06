@@ -284,9 +284,10 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
 
     // 2. Restore SQLite
     try {
-      const restore = db.transaction(() => {
-        db.pragma("foreign_keys = OFF");
+      // Must be outside transaction — SQLite ignores this PRAGMA inside transactions
+      db.pragma("foreign_keys = OFF");
 
+      const restore = db.transaction(() => {
         for (const table of DELETE_ORDER) {
           db.prepare(`DELETE FROM ${table}`).run();
         }
@@ -308,8 +309,6 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
           }
         }
 
-        db.pragma("foreign_keys = ON");
-
         const violations = db.pragma("foreign_key_check") as {
           table: string;
           rowid: number;
@@ -328,6 +327,7 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
       });
 
       restore();
+      db.pragma("foreign_keys = ON");
 
       const totalRestoredRows = Object.values(payload.tables).reduce(
         (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
