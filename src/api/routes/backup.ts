@@ -90,13 +90,14 @@ const INFLUX_BUCKETS: InfluxBucketDef[] = [
  * Convert a Flux query result row to InfluxDB line protocol.
  * Format: measurement,tag1=val1,tag2=val2 field1=value1,field2="str" timestamp_ns
  */
-function rowToLineProtocol(row: Record<string, string>): string | null {
-  const measurement = row["_measurement"];
-  const field = row["_field"];
+function rowToLineProtocol(row: Record<string, unknown>): string | null {
+  const measurement = String(row["_measurement"] ?? "");
+  const field = String(row["_field"] ?? "");
   const value = row["_value"];
-  const time = row["_time"];
+  const time = String(row["_time"] ?? "");
 
-  if (!measurement || !field || value === undefined || value === "" || !time) return null;
+  if (!measurement || !field || value === undefined || value === null || value === "" || !time)
+    return null;
 
   // Collect tags (skip internal Flux columns)
   const skipKeys = new Set([
@@ -112,17 +113,20 @@ function rowToLineProtocol(row: Record<string, string>): string | null {
   ]);
   const tags: string[] = [];
   for (const [k, v] of Object.entries(row)) {
-    if (skipKeys.has(k) || v === undefined || v === "") continue;
-    tags.push(`${escapeTag(k)}=${escapeTag(v)}`);
+    if (skipKeys.has(k) || v === undefined || v === null || v === "") continue;
+    tags.push(`${escapeTag(k)}=${escapeTag(String(v))}`);
   }
 
   // Build tag set
   const tagSet = tags.length > 0 ? `,${tags.join(",")}` : "";
 
-  // Build field value: try number first, then string
+  // Build field value: number as-is, string quoted
+  const strValue = String(value);
   const numVal = Number(value);
   const fieldValue =
-    !isNaN(numVal) && value.trim() !== "" ? `${numVal}` : `"${escapeFieldString(value)}"`;
+    typeof value === "number" || (!isNaN(numVal) && strValue.trim() !== "")
+      ? `${numVal}`
+      : `"${escapeFieldString(strValue)}"`;
 
   // Convert ISO timestamp to nanoseconds
   const tsNs = new Date(time).getTime() * 1_000_000;
@@ -192,7 +196,7 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
             const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
             const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
 
-            const rows = await queryApi.collectRows<Record<string, string>>(flux);
+            const rows = await queryApi.collectRows<Record<string, unknown>>(flux);
             if (rows.length === 0) continue;
 
             const lines: string[] = [];
