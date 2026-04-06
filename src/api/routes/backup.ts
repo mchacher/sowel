@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import archiver from "archiver";
 import AdmZip from "adm-zip";
@@ -46,8 +46,23 @@ const BACKUP_TABLES = [
 // Reverse order for deletion (children first)
 const DELETE_ORDER = [...BACKUP_TABLES].reverse();
 
-// Data files to include in backup (relative to dataDir)
-const DATA_FILES = [".jwt-secret", "panasonic-tokens.json", "netatmo-tokens.json"];
+// Exclude these files from data/ backup (managed separately or transient)
+const DATA_FILES_EXCLUDE = new Set(["sowel.db", "sowel.db-wal", "sowel.db-shm", "sowel.pid"]);
+const DATA_FILES_EXCLUDE_EXT = new Set([".db", ".pid", ".log"]);
+
+/** Scan data/ directory for files to include in backup (tokens, secrets, etc.) */
+function scanDataFiles(dataDir: string): string[] {
+  if (!existsSync(dataDir)) return [];
+  const files: string[] = [];
+  for (const entry of readdirSync(dataDir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (DATA_FILES_EXCLUDE.has(entry.name)) continue;
+    const ext = entry.name.includes(".") ? entry.name.slice(entry.name.lastIndexOf(".")) : "";
+    if (DATA_FILES_EXCLUDE_EXT.has(ext)) continue;
+    files.push(entry.name);
+  }
+  return files;
+}
 
 interface BackupPayload {
   version: 2;
@@ -199,8 +214,9 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
       }
     }
 
-    // 4. Append data files (tokens, JWT secret)
-    for (const filename of DATA_FILES) {
+    // 4. Append data files (tokens, JWT secret — dynamically scanned)
+    const dataFiles = scanDataFiles(dataDir);
+    for (const filename of dataFiles) {
       const filePath = resolve(dataDir, filename);
       if (existsSync(filePath)) {
         try {
@@ -380,11 +396,12 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupDeps): vo
       logger.warn("InfluxDB not connected — skipping time-series restore");
     }
 
-    // 4. Restore data files
+    // 4. Restore data files (extract all data/* entries from ZIP)
     let filesRestored = 0;
-    for (const filename of DATA_FILES) {
-      const entry = zip.getEntry(`data/${filename}`);
-      if (!entry) continue;
+    for (const entry of zip.getEntries()) {
+      if (!entry.entryName.startsWith("data/") || entry.isDirectory) continue;
+      const filename = entry.entryName.slice("data/".length);
+      if (!filename || DATA_FILES_EXCLUDE.has(filename)) continue;
 
       try {
         const filePath = resolve(dataDir, filename);

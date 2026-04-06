@@ -194,6 +194,41 @@ export class PackageManager {
   }
 
   /**
+   * Download files for a package that exists in DB but is missing on disk.
+   * Used after backup restore — downloads tarball without modifying DB.
+   */
+  async downloadMissing(repo: string): Promise<void> {
+    const tmpDir = resolve(this.pluginsDir, ".tmp");
+    try {
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir);
+
+      const manifestPath = resolve(extractDir, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        throw new Error("Package archive does not contain manifest.json");
+      }
+
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
+
+      const pkgDir = resolve(this.pluginsDir, manifest.id);
+      if (existsSync(pkgDir)) {
+        rmSync(pkgDir, { recursive: true });
+      }
+      await rename(extractDir, pkgDir);
+
+      this.logger.info(
+        { packageId: manifest.id, version: manifest.version },
+        "Missing package downloaded",
+      );
+    } finally {
+      try {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  /**
    * Update — download new version, replace files, update DB.
    * Caller must stop/unload before calling and reload after.
    */
