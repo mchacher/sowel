@@ -25,7 +25,7 @@ WORKDIR /app
 
 # Install production dependencies (includes native module compilation)
 COPY package.json package-lock.json ./
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv make g++ \
     && npm ci --omit=dev --ignore-scripts \
     && npm rebuild better-sqlite3 \
     && apt-get purge -y make g++ && apt-get autoremove -y \
