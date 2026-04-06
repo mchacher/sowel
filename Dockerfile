@@ -28,7 +28,7 @@ COPY package.json package-lock.json ./
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
     && npm ci --omit=dev --ignore-scripts \
     && npm rebuild better-sqlite3 \
-    && apt-get purge -y python3 make g++ && apt-get autoremove -y \
+    && apt-get purge -y make g++ && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /root/.npm
 
 # Copy compiled backend
