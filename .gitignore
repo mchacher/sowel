@@ -6,6 +6,10 @@ data/
 *.db-wal
 *.db-shm
 .DS_Store
+
+# Installed plugins (downloaded at runtime, not tracked)
+plugins/*/
+!plugins/registry.json
 coverage/
 .venv/
 
