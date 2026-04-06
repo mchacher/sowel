@@ -44,8 +44,8 @@ const BACKUP_TABLES = [
   "plugins",
 ] as const;
 
-// Reverse order for deletion (children first)
-const DELETE_ORDER = [...BACKUP_TABLES].reverse();
+// Reverse order for deletion (children first) + tables not exported but must be cleared
+const DELETE_ORDER = ["recipe_log", ...[...BACKUP_TABLES].reverse()];
 
 // Exclude these files from data/ backup (managed separately or transient)
 const DATA_FILES_EXCLUDE = new Set(["sowel.db", "sowel.db-wal", "sowel.db-shm", "sowel.pid"]);
