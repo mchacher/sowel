@@ -49,6 +49,33 @@ export class PluginLoader {
         continue;
       }
 
+      // Auto-download if plugin directory is missing (e.g. after backup restore)
+      const entryPath = resolve(
+        this.packageManager.getPackageDir(pkg.manifest.id),
+        "dist/index.js",
+      );
+      if (!existsSync(entryPath)) {
+        const repo = pkg.manifest.repo;
+        if (repo) {
+          this.logger.warn(
+            { pluginId: pkg.manifest.id, repo },
+            "Plugin missing on disk, downloading",
+          );
+          try {
+            await this.packageManager.downloadMissing(repo);
+          } catch (err) {
+            this.logger.error({ err, pluginId: pkg.manifest.id }, "Failed to auto-download plugin");
+            continue;
+          }
+        } else {
+          this.logger.warn(
+            { pluginId: pkg.manifest.id },
+            "Plugin missing on disk and no repo in manifest, skipping",
+          );
+          continue;
+        }
+      }
+
       try {
         await this.loadPlugin(pkg.manifest.id);
         loaded++;

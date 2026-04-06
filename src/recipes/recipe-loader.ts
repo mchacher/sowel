@@ -36,6 +36,33 @@ export class RecipeLoader {
         continue;
       }
 
+      // Auto-download if recipe directory is missing (e.g. after backup restore)
+      const entryPath = resolve(
+        this.packageManager.getPackageDir(pkg.manifest.id),
+        "dist/index.js",
+      );
+      if (!existsSync(entryPath)) {
+        const repo = pkg.manifest.repo;
+        if (repo) {
+          this.logger.warn(
+            { recipeId: pkg.manifest.id, repo },
+            "Recipe missing on disk, downloading",
+          );
+          try {
+            await this.packageManager.downloadMissing(repo);
+          } catch (err) {
+            this.logger.error({ err, recipeId: pkg.manifest.id }, "Failed to auto-download recipe");
+            continue;
+          }
+        } else {
+          this.logger.warn(
+            { recipeId: pkg.manifest.id },
+            "Recipe missing on disk and no repo in manifest, skipping",
+          );
+          continue;
+        }
+      }
+
       try {
         await this.loadRecipe(pkg.manifest.id);
         loaded++;
