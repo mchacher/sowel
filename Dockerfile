@@ -19,17 +19,23 @@ RUN npm ci
 COPY ui/ ./
 RUN npm run build
 
-# ── Stage 3: Production runtime ──────────────────────────
-FROM node:20-slim
+# ── Stage 3: Production runtime (Debian Trixie for Python 3.13+) ─
+FROM debian:trixie-slim
 WORKDIR /app
 
-# Install production dependencies (includes native module compilation)
+# Install Node.js 20 + Python 3.13 + build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl ca-certificates python3 python3-venv make g++ \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install production dependencies
 COPY package.json package-lock.json ./
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv make g++ \
-    && npm ci --omit=dev --ignore-scripts \
+RUN npm ci --omit=dev --ignore-scripts \
     && npm rebuild better-sqlite3 \
     && apt-get purge -y make g++ && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /root/.npm
+    && rm -rf /root/.npm
 
 # Copy compiled backend
 COPY --from=backend-build /app/dist/ dist/
