@@ -72,11 +72,13 @@ nav:
   - Technical Guide:
     - technical/index.md
     - Architecture: technical/architecture.md
+    - Deployment: technical/deployment.md
     - API Reference: technical/api-reference.md
     - Plugin Development: technical/plugin-development.md
     - Recipe Development: technical/recipe-development.md
     - Data Model: technical/data-model.md
     - Contributing: technical/contributing.md
+    - Specs Index: specs-index.md
   - User Guide:
     - user/index.md
     - Getting Started: user/getting-started.md

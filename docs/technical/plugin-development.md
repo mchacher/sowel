@@ -945,6 +945,7 @@ To make your plugin appear in the Sowel plugin store, submit a PR to the Sowel r
 ```json
 {
   "id": "my-device",
+  "type": "integration",
   "name": "My Device",
   "description": "Integration with My Device API",
   "icon": "Cpu",
@@ -957,16 +958,25 @@ To make your plugin appear in the Sowel plugin store, submit a PR to the Sowel r
 
 #### Registry Entry Schema
 
-| Field         | Type     | Required | Description                                                   |
-| ------------- | -------- | -------- | ------------------------------------------------------------- |
-| `id`          | string   | Yes      | Must match the plugin's `manifest.json` id                    |
-| `name`        | string   | Yes      | Display name in the store                                     |
-| `description` | string   | Yes      | Short description                                             |
-| `icon`        | string   | Yes      | Lucide icon name                                              |
-| `author`      | string   | Yes      | Author name                                                   |
-| `repo`        | string   | Yes      | GitHub `owner/repo` path (used to fetch releases)             |
-| `version`     | string   | No       | Latest available version (shown in the store "Available" tab) |
-| `tags`        | string[] | Yes      | Searchable tags (e.g. `["camera", "security"]`)               |
+| Field         | Type     | Required | Description                                                                        |
+| ------------- | -------- | -------- | ---------------------------------------------------------------------------------- |
+| `id`          | string   | Yes      | Must match the plugin's `manifest.json` id                                         |
+| `type`        | string   | Yes      | `integration` or `recipe` — routes to PluginLoader or RecipeLoader at install time |
+| `name`        | string   | Yes      | Display name in the store                                                          |
+| `description` | string   | Yes      | Short description                                                                  |
+| `icon`        | string   | Yes      | Lucide icon name                                                                   |
+| `author`      | string   | Yes      | Author name                                                                        |
+| `repo`        | string   | Yes      | GitHub `owner/repo` path (used to fetch releases)                                  |
+| `version`     | string   | No       | Latest available version (shown in the store "Available" tab)                      |
+| `tags`        | string[] | Yes      | Searchable tags (e.g. `["camera", "security"]`)                                    |
+
+#### Remote registry fetch
+
+Since spec 059, Sowel fetches `plugins/registry.json` from `https://raw.githubusercontent.com/mchacher/sowel/main/plugins/registry.json` with a 1-hour cache, falling back to the local file shipped in the Docker image. This means:
+
+- **Publishing a new plugin version** only requires updating `plugins/registry.json` on `main` — no Sowel release needed
+- **Private forks** can point Sowel at their own registry by changing `REGISTRY_URL` in `package-manager.ts`
+- **Plugins are re-downloaded automatically** on container startup if their directory is missing (e.g. after a backup restore — spec 058)
 
 ### Versioning
 

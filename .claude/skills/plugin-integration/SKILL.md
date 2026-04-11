@@ -20,18 +20,24 @@ All conventions are in `CLAUDE.md`. For the full UI touchpoint checklist, see [r
 
 ### 1.1 Read Essential Documentation
 
-| Document                                   | Purpose                                     |
-| ------------------------------------------ | ------------------------------------------- |
-| `src/shared/types.ts`                      | EquipmentType union, IntegrationPlugin, etc |
-| `src/shared/plugin-api.ts`                 | PluginDeps interface, PluginFactory type    |
-| `src/plugins/plugin-manager.ts`            | Plugin lifecycle (load, install, update)    |
-| `src/integrations/integration-registry.ts` | IntegrationPlugin interface                 |
-| `CLAUDE.md`                                | Project conventions and rules               |
+| Document                                   | Purpose                                              |
+| ------------------------------------------ | ---------------------------------------------------- |
+| `CLAUDE.md`                                | Project conventions and rules (entry point)          |
+| `docs/technical/plugin-development.md`     | Full plugin development guide (end-to-end)           |
+| `docs/technical/architecture.md`           | Plugin architecture V2 section                       |
+| `src/shared/types.ts`                      | EquipmentType union, IntegrationPlugin, etc          |
+| `src/shared/plugin-api.ts`                 | PluginDeps interface, PluginFactory type             |
+| `src/packages/package-manager.ts`          | Package lifecycle (install from GitHub, update, etc) |
+| `src/plugins/plugin-loader.ts`             | Integration plugin loader (factory + registration)   |
+| `src/integrations/integration-registry.ts` | IntegrationPlugin interface                          |
 
-Also study an existing plugin for reference:
+Also study an existing plugin repo for reference:
 
-- `sowel-plugin-weather-forecast` — simple polling plugin (read-only)
-- `sowel-plugin-smartthings` — polling + orders plugin (read/write)
+- [`sowel-plugin-weather-forecast`](https://github.com/mchacher/sowel-plugin-weather-forecast) — simple polling plugin (read-only)
+- [`sowel-plugin-smartthings`](https://github.com/mchacher/sowel-plugin-smartthings) — polling + orders (read/write) with OAuth
+- [`sowel-plugin-zigbee2mqtt`](https://github.com/mchacher/sowel-plugin-zigbee2mqtt) — MQTT-based discovery
+
+**Plugins live in separate GitHub repos** — they are NOT in the main Sowel repo.
 
 ### 1.2 Deep-Dive Requirements
 

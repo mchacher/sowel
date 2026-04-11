@@ -1,32 +1,45 @@
 # Debug Bug Reference
 
-## Log Modules
+## Log Modules (current, spec 053+)
 
-| Module                         | Domain                       |
-| ------------------------------ | ---------------------------- |
-| `device-manager`               | Device CRUD, data updates    |
-| `equipment-manager`            | Equipment CRUD, bindings     |
-| `zone-aggregator`              | Zone aggregation             |
-| `recipe-manager`               | Recipe instantiation         |
-| `mode-manager`                 | Mode activation/deactivation |
-| `integration-registry`         | Integration lifecycle        |
-| `integration-zigbee2mqtt`      | Z2M MQTT integration         |
-| `legrand-hc`                   | Netatmo/Legrand Home+Control |
-| `legrand-hc-poller`            | Netatmo polling              |
-| `integration-panasonic-cc`     | Panasonic Comfort Cloud      |
-| `integration-mcz-maestro`      | MCZ Maestro stove            |
-| `plugin-manager`               | Plugin lifecycle             |
-| `plugin:smartthings`           | SmartThings plugin           |
-| `weather-forecast`             | Weather forecast plugin      |
-| `history-writer`               | InfluxDB writes              |
-| `energy-aggregator`            | Energy HP/HC classification  |
-| `websocket`                    | WebSocket connections        |
-| `auth-service`                 | Authentication, tokens       |
-| `mqtt`                         | MQTT broker connections      |
-| `mqtt-publish-service`         | MQTT publishers              |
-| `notification-publish-service` | Notifications                |
-| `database`                     | SQLite operations            |
-| `migrations`                   | Schema migrations            |
+| Module                             | Domain                                        |
+| ---------------------------------- | --------------------------------------------- |
+| `device-manager`                   | Device CRUD, data updates                     |
+| `equipment-manager`                | Equipment CRUD, bindings, order dispatch      |
+| `zone-manager` / `zone-aggregator` | Zones, aggregation                            |
+| `sunlight-manager`                 | Sunrise/sunset, isDaylight transitions        |
+| `recipe-manager`                   | Recipe engine (instances, triggers, actions)  |
+| `mode-manager`                     | Mode activation/deactivation                  |
+| `calendar-manager`                 | Croner calendar slots                         |
+| `button-action-manager`            | Physical button actions                       |
+| `integration-registry`             | Integration lifecycle (plugins register here) |
+| `plugin-loader`                    | Plugin loader (integrations)                  |
+| `recipe-loader`                    | Recipe loader (recipe packages)               |
+| `package-manager`                  | Package download, install, update, remove     |
+| `plugin:zigbee2mqtt`               | Zigbee2MQTT plugin                            |
+| `plugin:lora2mqtt`                 | LoRa2MQTT plugin                              |
+| `plugin:panasonic_cc`              | Panasonic Comfort Cloud plugin                |
+| `plugin:mcz_maestro`               | MCZ Maestro plugin                            |
+| `plugin:legrand_control`           | Legrand Home+Control plugin                   |
+| `plugin:legrand_energy`            | Legrand energy monitoring plugin              |
+| `plugin:netatmo_weather`           | Netatmo Weather Station plugin                |
+| `plugin:smartthings`               | Samsung SmartThings plugin                    |
+| `plugin:weather-forecast`          | Open-Meteo weather forecast plugin            |
+| `backup-manager`                   | Backup export/restore                         |
+| `update-manager`                   | Self-update (helper container)                |
+| `version-checker`                  | GitHub releases poll                          |
+| `history-writer`                   | InfluxDB history writes                       |
+| `energy-aggregator`                | Energy HP/HC classification, aggregation      |
+| `websocket`                        | WebSocket connections                         |
+| `auth-service`                     | Authentication, tokens                        |
+| `mqtt-broker-manager`              | Outbound MQTT brokers                         |
+| `mqtt-publish-service`             | MQTT publishers                               |
+| `notification-publish-service`     | Notifications (telegram, ntfy, webhook, FCM)  |
+| `influx-client`                    | InfluxDB connection / queries                 |
+| `database`                         | SQLite operations                             |
+| `migrations`                       | Schema migrations                             |
+
+The plugin modules are always prefixed `plugin:<id>` — the `<id>` matches the `manifest.json` id. Some plugins add a second-level module (e.g. `plugin:zigbee2mqtt > z2m-parser`).
 
 ## Log Retrieval Commands
 
@@ -92,6 +105,26 @@ curl -s http://localhost:3000/api/v1/zones/<id> \
 # SQLite quick query
 sqlite3 data/sowel.db "SELECT key, substr(value, 1, 80) FROM settings;"
 ```
+
+## Production log file access (spec 015, updated spec 060)
+
+The ring buffer is in-memory only and lost on restart. **For post-incident investigation after a container recreation (e.g. after self-update)**, use the persistent log files on the `sowel-data` volume:
+
+```bash
+# SSH to sowelox
+ssh mchacher@192.168.0.230
+
+# List log files (14 days daily rotation)
+docker exec sowel ls -la /app/data/logs/
+
+# View today's log (sowel.6.log is usually the newest — file numbers rotate)
+docker exec sowel cat /app/data/logs/sowel.6.log | tail -100
+
+# Grep a time window (UTC in logs) for error/warn
+docker exec sowel sh -c 'cat /app/data/logs/sowel.6.log | grep -E "2026-04-11T07:" | grep -E "\"level\":\"(error|warn)\""'
+```
+
+⚠️ **Logs are in UTC** (`time` field). To correlate with user timestamps (typically local CEST = UTC+2), convert before filtering.
 
 ## InfluxDB Diagnostics (energy/history bugs)
 
