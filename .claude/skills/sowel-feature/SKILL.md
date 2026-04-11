@@ -24,16 +24,19 @@ All conventions (logging, implementation rules, design system) are in `CLAUDE.md
 
 ### 1.1 Read Essential Documentation
 
-Before starting, read these files:
+Before starting, read these files IN ORDER:
 
-| Document                  | Purpose                              |
-| ------------------------- | ------------------------------------ |
-| `docs/sowel-spec.md`      | Full specification — source of truth |
-| `src/shared/types.ts`     | All TypeScript interfaces            |
-| `src/shared/constants.ts` | DataCategory, EquipmentType, etc.    |
-| `CLAUDE.md`               | Project conventions and rules        |
+| Document                         | Purpose                                                      |
+| -------------------------------- | ------------------------------------------------------------ |
+| `CLAUDE.md`                      | AI agent entry point — conventions, rules, refs              |
+| `docs/technical/architecture.md` | Current architecture (plugin V2, self-update, backup, CI/CD) |
+| `docs/specs-index.md`            | Scan for related specs — there may already be a design       |
+| `src/shared/types.ts`            | All TypeScript interfaces                                    |
+| `src/shared/constants.ts`        | DataCategory, EquipmentType, etc.                            |
 
-If the feature involves a specific domain, also read the relevant source files (see [reference.md](reference.md) for the full list).
+**Do NOT read `docs/sowel-spec.md`** — it's legacy and outdated.
+
+If the feature involves a specific domain, also read the relevant source files (see [reference.md](reference.md) for the full list). When in doubt about history, check the spec files in `specs/XXX-*/` for the relevant feature.
 
 ### 1.2 Deep-Dive Requirements
 

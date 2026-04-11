@@ -1,8 +1,26 @@
 # Sowel — Functional Specification
 
+> ⚠️ **LEGACY DOCUMENT — PRESERVED FOR HISTORY** ⚠️
+>
+> This file was the original single-source-of-truth (V0.1 through V0.9 era, ~February 2026).
+> The project has evolved significantly since — **do not rely on it** for current architecture.
+>
+> For current docs, use:
+>
+> - [Architecture](technical/architecture.md) — current architecture (plugin V2, self-update, backup, CI/CD)
+> - [Deployment](technical/deployment.md) — production operations
+> - [Specs index](specs-index.md) — chronological index of every spec with status
+> - `CLAUDE.md` at the repo root — AI agent entry point
+>
+> Keep this file for reference only (design intent, early requirements, domain model motivation).
+
+---
+
+## Original content
+
 > Version: 0.8 — February 2026
 > Author: Marc
-> Purpose: This document is the single source of truth for Claude Code to build the project.
+> Purpose: This document was the original source of truth. See warning above.
 > **Sowel** — the invisible structure of your smart home.
 
 ---
