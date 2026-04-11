@@ -201,6 +201,36 @@ if (equipmentType === "light_onoff" || equipmentType === "switch") {
 
 Extend `RELEVANT_DATA`, `RELEVANT_ORDERS`, and `STANDARD_ALIASES` as described in FR7 of the spec.
 
+### Timed watering — `on_time` (post-implementation update)
+
+The original FR10 design used a separate `duration` order alias bound to
+`irrigation_duration` and dispatched as two sequential MQTT publishes
+(`duration` then `state`). This failed in practice because the SONOFF SWV
+exposes `irrigation_duration` only as part of a composite expose
+(`cyclic_timed_irrigation`) and z2m rejects scalar sets with `No converter
+available for 'irrigation_duration'`.
+
+The implementation now uses z2m's universal **"on with timed off"**
+pattern: a single atomic publish `{"state":"ON","on_time":600}`. Any z2m
+switch with on_time firmware support (incl. SONOFF SWV) accepts it.
+
+To enable this, the `sowel-plugin-zigbee2mqtt` plugin (v1.2.0) was
+extended: when `executeOrder` receives an object value, it publishes the
+object as the MQTT payload directly instead of wrapping it under
+`payloadKey`. The UI's `WaterValveControl.handleWaterNow()` sends:
+
+```ts
+await onExecuteOrder("state", {
+  state: "ON",
+  on_time: durationMinutes * 60,
+});
+```
+
+This requires no new alias binding — only the existing `state` order is
+needed. The `irrigation_duration` / `cycles` / `interval` / `capacity`
+aliases stay declared in `RELEVANT_ORDERS` so that future recipes
+(spec 063) can bind them, but they are unused by the manual UI action.
+
 ### UI components
 
 | File                                                             | Role                                                                |

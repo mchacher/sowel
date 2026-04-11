@@ -212,6 +212,10 @@
   "water.flow": "Débit",
   "water.battery": "Batterie",
   "water.status": "État",
+  "water.status.normal_state": "Normal",
+  "water.status.water_shortage": "Pénurie d'eau",
+  "water.status.leak": "Fuite détectée",
+  "water.status.fault": "Défaut",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",

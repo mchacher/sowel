@@ -1,12 +1,24 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Power, Loader2, Droplets, Battery, AlertTriangle } from "lucide-react";
+import { Power, Loader2, Droplets, Battery, AlertTriangle, Play } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 
 interface WaterValveControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+}
+
+/** Returns true if the device status is a known abnormal state. */
+function isAbnormalStatus(status: string): boolean {
+  const s = status.toLowerCase();
+  if (s.includes("normal")) return false;
+  return (
+    s.includes("shortage") ||
+    s.includes("leak") ||
+    s.includes("error") ||
+    s.includes("fault")
+  );
 }
 
 export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterValveControlProps) {
@@ -20,8 +32,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
   const batteryBinding = equipment.dataBindings.find((b) => b.alias === "battery");
   const statusBinding = equipment.dataBindings.find((b) => b.alias === "status");
 
-  const isOn =
-    stateBinding?.value === true || stateBinding?.value === "ON";
+  const isOn = stateBinding?.value === true || stateBinding?.value === "ON";
 
   const flow =
     flowBinding && typeof flowBinding.value === "number" ? flowBinding.value : null;
@@ -29,11 +40,38 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
     batteryBinding && typeof batteryBinding.value === "number"
       ? batteryBinding.value
       : null;
-  const status =
+  const statusRaw =
     statusBinding && typeof statusBinding.value === "string" ? statusBinding.value : null;
+  const statusAbnormal = statusRaw !== null && isAbnormalStatus(statusRaw);
+  const statusLabel = statusRaw
+    ? t(`water.status.${statusRaw}`, { defaultValue: statusRaw.replace(/_/g, " ") })
+    : null;
 
-  const hasStateOrder = equipment.orderBindings.some((b) => b.alias === "state");
-  const hasDurationOrder = equipment.orderBindings.some((b) => b.alias === "duration");
+  const stateOrderBinding = equipment.orderBindings.find((b) => b.alias === "state");
+  const hasStateOrder = !!stateOrderBinding;
+  // Timed watering uses z2m's universal "on with timed off" pattern
+  // ({"state":"ON","on_time":600}) — published atomically through the
+  // composite payload support added in plugin v1.2.0. No separate `duration`
+  // alias binding is required: any z2m switch with on_time firmware support
+  // (incl. SONOFF SWV) accepts it.
+  const hasTimedWatering = hasStateOrder;
+
+  /**
+   * Compute the right ON/OFF payload for the state order.
+   *
+   * The SONOFF SWV state is exposed by z2m as `binary` (mapped to our `boolean`
+   * DataType), but z2m actually expects string payloads "ON" / "OFF" / "TOGGLE"
+   * — sending raw `true`/`false` is rejected. We always send the string form
+   * for the state alias, mirroring LightControl which has the same convention.
+   */
+  const stateValue = (turnOn: boolean): unknown => {
+    if (!stateOrderBinding) return turnOn ? "ON" : "OFF";
+    const onVal =
+      stateOrderBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+    const offVal =
+      stateOrderBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+    return turnOn ? onVal : offVal;
+  };
 
   const handleToggle = async (e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -41,19 +79,23 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
     if (executing || !hasStateOrder) return;
     setExecuting(true);
     try {
-      await onExecuteOrder("state", !isOn);
+      await onExecuteOrder("state", stateValue(!isOn));
     } finally {
       setExecuting(false);
     }
   };
 
   const handleWaterNow = async () => {
-    if (watering || !hasDurationOrder || !hasStateOrder) return;
+    if (watering || !hasTimedWatering) return;
     setWatering(true);
     try {
-      // Send duration in seconds first, then turn on
-      await onExecuteOrder("duration", duration * 60);
-      await onExecuteOrder("state", true);
+      // Composite payload: state + on_time published in a single MQTT
+      // message. The z2m plugin (v1.2.0+) detects an object value and
+      // publishes it directly instead of wrapping under `payloadKey`.
+      await onExecuteOrder("state", {
+        state: stateValue(true),
+        on_time: duration * 60,
+      });
     } finally {
       setWatering(false);
     }
@@ -76,15 +118,15 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
           onClick={handleToggle}
           disabled={executing || !equipment.enabled}
           className={`
-            w-9 h-9 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border
+            p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
             ${isOn
-              ? "border-active/40 bg-active/10 text-active-text hover:bg-active/15"
-              : "border-border bg-surface text-text-tertiary hover:bg-border-light"}
-            disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]
+              ? "bg-active text-white hover:bg-active/80"
+              : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"}
+            disabled:opacity-50 disabled:cursor-not-allowed
           `}
           title={isOn ? t("water.closed") : t("water.open")}
         >
-          {executing ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} strokeWidth={1.5} />}
+          {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
         </button>
       </div>
     );
@@ -94,89 +136,87 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
   // Full mode — used in equipment detail page
   // ============================================================
   return (
-    <div className="space-y-4">
-      {/* Big toggle */}
-      <div className="flex items-center justify-center">
-        <button
-          onClick={handleToggle}
-          disabled={executing || !equipment.enabled || !hasStateOrder}
-          className={`
-            w-32 h-32 flex flex-col items-center justify-center rounded-full transition-all duration-150 cursor-pointer border-2
-            ${isOn
-              ? "border-active bg-active/10 text-active-text"
-              : "border-border bg-surface text-text-tertiary hover:bg-border-light"}
-            disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]
-          `}
-        >
-          {executing ? (
-            <Loader2 size={32} className="animate-spin" />
-          ) : (
-            <>
-              <Power size={32} strokeWidth={1.5} />
-              <span className="text-[13px] font-semibold mt-1">
-                {isOn ? t("water.open") : t("water.closed")}
-              </span>
-            </>
+    <div className="space-y-3">
+      {/* Toggle row — compact horizontal pill (matches LightControl) */}
+      {hasStateOrder && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleToggle}
+            disabled={executing}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+              transition-colors duration-150
+              ${isOn
+                ? "bg-active text-white hover:bg-active/80"
+                : "bg-border-light text-text-secondary hover:bg-border hover:text-text"}
+              disabled:opacity-50
+            `}
+          >
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
+            {isOn ? t("water.open") : t("water.closed")}
+          </button>
+
+          {/* Live flow inline when open */}
+          {flow !== null && isOn && (
+            <div className="flex items-center gap-1.5 text-text-secondary">
+              <Droplets size={14} strokeWidth={1.5} />
+              <span className="text-[14px] font-semibold tabular-nums font-mono">{flow}</span>
+              <span className="text-[12px] text-text-tertiary">m³/h</span>
+            </div>
           )}
-        </button>
-      </div>
+        </div>
+      )}
 
-      {/* Live metrics */}
-      <div className="grid grid-cols-2 gap-3">
-        {flow !== null && (
-          <Metric
-            icon={<Droplets size={16} strokeWidth={1.5} />}
-            label={t("water.flow")}
-            value={`${flow}`}
-            unit="m³/h"
-          />
-        )}
-        {battery !== null && (
-          <Metric
-            icon={<Battery size={16} strokeWidth={1.5} />}
-            label={t("water.battery")}
-            value={`${battery}`}
-            unit="%"
-            alert={battery < 20}
-          />
-        )}
-        {status !== null && (
-          <Metric
-            icon={<AlertTriangle size={16} strokeWidth={1.5} />}
-            label={t("water.status")}
-            value={status}
-            alert={status !== "normal"}
-          />
-        )}
-      </div>
-
-      {/* Timed watering */}
-      {hasDurationOrder && hasStateOrder && (
-        <div className="bg-surface border border-border rounded-[10px] p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[13px] font-medium text-text-secondary">
-              {t("water.duration")}
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={120}
-              value={duration}
-              onChange={(e) => setDuration(Math.max(1, Math.min(120, Number(e.target.value) || 1)))}
-              className="w-16 px-2 py-1 text-[13px] tabular-nums border border-border rounded-[6px] outline-none focus:border-primary"
+      {/* Inline indicators row — battery + status, only colored when alert */}
+      {(battery !== null || statusLabel !== null) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {battery !== null && (
+            <Indicator
+              icon={<Battery size={13} strokeWidth={1.5} />}
+              label={t("water.battery")}
+              value={`${battery}%`}
+              alert={battery < 20}
             />
-            <span className="text-[12px] text-text-tertiary">{t("water.minutes")}</span>
-          </div>
+          )}
+          {statusLabel !== null && (
+            <Indicator
+              icon={<AlertTriangle size={13} strokeWidth={1.5} />}
+              label={t("water.status")}
+              value={statusLabel}
+              alert={statusAbnormal}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Timed watering — single row, all grouped on the left */}
+      {hasTimedWatering && (
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          <span className="text-[12px] text-text-tertiary">{t("water.duration")}</span>
+          <input
+            type="number"
+            min={1}
+            max={120}
+            value={duration}
+            onChange={(e) => setDuration(Math.max(1, Math.min(120, Number(e.target.value) || 1)))}
+            className="w-14 px-2 py-1 text-[13px] tabular-nums border border-border rounded-[6px] outline-none focus:border-primary"
+          />
+          <span className="text-[12px] text-text-tertiary mr-1">{t("water.minutes")}</span>
           <button
             onClick={handleWaterNow}
             disabled={watering || !equipment.enabled}
-            className="w-full px-3 py-2 text-[13px] font-medium rounded-[6px] bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.99]"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-[6px] bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {watering ? (
-              <Loader2 size={14} className="animate-spin inline" />
+              <Loader2 size={13} className="animate-spin" />
             ) : (
-              t("water.waterNow", { minutes: duration })
+              <Play size={13} strokeWidth={2} />
             )}
+            {t("water.waterNow", { minutes: duration })}
           </button>
         </div>
       )}
@@ -184,33 +224,28 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
   );
 }
 
-function Metric({
+// Small inline indicator pill — only shows accent color when in alert state
+function Indicator({
   icon,
   label,
   value,
-  unit,
   alert,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
-  unit?: string;
   alert?: boolean;
 }) {
   return (
     <div
-      className={`flex flex-col gap-1 px-3 py-2 rounded-[8px] border ${alert ? "border-error/40 bg-error/5" : "border-border bg-surface"}`}
+      className={`
+        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border text-[12px]
+        ${alert ? "border-error/30 bg-error/5 text-error" : "border-border bg-surface text-text-secondary"}
+      `}
+      title={label}
     >
-      <div className="flex items-center gap-1.5 text-text-tertiary">
-        {icon}
-        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
-      </div>
-      <div className="flex items-baseline gap-0.5">
-        <span className={`text-[18px] font-semibold tabular-nums font-mono ${alert ? "text-error" : "text-text"}`}>
-          {value}
-        </span>
-        {unit && <span className="text-[12px] text-text-tertiary">{unit}</span>}
-      </div>
+      {icon}
+      <span className="font-medium tabular-nums">{value}</span>
     </div>
   );
 }

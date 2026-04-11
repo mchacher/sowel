@@ -212,6 +212,10 @@
   "water.flow": "Flow",
   "water.battery": "Battery",
   "water.status": "Status",
+  "water.status.normal_state": "Normal",
+  "water.status.water_shortage": "Water shortage",
+  "water.status.leak": "Leak detected",
+  "water.status.fault": "Fault",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",

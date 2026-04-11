@@ -8,6 +8,7 @@ import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
+import { WaterValveControl } from "../equipments/WaterValveControl";
 import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 
@@ -39,8 +40,10 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     iconColor,
   } = useEquipmentState(equipment);
 
+  const isWaterValve = equipment.type === "water_valve";
+
   // Find primary data value for generic equipments
-  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance;
+  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -148,6 +151,15 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       {/* Heater controls */}
       {isHeater && equipment.enabled && (
         <HeaterControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* Water valve controls */}
+      {isWaterValve && equipment.enabled && (
+        <WaterValveControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact
