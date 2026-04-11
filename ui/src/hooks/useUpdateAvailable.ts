@@ -1,33 +1,42 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { getSystemVersion } from "../api";
+import { useWebSocket } from "../store/useWebSocket";
 
 /**
- * Checks if a Sowel update is available.
- * Polls on mount + every 30 minutes.
+ * Returns true when a Sowel update is available.
+ *
+ * Strategy:
+ * - Initial check at mount (covers the case where WS isn't connected yet,
+ *   or where the user opens the UI long after a release was published)
+ * - Then relies on the WebSocket push of `system.update.available` for
+ *   real-time updates (no more 30-min polling)
  */
 export function useUpdateAvailable(): boolean {
-  const [available, setAvailable] = useState(false);
+  const updateAvailable = useWebSocket((s) => s.updateAvailable);
+  const setUpdateAvailable = useWebSocket((s) => s.setUpdateAvailable);
 
   useEffect(() => {
     let cancelled = false;
-
-    const check = async () => {
-      try {
-        const info = await getSystemVersion();
-        if (!cancelled) setAvailable(info.updateAvailable);
-      } catch {
+    getSystemVersion()
+      .then((info) => {
+        if (cancelled) return;
+        if (info.updateAvailable && info.latest) {
+          setUpdateAvailable({
+            current: info.current,
+            latest: info.latest,
+            releaseUrl: info.releaseUrl ?? "",
+          });
+        } else {
+          setUpdateAvailable(null);
+        }
+      })
+      .catch(() => {
         // ignore — user might not be admin
-      }
-    };
-
-    check();
-    const timer = setInterval(check, 30 * 60 * 1000);
-
+      });
     return () => {
       cancelled = true;
-      clearInterval(timer);
     };
-  }, []);
+  }, [setUpdateAvailable]);
 
-  return available;
+  return updateAvailable !== null;
 }

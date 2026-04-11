@@ -33,6 +33,7 @@ import type { NotificationPublisherManager } from "../notifications/notification
 import type { NotificationPublishService } from "../notifications/notification-publish-service.js";
 import type { PackageManager } from "../packages/package-manager.js";
 import type { PluginLoader } from "../plugins/plugin-loader.js";
+import type { BackupManager } from "../backup/backup-manager.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -83,6 +84,7 @@ interface ServerDeps {
   notificationPublishService: NotificationPublishService;
   packageManager: PackageManager;
   pluginLoader: PluginLoader;
+  backupManager: BackupManager;
   versionChecker: import("../core/version-checker.js").VersionChecker;
   updateManager: import("../core/update-manager.js").UpdateManager;
   eventBus: EventBus;
@@ -90,7 +92,6 @@ interface ServerDeps {
   logBuffer: LogRingBuffer;
   logger: Logger;
   corsOrigins: string[];
-  dataDir: string;
 }
 
 export async function createServer(deps: ServerDeps) {
@@ -117,6 +118,7 @@ export async function createServer(deps: ServerDeps) {
     notificationPublishService,
     packageManager,
     pluginLoader,
+    backupManager,
     versionChecker,
     updateManager,
     eventBus,
@@ -124,7 +126,6 @@ export async function createServer(deps: ServerDeps) {
     logBuffer,
     logger,
     corsOrigins,
-    dataDir,
   } = deps;
 
   const app = Fastify({
@@ -172,7 +173,7 @@ export async function createServer(deps: ServerDeps) {
   registerRecipeRoutes(app, { recipeManager, logger });
   registerModeRoutes(app, { modeManager, buttonActionManager, logger });
   registerCalendarRoutes(app, { calendarManager, logger });
-  registerBackupRoutes(app, { db, influxClient, logger, dataDir });
+  registerBackupRoutes(app, { backupManager, logger });
   registerSettingsRoutes(app, { settingsManager, eventBus, logger });
   registerIntegrationRoutes(app, {
     integrationRegistry,

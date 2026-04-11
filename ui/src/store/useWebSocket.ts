@@ -19,10 +19,20 @@ export interface SystemAlarm {
   message: string;
 }
 
+export interface UpdateAvailableInfo {
+  current: string;
+  latest: string;
+  releaseUrl: string;
+}
+
 interface WebSocketState {
   status: ConnectionStatus;
   integrationStatuses: Record<string, string>;
   alarms: Map<string, SystemAlarm>;
+  updateAvailable: UpdateAvailableInfo | null;
+  updateInProgress: boolean;
+  setUpdateAvailable: (info: UpdateAvailableInfo | null) => void;
+  setUpdateInProgress: (inProgress: boolean) => void;
   connect: () => void;
   disconnect: () => void;
   subscribe: (topics: WsTopic[]) => void;
@@ -155,6 +165,21 @@ function handleEvent(event: EngineEvent): void {
         return { alarms };
       });
       break;
+    case "system.update.available":
+      useWebSocket.setState({
+        updateAvailable: {
+          current: event.current,
+          latest: event.latest,
+          releaseUrl: event.releaseUrl,
+        },
+      });
+      break;
+    case "system.update.progress":
+      useWebSocket.setState({ updateInProgress: true });
+      break;
+    case "system.update.error":
+      useWebSocket.setState({ updateInProgress: false });
+      break;
   }
 }
 
@@ -162,6 +187,11 @@ export const useWebSocket = create<WebSocketState>((set) => ({
   status: "disconnected",
   integrationStatuses: {},
   alarms: new Map(),
+  updateAvailable: null,
+  updateInProgress: false,
+
+  setUpdateAvailable: (info) => set({ updateAvailable: info }),
+  setUpdateInProgress: (inProgress) => set({ updateInProgress: inProgress }),
 
   connect: () => {
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) {
