@@ -403,6 +403,7 @@ const ZONE_FAMILY_TYPES: Record<string, string[]> = {
   shutters: ["shutter"],
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
+  water: ["water_valve"],
 };
 
 function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
