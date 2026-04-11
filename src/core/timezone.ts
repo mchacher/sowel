@@ -104,12 +104,26 @@ export function probeTimezone(): TimezoneProbe {
  * Does NOT require a full `SettingsManager` — used during the early boot
  * phase before the logger and managers are instantiated.
  *
- * Returns `{ latitude: null, longitude: null }` if either is missing or invalid.
+ * On a fresh install the `settings` table does not exist yet (migrations
+ * have not run). In that case this function returns `{ null, null }` which
+ * makes `detectTimezone()` fall back to UTC (or `TZ` env var), which is the
+ * correct behavior for a brand new Sowel instance.
+ *
+ * Returns `{ latitude: null, longitude: null }` if either is missing, invalid,
+ * or if the `settings` table does not exist.
  */
 export function readHomeCoordinatesRaw(db: Database.Database): {
   latitude: number | null;
   longitude: number | null;
 } {
+  // Check if the settings table exists (fresh install → no migrations yet)
+  const tableExists = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'")
+    .get();
+  if (!tableExists) {
+    return { latitude: null, longitude: null };
+  }
+
   const rows = db
     .prepare("SELECT key, value FROM settings WHERE key IN ('home.latitude', 'home.longitude')")
     .all() as { key: string; value: string }[];

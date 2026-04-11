@@ -183,6 +183,15 @@ describe("readHomeCoordinatesRaw", () => {
     expect(result.longitude).toBeNull();
   });
 
+  it("returns null when settings table does not exist (fresh install)", () => {
+    // Drop the settings table to simulate a brand new database
+    const freshDb = new Database(":memory:");
+    const result = readHomeCoordinatesRaw(freshDb);
+    expect(result.latitude).toBeNull();
+    expect(result.longitude).toBeNull();
+    freshDb.close();
+  });
+
   it("returns parsed coordinates when present", () => {
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("home.latitude", "45.1885");
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("home.longitude", "5.7245");
