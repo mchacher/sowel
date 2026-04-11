@@ -73,7 +73,7 @@ The script will:
 After pushing the tag, GitHub Actions will:
 
 1. Run CI checks (typecheck, lint, tests)
-2. Build multi-arch Docker image (amd64 + arm64)
+2. Build Docker image (amd64)
 3. Push to `ghcr.io/mchacher/sowel:<version>` and `ghcr.io/mchacher/sowel:latest`
 4. Create GitHub Release with changelog
 
