@@ -43,6 +43,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "energy_production_meter",
   "media_player",
   "appliance",
+  "water_valve",
 ]);
 
 // ============================================================

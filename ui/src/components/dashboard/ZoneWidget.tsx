@@ -12,7 +12,7 @@ import {
   Power,
 } from "lucide-react";
 import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
-import { executeZoneOrder } from "../../api";
+import { executeZoneOrder, executeEquipmentOrder } from "../../api";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import {
   LightBulbIcon,
@@ -20,6 +20,7 @@ import {
   ThermometerIcon,
   MultiSensorIcon,
 } from "./WidgetIcons";
+import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { shutterLevel } from "./widget-icons";
 
 
@@ -28,6 +29,7 @@ const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
   shutters: ["shutter"],
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
+  water: ["water_valve"],
 };
 
 interface ZoneWidgetProps {
@@ -113,6 +115,15 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
   if (family === "sensors") {
     return (
       <ZoneSensorsWidget
+        label={label}
+        filteredEquipments={filteredEquipments}
+      />
+    );
+  }
+
+  if (family === "water") {
+    return (
+      <ZoneWaterWidget
         label={label}
         filteredEquipments={filteredEquipments}
       />
@@ -532,6 +543,110 @@ function ZoneSensorsWidget({
             <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
           )}
         </div>
+      </div>
+    </ZoneWidgetCard>
+  );
+}
+
+// ============================================================
+// Water zone widget — water valve icon + open count + close all
+// ============================================================
+
+function ZoneWaterWidget({
+  label,
+  filteredEquipments,
+}: {
+  label: string;
+  filteredEquipments: EquipmentWithDetails[];
+}) {
+  const { t } = useTranslation();
+  const [closingAll, setClosingAll] = useState(false);
+
+  const { openCount, totalCount, totalFlow } = useMemo(() => {
+    let open = 0;
+    let flow = 0;
+    let hasFlow = false;
+    for (const eq of filteredEquipments) {
+      const stateBinding = eq.dataBindings.find((b) => b.alias === "state");
+      const isOpen =
+        stateBinding?.value === true || stateBinding?.value === "ON";
+      if (isOpen) {
+        open++;
+        const flowBinding = eq.dataBindings.find((b) => b.alias === "flow");
+        if (flowBinding && typeof flowBinding.value === "number") {
+          flow += flowBinding.value;
+          hasFlow = true;
+        }
+      }
+    }
+    return {
+      openCount: open,
+      totalCount: filteredEquipments.length,
+      totalFlow: hasFlow ? Math.round(flow * 100) / 100 : null,
+    };
+  }, [filteredEquipments]);
+
+  const anyOpen = openCount > 0;
+
+  const handleCloseAll = useCallback(async () => {
+    setClosingAll(true);
+    try {
+      await Promise.all(
+        filteredEquipments.map(async (eq) => {
+          const stateBinding = eq.dataBindings.find((b) => b.alias === "state");
+          const isOpen =
+            stateBinding?.value === true || stateBinding?.value === "ON";
+          if (isOpen) {
+            try {
+              await executeEquipmentOrder(eq.id, "state", false);
+            } catch {
+              // Silent — UI updates via WebSocket
+            }
+          }
+        }),
+      );
+    } finally {
+      setClosingAll(false);
+    }
+  }, [filteredEquipments]);
+
+  return (
+    <ZoneWidgetCard label={label} empty={filteredEquipments.length === 0}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        <WaterValveIcon
+          size={48}
+          strokeWidth={1.5}
+          className={anyOpen ? "text-active-text" : "text-text-tertiary"}
+        />
+        <div className="flex flex-col items-start gap-0.5 pl-2">
+          <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+            {openCount}/{totalCount}
+          </span>
+          {totalFlow !== null && (
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-[12px] font-medium text-text-secondary tabular-nums">
+                {totalFlow}
+              </span>
+              <span className="text-[11px] font-medium text-text-tertiary">m³/h</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-3 mt-auto pt-1">
+        <button
+          onClick={handleCloseAll}
+          disabled={closingAll || !anyOpen}
+          className="px-3 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary text-[12px] font-medium hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          title={t("water.closeAll")}
+        >
+          {closingAll ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            t("water.closeAll")
+          )}
+        </button>
       </div>
     </ZoneWidgetCard>
   );

@@ -201,6 +201,17 @@
   "equipments.type.energy_production_meter": "Compteur d'Énergie (production)",
   "equipments.type.media_player": "Lecteur Multimédia",
   "equipments.type.appliance": "Électroménager",
+  "equipments.type.water_valve": "Vanne d'arrosage",
+
+  "water.open": "Ouverte",
+  "water.closed": "Fermée",
+  "water.closeAll": "Fermer tout",
+  "water.waterNow": "Arroser {{minutes}} min",
+  "water.duration": "Durée",
+  "water.minutes": "min",
+  "water.flow": "Débit",
+  "water.battery": "Batterie",
+  "water.status": "État",
 
   "equipments.group.lights": "Éclairages",
   "equipments.group.shutters": "Volets",

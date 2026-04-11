@@ -27,7 +27,20 @@ const EQUIPMENT_TYPE_DATA_KEYS: Partial<Record<EquipmentType, string[]>> = {
   weather_forecast: ["j1_condition"],
   media_player: ["volume", "input_source"],
   appliance: ["state", "remaining_time"],
+  water_valve: ["flow", "irrigation_capacity", "irrigation_duration", "irrigation_interval"],
 };
+
+/** Data keys that strongly indicate a smart water valve (used to exclude from light/switch lists). */
+const WATER_VALVE_MARKERS = new Set([
+  "flow",
+  "irrigation_capacity",
+  "irrigation_duration",
+  "irrigation_interval",
+]);
+
+function looksLikeWaterValve(device: DeviceWithData): boolean {
+  return device.data.some((d) => WATER_VALVE_MARKERS.has(d.key));
+}
 
 interface DeviceSelectorProps {
   equipmentType: EquipmentType;
@@ -69,7 +82,7 @@ export function DeviceSelector({
 
   const categories = EQUIPMENT_TYPE_CATEGORIES[equipmentType];
   const requiredKeys = EQUIPMENT_TYPE_DATA_KEYS[equipmentType];
-  const compatible = requiredKeys
+  let compatible = requiredKeys
     ? availableDevices.filter((device) =>
         device.data.some((d) => requiredKeys.includes(d.key))
       )
@@ -78,6 +91,12 @@ export function DeviceSelector({
           device.data.some((d) => categories.includes(d.category))
         )
       : availableDevices;
+
+  // Exclude smart water valves from light/switch creation flows so they don't
+  // pollute the list (their `state` is misclassified as `light_state`).
+  if (equipmentType === "light_onoff" || equipmentType === "switch") {
+    compatible = compatible.filter((device) => !looksLikeWaterValve(device));
+  }
 
   const baseDevices = showAll ? availableDevices : compatible;
   const filterLower = filter.toLowerCase();

@@ -68,6 +68,7 @@ import {
   MotionSensorIcon,
   ContactSensorIcon,
 } from "./WidgetIcons";
+import { WaterValveIcon } from "../icons/WaterValveIcon";
 
 // ============================================================
 // Utility — shutter level bucket (moved from WidgetIcons.tsx to avoid react-refresh lint)
@@ -198,6 +199,12 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
     previewProps: { open: false },
     types: ["sensor", "sensors"],
   },
+  water_valve: {
+    label: "Vanne d'arrosage",
+    component: WaterValveIcon as ComponentType<Record<string, unknown>>,
+    previewProps: {},
+    types: ["water_valve", "water"],
+  },
 };
 
 // ============================================================
@@ -274,6 +281,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   gate: "DoorOpen",
   switch: "ToggleLeft",
   button: "CircleDot",
+  water_valve: "Droplets",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
@@ -281,6 +289,7 @@ const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
   shutters: "ArrowUpDown",
   heating: "Flame",
   sensors: "Gauge",
+  water: "Droplets",
 };
 
 export function getWidgetIcon(

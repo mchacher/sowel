@@ -201,6 +201,17 @@
   "equipments.type.energy_production_meter": "Energy Meter (production)",
   "equipments.type.media_player": "Media Player",
   "equipments.type.appliance": "Appliance",
+  "equipments.type.water_valve": "Water valve",
+
+  "water.open": "Open",
+  "water.closed": "Closed",
+  "water.closeAll": "Close all",
+  "water.waterNow": "Water for {{minutes}} min",
+  "water.duration": "Duration",
+  "water.minutes": "min",
+  "water.flow": "Flow",
+  "water.battery": "Battery",
+  "water.status": "Status",
 
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",

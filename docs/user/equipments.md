@@ -195,6 +195,18 @@ Use a state-watch recipe to get notified when the operating state changes from `
 
 ---
 
+### Water
+
+#### Water valve
+
+Smart irrigation valve for garden watering. Designed for devices like the SONOFF SWV that expose `state`, `flow`, and `irrigation_*` properties.
+
+- **Controls:** Toggle ON/OFF, "Water for X min" timed action that opens the valve and lets the device firmware close it automatically after the configured duration
+- **Live metrics shown when bound:** flow rate (m³/h), battery, device status (normal / water shortage / leak)
+- **Standard aliases:** `state`, `flow`, `battery`, `status`, `duration`, `cycles`, `interval`, `capacity`, `autoCloseOnShortage` — only `state` is required, the UI adapts to which are bound
+- **Zone aggregation:** counts open/total valves and sums live flow across the zone tree
+- **Foundation for** future auto-watering recipes (rain-aware scheduling)
+
 ### Other
 
 #### Switch / Plug

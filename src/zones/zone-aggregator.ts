@@ -35,6 +35,10 @@ interface Accumulator {
   shutterPositionCount: number;
   shuttersOpen: number;
   shuttersTotal: number;
+  waterValvesOpen: number;
+  waterValvesTotal: number;
+  waterFlowSum: number;
+  waterFlowHasData: boolean;
 }
 
 function emptyAccumulator(): Accumulator {
@@ -57,6 +61,10 @@ function emptyAccumulator(): Accumulator {
     shutterPositionCount: 0,
     shuttersOpen: 0,
     shuttersTotal: 0,
+    waterValvesOpen: 0,
+    waterValvesTotal: 0,
+    waterFlowSum: 0,
+    waterFlowHasData: false,
   };
 }
 
@@ -80,6 +88,10 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     shutterPositionCount: a.shutterPositionCount + b.shutterPositionCount,
     shuttersOpen: a.shuttersOpen + b.shuttersOpen,
     shuttersTotal: a.shuttersTotal + b.shuttersTotal,
+    waterValvesOpen: a.waterValvesOpen + b.waterValvesOpen,
+    waterValvesTotal: a.waterValvesTotal + b.waterValvesTotal,
+    waterFlowSum: a.waterFlowSum + b.waterFlowSum,
+    waterFlowHasData: a.waterFlowHasData || b.waterFlowHasData,
   };
 }
 
@@ -108,6 +120,9 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       acc.shutterPositionCount > 0
         ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
         : null,
+    waterValvesOpen: acc.waterValvesOpen,
+    waterValvesTotal: acc.waterValvesTotal,
+    waterFlowTotal: acc.waterFlowHasData ? Math.round(acc.waterFlowSum * 100) / 100 : null,
     sunrise: null,
     sunset: null,
     isDaylight: null,
@@ -133,6 +148,9 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.shuttersOpen === b.shuttersOpen &&
     a.shuttersTotal === b.shuttersTotal &&
     a.averageShutterPosition === b.averageShutterPosition &&
+    a.waterValvesOpen === b.waterValvesOpen &&
+    a.waterValvesTotal === b.waterValvesTotal &&
+    a.waterFlowTotal === b.waterFlowTotal &&
     a.sunrise === b.sunrise &&
     a.sunset === b.sunset &&
     a.isDaylight === b.isDaylight
@@ -432,10 +450,31 @@ export class ZoneAggregator {
     for (const equipment of equipments) {
       if (equipment.type === "weather") continue; // Exclude weather from zone aggregation
       const bindings = this.equipmentManager.getDataBindingsWithValues(equipment.id);
-      this.accumulateBindings(acc, bindings, equipment.type);
+      if (equipment.type === "water_valve") {
+        this.accumulateWaterValve(acc, bindings);
+      } else {
+        this.accumulateBindings(acc, bindings, equipment.type);
+      }
     }
 
     return acc;
+  }
+
+  /**
+   * Accumulate a water_valve equipment: count total/open and sum flow.
+   * Uses alias-based lookup since the SONOFF SWV state is misclassified as light_state.
+   */
+  private accumulateWaterValve(acc: Accumulator, bindings: DataBindingWithValue[]): void {
+    acc.waterValvesTotal += 1;
+    const stateBinding = bindings.find((b) => b.alias === "state");
+    if (stateBinding && isBooleanActive(stateBinding.value)) {
+      acc.waterValvesOpen += 1;
+      const flowBinding = bindings.find((b) => b.alias === "flow");
+      if (flowBinding && typeof flowBinding.value === "number") {
+        acc.waterFlowSum += flowBinding.value;
+        acc.waterFlowHasData = true;
+      }
+    }
   }
 
   /**
