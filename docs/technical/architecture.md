@@ -467,13 +467,36 @@ Conventions:
 
 ---
 
-## Timezone handling
+## Timezone handling (spec 061)
 
 Sowel backend logic depends heavily on local time: calendar cron slots (`croner`), energy HP/HC tariff classification, energy day boundaries, sunrise/sunset display, notifications. All use native `Date` methods that depend on `process.env.TZ`.
 
-**Current state (2026-04-11)**: set `TZ=Europe/Paris` in `docker-compose.yml` environment for production sowelox. This is a temporary workaround.
+### Detection strategy
 
-**Target state (spec 061, drafted)**: auto-derive the timezone from `home.latitude` / `home.longitude` at startup via `tz-lookup`, with `TZ` env var as override. Node caches TZ on first Date call, so changes require restart.
+At startup, `src/core/timezone.ts` determines the timezone with this priority:
+
+1. **`TZ` env var** — if set in `docker-compose.yml` or the host env, Sowel respects it (explicit override wins)
+2. **`home.latitude` / `home.longitude`** — if configured in Settings, Sowel passes them to `tz-lookup` to derive the IANA timezone name (e.g. `Europe/Paris`)
+3. **Fallback to UTC** — with a loud WARN log inviting the user to configure a home location
+
+`process.env.TZ` is set **before `createLogger()`** in `src/index.ts`. This is critical — pino's first `new Date()` call caches the TZ in V8, and `process.env.TZ` changes after that have no effect on already-loaded `Date.prototype` methods. See the boot sequence in `src/index.ts`.
+
+### Restart required after location change
+
+Node caches the TZ on first use. If the user changes `home.latitude` / `home.longitude` in Settings at runtime:
+
+1. The settings route logs a warn and emits `system.restart_required` on the EventBus
+2. The UI receives the event via WebSocket and displays `RestartToast` with a "Restart now" button
+3. Clicking the button calls `POST /api/v1/system/restart` which spawns a `docker:25-cli` helper container (same pattern as spec 060 self-update) that runs `docker compose up -d sowel`
+4. The helper survives Sowel's death and recreates the container, which picks up the new env and re-runs `detectTimezone()` with the new coordinates
+5. The existing `UpdateOverlay` reloads the UI on WS reconnect
+
+### Exposing the TZ in the UI
+
+- `GET /api/v1/system/timezone` returns `{ tz, source, offsetHours }` to any authenticated user
+- `ui/src/store/useTimezone.ts` caches the result in a Zustand store, fetched once at app mount from `AppLayout.tsx`
+- The Settings → Home section displays the TZ read-only with its source label (auto / env / fallback)
+- The `CurrentTimePill` in the header banner displays the **home** time (not the browser local time), computed via `Intl.DateTimeFormat(undefined, { timeZone: tz, ... })` — useful when accessing Sowel from a device in a different timezone
 
 See spec 061 at [github.com/mchacher/sowel/tree/main/specs/061-timezone-from-home-location](https://github.com/mchacher/sowel/tree/main/specs/061-timezone-from-home-location).
 

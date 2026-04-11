@@ -45,6 +45,15 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsDeps)
     logger.info({ keys }, "Settings updated");
     eventBus.emit({ type: "settings.changed", keys });
 
+    // Home location changed → timezone may need to be re-derived via restart
+    if (keys.includes("home.latitude") || keys.includes("home.longitude")) {
+      logger.warn("Home location changed. Restart Sowel for timezone changes to apply.");
+      eventBus.emit({
+        type: "system.restart_required",
+        reason: "home_location_changed",
+      });
+    }
+
     return { success: true };
   });
 }

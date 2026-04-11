@@ -11,6 +11,10 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Timezone: by default, Sowel auto-derives the timezone from
+      # home.latitude/home.longitude configured in the Settings UI.
+      # Uncomment to override explicitly (e.g., if you don't set a home location).
+      # - TZ=Europe/Paris
       - INFLUX_URL=http://influxdb:8086
       - INFLUX_TOKEN=sowel-auto-token
       - INFLUX_ORG=sowel

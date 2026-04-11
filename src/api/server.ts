@@ -87,6 +87,11 @@ interface ServerDeps {
   backupManager: BackupManager;
   versionChecker: import("../core/version-checker.js").VersionChecker;
   updateManager: import("../core/update-manager.js").UpdateManager;
+  tzInfo: {
+    tz: string;
+    source: "env" | "auto" | "fallback";
+    offsetHours: number;
+  };
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -121,6 +126,7 @@ export async function createServer(deps: ServerDeps) {
     backupManager,
     versionChecker,
     updateManager,
+    tzInfo,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -206,7 +212,7 @@ export async function createServer(deps: ServerDeps) {
   });
   registerDashboardRoutes(app, { db });
   registerPluginRoutes(app, { packageManager, pluginLoader, integrationRegistry, logger });
-  registerSystemRoutes(app, { versionChecker, updateManager, logger });
+  registerSystemRoutes(app, { versionChecker, updateManager, tzInfo, logger });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
 

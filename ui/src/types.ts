@@ -342,6 +342,7 @@ export type EngineEvent =
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
   | { type: "system.update.error"; error: string }
+  | { type: "system.restart_required"; reason: string }
   | { type: "equipment.order.failed"; equipmentId: string; orderAlias: string; value: unknown; error: string }
   | { type: "connected"; message: string; version: string };
 

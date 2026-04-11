@@ -3,14 +3,21 @@ import { readFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Logger } from "./logger.js";
 
-export function openDatabase(dbPath: string, parentLogger: Logger): Database.Database {
-  const logger = parentLogger.child({ module: "database" });
+/**
+ * Opens the SQLite database at `dbPath`.
+ *
+ * The `parentLogger` parameter is optional to support the early boot phase
+ * (before `createLogger()` is called — see timezone detection in index.ts).
+ * When omitted, log messages are silently suppressed.
+ */
+export function openDatabase(dbPath: string, parentLogger?: Logger): Database.Database {
+  const logger = parentLogger?.child({ module: "database" });
 
   // Ensure data directory exists
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
-    logger.info({ dir }, "Created data directory");
+    logger?.info({ dir }, "Created data directory");
   }
 
   const db = new Database(dbPath);
@@ -19,7 +26,7 @@ export function openDatabase(dbPath: string, parentLogger: Logger): Database.Dat
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
-  logger.info({ path: dbPath }, "SQLite database opened");
+  logger?.info({ path: dbPath }, "SQLite database opened");
 
   return db;
 }

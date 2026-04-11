@@ -4,6 +4,7 @@ import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
 import { LogRingBuffer } from "./core/log-buffer.js";
 import { openDatabase, runMigrations } from "./core/database.js";
+import { detectTimezone, probeTimezone, readHomeCoordinatesRaw } from "./core/timezone.js";
 import { EventBus } from "./core/event-bus.js";
 import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
@@ -87,14 +88,54 @@ async function main() {
   // 1. Load configuration
   const config = loadConfig();
 
-  // 2. Initialize logger with ring buffer for UI log viewer
+  // 2. Open SQLite database (BEFORE logger — needed for timezone detection)
+  //    The database opens without a logger at this stage; log messages about
+  //    db creation will be emitted later once the logger is ready.
+  const db = openDatabase(config.sqlite.path);
+
+  // 3. Detect timezone from home settings BEFORE creating the logger.
+  //    ⚠️ CRITICAL: pino uses `new Date()` on first log, which caches the TZ
+  //    in V8. We must set `process.env.TZ` before that first Date call.
+  const { latitude, longitude } = readHomeCoordinatesRaw(db);
+  const tzResult = detectTimezone({
+    latitude,
+    longitude,
+    tzEnv: process.env["TZ"],
+  });
+  process.env["TZ"] = tzResult.tz;
+  const tzProbe = probeTimezone();
+
+  // 4. Initialize logger with ring buffer for UI log viewer
+  //    (Date is now using the correct TZ.)
   const logBuffer = new LogRingBuffer();
   const logHandle = createLogger(config.log.level, logBuffer);
   const logger = logHandle.logger;
+
+  // Flush deferred timezone diagnostics
+  const tzLogger = logger.child({ module: "timezone" });
+  for (const msg of tzResult.diag) {
+    tzLogger.info(msg);
+  }
+  tzLogger.info(
+    {
+      tz: tzResult.tz,
+      source: tzResult.source,
+      probe: tzProbe.probe,
+      offsetHours: tzProbe.offsetHours,
+    },
+    "Timezone applied",
+  );
+
   logger.info("Sowel — Founded by Marc Chachereau — AGPL-3.0");
 
-  // 3. Open SQLite database and run migrations
-  const db = openDatabase(config.sqlite.path, logger);
+  // Snapshot for /api/v1/system/timezone endpoint
+  const tzInfo = {
+    tz: tzResult.tz,
+    source: tzResult.source,
+    offsetHours: tzProbe.offsetHours,
+  };
+
+  // 5. Run migrations
   const migrationsDir = resolve(
     import.meta.dirname ?? new URL(".", import.meta.url).pathname,
     "../migrations",
@@ -268,6 +309,7 @@ async function main() {
     backupManager,
     versionChecker,
     updateManager,
+    tzInfo,
     eventBus,
     integrationRegistry,
     logBuffer,
