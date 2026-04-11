@@ -207,12 +207,16 @@ The original FR10 design used a separate `duration` order alias bound to
 `irrigation_duration` and dispatched as two sequential MQTT publishes
 (`duration` then `state`). This failed in practice because the SONOFF SWV
 exposes `irrigation_duration` only as part of a composite expose
-(`cyclic_timed_irrigation`) and z2m rejects scalar sets with `No converter
-available for 'irrigation_duration'`.
+(`cyclic_timed_irrigation`) and z2m rejects scalar sets with
+`No converter available for 'irrigation_duration'`.
 
 The implementation now uses z2m's universal **"on with timed off"**
-pattern: a single atomic publish `{"state":"ON","on_time":600}`. Any z2m
-switch with on_time firmware support (incl. SONOFF SWV) accepts it.
+pattern: a single atomic publish `{"state":"ON","on_time":600}`. The z2m
+converter for the SONOFF SWV transparently translates `on_time` into the
+device's native `cyclic_timed_irrigation` format
+(`{current_count: 1, total_number: 1, irrigation_duration: 600,
+irrigation_interval: 0}`), validated end-to-end against the real device
+on 2026-04-11.
 
 To enable this, the `sowel-plugin-zigbee2mqtt` plugin (v1.2.0) was
 extended: when `executeOrder` receives an object value, it publishes the
@@ -230,6 +234,10 @@ This requires no new alias binding — only the existing `state` order is
 needed. The `irrigation_duration` / `cycles` / `interval` / `capacity`
 aliases stay declared in `RELEVANT_ORDERS` so that future recipes
 (spec 063) can bind them, but they are unused by the manual UI action.
+
+Devices that don't support `on_time` in their z2m converter would fall
+back to a plain `state: ON` publish without auto-close. The current spec
+targets the SONOFF SWV which is fully supported.
 
 ### UI components
 
