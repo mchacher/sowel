@@ -118,6 +118,20 @@ export async function triggerSystemUpdate(): Promise<{ success: boolean; message
   return fetchJSON(`${API_BASE}/system/update`, { method: "POST" });
 }
 
+export interface SystemTimezoneInfo {
+  tz: string;
+  source: "env" | "auto" | "fallback";
+  offsetHours: number;
+}
+
+export async function getSystemTimezone(): Promise<SystemTimezoneInfo> {
+  return fetchJSON(`${API_BASE}/system/timezone`);
+}
+
+export async function triggerSystemRestart(): Promise<{ success: boolean; message: string }> {
+  return fetchJSON(`${API_BASE}/system/restart`, { method: "POST" });
+}
+
 // ============================================================
 // Local backups
 // ============================================================

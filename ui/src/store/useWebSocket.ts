@@ -31,8 +31,10 @@ interface WebSocketState {
   alarms: Map<string, SystemAlarm>;
   updateAvailable: UpdateAvailableInfo | null;
   updateInProgress: boolean;
+  restartRequired: string | null; // reason, e.g. "home_location_changed"
   setUpdateAvailable: (info: UpdateAvailableInfo | null) => void;
   setUpdateInProgress: (inProgress: boolean) => void;
+  setRestartRequired: (reason: string | null) => void;
   connect: () => void;
   disconnect: () => void;
   subscribe: (topics: WsTopic[]) => void;
@@ -180,6 +182,9 @@ function handleEvent(event: EngineEvent): void {
     case "system.update.error":
       useWebSocket.setState({ updateInProgress: false });
       break;
+    case "system.restart_required":
+      useWebSocket.setState({ restartRequired: event.reason });
+      break;
   }
 }
 
@@ -189,9 +194,11 @@ export const useWebSocket = create<WebSocketState>((set) => ({
   alarms: new Map(),
   updateAvailable: null,
   updateInProgress: false,
+  restartRequired: null,
 
   setUpdateAvailable: (info) => set({ updateAvailable: info }),
   setUpdateInProgress: (inProgress) => set({ updateInProgress: inProgress }),
+  setRestartRequired: (reason) => set({ restartRequired: reason }),
 
   connect: () => {
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) {

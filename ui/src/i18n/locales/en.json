@@ -468,6 +468,15 @@
   "update.overlayTitle": "Update in progress",
   "update.overlayMessage": "Sowel is updating. The page will reload automatically in a few moments.",
   "update.overlayReload": "Reload now",
+  "update.restartRequiredTitle": "Restart required",
+  "update.restartRequiredMessage": "Home location changed. Sowel needs to restart to re-derive the timezone.",
+  "update.restartNow": "Restart now",
+  "update.later": "Later",
+
+  "settings.timezone": "Timezone",
+  "settings.timezoneSourceAuto": "detected from your coordinates",
+  "settings.timezoneSourceEnv": "set via TZ environment variable",
+  "settings.timezoneSourceFallback": "not configured, UTC by default",
 
   "nav.analyse": "Analyse",
   "nav.integrations": "Integrations",

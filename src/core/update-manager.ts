@@ -7,6 +7,7 @@ import type { BackupManager } from "../backup/backup-manager.js";
 const DOCKER_SOCKET_PATH = "/var/run/docker.sock";
 const HELPER_IMAGE = "docker:25-cli";
 const HELPER_NAME = "sowel-updater";
+const RESTART_HELPER_NAME = "sowel-restarter";
 const COMPOSE_LABEL_WORKING_DIR = "com.docker.compose.project.working_dir";
 const COMPOSE_LABEL_PROJECT = "com.docker.compose.project";
 const COMPOSE_LABEL_SERVICE = "com.docker.compose.service";
@@ -222,14 +223,46 @@ export class UpdateManager {
    * compose file. AutoRemove ensures it cleans up after itself.
    */
   private async spawnHelper(targetVersion: string, ctx: ComposeContext): Promise<void> {
+    const cmd = [
+      "sh",
+      "-c",
+      `sleep 5 && echo "[sowel-updater] pulling..." && docker compose pull ${ctx.serviceName} && echo "[sowel-updater] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
+    ];
+
+    await this.runHelperContainer({
+      name: HELPER_NAME,
+      cmd,
+      ctx,
+      logContext: {
+        helper: HELPER_NAME,
+        image: HELPER_IMAGE,
+        workingDir: ctx.workingDir,
+        service: ctx.serviceName,
+      },
+      logMessage: "Update helper container started",
+    });
+  }
+
+  /**
+   * Shared helper spawn logic: removes any leftover helper, pulls the image,
+   * creates and starts a new container with the given command + mounts.
+   * Used by both `spawnHelper()` (upgrade) and the restart flow.
+   */
+  private async runHelperContainer(args: {
+    name: string;
+    cmd: string[];
+    ctx: ComposeContext;
+    logContext: Record<string, unknown>;
+    logMessage: string;
+  }): Promise<void> {
     const { default: Docker } = await import("dockerode");
     const docker = new Docker({ socketPath: DOCKER_SOCKET_PATH });
 
-    // Remove any leftover helper from a previous failed update
+    // Remove any leftover helper from a previous failed run
     try {
-      const existing = docker.getContainer(HELPER_NAME);
+      const existing = docker.getContainer(args.name);
       await existing.remove({ force: true });
-      this.logger.debug("Removed leftover helper container");
+      this.logger.debug({ name: args.name }, "Removed leftover helper container");
     } catch {
       // Not present — that's fine
     }
@@ -252,35 +285,77 @@ export class UpdateManager {
       );
     }
 
-    // Build the command — sleep then compose pull + up -d for the sowel service only
-    const cmd = [
-      "sh",
-      "-c",
-      `sleep 5 && echo "[sowel-updater] pulling..." && docker compose pull ${ctx.serviceName} && echo "[sowel-updater] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
-    ];
-
     const helper = await docker.createContainer({
       Image: HELPER_IMAGE,
-      name: HELPER_NAME,
-      Cmd: cmd,
+      name: args.name,
+      Cmd: args.cmd,
       WorkingDir: "/workdir",
-      Env: [`COMPOSE_PROJECT_NAME=${ctx.projectName}`],
+      Env: [`COMPOSE_PROJECT_NAME=${args.ctx.projectName}`],
       HostConfig: {
         AutoRemove: true,
-        Binds: ["/var/run/docker.sock:/var/run/docker.sock", `${ctx.workingDir}:/workdir`],
+        Binds: ["/var/run/docker.sock:/var/run/docker.sock", `${args.ctx.workingDir}:/workdir`],
       },
     });
 
     await helper.start();
-    this.logger.info(
-      {
-        helper: HELPER_NAME,
-        image: HELPER_IMAGE,
-        workingDir: ctx.workingDir,
-        service: ctx.serviceName,
-      },
-      "Update helper container started",
-    );
+    this.logger.info(args.logContext, args.logMessage);
+  }
+
+  /**
+   * Trigger a container restart (NOT an upgrade) via a helper container.
+   *
+   * Used when a configuration change requires Node to re-read process.env.TZ
+   * (e.g., after changing home location and re-deriving the timezone).
+   *
+   * The helper container runs:
+   *   sleep 3 && docker compose up -d <service>
+   *
+   * which recreates the sowel container with the current image. The compose
+   * file is re-parsed so any env var changes are picked up.
+   */
+  async restartViaHelper(): Promise<void> {
+    if (this.updating) {
+      throw new Error("An operation is already in progress");
+    }
+    if (!this.isDockerAvailable()) {
+      throw new Error("Docker socket not available");
+    }
+    const ctx = this.getComposeContext();
+    if (!ctx) {
+      throw new Error("Cannot restart: Sowel is not managed by docker compose. Restart manually.");
+    }
+
+    this.updating = true;
+    try {
+      this.emitProgress("restart", "Spawning restart helper...");
+      const cmd = [
+        "sh",
+        "-c",
+        `sleep 3 && echo "[sowel-restarter] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-restarter] done"`,
+      ];
+      await this.runHelperContainer({
+        name: RESTART_HELPER_NAME,
+        cmd,
+        ctx,
+        logContext: {
+          helper: RESTART_HELPER_NAME,
+          image: HELPER_IMAGE,
+          workingDir: ctx.workingDir,
+          service: ctx.serviceName,
+        },
+        logMessage: "Restart helper container started",
+      });
+      this.emitProgress("spawned", "Restart helper started — Sowel will restart shortly");
+      this.logger.info("Restart helper spawned — Sowel will restart");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error({ err }, "Restart-via-helper failed");
+      this.eventBus.emit({ type: "system.update.error", error: message });
+      this.updating = false;
+      throw err;
+    }
+    // NOTE: we do NOT reset `this.updating = false` here — the helper will
+    // stop us soon, so leaving the flag set prevents duplicate triggers.
   }
 
   private emitProgress(step: string, message: string): void {

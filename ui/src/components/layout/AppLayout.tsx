@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { SunlightBanner } from "./SunlightBanner";
+import { CurrentTimePill } from "./CurrentTimePill";
 import { useWebSocket } from "../../store/useWebSocket";
+import { useTimezone } from "../../store/useTimezone";
 import { useDevices } from "../../store/useDevices";
 import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
@@ -34,16 +36,18 @@ export function AppLayout() {
   const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
   const [homeName, setHomeName] = useState("");
   const pluginUpdateCount = usePluginUpdates(user?.role === "admin");
+  const fetchTimezone = useTimezone((s) => s.fetch);
 
   useEffect(() => {
     fetchDevices();
     fetchZones();
     fetchEquipments();
     fetchAggregation();
+    fetchTimezone();
     connect();
     getSettings().then((s) => setHomeName(s["home.name"] ?? "")).catch(() => {});
     return () => disconnect();
-  }, [fetchDevices, fetchZones, fetchEquipments, fetchAggregation, connect, disconnect]);
+  }, [fetchDevices, fetchZones, fetchEquipments, fetchAggregation, fetchTimezone, connect, disconnect]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -61,19 +65,21 @@ export function AppLayout() {
           className="flex items-center justify-between min-h-[44px] sm:min-h-[60px] px-4 sm:px-6 border-b border-border header-tint backdrop-blur-sm"
         >
           <div className="flex items-center gap-4">
-            {/* Mobile: logo + home name + sunlight */}
+            {/* Mobile: logo + home name + current time + sunlight */}
             <div className="flex sm:hidden items-center gap-2">
               <SowelLogo size={24} />
               {homeName && (
                 <span className="text-[14px] font-semibold text-text truncate max-w-[140px]">{homeName}</span>
               )}
+              <CurrentTimePill compact />
               <SunlightBanner data={rootAgg} compact />
             </div>
-            {/* Desktop: home name + sunlight banner */}
+            {/* Desktop: home name + current time + sunlight banner */}
             <div className="hidden lg:flex items-center gap-3">
               {homeName && (
                 <span className="text-[15px] font-semibold text-text">{homeName}</span>
               )}
+              <CurrentTimePill />
               <SunlightBanner data={rootAgg} />
             </div>
           </div>

@@ -143,4 +143,81 @@ describe("UpdateManager", () => {
       expect(manager.isUpdating()).toBe(true);
     });
   });
+
+  describe("restartViaHelper — error cases", () => {
+    it("throws when Docker socket is not available", async () => {
+      vi.spyOn(manager, "isDockerAvailable").mockReturnValue(false);
+      await expect(manager.restartViaHelper()).rejects.toThrow(/Docker socket not available/);
+    });
+
+    it("throws when not compose managed", async () => {
+      vi.spyOn(manager, "isDockerAvailable").mockReturnValue(true);
+      vi.spyOn(manager, "getComposeContext").mockReturnValue(null);
+      await expect(manager.restartViaHelper()).rejects.toThrow(/not managed by docker compose/);
+    });
+
+    it("throws when an operation is already in progress", async () => {
+      vi.spyOn(manager, "isDockerAvailable").mockReturnValue(true);
+      vi.spyOn(manager, "getComposeContext").mockReturnValue({
+        workingDir: "/opt/sowel",
+        projectName: "sowel",
+        serviceName: "sowel",
+      });
+      const runSpy = vi
+        .spyOn(
+          manager as unknown as { runHelperContainer: () => Promise<void> },
+          "runHelperContainer",
+        )
+        .mockImplementation(() => new Promise(() => {}));
+
+      void manager.restartViaHelper();
+      await new Promise((r) => setImmediate(r));
+      expect(manager.isUpdating()).toBe(true);
+
+      await expect(manager.restartViaHelper()).rejects.toThrow(/already in progress/);
+
+      runSpy.mockRestore();
+    });
+  });
+
+  describe("restartViaHelper — success path", () => {
+    it("spawns a restart helper via runHelperContainer", async () => {
+      vi.spyOn(manager, "isDockerAvailable").mockReturnValue(true);
+      vi.spyOn(manager, "getComposeContext").mockReturnValue({
+        workingDir: "/opt/sowel",
+        projectName: "sowel",
+        serviceName: "sowel",
+      });
+
+      const runSpy = vi
+        .spyOn(
+          manager as unknown as { runHelperContainer: (args: unknown) => Promise<void> },
+          "runHelperContainer",
+        )
+        .mockResolvedValue();
+
+      const progressEvents: string[] = [];
+      eventBus.on((event) => {
+        if (event.type === "system.update.progress") {
+          progressEvents.push(event.step);
+        }
+      });
+
+      await manager.restartViaHelper();
+
+      expect(runSpy).toHaveBeenCalledTimes(1);
+      const callArg = runSpy.mock.calls[0][0] as { name: string; cmd: string[] };
+      expect(callArg.name).toBe("sowel-restarter");
+      // Command should contain docker compose up -d (no pull)
+      const fullCmd = callArg.cmd.join(" ");
+      expect(fullCmd).toContain("docker compose up -d sowel");
+      expect(fullCmd).not.toContain("docker compose pull");
+
+      expect(progressEvents).toContain("restart");
+      expect(progressEvents).toContain("spawned");
+
+      // Updating flag stays true
+      expect(manager.isUpdating()).toBe(true);
+    });
+  });
 });

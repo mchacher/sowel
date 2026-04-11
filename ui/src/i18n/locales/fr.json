@@ -468,6 +468,15 @@
   "update.overlayTitle": "Mise à jour en cours",
   "update.overlayMessage": "Sowel se met à jour. La page va se recharger automatiquement dans quelques instants.",
   "update.overlayReload": "Recharger maintenant",
+  "update.restartRequiredTitle": "Redémarrage requis",
+  "update.restartRequiredMessage": "La localisation a changé. Sowel doit redémarrer pour recalculer le fuseau horaire.",
+  "update.restartNow": "Redémarrer maintenant",
+  "update.later": "Plus tard",
+
+  "settings.timezone": "Fuseau horaire",
+  "settings.timezoneSourceAuto": "détecté depuis vos coordonnées",
+  "settings.timezoneSourceEnv": "défini via la variable d'environnement TZ",
+  "settings.timezoneSourceFallback": "non configuré, UTC par défaut",
 
   "nav.analyse": "Analyse",
   "nav.integrations": "Intégrations",

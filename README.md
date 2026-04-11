@@ -9,11 +9,27 @@ Home automation engine with a plugin-based architecture. Separates physical devi
 ```bash
 mkdir /opt/sowel && cd /opt/sowel
 curl -O https://raw.githubusercontent.com/mchacher/sowel/main/docker-compose.yml
-# Optional: edit docker-compose.yml to set TZ=<Your_Timezone> for correct local time
 docker compose up -d
 ```
 
 Open `http://<host>:3000` and create your admin account on first launch.
+
+### Timezone
+
+Sowel auto-derives the timezone from your home location (set `home.latitude`
+and `home.longitude` in Settings → Home). This affects calendar slots,
+HP/HC tariff classification, sunrise/sunset, and more.
+
+To override explicitly (e.g. if you don't set a home location), uncomment
+the `TZ` line in `docker-compose.yml`:
+
+```yaml
+environment:
+  - TZ=Europe/Paris
+```
+
+Changing the home location at runtime requires a restart — Sowel shows a
+"Restart now" toast in the UI to do it in one click.
 
 See [docs/technical/deployment.md](docs/technical/deployment.md) for the full deployment guide (self-update, backup, troubleshooting).
 

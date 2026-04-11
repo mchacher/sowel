@@ -611,7 +611,9 @@ export type EngineEvent =
   // Self-update events
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
-  | { type: "system.update.error"; error: string };
+  | { type: "system.update.error"; error: string }
+  // Restart required (e.g. after home location / timezone change)
+  | { type: "system.restart_required"; reason: string };
 
 // ============================================================
 // zigbee2mqtt types (parser internal)

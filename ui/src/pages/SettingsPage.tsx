@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../store/useAuth";
 import { useWebSocket } from "../store/useWebSocket";
+import { useTimezone } from "../store/useTimezone";
+import { RestartToast } from "../components/system/RestartToast";
 import {
   updateMe,
   changeMyPassword,
@@ -166,6 +168,7 @@ function HomeSettingsSection() {
   const [longitude, setLongitude] = useState("");
   const [sunriseOffset, setSunriseOffset] = useState("30");
   const [sunsetOffset, setSunsetOffset] = useState("45");
+  const [showRestartToast, setShowRestartToast] = useState(false);
   const [initial, setInitial] = useState({
     homeName: "",
     latitude: "",
@@ -173,6 +176,9 @@ function HomeSettingsSection() {
     sunriseOffset: "30",
     sunsetOffset: "45",
   });
+  const tz = useTimezone((s) => s.tz);
+  const tzSource = useTimezone((s) => s.source);
+  const tzLoaded = useTimezone((s) => s.loaded);
 
   useEffect(() => {
     getSettings()
@@ -215,7 +221,12 @@ function HomeSettingsSection() {
         "home.sunriseOffset": sunriseOffset,
         "home.sunsetOffset": sunsetOffset,
       });
+      const locationChanged =
+        latitude !== initial.latitude || longitude !== initial.longitude;
       setInitial({ homeName, latitude, longitude, sunriseOffset, sunsetOffset });
+      if (locationChanged) {
+        setShowRestartToast(true);
+      }
     } finally {
       setSaving(false);
     }
@@ -301,6 +312,27 @@ function HomeSettingsSection() {
             <p className="text-[11px] text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
           </div>
         </div>
+        {tzLoaded && (
+          <div className="pt-3 border-t border-border-light">
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("settings.timezone")}
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-mono text-text px-2 py-1 bg-background rounded-[6px] border border-border">
+                {tz}
+              </span>
+              <span
+                className={`text-[11px] ${
+                  tzSource === "fallback" ? "text-warning" : "text-text-tertiary"
+                }`}
+              >
+                {tzSource === "auto" && t("settings.timezoneSourceAuto")}
+                {tzSource === "env" && t("settings.timezoneSourceEnv")}
+                {tzSource === "fallback" && t("settings.timezoneSourceFallback")}
+              </span>
+            </div>
+          </div>
+        )}
         {dirty && (
           <button
             onClick={handleSave}
@@ -311,6 +343,7 @@ function HomeSettingsSection() {
           </button>
         )}
       </div>
+      {showRestartToast && <RestartToast onClose={() => setShowRestartToast(false)} />}
     </section>
   );
 }
