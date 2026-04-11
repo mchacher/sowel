@@ -16,6 +16,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { AlarmBanner } from "./AlarmBanner";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { InstallPrompt } from "./InstallPrompt";
+import { UpdateOverlay } from "../system/UpdateOverlay";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 import { useEnergy } from "../../store/useEnergy";
 import { getSettings } from "../../api";
@@ -128,6 +129,9 @@ export function AppLayout() {
 
       {/* PWA install prompt */}
       <InstallPrompt />
+
+      {/* Self-update overlay (shown during sowel self-update) */}
+      <UpdateOverlay />
     </div>
   );
 }

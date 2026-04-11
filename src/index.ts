@@ -14,6 +14,7 @@ import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
 import { VersionChecker } from "./core/version-checker.js";
 import { UpdateManager } from "./core/update-manager.js";
+import { BackupManager } from "./backup/backup-manager.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
@@ -225,9 +226,19 @@ async function main() {
   const recipeLoader = new RecipeLoader(packageManager, recipeManager, logger);
   await recipeLoader.loadAll();
 
-  // 14c. Create version checker + update manager
-  const versionChecker = new VersionChecker(eventBus, logger);
-  const updateManager = new UpdateManager(eventBus, logger);
+  // 14c. Create backup manager (used by routes and update manager)
+  const backupManager = new BackupManager({
+    db,
+    influxClient,
+    logger,
+    dataDir: dirname(resolve(config.sqlite.path)),
+  });
+
+  // 14d. Create version checker + update manager
+  const updateManager = new UpdateManager(eventBus, backupManager, logger);
+  // Refresh compose context once on startup so getComposeContext() is sync afterwards
+  await updateManager.refreshComposeContext();
+  const versionChecker = new VersionChecker(eventBus, updateManager, logger);
 
   // 15. Start Fastify server BEFORE integrations (UI available immediately)
   // Integrations start in background with staggered polling
@@ -254,6 +265,7 @@ async function main() {
     notificationPublishService,
     packageManager,
     pluginLoader,
+    backupManager,
     versionChecker,
     updateManager,
     eventBus,
@@ -261,7 +273,6 @@ async function main() {
     logBuffer,
     logger,
     corsOrigins: config.cors.origins,
-    dataDir: dirname(resolve(config.sqlite.path)),
   });
 
   await server.listen({ port: config.api.port, host: config.api.host });

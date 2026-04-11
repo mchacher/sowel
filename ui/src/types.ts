@@ -339,6 +339,9 @@ export type EngineEvent =
   | { type: "system.error"; error: string }
   | { type: "system.alarm.raised"; alarmId: string; level: "warning" | "error"; source: string; message: string }
   | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
+  | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
+  | { type: "system.update.progress"; step: string; message: string }
+  | { type: "system.update.error"; error: string }
   | { type: "equipment.order.failed"; equipmentId: string; orderAlias: string; value: unknown; error: string }
   | { type: "connected"; message: string; version: string };
 

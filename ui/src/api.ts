@@ -103,14 +103,46 @@ export interface SystemVersionInfo {
   updateAvailable: boolean;
   releaseUrl: string | null;
   dockerAvailable: boolean;
+  composeManaged: boolean;
 }
 
 export async function getSystemVersion(): Promise<SystemVersionInfo> {
   return fetchJSON(`${API_BASE}/system/version`);
 }
 
+export async function checkSystemVersion(): Promise<SystemVersionInfo> {
+  return fetchJSON(`${API_BASE}/system/version/check`, { method: "POST" });
+}
+
 export async function triggerSystemUpdate(): Promise<{ success: boolean; message: string }> {
   return fetchJSON(`${API_BASE}/system/update`, { method: "POST" });
+}
+
+// ============================================================
+// Local backups
+// ============================================================
+
+export interface LocalBackup {
+  filename: string;
+  size: number;
+  createdAt: string;
+}
+
+export async function listLocalBackups(): Promise<{ backups: LocalBackup[] }> {
+  return fetchJSON(`${API_BASE}/backup/local`);
+}
+
+export async function restoreLocalBackup(filename: string): Promise<{
+  success: boolean;
+  restoredAt: string;
+  influxPointsRestored: number;
+  filesRestored: number;
+  restartRequired: boolean;
+}> {
+  return fetchJSON(`${API_BASE}/backup/restore-local`, {
+    method: "POST",
+    body: JSON.stringify({ filename }),
+  });
 }
 
 // ============================================================

@@ -11,8 +11,10 @@ import {
   Settings,
   ArrowUpCircle,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "../store/useAuth";
+import { useWebSocket } from "../store/useWebSocket";
 import {
   updateMe,
   changeMyPassword,
@@ -26,6 +28,7 @@ import {
   getSettings,
   updateSettings,
   getSystemVersion,
+  checkSystemVersion,
   triggerSystemUpdate,
 } from "../api";
 import type { SystemVersionInfo } from "../api";
@@ -597,64 +600,168 @@ function ChangePasswordSection() {
 // ============================================================
 
 function VersionBadge() {
+  const { t } = useTranslation();
   const [info, setInfo] = useState<SystemVersionInfo | null>(null);
+  const [checking, setChecking] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [error, setError] = useState("");
+  const setUpdateInProgress = useWebSocket((s) => s.setUpdateInProgress);
 
   useEffect(() => {
     let cancelled = false;
     getSystemVersion()
-      .then((data) => { if (!cancelled) setInfo(data); })
+      .then((data) => {
+        if (!cancelled) setInfo(data);
+      })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!info) return null;
 
-  const handleUpdate = async () => {
+  const handleCheckNow = async () => {
+    setError("");
+    setChecking(true);
+    try {
+      const updated = await checkSystemVersion();
+      setInfo(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleConfirmUpdate = async () => {
     if (!info.updateAvailable) return;
+    setError("");
     setUpdating(true);
     try {
       await triggerSystemUpdate();
-    } catch {
+      // Trigger the global overlay — UpdateOverlay component takes over from here
+      setUpdateInProgress(true);
+      setConfirmOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
       setUpdating(false);
     }
   };
 
+  const canSelfUpdate = info.dockerAvailable && info.composeManaged;
+  const updateDisabledReason = !info.dockerAvailable
+    ? t("update.dockerUnavailable")
+    : !info.composeManaged
+      ? t("update.notComposeManaged")
+      : "";
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[13px] font-mono font-semibold text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
-        v{info.current}
-      </span>
-      {info.updateAvailable && info.latest && (
-        <>
-          {info.dockerAvailable ? (
-            <button
-              onClick={handleUpdate}
-              disabled={updating}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {updating ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <ArrowUpCircle size={12} />
-              )}
-              v{info.latest}
-            </button>
+    <>
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-mono font-semibold text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
+          v{info.current}
+        </span>
+
+        {/* Check now button (admin only — VersionBadge is already admin gated) */}
+        <button
+          onClick={handleCheckNow}
+          disabled={checking}
+          className="p-1 text-text-tertiary hover:text-text-secondary rounded-[5px] hover:bg-border-light transition-colors cursor-pointer disabled:opacity-50"
+          title={t("update.checkNow")}
+        >
+          {checking ? (
+            <Loader2 size={12} className="animate-spin" />
           ) : (
-            <a
-              href={info.releaseUrl ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors"
-            >
-              <ArrowUpCircle size={12} />
-              v{info.latest}
-              <ExternalLink size={10} />
-            </a>
+            <RefreshCw size={12} />
           )}
-        </>
+        </button>
+
+        {info.updateAvailable && info.latest && (
+          <>
+            {canSelfUpdate ? (
+              <button
+                onClick={() => setConfirmOpen(true)}
+                disabled={updating}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {updating ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <ArrowUpCircle size={12} />
+                )}
+                v{info.latest}
+              </button>
+            ) : (
+              <a
+                href={info.releaseUrl ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors"
+                title={updateDisabledReason}
+              >
+                <ArrowUpCircle size={12} />
+                v{info.latest}
+                <ExternalLink size={10} />
+              </a>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Confirm update modal */}
+      {confirmOpen && info.latest && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !updating && setConfirmOpen(false)}
+        >
+          <div
+            className="bg-surface rounded-[14px] border border-border p-6 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-[16px] font-semibold text-text mb-2">
+              {t("update.confirmTitle", { version: info.latest })}
+            </h3>
+            <p className="text-[13px] text-text-secondary mb-2">
+              {t("update.confirmMessage", {
+                current: info.current,
+                latest: info.latest,
+              })}
+            </p>
+            <p className="text-[12px] text-text-tertiary mb-4">
+              {t("update.confirmAutoBackup")}
+            </p>
+            {error && (
+              <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-[6px]">
+                <p className="text-[13px] text-error">{error}</p>
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                disabled={updating}
+                className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleConfirmUpdate}
+                disabled={updating}
+                className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-accent text-white rounded-[6px] hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              >
+                {updating ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <ArrowUpCircle size={14} />
+                )}
+                {t("update.confirmAction")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

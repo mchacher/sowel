@@ -3,8 +3,9 @@ import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 import type { Logger } from "./logger.js";
 import type { EventBus } from "./event-bus.js";
+import type { UpdateManager } from "./update-manager.js";
 
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
+const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1h
 const GITHUB_REPO = "mchacher/sowel";
 const DOCKER_SOCKET_PATH = "/var/run/docker.sock";
 
@@ -14,6 +15,7 @@ export interface VersionInfo {
   updateAvailable: boolean;
   releaseUrl: string | null;
   dockerAvailable: boolean;
+  composeManaged: boolean;
 }
 
 /**
@@ -23,13 +25,15 @@ export interface VersionInfo {
 export class VersionChecker {
   private logger: Logger;
   private eventBus: EventBus;
+  private updateManager: UpdateManager;
   private currentVersion: string;
   private latestVersion: string | null = null;
   private releaseUrl: string | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(eventBus: EventBus, logger: Logger) {
+  constructor(eventBus: EventBus, updateManager: UpdateManager, logger: Logger) {
     this.eventBus = eventBus;
+    this.updateManager = updateManager;
     this.logger = logger.child({ module: "version-checker" });
 
     const pkgPath = resolve(import.meta.dirname ?? ".", "../../package.json");
@@ -48,7 +52,7 @@ export class VersionChecker {
       });
     }, 10_000);
 
-    // Periodic check every 24h
+    // Periodic check every 1h
     this.timer = setInterval(() => {
       this.check().catch((err) => {
         this.logger.warn({ err }, "Periodic version check failed");
@@ -73,7 +77,17 @@ export class VersionChecker {
         this.isNewer(this.latestVersion, this.currentVersion),
       releaseUrl: this.releaseUrl,
       dockerAvailable: existsSync(DOCKER_SOCKET_PATH),
+      composeManaged: this.updateManager.isComposeManaged(),
     };
+  }
+
+  /**
+   * Force a fresh check of the GitHub releases API and return the updated info.
+   * Used by the manual "Check for updates" button.
+   */
+  async checkNow(): Promise<VersionInfo> {
+    await this.check();
+    return this.getVersionInfo();
   }
 
   private async check(): Promise<void> {
