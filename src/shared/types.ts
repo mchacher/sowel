@@ -787,6 +787,7 @@ export interface MqttPublisher {
   brokerId: string | null;
   topic: string;
   enabled: boolean;
+  onChangeOnly: boolean;
   createdAt: string;
   updatedAt: string;
 }

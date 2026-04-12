@@ -17,6 +17,7 @@ interface MappingRef {
   publishKey: string;
   enabled: boolean;
   brokerId: string | null;
+  onChangeOnly: boolean;
 }
 
 // ============================================================
@@ -47,6 +48,9 @@ export class MqttPublishService {
    * value = array of mapping refs to publish to
    */
   private index: Map<string, MappingRef[]> = new Map();
+
+  /** Cache of last published values — key = "brokerId:topic:publishKey" */
+  private lastPublished: Map<string, unknown> = new Map();
 
   constructor(
     private readonly eventBus: EventBus,
@@ -152,6 +156,7 @@ export class MqttPublishService {
           publishKey: mapping.publishKey,
           enabled: pub.enabled,
           brokerId: pub.brokerId,
+          onChangeOnly: pub.onChangeOnly,
         });
         this.index.set(key, refs);
       }
@@ -214,6 +219,7 @@ export class MqttPublishService {
     let published = 0;
     for (const ref of refs) {
       if (!ref.enabled || !ref.brokerId) continue;
+      if (this.shouldSkip(ref, value)) continue;
       this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
       published++;
     }
@@ -232,6 +238,7 @@ export class MqttPublishService {
 
       for (const ref of refs) {
         if (!ref.enabled || !ref.brokerId) continue;
+        if (this.shouldSkip(ref, value)) continue;
         this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
         published++;
       }
@@ -251,6 +258,7 @@ export class MqttPublishService {
 
       for (const ref of refs) {
         if (!ref.enabled || !ref.brokerId) continue;
+        if (this.shouldSkip(ref, value)) continue;
         this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
         published++;
       }
@@ -278,7 +286,19 @@ export class MqttPublishService {
       }
     });
 
+    // Update cache for onChangeOnly filtering
+    const cacheKey = `${brokerId}:${topic}:${publishKey}`;
+    this.lastPublished.set(cacheKey, mqttValue);
+
     this.logger.trace({ brokerId, topic, publishKey, value }, "MQTT published");
+  }
+
+  /** Returns true if the value should be skipped (unchanged and onChangeOnly is active) */
+  private shouldSkip(ref: MappingRef, value: unknown): boolean {
+    if (!ref.onChangeOnly) return false;
+    const cacheKey = `${ref.brokerId}:${ref.publisherTopic}:${ref.publishKey}`;
+    const mqttValue = toMqttValue(value);
+    return this.lastPublished.get(cacheKey) === mqttValue;
   }
 
   // ── Initial snapshot ─────────────────────────────────────────

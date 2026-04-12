@@ -410,6 +410,7 @@ function PublisherForm({
     publisher?.brokerId ?? (brokers.length === 1 ? brokers[0].id : ""),
   );
   const [topic, setTopic] = useState(publisher?.topic ?? "");
+  const [onChangeOnly, setOnChangeOnly] = useState(publisher?.onChangeOnly ?? false);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -422,9 +423,10 @@ function PublisherForm({
           name: name.trim(),
           brokerId,
           topic: topic.trim(),
+          onChangeOnly,
         });
       } else {
-        await createMqttPublisher({ name: name.trim(), brokerId, topic: topic.trim() });
+        await createMqttPublisher({ name: name.trim(), brokerId, topic: topic.trim(), onChangeOnly });
       }
       onSaved();
     } catch {
@@ -479,6 +481,17 @@ function PublisherForm({
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary font-mono"
           />
         </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={onChangeOnly}
+            onChange={(e) => setOnChangeOnly(e.target.checked)}
+            className="rounded border-border"
+          />
+          <span className="text-[12px] text-text-secondary">
+            {t("mqttPublishers.onChangeOnly")}
+          </span>
+        </label>
         <div className="flex items-center gap-2">
           <button
             type="submit"
@@ -610,6 +623,11 @@ function PublisherCard({
             {broker && (
               <span className="ml-2 text-[11px] text-text-tertiary">
                 → {broker.name}
+              </span>
+            )}
+            {publisher.onChangeOnly && (
+              <span className="ml-2 text-[11px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                {t("mqttPublishers.onChangeOnlyBadge")}
               </span>
             )}
             {!publisher.brokerId && (

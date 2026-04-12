@@ -756,6 +756,8 @@
   "mqttPublishers.test": "Test",
   "mqttPublishers.testPublish": "Publier un snapshot de test",
   "mqttPublishers.testResult": "{{count}} message(s) publié(s)",
+  "mqttPublishers.onChangeOnly": "Publier uniquement sur changement de valeur",
+  "mqttPublishers.onChangeOnlyBadge": "sur changement",
 
   "nav.notificationPublishers": "Notifications",
 
