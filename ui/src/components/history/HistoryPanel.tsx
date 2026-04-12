@@ -9,13 +9,7 @@ import type { TimeRange } from "./history-utils";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 import { HistoryBarChart } from "./HistoryBarChart";
 
-interface ComputedChartEntry {
-  alias: string;
-  category: string;
-  unit?: string;
-}
-
-/** Unified chart entry — either a historized binding or a computed data entry. */
+/** Chart entry derived from a historized binding. */
 interface ChartEntry {
   alias: string;
   category: string;
@@ -25,7 +19,6 @@ interface ChartEntry {
 interface HistoryPanelProps {
   equipmentId: string;
   bindings: HistoryBindingState[];
-  computedData?: ComputedChartEntry[];
 }
 
 interface ChartState {
@@ -48,7 +41,7 @@ const RESOLUTION_I18N: Record<string, string> = {
  * History charts panel — shows expandable charts for each historized binding.
  * Only visible when history is enabled and the equipment has historized bindings.
  */
-export function HistoryPanel({ equipmentId, bindings, computedData }: HistoryPanelProps) {
+export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
   const { t } = useTranslation();
   const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
   const [open, setOpen] = useState(true);
@@ -133,19 +126,14 @@ export function HistoryPanel({ equipmentId, bindings, computedData }: HistoryPan
     shutter_position: "%",
   };
 
-  // Computed data entries with cumulative categories (rain_1h, rain_24h, energy_day, etc.)
-  const computedChartEntries: ChartEntry[] = (computedData ?? [])
-    .filter((c) => CUMULATIVE_CATEGORIES.has(c.category));
-
-  // Merge historized bindings + computed entries into a unified list
-  const allCharts: ChartEntry[] = [
-    ...historizedBindings.map((b) => ({
-      alias: b.alias,
-      category: b.category,
-      unit: CATEGORY_UNITS[b.category],
-    })),
-    ...computedChartEntries,
-  ];
+  // Build chart list from historized bindings only
+  // (computed data like rain_1h/rain_24h are snapshot values without their own
+  // InfluxDB history — they show in the equipment card, not as charts)
+  const allCharts: ChartEntry[] = historizedBindings.map((b) => ({
+    alias: b.alias,
+    category: b.category,
+    unit: CATEGORY_UNITS[b.category],
+  }));
 
   // Don't render if history is not enabled or no charts to show
   if (historyEnabled === null) return null; // Still loading
