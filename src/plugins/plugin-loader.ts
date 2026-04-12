@@ -32,6 +32,7 @@ export class PluginLoader {
   private coreDeps: Omit<PluginDeps, "pluginDir">;
   private logger: Logger;
   private loadedPlugins: Map<string, IntegrationPlugin> = new Map();
+  private booted = false;
 
   constructor(
     packageManager: PackageManager,
@@ -95,6 +96,7 @@ export class PluginLoader {
       }
     }
 
+    this.booted = true;
     this.logger.info({ loaded, total: packages.length }, "Plugins loaded");
   }
 
@@ -251,9 +253,16 @@ export class PluginLoader {
 
     const plugin = factory(deps);
 
-    // Register with integration registry (start is handled by startAll with staggering)
+    // Register with integration registry
     this.integrationRegistry.register(plugin);
     this.loadedPlugins.set(pluginId, plugin);
+
+    // Auto-start if this is a hot-load (install/update), not the initial boot.
+    // During boot, startAll() handles staggered startup for all plugins.
+    if (this.booted && plugin.isConfigured()) {
+      await plugin.start({});
+      this.logger.info({ pluginId }, "Plugin started after hot-load");
+    }
 
     // Update manifest in DB if it changed on disk
     const pkg = this.packageManager.getById(pluginId);
