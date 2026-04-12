@@ -227,5 +227,22 @@
         "description": "Arrosage programmé avec créneaux horaires, durées par vanne et gestion intelligente de la pluie."
       }
     }
+  },
+  {
+    "id": "freecooling",
+    "type": "recipe",
+    "name": "Freecooling",
+    "description": "Close all shutters before sunrise — sleep with fresh air without being woken by daylight",
+    "icon": "Moon",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-freecooling",
+    "version": "1.0.0",
+    "tags": ["shutters", "sunrise", "sleep", "freecooling", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Freecooling",
+        "description": "Ferme automatiquement les volets avant le lever du soleil."
+      }
+    }
   }
 ]
