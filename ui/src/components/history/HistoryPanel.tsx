@@ -4,10 +4,17 @@ import { Loader2, BarChart3, ChevronDown, ChevronRight } from "lucide-react";
 import { getHistoryData, getHistoryStatus } from "../../api";
 import type { HistoryPoint, HistoryBindingState } from "../../types";
 import { TimeRangeSelector } from "./TimeRangeSelector";
-import { rangeToFrom } from "./history-utils";
+import { rangeToFrom, CUMULATIVE_CATEGORIES } from "./history-utils";
 import type { TimeRange } from "./history-utils";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 import { HistoryBarChart } from "./HistoryBarChart";
+
+/** Chart entry derived from a historized binding. */
+interface ChartEntry {
+  alias: string;
+  category: string;
+  unit?: string;
+}
 
 interface HistoryPanelProps {
   equipmentId: string;
@@ -101,33 +108,39 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
     }
   }, [expandedAlias, range, fetchChart]);
 
-  // Don't render if history is not enabled or no historized bindings
+  // Find the unit for a category
+  const CATEGORY_UNITS: Record<string, string> = {
+    temperature: "\u00b0C",
+    humidity: "%",
+    pressure: "hPa",
+    luminosity: "lx",
+    power: "W",
+    energy: "kWh",
+    voltage: "V",
+    current: "A",
+    battery: "%",
+    noise: "dB",
+    co2: "ppm",
+    rain: "mm",
+    wind: "km/h",
+    shutter_position: "%",
+  };
+
+  // Build chart list from historized bindings only
+  // (computed data like rain_1h/rain_24h are snapshot values without their own
+  // InfluxDB history — they show in the equipment card, not as charts)
+  const allCharts: ChartEntry[] = historizedBindings.map((b) => ({
+    alias: b.alias,
+    category: b.category,
+    unit: CATEGORY_UNITS[b.category],
+  }));
+
+  // Don't render if history is not enabled or no charts to show
   if (historyEnabled === null) return null; // Still loading
-  if (!historyEnabled || historizedBindings.length === 0) return null;
+  if (!historyEnabled || allCharts.length === 0) return null;
 
   const handleToggle = (alias: string) => {
     setExpandedAlias((prev) => (prev === alias ? null : alias));
-  };
-
-  // Find the unit for a binding from its category
-  const getUnit = (binding: HistoryBindingState): string | undefined => {
-    const CATEGORY_UNITS: Record<string, string> = {
-      temperature: "\u00b0C",
-      humidity: "%",
-      pressure: "hPa",
-      luminosity: "lx",
-      power: "W",
-      energy: "kWh",
-      voltage: "V",
-      current: "A",
-      battery: "%",
-      noise: "dB",
-      co2: "ppm",
-      rain: "mm",
-      wind: "km/h",
-      shutter_position: "%",
-    };
-    return CATEGORY_UNITS[binding.category];
   };
 
   return (
@@ -146,22 +159,22 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
           {t("history.chart")}
         </span>
         <span className="text-[11px] text-text-tertiary">
-          {historizedBindings.length}
+          {allCharts.length}
         </span>
       </button>
 
       {open && <div className="px-4 pb-4 space-y-1">
-        {historizedBindings.map((binding) => {
-          const isExpanded = expandedAlias === binding.alias;
-          const chart = charts[binding.alias];
-          const unit = getUnit(binding);
+        {allCharts.map((entry) => {
+          const isExpanded = expandedAlias === entry.alias;
+          const chart = charts[entry.alias];
+          const unit = entry.unit;
 
           return (
-            <div key={binding.bindingId}>
+            <div key={entry.alias}>
               {/* Binding row — clickable to expand */}
               <button
                 type="button"
-                onClick={() => handleToggle(binding.alias)}
+                onClick={() => handleToggle(entry.alias)}
                 className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-[4px] text-[12px] cursor-pointer transition-colors ${
                   isExpanded
                     ? "bg-primary-light"
@@ -169,8 +182,8 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-primary">{binding.alias}</span>
-                  <span className="text-text-tertiary">({binding.category})</span>
+                  <span className="font-mono font-medium text-primary">{entry.alias}</span>
+                  <span className="text-text-tertiary">({entry.category})</span>
                 </div>
                 <BarChart3
                   size={12}
@@ -198,7 +211,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                       <div className="flex justify-end mb-2">
                         <TimeRangeSelector value={range} onChange={setRange} />
                       </div>
-                      {chart?.category === "energy" ? (
+                      {CUMULATIVE_CATEGORIES.has(chart?.category ?? "") ? (
                         <HistoryBarChart
                           points={chart?.points ?? []}
                           range={range}

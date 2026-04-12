@@ -430,7 +430,9 @@ export function EquipmentDetailPage() {
                         <span className="font-mono font-medium text-accent">{cd.alias}</span>
                         {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
                         <span className="ml-auto font-mono text-text">
-                          {cd.value !== null && cd.value !== undefined ? String(Math.round(cd.value as number)) : "—"}
+                          {cd.value !== null && cd.value !== undefined
+                            ? typeof cd.value === "number" ? (cd.value as number).toFixed(1) : String(cd.value)
+                            : "—"}
                           {cd.unit && <span className="text-text-tertiary ml-0.5">{cd.unit}</span>}
                         </span>
                       </div>
