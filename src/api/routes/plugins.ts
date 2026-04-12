@@ -80,9 +80,17 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      // Peek at the registry to determine package type before install
-      const registryType =
-        packageManager.getStore().find((m) => m.repo === repo)?.type ?? "integration";
+      // Peek at the registry to determine package type + compatibility
+      const entry = packageManager.getStore().find((m) => m.repo === repo);
+      const registryType = entry?.type ?? "integration";
+
+      if (entry && !entry.compatible) {
+        return reply.code(400).send({
+          error:
+            entry.compatReason ??
+            `Incompatible with current Sowel version (${packageManager.getCurrentVersion()})`,
+        });
+      }
 
       if (registryType === "recipe") {
         await recipeLoader.install(repo);

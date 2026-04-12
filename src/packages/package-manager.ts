@@ -32,6 +32,23 @@ interface RegistryEntry {
   version?: string;
   type?: string;
   tags: string[];
+  sowelVersion?: string; // e.g. ">=1.1.0"
+}
+
+/** Simple semver ">=" check: returns true if current >= required. */
+function semverSatisfiesGte(current: string, required: string): boolean {
+  const parse = (v: string) =>
+    v
+      .replace(/^[>=<^~\s]+/, "")
+      .split(".")
+      .map(Number);
+  const c = parse(current);
+  const r = parse(required);
+  for (let i = 0; i < 3; i++) {
+    if ((c[i] ?? 0) > (r[i] ?? 0)) return true;
+    if ((c[i] ?? 0) < (r[i] ?? 0)) return false;
+  }
+  return true; // equal
 }
 
 /**
@@ -46,6 +63,7 @@ export class PackageManager {
   private stmts: ReturnType<typeof this.prepareStatements>;
   private registryCache: RegistryEntry[] | null = null;
   private registryCacheTime = 0;
+  private sowelVersionCache: string | null = null;
 
   constructor(db: Database.Database, logger: Logger) {
     this.db = db;
@@ -67,6 +85,25 @@ export class PackageManager {
       updateManifest: this.db.prepare("UPDATE plugins SET version = ?, manifest = ? WHERE id = ?"),
       remove: this.db.prepare<[string]>("DELETE FROM plugins WHERE id = ?"),
     };
+  }
+
+  /** Get the current Sowel version from package.json (cached). */
+  getCurrentVersion(): string {
+    if (this.sowelVersionCache) return this.sowelVersionCache;
+    try {
+      const pkgPath = resolve(process.cwd(), "package.json");
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version: string };
+      this.sowelVersionCache = pkg.version;
+      return pkg.version;
+    } catch {
+      return "0.0.0";
+    }
+  }
+
+  /** Check if a sowelVersion constraint is compatible with the current version. */
+  isCompatible(sowelVersion?: string): boolean {
+    if (!sowelVersion) return true; // No constraint = compatible
+    return semverSatisfiesGte(this.getCurrentVersion(), sowelVersion);
   }
 
   /** Ensure plugins directory exists */
@@ -107,14 +144,15 @@ export class PackageManager {
   /**
    * Get available packages from registry (not yet installed).
    */
-  getStore(): PluginManifest[] {
+  getStore(): (PluginManifest & { compatible: boolean; compatReason?: string })[] {
     const entries = this.getRegistryEntries();
     const installedIds = new Set((this.stmts.getAll.all() as PackageRow[]).map((r) => r.id));
 
     return entries
       .filter((e) => !installedIds.has(e.id))
-      .map(
-        (e): PluginManifest => ({
+      .map((e) => {
+        const compatible = this.isCompatible(e.sowelVersion);
+        return {
           id: e.id,
           name: e.name,
           version: e.version ?? "",
@@ -123,8 +161,11 @@ export class PackageManager {
           author: e.author,
           repo: e.repo,
           type: (e.type as PackageType) ?? "integration",
-        }),
-      );
+          sowelVersion: e.sowelVersion,
+          compatible,
+          ...(!compatible ? { compatReason: `Requires Sowel >= ${e.sowelVersion}` } : {}),
+        };
+      });
   }
 
   /** Get available packages from registry filtered by type */
@@ -318,18 +359,44 @@ export class PackageManager {
   }
 
   /**
-   * Fetch registry entries — remote first (cached 1h), fallback to local file.
-   * Uses synchronous cache to avoid async in getStore()/getLatestVersions().
-   * Remote fetch runs in background to refresh cache.
+   * Warm the registry cache by fetching the remote registry.
+   * Must be called once at startup before any getStore()/getLatestVersions() calls.
+   * Falls back to local file if remote is unreachable.
+   */
+  async warmRegistryCache(): Promise<void> {
+    try {
+      const res = await fetch(REGISTRY_URL, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        const entries = (await res.json()) as RegistryEntry[];
+        if (Array.isArray(entries) && entries.length > 0) {
+          this.registryCache = entries;
+          this.registryCacheTime = Date.now();
+          this.logger.info({ count: entries.length }, "Remote registry loaded");
+          return;
+        }
+      }
+    } catch {
+      // Remote unreachable — fall back to local
+    }
+    // Fallback to bundled local file
+    this.readLocalRegistry();
+    this.logger.info({ count: this.registryCache?.length ?? 0 }, "Using local registry fallback");
+  }
+
+  /**
+   * Get registry entries from cache.
+   * If cache is stale (>1h), trigger a background refresh and return stale data.
    */
   private getRegistryEntries(): RegistryEntry[] {
-    // Return cache if fresh
     if (this.registryCache && Date.now() - this.registryCacheTime < REGISTRY_CACHE_TTL_MS) {
       return this.registryCache;
     }
 
-    // Trigger background refresh
-    this.fetchRemoteRegistry();
+    // Trigger background refresh for next call
+    this.refreshRegistryInBackground();
 
     // Return stale cache or local fallback
     if (this.registryCache) return this.registryCache;
@@ -349,7 +416,7 @@ export class PackageManager {
     }
   }
 
-  private fetchRemoteRegistry(): void {
+  private refreshRegistryInBackground(): void {
     fetch(REGISTRY_URL, { headers: { Accept: "application/json" } })
       .then(async (res) => {
         if (!res.ok) return;
