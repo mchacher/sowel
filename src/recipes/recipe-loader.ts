@@ -23,6 +23,35 @@ export class RecipeLoader {
   }
 
   /**
+   * Install a recipe from GitHub — download, register, and load immediately.
+   */
+  async install(repo: string): Promise<void> {
+    const manifest = await this.packageManager.installFromGitHub(repo);
+    if (manifest.type !== "recipe") {
+      throw new Error(`Package "${manifest.id}" is not a recipe (type: ${manifest.type})`);
+    }
+    try {
+      await this.loadRecipe(manifest.id);
+      this.logger.info({ recipeId: manifest.id }, "Recipe installed and loaded");
+    } catch (err) {
+      this.logger.error({ err, recipeId: manifest.id }, "Recipe installed but failed to load");
+    }
+  }
+
+  /**
+   * Update a recipe — download new version and reload.
+   */
+  async update(recipeId: string): Promise<void> {
+    const newManifest = await this.packageManager.updateFiles(recipeId);
+    try {
+      await this.loadRecipe(recipeId);
+      this.logger.info({ recipeId, version: newManifest.version }, "Recipe updated and reloaded");
+    } catch (err) {
+      this.logger.error({ err, recipeId }, "Recipe updated but failed to reload");
+    }
+  }
+
+  /**
    * Load all installed recipe packages and register with RecipeManager.
    * Must be called after PackageManager is ready, before recipeManager.init().
    */

@@ -2,17 +2,25 @@ import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import type { PackageManager } from "../../packages/package-manager.js";
 import type { PluginLoader } from "../../plugins/plugin-loader.js";
+import type { RecipeLoader } from "../../recipes/recipe-loader.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
 
 interface PluginsDeps {
   packageManager: PackageManager;
   pluginLoader: PluginLoader;
+  recipeLoader: RecipeLoader;
   integrationRegistry: IntegrationRegistry;
   logger: Logger;
 }
 
 export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): void {
-  const { packageManager, pluginLoader, integrationRegistry, logger: parentLogger } = deps;
+  const {
+    packageManager,
+    pluginLoader,
+    recipeLoader,
+    integrationRegistry,
+    logger: parentLogger,
+  } = deps;
   const logger = parentLogger.child({ module: "plugin-routes" });
 
   // GET /api/v1/plugins — list installed
@@ -72,11 +80,21 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      const manifest = await pluginLoader.install(repo);
-      logger.info({ pluginId: manifest.id, repo }, "Plugin installed via API");
-      return { success: true, manifest };
+      // Peek at the registry to determine package type before install
+      const registryType =
+        packageManager.getStore().find((m) => m.repo === repo)?.type ?? "integration";
+
+      if (registryType === "recipe") {
+        await recipeLoader.install(repo);
+        logger.info({ repo, type: "recipe" }, "Recipe installed via API");
+        return { success: true };
+      } else {
+        const manifest = await pluginLoader.install(repo);
+        logger.info({ pluginId: manifest.id, repo }, "Plugin installed via API");
+        return { success: true, manifest };
+      }
     } catch (err) {
-      logger.error({ err, repo }, "Failed to install plugin");
+      logger.error({ err, repo }, "Failed to install package");
       return reply.code(500).send({
         error: err instanceof Error ? err.message : "Install failed",
       });
@@ -108,14 +126,23 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
 
     try {
-      const manifest = await pluginLoader.update(request.params.id);
-      logger.info(
-        { pluginId: request.params.id, version: manifest.version },
-        "Plugin updated via API",
-      );
-      return { success: true, manifest };
+      const pkg = packageManager.getById(request.params.id);
+      const pkgType = pkg?.type ?? "integration";
+
+      if (pkgType === "recipe") {
+        await recipeLoader.update(request.params.id);
+        logger.info({ pluginId: request.params.id, type: "recipe" }, "Recipe updated via API");
+        return { success: true };
+      } else {
+        const manifest = await pluginLoader.update(request.params.id);
+        logger.info(
+          { pluginId: request.params.id, version: manifest.version },
+          "Plugin updated via API",
+        );
+        return { success: true, manifest };
+      }
     } catch (err) {
-      logger.error({ err, pluginId: request.params.id }, "Failed to update plugin");
+      logger.error({ err, pluginId: request.params.id }, "Failed to update package");
       return reply.code(500).send({
         error: err instanceof Error ? err.message : "Update failed",
       });

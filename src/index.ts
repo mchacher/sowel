@@ -306,6 +306,7 @@ async function main() {
     notificationPublishService,
     packageManager,
     pluginLoader,
+    recipeLoader,
     backupManager,
     versionChecker,
     updateManager,
