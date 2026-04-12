@@ -298,7 +298,10 @@ export class UpdateManager {
       WorkingDir: "/workdir",
       Env: [`COMPOSE_PROJECT_NAME=${args.ctx.projectName}`],
       HostConfig: {
-        AutoRemove: true,
+        // AutoRemove disabled so we can inspect helper logs after completion
+        // via `docker logs sowel-updater`. The next update will clean up the
+        // leftover container before creating a new one (line 263).
+        AutoRemove: false,
         Binds: ["/var/run/docker.sock:/var/run/docker.sock", `${args.ctx.workingDir}:/workdir`],
       },
     });
