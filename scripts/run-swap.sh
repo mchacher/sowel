@@ -14,6 +14,7 @@ set -euo pipefail
 # Usage:
 #   ./scripts/run-swap.sh local    # swap to local dev
 #   ./scripts/run-swap.sh remote   # swap to remote prod
+#   ./scripts/run-swap.sh stop     # stop everything (local + remote)
 #   ./scripts/run-swap.sh status   # show current state
 #
 # Notes:
@@ -178,6 +179,31 @@ cmd_remote() {
   echo
 }
 
+cmd_stop() {
+  echo
+  log "Stopping everything (local + remote)"
+  echo
+
+  # 1. Kill local processes
+  kill_pidfile "$BACKEND_PID_FILE" "backend"
+  kill_pidfile "$UI_PID_FILE" "UI"
+
+  # 2. Stop remote sowel
+  if sowelox_sowel_running; then
+    log "Stopping sowel container on sowelox..."
+    ssh "$SOWELOX_HOST" "docker stop sowel" > /dev/null
+    ok "Remote sowel stopped"
+  else
+    warn "Remote sowel already stopped"
+  fi
+
+  echo
+  echo -e "${GREEN}════════════════════════════════════════════${NC}"
+  echo -e "${GREEN} ✓ Everything stopped${NC}"
+  echo -e "${GREEN}════════════════════════════════════════════${NC}"
+  echo
+}
+
 cmd_status() {
   echo
   log "Current state"
@@ -214,12 +240,14 @@ cmd_status() {
 case "${1:-}" in
   local)  cmd_local ;;
   remote) cmd_remote ;;
+  stop)   cmd_stop ;;
   status) cmd_status ;;
   *)
-    echo "Usage: $0 {local|remote|status}"
+    echo "Usage: $0 {local|remote|stop|status}"
     echo
     echo "  local   Swap to local dev mode (stop sowelox, start npm run dev on Mac)"
     echo "  remote  Swap to remote prod mode (stop local dev, start sowelox)"
+    echo "  stop    Stop everything (local dev processes + sowelox container)"
     echo "  status  Show current state"
     echo
     exit 1
