@@ -358,7 +358,7 @@ export interface RecipeSlotDef {
   id: string;
   name: string;
   description: string;
-  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text" | "data-key";
+  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text" | "data-key" | "watering-schedule";
   required: boolean;
   list?: boolean;
   defaultValue?: unknown;
