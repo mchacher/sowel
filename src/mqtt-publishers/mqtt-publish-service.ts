@@ -108,14 +108,9 @@ export class MqttPublishService {
       reconnectPeriod: 5000,
     });
 
-    let firstConnect = true;
     client.on("connect", () => {
       this.logger.info({ brokerId, brokerUrl: broker.url }, "MQTT publish broker connected");
-      // Only publish snapshot on first connect, not on every reconnect
-      if (firstConnect) {
-        this.publishInitialSnapshotForBroker(brokerId);
-        firstConnect = false;
-      }
+      this.publishInitialSnapshotForBroker(brokerId);
     });
 
     client.on("reconnect", () => {
