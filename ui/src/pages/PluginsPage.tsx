@@ -478,13 +478,14 @@ function StoreRow({
   lang,
   onRefresh,
 }: {
-  manifest: PluginManifest;
+  manifest: PluginManifest & { compatible?: boolean; compatReason?: string };
   installed: boolean;
   lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
+  const compatible = manifest.compatible !== false;
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[manifest.icon] ?? Cpu;
@@ -536,7 +537,7 @@ function StoreRow({
           <span className="px-3 py-1.5 text-[12px] font-medium text-success bg-success/10 rounded-[6px]">
             {t("plugins.installed_badge")}
           </span>
-        ) : (
+        ) : compatible ? (
           <button
             onClick={handleInstall}
             disabled={installing}
@@ -554,6 +555,10 @@ function StoreRow({
               </>
             )}
           </button>
+        ) : (
+          <span className="px-3 py-1.5 text-[11px] font-medium text-text-tertiary bg-border-light rounded-[6px]" title={manifest.compatReason}>
+            {manifest.compatReason ?? t("plugins.incompatible")}
+          </span>
         )}
       </div>
     </div>

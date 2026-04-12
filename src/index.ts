@@ -253,8 +253,10 @@ async function main() {
   const userManager = new UserManager(db, logger);
   const authService = new AuthService(db, userManager, config.jwt, logger);
 
-  // 14. Create Package Manager + Plugin Loader and load plugins
+  // 14. Create Package Manager + warm registry cache (await remote fetch before loading plugins)
   const packageManager = new PackageManager(db, logger);
+  await packageManager.warmRegistryCache();
+
   const pluginLoader = new PluginLoader(
     packageManager,
     integrationRegistry,
