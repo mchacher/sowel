@@ -1,5 +1,5 @@
 import { resolve, dirname } from "node:path";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
 import { LogRingBuffer } from "./core/log-buffer.js";
@@ -37,51 +37,31 @@ import { PluginLoader } from "./plugins/plugin-loader.js";
 import { createServer } from "./api/server.js";
 
 /**
- * Ensure only one Sowel instance runs at a time.
- * Writes a PID file; if it already exists with a live process, exits immediately.
+ * Clean up any stale PID file from a previous run.
+ * In Docker, PID is always 1 so the old lock check was unreliable
+ * (it detected itself as "another instance"). Docker's container_name
+ * already ensures single-instance; we just clean up the file.
  */
-function acquirePidLock(dataDir: string): string {
+function cleanStalePidFile(dataDir: string): void {
   mkdirSync(dataDir, { recursive: true });
   const pidFile = resolve(dataDir, "sowel.pid");
-
   if (existsSync(pidFile)) {
-    const existingPid = parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
-    if (!isNaN(existingPid)) {
-      try {
-        // signal 0 = check if process exists without killing it
-        process.kill(existingPid, 0);
-        // Process is alive — abort
-        console.error(
-          `Another Sowel instance is already running (PID ${existingPid}). Remove ${pidFile} if this is stale.`,
-        );
-        process.exit(1);
-      } catch {
-        // Process not found — stale PID file, overwrite it
-      }
-    }
-  }
-
-  writeFileSync(pidFile, String(process.pid), { mode: 0o644 });
-  return pidFile;
-}
-
-async function main() {
-  // 0. Ensure single instance via PID lock
-  const pidFile = acquirePidLock("./data");
-  const cleanupPid = () => {
     try {
       unlinkSync(pidFile);
     } catch {
-      // Ignore — file may already be gone
+      // Ignore — file may not exist
     }
-  };
-  process.on("exit", cleanupPid);
+  }
+}
+
+async function main() {
+  // 0. Clean up any stale PID file from a previous run
+  cleanStalePidFile("./data");
+
   process.on("SIGINT", () => {
-    cleanupPid();
     process.exit(0);
   });
   process.on("SIGTERM", () => {
-    cleanupPid();
     process.exit(0);
   });
 
