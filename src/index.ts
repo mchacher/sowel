@@ -344,6 +344,13 @@ async function main() {
     .start()
     .catch((err) => logger.warn({ err }, "Energy aggregator start failed"));
 
+  // 18a-bis. Start Weather Aggregator (rain cumuls)
+  const { WeatherAggregator } = await import("./weather/weather-aggregator.js");
+  const weatherAggregator = new WeatherAggregator(equipmentManager, influxClient, eventBus, logger);
+  await weatherAggregator
+    .start()
+    .catch((err) => logger.warn({ err }, "Weather aggregator start failed"));
+
   // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
   mqttPublishService.init();
 

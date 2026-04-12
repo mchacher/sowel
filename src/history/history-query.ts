@@ -4,6 +4,9 @@ import type { HistoryPoint, HistoryQueryResult } from "../shared/types.js";
 
 type Resolution = "raw" | "1h" | "1d";
 
+/** Categories where values are cumulative totals (sum per period, not mean). */
+const CUMULATIVE_CATEGORIES = new Set(["rain", "energy"]);
+
 /**
  * Auto-select resolution based on time range and category.
  * Default: ≤6h → raw, ≤7d → 1h, >7d → 1d
@@ -73,8 +76,9 @@ function buildFluxQuery(params: {
   to: Date;
   resolution: Resolution;
   isDiscrete?: boolean;
+  category?: string;
 }): string {
-  const { bucket, equipmentId, alias, from, to, resolution, isDiscrete } = params;
+  const { bucket, equipmentId, alias, from, to, resolution, isDiscrete, category } = params;
 
   const fromStr = from.toISOString();
   const toStr = to.toISOString();
@@ -94,10 +98,11 @@ function buildFluxQuery(params: {
   |> sort(columns: ["_time"])
   |> limit(n: ${limit})`;
   } else {
-    // Aggregated data — window + mean/min/max
+    // Aggregated data — window + sum (cumulative) or mean (continuous)
     const every = resolution === "1h" ? "1h" : "1d";
+    const fn = CUMULATIVE_CATEGORIES.has(category ?? "") ? "sum" : "mean";
     query += `
-  |> aggregateWindow(every: ${every}, fn: mean, createEmpty: false)
+  |> aggregateWindow(every: ${every}, fn: ${fn}, createEmpty: false)
   |> sort(columns: ["_time"])
   |> limit(n: 500)`;
   }
@@ -220,8 +225,8 @@ export async function queryHistory(
           points.push({ time, value });
         }
       }
-    } else if (params.category === "energy") {
-      // Energy buckets store value_number (not mean/min/max) — simple query
+    } else if (CUMULATIVE_CATEGORIES.has(params.category ?? "")) {
+      // Cumulative categories (energy, rain): use sum aggregation, no min/max
       const flux = buildFluxQuery({
         bucket: targetBucket,
         equipmentId: params.equipmentId,
@@ -229,6 +234,7 @@ export async function queryHistory(
         from: fromDate,
         to: toDate,
         resolution,
+        category: params.category,
       });
 
       for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
@@ -240,11 +246,11 @@ export async function queryHistory(
         }
       }
 
-      // Fallback: energy bucket has no data for this alias → try raw bucket with on-the-fly aggregation
+      // Fallback: cumulative bucket has no data → try raw bucket with on-the-fly aggregation
       if (points.length === 0 && targetBucket !== config.bucket) {
         logger.debug(
           { bucket: targetBucket, equipmentId: params.equipmentId, alias: params.alias },
-          "No data in energy bucket, falling back to raw",
+          "No data in cumulative bucket, falling back to raw",
         );
         const fallbackFlux = buildFluxQuery({
           bucket: config.bucket,
@@ -253,6 +259,7 @@ export async function queryHistory(
           from: fromDate,
           to: toDate,
           resolution,
+          category: params.category,
         });
 
         for await (const { values, tableMeta } of queryApi.iterateRows(fallbackFlux)) {

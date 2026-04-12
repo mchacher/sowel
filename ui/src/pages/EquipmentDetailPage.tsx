@@ -341,7 +341,13 @@ export function EquipmentDetailPage() {
       )}
 
       {/* History charts */}
-      <HistoryPanel equipmentId={equipment.id} bindings={historyBindings} />
+      <HistoryPanel
+        equipmentId={equipment.id}
+        bindings={historyBindings}
+        computedData={(equipment.computedData ?? [])
+          .filter((c) => c.category)
+          .map((c) => ({ alias: c.alias, category: c.category!, unit: c.unit }))}
+      />
 
       {/* Configuration */}
       <div className="bg-surface rounded-[10px] border border-border mb-6 divide-y divide-border-light">

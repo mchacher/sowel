@@ -48,23 +48,43 @@ function formatTooltipTime(iso: string): string {
   });
 }
 
-function formatKWh(wh: number): string {
-  const kwh = wh / 1000;
-  if (kwh >= 100) return `${Math.round(kwh)} kWh`;
-  if (kwh >= 10) return `${kwh.toFixed(1)} kWh`;
-  if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
-  return `${Math.round(wh)} Wh`;
+/** Format a value with its unit for tooltip display. */
+function formatValueWithUnit(value: number, unit?: string): string {
+  // Energy: convert Wh to kWh when appropriate
+  if (unit === "Wh" || unit === "kWh") {
+    const kwh = unit === "kWh" ? value : value / 1000;
+    if (kwh >= 100) return `${Math.round(kwh)} kWh`;
+    if (kwh >= 10) return `${kwh.toFixed(1)} kWh`;
+    if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
+    const wh = unit === "kWh" ? value * 1000 : value;
+    return `${Math.round(wh)} Wh`;
+  }
+
+  // Generic: show value with appropriate precision + unit
+  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return unit ? `${formatted} ${unit}` : formatted;
 }
 
-function formatYAxis(wh: number): string {
-  const kwh = wh / 1000;
-  if (kwh >= 100) return `${Math.round(kwh)}`;
-  if (kwh >= 10) return `${kwh.toFixed(0)}`;
-  if (kwh >= 1) return `${kwh.toFixed(1)}`;
-  return `${kwh.toFixed(2)}`;
+/** Format Y-axis tick value — adapts to unit. */
+function formatYAxis(value: number, unit?: string): string {
+  // Energy: show in kWh
+  if (unit === "Wh" || unit === "kWh") {
+    const kwh = unit === "kWh" ? value : value / 1000;
+    if (kwh >= 100) return `${Math.round(kwh)}`;
+    if (kwh >= 10) return `${kwh.toFixed(0)}`;
+    if (kwh >= 1) return `${kwh.toFixed(1)}`;
+    return `${kwh.toFixed(2)}`;
+  }
+
+  // Generic: show raw value with smart precision
+  if (value >= 100) return `${Math.round(value)}`;
+  if (value >= 10) return `${value.toFixed(0)}`;
+  if (value >= 1) return `${value.toFixed(1)}`;
+  if (value > 0) return `${value.toFixed(2)}`;
+  return "0";
 }
 
-export function HistoryBarChart({ points, range, height = 200 }: HistoryBarChartProps) {
+export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBarChartProps) {
   const data = useMemo<ChartDatum[]>(() => {
     return points.map((p) => ({
       label: formatLabel(p.time, range),
@@ -84,6 +104,13 @@ export function HistoryBarChart({ points, range, height = 200 }: HistoryBarChart
   // Determine tick interval to avoid label overlap
   const tickInterval = data.length > 15 ? Math.max(1, Math.floor(data.length / 12)) - 1 : 0;
 
+  // Tooltip label adapts to unit
+  const tooltipLabel = unit === "Wh" || unit === "kWh"
+    ? "Consommation"
+    : unit === "mm"
+      ? "Pluie"
+      : "Valeur";
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -99,7 +126,7 @@ export function HistoryBarChart({ points, range, height = 200 }: HistoryBarChart
           tick={{ fontSize: 10, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={formatYAxis}
+          tickFormatter={(v: number) => formatYAxis(v, unit)}
           width={50}
         />
         <Tooltip
@@ -110,7 +137,7 @@ export function HistoryBarChart({ points, range, height = 200 }: HistoryBarChart
             borderRadius: "6px",
             fontSize: "12px",
           }}
-          formatter={(value: number | undefined) => [formatKWh(value ?? 0), "Consommation"]}
+          formatter={(value: number | undefined) => [formatValueWithUnit(value ?? 0, unit), tooltipLabel]}
           labelFormatter={(_, payload) => {
             if (payload?.[0]?.payload?.time) {
               return formatTooltipTime(payload[0].payload.time as string);
