@@ -18,7 +18,7 @@ export function CurrentTimePill({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     const tick = () => setNow(formatHomeTime(tz));
     tick();
-    const id = setInterval(tick, 30_000);
+    const id = setInterval(tick, 1_000);
     return () => clearInterval(id);
   }, [tz]);
 
@@ -45,6 +45,7 @@ function formatHomeTime(tz: string): string {
       timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
       hour12: false,
     }).format(new Date());
   } catch {
@@ -52,6 +53,7 @@ function formatHomeTime(tz: string): string {
     return new Intl.DateTimeFormat(undefined, {
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
       hour12: false,
     }).format(new Date());
   }

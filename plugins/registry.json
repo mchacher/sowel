@@ -210,5 +210,22 @@
         "description": "Allume les lumi\u00e8res dimmables sur mouvement avec contr\u00f4le de luminosit\u00e9 et plages horaires."
       }
     }
+  },
+  {
+    "id": "auto-watering",
+    "type": "recipe",
+    "name": "Auto Watering",
+    "description": "Scheduled irrigation with configurable time slots, per-valve durations, and rain-aware skip logic",
+    "icon": "Droplets",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-auto-watering",
+    "version": "1.0.0",
+    "tags": ["watering", "irrigation", "garden", "rain", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Arrosage Auto",
+        "description": "Arrosage programmé avec créneaux horaires, durées par vanne et gestion intelligente de la pluie."
+      }
+    }
   }
 ]
