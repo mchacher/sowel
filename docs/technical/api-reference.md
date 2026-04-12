@@ -307,19 +307,19 @@ External MQTT brokers for outbound publishing.
 
 ## MQTT Publishers
 
-Outbound MQTT publishers that push Sowel data to external brokers.
+Outbound MQTT publishers that push Sowel data to external brokers. Each publisher targets a single MQTT topic and can have multiple data mappings (equipment, zone, or recipe sources). When `onChangeOnly` is enabled, the publisher only publishes when a value actually changes — useful to avoid flooding external displays with periodic heartbeats.
 
-| Method   | Path                                              | Description                                                                |
-| -------- | ------------------------------------------------- | -------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/mqtt-publishers`                         | List all publishers with mappings.                                         |
-| `GET`    | `/api/v1/mqtt-publishers/:id`                     | Get publisher with mappings.                                               |
-| `POST`   | `/api/v1/mqtt-publishers`                         | Create publisher. Body: `{ name, brokerId, topic, enabled? }`.             |
-| `PUT`    | `/api/v1/mqtt-publishers/:id`                     | Update publisher.                                                          |
-| `DELETE` | `/api/v1/mqtt-publishers/:id`                     | Delete publisher. Returns 204.                                             |
-| `POST`   | `/api/v1/mqtt-publishers/:id/test`                | Test publish a snapshot.                                                   |
-| `POST`   | `/api/v1/mqtt-publishers/:id/mappings`            | Add data mapping. Body: `{ publishKey, sourceType, sourceId, sourceKey }`. |
-| `PUT`    | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Update mapping.                                                            |
-| `DELETE` | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Delete mapping. Returns 204.                                               |
+| Method   | Path                                              | Description                                                                      |
+| -------- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/mqtt-publishers`                         | List all publishers with mappings.                                               |
+| `GET`    | `/api/v1/mqtt-publishers/:id`                     | Get publisher with mappings.                                                     |
+| `POST`   | `/api/v1/mqtt-publishers`                         | Create publisher. Body: `{ name, brokerId, topic, enabled?, onChangeOnly? }`.    |
+| `PUT`    | `/api/v1/mqtt-publishers/:id`                     | Update publisher. Body: `{ name?, brokerId?, topic?, enabled?, onChangeOnly? }`. |
+| `DELETE` | `/api/v1/mqtt-publishers/:id`                     | Delete publisher. Returns 204.                                                   |
+| `POST`   | `/api/v1/mqtt-publishers/:id/test`                | Test publish a snapshot.                                                         |
+| `POST`   | `/api/v1/mqtt-publishers/:id/mappings`            | Add data mapping. Body: `{ publishKey, sourceType, sourceId, sourceKey }`.       |
+| `PUT`    | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Update mapping.                                                                  |
+| `DELETE` | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Delete mapping. Returns 204.                                                     |
 
 ---
 

@@ -791,6 +791,8 @@ async executeOrder(
 5. Plugin sends the command to the physical device
 6. On next poll (or immediate refresh), the new state is reflected
 
+**Important — MQTT-based plugins**: Do not bake the `base_topic` setting into `dispatchConfig.topic` during discovery. Instead, store only the device-relative suffix (e.g. `topicSuffix: "garage/set"`) and resolve the full topic at runtime in `executeOrder()` using the current `base_topic` setting. This ensures orders remain correct if the user changes the base topic. Use `dispatchConfig.topic` as a fallback for backward compatibility with existing DB entries.
+
 If your plugin does not support orders (e.g. a read-only weather plugin), throw an error:
 
 ```typescript

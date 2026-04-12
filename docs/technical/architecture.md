@@ -67,8 +67,10 @@ Integration message (MQTT, cloud API poll, etc.)
           -> Event Bus: "equipment.data.changed"
             -> Zone Manager (re-evaluates aggregations)
               -> Event Bus: "zone.data.changed"
-                -> Scenario Engine (evaluates triggers -> conditions -> actions)
+                -> Recipe Engine (evaluates triggers -> conditions -> actions)
                   -> Actions may emit Orders -> Integration Plugin -> device
+            -> MQTT Publish Service (outbound to external brokers, with optional on-change filter)
+            -> Notification Publish Service (Telegram, etc.)
             -> WebSocket pushes to UI clients
 ```
 
@@ -120,7 +122,7 @@ sowel/
 │   ├── buttons/                 # Button action bindings (physical button -> mode/order)
 │   ├── charts/                  # Saved chart configurations
 │   ├── history/                 # InfluxDB history writer and query helpers
-│   ├── mqtt-publishers/         # Outbound MQTT publishing (broker manager, publisher manager)
+│   ├── mqtt-publishers/         # Outbound MQTT publishing (broker manager, publisher manager, on-change filter)
 │   ├── notifications/           # Notification channels (Telegram, etc.)
 │   ├── ai/                      # LLM integration (Claude/OpenAI/Ollama) -- V1.0+
 │   ├── auth/                    # JWT + API tokens, middleware, first-run setup

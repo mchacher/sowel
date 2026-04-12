@@ -50,26 +50,26 @@ Specs are grouped by theme and annotated with status:
 
 ## UX & dashboard
 
-| #   | Title                              | Status   | Summary                                                                 |
-| --- | ---------------------------------- | -------- | ----------------------------------------------------------------------- |
-| 022 | Dark mode                          | ✅       | Tailwind class-based dark mode with user preference.                    |
-| 023 | Sunrise / sunset                   | ✅       | SunCalc-based sunlight manager with offset settings.                    |
-| 024 | Motion light split                 | ✅       | Split motion-light into basic + dimmable variants.                      |
-| 025 | V0.13 History (InfluxDB)           | ✅       | Time-series history for numeric device data.                            |
-| 026 | V0.8 Cocoon thermostat             | ✅       | Bedtime cocoon logic for presence thermostat.                           |
-| 027 | V0.8 Presence heater               | ✅       | Presence-based heater recipe (eco/comfort).                             |
-| 028 | MQTT publishers                    | ✅       | Outbound MQTT publisher manager (mappings from events to topics).       |
-| 029 | MQTT brokers                       | ✅       | Multi-broker support for MQTT publishers.                               |
-| 030 | Logging audit                      | ✅       | Consolidated log level strategy and module taxonomy.                    |
-| 031 | Notification publishers            | ✅       | Telegram / webhook / FCM / ntfy notification channels.                  |
-| 032 | State watch recipe                 | ✅       | Generic data-key watch with alarm recipe.                               |
-| 033 | Dashboard widgets                  | ✅       | Customizable zone widgets on dashboard.                                 |
-| 034 | Progressive Web App                | ✅       | PWA manifest, service worker (`NetworkOnly` for /api/), offline banner. |
-| 035 | Energy dashboard                   | ✅       | Day/week/month/year energy breakdown with HP/HC classification.         |
-| 036 | Order dispatch error handling      | ✅       | Graceful fallback when order publish fails.                             |
-| 037 | Panasonic CC connection resilience | 🔁 → 050 | Reconnect logic for Panasonic Comfort Cloud.                            |
-| 038 | MCZ connection resilience          | 🔁 → 049 | Reconnect logic for MCZ Maestro.                                        |
-| 039 | Integrations page redesign         | ✅       | Unified integrations page (list, configure, status).                    |
+| #   | Title                              | Status   | Summary                                                                                                                                                                                      |
+| --- | ---------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 022 | Dark mode                          | ✅       | Tailwind class-based dark mode with user preference.                                                                                                                                         |
+| 023 | Sunrise / sunset                   | ✅       | SunCalc-based sunlight manager with offset settings.                                                                                                                                         |
+| 024 | Motion light split                 | ✅       | Split motion-light into basic + dimmable variants.                                                                                                                                           |
+| 025 | V0.13 History (InfluxDB)           | ✅       | Time-series history for numeric device data.                                                                                                                                                 |
+| 026 | V0.8 Cocoon thermostat             | ✅       | Bedtime cocoon logic for presence thermostat.                                                                                                                                                |
+| 027 | V0.8 Presence heater               | ✅       | Presence-based heater recipe (eco/comfort).                                                                                                                                                  |
+| 028 | MQTT publishers                    | ✅       | Outbound MQTT publisher manager (mappings from events to topics). v1.2.6: `onChangeOnly` option — publish only on value change to avoid flooding external displays with periodic heartbeats. |
+| 029 | MQTT brokers                       | ✅       | Multi-broker support for MQTT publishers.                                                                                                                                                    |
+| 030 | Logging audit                      | ✅       | Consolidated log level strategy and module taxonomy.                                                                                                                                         |
+| 031 | Notification publishers            | ✅       | Telegram / webhook / FCM / ntfy notification channels.                                                                                                                                       |
+| 032 | State watch recipe                 | ✅       | Generic data-key watch with alarm recipe.                                                                                                                                                    |
+| 033 | Dashboard widgets                  | ✅       | Customizable zone widgets on dashboard.                                                                                                                                                      |
+| 034 | Progressive Web App                | ✅       | PWA manifest, service worker (`NetworkOnly` for /api/), offline banner.                                                                                                                      |
+| 035 | Energy dashboard                   | ✅       | Day/week/month/year energy breakdown with HP/HC classification.                                                                                                                              |
+| 036 | Order dispatch error handling      | ✅       | Graceful fallback when order publish fails.                                                                                                                                                  |
+| 037 | Panasonic CC connection resilience | 🔁 → 050 | Reconnect logic for Panasonic Comfort Cloud.                                                                                                                                                 |
+| 038 | MCZ connection resilience          | 🔁 → 049 | Reconnect logic for MCZ Maestro.                                                                                                                                                             |
+| 039 | Integrations page redesign         | ✅       | Unified integrations page (list, configure, status).                                                                                                                                         |
 
 ## Plugin system V2 (crucial — current architecture)
 
