@@ -130,6 +130,9 @@ export interface ZoneAggregatedData {
   shuttersOpen: number;
   shuttersTotal: number;
   averageShutterPosition: number | null;
+  waterValvesOpen: number;
+  waterValvesTotal: number;
+  waterFlowTotal: number | null;
   sunrise: string | null;
   sunset: string | null;
   isDaylight: boolean | null;
@@ -156,7 +159,8 @@ export type EquipmentType =
   | "main_energy_meter"
   | "energy_production_meter"
   | "media_player"
-  | "appliance";
+  | "appliance"
+  | "water_valve";
 
 export interface Equipment {
   id: string;
@@ -703,7 +707,7 @@ export interface IntegrationInfo {
 // Dashboard Widget
 // ============================================================
 
-export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors";
+export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors" | "water";
 
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */

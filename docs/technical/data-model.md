@@ -242,6 +242,7 @@ type EquipmentType =
   | "media_player" // media device
   | "camera" // surveillance camera
   | "switch" // on/off switch or plug
+  | "water_valve" // smart irrigation valve (toggle + timed watering)
   | "generic"; // anything else
 
 interface Equipment {

@@ -16,12 +16,14 @@ import {
   WashingMachine,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
+import { WaterValveIcon } from "../icons/WaterValveIcon";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
 import { SensorValues } from "./SensorValues";
 import { ShutterControl } from "./ShutterControl";
 import { ThermostatCard } from "./ThermostatCard";
 import { GateControl } from "./GateControl";
+import { WaterValveControl } from "./WaterValveControl";
 import { useEquipmentState } from "./useEquipmentState";
 
 const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
@@ -42,6 +44,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   energy_production_meter: <Zap size={18} strokeWidth={1.5} />,
   media_player: <Tv size={18} strokeWidth={1.5} />,
   appliance: <WashingMachine size={18} strokeWidth={1.5} />,
+  water_valve: <WaterValveIcon size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -62,6 +65,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   energy_production_meter: "equipments.type.energy_production_meter",
   media_player: "equipments.type.media_player",
   appliance: "equipments.type.appliance",
+  water_valve: "equipments.type.water_valve",
 };
 
 interface EquipmentCardProps {
@@ -149,6 +153,15 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       {/* Gate quick control */}
       {isGate && equipment.enabled && (
         <GateControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* Water valve quick control */}
+      {equipment.type === "water_valve" && equipment.enabled && (
+        <WaterValveControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact

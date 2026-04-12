@@ -37,7 +37,10 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        // Service worker disabled in dev — caching old bundles causes
+        // hard-to-debug "my fix isn't taking effect" issues. PWA is still
+        // built and tested in production builds.
+        enabled: false,
       },
     }),
   ],

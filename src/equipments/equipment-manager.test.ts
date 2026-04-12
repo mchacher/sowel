@@ -145,6 +145,17 @@ describe("EquipmentManager", () => {
       }).toThrow(EquipmentError);
     });
 
+    it("creates a water_valve equipment", () => {
+      const zone = zoneManager.create({ name: "Jardin" });
+      const eq = manager.create({
+        name: "Vanne potager",
+        type: "water_valve",
+        zoneId: zone.id,
+      });
+      expect(eq.type).toBe("water_valve");
+      expect(eq.name).toBe("Vanne potager");
+    });
+
     it("rejects non-existent zone", () => {
       expect(() => {
         manager.create({ name: "Test", type: "light_onoff", zoneId: "non-existent" });

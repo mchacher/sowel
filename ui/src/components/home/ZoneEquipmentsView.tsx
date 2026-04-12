@@ -10,6 +10,7 @@ import {
   WashingMachine,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
+import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { useTranslation } from "react-i18next";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
@@ -31,6 +32,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.weather", types: ["weather", "weather_forecast"], icon: <CloudSun size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.media", types: ["media_player"], icon: <Tv size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.appliances", types: ["appliance"], icon: <WashingMachine size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
+  { labelKey: "equipments.group.water", types: ["water_valve"], icon: <WaterValveIcon size={14} strokeWidth={1.5} />, headerBg: "bg-primary/6", iconColor: "text-primary" },
   { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} />, headerBg: "bg-text-tertiary/6", iconColor: "text-text-secondary" },
 ];
 

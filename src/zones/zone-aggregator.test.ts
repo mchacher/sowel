@@ -123,6 +123,9 @@ describe("ZoneAggregator", () => {
         shuttersOpen: 0,
         shuttersTotal: 0,
         averageShutterPosition: null,
+        waterValvesOpen: 0,
+        waterValvesTotal: 0,
+        waterFlowTotal: null,
         sunrise: null,
         sunset: null,
         isDaylight: null,
@@ -368,6 +371,96 @@ describe("ZoneAggregator", () => {
       expect(data?.shuttersTotal).toBe(0);
       expect(data?.shuttersOpen).toBe(0);
       expect(data?.averageShutterPosition).toBeNull();
+    });
+
+    it("counts water valves total and open with state alias", () => {
+      const zone = zoneManager.create({ name: "Jardin" });
+
+      // Valve 1: open with flow 1.5
+      const dev1 = seedDevice(db, {
+        name: "Valve1",
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") },
+          { key: "flow", type: "number", category: "generic", value: "1.5" },
+        ],
+      });
+      // Valve 2: closed
+      const dev2 = seedDevice(db, {
+        name: "Valve2",
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+          { key: "flow", type: "number", category: "generic", value: "0" },
+        ],
+      });
+
+      const eq1 = equipmentManager.create({
+        name: "Vanne potager",
+        type: "water_valve",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "state");
+      equipmentManager.addDataBinding(eq1.id, dev1.dataIds[1], "flow");
+
+      const eq2 = equipmentManager.create({
+        name: "Vanne pelouse",
+        type: "water_valve",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "state");
+      equipmentManager.addDataBinding(eq2.id, dev2.dataIds[1], "flow");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.waterValvesTotal).toBe(2);
+      expect(data?.waterValvesOpen).toBe(1);
+      expect(data?.waterFlowTotal).toBe(1.5);
+    });
+
+    it("water valve flow is summed only across open valves", () => {
+      const zone = zoneManager.create({ name: "Jardin" });
+
+      // Closed valve with non-zero flow value (should not contribute)
+      const dev1 = seedDevice(db, {
+        name: "Valve1",
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("OFF") },
+          { key: "flow", type: "number", category: "generic", value: "2.5" },
+        ],
+      });
+
+      const eq = equipmentManager.create({
+        name: "Vanne fermée",
+        type: "water_valve",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(eq.id, dev1.dataIds[0], "state");
+      equipmentManager.addDataBinding(eq.id, dev1.dataIds[1], "flow");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.waterValvesTotal).toBe(1);
+      expect(data?.waterValvesOpen).toBe(0);
+      expect(data?.waterFlowTotal).toBeNull();
+    });
+
+    it("water valve aggregation defaults to zero/null with no valves", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+
+      const dev = seedDevice(db, {
+        name: "Temp1",
+        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "20" }],
+      });
+      const eq = equipmentManager.create({ name: "Sensor", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "temperature");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.waterValvesTotal).toBe(0);
+      expect(data?.waterValvesOpen).toBe(0);
+      expect(data?.waterFlowTotal).toBeNull();
     });
 
     it("counts lights on and total from light_state category", () => {

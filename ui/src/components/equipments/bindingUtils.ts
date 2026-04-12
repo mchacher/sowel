@@ -25,6 +25,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   energy_production_meter: ["energy", "power"],
   media_player: ["generic"],
   appliance: ["generic", "energy"],
+  water_valve: ["light_state", "battery", "generic"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -44,6 +45,14 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   energy_production_meter: [],
   media_player: ["power", "input_source"],
   appliance: [],
+  water_valve: [
+    "state",
+    "irrigation_duration",
+    "irrigation_interval",
+    "irrigation_capacity",
+    "total_number",
+    "auto_close_when_water_shortage",
+  ],
 };
 
 /**
@@ -92,6 +101,16 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
     R2: "state",
     R3: "state",
     R4: "state",
+  },
+  water_valve: {
+    // Data keys → standard aliases
+    current_device_status: "status",
+    // Order keys → standard aliases
+    irrigation_duration: "duration",
+    irrigation_interval: "interval",
+    irrigation_capacity: "capacity",
+    total_number: "cycles",
+    auto_close_when_water_shortage: "autoCloseOnShortage",
   },
 };
 

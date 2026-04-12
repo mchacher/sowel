@@ -12,6 +12,7 @@ import {
   Flame,
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
+import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
 
@@ -104,6 +105,21 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
       icon: <ShutterIcon size={14} strokeWidth={1.5} position={pos} />,
       label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}`,
       color: someOpen ? "text-primary" : "text-text-tertiary",
+    });
+  }
+
+  // Water valves
+  if (data.waterValvesTotal > 0) {
+    const someOpen = data.waterValvesOpen > 0;
+    const flowSuffix =
+      someOpen && data.waterFlowTotal !== null && data.waterFlowTotal > 0
+        ? ` · ${data.waterFlowTotal} m³/h`
+        : "";
+    items.push({
+      key: "water-valves",
+      icon: <WaterValveIcon size={14} strokeWidth={1.5} />,
+      label: `${data.waterValvesOpen}/${data.waterValvesTotal}${flowSuffix}`,
+      color: someOpen ? "text-active-text" : "text-text-tertiary",
     });
   }
 
