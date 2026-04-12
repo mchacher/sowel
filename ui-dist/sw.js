@@ -31,9 +31,9 @@ define(["./workbox-3e722498"], function (e) {
     e.precacheAndRoute(
       [
         { url: "registerSW.js", revision: "1872c500de691dce40960bb85481de07" },
-        { url: "index.html", revision: "c3e477c390e163fe33672af153bd3257" },
-        { url: "assets/index-CSMtfWzw.js", revision: null },
-        { url: "assets/index-0Fhy47qM.css", revision: null },
+        { url: "index.html", revision: "7849f8870b541109ec35561f00f296e7" },
+        { url: "assets/index-R4ridYXW.js", revision: null },
+        { url: "assets/index-BqSJ_pmv.css", revision: null },
         { url: "apple-touch-icon-180x180.png", revision: "df3e70f0e86dd1f9f57527ff6a84915c" },
         { url: "favicon.svg", revision: "6ea2ecf5dcba8e639b91707c9e559b8c" },
         { url: "pwa-192x192.png", revision: "7e1a4d770576c03eddf4351c6f3e7ee1" },

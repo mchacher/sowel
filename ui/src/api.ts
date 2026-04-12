@@ -987,6 +987,7 @@ export async function createMqttPublisher(data: {
   brokerId: string;
   topic: string;
   enabled?: boolean;
+  onChangeOnly?: boolean;
 }): Promise<MqttPublisher> {
   return fetchJSON<MqttPublisher>(`${API_BASE}/mqtt-publishers`, {
     method: "POST",
@@ -996,7 +997,7 @@ export async function createMqttPublisher(data: {
 
 export async function updateMqttPublisher(
   id: string,
-  data: { name?: string; brokerId?: string; topic?: string; enabled?: boolean },
+  data: { name?: string; brokerId?: string; topic?: string; enabled?: boolean; onChangeOnly?: boolean },
 ): Promise<MqttPublisher> {
   return fetchJSON<MqttPublisher>(`${API_BASE}/mqtt-publishers/${id}`, {
     method: "PUT",

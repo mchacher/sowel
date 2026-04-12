@@ -25,15 +25,27 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
 
   // POST /api/v1/mqtt-publishers
   app.post<{
-    Body: { name: string; brokerId: string; topic: string; enabled?: boolean };
+    Body: {
+      name: string;
+      brokerId: string;
+      topic: string;
+      enabled?: boolean;
+      onChangeOnly?: boolean;
+    };
   }>("/api/v1/mqtt-publishers", async (request, reply) => {
-    const { name, brokerId, topic, enabled } = request.body ?? {};
+    const { name, brokerId, topic, enabled, onChangeOnly } = request.body ?? {};
     if (!name) return reply.code(400).send({ error: "name is required" });
     if (!brokerId) return reply.code(400).send({ error: "brokerId is required" });
     if (!topic) return reply.code(400).send({ error: "topic is required" });
 
     try {
-      const publisher = mqttPublisherManager.create({ name, brokerId, topic, enabled });
+      const publisher = mqttPublisherManager.create({
+        name,
+        brokerId,
+        topic,
+        enabled,
+        onChangeOnly,
+      });
       return reply.code(201).send(publisher);
     } catch (err) {
       if (err instanceof MqttPublisherError)
@@ -45,7 +57,13 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
   // PUT /api/v1/mqtt-publishers/:id
   app.put<{
     Params: { id: string };
-    Body: { name?: string; brokerId?: string; topic?: string; enabled?: boolean };
+    Body: {
+      name?: string;
+      brokerId?: string;
+      topic?: string;
+      enabled?: boolean;
+      onChangeOnly?: boolean;
+    };
   }>("/api/v1/mqtt-publishers/:id", async (request, reply) => {
     try {
       const publisher = mqttPublisherManager.update(request.params.id, request.body ?? {});

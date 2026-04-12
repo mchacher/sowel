@@ -17,6 +17,7 @@ interface PublisherRow {
   broker_id: string | null;
   topic: string;
   enabled: number;
+  on_change_only: number;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +41,7 @@ function rowToPublisher(row: PublisherRow): MqttPublisher {
     brokerId: row.broker_id,
     topic: row.topic,
     enabled: row.enabled === 1,
+    onChangeOnly: row.on_change_only === 1,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };
@@ -77,11 +79,11 @@ export class MqttPublisherManager {
       listPublishers: this.db.prepare(`SELECT * FROM mqtt_publishers ORDER BY name`),
       getPublisher: this.db.prepare(`SELECT * FROM mqtt_publishers WHERE id = ?`),
       insertPublisher: this.db.prepare(
-        `INSERT INTO mqtt_publishers (id, name, broker_id, topic, enabled, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO mqtt_publishers (id, name, broker_id, topic, enabled, on_change_only, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       ),
       updatePublisher: this.db.prepare(
-        `UPDATE mqtt_publishers SET name = ?, broker_id = ?, topic = ?, enabled = ?, updated_at = datetime('now')
+        `UPDATE mqtt_publishers SET name = ?, broker_id = ?, topic = ?, enabled = ?, on_change_only = ?, updated_at = datetime('now')
          WHERE id = ?`,
       ),
       deletePublisher: this.db.prepare(`DELETE FROM mqtt_publishers WHERE id = ?`),
@@ -137,18 +139,21 @@ export class MqttPublisherManager {
     brokerId: string | null;
     topic: string;
     enabled?: boolean;
+    onChangeOnly?: boolean;
   }): MqttPublisher {
     if (!input.name?.trim()) throw new MqttPublisherError("name is required", 400);
     if (!input.topic?.trim()) throw new MqttPublisherError("topic is required", 400);
 
     const id = randomUUID();
     const enabled = input.enabled !== false ? 1 : 0;
+    const onChangeOnly = input.onChangeOnly ? 1 : 0;
     this.stmts.insertPublisher.run(
       id,
       input.name.trim(),
       input.brokerId,
       input.topic.trim(),
       enabled,
+      onChangeOnly,
     );
 
     const publisher = this.getById(id)!;
@@ -159,7 +164,13 @@ export class MqttPublisherManager {
 
   update(
     id: string,
-    updates: { name?: string; brokerId?: string | null; topic?: string; enabled?: boolean },
+    updates: {
+      name?: string;
+      brokerId?: string | null;
+      topic?: string;
+      enabled?: boolean;
+      onChangeOnly?: boolean;
+    },
   ): MqttPublisher {
     const existing = this.getById(id);
     if (!existing) throw new MqttPublisherError(`Publisher not found: ${id}`, 404);
@@ -169,8 +180,16 @@ export class MqttPublisherManager {
     const topic = updates.topic?.trim() ?? existing.topic;
     const enabled =
       updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : existing.enabled ? 1 : 0;
+    const onChangeOnly =
+      updates.onChangeOnly !== undefined
+        ? updates.onChangeOnly
+          ? 1
+          : 0
+        : existing.onChangeOnly
+          ? 1
+          : 0;
 
-    this.stmts.updatePublisher.run(name, brokerId, topic, enabled, id);
+    this.stmts.updatePublisher.run(name, brokerId, topic, enabled, onChangeOnly, id);
     const publisher = this.getById(id)!;
     this.eventBus.emit({ type: "mqtt-publisher.updated", publisher });
     this.logger.info({ publisherId: id }, "MQTT publisher updated");
