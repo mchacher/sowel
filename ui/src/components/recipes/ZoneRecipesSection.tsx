@@ -10,7 +10,6 @@ import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel } from "../../lib/recipe-i18n";
 import type { RecipeSlotDef } from "../../types";
-import { WateringScheduleEditor } from "./WateringScheduleEditor";
 
 
 function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
@@ -635,13 +634,6 @@ function RecipeInstanceRow({
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
                                       />
-                                    ) : slot.type === "watering-schedule" ? (
-                                      <WateringScheduleEditor
-                                        value={editParams[slot.id] ?? "[]"}
-                                        onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                                        valveIds={(editParams["valves"] ?? "").split(",").filter(Boolean)}
-                                        equipments={equipments}
-                                      />
                                     ) : (
                                       <input
                                         type="text"
@@ -742,13 +734,6 @@ function RecipeInstanceRow({
                             value={editParams[slot.id] ?? ""}
                             onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
                             placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
-                          />
-                        ) : slot.type === "watering-schedule" ? (
-                          <WateringScheduleEditor
-                            value={editParams[slot.id] ?? "[]"}
-                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                            valveIds={(editParams["valves"] ?? "").split(",").filter(Boolean)}
-                            equipments={equipments}
                           />
                         ) : (
                           <input
@@ -1638,13 +1623,6 @@ function AddRecipeForm({
                                       value={params[slot.id] ?? ""}
                                       onChange={(v) => setParams({ ...params, [slot.id]: v })}
                                     />
-                                  ) : slot.type === "watering-schedule" ? (
-                                    <WateringScheduleEditor
-                                      value={params[slot.id] ?? "[]"}
-                                      onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                                      valveIds={(params["valves"] ?? "").split(",").filter(Boolean)}
-                                      equipments={equipments}
-                                    />
                                   ) : (
                                     <input
                                       type="text"
@@ -1744,13 +1722,6 @@ function AddRecipeForm({
                           value={params[slot.id] ?? ""}
                           onChange={(v) => setParams({ ...params, [slot.id]: v })}
                           placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
-                        />
-                      ) : slot.type === "watering-schedule" ? (
-                        <WateringScheduleEditor
-                          value={params[slot.id] ?? "[]"}
-                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                          valveIds={(params["valves"] ?? "").split(",").filter(Boolean)}
-                          equipments={equipments}
                         />
                       ) : (
                         <input
