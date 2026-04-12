@@ -223,10 +223,16 @@ export class UpdateManager {
    * compose file. AutoRemove ensures it cleans up after itself.
    */
   private async spawnHelper(targetVersion: string, ctx: ComposeContext): Promise<void> {
+    // Pull by explicit version tag then retag as :latest locally.
+    // This avoids a GHCR CDN propagation delay where `docker compose pull`
+    // (which pulls :latest) may still resolve to the old digest for several
+    // minutes after a new release is pushed.
+    const image = `ghcr.io/mchacher/sowel:${targetVersion}`;
+    const latestTag = "ghcr.io/mchacher/sowel:latest";
     const cmd = [
       "sh",
       "-c",
-      `sleep 5 && echo "[sowel-updater] pulling..." && docker compose pull ${ctx.serviceName} && echo "[sowel-updater] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
+      `sleep 5 && echo "[sowel-updater] pulling ${image}..." && docker pull ${image} && docker tag ${image} ${latestTag} && echo "[sowel-updater] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
     ];
 
     await this.runHelperContainer({
