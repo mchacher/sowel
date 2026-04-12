@@ -38,11 +38,16 @@ function groupSlots(slots: RecipeSlotDef[]): SlotChunk[] {
   return chunks;
 }
 
-/** Check if a group has any value filled in a params record. */
+/** Check if a group has meaningful data — the first slot in the group must have a value. */
 function isGroupFilled(group: string, allSlots: RecipeSlotDef[], paramsRecord: Record<string, string>): boolean {
-  return allSlots
-    .filter((s) => s.group === group)
-    .some((s) => (paramsRecord[s.id] ?? "") !== "");
+  const firstSlot = allSlots.find((s) => s.group === group);
+  if (!firstSlot) return false;
+  return (paramsRecord[firstSlot.id] ?? "") !== "";
+}
+
+/** Check if a group contains at least one required slot — such groups are always visible. */
+function isGroupRequired(group: string, allSlots: RecipeSlotDef[]): boolean {
+  return allSlots.some((s) => s.group === group && s.required);
 }
 
 /** Get all unique group keys from slots. */
@@ -290,6 +295,20 @@ function RecipeInstanceRow({
     setShowLog(true);
   };
 
+  // Auto-refresh logs every 5s when the log panel is open
+  useEffect(() => {
+    if (!showLog) return;
+    const id = setInterval(async () => {
+      try {
+        const entries = await getLog(instance.id);
+        setLogs(entries);
+      } catch {
+        // Silent — don't break the UI if log fetch fails
+      }
+    }, 5_000);
+    return () => clearInterval(id);
+  }, [showLog, instance.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isSlotChanged = (slotId: string): boolean => {
     const val = instance.params[slotId];
     const original = Array.isArray(val) ? val.join(",") : String(val ?? "");
@@ -328,11 +347,11 @@ function RecipeInstanceRow({
     }
     setEditParams(params);
     setEditError("");
-    // Initialize visible groups: show groups that already have data
+    // Initialize visible groups: show required groups + groups that already have data
     if (recipe) {
       const filled = new Set<string>();
       for (const gk of getGroupKeys(recipe.slots)) {
-        if (isGroupFilled(gk, recipe.slots, params)) filled.add(gk);
+        if (isGroupRequired(gk, recipe.slots) || isGroupFilled(gk, recipe.slots, params)) filled.add(gk);
       }
       setVisibleGroups(filled);
     }
@@ -394,11 +413,21 @@ function RecipeInstanceRow({
     return ids;
   }, [allInstances, zoneId, instance.id]);
 
+  /** Equipment types that are global (not zone-scoped) — always shown regardless of zone. */
+  const GLOBAL_EQUIPMENT_TYPES = new Set(["weather", "weather_forecast"]);
+
   const getEquipmentOptions = (slotId: string): EquipmentWithDetails[] => {
     const slot = recipe?.slots.find((s) => s.id === slotId);
     if (!slot) return [];
+
+    // Check if this slot targets a global equipment type
+    const isGlobalSlot = slot.constraints?.equipmentType &&
+      (Array.isArray(slot.constraints.equipmentType)
+        ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
+        : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
+
     return equipments.filter((eq) => {
-      if (eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && eq.zoneId !== zoneId) return false;
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -423,10 +452,48 @@ function RecipeInstanceRow({
   const paramsSummary = useMemo(() => {
     if (!recipe) return "";
     const parts: string[] = [];
+    const renderedGroups = new Set<string>();
+
     for (const slot of recipe.slots) {
       if (slot.id === "zone") continue;
+
+      // Grouped slots: render the group once as "GroupLabel: val1 (val2, val3)"
+      if (slot.group) {
+        if (renderedGroups.has(slot.group)) continue;
+        renderedGroups.add(slot.group);
+
+        const groupSlots = recipe.slots.filter((s) => s.group === slot.group);
+
+        // Skip the group if its first slot is empty (incomplete group)
+        const firstVal = instance.params[groupSlots[0]?.id];
+        if (firstVal === undefined || firstVal === null || firstVal === "") continue;
+
+        const groupValues = groupSlots
+          .map((s) => {
+            const v = instance.params[s.id];
+            if (v === undefined || v === null || v === "") return null;
+            if (s.type === "equipment") {
+              const eq = equipments.find((e) => e.id === v);
+              return eq?.name ?? String(v);
+            }
+            return String(v);
+          })
+          .filter(Boolean) as string[];
+
+        if (groupValues.length === 0) continue;
+
+        const groupLabel = recipeGroupLabel(recipe, slot.group, lang);
+        if (groupValues.length === 1) {
+          parts.push(`${groupLabel}: ${groupValues[0]}`);
+        } else {
+          parts.push(`${groupLabel}: ${groupValues[0]} (${groupValues.slice(1).join(", ")})`);
+        }
+        continue;
+      }
+
+      // Ungrouped slots: render individually
       const val = instance.params[slot.id];
-      if (val === undefined || val === null || val === "") continue;
+      if (val === undefined || val === null || val === "" || val === "false") continue;
       if (slot.type === "equipment" && Array.isArray(val)) {
         const names = val
           .map((id: string) => equipments.find((e) => e.id === id)?.name ?? id)
@@ -435,6 +502,10 @@ function RecipeInstanceRow({
       } else if (slot.type === "equipment") {
         const eq = equipments.find((e) => e.id === val);
         parts.push(eq?.name ?? String(val));
+      } else if (slot.type === "boolean") {
+        if (val === "true" || val === true) {
+          parts.push(recipeSlotName(recipe, slot, lang));
+        }
       } else {
         parts.push(`${recipeSlotName(recipe, slot, lang)}: ${String(val)}`);
       }
@@ -559,7 +630,7 @@ function RecipeInstanceRow({
                         <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[11px] uppercase tracking-wider text-accent">{recipeGroupLabel(recipe, groupKey, lang)}</span>
-                            <button
+                            {!isGroupRequired(groupKey, recipe.slots) && <button
                               type="button"
                               onClick={() => {
                                 const next = { ...editParams };
@@ -571,7 +642,7 @@ function RecipeInstanceRow({
                               title={t("common.delete")}
                             >
                               <Minus size={14} strokeWidth={1.5} />
-                            </button>
+                            </button>}
                           </div>
                           {/* Full-width equipment list slots — cross-zone picker */}
                           {chunk.slots.filter((s) => s.type === "equipment" && s.list).map((slot) => (
@@ -603,7 +674,7 @@ function RecipeInstanceRow({
                                       <select
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                        className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                        className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                                       >
                                         <option value="">{t("common.select")}</option>
                                         {getEquipmentOptions(slot.id).map((eq) => (
@@ -620,7 +691,7 @@ function RecipeInstanceRow({
                                           <select
                                             value={editParams[slot.id] ?? ""}
                                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                            className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                            className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                                           >
                                             <option value="">{t("common.select")}</option>
                                             {bindings.map((b) => (
@@ -640,7 +711,7 @@ function RecipeInstanceRow({
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                                         placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                        className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                        className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                                       />
                                     )}
                                     <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
@@ -752,16 +823,21 @@ function RecipeInstanceRow({
                   })}
                   {/* Add group button */}
                   {hiddenGroups.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setVisibleGroups((prev) => new Set([...prev, hiddenGroups[0]]));
-                      }}
-                      className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover mb-2.5 transition-colors duration-150"
-                    >
-                      <Plus size={14} strokeWidth={1.5} />
-                      {recipeGroupLabel(recipe, hiddenGroups[0], lang)}
-                    </button>
+                    <div className="flex flex-wrap gap-2 mb-2.5">
+                      {hiddenGroups.map((gk) => (
+                        <button
+                          key={gk}
+                          type="button"
+                          onClick={() => {
+                            setVisibleGroups((prev) => new Set([...prev, gk]));
+                          }}
+                          className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover transition-colors duration-150"
+                        >
+                          <Plus size={14} strokeWidth={1.5} />
+                          {recipeGroupLabel(recipe, gk, lang)}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </>
               );
@@ -1330,12 +1406,21 @@ function AddRecipeForm({
     return ids;
   }, [instances, zoneId]);
 
-  // Filter equipments for current zone matching slot constraints, excluding already-used lights
+  /** Equipment types that are global (not zone-scoped) — always shown regardless of zone. */
+  const GLOBAL_EQUIPMENT_TYPES = new Set(["weather", "weather_forecast"]);
+
+  // Filter equipments matching slot constraints, excluding already-used lights
   const getEquipmentOptions = (slotId: string): EquipmentWithDetails[] => {
     const slot = selectedRecipe?.slots.find((s) => s.id === slotId);
     if (!slot) return [];
+
+    const isGlobalSlot = slot.constraints?.equipmentType &&
+      (Array.isArray(slot.constraints.equipmentType)
+        ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
+        : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
+
     return equipments.filter((eq) => {
-      if (eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && eq.zoneId !== zoneId) return false;
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1389,6 +1474,12 @@ function AddRecipeForm({
     }
     setParams(defaults); // eslint-disable-line react-hooks/set-state-in-effect -- sync defaults when recipe selection changes
     setError("");
+    // Show required groups by default, hide optional ones
+    const requiredGroups = new Set<string>();
+    for (const gk of getGroupKeys(selectedRecipe.slots)) {
+      if (isGroupRequired(gk, selectedRecipe.slots)) requiredGroups.add(gk);
+    }
+    setVisibleGroups(requiredGroups); // eslint-disable-line react-hooks/set-state-in-effect -- sync with recipe selection
   }, [selectedRecipeId, selectedRecipe, zoneId]);
 
   const handleSelectRecipe = (recipeId: string) => {
@@ -1548,7 +1639,7 @@ function AddRecipeForm({
                       <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[11px] uppercase tracking-wider text-accent">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
-                          <button
+                          {!isGroupRequired(groupKey, selectedRecipe.slots) && <button
                             type="button"
                             onClick={() => {
                               const next = { ...params };
@@ -1560,7 +1651,7 @@ function AddRecipeForm({
                             title={t("common.delete")}
                           >
                             <Minus size={14} strokeWidth={1.5} />
-                          </button>
+                          </button>}
                         </div>
                         {/* Full-width equipment list slots — cross-zone picker */}
                         {chunk.slots.filter((s) => s.type === "equipment" && s.list).map((slot) => (
@@ -1582,9 +1673,9 @@ function AddRecipeForm({
                           const n = compactSlots.length;
                           const cols = n <= 3 ? n : n % 3 === 0 ? 3 : 2;
                           return (
-                            <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                            <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-[1fr_auto]" : "grid-cols-3"}`}>
                               {compactSlots.map((slot) => (
-                                <div key={slot.id}>
+                                <div key={slot.id} className={slot.type === "number" ? "w-[100px]" : ""}>
                                   <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
                                     {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                   </label>
@@ -1592,7 +1683,7 @@ function AddRecipeForm({
                                     <select
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                      className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                                     >
                                       <option value="">{t("common.select")}</option>
                                       {getEquipmentOptions(slot.id).map((eq) => (
@@ -1609,7 +1700,7 @@ function AddRecipeForm({
                                         <select
                                           value={params[slot.id] ?? ""}
                                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                          className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                          className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                                         >
                                           <option value="">{t("common.select")}</option>
                                           {bindings.map((b) => (
@@ -1738,18 +1829,23 @@ function AddRecipeForm({
                     </div>
                   ));
                 })}
-                {/* Add group button */}
+                {/* Add group buttons */}
                 {hiddenGroups.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setVisibleGroups((prev) => new Set([...prev, hiddenGroups[0]]));
-                    }}
-                    className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover mb-2.5 transition-colors duration-150"
-                  >
-                    <Plus size={14} strokeWidth={1.5} />
-                    {recipeGroupLabel(selectedRecipe, hiddenGroups[0], lang)}
-                  </button>
+                  <div className="flex flex-wrap gap-2 mb-2.5">
+                    {hiddenGroups.map((gk) => (
+                      <button
+                        key={gk}
+                        type="button"
+                        onClick={() => {
+                          setVisibleGroups((prev) => new Set([...prev, gk]));
+                        }}
+                        className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover transition-colors duration-150"
+                      >
+                        <Plus size={14} strokeWidth={1.5} />
+                        {recipeGroupLabel(selectedRecipe, gk, lang)}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </>
             );
