@@ -9,7 +9,9 @@ This page walks you through installing Sowel, logging in for the first time, and
   - **Zigbee2MQTT** with an MQTT broker (Mosquitto or similar)
   - **Panasonic Comfort Cloud** account (for AC units)
   - **MCZ Maestro** account (for pellet stoves)
-  - **Netatmo Home Control** (for energy monitoring, weather stations)
+  - **Netatmo Weather** (for weather stations)
+  - **Legrand Energy / Control** (for energy monitoring, lights, shutters)
+  - **LoRa2MQTT** (for LoRa devices via a lora2mqtt bridge)
 
 ## Installation
 
@@ -65,6 +67,10 @@ When you open Sowel for the first time, a **setup page** appears. Create your ad
 2. Set a password
 3. Enter a display name
 
+After the first account is created, the login screen greets you:
+
+![Login screen](../screenshots/getting-started-login.png)
+
 This creates the first administrator account. You can add more users later from Settings.
 
 !!! warning
@@ -78,16 +84,20 @@ After logging in, follow these steps to set up your home.
 
 Go to **Administration > Integrations** in the sidebar.
 
-Each integration has its own settings panel. Configure the ones you use:
+![Integrations page](../screenshots/getting-started-integrations.png)
+
+Each integration has its own settings panel. Click on an integration to expand it and configure the connection. Common settings:
 
 | Integration                 | What to configure                                           |
 | --------------------------- | ----------------------------------------------------------- |
 | **Zigbee2MQTT**             | MQTT broker URL (e.g., `mqtt://localhost:1883`), base topic |
 | **Panasonic Comfort Cloud** | Email and password for your Panasonic account               |
 | **MCZ Maestro**             | Email and password for your MCZ account                     |
-| **Netatmo Home Control**    | OAuth credentials (client ID, client secret, tokens)        |
+| **Netatmo Weather**         | OAuth credentials (client ID, client secret, tokens)        |
+| **Legrand Energy/Control**  | OAuth credentials (client ID, client secret, tokens)        |
+| **LoRa2MQTT**               | MQTT broker URL, base topic                                 |
 
-Each integration shows a **connection status indicator**. You can connect and disconnect integrations without restarting the engine.
+Each integration shows a **connection status indicator** (green = connected). You can start/stop integrations and trigger a manual refresh without restarting the engine.
 
 !!! tip
 Integration settings are stored in the database, not in environment files. You configure everything from the UI.
@@ -96,20 +106,24 @@ Integration settings are stored in the database, not in environment files. You c
 
 Go to **Administration > Devices**.
 
-Once an integration connects, devices appear automatically. You should see a list with:
+![Devices page](../screenshots/getting-started-devices.png)
 
-- Device name
+Once an integration connects, devices appear automatically. The table shows:
+
+- Device name and source integration (Z2M, LORA2MQTT, MCZ, etc.)
 - Manufacturer and model
-- Connection status (online/offline)
-- Last seen timestamp
+- Connection status (green dot = online)
+- Equipment binding (if already assigned)
 
-If devices do not appear, check that your integration is connected (green indicator) and that devices are paired with your Zigbee coordinator or registered in your cloud account.
+Use the integration tabs at the top to filter by source. If devices do not appear, check that your integration is connected (green indicator) and that devices are paired with your coordinator or registered in your cloud account.
 
 ### Step 3: Create your zone topology
 
-Go to **Administration > Zones**.
+Go to **Administration > Topology**.
 
-Build the spatial structure of your home. A typical setup:
+![Zones page](../screenshots/getting-started-zones.png)
+
+Build the spatial structure of your home as a nestable tree. A typical setup:
 
 ```
 Home
@@ -126,7 +140,7 @@ Home
     Garage
 ```
 
-Zones can be nested to any depth. The zone tree appears in the Home sidebar for daily navigation.
+Use the **+ Add zone** button to create zones, and the arrow buttons to reorder them. Zones can be nested to any depth. The zone tree appears in the Home sidebar for daily navigation.
 
 ### Step 4: Create equipments
 
@@ -135,10 +149,10 @@ Go to **Administration > Equipments**.
 For each functional unit in your home:
 
 1. Click **Add Equipment**
-2. Choose a type (light, shutter, sensor, thermostat, etc.)
+2. Choose a type (light, shutter, sensor, thermostat, gate, water valve, etc.)
 3. Give it a name (e.g., "Living Room Spots")
 4. Assign it to a zone
-5. Select the device(s) to bind
+5. Bind the device data and orders
 
 !!! tip
 A single equipment can bind to multiple devices. For example, three dimmer modules behind the wall can be grouped as one "Living Room Spots" equipment. One toggle controls all three.
@@ -147,15 +161,26 @@ A single equipment can bind to multiple devices. For example, three dimmer modul
 
 Go to **Home** in the sidebar.
 
+![Home view](../screenshots/getting-started-home.png)
+
 The zone tree appears on the left. Click any zone to see:
 
-- **Aggregated status** -- temperature, motion, lights count, shutter positions
-- **Equipment cards** -- grouped by type (Lights, Shutters, Sensors) with inline controls
+- **Aggregated status** -- temperature, humidity, luminosity, motion, lights count, shutter positions
+- **Zone commands** -- batch actions (all lights on/off, all shutters open/close)
+- **Equipment cards** -- grouped by type (Thermostat, Energy, Weather, etc.) with inline controls
 - **Behaviors** -- recipes and modes configured for this zone
+
+### Step 6: Customize the dashboard
+
+Go to **Dashboard** and click **Edit**.
+
+![Dashboard](../screenshots/getting-started-dashboard.png)
+
+Add widgets for the equipment and zones you use most. Widgets update in real-time via WebSocket. You can reorder them by drag-and-drop, rename them, and customize their icons.
 
 Your home is now set up. From here, you can:
 
-- [Customize your dashboard](dashboard.md) with widgets
+- [Customize your dashboard](dashboard.md) with more widgets
 - [Set up modes](modes.md) for different scenarios (Comfort, Away, Night)
 - [Monitor energy consumption](energy.md)
 
