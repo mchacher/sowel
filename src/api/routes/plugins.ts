@@ -33,15 +33,21 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
       // Integration packages (enriched with runtime status + device counts)
       const integrations = pluginLoader.getInstalled();
 
-      // Recipe packages (no runtime status — just manifest + enabled)
-      const recipes = packageManager.getInstalledByType("recipe").map((pkg) => ({
-        manifest: pkg.manifest,
-        enabled: pkg.enabled,
-        installedAt: pkg.installedAt,
-        status: "connected" as const,
-        deviceCount: 0,
-        offlineDeviceCount: 0,
-      }));
+      // Recipe packages (no runtime status — just manifest + enabled + latest version)
+      const latestVersions = packageManager.getLatestVersions();
+      const recipes = packageManager.getInstalledByType("recipe").map((pkg) => {
+        const latest = latestVersions.get(pkg.manifest.id);
+        const hasUpdate = latest && latest !== pkg.manifest.version;
+        return {
+          manifest: pkg.manifest,
+          enabled: pkg.enabled,
+          installedAt: pkg.installedAt,
+          status: "connected" as const,
+          deviceCount: 0,
+          offlineDeviceCount: 0,
+          ...(hasUpdate ? { latestVersion: latest } : {}),
+        };
+      });
 
       return [...integrations, ...recipes];
     } catch (err) {
