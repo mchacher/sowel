@@ -291,18 +291,24 @@ export class UpdateManager {
       );
     }
 
+    // Mount the host compose directory at its ORIGINAL path (not remapped
+    // to /workdir). This is critical: docker compose stamps the working
+    // directory into the container's labels. If we remap to /workdir, the
+    // next Sowel instance reads working_dir=/workdir from its labels and
+    // future updates fail because /workdir doesn't exist on the host.
+    const hostDir = args.ctx.workingDir;
     const helper = await docker.createContainer({
       Image: HELPER_IMAGE,
       name: args.name,
       Cmd: args.cmd,
-      WorkingDir: "/workdir",
+      WorkingDir: hostDir,
       Env: [`COMPOSE_PROJECT_NAME=${args.ctx.projectName}`],
       HostConfig: {
         // AutoRemove disabled so we can inspect helper logs after completion
         // via `docker logs sowel-updater`. The next update will clean up the
         // leftover container before creating a new one (line 263).
         AutoRemove: false,
-        Binds: ["/var/run/docker.sock:/var/run/docker.sock", `${args.ctx.workingDir}:/workdir`],
+        Binds: ["/var/run/docker.sock:/var/run/docker.sock", `${hostDir}:${hostDir}`],
       },
     });
 
