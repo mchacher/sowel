@@ -420,12 +420,12 @@ export function Sidebar() {
                       <span className="flex-shrink-0 relative">
                         {item.icon}
                         {item.to === "/plugins" && pluginUpdateCount > 0 && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full" />
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full" />
                         )}
                       </span>
                       <span className="text-[12px] font-medium">{t(item.label)}</span>
                       {item.to === "/plugins" && pluginUpdateCount > 0 && (
-                        <span className="ml-auto text-[10px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">
+                        <span className="ml-auto text-[10px] font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
                           {pluginUpdateCount}
                         </span>
                       )}
@@ -455,7 +455,7 @@ export function Sidebar() {
               <div className="relative flex-shrink-0">
                 <Settings size={collapsed ? 18 : 14} strokeWidth={1.5} className={`transition-colors ${isActive ? "text-primary" : "text-text-secondary"}`} />
                 {updateAvailable && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-accent rounded-full" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-error rounded-full" />
                 )}
               </div>
               {!collapsed && (

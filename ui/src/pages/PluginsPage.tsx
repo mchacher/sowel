@@ -338,7 +338,7 @@ function PluginRow({
             {plugin.manifest.version}
           </span>
           {hasUpdate && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-accent/10 rounded-[4px] text-accent font-mono shrink-0 flex items-center gap-0.5">
+            <span className="text-[10px] px-1.5 py-0.5 bg-error/10 rounded-[4px] text-error font-mono shrink-0 flex items-center gap-0.5">
               <ArrowUpCircle size={10} />
               {plugin.latestVersion}
             </span>
@@ -370,7 +370,7 @@ function PluginRow({
           <button
             onClick={handleUpdate}
             disabled={actionLoading !== null}
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 text-accent hover:bg-accent/10"
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 text-error hover:bg-error/10"
           >
             {actionLoading === "update" ? (
               <Loader2 size={14} className="animate-spin" />

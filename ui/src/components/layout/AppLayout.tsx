@@ -89,10 +89,10 @@ export function AppLayout() {
             {pluginUpdateCount > 0 && (
               <NavLink
                 to="/plugins"
-                className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-[11px] font-medium"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] bg-error/10 text-error hover:bg-error/20 transition-colors text-[11px] font-medium"
                 title={t("plugins.updatesAvailable", { count: pluginUpdateCount })}
               >
-                <span className="w-1.5 h-1.5 bg-accent rounded-full" />
+                <span className="w-1.5 h-1.5 bg-error rounded-full" />
                 {pluginUpdateCount}
               </NavLink>
             )}

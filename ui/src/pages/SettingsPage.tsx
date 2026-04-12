@@ -717,7 +717,7 @@ function VersionBadge() {
               <button
                 onClick={() => setConfirmOpen(true)}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
               >
                 {updating ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -731,7 +731,7 @@ function VersionBadge() {
                 href={info.releaseUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10 rounded-[5px] transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors"
                 title={updateDisabledReason}
               >
                 <ArrowUpCircle size={12} />
@@ -781,7 +781,7 @@ function VersionBadge() {
               <button
                 onClick={handleConfirmUpdate}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-accent text-white rounded-[6px] hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-error text-white rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {updating ? (
                   <Loader2 size={14} className="animate-spin" />
