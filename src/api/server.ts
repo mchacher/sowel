@@ -84,6 +84,7 @@ interface ServerDeps {
   notificationPublishService: NotificationPublishService;
   packageManager: PackageManager;
   pluginLoader: PluginLoader;
+  recipeLoader: import("../recipes/recipe-loader.js").RecipeLoader;
   backupManager: BackupManager;
   versionChecker: import("../core/version-checker.js").VersionChecker;
   updateManager: import("../core/update-manager.js").UpdateManager;
@@ -123,6 +124,7 @@ export async function createServer(deps: ServerDeps) {
     notificationPublishService,
     packageManager,
     pluginLoader,
+    recipeLoader,
     backupManager,
     versionChecker,
     updateManager,
@@ -211,7 +213,13 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerDashboardRoutes(app, { db });
-  registerPluginRoutes(app, { packageManager, pluginLoader, integrationRegistry, logger });
+  registerPluginRoutes(app, {
+    packageManager,
+    pluginLoader,
+    recipeLoader,
+    integrationRegistry,
+    logger,
+  });
   registerSystemRoutes(app, { versionChecker, updateManager, tzInfo, logger });
   registerLogRoutes(app, { logBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger });
