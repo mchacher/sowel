@@ -1,6 +1,6 @@
 {
   "name": "sowel",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "Sowel — Home automation engine powered by MQTT",
   "author": "Marc Chachereau <marc.chachereau@gmail.com>",
   "license": "AGPL-3.0-only",
