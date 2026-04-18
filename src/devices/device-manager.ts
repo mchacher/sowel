@@ -213,7 +213,7 @@ export class DeviceManager {
         if (existingOrder) {
           this.stmts.updateDeviceOrderDef.run(
             o.type,
-            o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : null,
+            o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : "{}",
             o.min ?? null,
             o.max ?? null,
             o.enumValues ? JSON.stringify(o.enumValues) : null,
@@ -226,7 +226,7 @@ export class DeviceManager {
             deviceId,
             key: o.key,
             type: o.type,
-            dispatchConfig: o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : null,
+            dispatchConfig: o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : "{}",
             min: o.min ?? null,
             max: o.max ?? null,
             enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,
