@@ -8,6 +8,7 @@ const VALID_EFFECT_TYPES: ButtonEffectType[] = [
   "mode_toggle",
   "equipment_order",
   "recipe_toggle",
+  "zone_order",
 ];
 
 export function registerButtonActionRoutes(

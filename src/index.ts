@@ -226,6 +226,7 @@ async function main() {
     equipmentManager,
     modeManager,
     recipeManager,
+    zoneManager,
     logger,
   );
 

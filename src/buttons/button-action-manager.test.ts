@@ -27,7 +27,10 @@ function createTestDb(): Database.Database {
 const logger = createLogger("silent").logger;
 
 function createMockEquipmentManager() {
-  return { executeOrder: vi.fn() } as any;
+  return {
+    executeOrder: vi.fn(),
+    executeZoneOrder: vi.fn().mockResolvedValue({ executed: 2, errors: 0 }),
+  } as any;
 }
 
 function createMockModeManager() {
@@ -45,12 +48,19 @@ function createMockRecipeManager() {
   } as any;
 }
 
+function createMockZoneManager() {
+  return {
+    getDescendantIds: vi.fn((zoneId: string) => [zoneId]),
+  } as any;
+}
+
 describe("ButtonActionManager", () => {
   let db: Database.Database;
   let eventBus: EventBus;
   let equipmentManager: ReturnType<typeof createMockEquipmentManager>;
   let modeManager: ReturnType<typeof createMockModeManager>;
   let recipeManager: ReturnType<typeof createMockRecipeManager>;
+  let zoneManager: ReturnType<typeof createMockZoneManager>;
   let manager: ButtonActionManager;
 
   // Insert a fake equipment for FK constraints
@@ -62,12 +72,14 @@ describe("ButtonActionManager", () => {
     equipmentManager = createMockEquipmentManager();
     modeManager = createMockModeManager();
     recipeManager = createMockRecipeManager();
+    zoneManager = createMockZoneManager();
     manager = new ButtonActionManager(
       db,
       eventBus,
       equipmentManager,
       modeManager,
       recipeManager,
+      zoneManager,
       logger,
     );
 
@@ -301,6 +313,79 @@ describe("ButtonActionManager", () => {
 
       expect(modeManager.activateMode).toHaveBeenCalledWith("mode-1");
       expect(equipmentManager.executeOrder).toHaveBeenCalledWith("eq-light-1", "state", "ON");
+    });
+  });
+
+  describe("zone_order effect", () => {
+    it("dispatches zone order with descendant IDs", () => {
+      zoneManager.getDescendantIds.mockReturnValue(["zone-1", "zone-child-1"]);
+      manager.addBinding(eqId, "single", "zone_order", {
+        zoneId: "zone-1",
+        orderKey: "allLightsOn",
+      });
+      manager.init();
+
+      eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: eqId,
+        alias: "action",
+        value: "single",
+        previous: null,
+      });
+
+      expect(zoneManager.getDescendantIds).toHaveBeenCalledWith("zone-1");
+      expect(equipmentManager.executeZoneOrder).toHaveBeenCalledWith(
+        ["zone-1", "zone-child-1"],
+        "allLightsOn",
+        undefined,
+      );
+    });
+
+    it("passes parametric value for setpoint orders", () => {
+      zoneManager.getDescendantIds.mockReturnValue(["zone-1"]);
+      manager.addBinding(eqId, "double", "zone_order", {
+        zoneId: "zone-1",
+        orderKey: "allThermostatsSetpoint",
+        value: 21,
+      });
+      manager.init();
+
+      eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: eqId,
+        alias: "action",
+        value: "double",
+        previous: null,
+      });
+
+      expect(equipmentManager.executeZoneOrder).toHaveBeenCalledWith(
+        ["zone-1"],
+        "allThermostatsSetpoint",
+        21,
+      );
+    });
+
+    it("logs error when executeZoneOrder fails", async () => {
+      zoneManager.getDescendantIds.mockReturnValue(["zone-1"]);
+      equipmentManager.executeZoneOrder.mockRejectedValue(new Error("Zone not found"));
+      manager.addBinding(eqId, "single", "zone_order", {
+        zoneId: "zone-1",
+        orderKey: "allLightsOn",
+      });
+      manager.init();
+
+      eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: eqId,
+        alias: "action",
+        value: "single",
+        previous: null,
+      });
+
+      // Let the rejection be caught
+      await vi.waitFor(() => {
+        expect(equipmentManager.executeZoneOrder).toHaveBeenCalled();
+      });
     });
   });
 

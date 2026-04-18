@@ -10,6 +10,18 @@ import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "..
 
 const BUTTON_ACTIONS = ["single", "double", "hold"] as const;
 
+const ZONE_ORDER_OPTIONS: { key: string; group: string; parametric: boolean }[] = [
+  { key: "allLightsOn", group: "lights", parametric: false },
+  { key: "allLightsOff", group: "lights", parametric: false },
+  { key: "allLightsBrightness", group: "lights", parametric: true },
+  { key: "allShuttersOpen", group: "shutters", parametric: false },
+  { key: "allShuttersStop", group: "shutters", parametric: false },
+  { key: "allShuttersClose", group: "shutters", parametric: false },
+  { key: "allThermostatsPowerOn", group: "heating", parametric: false },
+  { key: "allThermostatsPowerOff", group: "heating", parametric: false },
+  { key: "allThermostatsSetpoint", group: "heating", parametric: true },
+];
+
 function flattenZones(tree: ZoneWithChildren[]): { id: string; name: string }[] {
   const result: { id: string; name: string }[] = [];
   const walk = (nodes: ZoneWithChildren[]) => {
@@ -107,6 +119,13 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
         const inst = instances.find((i) => i.id === binding.config.instanceId);
         const label = binding.config.enabled ? t("common.on") : t("common.off");
         return `${t("buttonActions.effectType.recipe_toggle")} → ${inst?.recipeId ?? String(binding.config.instanceId)} ${label}`;
+      }
+      case "zone_order": {
+        const zone = zones.find((z) => z.id === binding.config.zoneId);
+        const orderKey = String(binding.config.orderKey);
+        const val = binding.config.value;
+        const valueStr = val != null && val !== "" ? ` = ${val}` : "";
+        return `${t("buttonActions.effectType.zone_order")} → ${zone?.name ?? "?"} · ${t(`buttonActions.zoneOrder.${orderKey}`)}${valueStr}`;
       }
       default:
         return binding.effectType;
@@ -270,11 +289,6 @@ function AddEffectForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const zoneMap = new Map(zones.map((z) => [z.id, z.name]));
-  const eqLabel = (eq: { name: string; zoneId: string }) => {
-    const zoneName = zoneMap.get(eq.zoneId);
-    return zoneName ? `${zoneName} — ${eq.name}` : eq.name;
-  };
   const [actionValue, setActionValue] = useState(initial?.actionValue ?? "single");
   const [effectType, setEffectType] = useState<ButtonEffectType>(initial?.effectType ?? "mode_activate");
   const [saving, setSaving] = useState(false);
@@ -291,6 +305,14 @@ function AddEffectForm({
     initial?.effectType === "mode_toggle" ? String(initial.config.modeBId ?? "") : "",
   );
   // equipment_order
+  const initialEqZoneId = (() => {
+    if (initial?.effectType === "equipment_order") {
+      const eq = equipments.find((e) => e.id === initial.config.equipmentId);
+      return eq?.zoneId ?? "";
+    }
+    return "";
+  })();
+  const [eqZoneId, setEqZoneId] = useState(initialEqZoneId);
   const [targetEquipmentId, setTargetEquipmentId] = useState(
     initial?.effectType === "equipment_order" ? String(initial.config.equipmentId ?? "") : "",
   );
@@ -299,6 +321,16 @@ function AddEffectForm({
   );
   const [orderValue, setOrderValue] = useState(
     initial?.effectType === "equipment_order" ? JSON.stringify(initial.config.value ?? "") : "",
+  );
+  // zone_order
+  const [zoZoneId, setZoZoneId] = useState(
+    initial?.effectType === "zone_order" ? String(initial.config.zoneId ?? "") : "",
+  );
+  const [zoOrderKey, setZoOrderKey] = useState(
+    initial?.effectType === "zone_order" ? String(initial.config.orderKey ?? "") : "",
+  );
+  const [zoValue, setZoValue] = useState(
+    initial?.effectType === "zone_order" && initial.config.value != null ? String(initial.config.value) : "",
   );
   // recipe_toggle
   const [instanceId, setInstanceId] = useState(
@@ -314,6 +346,12 @@ function AddEffectForm({
       case "mode_toggle": return !!modeAId && !!modeBId;
       case "equipment_order": return !!targetEquipmentId && !!orderAlias;
       case "recipe_toggle": return !!instanceId;
+      case "zone_order": {
+        if (!zoZoneId || !zoOrderKey) return false;
+        const opt = ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey);
+        if (opt?.parametric && zoValue === "") return false;
+        return true;
+      }
     }
   };
 
@@ -342,6 +380,14 @@ function AddEffectForm({
         case "recipe_toggle":
           config = { instanceId, enabled };
           break;
+        case "zone_order": {
+          const opt = ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey);
+          config = { zoneId: zoZoneId, orderKey: zoOrderKey };
+          if (opt?.parametric && zoValue !== "") {
+            config.value = Number(zoValue);
+          }
+          break;
+        }
       }
       await onSubmit({ actionValue, effectType, config });
     } finally {
@@ -397,6 +443,7 @@ function AddEffectForm({
           <option value="mode_activate">{t("buttonActions.effectType.mode_activate")}</option>
           <option value="mode_toggle">{t("buttonActions.effectType.mode_toggle")}</option>
           <option value="equipment_order">{t("buttonActions.effectType.equipment_order")}</option>
+          <option value="zone_order">{t("buttonActions.effectType.zone_order")}</option>
           <option value="recipe_toggle">{t("buttonActions.effectType.recipe_toggle")}</option>
         </select>
       </div>
@@ -459,6 +506,27 @@ function AddEffectForm({
         <div className="space-y-2">
           <div>
             <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("buttonActions.zone")}
+            </label>
+            <select
+              value={eqZoneId}
+              onChange={(e) => {
+                setEqZoneId(e.target.value);
+                setTargetEquipmentId("");
+                setOrderAlias("");
+                setOrderValue("");
+              }}
+              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+            >
+              <option value="">{t("common.select")}</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>{z.name}</option>
+              ))}
+            </select>
+          </div>
+          {eqZoneId && (
+          <div>
+            <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
               {t("equipments.title")}
             </label>
             <select
@@ -466,7 +534,6 @@ function AddEffectForm({
               onChange={(e) => {
                 const eqId = e.target.value;
                 setTargetEquipmentId(eqId);
-                // Auto-select order + value if equipment has exactly one order binding
                 const eq = equipments.find((x) => x.id === eqId);
                 const orders = eq?.orderBindings ?? [];
                 if (orders.length === 1) {
@@ -480,11 +547,12 @@ function AddEffectForm({
               className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
-              {equipments.filter((eq) => eq.orderBindings.length > 0).map((eq) => (
-                <option key={eq.id} value={eq.id}>{eqLabel(eq)}</option>
+              {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.orderBindings.length > 0).map((eq) => (
+                <option key={eq.id} value={eq.id}>{eq.name}</option>
               ))}
             </select>
           </div>
+          )}
           {selectedEquipment && (
             <>
               {/* Command: hidden if single order (auto-selected), select if 2+ */}
@@ -581,6 +649,61 @@ function AddEffectForm({
               >
                 {t("common.off")}
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {effectType === "zone_order" && (
+        <div className="space-y-2">
+          <div>
+            <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+              {t("buttonActions.zone")}
+            </label>
+            <select
+              value={zoZoneId}
+              onChange={(e) => setZoZoneId(e.target.value)}
+              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+            >
+              <option value="">{t("common.select")}</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>{z.name}</option>
+              ))}
+            </select>
+          </div>
+          {zoZoneId && (
+            <div>
+              <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                {t("buttonActions.zoneOrderLabel")}
+              </label>
+              <select
+                value={zoOrderKey}
+                onChange={(e) => {
+                  setZoOrderKey(e.target.value);
+                  setZoValue("");
+                }}
+                className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              >
+                <option value="">{t("common.select")}</option>
+                {ZONE_ORDER_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {t(`buttonActions.zoneOrder.${opt.key}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {zoOrderKey && ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.parametric && (
+            <div>
+              <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
+                {t("modes.form.actionValuePlaceholder")}
+              </label>
+              <input
+                type="number"
+                value={zoValue}
+                onChange={(e) => setZoValue(e.target.value)}
+                className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              />
             </div>
           )}
         </div>
