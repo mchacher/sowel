@@ -15,6 +15,7 @@ function createTestDb(): Database.Database {
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
     "004_drop_dispatch_config.sql",
+    "005_device_data_enum_values.sql",
   ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", "../../migrations", file),
@@ -385,6 +386,71 @@ describe("DeviceManager", () => {
       const counts = manager.getStatusCounts();
       expect(counts.online).toBe(1);
       expect(counts.unknown).toBe(1);
+    });
+  });
+
+  describe("data enum values", () => {
+    const sampleButton = {
+      ieeeAddress: "0x00158d0001a2b3c6",
+      friendlyName: "remote_4btn",
+      manufacturer: "LoraTap",
+      model: "SS6400ZB",
+      data: [
+        {
+          key: "action",
+          type: "enum" as const,
+          category: "action" as const,
+          enumValues: ["1_single", "1_double", "1_hold", "2_single"],
+        },
+        { key: "battery", type: "number" as const, category: "battery" as const, unit: "%" },
+      ],
+      orders: [],
+      rawExpose: [],
+    };
+
+    it("stores enum_values for data entries", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleButton);
+
+      const device = manager.getAll()[0];
+      const row = db
+        .prepare("SELECT enum_values FROM device_data WHERE device_id = ? AND key = 'action'")
+        .get(device.id) as { enum_values: string | null };
+      expect(row.enum_values).not.toBeNull();
+      expect(JSON.parse(row.enum_values!)).toEqual(["1_single", "1_double", "1_hold", "2_single"]);
+    });
+
+    it("stores null enum_values for non-enum data", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleButton);
+
+      const device = manager.getAll()[0];
+      const row = db
+        .prepare("SELECT enum_values FROM device_data WHERE device_id = ? AND key = 'battery'")
+        .get(device.id) as { enum_values: string | null };
+      expect(row.enum_values).toBeNull();
+    });
+
+    it("updates enum_values on re-discovery", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleButton);
+      const device = manager.getAll()[0];
+
+      const updated = {
+        ...sampleButton,
+        data: [
+          {
+            key: "action",
+            type: "enum" as const,
+            category: "action" as const,
+            enumValues: ["1_single", "1_double"],
+          },
+          { key: "battery", type: "number" as const, category: "battery" as const, unit: "%" },
+        ],
+      };
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", updated);
+
+      const row = db
+        .prepare("SELECT enum_values FROM device_data WHERE device_id = ? AND key = 'action'")
+        .get(device.id) as { enum_values: string | null };
+      expect(JSON.parse(row.enum_values!)).toEqual(["1_single", "1_double"]);
     });
   });
 });

@@ -18,6 +18,7 @@ function createTestDb(): Database.Database {
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
     "004_drop_dispatch_config.sql",
+    "005_device_data_enum_values.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -46,9 +47,9 @@ function seedDevice(
   for (const d of opts.dataKeys ?? []) {
     const id = d.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_data (id, device_id, key, type, category, value)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, deviceId, d.key, d.type ?? "boolean", d.category ?? "generic", d.value ?? null);
+      `INSERT INTO device_data (id, device_id, key, type, category, value, enum_values)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, deviceId, d.key, d.type ?? "boolean", d.category ?? "generic", d.value ?? null, null);
     dataIds.push(id);
   }
 

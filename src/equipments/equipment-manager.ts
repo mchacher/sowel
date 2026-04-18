@@ -182,7 +182,7 @@ export class EquipmentManager {
       getDataBindingsWithValues: this.db.prepare(
         `SELECT db.id, db.equipment_id, db.device_data_id, db.alias, db.historize,
                 dd.device_id, d.name as device_name, dd.key, dd.type, dd.category,
-                dd.value, dd.unit, dd.last_updated, dd.last_changed
+                dd.value, dd.unit, dd.enum_values, dd.last_updated, dd.last_changed
          FROM data_bindings db
          JOIN device_data dd ON db.device_data_id = dd.id
          JOIN devices d ON dd.device_id = d.id
@@ -1026,6 +1026,7 @@ interface DataBindingJoinRow {
   category: string;
   value: string | null;
   unit: string | null;
+  enum_values: string | null;
   last_updated: string | null;
   last_changed: string | null;
 }
@@ -1069,6 +1070,14 @@ function rowToDataBindingWithValue(row: DataBindingJoinRow): DataBindingWithValu
       value = row.value;
     }
   }
+  let enumValues: string[] | undefined;
+  if (row.enum_values) {
+    try {
+      enumValues = JSON.parse(row.enum_values);
+    } catch {
+      enumValues = undefined;
+    }
+  }
   return {
     id: row.id,
     equipmentId: row.equipment_id,
@@ -1082,6 +1091,7 @@ function rowToDataBindingWithValue(row: DataBindingJoinRow): DataBindingWithValu
     category: row.category as DataCategory,
     value,
     unit: row.unit ?? undefined,
+    enumValues,
     lastUpdated: toISOUtc(row.last_updated),
     lastChanged: toISOUtc(row.last_changed),
   };

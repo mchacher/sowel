@@ -17,6 +17,7 @@ function createTestDb(): Database.Database {
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
     "004_drop_dispatch_config.sql",
+    "005_device_data_enum_values.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -31,7 +32,14 @@ function seedDevice(
   opts: {
     deviceId?: string;
     name?: string;
-    dataKeys?: { id?: string; key: string; type?: string; category?: string; value?: string }[];
+    dataKeys?: {
+      id?: string;
+      key: string;
+      type?: string;
+      category?: string;
+      value?: string;
+      enumValues?: string[];
+    }[];
     orderKeys?: {
       id?: string;
       key: string;
@@ -52,9 +60,17 @@ function seedDevice(
   for (const d of opts.dataKeys ?? []) {
     const id = d.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_data (id, device_id, key, type, category, value)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(id, deviceId, d.key, d.type ?? "boolean", d.category ?? "generic", d.value ?? null);
+      `INSERT INTO device_data (id, device_id, key, type, category, value, enum_values)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      deviceId,
+      d.key,
+      d.type ?? "boolean",
+      d.category ?? "generic",
+      d.value ?? null,
+      d.enumValues ? JSON.stringify(d.enumValues) : null,
+    );
     dataIds.push(id);
   }
 
@@ -695,6 +711,41 @@ describe("EquipmentManager", () => {
     it("returns 0 for empty zone", () => {
       const zone = zoneManager.create({ name: "Salon" });
       expect(manager.countByZone(zone.id)).toBe(0);
+    });
+  });
+
+  describe("data binding enum values", () => {
+    it("includes enumValues in data binding response", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Remote", type: "button", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [
+          {
+            key: "action",
+            type: "enum",
+            category: "action",
+            enumValues: ["1_single", "1_double", "2_single"],
+          },
+        ],
+      });
+      manager.addDataBinding(eq.id, dataIds[0], "action");
+
+      const detail = manager.getByIdWithDetails(eq.id);
+      const actionBinding = detail?.dataBindings.find((b) => b.alias === "action");
+      expect(actionBinding?.enumValues).toEqual(["1_single", "1_double", "2_single"]);
+    });
+
+    it("returns undefined enumValues for non-enum data", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Remote", type: "button", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [{ key: "battery", type: "number", category: "battery" }],
+      });
+      manager.addDataBinding(eq.id, dataIds[0], "battery");
+
+      const detail = manager.getByIdWithDetails(eq.id);
+      const batteryBinding = detail?.dataBindings.find((b) => b.alias === "battery");
+      expect(batteryBinding?.enumValues).toBeUndefined();
     });
   });
 });
