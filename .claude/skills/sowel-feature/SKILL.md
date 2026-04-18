@@ -81,15 +81,45 @@ Convention: `XXX-<feature-name>` — sequential 3-digit number + kebab-case name
 
 ### 2.2 Write Spec Files
 
-| File              | Content                                                |
-| ----------------- | ------------------------------------------------------ |
-| `spec.md`         | Requirements, acceptance criteria, scope, edge cases   |
-| `architecture.md` | Data model, event flow, API contracts, file changes    |
-| `plan.md`         | Implementation steps, task breakdown, testing strategy |
+| File              | Content                                              |
+| ----------------- | ---------------------------------------------------- |
+| `spec.md`         | Requirements, acceptance criteria, scope, edge cases |
+| `architecture.md` | Data model, event flow, API contracts, file changes  |
+| `plan.md`         | Implementation steps, task breakdown, **test plan**  |
 
 Use the templates in [reference.md](reference.md).
 
-### 2.3 Present Summary to User
+### 2.3 Write Test Plan (in `plan.md`)
+
+The test plan is written BEFORE implementation, as a dedicated section in `plan.md`. It forces you to think about what to verify before writing code.
+
+```markdown
+## Test Plan
+
+### Modules to test
+
+- List each module that contains new or changed business logic
+
+### Scenarios per module
+
+For each module, list:
+
+- **Nominal cases**: the happy path works as expected
+- **Edge cases**: null data, empty inputs, boundary values
+- **Retro-compat**: existing behavior is preserved (if refactoring)
+
+### Example
+
+| Module            | Scenario                           | Expected                                                 |
+| ----------------- | ---------------------------------- | -------------------------------------------------------- |
+| equipment-manager | Zone order dispatches to v2 plugin | executeOrder called with (device, orderKey, value)       |
+| equipment-manager | Zone order dispatches to v1 plugin | executeOrder called with (device, dispatchConfig, value) |
+| equipment-manager | Plugin not connected               | Throws "not connected" error                             |
+```
+
+**Do NOT skip this step.** Every feature must have a test plan before implementation begins.
+
+### 2.4 Present Summary to User
 
 After writing the spec, present a summary:
 
@@ -101,6 +131,7 @@ After writing the spec, present a summary:
 **Data Model**: [New tables/fields]
 **API**: [New endpoints]
 **UI**: [New/changed views]
+**Tests**: [Modules to test + number of scenarios]
 
 Voulez-vous que j'implémente cette feature ?
 ```
@@ -136,15 +167,17 @@ Follow this strict order to avoid broken dependencies:
 7. **WebSocket** — broadcast new events
 8. **UI** — stores, components, pages
 
-### 3.4 Tests (MANDATORY)
+### 3.4 Tests (MANDATORY — never skip)
 
-Write tests for new domain logic, following existing test patterns in the codebase:
+Implement the test plan written in Phase 2.3. Every scenario from the plan must have a corresponding test.
 
+- **Follow the plan**: implement each scenario listed in `specs/XXX/plan.md` test plan
 - **Look at existing tests first**: find `*.test.ts` files in the same domain directory and follow the same patterns (mocking strategy, test structure, assertions)
 - **What to test**: managers, evaluators, aggregators, parsers — anything with business logic
 - **What NOT to test**: simple CRUD wrappers, direct DB queries, UI components (no React tests in this project)
 - **Test file location**: same directory as the source file, named `<module>.test.ts`
 - **Framework**: Vitest (already configured)
+- **Verify coverage**: after writing tests, check that every scenario from the plan is covered. If a scenario is missing, add it before proceeding.
 
 ```bash
 # Run a specific test file during development
