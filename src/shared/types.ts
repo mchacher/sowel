@@ -109,7 +109,7 @@ export interface DeviceOrder {
   key: string;
   type: DataType;
   category?: OrderCategory;
-  dispatchConfig?: Record<string, unknown>;
+
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -279,7 +279,7 @@ export interface OrderBindingWithDetails extends OrderBinding {
   key: string;
   type: DataType;
   category?: OrderCategory;
-  dispatchConfig?: Record<string, unknown>;
+
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -729,7 +729,6 @@ export interface PluginManifest {
   author?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
-  apiVersion?: number; // 1 (default) = dispatchConfig, 2 = orderKey
 }
 
 /** Raw package data from DB — no runtime info */

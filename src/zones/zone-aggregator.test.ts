@@ -17,6 +17,7 @@ function createTestDb(): Database.Database {
     "001_initial.sql",
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
+    "004_drop_dispatch_config.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -55,17 +56,9 @@ function seedDevice(
   for (const o of opts.orderKeys ?? []) {
     const id = o.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key, dispatch_config)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      id,
-      deviceId,
-      o.key,
-      o.type ?? "boolean",
-      `z2m/${name}/set`,
-      o.payloadKey ?? o.key,
-      JSON.stringify({ topic: `z2m/${name}/set`, payloadKey: o.payloadKey ?? o.key }),
-    );
+      `INSERT INTO device_orders (id, device_id, key, type)
+       VALUES (?, ?, ?, ?)`,
+    ).run(id, deviceId, o.key, o.type ?? "boolean");
     orderIds.push(id);
   }
 
