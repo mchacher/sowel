@@ -55,9 +55,9 @@
     "icon": "Zap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-energy",
-    "version": "1.1.1",
+    "version": "2.0.0",
     "tags": ["legrand", "energy", "consumption", "solar", "production"],
-    "sowelVersion": ">=0.10.0"
+    "sowelVersion": ">=1.2.9"
   },
   {
     "id": "legrand_control",
