@@ -19,9 +19,9 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-lora2mqtt",
-    "version": "1.2.0",
+    "version": "2.0.0",
     "tags": ["lora", "mqtt", "iot", "sensors"],
-    "sowelVersion": ">=0.10.0"
+    "sowelVersion": ">=1.2.8"
   },
   {
     "id": "panasonic_cc",
