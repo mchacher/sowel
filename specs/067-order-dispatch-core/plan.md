@@ -9,7 +9,7 @@
 - [ ] 1.5 Update `DeviceManager.upsertFromDiscovery` — handle null dispatchConfig
 - [ ] 1.6 Update types: `DeviceOrder.dispatchConfig` becomes optional, `OrderBindingWithDetails.dispatchConfig` becomes optional
 - [ ] 1.7 Update `PluginLoader` — read `apiVersion` from manifest and pass to plugin
-- [ ] 1.8 Update tests — adjust existing equipment-manager tests for new dispatch flow
+- [ ] 1.8 Write tests (see Test Plan below)
 - [ ] 1.9 TypeScript compiles, all tests pass, lint clean
 
 ## Phase 2: LoRa2MQTT plugin migration
@@ -29,8 +29,30 @@
 - [ ] 3.4 Verify all other plugins (v1) still work unchanged
 - [ ] 3.5 Verify z2m shutter commands still work (v1 retro-compat)
 
-## Testing Strategy
+---
 
-- Existing equipment-manager tests cover the dispatch flow — update them to test both v1 and v2 paths
-- No new test files needed — this is a refactoring of existing behavior
-- Manual validation on prod is critical (lora2mqtt + z2m retro-compat)
+## Test Plan
+
+### Modules to test
+
+- `equipment-manager` — order dispatch routing (v1 vs v2)
+- `integration-registry` — dispatchOrder with apiVersion detection
+- `device-manager` — upsertFromDiscovery with optional dispatchConfig
+
+### Scenarios
+
+| Module                   | Scenario                                                | Expected                                                     |
+| ------------------------ | ------------------------------------------------------- | ------------------------------------------------------------ |
+| **equipment-manager**    | Zone order dispatches to v2 plugin (apiVersion=2)       | `executeOrder` called with `(device, orderKey, value)`       |
+| **equipment-manager**    | Zone order dispatches to v1 plugin (no apiVersion)      | `executeOrder` called with `(device, dispatchConfig, value)` |
+| **equipment-manager**    | Single equipment order to v2 plugin                     | `executeOrder` called with `(device, orderKey, value)`       |
+| **equipment-manager**    | Single equipment order to v1 plugin                     | `executeOrder` called with `(device, dispatchConfig, value)` |
+| **equipment-manager**    | Plugin not connected                                    | Throws "not connected" error                                 |
+| **equipment-manager**    | Order binding with null dispatch_config (v1 plugin)     | `dispatchConfig` passed as `{}` (empty object)               |
+| **integration-registry** | dispatchOrder to v2 plugin                              | Forwards `orderKey` string, not dispatchConfig               |
+| **integration-registry** | dispatchOrder to v1 plugin                              | Forwards `dispatchConfig` object, not orderKey               |
+| **integration-registry** | dispatchOrder to unknown integration                    | Throws "not found" error                                     |
+| **device-manager**       | upsertFromDiscovery with dispatchConfig (v1)            | Stores JSON in dispatch_config column                        |
+| **device-manager**       | upsertFromDiscovery without dispatchConfig (v2)         | Stores null in dispatch_config column                        |
+| **device-manager**       | upsertFromDiscovery updates existing order (v2 over v1) | dispatch_config set to null, other fields preserved          |
+| **device-manager**       | upsertFromDiscovery updates existing order (v1 over v2) | dispatch_config restored from v1 discovery                   |
