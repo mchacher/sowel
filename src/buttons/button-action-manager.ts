@@ -4,6 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ModeManager } from "../modes/mode-manager.js";
 import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
+import type { ZoneManager } from "../zones/zone-manager.js";
 import type { Logger } from "../core/logger.js";
 import { toISOUtc } from "../core/database.js";
 import type { ButtonActionBinding, ButtonEffectType } from "../shared/types.js";
@@ -19,6 +20,7 @@ export class ButtonActionManager {
     private readonly equipmentManager: EquipmentManager,
     private readonly modeManager: ModeManager,
     private readonly recipeManager: RecipeManager,
+    private readonly zoneManager: ZoneManager,
     logger: Logger,
   ) {
     this.logger = logger.child({ module: "button-action-manager" });
@@ -209,6 +211,17 @@ export class ButtonActionManager {
         } else {
           this.recipeManager.disableInstance(instanceId);
         }
+        break;
+      }
+
+      case "zone_order": {
+        const zoneId = config.zoneId as string;
+        const orderKey = config.orderKey as string;
+        const value = config.value;
+        const zoneIds = this.zoneManager.getDescendantIds(zoneId);
+        this.equipmentManager.executeZoneOrder(zoneIds, orderKey, value).catch((err) => {
+          this.logger.error({ err, zoneId, orderKey }, "Button zone order dispatch failed");
+        });
         break;
       }
     }

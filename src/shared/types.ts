@@ -448,7 +448,8 @@ export type ButtonEffectType =
   | "mode_activate"
   | "mode_toggle"
   | "equipment_order"
-  | "recipe_toggle";
+  | "recipe_toggle"
+  | "zone_order";
 
 export interface ButtonActionBinding {
   id: string;
