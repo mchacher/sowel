@@ -34,6 +34,7 @@ export interface DiscoveredDevice {
     type: DataType;
     category: DataCategory;
     unit?: string;
+    enumValues?: string[];
   }[];
   orders: {
     key: string;
@@ -102,11 +103,11 @@ export class DeviceManager {
         "SELECT * FROM device_data WHERE device_id = ? AND key = ?",
       ),
       insertDeviceData: this.db.prepare(
-        `INSERT INTO device_data (id, device_id, key, type, category, unit)
-         VALUES (@id, @deviceId, @key, @type, @category, @unit)`,
+        `INSERT INTO device_data (id, device_id, key, type, category, unit, enum_values)
+         VALUES (@id, @deviceId, @key, @type, @category, @unit, @enumValues)`,
       ),
       updateDeviceDataDef: this.db.prepare(
-        "UPDATE device_data SET type = ?, category = ?, unit = ? WHERE id = ?",
+        "UPDATE device_data SET type = ?, category = ?, unit = ?, enum_values = ? WHERE id = ?",
       ),
       updateDeviceDataValue: this.db.prepare(
         "UPDATE device_data SET value = ?, last_updated = datetime('now'), last_changed = CASE WHEN value IS NOT ? OR category = 'action' THEN datetime('now') ELSE last_changed END WHERE id = ?",
@@ -181,8 +182,15 @@ export class DeviceManager {
         const existingData = this.stmts.findDeviceDataByDeviceAndKey.get(deviceId, d.key) as
           | { id: string }
           | undefined;
+        const enumJson = d.enumValues ? JSON.stringify(d.enumValues) : null;
         if (existingData) {
-          this.stmts.updateDeviceDataDef.run(d.type, d.category, d.unit ?? null, existingData.id);
+          this.stmts.updateDeviceDataDef.run(
+            d.type,
+            d.category,
+            d.unit ?? null,
+            enumJson,
+            existingData.id,
+          );
         } else {
           this.stmts.insertDeviceData.run({
             id: deterministicId(deviceId, "data", d.key),
@@ -191,6 +199,7 @@ export class DeviceManager {
             type: d.type,
             category: d.category,
             unit: d.unit ?? null,
+            enumValues: enumJson,
           });
         }
       }
@@ -386,6 +395,7 @@ export class DeviceManager {
           type: dataType,
           category,
           unit: unit ?? null,
+          enumValues: null,
         });
         this.logger.info(
           { deviceId: device.id, key, category },
@@ -623,6 +633,7 @@ interface DeviceDataRow {
   category: string;
   value: string | null;
   unit: string | null;
+  enum_values: string | null;
   last_updated: string | null;
 }
 

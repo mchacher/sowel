@@ -8,7 +8,7 @@ import { useRecipes } from "../../store/useRecipes";
 import { useZones } from "../../store/useZones";
 import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "../../types";
 
-const BUTTON_ACTIONS = ["single", "double", "hold"] as const;
+const DEFAULT_BUTTON_ACTIONS = ["single", "double", "hold"];
 
 const ZONE_ORDER_OPTIONS: { key: string; group: string; parametric: boolean }[] = [
   { key: "allLightsOn", group: "lights", parametric: false },
@@ -47,6 +47,11 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
   // Flatten zone tree for name lookup
   const zones = flattenZones(zoneTree);
   const instances = useRecipes((s) => s.instances);
+
+  // Derive action values from the equipment's "action" data binding enum values
+  const currentEquipment = equipments.find((e) => e.id === equipmentId);
+  const actionBinding = currentEquipment?.dataBindings.find((b) => b.alias === "action" || b.category === "action");
+  const actionValues = actionBinding?.enumValues ?? DEFAULT_BUTTON_ACTIONS;
 
   const [bindings, setBindings] = useState<ButtonActionBinding[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -158,10 +163,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
         <p className="text-[13px] text-text-tertiary">{t("buttonActions.noEffects")}</p>
       )}
 
-      {BUTTON_ACTIONS.map((actionValue) => {
-        const actionBindings = grouped.get(actionValue);
-        if (!actionBindings) return null;
-        return (
+      {[...grouped.entries()].map(([actionValue, actionBindings]) => (
           <div key={actionValue} className="mb-3">
             <div className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1.5">
               {getActionLabel(actionValue)}
@@ -175,56 +177,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
                     equipments={equipments}
                     zones={zones}
                     instances={instances}
-                    initial={binding}
-                    onSubmit={async (data) => handleEdit(binding.id, data)}
-                    onCancel={() => setEditingId(null)}
-                  />
-                ) : (
-                  <div
-                    key={binding.id}
-                    className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
-                  >
-                    <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
-                    <span className="text-[12px] text-text flex-1 truncate">
-                      {getEffectLabel(binding)}
-                    </span>
-                    <button
-                      onClick={() => setEditingId(binding.id)}
-                      className="p-1 text-text-tertiary hover:text-primary transition-colors"
-                    >
-                      <Pencil size={12} strokeWidth={1.5} />
-                    </button>
-                    <button
-                      onClick={() => handleRemove(binding.id)}
-                      className="p-1 text-text-tertiary hover:text-error transition-colors"
-                    >
-                      <Trash2 size={12} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Show bindings with non-standard action values */}
-      {[...grouped.entries()]
-        .filter(([key]) => !BUTTON_ACTIONS.includes(key as typeof BUTTON_ACTIONS[number]))
-        .map(([actionValue, actionBindings]) => (
-          <div key={actionValue} className="mb-3">
-            <div className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1.5">
-              {actionValue}
-            </div>
-            <div className="space-y-1.5">
-              {actionBindings.map((binding) =>
-                editingId === binding.id ? (
-                  <AddEffectForm
-                    key={binding.id}
-                    modes={modes}
-                    equipments={equipments}
-                    zones={zones}
-                    instances={instances}
+                    actionValues={actionValues}
                     initial={binding}
                     onSubmit={async (data) => handleEdit(binding.id, data)}
                     onCancel={() => setEditingId(null)}
@@ -263,6 +216,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
           equipments={equipments}
           zones={zones}
           instances={instances}
+          actionValues={actionValues}
           onSubmit={handleAdd}
           onCancel={() => setShowAddForm(false)}
         />
@@ -276,6 +230,7 @@ function AddEffectForm({
   equipments,
   zones,
   instances,
+  actionValues,
   initial,
   onSubmit,
   onCancel,
@@ -284,14 +239,21 @@ function AddEffectForm({
   equipments: { id: string; name: string; type: string; zoneId: string; orderBindings: { alias: string; type?: string; enumValues?: string[]; min?: number; max?: number }[] }[];
   zones: { id: string; name: string }[];
   instances: { id: string; recipeId: string }[];
+  actionValues: string[];
   initial?: ButtonActionBinding;
   onSubmit: (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [actionValue, setActionValue] = useState(initial?.actionValue ?? "single");
+  const [actionValue, setActionValue] = useState(initial?.actionValue ?? actionValues[0] ?? "single");
   const [effectType, setEffectType] = useState<ButtonEffectType>(initial?.effectType ?? "mode_activate");
   const [saving, setSaving] = useState(false);
+
+  const getActionLabel = (val: string): string => {
+    const key = `buttonActions.action.${val}`;
+    const translated = t(key);
+    return translated !== key ? translated : val;
+  };
 
   // mode_activate
   const [modeId, setModeId] = useState(
@@ -412,22 +374,34 @@ function AddEffectForm({
 
   return (
     <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3 space-y-3 mt-3">
-      {/* Action value (single / double / hold) */}
+      {/* Action value */}
       <div>
         <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
           {t("buttonActions.actionType")}
         </label>
-        <div className="inline-flex">
-          {BUTTON_ACTIONS.map((action, i) => (
-            <button
-              key={action}
-              onClick={() => setActionValue(action)}
-              className={seg(actionValue === action, i === 0 ? "first" : i === BUTTON_ACTIONS.length - 1 ? "last" : "mid")}
-            >
-              {t(`buttonActions.action.${action}`)}
-            </button>
-          ))}
-        </div>
+        {actionValues.length <= 4 ? (
+          <div className="inline-flex flex-wrap gap-y-1">
+            {actionValues.map((action, i) => (
+              <button
+                key={action}
+                onClick={() => setActionValue(action)}
+                className={seg(actionValue === action, i === 0 ? "first" : i === actionValues.length - 1 ? "last" : "mid")}
+              >
+                {getActionLabel(action)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <select
+            value={actionValue}
+            onChange={(e) => setActionValue(e.target.value)}
+            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+          >
+            {actionValues.map((action) => (
+              <option key={action} value={action}>{getActionLabel(action)}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Effect type selector */}

@@ -16,6 +16,7 @@ function createTestDb(): Database.Database {
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
     "004_drop_dispatch_config.sql",
+    "005_device_data_enum_values.sql",
   ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),

@@ -268,6 +268,7 @@ export interface DataBindingWithValue extends DataBinding {
   category: DataCategory;
   value: unknown;
   unit?: string;
+  enumValues?: string[];
   lastUpdated: string | null;
   lastChanged: string | null;
   historize?: number | null;
