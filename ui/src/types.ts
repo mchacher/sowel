@@ -32,6 +32,14 @@ export type DataCategory =
   | "wind"
   | "action"
   | "gate_state"
+  | "weather_condition"
+  | "uv"
+  | "solar_radiation"
+  | "setpoint"
+  | "media_volume"
+  | "media_mute"
+  | "media_input"
+  | "appliance_state"
   | "generic";
 
 // ============================================================
