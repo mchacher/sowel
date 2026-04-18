@@ -115,9 +115,9 @@
     "icon": "Smartphone",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-smartthings",
-    "version": "0.8.0",
+    "version": "2.0.0",
     "tags": ["samsung", "smartthings", "tv", "washer", "appliance"],
-    "sowelVersion": ">=0.10.0"
+    "sowelVersion": ">=1.2.11"
   },
   {
     "id": "switch-light",
