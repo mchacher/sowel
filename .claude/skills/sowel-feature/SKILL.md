@@ -62,7 +62,13 @@ Ask user if they have any other inputs. If yes, ask more questions.
 
 Search the codebase for similar patterns before designing the solution.
 
-> **GATE 1**: Requirements are crystal clear. You can describe the feature without any open questions. Do NOT proceed until this is true.
+> **GATE 1 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] 1.1 Done — I read CLAUDE.md, architecture.md, specs-index.md, types.ts, constants.ts
+> - [ ] 1.2 Done — I asked clarifying questions and got answers (or requirements were already explicit)
+> - [ ] 1.3 Done — I searched for similar patterns in the codebase
+>
+> Do NOT proceed until ALL boxes can be checked.
 
 ---
 
@@ -136,7 +142,17 @@ After writing the spec, present a summary:
 Voulez-vous que j'implémente cette feature ?
 ```
 
-> **GATE 2**: User has explicitly approved the spec ("oui", "yes", "go"). Do NOT proceed to implementation without explicit approval. If user has questions → update spec and re-present.
+> **GATE 2 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] 2.1 Done — Spec folder exists in `specs/XXX-name/`
+> - [ ] 2.2 Done — `spec.md` written (requirements, acceptance criteria, scope)
+> - [ ] 2.2 Done — `architecture.md` written (data model, file changes, event flow)
+> - [ ] 2.2 Done — `plan.md` written (implementation steps, task breakdown)
+> - [ ] 2.3 Done — Test plan written in `plan.md` (modules, scenarios table)
+> - [ ] 2.4 Done — Summary presented to user in the exact format
+> - [ ] User has explicitly approved ("oui", "yes", "go")
+>
+> Do NOT proceed to implementation without explicit approval. If user has questions → update spec and re-present.
 
 ---
 
@@ -194,7 +210,12 @@ All implementation rules are defined in `CLAUDE.md`. Key non-negotiables:
 - All handlers wrapped in try/catch
 - Tailwind only, Lucide icons
 
-> **GATE 3**: Code is written on a feature branch (NOT main). Verify with `git branch --show-current`.
+> **GATE 3 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] 3.1 Done — Feature branch created (NOT main). Verify: `git branch --show-current`
+> - [ ] 3.2 Done — Implementation follows the order (types → DB → core → logic → tests → API → WS → UI)
+> - [ ] 3.4 Done — Every scenario from the test plan has a corresponding test
+> - [ ] 3.3 Done — All rules respected (strict TS, no any, pino logger, try/catch)
 
 ---
 
@@ -227,7 +248,14 @@ npx eslint src/ --ext .ts
 
 **ZERO errors required** (warnings are acceptable).
 
-> **GATE 4**: TypeScript compiles with zero errors AND all tests pass AND lint has zero errors. Do NOT proceed if any check fails. Fix the issues first.
+> **GATE 4 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] 4.1 Done — `npx tsc --noEmit` passes with ZERO errors
+> - [ ] 4.1 Done — `cd ui && npx tsc -b --noEmit` passes (if UI changes)
+> - [ ] 4.2 Done — `npx vitest run` — ALL tests pass
+> - [ ] 4.3 Done — `npx eslint src/ --ext .ts` — ZERO errors
+>
+> Do NOT proceed if any check fails. Fix the issues first.
 
 ---
 
@@ -270,7 +298,13 @@ gh pr create --title "feat: description" --body "..."
 
 PR body must include: Summary, Changes, Test plan (with checkboxes for typecheck, tests, manual verification).
 
-> **GATE 5**: PR is created and URL is shared with user. All acceptance criteria in `specs/XXX/spec.md` are checked `[x]`. All tasks in `specs/XXX/plan.md` are checked `[x]`. Documentation is updated if applicable.
+> **GATE 5 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] 5.1 Done — Specs updated: acceptance criteria `[x]` in `spec.md`, tasks `[x]` in `plan.md`
+> - [ ] 5.1 Done — Documentation updated (if applicable)
+> - [ ] 5.2 Done — Changes committed on feature branch (conventional commit, no Co-Authored-By)
+> - [ ] 5.3 Done — Branch pushed, PR created with Summary + Changes + Test plan
+> - [ ] PR URL shared with user
 
 ---
 
@@ -298,7 +332,11 @@ git checkout main
 git pull
 ```
 
-> **GATE 6**: User has explicitly approved the merge. PR is merged, branch is deleted.
+> **GATE 6 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] User has explicitly approved the merge ("oui", "merge", "go")
+> - [ ] PR merged, branch deleted
+> - [ ] On main branch, pulled latest
 
 ---
 
