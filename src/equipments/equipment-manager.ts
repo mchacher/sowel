@@ -722,32 +722,37 @@ export class EquipmentManager {
   // Zone-level order execution
   // ============================================================
 
-  /** Valid zone order keys and their mapping to equipment types + order alias + value. */
+  /**
+   * Zone order definitions.
+   * `category` is used to find the correct order binding on each equipment
+   * by matching the data binding with that category → using its alias.
+   * This is integration-agnostic: works for "state" (z2m), "on" (Legrand), etc.
+   */
   private static readonly ZONE_ORDERS: Record<
     string,
-    { types: string[]; alias: string; value: unknown | "FROM_BODY" }
+    { types: string[]; category: string; value: unknown | "FROM_BODY" }
   > = {
     allLightsOn: {
       types: ["light_onoff", "light_dimmable", "light_color"],
-      alias: "state",
+      category: "light_state",
       value: "ON",
     },
     allLightsOff: {
       types: ["light_onoff", "light_dimmable", "light_color"],
-      alias: "state",
+      category: "light_state",
       value: "OFF",
     },
     allLightsBrightness: {
       types: ["light_dimmable", "light_color"],
-      alias: "brightness",
+      category: "light_brightness",
       value: "FROM_BODY",
     },
-    allShuttersOpen: { types: ["shutter"], alias: "state", value: "OPEN" },
-    allShuttersStop: { types: ["shutter"], alias: "state", value: "STOP" },
-    allShuttersClose: { types: ["shutter"], alias: "state", value: "CLOSE" },
-    allThermostatsPowerOn: { types: ["thermostat"], alias: "power", value: true },
-    allThermostatsPowerOff: { types: ["thermostat"], alias: "power", value: false },
-    allThermostatsSetpoint: { types: ["thermostat"], alias: "setpoint", value: "FROM_BODY" },
+    allShuttersOpen: { types: ["shutter"], category: "shutter_position", value: "OPEN" },
+    allShuttersStop: { types: ["shutter"], category: "shutter_position", value: "STOP" },
+    allShuttersClose: { types: ["shutter"], category: "shutter_position", value: "CLOSE" },
+    allThermostatsPowerOn: { types: ["thermostat"], category: "power", value: true },
+    allThermostatsPowerOff: { types: ["thermostat"], category: "power", value: false },
+    allThermostatsSetpoint: { types: ["thermostat"], category: "temperature", value: "FROM_BODY" },
   };
 
   static readonly VALID_ZONE_ORDER_KEYS = Object.keys(EquipmentManager.ZONE_ORDERS);
@@ -784,21 +789,33 @@ export class EquipmentManager {
         if (!eq.enabled) continue;
         if (!mapping.types.includes(eq.type)) continue;
 
+        // Resolve the order alias from the equipment's data bindings by category
+        const details = this.getByIdWithDetails(eq.id);
+        const dataBinding = details?.dataBindings.find((b) => b.category === mapping.category);
+        if (!dataBinding) {
+          this.logger.debug(
+            { equipmentId: eq.id, equipmentName: eq.name, category: mapping.category },
+            "Zone order skipped — no data binding with matching category",
+          );
+          continue;
+        }
+        const alias = dataBinding.alias;
+
         try {
-          const result = await this.executeOrder(eq.id, mapping.alias, resolvedValue);
+          const result = await this.executeOrder(eq.id, alias, resolvedValue);
           if (result.success) {
             executed++;
           } else {
             errors++;
             this.logger.warn(
-              { equipmentId: eq.id, equipmentName: eq.name, orderKey, error: result.error },
+              { equipmentId: eq.id, equipmentName: eq.name, orderKey, alias, error: result.error },
               "Zone order dispatch failed for equipment",
             );
           }
         } catch (err) {
           errors++;
           this.logger.warn(
-            { err, equipmentId: eq.id, equipmentName: eq.name, orderKey },
+            { err, equipmentId: eq.id, equipmentName: eq.name, orderKey, alias },
             "Zone order failed for equipment",
           );
         }
