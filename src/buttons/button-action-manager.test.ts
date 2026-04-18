@@ -9,7 +9,11 @@ import { createLogger } from "../core/logger.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of ["001_initial.sql"]) {
+  for (const file of [
+    "001_initial.sql",
+    "002_mqtt_publisher_on_change_only.sql",
+    "003_device_order_category.sql",
+  ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),
       "utf-8",

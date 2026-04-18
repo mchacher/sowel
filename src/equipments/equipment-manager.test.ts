@@ -12,9 +12,13 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
+  for (const file of [
+    "001_initial.sql",
+    "002_mqtt_publisher_on_change_only.sql",
+    "003_device_order_category.sql",
+  ]) {
+    db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
+  }
   return db;
 }
 
@@ -31,6 +35,7 @@ function seedDevice(
       id?: string;
       key: string;
       type?: string;
+      category?: string;
       payloadKey?: string;
       enumValues?: string[];
     }[];
@@ -57,13 +62,14 @@ function seedDevice(
   for (const o of opts.orderKeys ?? []) {
     const id = o.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, mqtt_set_topic, payload_key, dispatch_config, enum_values)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO device_orders (id, device_id, key, type, category, mqtt_set_topic, payload_key, dispatch_config, enum_values)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       deviceId,
       o.key,
       o.type ?? "boolean",
+      o.category ?? null,
       `z2m/${name}/set`,
       o.payloadKey ?? o.key,
       JSON.stringify({ topic: `z2m/${name}/set`, payloadKey: o.payloadKey ?? o.key }),
@@ -617,6 +623,68 @@ describe("EquipmentManager", () => {
       // Should not throw — dispatchConfig defaults to {}
       await manager.executeOrder(eq.id, "state", "ON");
       expect(mockPublished).toHaveLength(1);
+    });
+  });
+
+  // ============================================================
+  // Zone orders with order categories
+  // ============================================================
+
+  describe("zone orders with order categories", () => {
+    it("finds order binding by order category (light_toggle)", async () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "ZLight",
+        orderKeys: [{ key: "state", category: "light_toggle", enumValues: ["ON", "OFF"] }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      const result = await manager.executeZoneOrder([zone.id], "allLightsOn");
+      expect(result.executed).toBe(1);
+      expect(result.errors).toBe(0);
+      expect(mockPublished).toHaveLength(1);
+    });
+
+    it("finds order binding by order category (shutter_move)", async () => {
+      const zone = zoneManager.create({ name: "Bureau" });
+      const eq = manager.create({ name: "Volet", type: "shutter", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "ZShutter",
+        orderKeys: [
+          { key: "position", category: "set_shutter_position" },
+          { key: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "position");
+      manager.addOrderBinding(eq.id, orderIds[1], "state");
+
+      const result = await manager.executeZoneOrder([zone.id], "allShuttersOpen");
+      expect(result.executed).toBe(1);
+      expect(mockPublished).toHaveLength(1);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "OPEN" });
+    });
+
+    it("falls back to brute-force when no order category", async () => {
+      const zone = zoneManager.create({ name: "Old" });
+      const eq = manager.create({ name: "Light", type: "light_onoff", zoneId: zone.id });
+      // No category on order — old plugin style
+      const { orderIds } = seedDevice(db, {
+        name: "OldLight",
+        orderKeys: [{ key: "state" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      const result = await manager.executeZoneOrder([zone.id], "allLightsOn");
+      expect(result.executed).toBe(1);
+    });
+
+    it("skips equipment without matching order category or binding", async () => {
+      const zone = zoneManager.create({ name: "Empty" });
+      manager.create({ name: "Sensor", type: "light_onoff", zoneId: zone.id });
+      // No order bindings at all
+      const result = await manager.executeZoneOrder([zone.id], "allLightsOn");
+      expect(result.executed).toBe(0);
     });
   });
 

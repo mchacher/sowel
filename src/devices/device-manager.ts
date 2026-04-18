@@ -37,6 +37,7 @@ export interface DiscoveredDevice {
   orders: {
     key: string;
     type: DataType;
+    category?: string;
     dispatchConfig?: Record<string, unknown>;
     min?: number;
     max?: number;
@@ -116,11 +117,11 @@ export class DeviceManager {
         "SELECT * FROM device_orders WHERE device_id = ? AND key = ?",
       ),
       insertDeviceOrder: this.db.prepare(
-        `INSERT INTO device_orders (id, device_id, key, type, dispatch_config, min_value, max_value, enum_values, unit)
-         VALUES (@id, @deviceId, @key, @type, @dispatchConfig, @min, @max, @enumValues, @unit)`,
+        `INSERT INTO device_orders (id, device_id, key, type, category, dispatch_config, min_value, max_value, enum_values, unit)
+         VALUES (@id, @deviceId, @key, @type, @category, @dispatchConfig, @min, @max, @enumValues, @unit)`,
       ),
       updateDeviceOrderDef: this.db.prepare(
-        "UPDATE device_orders SET type = ?, dispatch_config = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
+        "UPDATE device_orders SET type = ?, category = ?, dispatch_config = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
       ),
       deleteDeviceOrderById: this.db.prepare("DELETE FROM device_orders WHERE id = ?"),
       getDeviceOrderIds: this.db.prepare("SELECT id, key FROM device_orders WHERE device_id = ?"),
@@ -213,6 +214,7 @@ export class DeviceManager {
         if (existingOrder) {
           this.stmts.updateDeviceOrderDef.run(
             o.type,
+            o.category ?? null,
             o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : "{}",
             o.min ?? null,
             o.max ?? null,
@@ -226,6 +228,7 @@ export class DeviceManager {
             deviceId,
             key: o.key,
             type: o.type,
+            category: o.category ?? null,
             dispatchConfig: o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : "{}",
             min: o.min ?? null,
             max: o.max ?? null,
