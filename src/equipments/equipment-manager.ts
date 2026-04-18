@@ -16,6 +16,7 @@ import type {
   OrderBindingWithDetails,
   DataType,
   DataCategory,
+  OrderCategory,
 } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
@@ -202,7 +203,7 @@ export class EquipmentManager {
       getOrderBindingsWithDetails: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.dispatch_config, do2.min_value, do2.max_value,
+                do2.category, do2.dispatch_config, do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -212,7 +213,7 @@ export class EquipmentManager {
       getOrderBindingsByAlias: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.dispatch_config, do2.min_value, do2.max_value,
+                do2.category, do2.dispatch_config, do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -724,35 +725,38 @@ export class EquipmentManager {
 
   /**
    * Zone order definitions.
-   * `category` is used to find the correct order binding on each equipment
-   * by matching the data binding with that category → using its alias.
-   * This is integration-agnostic: works for "state" (z2m), "on" (Legrand), etc.
+   * `orderCategory` matches the ORDER binding category (not data binding).
+   * Each plugin declares order categories during discovery.
    */
   private static readonly ZONE_ORDERS: Record<
     string,
-    { types: string[]; category: string; value: unknown | "FROM_BODY" }
+    { types: string[]; orderCategory: OrderCategory; value: unknown | "FROM_BODY" }
   > = {
     allLightsOn: {
       types: ["light_onoff", "light_dimmable", "light_color"],
-      category: "light_state",
+      orderCategory: "light_toggle",
       value: "ON",
     },
     allLightsOff: {
       types: ["light_onoff", "light_dimmable", "light_color"],
-      category: "light_state",
+      orderCategory: "light_toggle",
       value: "OFF",
     },
     allLightsBrightness: {
       types: ["light_dimmable", "light_color"],
-      category: "light_brightness",
+      orderCategory: "set_brightness",
       value: "FROM_BODY",
     },
-    allShuttersOpen: { types: ["shutter"], category: "shutter_position", value: "OPEN" },
-    allShuttersStop: { types: ["shutter"], category: "shutter_position", value: "STOP" },
-    allShuttersClose: { types: ["shutter"], category: "shutter_position", value: "CLOSE" },
-    allThermostatsPowerOn: { types: ["thermostat"], category: "power", value: true },
-    allThermostatsPowerOff: { types: ["thermostat"], category: "power", value: false },
-    allThermostatsSetpoint: { types: ["thermostat"], category: "setpoint", value: "FROM_BODY" },
+    allShuttersOpen: { types: ["shutter"], orderCategory: "shutter_move", value: "OPEN" },
+    allShuttersStop: { types: ["shutter"], orderCategory: "shutter_move", value: "STOP" },
+    allShuttersClose: { types: ["shutter"], orderCategory: "shutter_move", value: "CLOSE" },
+    allThermostatsPowerOn: { types: ["thermostat"], orderCategory: "toggle_power", value: true },
+    allThermostatsPowerOff: { types: ["thermostat"], orderCategory: "toggle_power", value: false },
+    allThermostatsSetpoint: {
+      types: ["thermostat"],
+      orderCategory: "set_setpoint",
+      value: "FROM_BODY",
+    },
   };
 
   static readonly VALID_ZONE_ORDER_KEYS = Object.keys(EquipmentManager.ZONE_ORDERS);
@@ -789,35 +793,51 @@ export class EquipmentManager {
         if (!eq.enabled) continue;
         if (!mapping.types.includes(eq.type)) continue;
 
-        // Resolve the order alias from the equipment's data bindings by category
+        // Find the order binding by category
         const details = this.getByIdWithDetails(eq.id);
-        const dataBinding = details?.dataBindings.find((b) => b.category === mapping.category);
-        if (!dataBinding) {
-          this.logger.debug(
-            { equipmentId: eq.id, equipmentName: eq.name, category: mapping.category },
-            "Zone order skipped — no data binding with matching category",
-          );
-          continue;
-        }
-        const alias = dataBinding.alias;
+        if (!details || details.orderBindings.length === 0) continue;
 
-        try {
-          const result = await this.executeOrder(eq.id, alias, resolvedValue);
-          if (result.success) {
-            executed++;
-          } else {
+        const orderBinding = details.orderBindings.find(
+          (ob) => ob.category === mapping.orderCategory,
+        );
+
+        if (!orderBinding) {
+          // Fallback: try each binding (for plugins not yet declaring order categories)
+          let dispatched = false;
+          for (const ob of details.orderBindings) {
+            try {
+              const result = await this.executeOrder(eq.id, ob.alias, resolvedValue);
+              if (result.success) {
+                executed++;
+                dispatched = true;
+                break;
+              }
+            } catch {
+              /* try next */
+            }
+          }
+          if (!dispatched) {
             errors++;
             this.logger.warn(
-              { equipmentId: eq.id, equipmentName: eq.name, orderKey, alias, error: result.error },
-              "Zone order dispatch failed for equipment",
+              { equipmentId: eq.id, equipmentName: eq.name, orderKey },
+              "Zone order failed — no matching order category or binding",
             );
           }
-        } catch (err) {
-          errors++;
-          this.logger.warn(
-            { err, equipmentId: eq.id, equipmentName: eq.name, orderKey, alias },
-            "Zone order failed for equipment",
-          );
+        } else {
+          try {
+            const result = await this.executeOrder(eq.id, orderBinding.alias, resolvedValue);
+            if (result.success) {
+              executed++;
+            } else {
+              errors++;
+            }
+          } catch (err) {
+            errors++;
+            this.logger.warn(
+              { err, equipmentId: eq.id, equipmentName: eq.name, orderKey },
+              "Zone order failed for equipment",
+            );
+          }
         }
       }
     }
@@ -1039,6 +1059,7 @@ interface OrderBindingJoinRow {
   device_name: string;
   key: string;
   type: string;
+  category: string | null;
   dispatch_config: string;
   min_value: number | null;
   max_value: number | null;
@@ -1113,6 +1134,7 @@ function rowToOrderBindingWithDetails(row: OrderBindingJoinRow): OrderBindingWit
     deviceName: row.device_name,
     key: row.key,
     type: row.type as DataType,
+    category: (row.category as OrderCategory) ?? undefined,
     dispatchConfig,
     min: row.min_value ?? undefined,
     max: row.max_value ?? undefined,

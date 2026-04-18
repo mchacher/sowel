@@ -44,6 +44,20 @@ export type DataCategory =
   | "appliance_state"
   | "generic";
 
+export type OrderCategory =
+  | "light_toggle"
+  | "set_brightness"
+  | "set_color_temp"
+  | "set_color"
+  | "shutter_move"
+  | "set_shutter_position"
+  | "toggle_power"
+  | "set_setpoint"
+  | "gate_trigger"
+  | "valve_toggle"
+  | "toggle_mute"
+  | "set_input";
+
 // ============================================================
 // Device
 // ============================================================
@@ -93,6 +107,7 @@ export interface DeviceOrder {
   deviceId: string;
   key: string;
   type: DataType;
+  category?: OrderCategory;
   dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;
@@ -217,6 +232,7 @@ export interface OrderBindingWithDetails extends OrderBinding {
   deviceName: string;
   key: string;
   type: DataType;
+  category?: OrderCategory;
   dispatchConfig: Record<string, unknown>;
   min?: number;
   max?: number;

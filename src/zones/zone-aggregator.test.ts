@@ -13,9 +13,13 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
+  for (const file of [
+    "001_initial.sql",
+    "002_mqtt_publisher_on_change_only.sql",
+    "003_device_order_category.sql",
+  ]) {
+    db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
+  }
   return db;
 }
 
