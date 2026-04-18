@@ -37,7 +37,7 @@ export interface DiscoveredDevice {
   orders: {
     key: string;
     type: DataType;
-    dispatchConfig: Record<string, unknown>;
+    dispatchConfig?: Record<string, unknown>;
     min?: number;
     max?: number;
     enumValues?: string[];
@@ -213,7 +213,7 @@ export class DeviceManager {
         if (existingOrder) {
           this.stmts.updateDeviceOrderDef.run(
             o.type,
-            JSON.stringify(o.dispatchConfig),
+            o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : null,
             o.min ?? null,
             o.max ?? null,
             o.enumValues ? JSON.stringify(o.enumValues) : null,
@@ -226,7 +226,7 @@ export class DeviceManager {
             deviceId,
             key: o.key,
             type: o.type,
-            dispatchConfig: JSON.stringify(o.dispatchConfig),
+            dispatchConfig: o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : null,
             min: o.min ?? null,
             max: o.max ?? null,
             enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,

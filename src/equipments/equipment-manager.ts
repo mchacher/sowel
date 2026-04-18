@@ -539,19 +539,28 @@ export class EquipmentManager {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
     }
 
-    // Resolve value: if null/undefined/empty, use the first enum value from the order binding
+    // Resolve value against the binding's enumValues:
+    // - null/undefined/empty → use first enum value
+    // - string → match case-insensitively against enum values (e.g. "ON" matches "on")
     let resolvedValue = value;
-    if (resolvedValue === null || resolvedValue === undefined || resolvedValue === "") {
-      const firstBinding = bindings[0];
-      if (firstBinding.enum_values) {
-        try {
-          const enumVals = JSON.parse(firstBinding.enum_values);
-          if (Array.isArray(enumVals) && enumVals.length > 0) {
+    const firstBinding = bindings[0];
+    if (firstBinding.enum_values) {
+      try {
+        const enumVals = JSON.parse(firstBinding.enum_values) as unknown[];
+        if (Array.isArray(enumVals) && enumVals.length > 0) {
+          if (resolvedValue === null || resolvedValue === undefined || resolvedValue === "") {
             resolvedValue = enumVals[0];
+          } else if (typeof resolvedValue === "string") {
+            const match = enumVals.find(
+              (v) =>
+                typeof v === "string" &&
+                v.toLowerCase() === (resolvedValue as string).toLowerCase(),
+            );
+            if (match !== undefined) resolvedValue = match;
           }
-        } catch {
-          // ignore parse errors
         }
+      } catch {
+        // ignore parse errors
       }
     }
 
@@ -575,6 +584,7 @@ export class EquipmentManager {
         throw new EquipmentError(`Integration ${device.integrationId} not connected`, 503);
       }
 
+      const orderKey = binding.key;
       let dispatchConfig: Record<string, unknown> = {};
       if (binding.dispatch_config) {
         try {
@@ -588,7 +598,13 @@ export class EquipmentManager {
       let dispatched = false;
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          await integration.executeOrder(device, dispatchConfig, resolvedValue);
+          await this.integrationRegistry.dispatchOrder(
+            device.integrationId,
+            device,
+            orderKey,
+            dispatchConfig,
+            resolvedValue,
+          );
           dispatched = true;
           break;
         } catch (err) {

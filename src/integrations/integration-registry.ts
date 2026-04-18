@@ -19,6 +19,8 @@ export interface IntegrationPlugin {
   readonly description: string;
   /** Lucide icon name */
   readonly icon: string;
+  /** Plugin API version: 1 = dispatchConfig (default), 2 = orderKey */
+  readonly apiVersion?: number;
 
   /** Current connection/health status */
   getStatus(): IntegrationStatus;
@@ -37,13 +39,13 @@ export interface IntegrationPlugin {
 
   /**
    * Execute an order on a device managed by this integration.
-   * @param device The target device
-   * @param dispatchConfig Integration-specific order config
-   * @param value The value to set
+   *
+   * API v1 (default): executeOrder(device, dispatchConfig, value)
+   * API v2: executeOrder(device, orderKey, value)
    */
   executeOrder(
     device: Device,
-    dispatchConfig: Record<string, unknown>,
+    orderKeyOrDispatchConfig: string | Record<string, unknown>,
     value: unknown,
   ): Promise<void>;
 
@@ -124,6 +126,29 @@ export class IntegrationRegistry {
         supportsOAuth: typeof plugin.getOAuthUrl === "function",
       };
     });
+  }
+
+  /**
+   * Dispatch an order to a plugin, routing based on apiVersion.
+   * v1: passes dispatchConfig (Record). v2: passes orderKey (string).
+   */
+  async dispatchOrder(
+    integrationId: string,
+    device: Device,
+    orderKey: string,
+    dispatchConfig: Record<string, unknown>,
+    value: unknown,
+  ): Promise<void> {
+    const plugin = this.plugins.get(integrationId);
+    if (!plugin) {
+      throw new Error(`Integration not found: ${integrationId}`);
+    }
+
+    if ((plugin.apiVersion ?? 1) >= 2) {
+      await plugin.executeOrder(device, orderKey, value);
+    } else {
+      await plugin.executeOrder(device, dispatchConfig, value);
+    }
   }
 
   async startAll(): Promise<void> {
