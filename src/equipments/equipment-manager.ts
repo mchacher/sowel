@@ -752,7 +752,7 @@ export class EquipmentManager {
     allShuttersClose: { types: ["shutter"], category: "shutter_position", value: "CLOSE" },
     allThermostatsPowerOn: { types: ["thermostat"], category: "power", value: true },
     allThermostatsPowerOff: { types: ["thermostat"], category: "power", value: false },
-    allThermostatsSetpoint: { types: ["thermostat"], category: "temperature", value: "FROM_BODY" },
+    allThermostatsSetpoint: { types: ["thermostat"], category: "setpoint", value: "FROM_BODY" },
   };
 
   static readonly VALID_ZONE_ORDER_KEYS = Object.keys(EquipmentManager.ZONE_ORDERS);
