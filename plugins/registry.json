@@ -31,9 +31,9 @@
     "icon": "AirVent",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-panasonic-cc",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "tags": ["panasonic", "ac", "heating", "cooling", "comfort-cloud"],
-    "sowelVersion": ">=1.2.10"
+    "sowelVersion": ">=1.2.11"
   },
   {
     "id": "mcz_maestro",
@@ -79,9 +79,9 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-weather",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "tags": ["weather", "netatmo", "temperature", "humidity", "rain", "wind"],
-    "sowelVersion": ">=0.10.0"
+    "sowelVersion": ">=1.2.11"
   },
   {
     "id": "netatmo-security",
@@ -103,9 +103,9 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-weather-forecast",
-    "version": "0.5.0",
+    "version": "1.0.0",
     "tags": ["weather", "forecast", "open-meteo"],
-    "sowelVersion": ">=0.10.0"
+    "sowelVersion": ">=1.2.11"
   },
   {
     "id": "smartthings",
