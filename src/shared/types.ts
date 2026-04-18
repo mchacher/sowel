@@ -87,7 +87,7 @@ export interface DeviceOrder {
   deviceId: string;
   key: string;
   type: DataType;
-  dispatchConfig: Record<string, unknown>;
+  dispatchConfig?: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -256,7 +256,7 @@ export interface OrderBindingWithDetails extends OrderBinding {
   deviceName: string;
   key: string;
   type: DataType;
-  dispatchConfig: Record<string, unknown>;
+  dispatchConfig?: Record<string, unknown>;
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -706,6 +706,7 @@ export interface PluginManifest {
   author?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
+  apiVersion?: number; // 1 (default) = dispatchConfig, 2 = orderKey
 }
 
 /** Raw package data from DB — no runtime info */
