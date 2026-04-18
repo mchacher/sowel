@@ -108,7 +108,7 @@ export interface DeviceOrder {
   key: string;
   type: DataType;
   category?: OrderCategory;
-  dispatchConfig: Record<string, unknown>;
+
   min?: number;
   max?: number;
   enumValues?: string[];
@@ -233,7 +233,7 @@ export interface OrderBindingWithDetails extends OrderBinding {
   key: string;
   type: DataType;
   category?: OrderCategory;
-  dispatchConfig: Record<string, unknown>;
+
   min?: number;
   max?: number;
   enumValues?: string[];

@@ -253,7 +253,7 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
             {t("devices.col.range")}
           </th>
           <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-wider">
-            {t("devices.col.topic")}
+            {t("devices.col.category")}
           </th>
         </tr>
       </thead>
@@ -276,8 +276,8 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
               <OrderRange order={order} />
             </td>
             <td className="py-2.5 px-3">
-              <span className="font-mono text-[11px] text-text-tertiary truncate block max-w-[200px]">
-                {(order.dispatchConfig?.topic as string) ?? "—"}
+              <span className="text-[11px] text-text-tertiary">
+                {order.category ?? "—"}
               </span>
             </td>
           </tr>

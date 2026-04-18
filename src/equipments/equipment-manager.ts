@@ -203,7 +203,7 @@ export class EquipmentManager {
       getOrderBindingsWithDetails: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.category, do2.dispatch_config, do2.min_value, do2.max_value,
+                do2.category, do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -213,7 +213,7 @@ export class EquipmentManager {
       getOrderBindingsByAlias: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.category, do2.dispatch_config, do2.min_value, do2.max_value,
+                do2.category, do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -586,14 +586,6 @@ export class EquipmentManager {
       }
 
       const orderKey = binding.key;
-      let dispatchConfig: Record<string, unknown> = {};
-      if (binding.dispatch_config) {
-        try {
-          dispatchConfig = JSON.parse(binding.dispatch_config);
-        } catch {
-          dispatchConfig = {};
-        }
-      }
 
       // Dispatch with 1 retry (2s delay) for transient failures
       let dispatched = false;
@@ -603,7 +595,6 @@ export class EquipmentManager {
             device.integrationId,
             device,
             orderKey,
-            dispatchConfig,
             resolvedValue,
           );
           dispatched = true;
@@ -802,42 +793,31 @@ export class EquipmentManager {
         );
 
         if (!orderBinding) {
-          // Fallback: try each binding (for plugins not yet declaring order categories)
-          let dispatched = false;
-          for (const ob of details.orderBindings) {
-            try {
-              const result = await this.executeOrder(eq.id, ob.alias, resolvedValue);
-              if (result.success) {
-                executed++;
-                dispatched = true;
-                break;
-              }
-            } catch {
-              /* try next */
-            }
-          }
-          if (!dispatched) {
+          this.logger.debug(
+            {
+              equipmentId: eq.id,
+              equipmentName: eq.name,
+              orderKey,
+              orderCategory: mapping.orderCategory,
+            },
+            "Zone order skipped — no matching order category",
+          );
+          continue;
+        }
+
+        try {
+          const result = await this.executeOrder(eq.id, orderBinding.alias, resolvedValue);
+          if (result.success) {
+            executed++;
+          } else {
             errors++;
-            this.logger.warn(
-              { equipmentId: eq.id, equipmentName: eq.name, orderKey },
-              "Zone order failed — no matching order category or binding",
-            );
           }
-        } else {
-          try {
-            const result = await this.executeOrder(eq.id, orderBinding.alias, resolvedValue);
-            if (result.success) {
-              executed++;
-            } else {
-              errors++;
-            }
-          } catch (err) {
-            errors++;
-            this.logger.warn(
-              { err, equipmentId: eq.id, equipmentName: eq.name, orderKey },
-              "Zone order failed for equipment",
-            );
-          }
+        } catch (err) {
+          errors++;
+          this.logger.warn(
+            { err, equipmentId: eq.id, equipmentName: eq.name, orderKey },
+            "Zone order failed for equipment",
+          );
         }
       }
     }
@@ -1060,7 +1040,6 @@ interface OrderBindingJoinRow {
   key: string;
   type: string;
   category: string | null;
-  dispatch_config: string;
   min_value: number | null;
   max_value: number | null;
   enum_values: string | null;
@@ -1117,14 +1096,6 @@ function rowToOrderBindingWithDetails(row: OrderBindingJoinRow): OrderBindingWit
       enumValues = undefined;
     }
   }
-  let dispatchConfig: Record<string, unknown> = {};
-  if (row.dispatch_config) {
-    try {
-      dispatchConfig = JSON.parse(row.dispatch_config);
-    } catch {
-      dispatchConfig = {};
-    }
-  }
   return {
     id: row.id,
     equipmentId: row.equipment_id,
@@ -1135,7 +1106,6 @@ function rowToOrderBindingWithDetails(row: OrderBindingJoinRow): OrderBindingWit
     key: row.key,
     type: row.type as DataType,
     category: (row.category as OrderCategory) ?? undefined,
-    dispatchConfig,
     min: row.min_value ?? undefined,
     max: row.max_value ?? undefined,
     enumValues,

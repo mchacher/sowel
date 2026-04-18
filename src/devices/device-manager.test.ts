@@ -14,6 +14,7 @@ function createTestDb(): Database.Database {
     "001_initial.sql",
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
+    "004_drop_dispatch_config.sql",
   ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", "../../migrations", file),
@@ -71,13 +72,13 @@ describe("DeviceManager", () => {
       {
         key: "state",
         type: "enum" as const,
-        dispatchConfig: { topic: "zigbee2mqtt/salon_lampe/set", payloadKey: "state" },
+        category: "light_toggle" as const,
         enumValues: ["ON", "OFF", "TOGGLE"],
       },
       {
         key: "brightness",
         type: "number" as const,
-        dispatchConfig: { topic: "zigbee2mqtt/salon_lampe/set", payloadKey: "brightness" },
+        category: "set_brightness" as const,
         min: 0,
         max: 254,
       },

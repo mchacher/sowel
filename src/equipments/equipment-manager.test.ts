@@ -16,6 +16,7 @@ function createTestDb(): Database.Database {
     "001_initial.sql",
     "002_mqtt_publisher_on_change_only.sql",
     "003_device_order_category.sql",
+    "004_drop_dispatch_config.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -36,7 +37,6 @@ function seedDevice(
       key: string;
       type?: string;
       category?: string;
-      payloadKey?: string;
       enumValues?: string[];
     }[];
   } = {},
@@ -62,17 +62,14 @@ function seedDevice(
   for (const o of opts.orderKeys ?? []) {
     const id = o.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, category, mqtt_set_topic, payload_key, dispatch_config, enum_values)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO device_orders (id, device_id, key, type, category, enum_values)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       deviceId,
       o.key,
       o.type ?? "boolean",
       o.category ?? null,
-      `z2m/${name}/set`,
-      o.payloadKey ?? o.key,
-      JSON.stringify({ topic: `z2m/${name}/set`, payloadKey: o.payloadKey ?? o.key }),
       o.enumValues ? JSON.stringify(o.enumValues) : null,
     );
     orderIds.push(id);
@@ -99,21 +96,11 @@ describe("EquipmentManager", () => {
     const mockPlugin = {
       id: "zigbee2mqtt",
       getStatus: () => "connected" as const,
-      executeOrder: async (
-        _device: any,
-        dispatchConfigOrOrderKey: Record<string, unknown> | string,
-        value: unknown,
-      ) => {
-        if (typeof dispatchConfigOrOrderKey === "string") {
-          mockPublished.push({
-            topic: `z2m/${_device.name}/set`,
-            payload: JSON.stringify({ [dispatchConfigOrOrderKey]: value }),
-          });
-        } else {
-          const topic = dispatchConfigOrOrderKey.topic as string;
-          const payloadKey = dispatchConfigOrOrderKey.payloadKey as string;
-          mockPublished.push({ topic, payload: JSON.stringify({ [payloadKey]: value }) });
-        }
+      executeOrder: async (_device: any, orderKey: string, value: unknown) => {
+        mockPublished.push({
+          topic: `z2m/${_device.name}/set`,
+          payload: JSON.stringify({ [orderKey]: value }),
+        });
       },
     };
     const mockIntegrationRegistry = {
@@ -121,12 +108,10 @@ describe("EquipmentManager", () => {
       dispatchOrder: async (
         _integrationId: string,
         device: any,
-        _orderKey: string,
-        dispatchConfig: Record<string, unknown>,
+        orderKey: string,
         value: unknown,
       ) => {
-        // v1 behavior (default): pass dispatchConfig
-        await mockPlugin.executeOrder(device, dispatchConfig, value);
+        await mockPlugin.executeOrder(device, orderKey, value);
       },
     };
     manager = new EquipmentManager(
@@ -532,97 +517,31 @@ describe("EquipmentManager", () => {
       );
     });
 
-    it("dispatches via dispatchOrder with orderKey for v2 plugin", async () => {
-      const dispatched: { orderKey: string; value: unknown }[] = [];
-      const v2Plugin = {
-        id: "lora2mqtt",
-        apiVersion: 2,
-        getStatus: () => "connected" as const,
-        executeOrder: async (_device: any, orderKey: string, value: unknown) => {
-          dispatched.push({ orderKey: orderKey as string, value });
-        },
-      };
-      const v2Registry = {
-        getById: () => v2Plugin,
-        dispatchOrder: async (
-          _iid: string,
-          device: any,
-          orderKey: string,
-          _dc: Record<string, unknown>,
-          value: unknown,
-        ) => {
-          // Simulate real dispatchOrder: v2 passes orderKey
-          if ((v2Plugin.apiVersion ?? 1) >= 2) {
-            await v2Plugin.executeOrder(device, orderKey, value);
-          }
-        },
-      };
-      const v2Manager = new EquipmentManager(
-        db,
-        eventBus,
-        v2Registry as any,
-        deviceManager,
-        logger,
-      );
+    it("dispatches via dispatchOrder with orderKey", async () => {
       const zone = zoneManager.create({ name: "Garage" });
-      const eq = v2Manager.create({ name: "Gate", type: "gate", zoneId: zone.id });
+      const eq = manager.create({ name: "Gate", type: "gate", zoneId: zone.id });
       const { orderIds } = seedDevice(db, { name: "garage", orderKeys: [{ key: "R1" }] });
-      v2Manager.addOrderBinding(eq.id, orderIds[0], "command");
+      manager.addOrderBinding(eq.id, orderIds[0], "command");
 
-      await v2Manager.executeOrder(eq.id, "command", "latch");
+      await manager.executeOrder(eq.id, "command", "latch");
 
-      expect(dispatched).toHaveLength(1);
-      expect(dispatched[0].orderKey).toBe("R1");
-      expect(dispatched[0].value).toBe("latch");
+      expect(mockPublished).toHaveLength(1);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ R1: "latch" });
     });
 
     it("resolves enum value case-insensitively", async () => {
       const zone = zoneManager.create({ name: "Garage" });
       const eq = manager.create({ name: "Light", type: "light_onoff", zoneId: zone.id });
-      // Device has lowercase enum values ["on", "off"]
       const { orderIds } = seedDevice(db, {
         name: "LoraLight",
-        orderKeys: [{ key: "state", payloadKey: "state", enumValues: ["on", "off"] }],
+        orderKeys: [{ key: "state", enumValues: ["on", "off"] }],
       });
       manager.addOrderBinding(eq.id, orderIds[0], "state");
 
-      await manager.executeOrder(eq.id, "state", "ON"); // uppercase from zone order
+      await manager.executeOrder(eq.id, "state", "ON");
 
       expect(mockPublished).toHaveLength(1);
-      // Should resolve "ON" → "on" (matching device's enum)
       expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "on" });
-    });
-
-    it("dispatches via dispatchOrder with dispatchConfig for v1 plugin", async () => {
-      const zone = zoneManager.create({ name: "Salon" });
-      const eq = manager.create({ name: "Lamp", type: "light_onoff", zoneId: zone.id });
-      const { orderIds } = seedDevice(db, {
-        name: "ZigbeeLamp",
-        orderKeys: [{ key: "state", payloadKey: "state" }],
-      });
-      manager.addOrderBinding(eq.id, orderIds[0], "state");
-
-      await manager.executeOrder(eq.id, "state", "ON");
-
-      // v1 mock dispatches via dispatchConfig → mockPublished captures topic + payload
-      expect(mockPublished).toHaveLength(1);
-      expect(mockPublished[0].topic).toBe("z2m/ZigbeeLamp/set");
-      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "ON" });
-    });
-
-    it("dispatches with null dispatchConfig for v1 plugin gracefully", async () => {
-      const zone = zoneManager.create({ name: "Test" });
-      const eq = manager.create({ name: "Dev", type: "sensor", zoneId: zone.id });
-      // Seed device with no dispatchConfig (null in DB)
-      const { orderIds } = seedDevice(db, {
-        name: "NullDevice",
-        orderKeys: [{ key: "state" }],
-      });
-      manager.addOrderBinding(eq.id, orderIds[0], "state");
-
-      // Should not throw — dispatchConfig defaults to {}
-      await manager.executeOrder(eq.id, "state", "ON");
-      expect(mockPublished).toHaveLength(1);
     });
   });
 
@@ -665,21 +584,7 @@ describe("EquipmentManager", () => {
       expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "OPEN" });
     });
 
-    it("falls back to brute-force when no order category", async () => {
-      const zone = zoneManager.create({ name: "Old" });
-      const eq = manager.create({ name: "Light", type: "light_onoff", zoneId: zone.id });
-      // No category on order — old plugin style
-      const { orderIds } = seedDevice(db, {
-        name: "OldLight",
-        orderKeys: [{ key: "state" }],
-      });
-      manager.addOrderBinding(eq.id, orderIds[0], "state");
-
-      const result = await manager.executeZoneOrder([zone.id], "allLightsOn");
-      expect(result.executed).toBe(1);
-    });
-
-    it("skips equipment without matching order category or binding", async () => {
+    it("skips equipment without matching order category", async () => {
       const zone = zoneManager.create({ name: "Empty" });
       manager.create({ name: "Sensor", type: "light_onoff", zoneId: zone.id });
       // No order bindings at all

@@ -20,6 +20,7 @@ import type {
   DeviceSource,
   DataType,
   DataCategory,
+  OrderCategory,
 } from "../shared/types.js";
 import { PROPERTY_TO_CATEGORY } from "../shared/constants.js";
 
@@ -38,7 +39,6 @@ export interface DiscoveredDevice {
     key: string;
     type: DataType;
     category?: string;
-    dispatchConfig?: Record<string, unknown>;
     min?: number;
     max?: number;
     enumValues?: string[];
@@ -117,11 +117,11 @@ export class DeviceManager {
         "SELECT * FROM device_orders WHERE device_id = ? AND key = ?",
       ),
       insertDeviceOrder: this.db.prepare(
-        `INSERT INTO device_orders (id, device_id, key, type, category, dispatch_config, min_value, max_value, enum_values, unit)
-         VALUES (@id, @deviceId, @key, @type, @category, @dispatchConfig, @min, @max, @enumValues, @unit)`,
+        `INSERT INTO device_orders (id, device_id, key, type, category, min_value, max_value, enum_values, unit)
+         VALUES (@id, @deviceId, @key, @type, @category, @min, @max, @enumValues, @unit)`,
       ),
       updateDeviceOrderDef: this.db.prepare(
-        "UPDATE device_orders SET type = ?, category = ?, dispatch_config = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
+        "UPDATE device_orders SET type = ?, category = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
       ),
       deleteDeviceOrderById: this.db.prepare("DELETE FROM device_orders WHERE id = ?"),
       getDeviceOrderIds: this.db.prepare("SELECT id, key FROM device_orders WHERE device_id = ?"),
@@ -215,7 +215,6 @@ export class DeviceManager {
           this.stmts.updateDeviceOrderDef.run(
             o.type,
             o.category ?? null,
-            o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : "{}",
             o.min ?? null,
             o.max ?? null,
             o.enumValues ? JSON.stringify(o.enumValues) : null,
@@ -229,7 +228,6 @@ export class DeviceManager {
             key: o.key,
             type: o.type,
             category: o.category ?? null,
-            dispatchConfig: o.dispatchConfig ? JSON.stringify(o.dispatchConfig) : "{}",
             min: o.min ?? null,
             max: o.max ?? null,
             enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,
@@ -633,7 +631,7 @@ interface DeviceOrderRow {
   device_id: string;
   key: string;
   type: string;
-  dispatch_config: string;
+  category: string | null;
   min_value: number | null;
   max_value: number | null;
   enum_values: string | null;
@@ -688,20 +686,12 @@ function rowToDeviceOrder(row: DeviceOrderRow): DeviceOrder {
       enumValues = undefined;
     }
   }
-  let dispatchConfig: Record<string, unknown> = {};
-  if (row.dispatch_config) {
-    try {
-      dispatchConfig = JSON.parse(row.dispatch_config);
-    } catch {
-      dispatchConfig = {};
-    }
-  }
   return {
     id: row.id,
     deviceId: row.device_id,
     key: row.key,
     type: row.type as DataType,
-    dispatchConfig,
+    category: (row.category as OrderCategory) ?? undefined,
     min: row.min_value ?? undefined,
     max: row.max_value ?? undefined,
     enumValues,
