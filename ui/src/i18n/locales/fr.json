@@ -598,6 +598,7 @@
   "buttonActions.action.double": "Double appui",
   "buttonActions.action.hold": "Appui long",
   "buttonActions.action.click": "Clic",
+  "buttonActions.zone": "Zone",
   "buttonActions.effectType.zone_order": "Ordre groupé de zone",
   "buttonActions.zoneOrderLabel": "Action du groupe",
   "buttonActions.zoneOrder.allLightsOn": "Allumer les lumières",

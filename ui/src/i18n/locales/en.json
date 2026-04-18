@@ -598,6 +598,7 @@
   "buttonActions.action.double": "Double press",
   "buttonActions.action.hold": "Long press",
   "buttonActions.action.click": "Click",
+  "buttonActions.zone": "Zone",
   "buttonActions.effectType.zone_order": "Zone group order",
   "buttonActions.zoneOrderLabel": "Group action",
   "buttonActions.zoneOrder.allLightsOn": "Turn lights on",

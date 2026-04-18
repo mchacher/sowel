@@ -506,7 +506,7 @@ function AddEffectForm({
         <div className="space-y-2">
           <div>
             <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-              {t("zones.title")}
+              {t("buttonActions.zone")}
             </label>
             <select
               value={eqZoneId}
@@ -658,7 +658,7 @@ function AddEffectForm({
         <div className="space-y-2">
           <div>
             <label className="block text-[11px] text-text-tertiary uppercase tracking-wider mb-1">
-              {t("zones.title")}
+              {t("buttonActions.zone")}
             </label>
             <select
               value={zoZoneId}
