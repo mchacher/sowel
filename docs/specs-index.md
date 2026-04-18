@@ -112,16 +112,16 @@ Specs are grouped by theme and annotated with status:
 
 ## Order dispatch refactoring (progressive migration)
 
-| #   | Title                             | Status  | Summary                                                                                                 |
-| --- | --------------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| 067 | Order dispatch — core + lora2mqtt | 🟡 next | New `executeOrder(device, orderKey, value)` signature with v1 retro-compat. First migration: lora2mqtt. |
-| 068 | Order dispatch — zigbee2mqtt      | Planned | Migrate z2m plugin to new signature.                                                                    |
-| 069 | Order dispatch — legrand-control  | Planned | Migrate legrand-control (cloud API IDs stored in plugin memory).                                        |
-| 070 | Order dispatch — panasonic-cc     | Planned | Migrate panasonic-cc (guid/param stored in plugin memory).                                              |
-| 071 | Order dispatch — mcz-maestro      | Planned | Migrate mcz-maestro (commandId stored in plugin memory).                                                |
-| 072 | Order dispatch — netatmo-security | Planned | Migrate netatmo-security (single param: monitoring).                                                    |
-| 073 | Order dispatch — smartthings      | Planned | Migrate smartthings (command names stored in plugin memory).                                            |
-| 074 | Order dispatch — cleanup          | Planned | Remove v1 retro-compat. Drop `dispatch_config` column from `device_orders`.                             |
+| #   | Title                             | Status  | Summary                                                                                                                                          |
+| --- | --------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 067 | Order dispatch — core + lora2mqtt | ✅      | New `executeOrder(device, orderKey, value)` signature with v1 retro-compat. First migration: lora2mqtt v2.0.0. Enum case-insensitive resolution. |
+| 068 | Order dispatch — zigbee2mqtt      | ✅      | Migrate z2m plugin to v2.0.0 (apiVersion 2). Composite payload support preserved.                                                                |
+| 069 | Order dispatch — legrand-control  | Planned | Migrate legrand-control (cloud API IDs stored in plugin memory).                                                                                 |
+| 070 | Order dispatch — panasonic-cc     | Planned | Migrate panasonic-cc (guid/param stored in plugin memory).                                                                                       |
+| 071 | Order dispatch — mcz-maestro      | Planned | Migrate mcz-maestro (commandId stored in plugin memory).                                                                                         |
+| 072 | Order dispatch — netatmo-security | Planned | Migrate netatmo-security (single param: monitoring).                                                                                             |
+| 073 | Order dispatch — smartthings      | Planned | Migrate smartthings (command names stored in plugin memory).                                                                                     |
+| 074 | Order dispatch — cleanup          | Planned | Remove v1 retro-compat. Drop `dispatch_config` column from `device_orders`.                                                                      |
 
 ---
 

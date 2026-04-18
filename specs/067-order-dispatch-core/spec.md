@@ -75,13 +75,13 @@ The `dispatch_config` column in `device_orders` is NOT removed. It continues to 
 
 ## Acceptance Criteria
 
-- [ ] `IntegrationPlugin` interface supports both v1 and v2 signatures
-- [ ] Equipment manager detects plugin API version and dispatches accordingly
-- [ ] v1 plugins (all except lora2mqtt) continue to work unchanged
-- [ ] lora2mqtt plugin uses new signature and works end-to-end (orders reach devices)
-- [ ] Discovery from lora2mqtt no longer provides dispatchConfig
-- [ ] All existing tests pass
-- [ ] Manual test: send order to lora2mqtt device (gate, light) from UI — works
+- [x] `IntegrationPlugin` interface supports both v1 and v2 signatures
+- [x] Equipment manager detects plugin API version and dispatches accordingly
+- [x] v1 plugins (all except lora2mqtt) continue to work unchanged
+- [x] lora2mqtt plugin uses new signature and works end-to-end (orders reach devices)
+- [x] Discovery from lora2mqtt no longer provides dispatchConfig
+- [x] All existing tests pass + 8 new tests
+- [x] Manual test: send order to lora2mqtt device (gate, light) from UI — works
 
 ## Out of scope
 
