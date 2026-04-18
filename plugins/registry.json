@@ -7,9 +7,9 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-zigbee2mqtt",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["zigbee", "mqtt", "z2m", "sensors", "lights", "switches"],
-    "sowelVersion": ">=1.2.8"
+    "sowelVersion": ">=1.2.12"
   },
   {
     "id": "lora2mqtt",
@@ -19,9 +19,9 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-lora2mqtt",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["lora", "mqtt", "iot", "sensors"],
-    "sowelVersion": ">=1.2.8"
+    "sowelVersion": ">=1.2.12"
   },
   {
     "id": "panasonic_cc",
@@ -31,9 +31,9 @@
     "icon": "AirVent",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-panasonic-cc",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "tags": ["panasonic", "ac", "heating", "cooling", "comfort-cloud"],
-    "sowelVersion": ">=1.2.11"
+    "sowelVersion": ">=1.2.12"
   },
   {
     "id": "mcz_maestro",
@@ -43,9 +43,9 @@
     "icon": "Flame",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-mcz-maestro",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["mcz", "pellet", "stove", "heating"],
-    "sowelVersion": ">=1.2.10"
+    "sowelVersion": ">=1.2.12"
   },
   {
     "id": "legrand_energy",
@@ -67,9 +67,9 @@
     "icon": "PlugZap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-control",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["legrand", "netatmo", "light", "shutter", "plug"],
-    "sowelVersion": ">=1.2.9"
+    "sowelVersion": ">=1.2.12"
   },
   {
     "id": "netatmo_weather",
@@ -115,9 +115,9 @@
     "icon": "Smartphone",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-smartthings",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["samsung", "smartthings", "tv", "washer", "appliance"],
-    "sowelVersion": ">=1.2.11"
+    "sowelVersion": ">=1.2.12"
   },
   {
     "id": "switch-light",
