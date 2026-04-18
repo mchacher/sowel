@@ -110,6 +110,19 @@ Specs are grouped by theme and annotated with status:
 | 061 | **Timezone from home location**                 | ✅       | Auto-derive `process.env.TZ` from `home.latitude`/`home.longitude` via `tz-lookup` at boot (runs before `createLogger()` to avoid V8 TZ caching). Endpoints `GET /system/timezone` + `POST /system/restart` (helper container). UI: TZ in Settings, `CurrentTimePill` in header, `RestartToast` on location change.             |
 | 062 | Water valve equipment                           | ✅       | New `water_valve` equipment type with custom valve icon, `water` widget family, zone aggregation (open/total + flow sum), zone pill, dashboard widget (close-all), and detail card with toggle + timed watering. Targets SONOFF SWV and similar smart irrigation valves. Foundation for future auto-watering recipe (spec 063). |
 
+## Order dispatch refactoring (progressive migration)
+
+| #   | Title                             | Status  | Summary                                                                                                 |
+| --- | --------------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| 067 | Order dispatch — core + lora2mqtt | 🟡 next | New `executeOrder(device, orderKey, value)` signature with v1 retro-compat. First migration: lora2mqtt. |
+| 068 | Order dispatch — zigbee2mqtt      | Planned | Migrate z2m plugin to new signature.                                                                    |
+| 069 | Order dispatch — legrand-control  | Planned | Migrate legrand-control (cloud API IDs stored in plugin memory).                                        |
+| 070 | Order dispatch — panasonic-cc     | Planned | Migrate panasonic-cc (guid/param stored in plugin memory).                                              |
+| 071 | Order dispatch — mcz-maestro      | Planned | Migrate mcz-maestro (commandId stored in plugin memory).                                                |
+| 072 | Order dispatch — netatmo-security | Planned | Migrate netatmo-security (single param: monitoring).                                                    |
+| 073 | Order dispatch — smartthings      | Planned | Migrate smartthings (command names stored in plugin memory).                                            |
+| 074 | Order dispatch — cleanup          | Planned | Remove v1 retro-compat. Drop `dispatch_config` column from `device_orders`.                             |
+
 ---
 
 ## How to use this index after context loss
