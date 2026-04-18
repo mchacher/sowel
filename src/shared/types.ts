@@ -36,6 +36,8 @@ export type DataCategory =
   | "uv"
   | "solar_radiation"
   | "setpoint"
+  | "temperature_outdoor"
+  | "humidity_outdoor"
   | "media_volume"
   | "media_mute"
   | "media_input"
