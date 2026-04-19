@@ -13,6 +13,9 @@ import {
   SlidingGateIcon,
   GarageDoorIcon,
   PlugWidgetIcon,
+  PoolPumpIcon,
+  PoolCoverIcon,
+  WaterValveWidgetIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
@@ -74,6 +77,9 @@ function useMobileState(
     isWeatherForecast,
     isMediaPlayer,
     isAppliance,
+    isWaterValve,
+    isPoolPump,
+    isPoolCover,
     isOn,
   } = useEquipmentState(equipment);
 
@@ -247,6 +253,38 @@ function useMobileState(
         ? createElement(customEntry.component, customEntry.previewProps)
         : <PlugWidgetIcon on={isOn} />,
       stateLines: [isOn ? "ON" : "OFF"],
+    };
+  }
+
+  if (isWaterValve) {
+    return {
+      icon: <WaterValveWidgetIcon open={isOn} />,
+      stateLines: [isOn ? t("water.open") : t("water.closed")],
+    };
+  }
+
+  if (isPoolPump) {
+    return {
+      icon: <PoolPumpIcon on={isOn} />,
+      stateLines: [isOn ? "ON" : "OFF"],
+    };
+  }
+
+  if (isPoolCover) {
+    const pos = equipment.dataBindings.find(
+      (b) => b.category === "shutter_position" || b.alias === "position",
+    );
+    const position = pos && typeof pos.value === "number" ? pos.value : null;
+    const text = position === 100
+      ? t("controls.opened")
+      : position === 0
+        ? t("controls.closed")
+        : position !== null
+          ? `${position}%`
+          : null;
+    return {
+      icon: <PoolCoverIcon position={position} />,
+      stateLines: text ? [text] : [],
     };
   }
 
