@@ -258,6 +258,24 @@
     "sowelVersion": ">=1.1.0"
   },
   {
+    "id": "pool-pump-schedule",
+    "type": "recipe",
+    "name": "Pool Pump Schedule",
+    "description": "Scheduled on/off for a pool pump — up to 3 daily time windows",
+    "icon": "Waves",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-pool-pump-schedule",
+    "version": "1.0.0",
+    "tags": ["pool", "pump", "schedule", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Programmation pompe piscine",
+        "description": "Plages horaires on/off pour la pompe de piscine — jusqu'à 3 créneaux par jour"
+      }
+    },
+    "sowelVersion": ">=1.3.0"
+  },
+  {
     "id": "freecooling",
     "type": "recipe",
     "name": "Freecooling",
