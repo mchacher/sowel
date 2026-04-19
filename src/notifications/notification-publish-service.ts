@@ -69,6 +69,10 @@ export class NotificationPublishService {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    for (const map of this.alarmReminders.values()) {
+      for (const entry of map.values()) clearInterval(entry.intervalId);
+    }
+    this.alarmReminders.clear();
   }
 
   // ── Index management ─────────────────────────────────────────
@@ -123,18 +127,29 @@ export class NotificationPublishService {
 
           case "notification-publisher.created":
           case "notification-publisher.updated":
-          case "notification-publisher.removed":
           case "notification-publisher.mapping.created":
           case "notification-publisher.mapping.removed":
             this.rebuildIndex();
             break;
 
+          case "notification-publisher.removed":
+            this.rebuildIndex();
+            // Clear any in-flight alarm reminders tied to this publisher.
+            {
+              const map = this.alarmReminders.get(event.publisherId);
+              if (map) {
+                for (const entry of map.values()) clearInterval(entry.intervalId);
+                this.alarmReminders.delete(event.publisherId);
+              }
+            }
+            break;
+
           case "system.alarm.raised":
-            this.sendSystemAlarm(`⚠️ ${event.source} : ${event.message}`);
+            this.onAlarmRaised(event.alarmId, event.source, event.message);
             break;
 
           case "system.alarm.resolved":
-            this.sendSystemAlarm(`✅ ${event.source} : ${event.message}`);
+            this.onAlarmResolved(event.alarmId, event.source, event.message);
             break;
         }
       } catch (err) {
@@ -253,16 +268,65 @@ export class NotificationPublishService {
 
   // ── System alarm notifications ──────────────────────────────
 
-  private sendSystemAlarm(text: string): void {
-    // Send to the first enabled Telegram publisher found
-    const publishers = this.publisherManager.getAllWithMappings();
-    const telegramPub = publishers.find((p) => p.channelType === "telegram" && p.enabled);
-    if (!telegramPub) return;
+  /** Active alarm reminders, keyed by publisherId → alarmId. */
+  private readonly alarmReminders = new Map<
+    string,
+    Map<string, { text: string; intervalId: ReturnType<typeof setInterval> }>
+  >();
 
+  private onAlarmRaised(alarmId: string, source: string, message: string): void {
+    const pub = this.getEnabledTelegramPublisher();
+    if (!pub) return;
+    const text = `⚠️ ${source} : ${message}`;
+    this.sendTelegram(pub.channelConfig, text);
+
+    const minutes = pub.alarmReminderMinutes ?? 0;
+    if (minutes <= 0) return;
+
+    // Clear any prior reminder for the same alarm before re-arming.
+    this.clearAlarmReminder(pub.id, alarmId);
+    const intervalMs = minutes * 60_000;
+    const intervalId = setInterval(() => {
+      this.sendTelegram(pub.channelConfig, `🔁 Rappel — ${text}`);
+    }, intervalMs);
+    const map = this.alarmReminders.get(pub.id) ?? new Map();
+    map.set(alarmId, { text, intervalId });
+    this.alarmReminders.set(pub.id, map);
+    this.logger.debug({ publisherId: pub.id, alarmId, minutes }, "Alarm reminder scheduled");
+  }
+
+  private onAlarmResolved(alarmId: string, source: string, message: string): void {
+    // Clear the reminder on every publisher that had one armed for this
+    // alarmId (handles the edge case where the active Telegram publisher
+    // was swapped while the alarm was active).
+    for (const publisherId of this.alarmReminders.keys()) {
+      this.clearAlarmReminder(publisherId, alarmId);
+    }
+    const pub = this.getEnabledTelegramPublisher();
+    if (!pub) return;
+    this.sendTelegram(pub.channelConfig, `✅ ${source} : ${message}`);
+  }
+
+  private clearAlarmReminder(publisherId: string, alarmId: string): void {
+    const map = this.alarmReminders.get(publisherId);
+    if (!map) return;
+    const entry = map.get(alarmId);
+    if (!entry) return;
+    clearInterval(entry.intervalId);
+    map.delete(alarmId);
+    if (map.size === 0) this.alarmReminders.delete(publisherId);
+  }
+
+  private getEnabledTelegramPublisher() {
+    return this.publisherManager
+      .getAllWithMappings()
+      .find((p) => p.channelType === "telegram" && p.enabled);
+  }
+
+  private sendTelegram(config: unknown, text: string): void {
     const channel = this.channels.telegram;
     if (!channel) return;
-
-    channel.send(telegramPub.channelConfig, text).catch((err) => {
+    channel.send(config as never, text).catch((err) => {
       this.logger.error({ err }, "System alarm notification send failed");
     });
   }
