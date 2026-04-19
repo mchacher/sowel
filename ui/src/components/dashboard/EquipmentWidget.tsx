@@ -956,30 +956,31 @@ function PoolCoverEquipmentWidget({
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [executing, setExecuting] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
+  const slider = useSliderOverride();
 
-  const positionBinding = equipment.dataBindings.find((db) => db.category === "shutter_position");
-  const position = positionBinding && typeof positionBinding.value === "number" ? positionBinding.value : null;
+  // Mirrors ShutterEquipmentWidget — same position display + OPEN/STOP/CLOSE
+  // buttons — but renders the pool-specific PoolCoverIcon.
+  const positionBinding = equipment.dataBindings.find(
+    (db) => db.category === "shutter_position" || db.alias === "position",
+  );
+  const devicePosition =
+    positionBinding && typeof positionBinding.value === "number"
+      ? positionBinding.value
+      : null;
+  const position = slider.displayValue(devicePosition);
 
-  const coverState = equipment.dataBindings.find((db) => db.alias === "cover_state");
-  const stateLabel = coverState?.value === "OPEN"
-    ? t("controls.opened")
-    : coverState?.value === "CLOSED"
-      ? t("controls.closed")
-      : coverState?.value === "PARTIAL" && position !== null
-        ? `${position}%`
-        : "\u2014";
+  const hasState = equipment.orderBindings.some(
+    (ob) => ob.alias === "state" || ob.category === "pool_cover_move",
+  );
 
-  const moveBinding = equipment.orderBindings.find((ob) => ob.category === "pool_cover_move" || ob.alias === "state");
-
-  const handleMove = async (action: "OPEN" | "STOP" | "CLOSE") => {
-    if (!moveBinding || executing) return;
-    setExecuting(action);
+  const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
+    if (executing || !hasState) return;
+    setExecuting(true);
     try {
-      const enumMatch = moveBinding.enumValues?.find((v) => v.toUpperCase() === action);
-      await onExecuteOrder(moveBinding.alias, enumMatch ?? action);
+      await onExecuteOrder("state", command);
     } finally {
-      setExecuting(null);
+      setExecuting(false);
     }
   };
 
@@ -989,37 +990,52 @@ function PoolCoverEquipmentWidget({
         <div />
         <PoolCoverIcon position={position} />
         <div className="pl-2">
-          <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light tabular-nums">
-            {stateLabel}
-          </span>
+          {position === null ? (
+            <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
+          ) : position === 100 ? (
+            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+              {t("controls.opened")}
+            </span>
+          ) : position === 0 ? (
+            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+              {t("controls.closed")}
+            </span>
+          ) : (
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+                {position}
+              </span>
+              <span className="text-[12px] font-medium text-text-tertiary">%</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {moveBinding && equipment.enabled && (
+      {hasState && equipment.enabled && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button
-            onClick={() => handleMove("OPEN")}
-            disabled={executing !== null}
+            onClick={() => handleCommand("OPEN")}
+            disabled={executing}
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("controls.opened")}
+            title={t("controls.open")}
           >
-            {executing === "OPEN" ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
           </button>
           <button
-            onClick={() => handleMove("STOP")}
-            disabled={executing !== null}
+            onClick={() => handleCommand("STOP")}
+            disabled={executing}
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Stop"
+            title={t("controls.stop")}
           >
-            {executing === "STOP" ? <Loader2 size={16} className="animate-spin" /> : <Square size={11} strokeWidth={2.5} />}
+            <Square size={11} strokeWidth={2.5} />
           </button>
           <button
-            onClick={() => handleMove("CLOSE")}
-            disabled={executing !== null}
+            onClick={() => handleCommand("CLOSE")}
+            disabled={executing}
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("controls.closed")}
+            title={t("controls.close")}
           >
-            {executing === "CLOSE" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
+            <ChevronDown size={16} strokeWidth={2} />
           </button>
         </div>
       )}

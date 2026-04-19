@@ -792,9 +792,12 @@ export function EnergyMeterIcon() {
 // ============================================================
 
 export function PoolPumpIcon({ on }: { on: boolean }) {
-  // Single static SVG — same geometry in both states. The stroke colour
-  // reflects the state (blue ON, muted grey OFF); the light-blue water inside
-  // the pipes is always visible. The ON badge lives in the widget, not here.
+  // Single static SVG — same geometry in both states. Stroke reflects state
+  // (blue ON, muted grey OFF). Water is only drawn when ON: light-blue inside
+  // the pipes + a subtle tint at the bottom of the tank. The ON badge lives
+  // in the widget, not here.
+  const waterPipe = on ? "#93C5FD" : "transparent";
+  const waterTank = on ? "#DBEAFE" : "white";
   return (
     <svg
       width="120"
@@ -803,26 +806,26 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
       fill="none"
       className={on ? "text-primary" : "text-text-tertiary"}
     >
-      {/* PIPES — outer stroke + light-blue water core */}
+      {/* PIPES — outer stroke + inner water core (visible only when ON) */}
       <path d="M14 11 L42 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M14 11 L42 11" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 11 L42 11" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
       <path d="M14 16 L14 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M14 16 L14 11" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 16 L14 11" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
       <path d="M42 11 L42 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M42 11 L42 20" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M42 11 L42 20" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
       <path d="M42 36 L42 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M42 36 L42 49" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M42 36 L42 49" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
       <path d="M3 49 L42 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M3 49 L42 49" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M3 49 L42 49" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
       <path d="M14 45 L14 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M14 45 L14 49" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 45 L14 49" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
 
       {/* MANOMETER — needle kept at one static angle */}
       <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="white" />
       <line x1="28" y1="10" x2="30.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <circle cx="28" cy="10" r="0.9" fill="currentColor" />
 
-      {/* TANK (3-stages) */}
+      {/* TANK (3-stages) — lower body gets a faint blue tint when ON */}
       <path
         d="M8 16 Q8 14 10 14 L18 14 Q20 14 20 16 L20 18 L8 18 Z"
         stroke="currentColor"
@@ -842,7 +845,7 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
         d="M5 31 L5 41 Q5 45 10 45 L18 45 Q23 45 23 41 L23 31 Z"
         stroke="currentColor"
         strokeWidth="1.5"
-        fill="white"
+        fill={waterTank}
         strokeLinejoin="round"
       />
       <path d="M9 21 L9 25" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.5" />
