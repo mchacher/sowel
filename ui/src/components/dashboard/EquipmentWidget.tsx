@@ -959,10 +959,14 @@ function PoolCoverEquipmentWidget({
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
 
-  // Mirrors ShutterEquipmentWidget — same position display + OPEN/STOP/CLOSE
-  // buttons — but renders the pool-specific PoolCoverIcon.
+  // Lookup by binding category (not by alias) so we work regardless of
+  // whether the binding alias was rewritten to "state"/"position" or kept
+  // the raw plugin key (e.g. shutter_state on legacy Tasmota).
   const positionBinding = equipment.dataBindings.find(
-    (db) => db.category === "shutter_position" || db.alias === "position",
+    (db) =>
+      db.category === "shutter_position" ||
+      db.category === ("position" as never) ||
+      db.alias === "position",
   );
   const devicePosition =
     positionBinding && typeof positionBinding.value === "number"
@@ -970,19 +974,22 @@ function PoolCoverEquipmentWidget({
       : null;
   const position = slider.displayValue(devicePosition);
 
-  const hasState = equipment.orderBindings.some(
-    (ob) => ob.alias === "state" || ob.category === "pool_cover_move",
+  const moveBinding = equipment.orderBindings.find(
+    (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
   );
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
-    if (executing || !hasState) return;
+    if (executing || !moveBinding) return;
     setExecuting(true);
     try {
-      await onExecuteOrder("state", command);
+      const enumMatch = moveBinding.enumValues?.find((v) => v.toUpperCase() === command);
+      await onExecuteOrder(moveBinding.alias, enumMatch ?? command);
     } finally {
       setExecuting(false);
     }
   };
+
+  const hasState = !!moveBinding;
 
   return (
     <WidgetCard label={label}>
