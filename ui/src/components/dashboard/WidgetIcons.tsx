@@ -884,15 +884,12 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
               ? 75
               : 100;
 
-  // Layout — pool basin spans x=4..52 horizontally and y=10..46 vertically
-  // inside a 56×56 viewBox, so the icon fills the canvas vertically (no more
-  // empty bands top and bottom) and reads bigger in the dashboard.
-  // Pool is an immersed cover (volet immergé) — no visible roller box on the
-  // side. Slightly elongated landscape shape (less square than before).
-  const POOL_X = 6;
-  const POOL_W = 46;
-  const POOL_Y = 14;
-  const POOL_H = 28;
+  // Layout — pool basin spans almost the whole 56×56 viewBox (immersed cover,
+  // no visible roller). Landscape ratio ~1.6:1.
+  const POOL_X = 3;
+  const POOL_W = 50;
+  const POOL_Y = 12;
+  const POOL_H = 32;
   const SLAT_Y = POOL_Y + 2;
   const SLAT_H = POOL_H - 4;
   const SLAT_X_START = POOL_X + 0.5;
@@ -947,22 +944,42 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
       />
       <line x1={POOL_X} y1={POOL_Y + POOL_H / 2} x2={POOL_X + POOL_W} y2={POOL_Y + POOL_H / 2} stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
 
-      {/* Water waves only past the last slat */}
-      {slatCount < MAX_SLATS && Array.from({ length: 3 }).map((_, i) => {
-        const y = POOL_Y + 6 + i * 8;
-        if (waveStartX > POOL_X + POOL_W - 6) return null;
-        return (
-          <path
-            key={i}
-            d={`M${waveStartX} ${y} Q${waveStartX + 2} ${y - 1} ${waveStartX + 4} ${y} T${waveStartX + 8} ${y} T${waveStartX + 12} ${y} T${waveStartX + 16} ${y}`}
-            stroke="currentColor"
-            strokeWidth="0.8"
-            strokeOpacity="0.35"
-            fill="none"
-            strokeLinecap="round"
-          />
-        );
-      })}
+      {/* Water waves on the uncovered area — extend across the full width
+       * and height of the pool when slats don't cover. */}
+      {slatCount < MAX_SLATS && (() => {
+        const waveEndX = POOL_X + POOL_W - 1.5;
+        const waveAvail = waveEndX - waveStartX;
+        if (waveAvail < 4) return null;
+        const WAVE_PITCH_X = 4; // crest period
+        const WAVE_ROW_PITCH = 5; // vertical spacing
+        const wavesTopY = POOL_Y + 4;
+        const wavesBottomY = POOL_Y + POOL_H - 4;
+        const rows: number[] = [];
+        for (let y = wavesTopY; y <= wavesBottomY; y += WAVE_ROW_PITCH) rows.push(y);
+        const crestCount = Math.floor(waveAvail / WAVE_PITCH_X);
+        return rows.map((y, rowIdx) => {
+          // Phase shift per row for a more natural look
+          const phase = rowIdx * 2;
+          let d = `M${waveStartX} ${y}`;
+          for (let i = 1; i <= crestCount; i++) {
+            const cx = waveStartX + (i - 0.5) * WAVE_PITCH_X;
+            const ex = waveStartX + i * WAVE_PITCH_X;
+            const cy = y + (i % 2 === 0 ? -1 : 1) * (1 - (phase % 2));
+            d += ` Q${cx} ${cy} ${ex} ${y}`;
+          }
+          return (
+            <path
+              key={rowIdx}
+              d={d}
+              stroke="currentColor"
+              strokeWidth="0.7"
+              strokeOpacity="0.35"
+              fill="none"
+              strokeLinecap="round"
+            />
+          );
+        });
+      })()}
 
       {/* Cover slats — vertical, rolling out from the roller. */}
       {Array.from({ length: slatCount }).map((_, i) => (
