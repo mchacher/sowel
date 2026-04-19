@@ -796,7 +796,8 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
   // (blue ON, muted grey OFF). Water is only drawn when ON: light-blue inside
   // the pipes + a subtle tint at the bottom of the tank. The ON badge lives
   // in the widget, not here.
-  const waterPipe = on ? "#93C5FD" : "transparent";
+  // OFF: white inner stroke = visually hollow tube on the white card.
+  const waterPipe = on ? "#93C5FD" : "white";
   const waterTank = on ? "#DBEAFE" : "white";
   return (
     <svg
