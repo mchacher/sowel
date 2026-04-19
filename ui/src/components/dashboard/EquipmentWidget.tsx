@@ -1013,7 +1013,12 @@ function PoolCoverEquipmentWidget({
     <WidgetCard label={label}>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <PoolCoverIcon position={position} />
+        {/* Nudge up only here — the icon is intrinsically centered in its
+         * viewBox and the dashboard slot reads it slightly low. Mobile
+         * containers center it correctly without this offset. */}
+        <div className="-mt-3">
+          <PoolCoverIcon position={position} />
+        </div>
         <div className="pl-2">
           {position === null ? (
             <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>

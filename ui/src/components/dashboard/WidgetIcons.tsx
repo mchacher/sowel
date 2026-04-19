@@ -890,7 +890,7 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
   // low otherwise).
   const POOL_X = 3;
   const POOL_W = 50;
-  const POOL_Y = 5;
+  const POOL_Y = 12;
   const POOL_H = 32;
   const SLAT_Y = POOL_Y + 2;
   const SLAT_H = POOL_H - 4;
