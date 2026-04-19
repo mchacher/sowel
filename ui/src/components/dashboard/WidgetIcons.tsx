@@ -919,7 +919,7 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
   const waveStartX = Math.max(POOL_X + 2, lastSlatRight + 1);
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="138" height="138" viewBox="0 0 56 56" fill="none" className="text-primary">
       <defs>
         <linearGradient id={waterGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.04" />
