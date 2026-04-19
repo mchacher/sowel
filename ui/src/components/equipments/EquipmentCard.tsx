@@ -14,6 +14,7 @@ import {
   Zap,
   Tv,
   WashingMachine,
+  Waves,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -45,6 +46,8 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   media_player: <Tv size={18} strokeWidth={1.5} />,
   appliance: <WashingMachine size={18} strokeWidth={1.5} />,
   water_valve: <WaterValveIcon size={18} strokeWidth={1.5} />,
+  pool_pump: <Waves size={18} strokeWidth={1.5} />,
+  pool_cover: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -66,6 +69,8 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   media_player: "equipments.type.media_player",
   appliance: "equipments.type.appliance",
   water_valve: "equipments.type.water_valve",
+  pool_pump: "equipments.type.pool_pump",
+  pool_cover: "equipments.type.pool_cover",
 };
 
 interface EquipmentCardProps {

@@ -23,6 +23,8 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "media_player", labelKey: "equipments.type.media_player" },
   { value: "appliance", labelKey: "equipments.type.appliance" },
   { value: "water_valve", labelKey: "equipments.type.water_valve" },
+  { value: "pool_pump", labelKey: "equipments.type.pool_pump" },
+  { value: "pool_cover", labelKey: "equipments.type.pool_cover" },
 ];
 
 interface EquipmentFormProps {
@@ -39,20 +41,25 @@ interface EquipmentFormProps {
     type: EquipmentType;
     zoneId: string;
     selectedDeviceIds: string[];
+    /** For candidate-based types: deviceId → chosen candidate.id. */
+    candidateByDevice?: Record<string, string>;
   }) => Promise<void>;
   onClose: () => void;
   boundDeviceIds?: Set<string>;
+  /** Per-device set of device_order keys already bound on other equipments. */
+  boundOrderKeysByDevice?: Record<string, Set<string>>;
   /** Equipment types to exclude from the type selector (e.g. singleton types already created). */
   excludeTypes?: Set<EquipmentType>;
 }
 
-export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, excludeTypes }: EquipmentFormProps) {
+export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, boundOrderKeysByDevice, excludeTypes }: EquipmentFormProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<EquipmentType>(initial?.type ?? "light_onoff");
   const [zoneId, setZoneId] = useState(initial?.zoneId ?? defaultZoneId ?? "");
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +82,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
         type,
         zoneId,
         selectedDeviceIds,
+        candidateByDevice,
       });
       onClose();
     } catch (err) {
@@ -175,7 +183,9 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   equipmentType={type}
                   selectedDeviceIds={selectedDeviceIds}
                   onSelectionChange={setSelectedDeviceIds}
+                  onCandidateChange={setCandidateByDevice}
                   boundDeviceIds={boundDeviceIds}
+                  boundOrderKeysByDevice={boundOrderKeysByDevice}
                 />
               </>
             )}

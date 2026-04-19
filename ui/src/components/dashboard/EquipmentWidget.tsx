@@ -5,6 +5,8 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Square,
   Minus,
   Plus,
@@ -29,6 +31,9 @@ import {
   SlidingGateIcon,
   GarageDoorIcon,
   EnergyMeterIcon,
+  PoolPumpIcon,
+  PoolCoverIcon,
+  WaterValveWidgetIcon,
 } from "./WidgetIcons";
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
@@ -51,6 +56,9 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
     isHeater,
     isGate,
     isAppliance,
+    isWaterValve,
+    isPoolPump,
+    isPoolCover,
   } = useEquipmentState(equipment);
 
   const label = widget.label || equipment.name;
@@ -64,6 +72,9 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder }: Equipment
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
+  if (isWaterValve) return <WaterValveEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isPoolPump) return <PoolPumpEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isPoolCover) return <PoolCoverEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isSensor) return <SensorEquipmentWidget label={label} equipment={equipment} iconKey={widget.icon} visibleBindings={widget.config?.visibleBindings} />;
 
   return <GenericEquipmentWidget label={label} equipment={equipment} />;
@@ -761,6 +772,303 @@ function ApplianceEquipmentWidget({
           </span>
         )}
       </div>
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Water valve equipment widget — pipe icon + ON/OFF toggle
+// ============================================================
+
+function WaterValveEquipmentWidget({
+  label,
+  equipment,
+  onExecuteOrder,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [executing, setExecuting] = useState(false);
+
+  const stateBinding = equipment.dataBindings.find(
+    (db) => db.alias === "state" || db.category === "light_state",
+  );
+  const isOpen = stateBinding
+    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
+    : false;
+
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum"),
+  );
+  const hasToggle = !!toggleBinding;
+
+  const handleToggle = async () => {
+    if (executing || !toggleBinding) return;
+    setExecuting(true);
+    try {
+      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+      const value = toggleBinding.type === "boolean"
+        ? !isOpen
+        : isOpen ? offVal : onVal;
+      await onExecuteOrder(toggleBinding.alias, value);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <WidgetCard label={label}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        <WaterValveWidgetIcon open={isOpen} />
+        <div className="flex items-center gap-2 pl-2">
+          <span
+            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              isOpen ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            }`}
+          >
+            {isOpen ? t("water.open") : t("water.closed")}
+          </span>
+        </div>
+      </div>
+
+      {hasToggle && equipment.enabled && (
+        <div className="flex justify-center gap-3 mt-auto pt-1">
+          <button
+            onClick={handleToggle}
+            disabled={executing}
+            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              isOpen ? "!border-active/40 !text-active !bg-active/5" : ""
+            }`}
+            title={isOpen ? t("controls.turnOff") : t("controls.turnOn")}
+          >
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+          </button>
+        </div>
+      )}
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Pool pump equipment widget — ON/OFF toggle + daily runtime
+// ============================================================
+
+function formatRuntime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+function PoolPumpEquipmentWidget({
+  label,
+  equipment,
+  onExecuteOrder,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [executing, setExecuting] = useState(false);
+
+  const stateBinding = equipment.dataBindings.find(
+    (db) => db.alias === "state" || db.category === "light_state",
+  );
+  const isOn = stateBinding
+    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
+    : false;
+
+  const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
+  const runtimeSeconds = typeof runtime?.value === "number" ? runtime.value : 0;
+
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum") || ob.category === "pool_pump_toggle",
+  );
+  const hasToggle = !!toggleBinding;
+
+  const handleToggle = async () => {
+    if (executing || !toggleBinding) return;
+    setExecuting(true);
+    try {
+      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+      const value = toggleBinding.type === "boolean"
+        ? !isOn
+        : isOn ? offVal : onVal;
+      await onExecuteOrder(toggleBinding.alias, value);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <WidgetCard label={label}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        <PoolPumpIcon on={isOn} />
+        <div className="flex flex-col items-start gap-1 pl-2">
+          <span
+            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            }`}
+          >
+            {isOn ? "ON" : "OFF"}
+          </span>
+          <span className="text-[11px] text-text-tertiary tabular-nums font-mono">
+            {formatRuntime(runtimeSeconds)}
+          </span>
+        </div>
+      </div>
+
+      {hasToggle && equipment.enabled && (
+        <div className="flex justify-center gap-3 mt-auto pt-1">
+          <button
+            onClick={handleToggle}
+            disabled={executing}
+            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
+            }`}
+            title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
+          >
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+          </button>
+        </div>
+      )}
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Pool cover equipment widget — Open/Stop/Close + position
+// ============================================================
+
+function PoolCoverEquipmentWidget({
+  label,
+  equipment,
+  onExecuteOrder,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [executing, setExecuting] = useState(false);
+  const slider = useSliderOverride();
+
+  // Lookup by binding category (not by alias) so we work regardless of
+  // whether the binding alias was rewritten to "state"/"position" or kept
+  // the raw plugin key (e.g. shutter_state on legacy Tasmota).
+  const positionBinding = equipment.dataBindings.find(
+    (db) =>
+      db.category === "shutter_position" ||
+      db.category === ("position" as never) ||
+      db.alias === "position",
+  );
+  const devicePosition =
+    positionBinding && typeof positionBinding.value === "number"
+      ? positionBinding.value
+      : null;
+  const position = slider.displayValue(devicePosition);
+
+  // Find the move-style order binding by, in order:
+  //   1. binding category (pool_cover_move override, or shutter_move legacy)
+  //   2. binding alias (state / shutter_state / shutter1_state / …)
+  //   3. enum values that look like OPEN/CLOSE/STOP
+  // This covers freshly auto-bound pool covers as well as bindings created
+  // before the category-aware aliasing landed.
+  const moveBinding = equipment.orderBindings.find(
+    (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
+  )
+    ?? equipment.orderBindings.find(
+      (ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias),
+    )
+    ?? equipment.orderBindings.find((ob) => {
+      if (ob.type !== "enum" || !ob.enumValues) return false;
+      const upper = ob.enumValues.map((v) =>
+        typeof v === "string" ? v.toUpperCase() : "",
+      );
+      return upper.includes("OPEN") && upper.includes("CLOSE");
+    });
+
+  const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
+    if (executing || !moveBinding) return;
+    setExecuting(true);
+    try {
+      const enumMatch = moveBinding.enumValues?.find((v) => v.toUpperCase() === command);
+      await onExecuteOrder(moveBinding.alias, enumMatch ?? command);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  const hasState = !!moveBinding;
+
+  return (
+    <WidgetCard label={label}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        {/* Nudge up only here — the icon is intrinsically centered in its
+         * viewBox and the dashboard slot reads it slightly low. Mobile
+         * containers center it correctly without this offset. */}
+        <div className="-mt-3">
+          <PoolCoverIcon position={position} />
+        </div>
+        <div className="pl-2">
+          {position === null ? (
+            <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
+          ) : position === 100 ? (
+            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+              {t("controls.opened")}
+            </span>
+          ) : position === 0 ? (
+            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+              {t("controls.closed")}
+            </span>
+          ) : (
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+                {position}
+              </span>
+              <span className="text-[12px] font-medium text-text-tertiary">%</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {hasState && equipment.enabled && (
+        <div className="flex justify-center gap-3 mt-auto pt-1">
+          <button
+            onClick={() => handleCommand("OPEN")}
+            disabled={executing}
+            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t("controls.open")}
+          >
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronLeft size={16} strokeWidth={2} />}
+          </button>
+          <button
+            onClick={() => handleCommand("STOP")}
+            disabled={executing}
+            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t("controls.stop")}
+          >
+            <Square size={11} strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={() => handleCommand("CLOSE")}
+            disabled={executing}
+            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t("controls.close")}
+          >
+            <ChevronRight size={16} strokeWidth={2} />
+          </button>
+        </div>
+      )}
     </WidgetCard>
   );
 }

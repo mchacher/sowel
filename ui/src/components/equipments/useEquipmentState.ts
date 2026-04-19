@@ -23,6 +23,9 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const isGate = equipment.type === "gate";
   const isMediaPlayer = equipment.type === "media_player";
   const isAppliance = equipment.type === "appliance";
+  const isWaterValve = equipment.type === "water_valve";
+  const isPoolPump = equipment.type === "pool_pump";
+  const isPoolCover = equipment.type === "pool_cover";
 
   // State binding
   const stateBinding = equipment.dataBindings.find(
@@ -124,6 +127,9 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isGate,
     isMediaPlayer,
     isAppliance,
+    isWaterValve,
+    isPoolPump,
+    isPoolCover,
     stateBinding,
     isOn,
     shutterPosition,

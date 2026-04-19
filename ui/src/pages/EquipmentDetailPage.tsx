@@ -253,11 +253,22 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
-      {/* Shutter controls */}
-      {isShutter && equipment.enabled && (
+      {/* Shutter controls (also used for pool_cover) */}
+      {(isShutter || equipment.type === "pool_cover") && equipment.enabled && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ShutterControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* Pool pump controls — ON/OFF toggle via LightControl */}
+      {equipment.type === "pool_pump" && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <LightControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
@@ -720,6 +731,7 @@ function ChangeDeviceModal({
 }) {
   const { t } = useTranslation();
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -731,7 +743,7 @@ function ChangeDeviceModal({
       // Remove all existing bindings
       await removeAllBindings(equipment.id, equipment.dataBindings, equipment.orderBindings);
       // Create new bindings from selected devices
-      await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type);
+      await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type, candidateByDevice);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -762,6 +774,7 @@ function ChangeDeviceModal({
             equipmentType={equipment.type}
             selectedDeviceIds={selectedDeviceIds}
             onSelectionChange={setSelectedDeviceIds}
+            onCandidateChange={setCandidateByDevice}
           />
           {error && <p className="text-[13px] text-error mt-3">{error}</p>}
         </div>

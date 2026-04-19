@@ -788,6 +788,269 @@ export function EnergyMeterIcon() {
 }
 
 // ============================================================
+// Pool filter pump (Design F) — tank + manometer + junction box
+// ============================================================
+
+export function PoolPumpIcon({ on }: { on: boolean }) {
+  // Single static SVG — same geometry in both states. Stroke reflects state
+  // (blue ON, muted grey OFF). Water is only drawn when ON: light-blue inside
+  // the pipes + a subtle tint at the bottom of the tank. The ON badge lives
+  // in the widget, not here.
+  // OFF: white inner stroke = visually hollow tube on the white card.
+  const waterPipe = on ? "#93C5FD" : "white";
+  const waterTank = on ? "#DBEAFE" : "white";
+  return (
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={on ? "text-primary" : "text-text-tertiary"}
+    >
+      {/* PIPES — single continuous outline with smoothed joints, then an
+       * inner water core on top (visible only when ON). Three disjoint
+       * sub-paths: top loop (tank → manometer line → junction box top),
+       * bottom rail (junction box bottom → ground), tank-bottom drop. */}
+      {(() => {
+        const d =
+          "M14 16 L14 11 L42 11 L42 20 " +
+          "M42 36 L42 49 L3 49 " +
+          "M14 45 L14 49";
+        return (
+          <>
+            <path d={d} stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <path d={d} stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </>
+        );
+      })()}
+
+      {/* MANOMETER — needle kept at one static angle */}
+      <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      <line x1="28" y1="10" x2="30.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <circle cx="28" cy="10" r="0.9" fill="currentColor" />
+
+      {/* TANK (3-stages) — lower body gets a faint blue tint when ON */}
+      <path
+        d="M8 16 Q8 14 10 14 L18 14 Q20 14 20 16 L20 18 L8 18 Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="white"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 18 Q5 21 5 25 L5 28 L23 28 L23 25 Q23 21 20 18 Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="white"
+        strokeLinejoin="round"
+      />
+      <rect x="4" y="28" width="20" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="white" />
+      <path
+        d="M5 31 L5 41 Q5 45 10 45 L18 45 Q23 45 23 41 L23 31 Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill={waterTank}
+        strokeLinejoin="round"
+      />
+      <path d="M9 21 L9 25" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.5" />
+
+      {/* JUNCTION BOX — always shown with 4 screws */}
+      <rect x="34" y="20" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      <circle cx="37" cy="23" r="0.9" fill="currentColor" />
+      <circle cx="47" cy="23" r="0.9" fill="currentColor" />
+      <circle cx="37" cy="33" r="0.9" fill="currentColor" />
+      <circle cx="47" cy="33" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+// ============================================================
+// Pool cover (Design G) — landscape pool + roller + vertical slats
+// ============================================================
+
+export function PoolCoverIcon({ position }: { position: number | null }) {
+  // position 0..100 (% open). null = unknown.
+  // Bucketing mirrors the shutter widget: 0/25/50/75/100.
+  const bucket =
+    position === null
+      ? 50
+      : position <= 12
+        ? 0
+        : position <= 37
+          ? 25
+          : position <= 62
+            ? 50
+            : position <= 87
+              ? 75
+              : 100;
+
+  // Layout — pool basin spans almost the whole 56×56 viewBox (immersed cover,
+  // no visible roller). Landscape ratio ~1.6:1. Shifted up a few units so
+  // the picto sits visually centered (the dashboard layout was reading too
+  // low otherwise).
+  const POOL_X = 3;
+  const POOL_W = 50;
+  const POOL_Y = 12;
+  const POOL_H = 32;
+  const SLAT_Y = POOL_Y + 2;
+  const SLAT_H = POOL_H - 4;
+  const SLAT_X_START = POOL_X + 0.5;
+  const SLAT_X_END = POOL_X + POOL_W - 0.5;
+  const SLAT_PITCH = 3.5;
+  const SLAT_W = 3;
+  const MAX_SLATS = Math.floor((SLAT_X_END - SLAT_X_START - SLAT_W) / SLAT_PITCH) + 1;
+  // OPEN (100%) → no slat ; CLOSED (0%) → enough slats to cover the basin edge
+  // to edge (so no water peeks out past the last slat).
+  const slatCount =
+    bucket === 100
+      ? 0
+      : bucket === 75
+        ? Math.max(1, Math.round(MAX_SLATS * 0.25))
+        : bucket === 50
+          ? Math.round(MAX_SLATS * 0.5)
+          : bucket === 25
+            ? Math.round(MAX_SLATS * 0.75)
+            : MAX_SLATS;
+
+  const id = useId();
+  const waterGrad = `pool-water-${id}`;
+  const slatGrad = `pool-slat-${id}`;
+
+  // Water waves only on the uncovered area (right of the last slat)
+  const lastSlatRight = SLAT_X_START + (slatCount > 0 ? slatCount * SLAT_PITCH : 0);
+  const waveStartX = Math.max(POOL_X + 2, lastSlatRight + 1);
+
+  return (
+    <svg width="138" height="138" viewBox="0 0 56 56" fill="none" className="text-primary">
+      <defs>
+        <linearGradient id={waterGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.04" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.08" />
+        </linearGradient>
+        <linearGradient id={slatGrad} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.65" />
+        </linearGradient>
+      </defs>
+
+      {/* Pool basin */}
+      <rect
+        x={POOL_X}
+        y={POOL_Y}
+        width={POOL_W}
+        height={POOL_H}
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill={`url(#${waterGrad})`}
+      />
+      <line x1={POOL_X} y1={POOL_Y + POOL_H / 2} x2={POOL_X + POOL_W} y2={POOL_Y + POOL_H / 2} stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
+
+      {/* Water waves on the uncovered area — extend across the full width
+       * and height of the pool when slats don't cover. */}
+      {slatCount < MAX_SLATS && (() => {
+        const waveEndX = POOL_X + POOL_W - 1.5;
+        const waveAvail = waveEndX - waveStartX;
+        if (waveAvail < 4) return null;
+        const WAVE_PITCH_X = 4; // crest period
+        const WAVE_ROW_PITCH = 5; // vertical spacing
+        const wavesTopY = POOL_Y + 4;
+        // Push the bottom row closer to the basin floor so a wave sits at the
+        // very bottom of the water area.
+        const wavesBottomY = POOL_Y + POOL_H - 2;
+        const rows: number[] = [];
+        for (let y = wavesTopY; y <= wavesBottomY; y += WAVE_ROW_PITCH) rows.push(y);
+        const crestCount = Math.floor(waveAvail / WAVE_PITCH_X);
+        return rows.map((y, rowIdx) => {
+          // Phase shift per row for a more natural look
+          const phase = rowIdx * 2;
+          let d = `M${waveStartX} ${y}`;
+          for (let i = 1; i <= crestCount; i++) {
+            const cx = waveStartX + (i - 0.5) * WAVE_PITCH_X;
+            const ex = waveStartX + i * WAVE_PITCH_X;
+            const cy = y + (i % 2 === 0 ? -1 : 1) * (1 - (phase % 2));
+            d += ` Q${cx} ${cy} ${ex} ${y}`;
+          }
+          return (
+            <path
+              key={rowIdx}
+              d={d}
+              stroke="currentColor"
+              strokeWidth="0.7"
+              strokeOpacity="0.35"
+              fill="none"
+              strokeLinecap="round"
+            />
+          );
+        });
+      })()}
+
+      {/* Cover slats — vertical, rolling out from the roller. */}
+      {Array.from({ length: slatCount }).map((_, i) => (
+        <rect
+          key={i}
+          x={SLAT_X_START + i * SLAT_PITCH}
+          y={SLAT_Y}
+          width={SLAT_W}
+          height={SLAT_H}
+          rx="0.8"
+          fill={`url(#${slatGrad})`}
+        />
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// Water valve (widget) — gate valve with handle position + flow
+// ============================================================
+
+export function WaterValveWidgetIcon({ open }: { open: boolean }) {
+  // Pipe horizontal across the bottom; valve body in the center; handle
+  // horizontal when OPEN, vertical when CLOSED. Water flow visible only
+  // when OPEN.
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={open ? "text-active" : "text-primary"}>
+      {/* Pipe (horizontal) */}
+      <rect
+        x="4"
+        y="32"
+        width="48"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="white"
+      />
+      {/* Flanges */}
+      <line x1="9" y1="32" x2="9" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="47" y1="32" x2="47" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+
+      {/* Water flow inside the pipe (only when open) */}
+      {open && (
+        <>
+          <path d="M12 37 Q16 35 20 37 T28 37 T36 37 T44 37" stroke="#3B82F6" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <path d="M12 39.5 Q16 37.5 20 39.5 T28 39.5 T36 39.5 T44 39.5" stroke="#3B82F6" strokeWidth="1.0" fill="none" strokeLinecap="round" strokeOpacity="0.5" />
+        </>
+      )}
+
+      {/* Valve body (vertical extension) */}
+      <rect x="22" y="20" width="12" height="14" rx="1" stroke="currentColor" strokeWidth="1.6" fill="white" />
+
+      {/* Stem */}
+      <line x1="28" y1="10" x2="28" y2="22" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+
+      {/* Handle: horizontal (open) / vertical (closed) */}
+      {open ? (
+        <rect x="14" y="8" width="28" height="4" rx="2" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.18" />
+      ) : (
+        <rect x="26" y="2" width="4" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.18" />
+      )}
+    </svg>
+  );
+}
+
+// ============================================================
 // Contact sensor icon — capteur d'ouverture porte/fenêtre
 // ============================================================
 

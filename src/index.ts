@@ -9,6 +9,7 @@ import { EventBus } from "./core/event-bus.js";
 import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
+import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
@@ -145,6 +146,12 @@ async function main() {
     integrationRegistry,
     deviceManager,
     logger,
+  );
+
+  // 9b. Create Pool Runtime Tracker (accumulates daily ON-time per pool_pump)
+  const poolRuntimeTracker = new PoolRuntimeTracker(db, eventBus, equipmentManager, logger);
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    poolRuntimeTracker.getComputedDataForEquipment(eqId),
   );
 
   // 10. Create Zone Aggregator + Sunlight Manager
@@ -319,6 +326,9 @@ async function main() {
   // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
   recipeManager.init();
 
+  // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
+  poolRuntimeTracker.start();
+
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
 
@@ -380,6 +390,11 @@ async function main() {
       recipeManager.stopAll();
     } catch (err) {
       logger.error({ err }, "Error stopping recipe manager");
+    }
+    try {
+      poolRuntimeTracker.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping pool runtime tracker");
     }
     try {
       notificationPublishService.destroy();

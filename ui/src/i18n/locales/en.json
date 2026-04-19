@@ -202,6 +202,8 @@
   "equipments.type.media_player": "Media Player",
   "equipments.type.appliance": "Appliance",
   "equipments.type.water_valve": "Water valve",
+  "equipments.type.pool_pump": "Pool pump",
+  "equipments.type.pool_cover": "Pool cover",
 
   "water.open": "Open",
   "water.closed": "Closed",
@@ -226,6 +228,7 @@
   "equipments.group.media": "Media",
   "equipments.group.appliances": "Appliances",
   "equipments.group.water": "Water",
+  "equipments.group.pool": "Pool",
   "equipments.group.other": "Other",
 
   "equipments.noEquipments": "No equipments",
@@ -410,6 +413,7 @@
   "home.zoneDeleted": "This zone may have been deleted.",
   "home.backToHome": "Back to Home",
 
+  "deviceSelector.pickChannel": "Pick the channel to bind",
   "deviceSelector.loading": "Loading devices...",
   "deviceSelector.noDevices": "No devices found. Connect devices via MQTT first.",
   "deviceSelector.noCompatible": "No compatible devices found for this equipment type.",
@@ -891,6 +895,8 @@
 
   "plugins.title": "Plugins",
   "plugins.subtitle": "Install and manage extensions for Sowel.",
+  "plugins.refreshRegistry": "Refresh",
+  "plugins.refreshRegistryTitle": "Force-reload the plugin registry (bypasses cache)",
   "plugins.installed": "Installed",
   "plugins.store": "Store",
   "plugins.noPlugins": "No plugins installed",

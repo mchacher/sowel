@@ -32,6 +32,8 @@ export type DataCategory =
   | "wind"
   | "action"
   | "gate_state"
+  | "cover_state"
+  | "runtime_daily"
   | "weather_condition"
   | "uv"
   | "solar_radiation"
@@ -56,7 +58,10 @@ export type OrderCategory =
   | "gate_trigger"
   | "valve_toggle"
   | "toggle_mute"
-  | "set_input";
+  | "set_input"
+  | "pool_pump_toggle"
+  | "pool_cover_move"
+  | "pool_cover_position";
 
 // ============================================================
 // Device
@@ -190,7 +195,9 @@ export type EquipmentType =
   | "energy_production_meter"
   | "media_player"
   | "appliance"
-  | "water_valve";
+  | "water_valve"
+  | "pool_pump"
+  | "pool_cover";
 
 export interface Equipment {
   id: string;
@@ -869,7 +876,7 @@ export interface NotificationPublisherWithMappings extends NotificationPublisher
 // Dashboard Widget
 // ============================================================
 
-export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors" | "water";
+export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors" | "water" | "pool";
 
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */

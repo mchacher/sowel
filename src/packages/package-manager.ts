@@ -364,9 +364,30 @@ export class PackageManager {
    * Falls back to local file if remote is unreachable.
    */
   async warmRegistryCache(): Promise<void> {
+    await this.fetchRemoteRegistry(false);
+  }
+
+  /**
+   * Force refresh the remote registry, bypassing the CDN cache. Used by the
+   * "Refresh" button on the Plugins page.
+   */
+  async refreshRegistryNow(): Promise<{ count: number; source: "remote" | "local" }> {
+    const fetched = await this.fetchRemoteRegistry(true);
+    return {
+      count: this.registryCache?.length ?? 0,
+      source: fetched ? "remote" : "local",
+    };
+  }
+
+  /**
+   * Internal: fetch registry.json from GitHub raw. When `force` is true, append
+   * a cache-busting query string so we bypass the raw CDN's 5-min cache.
+   */
+  private async fetchRemoteRegistry(force: boolean): Promise<boolean> {
+    const url = force ? `${REGISTRY_URL}?t=${Date.now()}` : REGISTRY_URL;
     try {
-      const res = await fetch(REGISTRY_URL, {
-        headers: { Accept: "application/json" },
+      const res = await fetch(url, {
+        headers: { Accept: "application/json", ...(force ? { "Cache-Control": "no-cache" } : {}) },
         signal: AbortSignal.timeout(10_000),
       });
       if (res.ok) {
@@ -374,16 +395,16 @@ export class PackageManager {
         if (Array.isArray(entries) && entries.length > 0) {
           this.registryCache = entries;
           this.registryCacheTime = Date.now();
-          this.logger.info({ count: entries.length }, "Remote registry loaded");
-          return;
+          this.logger.info({ count: entries.length, force }, "Remote registry loaded");
+          return true;
         }
       }
     } catch {
       // Remote unreachable — fall back to local
     }
-    // Fallback to bundled local file
     this.readLocalRegistry();
     this.logger.info({ count: this.registryCache?.length ?? 0 }, "Using local registry fallback");
+    return false;
   }
 
   /**

@@ -7,6 +7,7 @@ import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails, ZoneWithChildren } from "../types";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
+import { buildBoundOrderKeysByDevice } from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentsPage() {
@@ -119,10 +120,7 @@ export function EquipmentsPage() {
           title={t("equipments.createEquipment")}
           zones={tree}
           excludeTypes={singletonExcludeTypes(equipments)}
-          boundDeviceIds={new Set(equipments.flatMap((e) => [
-            ...e.dataBindings.map((b) => b.deviceId),
-            ...e.orderBindings.map((b) => b.deviceId),
-          ]))}
+          boundOrderKeysByDevice={buildBoundOrderKeysByDevice(equipments)}
           onSubmit={async (data) => {
             const equipment = await createEquipment({
               name: data.name,
@@ -132,7 +130,12 @@ export function EquipmentsPage() {
 
             // Auto-create bindings for selected devices
             if (data.selectedDeviceIds.length > 0) {
-              await autoCreateBindings(equipment.id, data.selectedDeviceIds, data.type);
+              await autoCreateBindings(
+                equipment.id,
+                data.selectedDeviceIds,
+                data.type,
+                data.candidateByDevice,
+              );
               await fetchEquipments();
             }
           }}
@@ -153,6 +156,7 @@ function singletonExcludeTypes(equipments: EquipmentWithDetails[]): Set<Equipmen
   }
   return exclude;
 }
+
 
 function groupByZone(
   equipments: EquipmentWithDetails[],

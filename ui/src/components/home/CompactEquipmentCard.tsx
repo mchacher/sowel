@@ -41,9 +41,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   } = useEquipmentState(equipment);
 
   const isWaterValve = equipment.type === "water_valve";
+  const isPoolPump = equipment.type === "pool_pump";
+  const isPoolCover = equipment.type === "pool_cover";
 
   // Find primary data value for generic equipments
-  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve;
+  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve || isPoolPump || isPoolCover;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -166,6 +168,29 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         />
       )}
 
+      {/* Pool pump: runtime badge + ON/OFF toggle (reuse LightControl compact) */}
+      {isPoolPump && (
+        <>
+          <PoolPumpRuntime equipment={equipment} />
+          {equipment.enabled && (
+            <LightControl
+              equipment={equipment}
+              onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+              compact
+            />
+          )}
+        </>
+      )}
+
+      {/* Pool cover: OPEN/STOP/CLOSE buttons + position slider (reuse ShutterControl compact) */}
+      {isPoolCover && equipment.enabled && (
+        <ShutterControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
       {/* Boolean state badge for generic equipments */}
       {!isKnownType && stateBinding && (
         <span
@@ -254,6 +279,22 @@ function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) 
         <span className="text-[12px] text-text-secondary font-medium">{source}</span>
       )}
     </div>
+  );
+}
+
+function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
+  const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
+  const seconds = typeof runtime?.value === "number" ? runtime.value : 0;
+  if (seconds === 0) return null;
+  const runtimeStr = seconds < 60
+    ? `${seconds}s`
+    : seconds < 3600
+      ? `${Math.floor(seconds / 60)}m`
+      : `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}`;
+  return (
+    <span className="text-[11px] text-text-tertiary tabular-nums font-mono flex-shrink-0">
+      {runtimeStr}
+    </span>
   );
 }
 

@@ -1,5 +1,5 @@
 import type {
-  Device, DeviceData, DeviceWithDetails,
+  Device, DeviceData, DeviceOrder, DeviceWithDetails,
   ZoneWithChildren, Zone, ZoneAggregatedData,
   Equipment, EquipmentType, EquipmentWithDetails,
   DataBinding, OrderBinding,
@@ -281,6 +281,9 @@ export async function deleteUser(id: string): Promise<void> {
 
 export interface DeviceWithData extends Device {
   data: DeviceData[];
+  /** Orders are always returned by the list endpoint — keep backward-compat
+   * with callers that only read `data`. */
+  orders?: DeviceOrder[];
 }
 
 export async function getDevices(): Promise<DeviceWithData[]> {
@@ -592,6 +595,13 @@ export async function getPlugins(): Promise<PluginInfo[]> {
 
 export async function getPluginStore(): Promise<PluginManifest[]> {
   return fetchJSON<PluginManifest[]>(`${API_BASE}/plugins/store`);
+}
+
+export async function refreshPluginStore(): Promise<{ count: number; source: "remote" | "local" }> {
+  return fetchJSON<{ count: number; source: "remote" | "local" }>(
+    `${API_BASE}/plugins/store/refresh`,
+    { method: "POST" },
+  );
 }
 
 export async function installPlugin(repo: string): Promise<PluginManifest> {

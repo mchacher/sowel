@@ -202,6 +202,8 @@
   "equipments.type.media_player": "Lecteur Multimédia",
   "equipments.type.appliance": "Électroménager",
   "equipments.type.water_valve": "Vanne d'arrosage",
+  "equipments.type.pool_pump": "Pompe de piscine",
+  "equipments.type.pool_cover": "Volet de piscine",
 
   "water.open": "Ouverte",
   "water.closed": "Fermée",
@@ -226,6 +228,7 @@
   "equipments.group.media": "Multimédia",
   "equipments.group.appliances": "Électroménager",
   "equipments.group.water": "Eau",
+  "equipments.group.pool": "Piscine",
   "equipments.group.other": "Autres",
 
   "equipments.noEquipments": "Aucun équipement",
@@ -410,6 +413,7 @@
   "home.zoneDeleted": "Cette zone a peut-être été supprimée.",
   "home.backToHome": "Retour à l'accueil",
 
+  "deviceSelector.pickChannel": "Choisir le canal à lier",
   "deviceSelector.loading": "Chargement des appareils...",
   "deviceSelector.noDevices": "Aucun appareil trouvé. Connectez des appareils via MQTT d'abord.",
   "deviceSelector.noCompatible": "Aucun appareil compatible trouvé pour ce type d'équipement.",
@@ -891,6 +895,8 @@
 
   "plugins.title": "Plugins",
   "plugins.subtitle": "Installez et gérez des extensions pour Sowel.",
+  "plugins.refreshRegistry": "Rafraîchir",
+  "plugins.refreshRegistryTitle": "Forcer le rechargement du registre des plugins (contourne le cache)",
   "plugins.installed": "Installés",
   "plugins.store": "Store",
   "plugins.noPlugins": "Aucun plugin installé",

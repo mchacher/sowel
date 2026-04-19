@@ -5,6 +5,8 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Square,
   Minus,
   Plus,
@@ -27,6 +29,7 @@ import {
   GateWidgetIcon,
   SlidingGateIcon,
   GarageDoorIcon,
+  PoolCoverIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
@@ -60,7 +63,7 @@ export function EquipmentDetailSheet({ widget, equipment, onExecuteOrder, onClos
     );
   }
 
-  if (isShutter) {
+  if (isShutter || equipment.type === "pool_cover") {
     return (
       <BottomSheet open onClose={onClose} title={label}
         icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
@@ -123,6 +126,7 @@ const WIDGET_FAMILY_TYPES: Record<string, string[]> = {
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
   water: ["water_valve"],
+  pool: ["pool_pump", "pool_cover"],
 };
 
 function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
@@ -360,25 +364,26 @@ function ZoneShuttersDetail({
         <button
           onClick={() => onCommand("allShuttersOpen")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          title={t("zones.commands.allShuttersOpen")}
         >
           {commandLoading === "allShuttersOpen" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
-          {t("zones.commands.allShuttersOpen")}
         </button>
         <button
           onClick={() => onCommand("allShuttersStop")}
           disabled={commandLoading !== null}
           className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          title={t("zones.commands.allShuttersStop")}
         >
           {commandLoading === "allShuttersStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
         </button>
         <button
           onClick={() => onCommand("allShuttersClose")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          title={t("zones.commands.allShuttersClose")}
         >
           {commandLoading === "allShuttersClose" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
-          {t("zones.commands.allShuttersClose")}
         </button>
       </div>
     </div>
@@ -685,9 +690,13 @@ function ShutterDetailContent({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Icon centered */}
+      {/* Icon centered — pool covers get the pool-specific picto */}
       <div className="flex justify-center">
-        <ShutterWidgetIcon level={level} />
+        {equipment.type === "pool_cover" ? (
+          <PoolCoverIcon position={position} />
+        ) : (
+          <ShutterWidgetIcon level={level} />
+        )}
       </div>
 
       {/* Position slider — full width horizontal */}
@@ -710,32 +719,38 @@ function ShutterDetailContent({
         </div>
       )}
 
-      {/* Action buttons — full width */}
-      {hasState && equipment.enabled && (
-        <div className="flex gap-3">
-          <button
-            onClick={() => handleCommand("OPEN")}
-            disabled={executing}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-          >
-            <ChevronUp size={20} strokeWidth={2} />
-          </button>
-          <button
-            onClick={() => handleCommand("STOP")}
-            disabled={executing}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-          >
-            <Square size={14} strokeWidth={2.5} />
-          </button>
-          <button
-            onClick={() => handleCommand("CLOSE")}
-            disabled={executing}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-          >
-            <ChevronDown size={20} strokeWidth={2} />
-          </button>
-        </div>
-      )}
+      {/* Action buttons — full width. Pool covers slide horizontally so we
+       * use ←/→ arrows; window shutters stay with up/down. */}
+      {hasState && equipment.enabled && (() => {
+        const isHorizontal = equipment.type === "pool_cover";
+        const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
+        const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
+        return (
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleCommand("OPEN")}
+              disabled={executing}
+              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              <OpenIcon size={20} strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => handleCommand("STOP")}
+              disabled={executing}
+              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              <Square size={14} strokeWidth={2.5} />
+            </button>
+            <button
+              onClick={() => handleCommand("CLOSE")}
+              disabled={executing}
+              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              <CloseIcon size={20} strokeWidth={2} />
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

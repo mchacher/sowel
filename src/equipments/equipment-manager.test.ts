@@ -18,6 +18,7 @@ function createTestDb(): Database.Database {
     "003_device_order_category.sql",
     "004_drop_dispatch_config.sql",
     "005_device_data_enum_values.sql",
+    "006_pool_runtime_and_category_override.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -747,5 +748,168 @@ describe("EquipmentManager", () => {
       const batteryBinding = detail?.dataBindings.find((b) => b.alias === "battery");
       expect(batteryBinding?.enumValues).toBeUndefined();
     });
+  });
+
+  // ============================================================
+  // Pool equipments — category override + virtual cover_state
+  // ============================================================
+
+  describe("pool category overrides", () => {
+    it("addOrderBinding on pool_pump persists pool_pump_toggle override", () => {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Pompe", type: "pool_pump", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        orderKeys: [{ key: "R1", type: "enum", enumValues: ["ON", "OFF"] }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      const details = manager.getByIdWithDetails(eq.id);
+      expect(details!.orderBindings[0].category).toBe("pool_pump_toggle");
+    });
+
+    it("addOrderBinding on plain switch keeps device order category (no override)", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Lampe", type: "switch", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        orderKeys: [
+          { key: "R1", type: "enum", category: "toggle_power", enumValues: ["ON", "OFF"] },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      const details = manager.getByIdWithDetails(eq.id);
+      expect(details!.orderBindings[0].category).toBe("toggle_power");
+    });
+
+    it("update({type: pool_pump}) re-tags existing binding to pool_pump_toggle", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Relais", type: "switch", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        orderKeys: [
+          { key: "R1", type: "enum", category: "toggle_power", enumValues: ["ON", "OFF"] },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      manager.update(eq.id, { type: "pool_pump" });
+      const details = manager.getByIdWithDetails(eq.id);
+      expect(details!.orderBindings[0].category).toBe("pool_pump_toggle");
+    });
+
+    it("update({type: switch}) clears pool_pump override (back to device order category)", () => {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Pompe", type: "pool_pump", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        orderKeys: [
+          { key: "R1", type: "enum", category: "toggle_power", enumValues: ["ON", "OFF"] },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      manager.update(eq.id, { type: "switch" });
+      const details = manager.getByIdWithDetails(eq.id);
+      expect(details!.orderBindings[0].category).toBe("toggle_power");
+    });
+  });
+
+  describe("pool_cover virtual cover_state binding", () => {
+    function setupCover(positionValue: string | null) {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Volet", type: "pool_cover", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [
+          {
+            key: "shutter_position",
+            type: "number",
+            category: "shutter_position",
+            value: positionValue,
+          },
+        ],
+      });
+      manager.addDataBinding(eq.id, dataIds[0], "position");
+      return eq;
+    }
+
+    it("position=2 → CLOSED", () => {
+      const eq = setupCover("2");
+      const bindings = manager.getDataBindingsWithValues(eq.id);
+      const cover = bindings.find((b) => b.alias === "cover_state");
+      expect(cover?.value).toBe("CLOSED");
+    });
+
+    it("position=50 → PARTIAL", () => {
+      const eq = setupCover("50");
+      const bindings = manager.getDataBindingsWithValues(eq.id);
+      const cover = bindings.find((b) => b.alias === "cover_state");
+      expect(cover?.value).toBe("PARTIAL");
+    });
+
+    it("position=98 → OPEN", () => {
+      const eq = setupCover("98");
+      const bindings = manager.getDataBindingsWithValues(eq.id);
+      const cover = bindings.find((b) => b.alias === "cover_state");
+      expect(cover?.value).toBe("OPEN");
+    });
+
+    it("position=null → null", () => {
+      const eq = setupCover(null);
+      const bindings = manager.getDataBindingsWithValues(eq.id);
+      const cover = bindings.find((b) => b.alias === "cover_state");
+      expect(cover?.value).toBe(null);
+    });
+  });
+});
+
+// ============================================================
+// deriveCoverState (pure helper)
+// ============================================================
+
+describe("deriveCoverState", () => {
+  function pos(value: unknown) {
+    return {
+      id: "x",
+      equipmentId: "x",
+      deviceDataId: "x",
+      alias: "position",
+      deviceId: "x",
+      deviceName: "x",
+      key: "x",
+      type: "number" as const,
+      category: "shutter_position" as const,
+      value,
+      lastUpdated: null,
+      lastChanged: null,
+    };
+  }
+
+  it("position 0 → CLOSED", async () => {
+    const { deriveCoverState } = await import("./equipment-manager.js");
+    expect(deriveCoverState(pos(0))).toBe("CLOSED");
+  });
+
+  it("position 100 → OPEN", async () => {
+    const { deriveCoverState } = await import("./equipment-manager.js");
+    expect(deriveCoverState(pos(100))).toBe("OPEN");
+  });
+
+  it("position 50 → PARTIAL", async () => {
+    const { deriveCoverState } = await import("./equipment-manager.js");
+    expect(deriveCoverState(pos(50))).toBe("PARTIAL");
+  });
+
+  it("position 3 (tolerance) → CLOSED", async () => {
+    const { deriveCoverState } = await import("./equipment-manager.js");
+    expect(deriveCoverState(pos(3))).toBe("CLOSED");
+  });
+
+  it("position 97 (tolerance) → OPEN", async () => {
+    const { deriveCoverState } = await import("./equipment-manager.js");
+    expect(deriveCoverState(pos(97))).toBe("OPEN");
+  });
+
+  it("undefined / null position → null", async () => {
+    const { deriveCoverState } = await import("./equipment-manager.js");
+    expect(deriveCoverState(undefined)).toBe(null);
+    expect(deriveCoverState(pos(null))).toBe(null);
   });
 });

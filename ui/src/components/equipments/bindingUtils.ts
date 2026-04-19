@@ -5,7 +5,12 @@ import {
   removeDataBinding,
   removeOrderBinding,
 } from "../../api";
-import type { DataBindingWithValue, OrderBindingWithDetails } from "../../types";
+import type {
+  DataBindingWithValue,
+  EquipmentType,
+  OrderBindingWithDetails,
+} from "../../types";
+import { computeBindingCandidates } from "../../lib/binding-candidates";
 
 /** Maps equipment types to relevant data categories for auto-binding. */
 const RELEVANT_DATA: Record<string, string[]> = {
@@ -26,6 +31,11 @@ const RELEVANT_DATA: Record<string, string[]> = {
   media_player: ["generic"],
   appliance: ["generic", "energy"],
   water_valve: ["light_state", "battery", "generic"],
+  // Accept both the spec-correct Sowel categories and the legacy Tasmota
+  // categories (generic for relays, position for shutter) so users on older
+  // plugin versions still get auto-bindings.
+  pool_pump: ["light_state", "generic"],
+  pool_cover: ["shutter_position", "position", "generic"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -53,6 +63,29 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
     "total_number",
     "auto_close_when_water_shortage",
   ],
+  pool_pump: [
+    "state",
+    "on",
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "power1",
+    "power2",
+    "power3",
+    "power4",
+  ],
+  pool_cover: [
+    "state",
+    "position",
+    "target_position",
+    "shutter_state",
+    "shutter_position",
+    "shutter1_state",
+    "shutter1_position",
+    "shutter2_state",
+    "shutter2_position",
+  ],
 };
 
 /**
@@ -72,36 +105,11 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
     R3: "command",
     R4: "command",
   },
-  light_onoff: {
-    R1: "state",
-    R2: "state",
-    R3: "state",
-    R4: "state",
-  },
-  light_dimmable: {
-    R1: "state",
-    R2: "state",
-    R3: "state",
-    R4: "state",
-  },
-  light_color: {
-    R1: "state",
-    R2: "state",
-    R3: "state",
-    R4: "state",
-  },
-  switch: {
-    R1: "state",
-    R2: "state",
-    R3: "state",
-    R4: "state",
-  },
-  heater: {
-    R1: "state",
-    R2: "state",
-    R3: "state",
-    R4: "state",
-  },
+  light_onoff: { R1: "state", R2: "state", R3: "state", R4: "state" },
+  light_dimmable: { R1: "state", R2: "state", R3: "state", R4: "state" },
+  light_color: { R1: "state", R2: "state", R3: "state", R4: "state" },
+  switch: { R1: "state", R2: "state", R3: "state", R4: "state" },
+  heater: { R1: "state", R2: "state", R3: "state", R4: "state" },
   water_valve: {
     // Data keys → standard aliases
     current_device_status: "status",
@@ -114,8 +122,53 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
   },
 };
 
-/** Resolve a device key to the standardized equipment alias for the given type. */
-export function resolveAlias(key: string, equipmentType: string): string {
+/**
+ * Category-based aliasing — plugin-agnostic. Whenever an order/data has a
+ * well-known semantic category, the alias is derived from the category, not
+ * from the (plugin-specific) key name. Checked first; falls back to the
+ * per-type key map above, then to the raw key.
+ */
+const ORDER_CATEGORY_ALIASES: Record<string, string> = {
+  light_toggle: "state",
+  toggle_power: "state",
+  valve_toggle: "state",
+  pool_pump_toggle: "state",
+  shutter_move: "state",
+  pool_cover_move: "state",
+  set_shutter_position: "position",
+  pool_cover_position: "position",
+  set_brightness: "brightness",
+  set_color_temp: "color_temp",
+  set_color: "color",
+  set_setpoint: "setpoint",
+  gate_trigger: "command",
+};
+
+const DATA_CATEGORY_ALIASES: Record<string, string> = {
+  light_state: "state",
+  shutter_position: "position",
+  light_brightness: "brightness",
+  light_color_temp: "color_temp",
+  light_color: "color",
+  setpoint: "setpoint",
+  battery: "battery",
+  cover_state: "state",
+};
+
+/**
+ * Resolve a device key to the standardized equipment alias for the given type.
+ * Priority:
+ *   1. Order / data category (plugin-agnostic)
+ *   2. Per-type key map (legacy conventions like lora2mqtt R1..R4)
+ *   3. Raw key
+ */
+export function resolveAlias(
+  key: string,
+  equipmentType: string,
+  categoryMap?: Record<string, string>,
+  category?: string,
+): string {
+  if (category && categoryMap && categoryMap[category]) return categoryMap[category];
   return STANDARD_ALIASES[equipmentType]?.[key] ?? key;
 }
 
@@ -127,22 +180,97 @@ export function isRelevantOrder(key: string, equipmentType: string): boolean {
   return RELEVANT_ORDERS[equipmentType]?.includes(key) ?? false;
 }
 
+/** Equipment types whose bindings are spec'd as structured candidates
+ * (see src/equipments/binding-candidates.ts). For these, we honour the
+ * candidate chosen in DeviceSelector (or pick the first) and bind exactly
+ * its data/order keys — no more, no less. Must stay in sync with the
+ * DeviceSelector's own CANDIDATE_BASED_TYPES. */
+const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
+  "pool_pump",
+  "pool_cover",
+  "light_onoff",
+  "light_dimmable",
+  "light_color",
+  "switch",
+  "shutter",
+  "water_valve",
+]);
+
 /** Auto-create DataBindings and OrderBindings for selected devices. */
 export async function autoCreateBindings(
   equipmentId: string,
   deviceIds: string[],
   equipmentType: string,
+  /** deviceId → chosen candidate.id (from DeviceSelector picker). Optional:
+   * when missing, falls back to the first candidate. */
+  candidateByDevice?: Record<string, string>,
 ): Promise<void> {
   const usedDataAliases = new Set<string>();
   const usedOrderAliases = new Set<string>();
+  const useCandidates = CANDIDATE_BASED_TYPES.has(equipmentType as EquipmentType);
 
   for (const deviceId of deviceIds) {
     try {
       const device = await getDevice(deviceId);
 
+      // Candidate-based binding: compute the functional channels the device
+      // offers for this equipment type and bind only the selected candidate's
+      // data/orders. Guarantees spec-conformant bindings (no cross-channel
+      // pollution on multi-relay devices like Tasmota 4CH Pro).
+      if (useCandidates) {
+        const candidates = computeBindingCandidates(
+          equipmentType as EquipmentType,
+          device.data,
+          device.orders,
+        );
+        if (candidates.length === 0) {
+          // No matching channel on this device — skip silently
+          continue;
+        }
+        // Honour the explicit pick when present; otherwise default to the
+        // first candidate (deterministic).
+        const chosenId = candidateByDevice?.[deviceId];
+        const chosen = candidates.find((c) => c.id === chosenId) ?? candidates[0];
+        const allowedData = new Set(chosen.dataKeys);
+        const allowedOrders = new Set(chosen.orderKeys);
+
+        for (const data of device.data) {
+          if (!allowedData.has(data.key)) continue;
+          const alias = uniqueAlias(
+            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+            usedDataAliases,
+          );
+          try {
+            await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
+            usedDataAliases.add(alias);
+          } catch {
+            // Alias conflict — skip
+          }
+        }
+        for (const order of device.orders) {
+          if (!allowedOrders.has(order.key)) continue;
+          const alias = uniqueAlias(
+            resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
+            usedOrderAliases,
+          );
+          try {
+            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
+            usedOrderAliases.add(alias);
+          } catch {
+            // Already bound — skip
+          }
+        }
+        continue;
+      }
+
+      // Legacy path for all other equipment types — bind everything that
+      // matches the RELEVANT_DATA / RELEVANT_ORDERS whitelists.
       for (const data of device.data) {
         if (isRelevantData(data.category, equipmentType)) {
-          const alias = uniqueAlias(resolveAlias(data.key, equipmentType), usedDataAliases);
+          const alias = uniqueAlias(
+            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+            usedDataAliases,
+          );
           try {
             await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
             usedDataAliases.add(alias);
@@ -154,7 +282,10 @@ export async function autoCreateBindings(
 
       for (const order of device.orders) {
         if (isRelevantOrder(order.key, equipmentType)) {
-          const alias = uniqueAlias(resolveAlias(order.key, equipmentType), usedOrderAliases);
+          const alias = uniqueAlias(
+            resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
+            usedOrderAliases,
+          );
           try {
             await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
             usedOrderAliases.add(alias);
