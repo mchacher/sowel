@@ -1081,7 +1081,6 @@ export async function createNotificationPublisher(data: {
   channelType: "telegram";
   channelConfig: import("./types").TelegramChannelConfig;
   enabled?: boolean;
-  alarmReminderMinutes?: number;
 }): Promise<import("./types").NotificationPublisher> {
   return fetchJSON(`${API_BASE}/notification-publishers`, {
     method: "POST",
@@ -1096,7 +1095,6 @@ export async function updateNotificationPublisher(
     channelType?: "telegram";
     channelConfig?: import("./types").TelegramChannelConfig;
     enabled?: boolean;
-    alarmReminderMinutes?: number;
   },
 ): Promise<import("./types").NotificationPublisher> {
   return fetchJSON(`${API_BASE}/notification-publishers/${id}`, {

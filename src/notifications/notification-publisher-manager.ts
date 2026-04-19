@@ -18,7 +18,6 @@ interface PublisherRow {
   channel_type: string;
   channel_config: string;
   enabled: number;
-  alarm_reminder_minutes: number;
   created_at: string;
   updated_at: string;
 }
@@ -43,7 +42,6 @@ function rowToPublisher(row: PublisherRow): NotificationPublisher {
     channelType: row.channel_type as "telegram",
     channelConfig: JSON.parse(row.channel_config) as TelegramChannelConfig,
     enabled: row.enabled === 1,
-    alarmReminderMinutes: row.alarm_reminder_minutes ?? 0,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };
@@ -82,11 +80,11 @@ export class NotificationPublisherManager {
       listPublishers: this.db.prepare(`SELECT * FROM notification_publishers ORDER BY name`),
       getPublisher: this.db.prepare(`SELECT * FROM notification_publishers WHERE id = ?`),
       insertPublisher: this.db.prepare(
-        `INSERT INTO notification_publishers (id, name, channel_type, channel_config, enabled, alarm_reminder_minutes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        `INSERT INTO notification_publishers (id, name, channel_type, channel_config, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       ),
       updatePublisher: this.db.prepare(
-        `UPDATE notification_publishers SET name = ?, channel_type = ?, channel_config = ?, enabled = ?, alarm_reminder_minutes = ?, updated_at = datetime('now')
+        `UPDATE notification_publishers SET name = ?, channel_type = ?, channel_config = ?, enabled = ?, updated_at = datetime('now')
          WHERE id = ?`,
       ),
       deletePublisher: this.db.prepare(`DELETE FROM notification_publishers WHERE id = ?`),
@@ -139,7 +137,6 @@ export class NotificationPublisherManager {
     channelType: "telegram";
     channelConfig: TelegramChannelConfig;
     enabled?: boolean;
-    alarmReminderMinutes?: number;
   }): NotificationPublisher {
     if (!input.name?.trim()) throw new NotificationPublisherError("name is required", 400);
     if (!input.channelConfig?.botToken?.trim())
@@ -149,14 +146,12 @@ export class NotificationPublisherManager {
 
     const id = randomUUID();
     const enabled = input.enabled !== false ? 1 : 0;
-    const reminderMinutes = Math.max(0, Math.floor(input.alarmReminderMinutes ?? 0));
     this.stmts.insertPublisher.run(
       id,
       input.name.trim(),
       input.channelType,
       JSON.stringify(input.channelConfig),
       enabled,
-      reminderMinutes,
     );
 
     const publisher = this.getById(id)!;
@@ -172,7 +167,6 @@ export class NotificationPublisherManager {
       channelType?: "telegram";
       channelConfig?: TelegramChannelConfig;
       enabled?: boolean;
-      alarmReminderMinutes?: number;
     },
   ): NotificationPublisher {
     const existing = this.getById(id);
@@ -183,19 +177,8 @@ export class NotificationPublisherManager {
     const channelConfig = updates.channelConfig ?? existing.channelConfig;
     const enabled =
       updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : existing.enabled ? 1 : 0;
-    const reminderMinutes =
-      updates.alarmReminderMinutes !== undefined
-        ? Math.max(0, Math.floor(updates.alarmReminderMinutes))
-        : existing.alarmReminderMinutes;
 
-    this.stmts.updatePublisher.run(
-      name,
-      channelType,
-      JSON.stringify(channelConfig),
-      enabled,
-      reminderMinutes,
-      id,
-    );
+    this.stmts.updatePublisher.run(name, channelType, JSON.stringify(channelConfig), enabled, id);
     const publisher = this.getById(id)!;
     this.eventBus.emit({ type: "notification-publisher.updated", publisher });
     this.logger.info({ publisherId: id }, "Notification publisher updated");
