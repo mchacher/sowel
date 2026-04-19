@@ -35,7 +35,7 @@ const OPEN_CLOSE_STOP_TOKENS = new Set(["OPEN", "CLOSE", "CLOSED", "STOP"]);
 function isOnOffEnum(order: DeviceOrder): boolean {
   if (order.type !== "enum") return false;
   if (!order.enumValues || order.enumValues.length === 0) return false;
-  return order.enumValues.every((v) => ONOFF_TOKENS.has(v.toUpperCase()));
+  return order.enumValues.every((v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()));
 }
 
 /**
@@ -255,7 +255,7 @@ export function inferBindingCategory(
     if (
       order.type === "enum" &&
       order.enumValues &&
-      order.enumValues.every((v) => ONOFF_TOKENS.has(v.toUpperCase()))
+      order.enumValues.every((v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()))
     ) {
       return "pool_pump_toggle";
     }
@@ -264,7 +264,9 @@ export function inferBindingCategory(
 
   if (equipmentType === "pool_cover") {
     if (order.type === "enum" && order.enumValues) {
-      const upper = order.enumValues.map((v) => v.toUpperCase());
+      const upper = order.enumValues
+        .filter((v): v is string => typeof v === "string")
+        .map((v) => v.toUpperCase());
       if (upper.some((v) => OPEN_CLOSE_STOP_TOKENS.has(v)) && upper.includes("OPEN")) {
         return "pool_cover_move";
       }

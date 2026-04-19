@@ -23,7 +23,9 @@ const ONOFF_TOKENS = new Set(["ON", "OFF", "TOGGLE"]);
 function isOnOffEnum(order: DeviceOrder): boolean {
   if (order.type !== "enum") return false;
   if (!order.enumValues || order.enumValues.length === 0) return false;
-  return order.enumValues.every((v) => ONOFF_TOKENS.has(v.toUpperCase()));
+  return order.enumValues.every(
+    (v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()),
+  );
 }
 
 function extractShutterGroupKey(key: string): string | null {
