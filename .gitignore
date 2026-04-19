@@ -20,3 +20,10 @@ site/
 .claude/settings.json
 .mcp.json
 .playwright-mcp/
+
+# TypeScript incremental build state
+tsconfig.tsbuildinfo
+ui/tsconfig.tsbuildinfo
+
+# Local-only icon design scratchpad (not shipped)
+assets/
