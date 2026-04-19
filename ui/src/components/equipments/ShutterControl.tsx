@@ -16,7 +16,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   const slider = useSliderOverride();
 
   const positionBinding = equipment.dataBindings.find(
-    (db) => db.category === "shutter_position"
+    (db) => db.category === "shutter_position" || db.alias === "position",
   );
   const devicePosition = positionBinding && typeof positionBinding.value === "number"
     ? positionBinding.value

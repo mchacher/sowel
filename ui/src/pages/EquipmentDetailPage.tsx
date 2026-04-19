@@ -253,11 +253,22 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
-      {/* Shutter controls */}
-      {isShutter && equipment.enabled && (
+      {/* Shutter controls (also used for pool_cover) */}
+      {(isShutter || equipment.type === "pool_cover") && equipment.enabled && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ShutterControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* Pool pump controls — ON/OFF toggle via LightControl */}
+      {equipment.type === "pool_pump" && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <LightControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
