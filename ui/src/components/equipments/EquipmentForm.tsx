@@ -41,6 +41,8 @@ interface EquipmentFormProps {
     type: EquipmentType;
     zoneId: string;
     selectedDeviceIds: string[];
+    /** For candidate-based types: deviceId → chosen candidate.id. */
+    candidateByDevice?: Record<string, string>;
   }) => Promise<void>;
   onClose: () => void;
   boundDeviceIds?: Set<string>;
@@ -55,6 +57,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
   const [type, setType] = useState<EquipmentType>(initial?.type ?? "light_onoff");
   const [zoneId, setZoneId] = useState(initial?.zoneId ?? defaultZoneId ?? "");
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +80,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
         type,
         zoneId,
         selectedDeviceIds,
+        candidateByDevice,
       });
       onClose();
     } catch (err) {
@@ -177,6 +181,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   equipmentType={type}
                   selectedDeviceIds={selectedDeviceIds}
                   onSelectionChange={setSelectedDeviceIds}
+                  onCandidateChange={setCandidateByDevice}
                   boundDeviceIds={boundDeviceIds}
                 />
               </>

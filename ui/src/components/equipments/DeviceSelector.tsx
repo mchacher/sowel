@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Radio, Check, ChevronDown, ChevronUp, Search } from "lucide-react";
 import type { DataCategory, EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
+import { computeBindingCandidates, type BindingCandidate } from "../../lib/binding-candidates";
 
 /** Maps EquipmentType to required DataCategories for filtering. */
 const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> = {
@@ -54,10 +55,27 @@ function looksLikeWaterValve(device: DeviceWithData): boolean {
   return device.data.some((d) => WATER_VALVE_MARKERS.has(d.key));
 }
 
+/** Equipment types for which binding is driven by computeBindingCandidates
+ * (mirrors the backend). For these types the device is considered compatible
+ * iff it exposes ≥1 candidate, and a channel picker appears when N>1. */
+const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
+  "pool_pump",
+  "pool_cover",
+  "light_onoff",
+  "light_dimmable",
+  "light_color",
+  "switch",
+  "shutter",
+  "water_valve",
+]);
+
 interface DeviceSelectorProps {
   equipmentType: EquipmentType;
   selectedDeviceIds: string[];
   onSelectionChange: (deviceIds: string[]) => void;
+  /** Called when the user picks a channel for a multi-channel device.
+   * Maps deviceId → candidate.id. Absent = use the first candidate. */
+  onCandidateChange?: (candidateByDevice: Record<string, string>) => void;
   /** Device IDs already bound to other equipments — excluded from the list. */
   boundDeviceIds?: Set<string>;
 }
@@ -66,6 +84,7 @@ export function DeviceSelector({
   equipmentType,
   selectedDeviceIds,
   onSelectionChange,
+  onCandidateChange,
   boundDeviceIds,
 }: DeviceSelectorProps) {
   const { t } = useTranslation();
@@ -74,6 +93,8 @@ export function DeviceSelector({
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [filter, setFilter] = useState("");
+  /** deviceId → chosen candidate.id (only for devices with N>1 candidates). */
+  const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- loading state before async fetch
@@ -92,17 +113,33 @@ export function DeviceSelector({
     ? allDevices.filter((d) => !boundDeviceIds.has(d.id))
     : allDevices;
 
+  const isCandidateBased = CANDIDATE_BASED_TYPES.has(equipmentType);
+
+  /** Per-device candidate list for the current equipment type (candidate-based
+   * types only). Used for visibility + picker. Empty map for legacy types. */
+  const candidatesByDevice = useMemo(() => {
+    if (!isCandidateBased) return new Map<string, BindingCandidate[]>();
+    const map = new Map<string, BindingCandidate[]>();
+    for (const d of availableDevices) {
+      const cs = computeBindingCandidates(equipmentType, d.data, d.orders ?? []);
+      map.set(d.id, cs);
+    }
+    return map;
+  }, [availableDevices, equipmentType, isCandidateBased]);
+
   const categories = EQUIPMENT_TYPE_CATEGORIES[equipmentType];
   const requiredKeys = EQUIPMENT_TYPE_DATA_KEYS[equipmentType];
-  let compatible = requiredKeys
-    ? availableDevices.filter((device) =>
-        device.data.some((d) => requiredKeys.includes(d.key))
-      )
-    : categories && categories.length > 0
+  let compatible: DeviceWithData[] = isCandidateBased
+    ? availableDevices.filter((d) => (candidatesByDevice.get(d.id)?.length ?? 0) > 0)
+    : requiredKeys
       ? availableDevices.filter((device) =>
-          device.data.some((d) => categories.includes(d.category))
+          device.data.some((d) => requiredKeys.includes(d.key)),
         )
-      : availableDevices;
+      : categories && categories.length > 0
+        ? availableDevices.filter((device) =>
+            device.data.some((d) => categories.includes(d.category)),
+          )
+        : availableDevices;
 
   // Exclude smart water valves from light/switch creation flows so they don't
   // pollute the list (their `state` is misclassified as `light_state`).
@@ -116,12 +153,32 @@ export function DeviceSelector({
     ? baseDevices.filter((d) => d.name.toLowerCase().includes(filterLower))
     : baseDevices;
 
+  const emitCandidates = (next: Record<string, string>) => {
+    setCandidateByDevice(next);
+    onCandidateChange?.(next);
+  };
+
   const toggleDevice = (deviceId: string) => {
     if (selectedDeviceIds.includes(deviceId)) {
       onSelectionChange(selectedDeviceIds.filter((id) => id !== deviceId));
+      if (candidateByDevice[deviceId]) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [deviceId]: _, ...rest } = candidateByDevice;
+        emitCandidates(rest);
+      }
     } else {
       onSelectionChange([...selectedDeviceIds, deviceId]);
+      // Auto-pick the only candidate if there's just one — callers don't need
+      // to know about candidates when there's no choice to make.
+      const cs = candidatesByDevice.get(deviceId);
+      if (cs && cs.length === 1 && !candidateByDevice[deviceId]) {
+        emitCandidates({ ...candidateByDevice, [deviceId]: cs[0].id });
+      }
     }
+  };
+
+  const pickCandidate = (deviceId: string, candidateId: string) => {
+    emitCandidates({ ...candidateByDevice, [deviceId]: candidateId });
   };
 
   if (loading) {
@@ -222,6 +279,48 @@ export function DeviceSelector({
                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
                 </div>
+
+                {/* Candidate picker — only when selected and the device
+                 * exposes multiple functional channels for this type. */}
+                {isSelected && (() => {
+                  const cs = candidatesByDevice.get(device.id) ?? [];
+                  if (cs.length <= 1) return null;
+                  const picked = candidateByDevice[device.id];
+                  return (
+                    <div className="ml-11 mt-1 mb-2 space-y-1">
+                      <div className="text-[11px] font-medium text-text-secondary uppercase tracking-wider mb-1">
+                        {t("deviceSelector.pickChannel")}
+                      </div>
+                      {cs.map((c) => {
+                        const isPicked = picked === c.id;
+                        return (
+                          <label
+                            key={c.id}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-[5px] cursor-pointer text-[12px] ${
+                              isPicked
+                                ? "bg-primary/10 text-text"
+                                : "hover:bg-border-light/40 text-text-secondary"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`candidate-${device.id}`}
+                              checked={isPicked}
+                              onChange={() => pickCandidate(device.id, c.id)}
+                              className="accent-primary"
+                            />
+                            <span className="font-mono">{c.label}</span>
+                            {(c.dataKeys.length + c.orderKeys.length) > 0 && (
+                              <span className="text-text-tertiary text-[11px]">
+                                ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 {/* Device data details */}
                 {isExpanded && (

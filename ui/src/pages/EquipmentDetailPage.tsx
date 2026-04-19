@@ -731,6 +731,7 @@ function ChangeDeviceModal({
 }) {
   const { t } = useTranslation();
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -742,7 +743,7 @@ function ChangeDeviceModal({
       // Remove all existing bindings
       await removeAllBindings(equipment.id, equipment.dataBindings, equipment.orderBindings);
       // Create new bindings from selected devices
-      await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type);
+      await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type, candidateByDevice);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -773,6 +774,7 @@ function ChangeDeviceModal({
             equipmentType={equipment.type}
             selectedDeviceIds={selectedDeviceIds}
             onSelectionChange={setSelectedDeviceIds}
+            onCandidateChange={setCandidateByDevice}
           />
           {error && <p className="text-[13px] text-error mt-3">{error}</p>}
         </div>

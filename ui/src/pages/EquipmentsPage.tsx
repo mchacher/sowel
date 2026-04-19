@@ -128,7 +128,12 @@ export function EquipmentsPage() {
 
             // Auto-create bindings for selected devices
             if (data.selectedDeviceIds.length > 0) {
-              await autoCreateBindings(equipment.id, data.selectedDeviceIds, data.type);
+              await autoCreateBindings(
+                equipment.id,
+                data.selectedDeviceIds,
+                data.type,
+                data.candidateByDevice,
+              );
               await fetchEquipments();
             }
           }}

@@ -413,6 +413,7 @@
   "home.zoneDeleted": "Cette zone a peut-être été supprimée.",
   "home.backToHome": "Retour à l'accueil",
 
+  "deviceSelector.pickChannel": "Choisir le canal à lier",
   "deviceSelector.loading": "Chargement des appareils...",
   "deviceSelector.noDevices": "Aucun appareil trouvé. Connectez des appareils via MQTT d'abord.",
   "deviceSelector.noCompatible": "Aucun appareil compatible trouvé pour ce type d'équipement.",

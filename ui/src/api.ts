@@ -1,5 +1,5 @@
 import type {
-  Device, DeviceData, DeviceWithDetails,
+  Device, DeviceData, DeviceOrder, DeviceWithDetails,
   ZoneWithChildren, Zone, ZoneAggregatedData,
   Equipment, EquipmentType, EquipmentWithDetails,
   DataBinding, OrderBinding,
@@ -281,6 +281,9 @@ export async function deleteUser(id: string): Promise<void> {
 
 export interface DeviceWithData extends Device {
   data: DeviceData[];
+  /** Orders are always returned by the list endpoint — keep backward-compat
+   * with callers that only read `data`. */
+  orders?: DeviceOrder[];
 }
 
 export async function getDevices(): Promise<DeviceWithData[]> {

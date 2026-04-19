@@ -413,6 +413,7 @@
   "home.zoneDeleted": "This zone may have been deleted.",
   "home.backToHome": "Back to Home",
 
+  "deviceSelector.pickChannel": "Pick the channel to bind",
   "deviceSelector.loading": "Loading devices...",
   "deviceSelector.noDevices": "No devices found. Connect devices via MQTT first.",
   "deviceSelector.noCompatible": "No compatible devices found for this equipment type.",

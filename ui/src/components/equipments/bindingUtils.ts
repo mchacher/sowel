@@ -192,6 +192,9 @@ export async function autoCreateBindings(
   equipmentId: string,
   deviceIds: string[],
   equipmentType: string,
+  /** deviceId → chosen candidate.id (from DeviceSelector picker). Optional:
+   * when missing, falls back to the first candidate. */
+  candidateByDevice?: Record<string, string>,
 ): Promise<void> {
   const usedDataAliases = new Set<string>();
   const usedOrderAliases = new Set<string>();
@@ -202,7 +205,7 @@ export async function autoCreateBindings(
       const device = await getDevice(deviceId);
 
       // Candidate-based binding: compute the functional channels the device
-      // offers for this equipment type and bind only the first candidate's
+      // offers for this equipment type and bind only the selected candidate's
       // data/orders. Guarantees spec-conformant bindings (no cross-channel
       // pollution on multi-relay devices like Tasmota 4CH Pro).
       if (useCandidates) {
@@ -215,9 +218,10 @@ export async function autoCreateBindings(
           // No matching channel on this device — skip silently
           continue;
         }
-        // Pick the first candidate deterministically. Multi-candidate picker
-        // UX is a follow-up; users can edit bindings afterwards.
-        const chosen = candidates[0];
+        // Honour the explicit pick when present; otherwise default to the
+        // first candidate (deterministic).
+        const chosenId = candidateByDevice?.[deviceId];
+        const chosen = candidates.find((c) => c.id === chosenId) ?? candidates[0];
         const allowedData = new Set(chosen.dataKeys);
         const allowedOrders = new Set(chosen.orderKeys);
 
