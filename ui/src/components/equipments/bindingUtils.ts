@@ -26,6 +26,11 @@ const RELEVANT_DATA: Record<string, string[]> = {
   media_player: ["generic"],
   appliance: ["generic", "energy"],
   water_valve: ["light_state", "battery", "generic"],
+  // Accept both the spec-correct Sowel categories and the legacy Tasmota
+  // categories (generic for relays, position for shutter) so users on older
+  // plugin versions still get auto-bindings.
+  pool_pump: ["light_state", "generic"],
+  pool_cover: ["shutter_position", "position", "generic"],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -52,6 +57,29 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
     "irrigation_capacity",
     "total_number",
     "auto_close_when_water_shortage",
+  ],
+  pool_pump: [
+    "state",
+    "on",
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "power1",
+    "power2",
+    "power3",
+    "power4",
+  ],
+  pool_cover: [
+    "state",
+    "position",
+    "target_position",
+    "shutter_state",
+    "shutter_position",
+    "shutter1_state",
+    "shutter1_position",
+    "shutter2_state",
+    "shutter2_position",
   ],
 };
 
@@ -111,6 +139,25 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
     irrigation_capacity: "capacity",
     total_number: "cycles",
     auto_close_when_water_shortage: "autoCloseOnShortage",
+  },
+  pool_pump: {
+    power1: "state",
+    power2: "state",
+    power3: "state",
+    power4: "state",
+    R1: "state",
+    R2: "state",
+    R3: "state",
+    R4: "state",
+  },
+  pool_cover: {
+    shutter_state: "state",
+    shutter1_state: "state",
+    shutter2_state: "state",
+    shutter_position: "position",
+    shutter1_position: "position",
+    shutter2_position: "position",
+    target_position: "position",
   },
 };
 
