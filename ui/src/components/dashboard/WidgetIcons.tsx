@@ -869,7 +869,7 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
 // ============================================================
 
 export function PoolCoverIcon({ position }: { position: number | null }) {
-  // position 0..100, null = unknown.
+  // position 0..100 (% open). null = unknown.
   // Bucketing mirrors the shutter widget: 0/25/50/75/100.
   const bucket =
     position === null
@@ -883,15 +883,41 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
             : position <= 87
               ? 75
               : 100;
-  // Higher position = more cover rolled out = MORE slats visible.
-  // We assume position = % open. So 100% open → no slats; 0% → all slats.
-  // Here we keep the design semantics: slatCount drops with openness.
+
+  // Layout — pool basin spans x=4..52 horizontally and y=10..46 vertically
+  // inside a 56×56 viewBox, so the icon fills the canvas vertically (no more
+  // empty bands top and bottom) and reads bigger in the dashboard.
+  const POOL_X = 10;
+  const POOL_W = 42;
+  const POOL_Y = 10;
+  const POOL_H = 36;
+  const SLAT_Y = POOL_Y + 2;
+  const SLAT_H = POOL_H - 4;
+  const SLAT_X_START = POOL_X + 0.5;
+  const SLAT_X_END = POOL_X + POOL_W - 0.5;
+  const SLAT_PITCH = 3.5;
+  const SLAT_W = 3;
+  const MAX_SLATS = Math.floor((SLAT_X_END - SLAT_X_START - SLAT_W) / SLAT_PITCH) + 1;
+  // OPEN (100%) → no slat ; CLOSED (0%) → enough slats to cover the basin edge
+  // to edge (so no water peeks out past the last slat).
   const slatCount =
-    bucket === 0 ? 9 : bucket === 25 ? 7 : bucket === 50 ? 5 : bucket === 75 ? 3 : 1;
+    bucket === 100
+      ? 0
+      : bucket === 75
+        ? Math.max(1, Math.round(MAX_SLATS * 0.25))
+        : bucket === 50
+          ? Math.round(MAX_SLATS * 0.5)
+          : bucket === 25
+            ? Math.round(MAX_SLATS * 0.75)
+            : MAX_SLATS;
 
   const id = useId();
   const waterGrad = `pool-water-${id}`;
   const slatGrad = `pool-slat-${id}`;
+
+  // Water waves only on the uncovered area (right of the last slat)
+  const lastSlatRight = SLAT_X_START + (slatCount > 0 ? slatCount * SLAT_PITCH : 0);
+  const waveStartX = Math.max(POOL_X + 2, lastSlatRight + 1);
 
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
@@ -907,30 +933,29 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
       </defs>
 
       {/* Roller housing on the left */}
-      <rect x="3" y="14" width="6" height="28" rx="3" fill="currentColor" opacity="0.2" />
+      <rect x={POOL_X - 6} y={POOL_Y} width="6" height={POOL_H} rx="3" fill="currentColor" opacity="0.2" />
 
       {/* Pool basin */}
       <rect
-        x="9"
-        y="14"
-        width="44"
-        height="28"
+        x={POOL_X}
+        y={POOL_Y}
+        width={POOL_W}
+        height={POOL_H}
         rx="2"
         stroke="currentColor"
         strokeWidth="1.2"
         fill={`url(#${waterGrad})`}
       />
-      <line x1="9" y1="28" x2="53" y2="28" stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
+      <line x1={POOL_X} y1={POOL_Y + POOL_H / 2} x2={POOL_X + POOL_W} y2={POOL_Y + POOL_H / 2} stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
 
-      {/* Water waves on the uncovered area (right of last slat) */}
-      {Array.from({ length: 3 }).map((_, i) => {
-        const y = 21 + i * 7;
-        const startX = 11 + slatCount * 4;
-        if (startX > 50) return null;
+      {/* Water waves only past the last slat */}
+      {slatCount < MAX_SLATS && Array.from({ length: 3 }).map((_, i) => {
+        const y = POOL_Y + 6 + i * 8;
+        if (waveStartX > POOL_X + POOL_W - 6) return null;
         return (
           <path
             key={i}
-            d={`M${startX} ${y} Q${startX + 2} ${y - 1} ${startX + 4} ${y} T${startX + 8} ${y} T${startX + 12} ${y} T${startX + 16} ${y}`}
+            d={`M${waveStartX} ${y} Q${waveStartX + 2} ${y - 1} ${waveStartX + 4} ${y} T${waveStartX + 8} ${y} T${waveStartX + 12} ${y} T${waveStartX + 16} ${y}`}
             stroke="currentColor"
             strokeWidth="0.8"
             strokeOpacity="0.35"
@@ -940,14 +965,14 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
         );
       })}
 
-      {/* Cover slats (vertical, rolling out from the roller) */}
+      {/* Cover slats — vertical, rolling out from the roller. */}
       {Array.from({ length: slatCount }).map((_, i) => (
         <rect
           key={i}
-          x={11 + i * 4}
-          y="16"
-          width="3.5"
-          height="24"
+          x={SLAT_X_START + i * SLAT_PITCH}
+          y={SLAT_Y}
+          width={SLAT_W}
+          height={SLAT_H}
           rx="0.8"
           fill={`url(#${slatGrad})`}
         />
