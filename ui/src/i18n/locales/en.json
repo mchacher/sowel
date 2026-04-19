@@ -228,6 +228,7 @@
   "equipments.group.media": "Media",
   "equipments.group.appliances": "Appliances",
   "equipments.group.water": "Water",
+  "equipments.group.pool": "Pool",
   "equipments.group.other": "Other",
 
   "equipments.noEquipments": "No equipments",

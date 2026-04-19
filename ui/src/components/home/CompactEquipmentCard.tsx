@@ -41,9 +41,11 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   } = useEquipmentState(equipment);
 
   const isWaterValve = equipment.type === "water_valve";
+  const isPoolPump = equipment.type === "pool_pump";
+  const isPoolCover = equipment.type === "pool_cover";
 
   // Find primary data value for generic equipments
-  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve;
+  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve || isPoolPump || isPoolCover;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -166,6 +168,16 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         />
       )}
 
+      {/* Pool pump compact: ON/OFF badge + runtime */}
+      {isPoolPump && (
+        <PoolPumpCompact equipment={equipment} />
+      )}
+
+      {/* Pool cover compact: cover state + position */}
+      {isPoolCover && (
+        <PoolCoverCompact equipment={equipment} />
+      )}
+
       {/* Boolean state badge for generic equipments */}
       {!isKnownType && stateBinding && (
         <span
@@ -254,6 +266,66 @@ function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) 
         <span className="text-[12px] text-text-secondary font-medium">{source}</span>
       )}
     </div>
+  );
+}
+
+function PoolPumpCompact({ equipment }: { equipment: EquipmentWithDetails }) {
+  // Find ON/OFF state from the bound pump_toggle order's matching data binding.
+  // We do not assume an alias name — match on enum value shape instead.
+  const stateBinding = equipment.dataBindings.find((b) => {
+    const v = b.value;
+    if (v === true || v === false) return true;
+    if (typeof v === "string") {
+      const u = v.toUpperCase();
+      return u === "ON" || u === "OFF";
+    }
+    return false;
+  });
+  const isOn = stateBinding
+    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
+    : false;
+
+  const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
+  const seconds = typeof runtime?.value === "number" ? runtime.value : 0;
+  const runtimeStr = seconds < 60
+    ? `${seconds}s`
+    : seconds < 3600
+      ? `${Math.floor(seconds / 60)}m`
+      : `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}`;
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span
+        className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+          isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+        }`}
+      >
+        {isOn ? "ON" : "OFF"}
+      </span>
+      <span className="text-[11px] text-text-tertiary tabular-nums font-mono">{runtimeStr}</span>
+    </div>
+  );
+}
+
+function PoolCoverCompact({ equipment }: { equipment: EquipmentWithDetails }) {
+  const coverState = equipment.dataBindings.find((b) => b.alias === "cover_state");
+  const positionBinding = equipment.dataBindings.find(
+    (b) => b.category === "shutter_position" || b.key.includes("shutter") && b.key.includes("position"),
+  );
+  const position = typeof positionBinding?.value === "number" ? positionBinding.value : null;
+
+  const label = coverState?.value === "OPEN"
+    ? "Ouvert"
+    : coverState?.value === "CLOSED"
+      ? "Fermé"
+      : position !== null
+        ? `${position}%`
+        : "—";
+
+  return (
+    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-border-light text-text-secondary tabular-nums flex-shrink-0">
+      {label}
+    </span>
   );
 }
 
