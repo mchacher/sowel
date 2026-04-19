@@ -793,12 +793,12 @@ export function EnergyMeterIcon() {
 
 export function PoolPumpIcon({ on }: { on: boolean }) {
   // Single static SVG — same geometry in both states. Stroke reflects state
-  // (blue ON, muted grey OFF). Water is only drawn when ON: light-blue inside
-  // the pipes + a subtle tint at the bottom of the tank. The ON badge lives
-  // in the widget, not here.
-  // OFF: white inner stroke = visually hollow tube on the white card.
-  const waterPipe = on ? "#93C5FD" : "white";
-  const waterTank = on ? "#DBEAFE" : "white";
+  // (blue ON, muted grey OFF). All filled shapes use transparent + low-alpha
+  // currentColor tints so the icon reads cleanly on both light and dark
+  // cards (no jarring white fills). Water inside the pipes and the tank is
+  // rendered only when ON, via the same currentColor, so it stays on-theme.
+  const pipeWaterOpacity = on ? 0.35 : 0;
+  const tankWaterExtra = on ? 0.08 : 0;
   return (
     <svg
       width="120"
@@ -807,10 +807,9 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
       fill="none"
       className={on ? "text-primary" : "text-text-tertiary"}
     >
-      {/* PIPES — single continuous outline with smoothed joints, then an
-       * inner water core on top (visible only when ON). Three disjoint
-       * sub-paths: top loop (tank → manometer line → junction box top),
-       * bottom rail (junction box bottom → ground), tank-bottom drop. */}
+      {/* PIPES — single continuous outline with smoothed joints. Inner
+       * "water" core uses the same currentColor at higher opacity when ON,
+       * invisible when OFF (hollow-pipe look). */}
       {(() => {
         const d =
           "M14 16 L14 11 L42 11 L42 20 " +
@@ -819,43 +818,47 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
         return (
           <>
             <path d={d} stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            <path d={d} stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <path d={d} stroke="currentColor" strokeOpacity={pipeWaterOpacity} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           </>
         );
       })()}
 
       {/* MANOMETER — needle kept at one static angle */}
-      <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.04" />
       <line x1="28" y1="10" x2="30.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <circle cx="28" cy="10" r="0.9" fill="currentColor" />
 
-      {/* TANK (3-stages) — lower body gets a faint blue tint when ON */}
+      {/* TANK (3-stages) — subtle currentColor tints throughout; the lower
+       * body gets extra opacity when ON to hint at a filled reservoir. */}
       <path
         d="M8 16 Q8 14 10 14 L18 14 Q20 14 20 16 L20 18 L8 18 Z"
         stroke="currentColor"
         strokeWidth="1.5"
-        fill="white"
+        fill="currentColor"
+        fillOpacity="0.04"
         strokeLinejoin="round"
       />
       <path
         d="M8 18 Q5 21 5 25 L5 28 L23 28 L23 25 Q23 21 20 18 Z"
         stroke="currentColor"
         strokeWidth="1.5"
-        fill="white"
+        fill="currentColor"
+        fillOpacity="0.04"
         strokeLinejoin="round"
       />
-      <rect x="4" y="28" width="20" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="white" />
+      <rect x="4" y="28" width="20" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.06" />
       <path
         d="M5 31 L5 41 Q5 45 10 45 L18 45 Q23 45 23 41 L23 31 Z"
         stroke="currentColor"
         strokeWidth="1.5"
-        fill={waterTank}
+        fill="currentColor"
+        fillOpacity={0.04 + tankWaterExtra}
         strokeLinejoin="round"
       />
       <path d="M9 21 L9 25" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.5" />
 
-      {/* JUNCTION BOX — always shown with 4 screws */}
-      <rect x="34" y="20" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      {/* JUNCTION BOX — transparent body + 4 screws */}
+      <rect x="34" y="20" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.04" />
       <circle cx="37" cy="23" r="0.9" fill="currentColor" />
       <circle cx="47" cy="23" r="0.9" fill="currentColor" />
       <circle cx="37" cy="33" r="0.9" fill="currentColor" />
