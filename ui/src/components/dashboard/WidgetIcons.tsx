@@ -788,6 +788,233 @@ export function EnergyMeterIcon() {
 }
 
 // ============================================================
+// Pool filter pump (Design F) — tank + manometer + junction box
+// ============================================================
+
+export function PoolPumpIcon({ on }: { on: boolean }) {
+  // Pipes flow water (blue) when ON, are hollow (white) when OFF.
+  // Junction box shows "ON" centered when ON, 4 screws when OFF.
+  // Manometer needle pressurized when ON, at rest when OFF.
+  const waterStroke = on ? "#3B82F6" : "white";
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+      {/* PIPES — outer stroke + inner water/hollow */}
+      <path d="M14 11 L42 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M14 11 L42 11" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 16 L14 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M14 16 L14 11" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M42 11 L42 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M42 11 L42 20" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M42 36 L42 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M42 36 L42 49" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M3 49 L42 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M3 49 L42 49" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 45 L14 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M14 45 L14 49" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* MANOMETER */}
+      <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      {on ? (
+        <line x1="28" y1="10" x2="30.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      ) : (
+        <line x1="28" y1="10" x2="25" y2="11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      )}
+      <circle cx="28" cy="10" r="0.9" fill="currentColor" />
+
+      {/* TANK (3-stages, left side) */}
+      <path
+        d="M8 16 Q8 14 10 14 L18 14 Q20 14 20 16 L20 18 L8 18 Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="white"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 18 Q5 21 5 25 L5 28 L23 28 L23 25 Q23 21 20 18 Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="white"
+        strokeLinejoin="round"
+      />
+      <rect x="4" y="28" width="20" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="white" />
+      <path
+        d="M5 31 L5 41 Q5 45 10 45 L18 45 Q23 45 23 41 L23 31 Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="white"
+        strokeLinejoin="round"
+      />
+      <path d="M9 21 L9 25" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.5" />
+
+      {/* JUNCTION BOX */}
+      <rect x="34" y="20" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      {on ? (
+        <text
+          x="42"
+          y="28"
+          fontFamily="-apple-system, sans-serif"
+          fontWeight="800"
+          fontSize="7"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="currentColor"
+        >
+          ON
+        </text>
+      ) : (
+        <>
+          <circle cx="37" cy="23" r="0.9" fill="currentColor" />
+          <circle cx="47" cy="23" r="0.9" fill="currentColor" />
+          <circle cx="37" cy="33" r="0.9" fill="currentColor" />
+          <circle cx="47" cy="33" r="0.9" fill="currentColor" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// ============================================================
+// Pool cover (Design G) — landscape pool + roller + vertical slats
+// ============================================================
+
+export function PoolCoverIcon({ position }: { position: number | null }) {
+  // position 0..100, null = unknown.
+  // Bucketing mirrors the shutter widget: 0/25/50/75/100.
+  const bucket =
+    position === null
+      ? 50
+      : position <= 12
+        ? 0
+        : position <= 37
+          ? 25
+          : position <= 62
+            ? 50
+            : position <= 87
+              ? 75
+              : 100;
+  // Higher position = more cover rolled out = MORE slats visible.
+  // We assume position = % open. So 100% open → no slats; 0% → all slats.
+  // Here we keep the design semantics: slatCount drops with openness.
+  const slatCount =
+    bucket === 0 ? 9 : bucket === 25 ? 7 : bucket === 50 ? 5 : bucket === 75 ? 3 : 1;
+
+  const id = useId();
+  const waterGrad = `pool-water-${id}`;
+  const slatGrad = `pool-slat-${id}`;
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+      <defs>
+        <linearGradient id={waterGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.04" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.08" />
+        </linearGradient>
+        <linearGradient id={slatGrad} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.65" />
+        </linearGradient>
+      </defs>
+
+      {/* Roller housing on the left */}
+      <rect x="3" y="14" width="6" height="28" rx="3" fill="currentColor" opacity="0.2" />
+
+      {/* Pool basin */}
+      <rect
+        x="9"
+        y="14"
+        width="44"
+        height="28"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill={`url(#${waterGrad})`}
+      />
+      <line x1="9" y1="28" x2="53" y2="28" stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
+
+      {/* Water waves on the uncovered area (right of last slat) */}
+      {Array.from({ length: 3 }).map((_, i) => {
+        const y = 21 + i * 7;
+        const startX = 11 + slatCount * 4;
+        if (startX > 50) return null;
+        return (
+          <path
+            key={i}
+            d={`M${startX} ${y} Q${startX + 2} ${y - 1} ${startX + 4} ${y} T${startX + 8} ${y} T${startX + 12} ${y} T${startX + 16} ${y}`}
+            stroke="currentColor"
+            strokeWidth="0.8"
+            strokeOpacity="0.35"
+            fill="none"
+            strokeLinecap="round"
+          />
+        );
+      })}
+
+      {/* Cover slats (vertical, rolling out from the roller) */}
+      {Array.from({ length: slatCount }).map((_, i) => (
+        <rect
+          key={i}
+          x={11 + i * 4}
+          y="16"
+          width="3.5"
+          height="24"
+          rx="0.8"
+          fill={`url(#${slatGrad})`}
+        />
+      ))}
+    </svg>
+  );
+}
+
+// ============================================================
+// Water valve (widget) — gate valve with handle position + flow
+// ============================================================
+
+export function WaterValveWidgetIcon({ open }: { open: boolean }) {
+  // Pipe horizontal across the bottom; valve body in the center; handle
+  // horizontal when OPEN, vertical when CLOSED. Water flow visible only
+  // when OPEN.
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={open ? "text-active" : "text-primary"}>
+      {/* Pipe (horizontal) */}
+      <rect
+        x="4"
+        y="32"
+        width="48"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="white"
+      />
+      {/* Flanges */}
+      <line x1="9" y1="32" x2="9" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="47" y1="32" x2="47" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+
+      {/* Water flow inside the pipe (only when open) */}
+      {open && (
+        <>
+          <path d="M12 37 Q16 35 20 37 T28 37 T36 37 T44 37" stroke="#3B82F6" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <path d="M12 39.5 Q16 37.5 20 39.5 T28 39.5 T36 39.5 T44 39.5" stroke="#3B82F6" strokeWidth="1.0" fill="none" strokeLinecap="round" strokeOpacity="0.5" />
+        </>
+      )}
+
+      {/* Valve body (vertical extension) */}
+      <rect x="22" y="20" width="12" height="14" rx="1" stroke="currentColor" strokeWidth="1.6" fill="white" />
+
+      {/* Stem */}
+      <line x1="28" y1="10" x2="28" y2="22" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+
+      {/* Handle: horizontal (open) / vertical (closed) */}
+      {open ? (
+        <rect x="14" y="8" width="28" height="4" rx="2" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.18" />
+      ) : (
+        <rect x="26" y="2" width="4" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.18" />
+      )}
+    </svg>
+  );
+}
+
+// ============================================================
 // Contact sensor icon — capteur d'ouverture porte/fenêtre
 // ============================================================
 

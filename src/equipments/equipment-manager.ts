@@ -18,6 +18,7 @@ import type {
   DataCategory,
   OrderCategory,
 } from "../shared/types.js";
+import { inferBindingCategory } from "./binding-candidates.js";
 
 /** A function that returns computed data entries for a given equipment. */
 export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
@@ -45,6 +46,8 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "media_player",
   "appliance",
   "water_valve",
+  "pool_pump",
+  "pool_cover",
 ]);
 
 // ============================================================
@@ -192,8 +195,18 @@ export class EquipmentManager {
 
       // OrderBinding
       insertOrderBinding: this.db.prepare(
-        `INSERT INTO order_bindings (id, equipment_id, device_order_id, alias)
-         VALUES (@id, @equipmentId, @deviceOrderId, @alias)`,
+        `INSERT INTO order_bindings (id, equipment_id, device_order_id, alias, category_override)
+         VALUES (@id, @equipmentId, @deviceOrderId, @alias, @categoryOverride)`,
+      ),
+      updateOrderBindingCategoryOverride: this.db.prepare(
+        `UPDATE order_bindings SET category_override = ? WHERE id = ?`,
+      ),
+      getOrderBindingsByEquipmentWithOrder: this.db.prepare(
+        `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
+                do2.type, do2.enum_values, do2.min_value, do2.max_value
+         FROM order_bindings ob
+         JOIN device_orders do2 ON ob.device_order_id = do2.id
+         WHERE ob.equipment_id = ?`,
       ),
       deleteOrderBinding: this.db.prepare("DELETE FROM order_bindings WHERE id = ?"),
       getOrderBindingById: this.db.prepare("SELECT * FROM order_bindings WHERE id = ?"),
@@ -203,7 +216,8 @@ export class EquipmentManager {
       getOrderBindingsWithDetails: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.category, do2.min_value, do2.max_value,
+                COALESCE(ob.category_override, do2.category) as category,
+                do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -213,7 +227,8 @@ export class EquipmentManager {
       getOrderBindingsByAlias: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
                 do2.device_id, d.name as device_name, do2.key, do2.type,
-                do2.category, do2.min_value, do2.max_value,
+                COALESCE(ob.category_override, do2.category) as category,
+                do2.min_value, do2.max_value,
                 do2.enum_values, do2.unit
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
@@ -233,6 +248,9 @@ export class EquipmentManager {
       checkZoneExists: this.db.prepare("SELECT id FROM zones WHERE id = ?"),
       checkDeviceDataExists: this.db.prepare("SELECT id FROM device_data WHERE id = ?"),
       checkDeviceOrderExists: this.db.prepare("SELECT id FROM device_orders WHERE id = ?"),
+      getDeviceOrderById: this.db.prepare(
+        "SELECT id, device_id, key, type, category, min_value, max_value, enum_values, unit FROM device_orders WHERE id = ?",
+      ),
     };
   }
 
@@ -388,9 +406,39 @@ export class EquipmentManager {
     });
 
     const equipment = this.getById(id)!;
+
+    // If the equipment type changed, re-infer category overrides on all order bindings
+    // so that recipes / zone orders targeting pool-specific categories stay consistent.
+    if (input.type !== undefined && input.type !== existing.type) {
+      this.retagOrderBindingOverrides(id, equipment.type);
+    }
+
     this.logger.info({ equipmentId: id, name: equipment.name }, "Equipment updated");
     this.eventBus.emit({ type: "equipment.updated", equipment });
     return equipment;
+  }
+
+  /**
+   * Recompute `category_override` for all order bindings of an equipment based on its
+   * current type. Called when the equipment type changes.
+   */
+  private retagOrderBindingOverrides(equipmentId: string, equipmentType: EquipmentType): void {
+    const rows = this.stmts.getOrderBindingsByEquipmentWithOrder.all(equipmentId) as Array<{
+      id: string;
+      type: string;
+      enum_values: string | null;
+      min_value: number | null;
+      max_value: number | null;
+    }>;
+    for (const row of rows) {
+      const override = inferBindingCategory(equipmentType, {
+        type: row.type as DataType,
+        enumValues: row.enum_values ? (JSON.parse(row.enum_values) as string[]) : undefined,
+        min: row.min_value ?? undefined,
+        max: row.max_value ?? undefined,
+      });
+      this.stmts.updateOrderBindingCategoryOverride.run(override, row.id);
+    }
   }
 
   delete(id: string): void {
@@ -461,6 +509,13 @@ export class EquipmentManager {
       bindings.unshift(this.buildGateStateBinding(equipmentId, state));
     }
 
+    // Inject virtual cover state binding for pool_cover.
+    if (equipment?.type === "pool_cover") {
+      const positionBinding = bindings.find((b) => b.category === "shutter_position");
+      const state = deriveCoverState(positionBinding);
+      bindings.unshift(this.buildCoverStateBinding(equipmentId, state));
+    }
+
     return bindings;
   }
 
@@ -475,16 +530,36 @@ export class EquipmentManager {
   // ============================================================
 
   addOrderBinding(equipmentId: string, deviceOrderId: string, alias: string): OrderBinding {
-    if (!this.getById(equipmentId)) {
+    const equipment = this.getById(equipmentId);
+    if (!equipment) {
       throw new EquipmentError("Equipment not found", 404);
     }
     if (!this.stmts.checkDeviceOrderExists.get(deviceOrderId)) {
       throw new EquipmentError(`DeviceOrder not found: ${deviceOrderId}`, 404);
     }
 
+    // Compute category override based on equipment type + device order shape.
+    const orderRow = this.stmts.getDeviceOrderById.get(deviceOrderId) as DeviceOrderRow | undefined;
+    const categoryOverride = orderRow
+      ? inferBindingCategory(equipment.type, {
+          type: orderRow.type as DataType,
+          enumValues: orderRow.enum_values
+            ? (JSON.parse(orderRow.enum_values) as string[])
+            : undefined,
+          min: orderRow.min_value ?? undefined,
+          max: orderRow.max_value ?? undefined,
+        })
+      : null;
+
     const id = randomUUID();
     try {
-      this.stmts.insertOrderBinding.run({ id, equipmentId, deviceOrderId, alias });
+      this.stmts.insertOrderBinding.run({
+        id,
+        equipmentId,
+        deviceOrderId,
+        alias,
+        categoryOverride,
+      });
     } catch (err) {
       if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
         throw new EquipmentError(
@@ -495,7 +570,7 @@ export class EquipmentManager {
       throw err;
     }
 
-    this.logger.info({ equipmentId, alias, deviceOrderId }, "OrderBinding added");
+    this.logger.info({ equipmentId, alias, deviceOrderId, categoryOverride }, "OrderBinding added");
     return { id, equipmentId, deviceOrderId, alias };
   }
 
@@ -910,6 +985,28 @@ export class EquipmentManager {
     };
   }
 
+  /** Build a virtual DataBindingWithValue for pool cover state. */
+  private buildCoverStateBinding(
+    equipmentId: string,
+    state: "OPEN" | "CLOSED" | "PARTIAL" | null,
+  ): DataBindingWithValue {
+    return {
+      id: `virtual:cover_state:${equipmentId}`,
+      equipmentId,
+      deviceDataId: "",
+      alias: "cover_state",
+      deviceId: "",
+      deviceName: "",
+      key: "cover_state",
+      type: "enum" as DataType,
+      category: "cover_state" as DataCategory,
+      value: state,
+      unit: undefined,
+      lastUpdated: new Date().toISOString(),
+      lastChanged: new Date().toISOString(),
+    };
+  }
+
   // ============================================================
   // Reactive pipeline: device.data.updated -> equipment.data.changed
   // ============================================================
@@ -968,6 +1065,31 @@ export class EquipmentManager {
       }
     }
   }
+}
+
+// ============================================================
+// Pool cover state derivation
+// ============================================================
+
+/**
+ * Derive a discrete cover state from the position binding (0..100 %).
+ * Returns null when the position is unknown.
+ *
+ * Bucketing follows the shutter convention: ≤5 % → CLOSED, ≥95 % → OPEN,
+ * anything in between → PARTIAL. We don't model MOVING here because Tasmota
+ * doesn't always emit a direction signal.
+ */
+export function deriveCoverState(
+  positionBinding: DataBindingWithValue | undefined,
+): "OPEN" | "CLOSED" | "PARTIAL" | null {
+  if (!positionBinding || positionBinding.value === null || positionBinding.value === undefined) {
+    return null;
+  }
+  const p = Number(positionBinding.value);
+  if (Number.isNaN(p)) return null;
+  if (p <= 5) return "CLOSED";
+  if (p >= 95) return "OPEN";
+  return "PARTIAL";
 }
 
 // ============================================================
@@ -1038,6 +1160,18 @@ interface OrderBindingJoinRow {
   alias: string;
   device_id: string;
   device_name: string;
+  key: string;
+  type: string;
+  category: string | null;
+  min_value: number | null;
+  max_value: number | null;
+  enum_values: string | null;
+  unit: string | null;
+}
+
+interface DeviceOrderRow {
+  id: string;
+  device_id: string;
   key: string;
   type: string;
   category: string | null;

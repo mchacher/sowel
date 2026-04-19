@@ -67,8 +67,10 @@ import {
   PlugWidgetIcon,
   MotionSensorIcon,
   ContactSensorIcon,
+  PoolPumpIcon,
+  PoolCoverIcon,
+  WaterValveWidgetIcon,
 } from "./WidgetIcons";
-import { WaterValveIcon } from "../icons/WaterValveIcon";
 
 // ============================================================
 // Utility — shutter level bucket (moved from WidgetIcons.tsx to avoid react-refresh lint)
@@ -201,9 +203,21 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
   },
   water_valve: {
     label: "Vanne d'arrosage",
-    component: WaterValveIcon as ComponentType<Record<string, unknown>>,
-    previewProps: {},
+    component: WaterValveWidgetIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { open: false },
     types: ["water_valve", "water"],
+  },
+  pool_pump: {
+    label: "Pompe piscine",
+    component: PoolPumpIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { on: false },
+    types: ["pool_pump", "pool"],
+  },
+  pool_cover: {
+    label: "Volet piscine",
+    component: PoolCoverIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { position: 50 },
+    types: ["pool_cover", "pool"],
   },
 };
 
@@ -282,6 +296,8 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   switch: "ToggleLeft",
   button: "CircleDot",
   water_valve: "Droplets",
+  pool_pump: "Droplets",
+  pool_cover: "ArrowUpDown",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
@@ -290,6 +306,7 @@ const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
   heating: "Flame",
   sensors: "Gauge",
   water: "Droplets",
+  pool: "Droplets",
 };
 
 export function getWidgetIcon(

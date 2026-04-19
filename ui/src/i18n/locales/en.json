@@ -202,6 +202,8 @@
   "equipments.type.media_player": "Media Player",
   "equipments.type.appliance": "Appliance",
   "equipments.type.water_valve": "Water valve",
+  "equipments.type.pool_pump": "Pool pump",
+  "equipments.type.pool_cover": "Pool cover",
 
   "water.open": "Open",
   "water.closed": "Closed",

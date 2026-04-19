@@ -171,4 +171,5 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
   water: ["water_valve"],
+  pool: ["pool_pump", "pool_cover"],
 };

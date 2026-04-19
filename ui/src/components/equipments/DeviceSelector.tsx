@@ -19,6 +19,10 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   energy_meter: ["energy"],
   main_energy_meter: ["energy"],
   energy_production_meter: ["energy", "power"],
+  // Pool equipments accept the same data shapes as switch / shutter at the device level.
+  // The dedicated equipment type adds semantic categorisation (override) + custom UI.
+  pool_pump: ["light_state"],
+  pool_cover: ["shutter_position"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
