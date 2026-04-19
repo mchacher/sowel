@@ -74,6 +74,22 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
   });
 
+  // POST /api/v1/plugins/store/refresh — bypass CDN cache, re-fetch registry
+  app.post("/api/v1/plugins/store/refresh", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+    try {
+      const result = await packageManager.refreshRegistryNow();
+      return result;
+    } catch (err) {
+      logger.error({ err }, "Failed to refresh plugin registry");
+      return reply.code(500).send({
+        error: err instanceof Error ? err.message : "Failed to refresh plugin registry",
+      });
+    }
+  });
+
   // POST /api/v1/plugins/install — install from GitHub
   app.post<{ Body: { repo: string } }>("/api/v1/plugins/install", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {

@@ -894,6 +894,8 @@
 
   "plugins.title": "Plugins",
   "plugins.subtitle": "Install and manage extensions for Sowel.",
+  "plugins.refreshRegistry": "Refresh",
+  "plugins.refreshRegistryTitle": "Force-reload the plugin registry (bypasses cache)",
   "plugins.installed": "Installed",
   "plugins.store": "Store",
   "plugins.noPlugins": "No plugins installed",

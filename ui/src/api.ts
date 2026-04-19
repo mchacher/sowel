@@ -594,6 +594,13 @@ export async function getPluginStore(): Promise<PluginManifest[]> {
   return fetchJSON<PluginManifest[]>(`${API_BASE}/plugins/store`);
 }
 
+export async function refreshPluginStore(): Promise<{ count: number; source: "remote" | "local" }> {
+  return fetchJSON<{ count: number; source: "remote" | "local" }>(
+    `${API_BASE}/plugins/store/refresh`,
+    { method: "POST" },
+  );
+}
+
 export async function installPlugin(repo: string): Promise<PluginManifest> {
   return fetchJSON<PluginManifest>(`${API_BASE}/plugins/install`, {
     method: "POST",

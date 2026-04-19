@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Package, Loader2, Download, Trash2, Cpu, ArrowUpCircle } from "lucide-react";
+import { Package, Loader2, Download, Trash2, Cpu, ArrowUpCircle, RefreshCw } from "lucide-react";
 import { refreshPluginUpdateCount } from "../components/layout/usePluginUpdates";
 import * as LucideIcons from "lucide-react";
 import {
   getPlugins,
   getPluginStore,
+  refreshPluginStore,
   installPlugin,
   uninstallPlugin,
   enablePlugin,
@@ -37,6 +38,7 @@ export function PluginsPage() {
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [store, setStore] = useState<PluginManifest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("installed");
   const [category, setCategory] = useState<CategoryFilter>("integration");
 
@@ -58,6 +60,18 @@ export function PluginsPage() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshPluginStore();
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setRefreshing(false);
+    }
   }, [load]);
 
   if (loading) {
@@ -92,14 +106,30 @@ export function PluginsPage() {
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2.5 mb-1">
-          <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1 className="text-[20px] sm:text-[24px] font-semibold text-text leading-[32px]">
-            {t("plugins.title")}
-          </h1>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2.5 mb-1">
+            <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
+            <h1 className="text-[20px] sm:text-[24px] font-semibold text-text leading-[32px]">
+              {t("plugins.title")}
+            </h1>
+          </div>
+          <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
         </div>
-        <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          title={t("plugins.refreshRegistryTitle")}
+        >
+          {refreshing ? (
+            <Loader2 size={14} className="animate-spin" strokeWidth={1.5} />
+          ) : (
+            <RefreshCw size={14} strokeWidth={1.5} />
+          )}
+          {t("plugins.refreshRegistry")}
+        </button>
       </div>
 
       {/* Tabs: Installed / Store */}
