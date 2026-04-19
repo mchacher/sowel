@@ -268,10 +268,6 @@ export function HomePage() {
             if (equipments.some((eq) => eq.type === "energy_production_meter")) exclude.add("energy_production_meter");
             return exclude;
           })()}
-          boundDeviceIds={new Set(equipments.flatMap((e) => [
-            ...e.dataBindings.map((b) => b.deviceId),
-            ...e.orderBindings.map((b) => b.deviceId),
-          ]))}
           onSubmit={async (data) => {
             const equipment = await createEquipment({
               name: data.name,

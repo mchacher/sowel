@@ -119,10 +119,6 @@ export function EquipmentsPage() {
           title={t("equipments.createEquipment")}
           zones={tree}
           excludeTypes={singletonExcludeTypes(equipments)}
-          boundDeviceIds={new Set(equipments.flatMap((e) => [
-            ...e.dataBindings.map((b) => b.deviceId),
-            ...e.orderBindings.map((b) => b.deviceId),
-          ]))}
           onSubmit={async (data) => {
             const equipment = await createEquipment({
               name: data.name,
