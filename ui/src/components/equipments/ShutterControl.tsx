@@ -67,9 +67,19 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               onClick={(e) => e.stopPropagation()}
               className="w-[60px]"
             />
-            <span className="text-[11px] text-text-tertiary w-8 text-right tabular-nums">
-              {position}%
-            </span>
+            {position === 100 ? (
+              <span className="text-[11px] font-medium text-success px-1.5 py-0.5 rounded bg-success/10">
+                {t("controls.opened")}
+              </span>
+            ) : position === 0 ? (
+              <span className="text-[11px] font-medium text-text-secondary px-1.5 py-0.5 rounded bg-border-light">
+                {t("controls.closed")}
+              </span>
+            ) : (
+              <span className="text-[11px] text-text-tertiary w-8 text-right tabular-nums">
+                {position}%
+              </span>
+            )}
           </div>
         )}
         {!hasPositionOrder && position !== null && (
