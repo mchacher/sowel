@@ -885,10 +885,12 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
               : 100;
 
   // Layout — pool basin spans almost the whole 56×56 viewBox (immersed cover,
-  // no visible roller). Landscape ratio ~1.6:1.
+  // no visible roller). Landscape ratio ~1.6:1. Shifted up a few units so
+  // the picto sits visually centered (the dashboard layout was reading too
+  // low otherwise).
   const POOL_X = 3;
   const POOL_W = 50;
-  const POOL_Y = 12;
+  const POOL_Y = 8;
   const POOL_H = 32;
   const SLAT_Y = POOL_Y + 2;
   const SLAT_H = POOL_H - 4;
