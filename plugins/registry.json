@@ -24,6 +24,18 @@
     "sowelVersion": ">=1.2.12"
   },
   {
+    "id": "tasmota",
+    "type": "integration",
+    "name": "Tasmota",
+    "description": "Tasmota-flashed devices (Sonoff, etc.) via MQTT",
+    "icon": "Power",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-tasmota",
+    "version": "1.0.3",
+    "tags": ["tasmota", "sonoff", "mqtt", "switch", "shutter"],
+    "sowelVersion": ">=1.2.12"
+  },
+  {
     "id": "panasonic_cc",
     "type": "integration",
     "name": "Panasonic Comfort Cloud",
