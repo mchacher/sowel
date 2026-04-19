@@ -37,9 +37,10 @@ export function registerNotificationPublisherRoutes(
       channelType: "telegram";
       channelConfig: TelegramChannelConfig;
       enabled?: boolean;
+      alarmReminderMinutes?: number;
     };
   }>("/api/v1/notification-publishers", async (request, reply) => {
-    const { name, channelType, channelConfig, enabled } = request.body ?? {};
+    const { name, channelType, channelConfig, enabled, alarmReminderMinutes } = request.body ?? {};
     if (!name) return reply.code(400).send({ error: "name is required" });
     if (!channelConfig?.botToken)
       return reply.code(400).send({ error: "channelConfig.botToken is required" });
@@ -52,6 +53,7 @@ export function registerNotificationPublisherRoutes(
         channelType: channelType ?? "telegram",
         channelConfig,
         enabled,
+        alarmReminderMinutes,
       });
       return reply.code(201).send(publisher);
     } catch (err) {
@@ -69,6 +71,7 @@ export function registerNotificationPublisherRoutes(
       channelType?: "telegram";
       channelConfig?: TelegramChannelConfig;
       enabled?: boolean;
+      alarmReminderMinutes?: number;
     };
   }>("/api/v1/notification-publishers/:id", async (request, reply) => {
     try {

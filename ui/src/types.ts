@@ -659,6 +659,8 @@ export interface NotificationPublisher {
   channelType: "telegram";
   channelConfig: TelegramChannelConfig;
   enabled: boolean;
+  /** Minutes between re-sends while an alarm stays unresolved. 0 = disabled. */
+  alarmReminderMinutes: number;
   createdAt: string;
   updatedAt: string;
 }
