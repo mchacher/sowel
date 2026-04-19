@@ -1672,8 +1672,15 @@ function AddRecipeForm({
                           if (compactSlots.length === 0) return null;
                           const n = compactSlots.length;
                           const cols = n <= 3 ? n : n % 3 === 0 ? 3 : 2;
+                          // Use 1fr/auto only when a `number` slot wants a
+                          // narrow column (see per-slot w-[100px] below).
+                          // Otherwise give both columns equal width so two
+                          // time pickers (or any homogeneous pair) sit
+                          // side by side with the same size.
+                          const hasNarrowNumber = compactSlots.some((s) => s.type === "number");
+                          const twoColClass = hasNarrowNumber ? "grid-cols-[1fr_auto]" : "grid-cols-2";
                           return (
-                            <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-[1fr_auto]" : "grid-cols-3"}`}>
+                            <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? twoColClass : "grid-cols-3"}`}>
                               {compactSlots.map((slot) => (
                                 <div key={slot.id} className={slot.type === "number" ? "w-[100px]" : ""}>
                                   <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
