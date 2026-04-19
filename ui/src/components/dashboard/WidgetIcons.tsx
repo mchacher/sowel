@@ -797,7 +797,7 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
   // Manometer needle pressurized when ON, at rest when OFF.
   const waterStroke = on ? "#3B82F6" : "white";
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-text-tertiary"}>
       {/* PIPES — outer stroke + inner water/hollow */}
       <path d="M14 11 L42 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
       <path d="M14 11 L42 11" stroke={waterStroke} strokeWidth="1.5" strokeLinecap="round" />
