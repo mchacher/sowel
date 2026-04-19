@@ -31,7 +31,7 @@
     "icon": "Power",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-tasmota",
-    "version": "1.0.3",
+    "version": "1.0.6",
     "tags": ["tasmota", "sonoff", "mqtt", "switch", "shutter"],
     "sowelVersion": ">=1.2.12"
   },
