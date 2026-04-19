@@ -5,6 +5,8 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Square,
   Minus,
   Plus,
@@ -1042,7 +1044,7 @@ function PoolCoverEquipmentWidget({
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             title={t("controls.open")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronLeft size={16} strokeWidth={2} />}
           </button>
           <button
             onClick={() => handleCommand("STOP")}
@@ -1058,7 +1060,7 @@ function PoolCoverEquipmentWidget({
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             title={t("controls.close")}
           >
-            <ChevronDown size={16} strokeWidth={2} />
+            <ChevronRight size={16} strokeWidth={2} />
           </button>
         </div>
       )}

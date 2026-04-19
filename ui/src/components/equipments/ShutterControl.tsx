@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronUp, Square, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Square } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 
@@ -26,6 +26,11 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
 
   const hasState = equipment.orderBindings.some((ob) => ob.alias === "state");
   const hasPositionOrder = equipment.orderBindings.some((ob) => ob.alias === "position");
+
+  // Pool covers slide horizontally → ←/→ arrows. Window shutters keep ↑/↓.
+  const isHorizontal = equipment.type === "pool_cover";
+  const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
+  const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE", e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -85,7 +90,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               title={t("controls.open")}
             >
-              <ChevronUp size={14} strokeWidth={1.5} />
+              <OpenIcon size={14} strokeWidth={1.5} />
             </button>
             <button
               onClick={(e) => handleCommand("STOP", e)}
@@ -101,7 +106,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               className="p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               title={t("controls.close")}
             >
-              <ChevronDown size={14} strokeWidth={1.5} />
+              <CloseIcon size={14} strokeWidth={1.5} />
             </button>
           </>
         )}
@@ -149,7 +154,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             disabled={executing}
             className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
-            <ChevronUp size={16} strokeWidth={1.5} />
+            <OpenIcon size={16} strokeWidth={1.5} />
             {t("controls.open")}
           </button>
           <button
@@ -165,7 +170,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             disabled={executing}
             className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
-            <ChevronDown size={16} strokeWidth={1.5} />
+            <CloseIcon size={16} strokeWidth={1.5} />
             {t("controls.close")}
           </button>
         </div>

@@ -5,6 +5,8 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Square,
   Minus,
   Plus,
@@ -27,6 +29,7 @@ import {
   GateWidgetIcon,
   SlidingGateIcon,
   GarageDoorIcon,
+  PoolCoverIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
@@ -687,9 +690,13 @@ function ShutterDetailContent({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Icon centered */}
+      {/* Icon centered — pool covers get the pool-specific picto */}
       <div className="flex justify-center">
-        <ShutterWidgetIcon level={level} />
+        {equipment.type === "pool_cover" ? (
+          <PoolCoverIcon position={position} />
+        ) : (
+          <ShutterWidgetIcon level={level} />
+        )}
       </div>
 
       {/* Position slider — full width horizontal */}
@@ -712,32 +719,38 @@ function ShutterDetailContent({
         </div>
       )}
 
-      {/* Action buttons — full width */}
-      {hasState && equipment.enabled && (
-        <div className="flex gap-3">
-          <button
-            onClick={() => handleCommand("OPEN")}
-            disabled={executing}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-          >
-            <ChevronUp size={20} strokeWidth={2} />
-          </button>
-          <button
-            onClick={() => handleCommand("STOP")}
-            disabled={executing}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-          >
-            <Square size={14} strokeWidth={2.5} />
-          </button>
-          <button
-            onClick={() => handleCommand("CLOSE")}
-            disabled={executing}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-          >
-            <ChevronDown size={20} strokeWidth={2} />
-          </button>
-        </div>
-      )}
+      {/* Action buttons — full width. Pool covers slide horizontally so we
+       * use ←/→ arrows; window shutters stay with up/down. */}
+      {hasState && equipment.enabled && (() => {
+        const isHorizontal = equipment.type === "pool_cover";
+        const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
+        const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
+        return (
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleCommand("OPEN")}
+              disabled={executing}
+              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              <OpenIcon size={20} strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => handleCommand("STOP")}
+              disabled={executing}
+              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              <Square size={14} strokeWidth={2.5} />
+            </button>
+            <button
+              onClick={() => handleCommand("CLOSE")}
+              disabled={executing}
+              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            >
+              <CloseIcon size={20} strokeWidth={2} />
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

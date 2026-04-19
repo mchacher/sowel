@@ -887,10 +887,12 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
   // Layout — pool basin spans x=4..52 horizontally and y=10..46 vertically
   // inside a 56×56 viewBox, so the icon fills the canvas vertically (no more
   // empty bands top and bottom) and reads bigger in the dashboard.
-  const POOL_X = 10;
-  const POOL_W = 42;
-  const POOL_Y = 10;
-  const POOL_H = 36;
+  // Pool is an immersed cover (volet immergé) — no visible roller box on the
+  // side. Slightly elongated landscape shape (less square than before).
+  const POOL_X = 6;
+  const POOL_W = 46;
+  const POOL_Y = 14;
+  const POOL_H = 28;
   const SLAT_Y = POOL_Y + 2;
   const SLAT_H = POOL_H - 4;
   const SLAT_X_START = POOL_X + 0.5;
@@ -931,9 +933,6 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
           <stop offset="100%" stopColor="currentColor" stopOpacity="0.65" />
         </linearGradient>
       </defs>
-
-      {/* Roller housing on the left */}
-      <rect x={POOL_X - 6} y={POOL_Y} width="6" height={POOL_H} rx="3" fill="currentColor" opacity="0.2" />
 
       {/* Pool basin */}
       <rect
