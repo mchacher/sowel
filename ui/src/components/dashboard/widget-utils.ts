@@ -4,6 +4,7 @@ export function needsDetailSheet(equipmentType: string): boolean {
     "light_dimmable",
     "light_color",
     "shutter",
+    "pool_cover",
     "thermostat",
     "heater",
   ].includes(equipmentType);

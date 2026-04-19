@@ -543,8 +543,13 @@ function getMobileClickAction(
     return onOpenDetail;
   }
 
-  // Simple on/off (light_onoff, switch) → direct toggle
-  if (type === "light_onoff" || type === "switch") {
+  // Simple on/off (light_onoff, switch, pool_pump, water_valve) → direct toggle
+  if (
+    type === "light_onoff" ||
+    type === "switch" ||
+    type === "pool_pump" ||
+    type === "water_valve"
+  ) {
     const stateBinding = equipment.orderBindings.find(
       (ob) => ob.alias === "state" && (ob.type === "enum" || ob.type === "boolean"),
     );

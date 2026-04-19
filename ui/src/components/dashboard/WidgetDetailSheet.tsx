@@ -60,7 +60,7 @@ export function EquipmentDetailSheet({ widget, equipment, onExecuteOrder, onClos
     );
   }
 
-  if (isShutter) {
+  if (isShutter || equipment.type === "pool_cover") {
     return (
       <BottomSheet open onClose={onClose} title={label}
         icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
@@ -123,6 +123,7 @@ const WIDGET_FAMILY_TYPES: Record<string, string[]> = {
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
   water: ["water_valve"],
+  pool: ["pool_pump", "pool_cover"],
 };
 
 function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
