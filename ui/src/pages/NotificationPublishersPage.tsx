@@ -174,12 +174,6 @@ function PublisherForm({
   const [name, setName] = useState(publisher?.name ?? "");
   const [botToken, setBotToken] = useState(publisher?.channelConfig?.botToken ?? "");
   const [chatId, setChatId] = useState(publisher?.channelConfig?.chatId ?? "");
-  const [reminderEnabled, setReminderEnabled] = useState(
-    (publisher?.alarmReminderMinutes ?? 0) > 0,
-  );
-  const [reminderMinutes, setReminderMinutes] = useState<string>(
-    String(publisher?.alarmReminderMinutes ?? 60),
-  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -193,21 +187,16 @@ function PublisherForm({
         botToken: botToken.trim(),
         chatId: chatId.trim(),
       };
-      const alarmReminderMinutes = reminderEnabled
-        ? Math.max(1, parseInt(reminderMinutes, 10) || 60)
-        : 0;
       if (publisher) {
         await updateNotificationPublisher(publisher.id, {
           name: name.trim(),
           channelConfig,
-          alarmReminderMinutes,
         });
       } else {
         await createNotificationPublisher({
           name: name.trim(),
           channelType: "telegram",
           channelConfig,
-          alarmReminderMinutes,
         });
       }
       onSaved();
@@ -257,37 +246,6 @@ function PublisherForm({
             placeholder="-1001234567890"
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
           />
-        </div>
-        <div className="pt-2 border-t border-border-light">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={reminderEnabled}
-              onChange={(e) => setReminderEnabled(e.target.checked)}
-              className="accent-primary"
-            />
-            <span className="text-[13px] text-text">
-              {t("notifPublishers.alarmReminder")}
-            </span>
-          </label>
-          {reminderEnabled && (
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                max={1440}
-                value={reminderMinutes}
-                onChange={(e) => setReminderMinutes(e.target.value)}
-                className="w-20 px-2 py-1 text-[13px] bg-bg border border-border rounded-[6px] text-text tabular-nums"
-              />
-              <span className="text-[12px] text-text-tertiary">
-                {t("notifPublishers.alarmReminderUnit")}
-              </span>
-            </div>
-          )}
-          <p className="text-[11px] text-text-tertiary mt-1">
-            {t("notifPublishers.alarmReminderHelp")}
-          </p>
         </div>
         {error && <div className="text-[11px] text-red-500">{error}</div>}
         <div className="flex items-center gap-2">

@@ -17,7 +17,6 @@ function createTestDb(): Database.Database {
     "004_drop_dispatch_config.sql",
     "005_device_data_enum_values.sql",
     "006_pool_runtime_and_category_override.sql",
-    "007_notification_alarm_reminder.sql",
   ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", "../../migrations", file),

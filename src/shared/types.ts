@@ -853,9 +853,6 @@ export interface NotificationPublisher {
   channelType: "telegram";
   channelConfig: TelegramChannelConfig;
   enabled: boolean;
-  /** Minutes between automatic re-sends while a system alarm stays unresolved.
-   * 0 (or undefined) disables reminders — the historical one-shot behaviour. */
-  alarmReminderMinutes: number;
   createdAt: string;
   updatedAt: string;
 }
