@@ -953,7 +953,9 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
         const WAVE_PITCH_X = 4; // crest period
         const WAVE_ROW_PITCH = 5; // vertical spacing
         const wavesTopY = POOL_Y + 4;
-        const wavesBottomY = POOL_Y + POOL_H - 4;
+        // Push the bottom row closer to the basin floor so a wave sits at the
+        // very bottom of the water area.
+        const wavesBottomY = POOL_Y + POOL_H - 2;
         const rows: number[] = [];
         for (let y = wavesTopY; y <= wavesBottomY; y += WAVE_ROW_PITCH) rows.push(y);
         const crestCount = Math.floor(waveAvail / WAVE_PITCH_X);
