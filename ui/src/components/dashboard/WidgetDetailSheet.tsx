@@ -361,25 +361,26 @@ function ZoneShuttersDetail({
         <button
           onClick={() => onCommand("allShuttersOpen")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          title={t("zones.commands.allShuttersOpen")}
         >
           {commandLoading === "allShuttersOpen" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
-          {t("zones.commands.allShuttersOpen")}
         </button>
         <button
           onClick={() => onCommand("allShuttersStop")}
           disabled={commandLoading !== null}
           className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          title={t("zones.commands.allShuttersStop")}
         >
           {commandLoading === "allShuttersStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
         </button>
         <button
           onClick={() => onCommand("allShuttersClose")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          title={t("zones.commands.allShuttersClose")}
         >
           {commandLoading === "allShuttersClose" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
-          {t("zones.commands.allShuttersClose")}
         </button>
       </div>
     </div>

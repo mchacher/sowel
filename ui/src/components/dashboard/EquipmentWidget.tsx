@@ -974,9 +974,25 @@ function PoolCoverEquipmentWidget({
       : null;
   const position = slider.displayValue(devicePosition);
 
+  // Find the move-style order binding by, in order:
+  //   1. binding category (pool_cover_move override, or shutter_move legacy)
+  //   2. binding alias (state / shutter_state / shutter1_state / …)
+  //   3. enum values that look like OPEN/CLOSE/STOP
+  // This covers freshly auto-bound pool covers as well as bindings created
+  // before the category-aware aliasing landed.
   const moveBinding = equipment.orderBindings.find(
     (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
-  );
+  )
+    ?? equipment.orderBindings.find(
+      (ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias),
+    )
+    ?? equipment.orderBindings.find((ob) => {
+      if (ob.type !== "enum" || !ob.enumValues) return false;
+      const upper = ob.enumValues.map((v) =>
+        typeof v === "string" ? v.toUpperCase() : "",
+      );
+      return upper.includes("OPEN") && upper.includes("CLOSE");
+    });
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
     if (executing || !moveBinding) return;
