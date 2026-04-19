@@ -102,8 +102,22 @@ export class PluginLoader {
 
   /**
    * Install from GitHub — delegates to PackageManager, then loads the plugin.
+   * If the plugin is already installed (reinstall), routes to update() which handles
+   * unload → fetch fresh files → reload, avoiding the "already installed" error and
+   * stale in-memory module state.
    */
   async install(repo: string): Promise<PluginManifest> {
+    // Peek the plugin id from the repo name (convention: sowel-plugin-<id>) to detect reinstall.
+    const repoName = repo.split("/").pop() ?? "";
+    const candidateId = repoName.replace(/^sowel-plugin-/, "");
+    if (candidateId && this.packageManager.getById(candidateId)) {
+      this.logger.info(
+        { pluginId: candidateId },
+        "Plugin already installed, redirecting to update",
+      );
+      return this.update(candidateId);
+    }
+
     const manifest = await this.packageManager.installFromGitHub(repo);
 
     try {
