@@ -46,11 +46,13 @@ interface EquipmentFormProps {
   }) => Promise<void>;
   onClose: () => void;
   boundDeviceIds?: Set<string>;
+  /** Per-device set of device_order keys already bound on other equipments. */
+  boundOrderKeysByDevice?: Record<string, Set<string>>;
   /** Equipment types to exclude from the type selector (e.g. singleton types already created). */
   excludeTypes?: Set<EquipmentType>;
 }
 
-export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, excludeTypes }: EquipmentFormProps) {
+export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, boundOrderKeysByDevice, excludeTypes }: EquipmentFormProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
@@ -183,6 +185,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   onSelectionChange={setSelectedDeviceIds}
                   onCandidateChange={setCandidateByDevice}
                   boundDeviceIds={boundDeviceIds}
+                  boundOrderKeysByDevice={boundOrderKeysByDevice}
                 />
               </>
             )}

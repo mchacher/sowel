@@ -78,6 +78,9 @@ interface DeviceSelectorProps {
   onCandidateChange?: (candidateByDevice: Record<string, string>) => void;
   /** Device IDs already bound to other equipments — excluded from the list. */
   boundDeviceIds?: Set<string>;
+  /** Per-device set of device_order keys already bound on other equipments.
+   * Used to hide candidates whose order keys are all consumed. */
+  boundOrderKeysByDevice?: Record<string, Set<string>>;
 }
 
 export function DeviceSelector({
@@ -86,6 +89,7 @@ export function DeviceSelector({
   onSelectionChange,
   onCandidateChange,
   boundDeviceIds,
+  boundOrderKeysByDevice,
 }: DeviceSelectorProps) {
   const { t } = useTranslation();
   const [allDevices, setAllDevices] = useState<DeviceWithData[]>([]);
@@ -116,16 +120,26 @@ export function DeviceSelector({
   const isCandidateBased = CANDIDATE_BASED_TYPES.has(equipmentType);
 
   /** Per-device candidate list for the current equipment type (candidate-based
-   * types only). Used for visibility + picker. Empty map for legacy types. */
+   * types only). Candidates whose order keys are ALL already bound on this
+   * device (consumed by another equipment) are filtered out. */
   const candidatesByDevice = useMemo(() => {
     if (!isCandidateBased) return new Map<string, BindingCandidate[]>();
     const map = new Map<string, BindingCandidate[]>();
     for (const d of availableDevices) {
-      const cs = computeBindingCandidates(equipmentType, d.data, d.orders ?? []);
-      map.set(d.id, cs);
+      const all = computeBindingCandidates(equipmentType, d.data, d.orders ?? []);
+      const bound = boundOrderKeysByDevice?.[d.id];
+      const free = bound
+        ? all.filter((c) =>
+            // Keep the candidate if at least one of its order keys is not yet
+            // bound on this device. Pure-data candidates (orderKeys=[]) always
+            // stay — re-binding data is allowed.
+            c.orderKeys.length === 0 || c.orderKeys.some((k) => !bound.has(k)),
+          )
+        : all;
+      map.set(d.id, free);
     }
     return map;
-  }, [availableDevices, equipmentType, isCandidateBased]);
+  }, [availableDevices, equipmentType, isCandidateBased, boundOrderKeysByDevice]);
 
   const categories = EQUIPMENT_TYPE_CATEGORIES[equipmentType];
   const requiredKeys = EQUIPMENT_TYPE_DATA_KEYS[equipmentType];

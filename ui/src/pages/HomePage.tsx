@@ -27,6 +27,7 @@ import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import { ZoneModesSection } from "../components/home/ZoneModesSection";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
+import { buildBoundOrderKeysByDevice } from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import type { EquipmentType, ZoneWithChildren } from "../types";
 
@@ -268,6 +269,7 @@ export function HomePage() {
             if (equipments.some((eq) => eq.type === "energy_production_meter")) exclude.add("energy_production_meter");
             return exclude;
           })()}
+          boundOrderKeysByDevice={buildBoundOrderKeysByDevice(equipments)}
           onSubmit={async (data) => {
             const equipment = await createEquipment({
               name: data.name,
