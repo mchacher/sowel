@@ -807,19 +807,22 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
       fill="none"
       className={on ? "text-primary" : "text-text-tertiary"}
     >
-      {/* PIPES — outer stroke + inner water core (visible only when ON) */}
-      <path d="M14 11 L42 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M14 11 L42 11" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M14 16 L14 11" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M14 16 L14 11" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M42 11 L42 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M42 11 L42 20" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M42 36 L42 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M42 36 L42 49" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M3 49 L42 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M3 49 L42 49" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M14 45 L14 49" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M14 45 L14 49" stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" />
+      {/* PIPES — single continuous outline with smoothed joints, then an
+       * inner water core on top (visible only when ON). Three disjoint
+       * sub-paths: top loop (tank → manometer line → junction box top),
+       * bottom rail (junction box bottom → ground), tank-bottom drop. */}
+      {(() => {
+        const d =
+          "M14 16 L14 11 L42 11 L42 20 " +
+          "M42 36 L42 49 L3 49 " +
+          "M14 45 L14 49";
+        return (
+          <>
+            <path d={d} stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <path d={d} stroke={waterPipe} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </>
+        );
+      })()}
 
       {/* MANOMETER — needle kept at one static angle */}
       <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="white" />
