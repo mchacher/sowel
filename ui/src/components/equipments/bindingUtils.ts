@@ -5,7 +5,12 @@ import {
   removeDataBinding,
   removeOrderBinding,
 } from "../../api";
-import type { DataBindingWithValue, OrderBindingWithDetails } from "../../types";
+import type {
+  DataBindingWithValue,
+  EquipmentType,
+  OrderBindingWithDetails,
+} from "../../types";
+import { computeBindingCandidates } from "../../lib/binding-candidates";
 
 /** Maps equipment types to relevant data categories for auto-binding. */
 const RELEVANT_DATA: Record<string, string[]> = {
@@ -174,6 +179,14 @@ export function isRelevantOrder(key: string, equipmentType: string): boolean {
   return RELEVANT_ORDERS[equipmentType]?.includes(key) ?? false;
 }
 
+/** Equipment types whose bindings are spec'd as structured candidates
+ * (see src/equipments/binding-candidates.ts). For these, we pick the first
+ * candidate and bind exactly its data/order keys — no more, no less. */
+const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
+  "pool_pump",
+  "pool_cover",
+]);
+
 /** Auto-create DataBindings and OrderBindings for selected devices. */
 export async function autoCreateBindings(
   equipmentId: string,
@@ -182,11 +195,57 @@ export async function autoCreateBindings(
 ): Promise<void> {
   const usedDataAliases = new Set<string>();
   const usedOrderAliases = new Set<string>();
+  const useCandidates = CANDIDATE_BASED_TYPES.has(equipmentType as EquipmentType);
 
   for (const deviceId of deviceIds) {
     try {
       const device = await getDevice(deviceId);
 
+      // Candidate-based binding: compute the functional channels the device
+      // offers for this equipment type and bind only the first candidate's
+      // data/orders. Guarantees spec-conformant bindings (no cross-channel
+      // pollution on multi-relay devices like Tasmota 4CH Pro).
+      if (useCandidates) {
+        const candidates = computeBindingCandidates(
+          equipmentType as EquipmentType,
+          device.data,
+          device.orders,
+        );
+        if (candidates.length === 0) {
+          // No matching channel on this device — skip silently
+          continue;
+        }
+        // Pick the first candidate deterministically. Multi-candidate picker
+        // UX is a follow-up; users can edit bindings afterwards.
+        const chosen = candidates[0];
+        const allowedData = new Set(chosen.dataKeys);
+        const allowedOrders = new Set(chosen.orderKeys);
+
+        for (const data of device.data) {
+          if (!allowedData.has(data.key)) continue;
+          const alias = uniqueAlias(resolveAlias(data.key, equipmentType), usedDataAliases);
+          try {
+            await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
+            usedDataAliases.add(alias);
+          } catch {
+            // Alias conflict — skip
+          }
+        }
+        for (const order of device.orders) {
+          if (!allowedOrders.has(order.key)) continue;
+          const alias = uniqueAlias(resolveAlias(order.key, equipmentType), usedOrderAliases);
+          try {
+            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
+            usedOrderAliases.add(alias);
+          } catch {
+            // Already bound — skip
+          }
+        }
+        continue;
+      }
+
+      // Legacy path for all other equipment types — bind everything that
+      // matches the RELEVANT_DATA / RELEVANT_ORDERS whitelists.
       for (const data of device.data) {
         if (isRelevantData(data.category, equipmentType)) {
           const alias = uniqueAlias(resolveAlias(data.key, equipmentType), usedDataAliases);
