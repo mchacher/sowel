@@ -1,5 +1,6 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { hostname } from "node:os";
+import { resolve as resolvePath } from "node:path";
 import type { Logger } from "./logger.js";
 import type { EventBus } from "./event-bus.js";
 import type { BackupManager } from "../backup/backup-manager.js";
@@ -12,6 +13,11 @@ const COMPOSE_LABEL_WORKING_DIR = "com.docker.compose.project.working_dir";
 const COMPOSE_LABEL_PROJECT = "com.docker.compose.project";
 const COMPOSE_LABEL_SERVICE = "com.docker.compose.service";
 const BACKUP_KEEP_COUNT = 3;
+
+/** Quote a string for safe interpolation into a shell command. */
+function shellQuote(s: string): string {
+  return `'${s.replace(/'/g, "'\\''")}'`;
+}
 
 export interface ComposeContext {
   workingDir: string; // host path of the compose project
@@ -41,6 +47,19 @@ export class UpdateManager {
 
   isDockerAvailable(): boolean {
     return existsSync(DOCKER_SOCKET_PATH);
+  }
+
+  /** Read the current Sowel version from package.json — used to know the
+   * version we are upgrading FROM so we can keep its image around for a
+   * cheap rollback. Returns null if package.json can't be read. */
+  private readSelfVersion(): string | null {
+    try {
+      const pkgPath = resolvePath(process.cwd(), "package.json");
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { version?: string };
+      return typeof pkg.version === "string" ? pkg.version : null;
+    } catch {
+      return null;
+    }
   }
 
   isUpdating(): boolean {
@@ -229,10 +248,28 @@ export class UpdateManager {
     // minutes after a new release is pushed.
     const image = `ghcr.io/mchacher/sowel:${targetVersion}`;
     const latestTag = "ghcr.io/mchacher/sowel:latest";
+
+    // After a successful upgrade, prune older Sowel images so /var/lib/docker
+    // doesn't grow unbounded across self-updates (~1GB per release × N releases).
+    // Keep three tags around: :latest, the new :targetVersion, and the version
+    // we are upgrading FROM (cheap rollback target). Everything else gets
+    // removed. Errors are tolerated (`|| true`) so a leftover tag never blocks
+    // an otherwise successful update.
+    const previousVersion = this.readSelfVersion();
+    const keepArgs = [
+      latestTag,
+      image,
+      previousVersion ? `ghcr.io/mchacher/sowel:${previousVersion}` : null,
+    ]
+      .filter((v): v is string => Boolean(v))
+      .map((tag) => `-e ${shellQuote(tag)}`)
+      .join(" ");
+    const pruneCmd = `docker images --format '{{.Repository}}:{{.Tag}}' | grep '^ghcr.io/mchacher/sowel:' | grep -v ${keepArgs} | xargs -r docker rmi -f || true`;
+
     const cmd = [
       "sh",
       "-c",
-      `sleep 5 && echo "[sowel-updater] pulling ${image}..." && docker pull ${image} && docker tag ${image} ${latestTag} && echo "[sowel-updater] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
+      `sleep 5 && echo "[sowel-updater] pulling ${image}..." && docker pull ${image} && docker tag ${image} ${latestTag} && echo "[sowel-updater] recreating ${ctx.serviceName}..." && docker compose up -d ${ctx.serviceName} && echo "[sowel-updater] pruning old Sowel images..." && ${pruneCmd} && echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
     ];
 
     await this.runHelperContainer({
