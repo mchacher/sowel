@@ -4,6 +4,7 @@ import type { IntegrationRegistry } from "../../integrations/integration-registr
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { PluginLoader } from "../../plugins/plugin-loader.js";
+import type { IntegrationSettingDef, IntegrationStatus } from "../../shared/types.js";
 
 interface IntegrationsDeps {
   integrationRegistry: IntegrationRegistry;
@@ -29,37 +30,60 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
       return reply.code(403).send({ error: "Admin access required" });
     }
 
-    const integrations = integrationRegistry.getAllInfo();
     const allDevices = deviceManager.getAll();
+    const loadedById = new Map(integrationRegistry.getAllInfo().map((i) => [i.id, i]));
 
-    // Build plugin version map
-    const pluginVersions = new Map<string, string>();
-    const pluginEnabled = new Map<string, boolean>();
-    if (pluginLoader) {
-      for (const p of pluginLoader.getInstalled()) {
-        pluginVersions.set(p.manifest.id, p.manifest.version);
-        pluginEnabled.set(p.manifest.id, p.enabled);
-      }
-    }
+    // List sources:
+    //   - integrationRegistry.getAllInfo() returns only ENABLED, currently
+    //     loaded plugins (with their full IntegrationPlugin runtime API).
+    //   - pluginLoader.getInstalled() returns every installed integration
+    //     plugin, including disabled ones (read from the plugins SQLite
+    //     table via PackageManager).
+    //
+    // We list every installed integration so a disabled MCZ Maestro stays
+    // visible on the Integrations page (with an "Activer" action), instead
+    // of disappearing into the admin-only Plugins page.
+    const installed = pluginLoader
+      ? pluginLoader.getInstalled().filter((p) => p.manifest.type === "integration")
+      : [];
 
-    // Enrich with current setting values and device counts
-    return integrations.map((info) => ({
-      ...info,
-      settingValues: Object.fromEntries(
-        info.settings.map((s) => {
-          const fullKey = `integration.${info.id}.${s.key}`;
+    const enrichSettingValues = (settings: IntegrationSettingDef[], id: string) =>
+      Object.fromEntries(
+        settings.map((s) => {
+          const fullKey = `integration.${id}.${s.key}`;
           const value = settingsManager.get(fullKey);
-          // Don't expose password values
           return [s.key, s.type === "password" && value ? "••••••••" : (value ?? "")];
         }),
-      ),
-      deviceCount: allDevices.filter((d) => d.integrationId === info.id).length,
-      offlineDeviceCount: allDevices.filter(
-        (d) => d.integrationId === info.id && d.status === "offline",
-      ).length,
-      ...(pluginVersions.has(info.id) ? { pluginVersion: pluginVersions.get(info.id) } : {}),
-      ...(pluginEnabled.has(info.id) ? { enabled: pluginEnabled.get(info.id) } : {}),
-    }));
+      );
+
+    return installed.map((pkg) => {
+      const id = pkg.manifest.id;
+      const loaded = loadedById.get(id);
+      const settings = (loaded?.settings ?? pkg.manifest.settings ?? []) as IntegrationSettingDef[];
+      const settingValues = enrichSettingValues(settings, id);
+      const configured =
+        loaded?.configured ?? settings.filter((s) => s.required).every((s) => settingValues[s.key]);
+      const status: IntegrationStatus = loaded?.status ?? "disconnected";
+
+      return {
+        id,
+        name: loaded?.name ?? pkg.manifest.name,
+        description: loaded?.description ?? pkg.manifest.description ?? "",
+        icon: loaded?.icon ?? pkg.manifest.icon ?? "Plug",
+        status,
+        configured,
+        settings,
+        settingValues,
+        ...(loaded?.polling ? { polling: loaded.polling } : {}),
+        deviceCount: allDevices.filter((d) => d.integrationId === id).length,
+        offlineDeviceCount: allDevices.filter(
+          (d) => d.integrationId === id && d.status === "offline",
+        ).length,
+        ...(loaded?.supportsOAuth !== undefined ? { supportsOAuth: loaded.supportsOAuth } : {}),
+        pluginVersion: pkg.manifest.version,
+        enabled: pkg.enabled,
+      };
+    });
   });
 
   // POST /api/v1/integrations/:id/start — Start an integration

@@ -46,7 +46,7 @@ interface EquipmentDetailProps {
 }
 
 export function EquipmentDetailSheet({ widget, equipment, onExecuteOrder, onClose }: EquipmentDetailProps) {
-  const { isLight, isShutter, isThermostat, isHeater, isSensor, isGate } = useEquipmentState(equipment);
+  const { isLight, isShutter, isThermostat, isHeater, isSensor, isGate, isPoolHeatPump } = useEquipmentState(equipment);
   const label = widget.label || equipment.name;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
@@ -73,7 +73,7 @@ export function EquipmentDetailSheet({ widget, equipment, onExecuteOrder, onClos
     );
   }
 
-  if (isThermostat) {
+  if (isThermostat || isPoolHeatPump) {
     return (
       <BottomSheet open onClose={onClose} title={label}
         icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
@@ -770,18 +770,35 @@ function ThermostatDetailContent({
   const [executing, setExecuting] = useState<string | null>(null);
   const setpointOverride = useSliderOverride(5000);
 
+  const isPoolHeatPump = equipment.type === "pool_heat_pump";
+
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const modeBinding = equipment.dataBindings.find((b) => b.alias === "mode");
   const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "temperature");
+  const effectiveWaterTemp = equipment.computedData?.find(
+    (c) => c.alias === "effective_water_temperature",
+  );
   const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
 
-  const isOn = powerBinding?.value === true;
-  const insideTemp = typeof insideTempBinding?.value === "number" ? insideTempBinding.value : null;
+  // pool_heat_pump has no power order; its "on" state is derived from `mode`.
+  // The water temperature exposed is the computed `effective_water_temperature`
+  // — gated by filtration / mode so we only show a representative value.
+  const isOn = isPoolHeatPump
+    ? typeof modeBinding?.value === "string" && modeBinding.value.toUpperCase() !== "OFF"
+    : powerBinding?.value === true;
+  const insideTemp = isPoolHeatPump
+    ? typeof effectiveWaterTemp?.value === "number"
+      ? effectiveWaterTemp.value
+      : null
+    : typeof insideTempBinding?.value === "number"
+      ? insideTempBinding.value
+      : null;
   const deviceSetpoint = typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
   const displaySetpoint = setpointOverride.displayValue(deviceSetpoint);
 
-  const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
+  const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
   const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
-  const targetMin = targetTempOrder?.min ?? 16;
+  const targetMin = targetTempOrder?.min ?? (isPoolHeatPump ? 10 : 16);
   const targetMax = targetTempOrder?.max ?? 30;
   const STEP = 0.5;
 
