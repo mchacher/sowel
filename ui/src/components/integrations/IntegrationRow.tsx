@@ -8,9 +8,16 @@ import {
   ChevronRight,
   Cpu,
   Loader2,
+  Power,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { startIntegration, stopIntegration, refreshIntegration } from "../../api";
+import {
+  startIntegration,
+  stopIntegration,
+  refreshIntegration,
+  enablePlugin,
+  disablePlugin,
+} from "../../api";
 import type { IntegrationInfo } from "../../types";
 
 interface IntegrationRowProps {
@@ -23,19 +30,25 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
   const { t } = useTranslation();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const isConnected = integration.status === "connected";
+  const isDisabled = integration.enabled === false;
+  const isConnected = !isDisabled && integration.status === "connected";
   const hasRefresh = isConnected && !!integration.polling;
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[integration.icon] ?? Cpu;
 
-  const handleAction = async (e: React.MouseEvent, action: "start" | "stop" | "refresh") => {
+  const handleAction = async (
+    e: React.MouseEvent,
+    action: "start" | "stop" | "refresh" | "enable" | "disable",
+  ) => {
     e.stopPropagation();
     setActionLoading(action);
     try {
       if (action === "start") await startIntegration(integration.id);
       else if (action === "stop") await stopIntegration(integration.id);
       else if (action === "refresh") await refreshIntegration(integration.id);
+      else if (action === "enable") await enablePlugin(integration.id);
+      else if (action === "disable") await disablePlugin(integration.id);
       onRefresh();
     } catch {
       onRefresh();
@@ -66,7 +79,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
             </span>
           )}
         </div>
-        <StatusBadge status={integration.status} />
+        <StatusBadge status={integration.status} disabled={isDisabled} />
       </div>
 
       {/* Stats */}
@@ -92,7 +105,15 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
 
       {/* Quick actions — visible on hover (desktop), always visible (mobile) */}
       <div className="flex items-center gap-0.5 shrink-0">
-        {isConnected ? (
+        {isDisabled ? (
+          <QuickAction
+            icon={<Power size={14} />}
+            loading={actionLoading === "enable"}
+            onClick={(e) => handleAction(e, "enable")}
+            title={t("integrations.enable")}
+            accent
+          />
+        ) : isConnected ? (
           <>
             <QuickAction
               icon={<Square size={14} />}
@@ -108,16 +129,37 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
                 title={t("integrations.refresh")}
               />
             )}
+            <QuickAction
+              icon={<Power size={14} />}
+              loading={actionLoading === "disable"}
+              onClick={(e) => handleAction(e, "disable")}
+              title={t("integrations.disable")}
+            />
           </>
         ) : integration.status !== "not_configured" ? (
+          <>
+            <QuickAction
+              icon={<Play size={14} />}
+              loading={actionLoading === "start"}
+              onClick={(e) => handleAction(e, "start")}
+              title={t("integrations.start")}
+              accent
+            />
+            <QuickAction
+              icon={<Power size={14} />}
+              loading={actionLoading === "disable"}
+              onClick={(e) => handleAction(e, "disable")}
+              title={t("integrations.disable")}
+            />
+          </>
+        ) : (
           <QuickAction
-            icon={<Play size={14} />}
-            loading={actionLoading === "start"}
-            onClick={(e) => handleAction(e, "start")}
-            title={t("integrations.start")}
-            accent
+            icon={<Power size={14} />}
+            loading={actionLoading === "disable"}
+            onClick={(e) => handleAction(e, "disable")}
+            title={t("integrations.disable")}
           />
-        ) : null}
+        )}
       </div>
 
       {/* Chevron */}
@@ -158,8 +200,23 @@ function QuickAction({
   );
 }
 
-function StatusBadge({ status }: { status: IntegrationInfo["status"] }) {
+function StatusBadge({
+  status,
+  disabled,
+}: {
+  status: IntegrationInfo["status"];
+  disabled?: boolean;
+}) {
   const { t } = useTranslation();
+
+  if (disabled) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary mt-0.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary" />
+        {t("integrations.disabledStatus")}
+      </span>
+    );
+  }
 
   const config = {
     connected: { dot: "bg-success", text: "text-success" },
