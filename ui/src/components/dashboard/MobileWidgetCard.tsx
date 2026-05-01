@@ -80,6 +80,7 @@ function useMobileState(
     isWaterValve,
     isPoolPump,
     isPoolCover,
+    isPoolHeatPump,
     isOn,
   } = useEquipmentState(equipment);
 
@@ -121,12 +122,20 @@ function useMobileState(
     };
   }
 
-  if (isThermostat) {
+  if (isThermostat || isPoolHeatPump) {
     const temp = equipment.dataBindings.find((b) => b.alias === "temperature");
+    const computedTemp = isPoolHeatPump
+      ? equipment.computedData?.find((c) => c.alias === "effective_water_temperature")
+      : null;
     const setpoint = equipment.dataBindings.find((b) => b.alias === "setpoint");
-    const tempVal = typeof temp?.value === "number" ? temp.value : null;
+    const tempVal = isPoolHeatPump && typeof computedTemp?.value === "number"
+      ? computedTemp.value
+      : typeof temp?.value === "number"
+        ? temp.value
+        : null;
     const spVal = typeof setpoint?.value === "number" ? setpoint.value : null;
-    const level = spVal !== null ? (spVal - 16) / (30 - 16) : undefined;
+    const minBound = isPoolHeatPump ? 10 : 16;
+    const level = spVal !== null ? (spVal - minBound) / (30 - minBound) : undefined;
     return {
       icon: customEntry
         ? createElement(customEntry.component, customEntry.previewProps)
