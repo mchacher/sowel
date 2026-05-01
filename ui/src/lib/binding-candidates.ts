@@ -90,6 +90,38 @@ export function computeBindingCandidates(
       return candidates;
     }
 
+    case "pool_heat_pump": {
+      // Hybrid: PAC device (exposing pool_water_temperature) → single "all"
+      // candidate. ON/OFF relay device → one candidate per channel.
+      const isPac = deviceData.some((d) => d.category === "pool_water_temperature");
+      if (isPac) {
+        if (deviceData.length === 0 && deviceOrders.length === 0) return [];
+        return [
+          {
+            id: "all",
+            label: "All PAC data/orders",
+            dataKeys: deviceData.map((d) => d.key),
+            orderKeys: deviceOrders.map((o) => o.key),
+          },
+        ];
+      }
+      // Read-only: pool_heat_pump observes the relay for its filtration_state
+      // alias, no order claim (pool_pump owns the actual write).
+      const candidates: BindingCandidate[] = [];
+      for (const o of deviceOrders) {
+        if (!isOnOffEnum(o)) continue;
+        const matchingData = deviceData.find((d) => d.key === o.key);
+        if (!matchingData) continue;
+        candidates.push({
+          id: o.key,
+          label: o.key,
+          dataKeys: [matchingData.key],
+          orderKeys: [],
+        });
+      }
+      return candidates;
+    }
+
     default:
       return [];
   }

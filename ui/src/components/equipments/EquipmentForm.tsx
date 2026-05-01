@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { EquipmentType, ZoneWithChildren } from "../../types";
 import { DeviceSelector } from "./DeviceSelector";
+import { getDevices, type DeviceWithData } from "../../api";
 
 const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "light_onoff", labelKey: "equipments.type.light_onoff" },
@@ -25,6 +26,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "water_valve", labelKey: "equipments.type.water_valve" },
   { value: "pool_pump", labelKey: "equipments.type.pool_pump" },
   { value: "pool_cover", labelKey: "equipments.type.pool_cover" },
+  { value: "pool_heat_pump", labelKey: "equipments.type.pool_heat_pump" },
 ];
 
 interface EquipmentFormProps {
@@ -62,6 +64,26 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
   const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [allDevices, setAllDevices] = useState<DeviceWithData[]>([]);
+
+  useEffect(() => {
+    if (type === "pool_heat_pump") {
+      getDevices().then(setAllDevices).catch(() => setAllDevices([]));
+    }
+  }, [type]);
+
+  // For pool_heat_pump, both bindings are required:
+  //  - a device exposing pool_water_temperature (the PAC itself)
+  //  - a device exposing light_state — the relay driving the filtration pump,
+  //    bound read-only as `filtration_state` so the computed water temp is
+  //    only trusted while water is actually flowing through the PAC sensor.
+  const poolHeatPumpValidation = useMemo(() => {
+    if (type !== "pool_heat_pump") return { ok: true, hasPac: true, hasRelay: true };
+    const selected = allDevices.filter((d) => selectedDeviceIds.includes(d.id));
+    const hasPac = selected.some((d) => d.data.some((x) => x.category === "pool_water_temperature"));
+    const hasRelay = selected.some((d) => d.data.some((x) => x.category === "light_state"));
+    return { ok: hasPac && hasRelay, hasPac, hasRelay };
+  }, [type, allDevices, selectedDeviceIds]);
 
   const flatZones = flattenZones(zones);
   const availableTypes = excludeTypes
@@ -187,6 +209,13 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   boundDeviceIds={boundDeviceIds}
                   boundOrderKeysByDevice={boundOrderKeysByDevice}
                 />
+                {type === "pool_heat_pump" && !poolHeatPumpValidation.ok && (
+                  <p className="text-[12px] text-warning">
+                    {!poolHeatPumpValidation.hasPac
+                      ? "Sélectionnez la PAC (Polytropic)."
+                      : "Sélectionnez aussi la pompe de filtration (Sonoff/relais ON-OFF)."}
+                  </p>
+                )}
               </>
             )}
 
@@ -208,7 +237,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={!name.trim() || !zoneId || saving}
+                  disabled={!name.trim() || !zoneId || saving || !poolHeatPumpValidation.ok}
                   className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? t("common.creating") : initial ? t("common.save") : t("common.create")}

@@ -44,6 +44,8 @@ export type DataCategory =
   | "media_mute"
   | "media_input"
   | "appliance_state"
+  | "pool_water_temperature"
+  | "pool_temperature_setpoint"
   | "generic";
 
 export type OrderCategory =
@@ -61,7 +63,8 @@ export type OrderCategory =
   | "set_input"
   | "pool_pump_toggle"
   | "pool_cover_move"
-  | "pool_cover_position";
+  | "pool_cover_position"
+  | "set_pool_temperature_setpoint";
 
 // ============================================================
 // Device
@@ -192,7 +195,8 @@ export type EquipmentType =
   | "appliance"
   | "water_valve"
   | "pool_pump"
-  | "pool_cover";
+  | "pool_cover"
+  | "pool_heat_pump";
 
 export interface Equipment {
   id: string;

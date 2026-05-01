@@ -292,5 +292,23 @@
       }
     },
     "sowelVersion": ">=1.1.0"
+  },
+  {
+    "id": "polytropic_master",
+    "type": "integration",
+    "name": "Polytropic Master Inverter",
+    "description": "Pool heat pump (Polytropic Master Inverter) over Modbus RTU/TCP via a Waveshare gateway",
+    "icon": "Waves",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-polytropic-master",
+    "version": "1.0.0",
+    "tags": ["pool", "heat-pump", "modbus", "polytropic"],
+    "i18n": {
+      "fr": {
+        "name": "Polytropic Master Inverter",
+        "description": "PAC piscine Polytropic Master Inverter via Modbus RTU/TCP (passerelle Waveshare)"
+      }
+    },
+    "sowelVersion": ">=1.4.0"
   }
 ]

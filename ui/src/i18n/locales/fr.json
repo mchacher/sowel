@@ -204,6 +204,7 @@
   "equipments.type.water_valve": "Vanne d'arrosage",
   "equipments.type.pool_pump": "Pompe de piscine",
   "equipments.type.pool_cover": "Volet de piscine",
+  "equipments.type.pool_heat_pump": "Pompe à chaleur piscine",
 
   "water.open": "Ouverte",
   "water.closed": "Fermée",

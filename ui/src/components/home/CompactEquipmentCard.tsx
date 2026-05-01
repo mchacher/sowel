@@ -9,6 +9,7 @@ import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
 import { WaterValveControl } from "../equipments/WaterValveControl";
+import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 
@@ -43,9 +44,10 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const isWaterValve = equipment.type === "water_valve";
   const isPoolPump = equipment.type === "pool_pump";
   const isPoolCover = equipment.type === "pool_cover";
+  const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
   // Find primary data value for generic equipments
-  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve || isPoolPump || isPoolCover;
+  const isKnownType = isLight || isSensor || isShutter || isThermostat || isHeater || isGate || isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance || isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -185,6 +187,15 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       {/* Pool cover: OPEN/STOP/CLOSE buttons + position slider (reuse ShutterControl compact) */}
       {isPoolCover && equipment.enabled && (
         <ShutterControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* Pool heat pump: water temp + mode badge + setpoint controls */}
+      {isPoolHeatPump && (
+        <PoolHeatPumpControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact

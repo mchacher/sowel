@@ -10,6 +10,7 @@ import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
+import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
@@ -152,6 +153,12 @@ async function main() {
   const poolRuntimeTracker = new PoolRuntimeTracker(db, eventBus, equipmentManager, logger);
   equipmentManager.registerComputedDataProvider((eqId) =>
     poolRuntimeTracker.getComputedDataForEquipment(eqId),
+  );
+
+  // 9c. Create Pool Water Temp Tracker (gates water temp by filtration/mode for pool_heat_pump)
+  const poolWaterTempTracker = new PoolWaterTempTracker(db, eventBus, equipmentManager, logger);
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    poolWaterTempTracker.getComputedDataForEquipment(eqId),
   );
 
   // 10. Create Zone Aggregator + Sunlight Manager
@@ -329,6 +336,9 @@ async function main() {
   // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
   poolRuntimeTracker.start();
 
+  // 17c. Start pool water temp tracker (gates water temp by filtration/mode)
+  poolWaterTempTracker.start();
+
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
 
@@ -395,6 +405,11 @@ async function main() {
       poolRuntimeTracker.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping pool runtime tracker");
+    }
+    try {
+      poolWaterTempTracker.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping pool water temp tracker");
     }
     try {
       notificationPublishService.destroy();

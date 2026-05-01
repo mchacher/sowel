@@ -6,6 +6,7 @@ export function needsDetailSheet(equipmentType: string): boolean {
     "shutter",
     "pool_cover",
     "thermostat",
+    "pool_heat_pump",
     "heater",
   ].includes(equipmentType);
 }

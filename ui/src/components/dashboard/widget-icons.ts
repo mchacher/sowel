@@ -298,6 +298,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   water_valve: "Droplets",
   pool_pump: "Droplets",
   pool_cover: "ArrowUpDown",
+  pool_heat_pump: "Thermometer",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
