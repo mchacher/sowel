@@ -199,6 +199,7 @@ export function isRelevantOrder(key: string, equipmentType: string): boolean {
 const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
   "pool_pump",
   "pool_cover",
+  "pool_heat_pump",
   "light_onoff",
   "light_dimmable",
   "light_color",

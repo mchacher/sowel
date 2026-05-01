@@ -48,6 +48,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "water_valve",
   "pool_pump",
   "pool_cover",
+  "pool_heat_pump",
 ]);
 
 // ============================================================

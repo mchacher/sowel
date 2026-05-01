@@ -165,8 +165,7 @@ export function computeBindingCandidates(
     }
 
     case "thermostat":
-    case "heater":
-    case "pool_heat_pump": {
+    case "heater": {
       // Single candidate grouping everything (power/setpoint/temperature).
       if (deviceData.length === 0 && deviceOrders.length === 0) return [];
       return [
@@ -177,6 +176,40 @@ export function computeBindingCandidates(
           orderKeys: deviceOrders.map((o) => o.key),
         },
       ];
+    }
+
+    case "pool_heat_pump": {
+      // Hybrid: PAC device (exposing pool_water_temperature) → single "all" candidate.
+      // ON/OFF relay device (e.g. Sonoff 4CH driving filtration) → one candidate per channel
+      //   so the user can pick which relay drives the filtration_state alias.
+      const isPac = deviceData.some((d) => d.category === "pool_water_temperature");
+      if (isPac) {
+        if (deviceData.length === 0 && deviceOrders.length === 0) return [];
+        return [
+          {
+            id: "all",
+            label: "All PAC data/orders",
+            dataKeys: deviceData.map((d) => d.key),
+            orderKeys: deviceOrders.map((o) => o.key),
+          },
+        ];
+      }
+      // Read-only binding: pool_heat_pump just listens to the relay state for
+      // its `filtration_state` alias. Don't claim the order — it stays
+      // available to whichever pool_pump equipment drives the same relay.
+      const candidates: BindingCandidate[] = [];
+      for (const o of deviceOrders) {
+        if (!isOnOffEnum(o)) continue;
+        const matchingData = deviceData.find((d) => d.key === o.key);
+        if (!matchingData) continue;
+        candidates.push({
+          id: o.key,
+          label: o.key,
+          dataKeys: [matchingData.key],
+          orderKeys: [],
+        });
+      }
+      return candidates;
     }
 
     case "gate": {

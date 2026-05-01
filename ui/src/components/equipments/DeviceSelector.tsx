@@ -20,6 +20,9 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   energy_meter: ["energy"],
   main_energy_meter: ["energy"],
   energy_production_meter: ["energy", "power"],
+  // Polytropic PAC matches via pool_water_temperature; Sonoff filtration relay
+  // matches via light_state (used as the optional `filtration_state` binding).
+  pool_heat_pump: ["pool_water_temperature", "light_state"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
@@ -61,6 +64,7 @@ function looksLikeWaterValve(device: DeviceWithData): boolean {
 const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
   "pool_pump",
   "pool_cover",
+  "pool_heat_pump",
   "light_onoff",
   "light_dimmable",
   "light_color",
