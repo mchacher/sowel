@@ -14,6 +14,7 @@ import {
   Timer,
   ExternalLink,
   CheckCircle,
+  Power,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import {
@@ -23,6 +24,8 @@ import {
   restartIntegration,
   refreshIntegration,
   getPluginOAuthUrl,
+  enablePlugin,
+  disablePlugin,
 } from "../../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../../types";
 
@@ -83,8 +86,12 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
     }
   };
 
-  const isConnected = integration.status === "connected";
-  const isError = integration.status === "error";
+  const isDisabled = integration.enabled === false;
+  // When the plugin is disabled, hide noisy "error" / "disconnected" runtime
+  // states behind the persistent "disabled" label — the integration is
+  // intentionally not running, anything else would be a UX lie.
+  const isConnected = !isDisabled && integration.status === "connected";
+  const isError = !isDisabled && integration.status === "error";
   const hasRefresh = !!integration.polling;
   const hasRequiredEmpty = integration.settings.some(
     (s) => s.required && !values[s.key]?.trim(),
@@ -124,7 +131,9 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
     }
   };
 
-  const handleAction = async (action: "start" | "stop" | "restart" | "refresh") => {
+  const handleAction = async (
+    action: "start" | "stop" | "restart" | "refresh" | "enable" | "disable",
+  ) => {
     setActionLoading(action);
     try {
       switch (action) {
@@ -143,6 +152,14 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         case "refresh":
           await refreshIntegration(integration.id);
           showMessage("success", t("integrations.refreshed"));
+          break;
+        case "enable":
+          await enablePlugin(integration.id);
+          showMessage("success", t("integrations.enabled"));
+          break;
+        case "disable":
+          await disablePlugin(integration.id);
+          showMessage("success", t("integrations.disabled"));
           break;
       }
       onRefresh();
@@ -185,7 +202,9 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-background rounded-[8px] p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
-                {isConnected ? (
+                {isDisabled ? (
+                  <Power size={14} className="text-text-tertiary" />
+                ) : isConnected ? (
                   <Wifi size={14} className="text-success" />
                 ) : isError ? (
                   <AlertTriangle size={14} className="text-error" />
@@ -194,11 +213,13 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 )}
               </div>
               <div
-                className={`text-[13px] font-medium ${isConnected ? "text-success" : isError ? "text-error" : "text-text-tertiary"}`}
+                className={`text-[13px] font-medium ${isDisabled ? "text-text-tertiary" : isConnected ? "text-success" : isError ? "text-error" : "text-text-tertiary"}`}
               >
-                {t(
-                  `status.${integration.status === "not_configured" ? "disconnected" : integration.status}`,
-                )}
+                {isDisabled
+                  ? t("integrations.disabledStatus")
+                  : t(
+                      `status.${integration.status === "not_configured" ? "disconnected" : integration.status}`,
+                    )}
               </div>
             </div>
             <div className="bg-background rounded-[8px] p-3 text-center">
@@ -238,7 +259,15 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
               {t("integrations.actions")}
             </h3>
             <div className="flex flex-wrap gap-2">
-              {isConnected ? (
+              {isDisabled ? (
+                <ActionButton
+                  icon={<Power size={14} />}
+                  label={t("integrations.enable")}
+                  loading={actionLoading === "enable"}
+                  onClick={() => handleAction("enable")}
+                  primary
+                />
+              ) : isConnected ? (
                 <>
                   <ActionButton
                     icon={<RotateCcw size={14} />}
@@ -260,16 +289,30 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                       onClick={() => handleAction("refresh")}
                     />
                   )}
+                  <ActionButton
+                    icon={<Power size={14} />}
+                    label={t("integrations.disable")}
+                    loading={actionLoading === "disable"}
+                    onClick={() => handleAction("disable")}
+                  />
                 </>
               ) : (
-                <ActionButton
-                  icon={<Play size={14} />}
-                  label={hasRequiredEmpty ? t("integrations.fillRequired") : t("integrations.start")}
-                  loading={actionLoading === "start"}
-                  onClick={() => handleAction("start")}
-                  primary
-                  disabled={hasRequiredEmpty}
-                />
+                <>
+                  <ActionButton
+                    icon={<Play size={14} />}
+                    label={hasRequiredEmpty ? t("integrations.fillRequired") : t("integrations.start")}
+                    loading={actionLoading === "start"}
+                    onClick={() => handleAction("start")}
+                    primary
+                    disabled={hasRequiredEmpty}
+                  />
+                  <ActionButton
+                    icon={<Power size={14} />}
+                    label={t("integrations.disable")}
+                    loading={actionLoading === "disable"}
+                    onClick={() => handleAction("disable")}
+                  />
+                </>
               )}
             </div>
           </div>

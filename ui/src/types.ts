@@ -740,6 +740,9 @@ export interface IntegrationInfo {
   deviceCount: number;
   offlineDeviceCount: number;
   pluginVersion?: string;
+  /** Persistent enable flag from the plugins table. When false the plugin is
+   * not loaded at boot, regardless of `configured` or its runtime `status`. */
+  enabled?: boolean;
   supportsOAuth?: boolean;
 }
 

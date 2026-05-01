@@ -34,9 +34,11 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
 
     // Build plugin version map
     const pluginVersions = new Map<string, string>();
+    const pluginEnabled = new Map<string, boolean>();
     if (pluginLoader) {
       for (const p of pluginLoader.getInstalled()) {
         pluginVersions.set(p.manifest.id, p.manifest.version);
+        pluginEnabled.set(p.manifest.id, p.enabled);
       }
     }
 
@@ -56,6 +58,7 @@ export function registerIntegrationRoutes(app: FastifyInstance, deps: Integratio
         (d) => d.integrationId === info.id && d.status === "offline",
       ).length,
       ...(pluginVersions.has(info.id) ? { pluginVersion: pluginVersions.get(info.id) } : {}),
+      ...(pluginEnabled.has(info.id) ? { enabled: pluginEnabled.get(info.id) } : {}),
     }));
   });
 
