@@ -36,6 +36,13 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // plugin versions still get auto-bindings.
   pool_pump: ["light_state", "generic"],
   pool_cover: ["shutter_position", "position", "generic"],
+  pool_heat_pump: [
+    "pool_water_temperature",
+    "pool_temperature_setpoint",
+    "temperature_outdoor",
+    "appliance_state",
+    "light_state",
+  ],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -86,6 +93,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
     "shutter2_state",
     "shutter2_position",
   ],
+  pool_heat_pump: ["setpoint"],
 };
 
 /**
@@ -141,6 +149,7 @@ const ORDER_CATEGORY_ALIASES: Record<string, string> = {
   set_color_temp: "color_temp",
   set_color: "color",
   set_setpoint: "setpoint",
+  set_pool_temperature_setpoint: "setpoint",
   gate_trigger: "command",
 };
 
@@ -151,6 +160,8 @@ const DATA_CATEGORY_ALIASES: Record<string, string> = {
   light_color_temp: "color_temp",
   light_color: "color",
   setpoint: "setpoint",
+  pool_temperature_setpoint: "setpoint",
+  pool_water_temperature: "temperature",
   battery: "battery",
   cover_state: "state",
 };

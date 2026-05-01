@@ -26,6 +26,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const isWaterValve = equipment.type === "water_valve";
   const isPoolPump = equipment.type === "pool_pump";
   const isPoolCover = equipment.type === "pool_cover";
+  const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
   // State binding
   const stateBinding = equipment.dataBindings.find(
@@ -34,11 +35,16 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const powerBinding = isThermostat
     ? equipment.dataBindings.find((db) => db.alias === "power")
     : null;
+  const modeBinding = isPoolHeatPump
+    ? equipment.dataBindings.find((db) => db.alias === "mode")
+    : null;
   const isOn = isThermostat
     ? powerBinding?.value === true
-    : stateBinding
-      ? stateBinding.value === true || stateBinding.value === "ON"
-      : false;
+    : isPoolHeatPump
+      ? typeof modeBinding?.value === "string" && modeBinding.value.toUpperCase() !== "OFF"
+      : stateBinding
+        ? stateBinding.value === true || stateBinding.value === "ON"
+        : false;
 
   // Shutter
   const shutterPositionBinding = isShutter
@@ -94,7 +100,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     ? "bg-accent/10 text-accent"
     : isSensor
     ? getSensorIconColor(equipment.dataBindings)
-    : isThermostat
+    : isThermostat || isPoolHeatPump
       ? isOn
         ? "bg-error/10 text-error"
         : "bg-border-light text-text-tertiary"
@@ -130,6 +136,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isWaterValve,
     isPoolPump,
     isPoolCover,
+    isPoolHeatPump,
     stateBinding,
     isOn,
     shutterPosition,

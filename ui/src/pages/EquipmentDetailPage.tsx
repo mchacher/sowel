@@ -10,6 +10,7 @@ import { LightControl } from "../components/equipments/LightControl";
 import { ShutterControl } from "../components/equipments/ShutterControl";
 import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { WaterValveControl } from "../components/equipments/WaterValveControl";
+import { PoolHeatPumpControl } from "../components/equipments/PoolHeatPumpControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
@@ -269,6 +270,17 @@ export function EquipmentDetailPage() {
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <LightControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* Pool heat pump controls — water temp + setpoint slider */}
+      {equipment.type === "pool_heat_pump" && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <PoolHeatPumpControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />

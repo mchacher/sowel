@@ -165,7 +165,8 @@ export function computeBindingCandidates(
     }
 
     case "thermostat":
-    case "heater": {
+    case "heater":
+    case "pool_heat_pump": {
       // Single candidate grouping everything (power/setpoint/temperature).
       if (deviceData.length === 0 && deviceOrders.length === 0) return [];
       return [

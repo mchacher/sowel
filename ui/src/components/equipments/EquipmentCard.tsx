@@ -48,6 +48,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   water_valve: <WaterValveIcon size={18} strokeWidth={1.5} />,
   pool_pump: <Waves size={18} strokeWidth={1.5} />,
   pool_cover: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
+  pool_heat_pump: <Thermometer size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -71,6 +72,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   water_valve: "equipments.type.water_valve",
   pool_pump: "equipments.type.pool_pump",
   pool_cover: "equipments.type.pool_cover",
+  pool_heat_pump: "equipments.type.pool_heat_pump",
 };
 
 interface EquipmentCardProps {

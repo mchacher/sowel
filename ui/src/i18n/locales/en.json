@@ -204,6 +204,7 @@
   "equipments.type.water_valve": "Water valve",
   "equipments.type.pool_pump": "Pool pump",
   "equipments.type.pool_cover": "Pool cover",
+  "equipments.type.pool_heat_pump": "Pool heat pump",
 
   "water.open": "Open",
   "water.closed": "Closed",
