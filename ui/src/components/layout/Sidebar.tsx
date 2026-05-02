@@ -22,6 +22,7 @@ import {
   Zap,
   PlugZap,
   Sun,
+  Activity,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -298,7 +299,7 @@ export function Sidebar() {
           <div className="mt-3 pt-2 border-t border-border-light">
             {collapsed ? (
               <NavLink
-                to="/energy/consumption"
+                to="/energy/live"
                 className={({ isActive }) => `
                   flex items-center justify-center px-3 py-2.5 rounded-[6px]
                   transition-colors duration-150 ease-out
@@ -313,9 +314,15 @@ export function Sidebar() {
               </NavLink>
             ) : (
               <>
-                <button
-                  onClick={() => toggleSection("energy")}
-                  className="flex items-center gap-2 px-3 py-1.5 mb-1 w-full rounded-[6px] transition-colors duration-150 ease-out hover:bg-border-light cursor-pointer"
+                <NavLink
+                  to="/energy/live"
+                  onClick={(e) => {
+                    if (location.pathname.startsWith("/energy")) {
+                      e.preventDefault();
+                      toggleSection("energy");
+                    }
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 mb-1 w-full rounded-[6px] transition-colors duration-150 ease-out hover:bg-border-light"
                 >
                   <Zap size={14} strokeWidth={1.5} className={`transition-colors ${location.pathname.startsWith("/energy") ? "text-primary" : "text-text-secondary"}`} />
                   <span className={`text-[11px] font-semibold uppercase tracking-wider transition-colors ${location.pathname.startsWith("/energy") ? "text-primary" : "text-text-secondary"}`}>
@@ -326,9 +333,23 @@ export function Sidebar() {
                   ) : (
                     <ChevronRight size={12} strokeWidth={1.5} className="ml-auto text-text-tertiary" />
                   )}
-                </button>
+                </NavLink>
                 {expandedSection === "energy" && (
                   <div className="space-y-0.5 pl-2">
+                    <NavLink
+                      to="/energy/live"
+                      className={({ isActive }) => `
+                        flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
+                        text-[13px] transition-colors duration-150 ease-out
+                        ${isActive
+                          ? "bg-primary-light text-primary font-medium"
+                          : "text-text-secondary hover:bg-border-light hover:text-text"
+                        }
+                      `}
+                    >
+                      <Activity size={14} strokeWidth={1.5} />
+                      {t("nav.energy.live")}
+                    </NavLink>
                     <NavLink
                       to="/energy/consumption"
                       className={({ isActive }) => `
