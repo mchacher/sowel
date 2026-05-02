@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Menu, Zap, Sun } from "lucide-react";
+import { Menu, Zap, Sun, Activity } from "lucide-react";
 import { useEnergy } from "../../store/useEnergy";
 
 export function EnergyMobileNav() {
@@ -15,6 +15,7 @@ export function EnergyMobileNav() {
   if (!hasProduction) return null;
 
   const items = [
+    { to: "/energy/live", label: t("energy.live"), icon: <Activity size={18} strokeWidth={1.5} /> },
     { to: "/energy/consumption", label: t("energy.consumption"), icon: <Zap size={18} strokeWidth={1.5} /> },
     { to: "/energy/production", label: t("energy.production"), icon: <Sun size={18} strokeWidth={1.5} /> },
   ];

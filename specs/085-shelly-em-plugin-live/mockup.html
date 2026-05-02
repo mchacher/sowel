@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sowel — Énergie Live (mockup v4)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      /* Sowel energy palette (matches EnergyBarChart.tsx) */
+      --hp:        #4F7BE8;          /* HP / house consumption — vivid blue */
+      --hp-soft:   #E0E9FB;
+      --hc:        #93B5F0;          /* HC light blue */
+      --auto:      #6BCB77;          /* autoconso / production green */
+      --auto-soft: #DEF1E2;
+      --grid:      #4A6396;          /* grid import — muted slate blue (distinct from house) */
+      --grid-off:  #9CA3AF;          /* grid export — neutral grey (passive receiver) */
+
+      --bg:        #FAFAF7;
+      --paper:     #FFFFFF;
+      --ink:       #0E1116;
+      --ink-mid:   #586068;
+      --ink-faint: #B8BCC2;
+      --rule:      #E5E5E0;
+      --grid-line: rgba(14,17,22,0.04);
+    }
+    body.dark {
+      --hp:        #6E96EE;
+      --hp-soft:   rgba(110,150,238,0.15);
+      --hc:        #A3C0F2;
+      --auto:      #8BD894;
+      --auto-soft: rgba(139,216,148,0.15);
+      --grid:      #7A8DB5;          /* slate blue — dark mode */
+      --grid-off:  #6B7280;          /* neutral grey — dark mode */
+
+      --bg:        #14151A;
+      --paper:     #1B1D24;
+      --ink:       #F0F0EB;
+      --ink-mid:   #A8ADB4;
+      --ink-faint: #555960;
+      --rule:      #2A2D34;
+      --grid-line: rgba(255,255,255,0.04);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 24px 24px;
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.005em;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 28px 40px 20px;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+    }
+    .topbar .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .topbar .brand h1 {
+      font-family: "DM Serif Display", serif;
+      font-size: 22px;
+      font-weight: 400;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+    .topbar .brand .ref {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--ink-faint);
+    }
+    .topbar .nav {
+      display: flex;
+      gap: 24px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .topbar .nav a {
+      color: var(--ink-mid);
+      text-decoration: none;
+      padding-bottom: 4px;
+    }
+    .topbar .nav a.active {
+      color: var(--ink);
+      border-bottom: 1.5px solid var(--ink);
+    }
+    .topbar .right { display: flex; gap: 12px; align-items: center; }
+    .toggle {
+      padding: 6px 12px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid var(--rule);
+      background: transparent;
+      color: var(--ink-mid);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 48px 40px 80px;
+    }
+    .page-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 36px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .page-head .title {
+      font-family: "DM Serif Display", serif;
+      font-size: 44px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .page-head .subtitle {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--ink-faint);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+    }
+    @media (min-width: 768px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1100px) {
+      .grid { grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    .card {
+      background: var(--paper);
+      padding: 28px 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .card-header .num {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--ink-faint);
+    }
+    .card-header .title {
+      font-family: "DM Serif Display", serif;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.2;
+      flex: 1;
+    }
+
+    /* ── Diagram (strict orthogonal) ─────────────────────────── */
+    .diagram {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 360 / 320;
+      max-width: 360px;
+      margin: 0 auto;
+    }
+    /* Only the immediate child SVG is the bus skeleton — icon SVGs deeper
+     * in .nodes must keep their normal flex layout. */
+    .diagram > svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .diagram .nodes { position: absolute; inset: 0; }
+
+    /* HOUSE — bordered box with icon + value + autoconso pill */
+    .node-house {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48%;
+      padding: 12px 12px 12px;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      color: var(--hp);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 2;
+    }
+    .node-house .icon { width: 56px; height: 56px; }
+    .node-house .v {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 24px;
+      letter-spacing: -0.025em;
+      line-height: 1;
+      color: var(--ink);
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .node-house .v .u {
+      font-size: 11px;
+      color: var(--ink-faint);
+      font-weight: 600;
+    }
+    .node-house .auto {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--auto);
+      background: var(--auto-soft);
+      padding: 3px 9px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 2px;
+      transition: opacity .2s;
+    }
+    .node-house .auto.hidden { opacity: 0; pointer-events: none; }
+    .node-house .auto .lbl { font-weight: 500; opacity: 0.7; text-transform: lowercase; }
+
+    /* SIDE NODES — bordered box, smaller. Width chosen so that node center
+     * sits exactly on the bus skeleton end (x=60 / x=300 in 360-wide viewBox = 16.7% / 83.3%) */
+    .node-side {
+      position: absolute;
+      bottom: 0;
+      width: 33.3%;
+      padding: 10px 6px 10px;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 2;
+    }
+    .node--grid { left: 0; }
+    .node--solar { right: 0; }
+
+    .node-side .icon { width: 40px; height: 40px; }
+    .node-side .v {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+    .node-side .v .u {
+      font-size: 11px;
+      color: var(--ink-faint);
+      font-weight: 600;
+    }
+    .node-side .v .arrow {
+      font-size: 18px;
+      font-weight: 700;
+      margin-right: 2px;
+    }
+
+    .node--grid .icon { color: var(--grid); }
+    .node--grid .v    { color: var(--grid); }
+    .node--solar .icon { color: var(--auto); }
+    .node--solar .v    { color: var(--auto); }
+
+    /* EXPORT — grid becomes neutral grey (the network just receives, doesn't drive) */
+    .node--grid.is-export .icon { color: var(--grid-off); }
+    .node--grid.is-export .v    { color: var(--grid-off); }
+
+    .node--inactive { opacity: 0.35; }
+
+    /* SVG */
+    .bus-bg {
+      fill: none;
+      stroke: var(--rule);
+      stroke-width: 2;
+    }
+    .bus-active {
+      fill: none;
+      stroke-width: 2.5;
+    }
+    .bus-active--hp   { stroke: var(--grid); }       /* import → slate-blue grid color */
+    .bus-active--off  { stroke: var(--grid-off); }    /* export → neutral grey */
+    .bus-active--auto { stroke: var(--auto); }        /* solar → green */
+
+    .junction {
+      fill: var(--paper);
+      stroke: var(--rule);
+      stroke-width: 1.5;
+    }
+
+    .flow-dot { r: 4; }
+    .flow-dot--hp   { fill: var(--grid); }
+    .flow-dot--auto { fill: var(--auto); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Sowel</h1>
+      <span class="ref">085 · LIVE ENERGY</span>
+    </div>
+    <nav class="nav">
+      <a href="#" class="active">Live</a>
+      <a href="#">Consommation</a>
+      <a href="#">Production</a>
+    </nav>
+    <div class="right">
+      <button class="toggle" onclick="document.body.classList.toggle('dark')">Theme</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="page-head">
+      <div class="title">Puissance instantanée.</div>
+      <div class="subtitle">6 SCENARIOS — VALIDATION VISUEL</div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <template id="tpl">
+    <article class="card">
+      <div class="card-header">
+        <div class="title" data-title></div>
+        <div class="num" data-num></div>
+      </div>
+
+      <div class="diagram">
+        <svg viewBox="0 0 360 320" preserveAspectRatio="xMidYMid meet">
+          <!-- Bus skeleton: T-bar connecting maison (top) to grid + solar (bottom corners).
+           * Maison box bottom ≈ y=180 (depends on padding + content), bus bar at y=210,
+           * side nodes top ≈ y=232. -->
+          <!-- Bus bar vertically centered in the 152..226 corridor (mid = 189) -->
+          <line class="bus-bg" x1="180" y1="152" x2="180" y2="189" />
+          <line class="bus-bg" x1="60"  y1="189" x2="300" y2="189" />
+          <line class="bus-bg" x1="60"  y1="189" x2="60"  y2="226" />
+          <line class="bus-bg" x1="300" y1="189" x2="300" y2="226" />
+
+          <!-- Active overlays -->
+          <polyline data-active-grid  class="bus-active bus-active--hp"   points="60,226 60,189 180,189 180,152" opacity="0" />
+          <polyline data-active-solar class="bus-active bus-active--auto" points="300,226 300,189 180,189 180,152" opacity="0" />
+
+          <!-- Junctions at intersections -->
+          <circle class="junction" cx="60"  cy="189" r="4" />
+          <circle class="junction" cx="300" cy="189" r="4" />
+          <circle class="junction" cx="180" cy="189" r="5" />
+
+          <!-- Paths for animateMotion -->
+          <path data-path-grid  d="M 60 226 L 60 189 L 180 189 L 180 152" fill="none" stroke="none" />
+          <path data-path-solar d="M 300 226 L 300 189 L 180 189 L 180 152" fill="none" stroke="none" />
+
+          <!-- Animated dots — Grid (3, generously spaced) -->
+          <g data-dots-grid>
+            <circle class="flow-dot flow-dot--hp" data-dot-grid><animateMotion dur="6s" begin="0s" repeatCount="indefinite"><mpath data-mpath-grid /></animateMotion></circle>
+            <circle class="flow-dot flow-dot--hp" data-dot-grid><animateMotion dur="6s" begin="2s" repeatCount="indefinite"><mpath data-mpath-grid /></animateMotion></circle>
+            <circle class="flow-dot flow-dot--hp" data-dot-grid><animateMotion dur="6s" begin="4s" repeatCount="indefinite"><mpath data-mpath-grid /></animateMotion></circle>
+          </g>
+          <g data-dots-solar>
+            <circle class="flow-dot flow-dot--auto" data-dot-solar><animateMotion dur="6s" begin="0s" repeatCount="indefinite"><mpath data-mpath-solar /></animateMotion></circle>
+            <circle class="flow-dot flow-dot--auto" data-dot-solar><animateMotion dur="6s" begin="2s" repeatCount="indefinite"><mpath data-mpath-solar /></animateMotion></circle>
+            <circle class="flow-dot flow-dot--auto" data-dot-solar><animateMotion dur="6s" begin="4s" repeatCount="indefinite"><mpath data-mpath-solar /></animateMotion></circle>
+          </g>
+        </svg>
+
+        <div class="nodes">
+          <!-- HOUSE — Sowel logo silhouette (without the inner character) -->
+          <div class="node-house">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3 L20 11 Q21 12 20 13 L20 19 Q20 20 19 20 L5 20 Q4 20 4 19 L4 13 Q3 12 4 11 Z"/>
+            </svg>
+            <div class="v"><span data-house>0</span><span class="u">W</span></div>
+            <div class="auto" data-auto>
+              <span data-auto-pct>0%</span>
+              <span class="lbl">autoconso</span>
+            </div>
+          </div>
+
+          <!-- GRID — high-voltage pylon: A-frame tower with crossbars protruding past the body -->
+          <div class="node-side node--grid" data-node-grid>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Main A-frame: two diagonals from top apex outwards down to base -->
+              <path d="M 11 3 L 6 21"/>
+              <path d="M 13 3 L 18 21"/>
+              <!-- Top tip (small horizontal connecting the apex) -->
+              <path d="M 11 3 L 13 3"/>
+              <!-- Base feet -->
+              <path d="M 4 21 L 20 21"/>
+              <!-- Crossbars protruding beyond the tower body -->
+              <path d="M 5 11 L 19 11"/>
+              <path d="M 4 16 L 20 16"/>
+            </svg>
+            <div class="v"><span class="arrow" data-grid-arrow>↓</span><span data-grid>0</span><span class="u">W</span></div>
+          </div>
+
+          <!-- SOLAR — simple panel: rounded square with 2×2 grid -->
+          <div class="node-side node--solar" data-node-solar>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5 Q3 5 3 6 L3 17 Q3 18 4 18 L20 18 Q21 18 21 17 L21 6 Q21 5 20 5 Z"/>
+              <line x1="3" y1="11.5" x2="21" y2="11.5"/>
+              <line x1="12" y1="5" x2="12" y2="18"/>
+              <line x1="12" y1="20" x2="12" y2="22"/>
+            </svg>
+            <div class="v"><span data-solar>0</span><span class="u">W</span></div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const cases = [
+      { title: "Jour mixte",          grid: 368,   solar: 387 },
+      { title: "Nuit",                grid: 612,   solar: 0 },
+      { title: "Auto-conso parfaite", grid: 12,    solar: 720 },
+      { title: "Export franc",        grid: -850,  solar: 2400 },
+      { title: "Maison vide, soleil", grid: -180,  solar: 230 },
+      { title: "Pic de consommation", grid: 4200,  solar: 350 },
+    ];
+
+    const tpl = document.getElementById('tpl');
+    const grid = document.getElementById('grid');
+
+    let uid = 0;
+    // Slow + calm. dur stays in [4, 7] regardless of power.
+    function durFor(power) {
+      const a = Math.abs(power);
+      if (a < 5) return 0;
+      const d = 7 - Math.log10(a + 10) * 0.6;
+      return Math.max(4, Math.min(7, d));
+    }
+
+    cases.forEach((s, i) => {
+      uid++;
+      const node = tpl.content.cloneNode(true);
+      node.querySelector('[data-title]').textContent = s.title;
+      node.querySelector('[data-num]').textContent = String(i + 1).padStart(2, '0') + ' / 06';
+
+      const idG = 'pg-' + uid;
+      const idS = 'ps-' + uid;
+      node.querySelector('[data-path-grid]').setAttribute('id', idG);
+      node.querySelector('[data-path-solar]').setAttribute('id', idS);
+      node.querySelectorAll('[data-mpath-grid]').forEach(m => m.setAttribute('href', '#' + idG));
+      node.querySelectorAll('[data-mpath-solar]').forEach(m => m.setAttribute('href', '#' + idS));
+
+      const article = node.querySelector('article');
+      grid.appendChild(node);
+      paint(article, s);
+    });
+
+    function paint(root, s) {
+      const grid = s.grid;
+      const solar = s.solar;
+      const exporting = grid < 0;
+      const house = grid + solar;
+
+      root.querySelector('[data-house]').textContent = Math.max(0, Math.round(house));
+      root.querySelector('[data-grid]').textContent = Math.abs(grid);
+      // Arrow shows energy flow at the grid node:
+      //   import  → energy leaves grid going UP to house  →  ↑
+      //   export  → energy arrives DOWN into grid          →  ↓
+      root.querySelector('[data-grid-arrow]').textContent = exporting ? "↓" : "↑";
+      root.querySelector('[data-solar]').textContent = solar;
+
+      // Autoconso ratio = share of consumption covered by solar.
+      //   importing → autoconso = solar / house  (all solar self-consumed)
+      //   exporting → autoconso = 100%           (consumption fully covered by solar)
+      //   no consumption (house ≤ 0) → hide
+      const autoBadge = root.querySelector('[data-auto]');
+      if (house <= 5 || solar < 5) {
+        autoBadge.classList.add('hidden');
+      } else {
+        autoBadge.classList.remove('hidden');
+        const pct = exporting ? 100 : Math.round(Math.min(solar, house) / house * 100);
+        root.querySelector('[data-auto-pct]').textContent = pct + "%";
+      }
+
+      const nodeGrid = root.querySelector('[data-node-grid]');
+      const nodeSolar = root.querySelector('[data-node-solar]');
+      nodeGrid.classList.toggle('node--inactive', Math.abs(grid) < 5);
+      nodeSolar.classList.toggle('node--inactive', solar < 5);
+      nodeGrid.classList.toggle('is-export', exporting);
+
+      const ag = root.querySelector('[data-active-grid]');
+      const as = root.querySelector('[data-active-solar]');
+      ag.style.opacity = Math.abs(grid) >= 5 ? 1 : 0;
+      as.style.opacity = solar >= 5 ? 1 : 0;
+      // import → slate-blue grid leg ; export → neutral grey
+      ag.classList.toggle('bus-active--off', exporting);
+      ag.classList.toggle('bus-active--hp', !exporting);
+
+      // Grid dots: slate when import, grey when export
+      root.querySelectorAll('[data-dot-grid]').forEach(c => {
+        c.setAttribute('fill', exporting ? 'var(--grid-off)' : 'var(--grid)');
+      });
+
+      const dG = durFor(grid);
+      const dS = durFor(solar);
+
+      root.querySelector('[data-dots-grid]').style.opacity = dG > 0 ? 1 : 0;
+      root.querySelector('[data-dots-solar]').style.opacity = dS > 0 ? 1 : 0;
+
+      const aG = root.querySelectorAll('[data-dots-grid] animateMotion');
+      const aS = root.querySelectorAll('[data-dots-solar] animateMotion');
+
+      aG.forEach((m, i) => {
+        if (dG === 0) return;
+        m.setAttribute('dur', dG + 's');
+        m.setAttribute('begin', (i * dG / 3) + 's');
+        if (exporting) {
+          m.setAttribute('keyPoints', '1;0');
+          m.setAttribute('keyTimes', '0;1');
+        } else {
+          m.removeAttribute('keyPoints');
+          m.removeAttribute('keyTimes');
+        }
+      });
+      aS.forEach((m, i) => {
+        if (dS === 0) return;
+        m.setAttribute('dur', dS + 's');
+        m.setAttribute('begin', (i * dS / 3) + 's');
+      });
+    }
+  </script>
+</body>
+</html>
