@@ -454,4 +454,65 @@ describe("DeviceManager", () => {
       expect(JSON.parse(row.enum_values!)).toEqual(["1_single", "1_double"]);
     });
   });
+
+  describe("getDeviceDataValue", () => {
+    const sampleEm = {
+      ieeeAddress: "0xshelly00",
+      friendlyName: "shelly-pro3em_00-em0",
+      manufacturer: "Shelly",
+      model: "Pro3EM",
+      data: [
+        { key: "energy_forward", type: "number" as const, category: "energy" as const, unit: "Wh" },
+        { key: "energy_reverse", type: "number" as const, category: "energy" as const, unit: "Wh" },
+        { key: "online", type: "boolean" as const, category: "generic" as const },
+        { key: "label", type: "text" as const, category: "generic" as const },
+      ],
+      orders: [],
+      rawExpose: [],
+    };
+
+    it("returns null for an unknown device", () => {
+      expect(manager.getDeviceDataValue("shelly_mqtt", "ghost", "energy_forward")).toBeNull();
+    });
+
+    it("returns null for an unknown key on an existing device", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      expect(
+        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "missing_key"),
+      ).toBeNull();
+    });
+
+    it("returns null when the key value has never been written", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      expect(
+        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "energy_forward"),
+      ).toBeNull();
+    });
+
+    it("returns the numeric value for a number-typed key", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", {
+        energy_forward: 6105.7,
+      });
+      expect(
+        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "energy_forward"),
+      ).toBe(6105.7);
+    });
+
+    it("returns the boolean value for a boolean-typed key", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", { online: true });
+      expect(manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "online")).toBe(
+        true,
+      );
+    });
+
+    it("returns the string value for a text-typed key", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", { label: "main" });
+      expect(manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "label")).toBe(
+        "main",
+      );
+    });
+  });
 });

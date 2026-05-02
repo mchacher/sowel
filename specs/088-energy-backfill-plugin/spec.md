@@ -15,6 +15,31 @@ backfilled from the always-on archive.
 This plugin is opt-in. It requires `energydata-stack` to be deployed and
 reachable.
 
+## Why this iteration matters (carry-over from IT 086)
+
+Iteration 086 made the Shelly plugin synthesise an `energy` delta on
+each `em1data:N` update. When Sowel is down for several hours, the
+Shelly counters keep advancing inside the device, but the plugin can
+only observe the gap at the next event after restart. The current
+behaviour is to emit the full delta as a single point at the restart
+timestamp:
+
+- Daily kWh totals stay correct.
+- The hourly granularity collapses (a spike at restart, flat zeros
+  during the downtime).
+- HP/HC tariff classification is wrong if the downtime crosses an
+  HP↔HC boundary (the whole delta inherits the tariff at restart).
+
+This iteration's backfill plugin is the proper fix. It pulls the
+missing window from `energydata-stack`'s always-on Influx (which kept
+recording during the Sowel downtime) and reconstructs Sowel's internal
+hourly + daily buckets with the correct timestamps and tariff splits.
+
+Until this iteration ships, the IT 086 behaviour is accepted as-is —
+brief restarts (≤ a few minutes) are barely visible, and longer
+downtimes produce a flagged spike that is easy to spot on the energy
+page.
+
 ## Key design decisions
 
 - The plugin does not write to InfluxDB directly via `HistoryWriter`. It

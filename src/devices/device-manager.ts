@@ -492,6 +492,45 @@ export class DeviceManager {
     return rows.map(rowToDeviceData);
   }
 
+  /**
+   * Read the last persisted value of a device data key, decoded according
+   * to its declared `type`. Used by plugins that need to hydrate state at
+   * start (e.g. the Shelly plugin loading the last cumulative counter to
+   * compute the next delta).
+   *
+   * Returns `null` for unknown device, unknown key, null-valued key, or
+   * any deserialization mismatch with the declared type.
+   */
+  getDeviceDataValue(
+    integrationId: string,
+    sourceDeviceId: string,
+    key: string,
+  ): string | number | boolean | null {
+    const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
+      | DeviceRow
+      | undefined;
+    if (!device) return null;
+    const row = this.stmts.findDeviceDataByDeviceAndKey.get(device.id, key) as
+      | DeviceDataRow
+      | undefined;
+    if (!row || row.value === null) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row.value);
+    } catch {
+      return null;
+    }
+    if (parsed === null) return null;
+    switch (row.type as DataType) {
+      case "number":
+        return typeof parsed === "number" ? parsed : null;
+      case "boolean":
+        return typeof parsed === "boolean" ? parsed : null;
+      default:
+        return typeof parsed === "string" ? parsed : null;
+    }
+  }
+
   getDeviceOrders(deviceId: string): DeviceOrder[] {
     const rows = this.stmts.getDeviceOrders.all(deviceId) as DeviceOrderRow[];
     return rows.map(rowToDeviceOrder);
