@@ -868,6 +868,13 @@
   "nav.energy.consumption": "Consumption",
   "nav.energy.production": "Production",
 
+  "energy.live": "Live",
+  "energy.live.autoconso": "autoconso",
+  "energy.live.configure": "Configure sources",
+  "energy.live.empty.title": "Configure your live view",
+  "energy.live.empty.help": "Pick the equipments that measure your grid power and your solar production.",
+  "energy.live.source.grid": "Grid source",
+  "energy.live.source.solar": "Solar source",
   "energy.consumption": "Consumption",
   "energy.today": "Today",
   "energy.hour": "1h",

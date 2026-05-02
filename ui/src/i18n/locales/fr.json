@@ -868,6 +868,13 @@
   "nav.energy.consumption": "Consommation",
   "nav.energy.production": "Production",
 
+  "energy.live": "Live",
+  "energy.live.autoconso": "autoconso",
+  "energy.live.configure": "Configurer les sources",
+  "energy.live.empty.title": "Configurez votre vue live",
+  "energy.live.empty.help": "Sélectionnez les équipements qui mesurent votre puissance réseau et votre production solaire.",
+  "energy.live.source.grid": "Source réseau",
+  "energy.live.source.solar": "Source solaire",
   "energy.consumption": "Consommation",
   "energy.today": "Aujourd'hui",
   "energy.hour": "1h",

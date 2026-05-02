@@ -125,6 +125,26 @@ Specs are grouped by theme and annotated with status:
 
 ---
 
+## Pool equipments
+
+| #   | Title                       | Status | Summary                                                                               |
+| --- | --------------------------- | ------ | ------------------------------------------------------------------------------------- |
+| 081 | Pool equipments             | ✅     | `pool_pump`, `pool_cover` types with candidate-based binding for multi-channel relays |
+| 082 | Pool pump schedule          | ✅     | Recipe plugin with 3 daily on/off slots                                               |
+| 083 | Pool heat pump (Polytropic) | ✅     | `pool_heat_pump` type + Modbus integration plugin (Polytropic Master Inverter)        |
+
+## Shelly energy refactor (multi-iteration)
+
+| #   | Title                                 | Status  | Summary                                                                                    |
+| --- | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------ |
+| 084 | Shelly energy — overview              | Planned | Guiding principles for the 4-iteration migration from Legrand to Shelly Pro 3EM            |
+| 085 | Iteration 1 — shelly-em plugin (live) | Planned | Sowel plugin: live `act_power` + counters per channel, side-by-side with Legrand           |
+| 086 | Iteration 2 — Shelly drives roles     | Planned | Promote Shelly channels to `main_energy_meter` + `energy_production_meter`, retire Legrand |
+| 087 | Iteration 3 — energydata-stack        | Planned | Independent Docker stack: Telegraf + InfluxDB + Grafana, survives Sowel restarts           |
+| 088 | Iteration 4 — energy backfill plugin  | Planned | Sowel plugin filling gaps from energydata-stack's Influx after multi-hour downtime         |
+
+---
+
 ## How to use this index after context loss
 
 1. **Find the theme** you need via section headers above

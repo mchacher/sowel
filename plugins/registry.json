@@ -294,6 +294,24 @@
     "sowelVersion": ">=1.1.0"
   },
   {
+    "id": "shelly_mqtt",
+    "type": "integration",
+    "name": "Shelly MQTT",
+    "description": "Shelly Pro / Plus devices over MQTT — live + cumulative energy from EM channels (Pro 3EM in V1)",
+    "icon": "Zap",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-shelly-mqtt",
+    "version": "1.0.0",
+    "tags": ["shelly", "mqtt", "energy", "em", "solar", "grid"],
+    "i18n": {
+      "fr": {
+        "name": "Shelly MQTT",
+        "description": "Appareils Shelly Pro / Plus via MQTT — puissance live + énergies cumulées par canal (Pro 3EM en V1)"
+      }
+    },
+    "sowelVersion": ">=1.4.2"
+  },
+  {
     "id": "polytropic_master",
     "type": "integration",
     "name": "Polytropic Master Inverter",
