@@ -42,7 +42,10 @@ interface Migration {
  */
 const DEFAULT_MIGRATIONS: Migration[] = [];
 
-const BUCKETS = ["sowel-energy-hourly", "sowel-energy-daily"];
+// All buckets that store equipment data tagged with equipmentId.
+// `sowel` is the raw bucket (7-day retention) — needed for "day" view of
+// recent dates, which queries raw before falling back to -energy-hourly.
+const BUCKETS = ["sowel", "sowel-energy-hourly", "sowel-energy-daily"];
 const APPLY = process.argv.includes("--apply");
 
 function parseCliPairs(): Migration[] {
@@ -65,18 +68,33 @@ if (MIGRATIONS.length === 0) {
   process.exit(1);
 }
 
-// ── Load Influx config from local Sowel SQLite settings ────────────────
+// ── Load Influx config — env vars first (production), SQLite fallback ──
 
-const db = new Database("data/sowel.db", { readonly: true });
-function getSetting(key: string): string {
-  const row = db.prepare("SELECT value FROM settings WHERE key=?").get(key) as { value: string } | undefined;
-  if (!row) throw new Error(`Setting not found: ${key}`);
-  return row.value;
+function getInfluxConfig(): { url: string; token: string; org: string } {
+  const fromEnv = {
+    url: process.env["INFLUX_URL"],
+    token: process.env["INFLUX_TOKEN"],
+    org: process.env["INFLUX_ORG"],
+  };
+  if (fromEnv.url && fromEnv.token && fromEnv.org) {
+    return { url: fromEnv.url, token: fromEnv.token, org: fromEnv.org };
+  }
+  const db = new Database("data/sowel.db", { readonly: true });
+  const get = (key: string) => {
+    const row = db.prepare("SELECT value FROM settings WHERE key=?").get(key) as { value: string } | undefined;
+    if (!row) throw new Error(`Setting not found: ${key} (and env var not set)`);
+    return row.value;
+  };
+  const cfg = {
+    url: fromEnv.url ?? get("history.influx.url"),
+    token: fromEnv.token ?? get("history.influx.token"),
+    org: fromEnv.org ?? get("history.influx.org"),
+  };
+  db.close();
+  return cfg;
 }
-const INFLUX_URL = getSetting("history.influx.url");
-const INFLUX_TOKEN = getSetting("history.influx.token");
-const INFLUX_ORG = getSetting("history.influx.org");
-db.close();
+
+const { url: INFLUX_URL, token: INFLUX_TOKEN, org: INFLUX_ORG } = getInfluxConfig();
 
 const influx = new InfluxDB({ url: INFLUX_URL, token: INFLUX_TOKEN });
 
