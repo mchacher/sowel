@@ -152,24 +152,31 @@ function LiveDiagram({
   const flowSolarToGrid = Math.max(0, -grid);
 
   // Qualitative status — single-tag summary shown beneath the diagram.
-  //   solar < 5W                         → "100% réseau"  (no production: grid covers everything)
-  //   exporting (grid < -5)              → "Excédent solaire" (production exceeds consumption)
-  //   importing + solar producing        → "Appoint réseau"   (mixed supply)
-  //   balanced (|grid| < 5W) + production → "Autonome"        (solar matches consumption)
-  type Status = "grid_only" | "self" | "mixed" | "export";
+  // The mixed case is split by *which source dominates* the house supply:
+  // "appoint" is always the supplement, never the main source.
+  //
+  //   solar < 5W                                  → "Réseau seul"
+  //   exporting (grid < -5)                       → "Excédent solaire"
+  //   balanced (|grid| < 5W) + production         → "Autonome"
+  //   importing + solar producing & solar ≥ grid  → "Appoint réseau"   (solar is the main)
+  //   importing + solar producing & solar <  grid → "Appoint solaire"  (grid is the main)
+  type Status =
+    | "grid_only"
+    | "self"
+    | "mixed_solar_lead"
+    | "mixed_grid_lead"
+    | "export";
   let status: Status;
   if (solar < 5) status = "grid_only";
   else if (grid < -5) status = "export";
-  else if (grid > 5) status = "mixed";
+  else if (grid > 5) status = solar >= grid ? "mixed_solar_lead" : "mixed_grid_lead";
   else status = "self";
   const statusColor =
-    status === "export"
+    status === "export" || status === "self" || status === "mixed_solar_lead"
       ? AUTO_COLOR
-      : status === "self"
-        ? AUTO_COLOR
-        : status === "mixed"
-          ? GRID_COLOR
-          : GRID_OFF_COLOR;
+      : status === "mixed_grid_lead"
+        ? GRID_COLOR
+        : GRID_OFF_COLOR;
 
   const dGridToHouse = flowDuration(flowGridToHouse);
   const dSolarToHouse = flowDuration(flowSolarToHouse);
