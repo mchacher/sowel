@@ -641,6 +641,7 @@ export interface MqttPublisherMapping {
   sourceType: "equipment" | "zone" | "recipe";
   sourceId: string;
   sourceKey: string;
+  enabled: boolean;
   createdAt: string;
 }
 

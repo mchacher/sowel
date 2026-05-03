@@ -16,6 +16,7 @@ interface MappingRef {
   publisherTopic: string;
   publishKey: string;
   enabled: boolean;
+  mappingEnabled: boolean;
   brokerId: string | null;
   onChangeOnly: boolean;
 }
@@ -155,6 +156,7 @@ export class MqttPublishService {
           publisherTopic: pub.topic,
           publishKey: mapping.publishKey,
           enabled: pub.enabled,
+          mappingEnabled: mapping.enabled,
           brokerId: pub.brokerId,
           onChangeOnly: pub.onChangeOnly,
         });
@@ -218,7 +220,7 @@ export class MqttPublishService {
 
     let published = 0;
     for (const ref of refs) {
-      if (!ref.enabled || !ref.brokerId) continue;
+      if (!ref.enabled || !ref.mappingEnabled || !ref.brokerId) continue;
       if (this.shouldSkip(ref, value)) continue;
       this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
       published++;
@@ -237,7 +239,7 @@ export class MqttPublishService {
       if (!refs) continue;
 
       for (const ref of refs) {
-        if (!ref.enabled || !ref.brokerId) continue;
+        if (!ref.enabled || !ref.mappingEnabled || !ref.brokerId) continue;
         if (this.shouldSkip(ref, value)) continue;
         this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
         published++;
@@ -257,7 +259,7 @@ export class MqttPublishService {
       if (!refs) continue;
 
       for (const ref of refs) {
-        if (!ref.enabled || !ref.brokerId) continue;
+        if (!ref.enabled || !ref.mappingEnabled || !ref.brokerId) continue;
         if (this.shouldSkip(ref, value)) continue;
         this.publish(ref.brokerId, ref.publisherTopic, ref.publishKey, value);
         published++;
@@ -313,6 +315,7 @@ export class MqttPublishService {
       if (!client?.connected) continue;
 
       for (const mapping of pub.mappings) {
+        if (!mapping.enabled) continue;
         const value = this.resolveCurrentValue(
           mapping.sourceType,
           mapping.sourceId,
@@ -338,6 +341,7 @@ export class MqttPublishService {
       if (!pub.enabled || pub.brokerId !== brokerId) continue;
 
       for (const mapping of pub.mappings) {
+        if (!mapping.enabled) continue;
         const value = this.resolveCurrentValue(
           mapping.sourceType,
           mapping.sourceId,
@@ -366,6 +370,7 @@ export class MqttPublishService {
 
     let published = 0;
     for (const mapping of publisher.mappings) {
+      if (!mapping.enabled) continue;
       const value = this.resolveCurrentValue(
         mapping.sourceType,
         mapping.sourceId,

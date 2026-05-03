@@ -763,6 +763,8 @@
   "mqttPublishers.mappings": "Mappings",
   "mqttPublishers.noMappings": "Aucun mapping configuré",
   "mqttPublishers.addMapping": "Ajouter un mapping",
+  "mqttPublishers.mappingEnable": "Activer ce mapping",
+  "mqttPublishers.mappingDisable": "Désactiver ce mapping",
   "mqttPublishers.publishKey": "Clé de publication",
   "mqttPublishers.sourceType": "Type de source",
   "mqttPublishers.source": "Source",

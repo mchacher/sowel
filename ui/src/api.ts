@@ -1026,6 +1026,7 @@ export async function addMqttPublisherMapping(
     sourceType: "equipment" | "zone" | "recipe";
     sourceId: string;
     sourceKey: string;
+    enabled?: boolean;
   },
 ): Promise<MqttPublisherMapping> {
   return fetchJSON<MqttPublisherMapping>(`${API_BASE}/mqtt-publishers/${publisherId}/mappings`, {
@@ -1042,6 +1043,7 @@ export async function updateMqttPublisherMapping(
     sourceType?: "equipment" | "zone" | "recipe";
     sourceId?: string;
     sourceKey?: string;
+    enabled?: boolean;
   },
 ): Promise<MqttPublisherMapping> {
   return fetchJSON<MqttPublisherMapping>(
