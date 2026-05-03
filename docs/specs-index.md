@@ -135,13 +135,13 @@ Specs are grouped by theme and annotated with status:
 
 ## Shelly energy refactor (multi-iteration)
 
-| #   | Title                                 | Status  | Summary                                                                                    |
-| --- | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------ |
-| 084 | Shelly energy — overview              | Planned | Guiding principles for the 4-iteration migration from Legrand to Shelly Pro 3EM            |
-| 085 | Iteration 1 — shelly-em plugin (live) | Planned | Sowel plugin: live `act_power` + counters per channel, side-by-side with Legrand           |
-| 086 | Iteration 2 — Shelly drives roles     | Planned | Promote Shelly channels to `main_energy_meter` + `energy_production_meter`, retire Legrand |
-| 087 | Iteration 3 — energydata-stack        | Planned | Independent Docker stack: Telegraf + InfluxDB + Grafana, survives Sowel restarts           |
-| 088 | Iteration 4 — energy backfill plugin  | Planned | Sowel plugin filling gaps from energydata-stack's Influx after multi-hour downtime         |
+| #   | Title                                 | Status   | Summary                                                                                                   |
+| --- | ------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| 084 | Shelly energy — overview              | Planned  | Guiding principles for the 4-iteration migration from Legrand to Shelly Pro 3EM                           |
+| 085 | Iteration 1 — shelly-em plugin (live) | Planned  | Sowel plugin: live `act_power` + counters per channel, side-by-side with Legrand                          |
+| 086 | Iteration 2 — Shelly drives roles     | Planned  | Promote Shelly channels to `main_energy_meter` + `energy_production_meter`, retire Legrand                |
+| 087 | Iteration 3 — energydata-stack        | Rejected | Replaced by hardware-native archive on Shelly Pro 3EM (60d in-device); see 088 for the actual fix         |
+| 088 | Iteration 4 — Shelly gap backfill     | Planned  | Plugin queries `EM1Data.GetData` RPC on boot + hourly to replay missing minutes through the live pipeline |
 
 ---
 

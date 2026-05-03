@@ -1,5 +1,16 @@
 # Spec 087 — Iteration 3: `energydata-stack` (independent Docker stack)
 
+> **Status: REJECTED (2026-05-03).** The Shelly Pro 3EM stores at least
+> 60 days of 1-minute-resolution energy data natively in flash, queryable
+> via the `EM1Data.GetData` RPC (HTTP or MQTT). That hardware archive
+> survives device power-cycles and Sowel downtimes alike, which makes the
+> independent stack proposed below redundant. The iteration's intent —
+> "preserve raw data when Sowel is offline" — is fulfilled by the device
+> itself; the gap-fill workflow originally relying on this stack has been
+> reworked in [spec 088](../088-energy-backfill-plugin/spec.md) to query
+> the Shelly directly. The original analysis is preserved below as a
+> record of the alternative considered.
+
 > See [spec 084 — overview](../084-shelly-energy-overview/spec.md) for the
 > guiding principles and the full iteration plan.
 

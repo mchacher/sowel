@@ -103,12 +103,12 @@ robust enough on its own and the gaps are usually short.
 
 ## Iteration overview
 
-| It  | Spec | Title                          | Touches                                                                            |
-| --- | ---- | ------------------------------ | ---------------------------------------------------------------------------------- |
-| 1   | 085  | sowel-plugin-shelly-em (live)  | Plugin Sowel; live UI; no role bascule                                             |
-| 2   | 086  | Shelly drives the energy roles | Equipment role bascule; Legrand disable; alias `energy_forward` / `energy_reverse` |
-| 3   | 087  | energydata-stack               | Independent Docker stack; Telegraf + Influx + Grafana                              |
-| 4   | 088  | sowel-plugin-energy-backfill   | Gap-filler plugin; depends on 087                                                  |
+| It  | Spec | Title                                | Touches                                                                            |
+| --- | ---- | ------------------------------------ | ---------------------------------------------------------------------------------- |
+| 1   | 085  | sowel-plugin-shelly-em (live)        | Plugin Sowel; live UI; no role bascule                                             |
+| 2   | 086  | Shelly drives the energy roles       | Equipment role bascule; Legrand disable; alias `energy_forward` / `energy_reverse` |
+| 3   | 087  | energydata-stack — **REJECTED**      | Replaced by hardware-native archive on Shelly Pro 3EM (see addendum below)         |
+| 4   | 088  | Shelly plugin gap backfill (revised) | Plugin extension; queries `EM1Data.GetData` over HTTP-RPC; no external dependency  |
 
 Each spec has its own acceptance criteria and rollback plan; nothing in a
 later iteration retroactively breaks an earlier one.
@@ -124,3 +124,39 @@ later iteration retroactively breaks an earlier one.
   for a future iteration (will need spec 0XX).
 - Replacement of mosquitto. We continue to use the existing systemd
   service that Sowel already shares with z2m, lora2mqtt, etc.
+
+## Addendum (2026-05-03) — IT 3 dropped, IT 4 reworked
+
+Iterations 1 and 2 shipped as designed. While preparing iteration 3
+(the `energydata-stack` external archive), live verification on the
+production Pro 3EM showed that the device itself satisfies the "raw
+data survives Sowel downtime" requirement: the firmware records at
+least 60 days of 1-minute energy data in flash and exposes it through
+the `EM1Data.GetData` RPC. The archive survives device power-cycles
+and is accessible over HTTP or MQTT.
+
+That changes the cost-benefit of two iterations:
+
+- **Iteration 3 (`energydata-stack`)** is **rejected**. Building a
+  parallel Telegraf + Influx + Grafana stack to replicate what the
+  hardware already does would create a second source of truth, double
+  the operational burden, and duplicate the existing Sowel UI. The
+  original analysis is preserved in
+  [spec 087](../087-energydata-stack/spec.md) for record.
+- **Iteration 4 (`sowel-plugin-energy-backfill`)** is **reworked**.
+  Instead of querying an external archive, the backfill ships as an
+  extension of the Shelly plugin (`sowel-plugin-shelly-mqtt` v1.2.0+)
+  that queries the device's own historical data on boot and on a
+  scheduled basis. See [spec 088 v2](../088-energy-backfill-plugin/spec.md).
+
+Principle 7 of this overview ("Backfill is the safety net") is
+unchanged in spirit but its mechanics are different:
+
+> The backfill no longer depends on a separate Influx instance; it
+> queries the Shelly device's `EM1Data.GetData` RPC and replays
+> per-minute records through the existing live event pipeline. This
+> preserves the principle that backfill is a safety net rather than the
+> primary path — live MQTT events remain the primary mechanism, and the
+> backfill only runs to repair detected gaps.
+
+No change to iterations 1, 2, or to the data model.
