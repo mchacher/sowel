@@ -531,6 +531,29 @@ export class DeviceManager {
     }
   }
 
+  /**
+   * Last-updated timestamp of a device data key, as ISO 8601 UTC. Used by
+   * plugins to detect gaps in their own data flow without crossing into
+   * Sowel-internal Influx queries (e.g. spec 088 backfill manager).
+   *
+   * Returns `null` for unknown device, unknown key, or no recorded value.
+   */
+  getDeviceDataLastUpdated(
+    integrationId: string,
+    sourceDeviceId: string,
+    key: string,
+  ): string | null {
+    const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
+      | DeviceRow
+      | undefined;
+    if (!device) return null;
+    const row = this.stmts.findDeviceDataByDeviceAndKey.get(device.id, key) as
+      | DeviceDataRow
+      | undefined;
+    if (!row?.last_updated) return null;
+    return toISOUtc(row.last_updated);
+  }
+
   getDeviceOrders(deviceId: string): DeviceOrder[] {
     const rows = this.stmts.getDeviceOrders.all(deviceId) as DeviceOrderRow[];
     return rows.map(rowToDeviceOrder);

@@ -515,4 +515,47 @@ describe("DeviceManager", () => {
       );
     });
   });
+
+  describe("getDeviceDataLastUpdated", () => {
+    const sampleEm = {
+      ieeeAddress: "0xshelly00",
+      friendlyName: "shelly-pro3em_00-em0",
+      manufacturer: "Shelly",
+      model: "Pro3EM",
+      data: [
+        { key: "energy_forward", type: "number" as const, category: "energy" as const, unit: "Wh" },
+      ],
+      orders: [],
+      rawExpose: [],
+    };
+
+    it("returns null for an unknown device", () => {
+      expect(manager.getDeviceDataLastUpdated("shelly_mqtt", "ghost", "energy_forward")).toBeNull();
+    });
+
+    it("returns null when the key has never been written", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      expect(
+        manager.getDeviceDataLastUpdated("shelly_mqtt", "shelly-pro3em_00-em0", "energy_forward"),
+      ).toBeNull();
+    });
+
+    it("returns an ISO 8601 UTC timestamp after a write", () => {
+      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", {
+        energy_forward: 6105.7,
+      });
+      const ts = manager.getDeviceDataLastUpdated(
+        "shelly_mqtt",
+        "shelly-pro3em_00-em0",
+        "energy_forward",
+      );
+      // SQLite returns "YYYY-MM-DD HH:MM:SS" with a space; toISOUtc appends Z.
+      expect(ts).toMatch(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
+      // Parsable into a recent timestamp (within last 10 min).
+      const ageMs = Date.now() - new Date(ts!).getTime();
+      expect(ageMs).toBeGreaterThanOrEqual(0);
+      expect(ageMs).toBeLessThan(10 * 60 * 1000);
+    });
+  });
 });
