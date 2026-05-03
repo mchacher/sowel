@@ -463,6 +463,18 @@ export class EquipmentManager {
     return row.count;
   }
 
+  /**
+   * Emit `equipment.updated` after a binding mutation (data or order).
+   * Downstream caches (HistoryWriter.historizedBindings, etc.) listen on
+   * this event to refresh — without it, freshly added bindings would not
+   * be picked up until the equipment itself is otherwise modified.
+   */
+  private emitEquipmentUpdated(equipmentId: string): void {
+    const equipment = this.getById(equipmentId);
+    if (!equipment) return;
+    this.eventBus.emit({ type: "equipment.updated", equipment });
+  }
+
   // ============================================================
   // DataBinding management
   // ============================================================
@@ -486,6 +498,7 @@ export class EquipmentManager {
     }
 
     this.logger.info({ equipmentId, alias, deviceDataId }, "DataBinding added");
+    this.emitEquipmentUpdated(equipmentId);
     return { id, equipmentId, deviceDataId, alias };
   }
 
@@ -497,6 +510,7 @@ export class EquipmentManager {
 
     this.stmts.deleteDataBinding.run(bindingId);
     this.logger.info({ equipmentId, bindingId }, "DataBinding removed");
+    this.emitEquipmentUpdated(equipmentId);
   }
 
   getDataBindingsWithValues(equipmentId: string): DataBindingWithValue[] {
@@ -522,8 +536,10 @@ export class EquipmentManager {
 
   /** Set the historize flag on a data binding. NULL = category default, 1 = force ON, 0 = force OFF. */
   setHistorize(bindingId: string, historize: number | null): void {
+    const binding = this.stmts.getDataBindingById.get(bindingId) as DataBindingRow | undefined;
     this.stmts.setHistorize.run(historize, bindingId);
     this.logger.info({ bindingId, historize }, "DataBinding historize flag updated");
+    if (binding) this.emitEquipmentUpdated(binding.equipment_id);
   }
 
   // ============================================================
@@ -572,6 +588,7 @@ export class EquipmentManager {
     }
 
     this.logger.info({ equipmentId, alias, deviceOrderId, categoryOverride }, "OrderBinding added");
+    this.emitEquipmentUpdated(equipmentId);
     return { id, equipmentId, deviceOrderId, alias };
   }
 
@@ -583,6 +600,7 @@ export class EquipmentManager {
 
     this.stmts.deleteOrderBinding.run(bindingId);
     this.logger.info({ equipmentId, bindingId }, "OrderBinding removed");
+    this.emitEquipmentUpdated(equipmentId);
   }
 
   getOrderBindingsWithDetails(equipmentId: string): OrderBindingWithDetails[] {

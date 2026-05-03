@@ -34,8 +34,18 @@ const CATEGORY_DEFAULTS_ON: ReadonlySet<string> = new Set([
 /** Aliases historized ON regardless of category (handles generic bindings). */
 const ALIAS_DEFAULTS_ON: ReadonlySet<string> = new Set(["setpoint", "power"]);
 
-/** Aliases forced OFF — live-only values, not useful as time series. */
-const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set(["demand_30min"]);
+/** Aliases forced OFF — live-only values, not useful as time series.
+ * `energy_forward` / `energy_reverse` are the raw cumulative Shelly
+ * counters: monotonically growing, several hundred kWh in absolute
+ * terms. They are needed as latest values (Live page) but writing them
+ * as time-series points would pollute every category=energy aggregation
+ * with the cumul (sum-of-cumuls), since the EnergyAggregator and the
+ * downsampling tasks group on category, not alias. */
+const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set([
+  "demand_30min",
+  "energy_forward",
+  "energy_reverse",
+]);
 
 /** Deadband thresholds by category — skip writes if delta is below this. */
 const DEADBAND: Record<string, number> = {

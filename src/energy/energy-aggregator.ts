@@ -143,6 +143,7 @@ export class EnergyAggregator {
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r._field == "value_number")
   |> sum()`;
 
@@ -151,20 +152,25 @@ export class EnergyAggregator {
       if (row._value > 0) energyHourWh = row._value;
     }
 
-    // Day cumul: sum hourly points today + raw points in current hour (hourly task may not have run yet)
-    let energyDayWh = 0;
+    // Day cumul: previous hours of today come from the hourly bucket
+    // (downsampled at the end of each hour), the current hour is still in
+    // the raw bucket. Sum both — they don't overlap because the hourly
+    // task only writes completed hours.
+    let energyDayPrevHoursWh = 0;
     const dayFlux = `from(bucket: "${hourlyBucket}")
-  |> range(start: ${todayMidnight.toISOString()}, stop: ${tomorrowMidnight.toISOString()})
+  |> range(start: ${todayMidnight.toISOString()}, stop: ${currentHourStart.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r._field == "value_number")
   |> sum()`;
 
     for await (const { values, tableMeta } of queryApi.iterateRows(dayFlux)) {
       const row = tableMeta.toObject(values) as { _value: number };
-      if (row._value > 0) energyDayWh = row._value;
+      if (row._value > 0) energyDayPrevHoursWh = row._value;
     }
+    const energyDayWh = energyDayPrevHoursWh + energyHourWh;
 
     // Month cumul: daily points this month (excluding today) + today's day total
     const monthFirst = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -174,6 +180,7 @@ export class EnergyAggregator {
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r._field == "value_number")
   |> sum()`;
 
@@ -190,6 +197,7 @@ export class EnergyAggregator {
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r._field == "value_number")
   |> sum()`;
 

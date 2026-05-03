@@ -26,6 +26,7 @@ import { CalendarManager } from "./modes/calendar-manager.js";
 import { ButtonActionManager } from "./buttons/button-action-manager.js";
 import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { EnergyAggregator } from "./energy/energy-aggregator.js";
+import { SelfConsumptionWriter } from "./energy/self-consumption-writer.js";
 import { HistoryWriter } from "./history/history-writer.js";
 import { InfluxClient } from "./core/influx-client.js";
 import { ChartManager } from "./charts/chart-manager.js";
@@ -342,6 +343,16 @@ async function main() {
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
 
+  // 18-bis. Self-consumption writer: derives autoconso/injection from
+  // Grid + Solar energy ticks (spec 086 step E).
+  const selfConsumptionWriter = new SelfConsumptionWriter(
+    eventBus,
+    equipmentManager,
+    influxClient,
+    logger,
+  );
+  selfConsumptionWriter.init();
+
   // 18a. Start Energy Aggregator
   const energyAggregator = new EnergyAggregator(equipmentManager, influxClient, eventBus, logger);
   await energyAggregator
@@ -425,6 +436,11 @@ async function main() {
       historyWriter.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping history writer");
+    }
+    try {
+      selfConsumptionWriter.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping self-consumption writer");
     }
     try {
       await influxClient.disconnect();
