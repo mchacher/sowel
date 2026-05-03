@@ -267,7 +267,19 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
             if (!active || !payload?.length) return null;
             const datum = payload[0]?.payload as ChartDatum | undefined;
             if (!datum) return null;
-            const total = datum.hp + datum.hc;
+            // Per-slot hp/hc from Influx already include autoconso (= household).
+            // Match the API totals semantic (energy.ts/computeTotals): show
+            // grid-only HP and HC by subtracting autoconso pro rata, so that
+            // HP + HC + autoconso = household = bar height.
+            const consoTotal = datum.hp + datum.hc;
+            const hpGrid =
+              consoTotal > 0
+                ? Math.max(0, datum.hp - datum.autoconso * (datum.hp / consoTotal))
+                : datum.hp;
+            const hcGrid =
+              consoTotal > 0
+                ? Math.max(0, datum.hc - datum.autoconso * (datum.hc / consoTotal))
+                : datum.hc;
             return (
               <div
                 style={{
@@ -279,9 +291,9 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("energy.consumption")} : {formatKWh(total)}</div>
-                <div style={{ color: HP_COLOR }}>{t("energy.peakHours")} : {formatKWh(datum.hp)}</div>
-                <div style={{ color: HC_COLOR }}>{t("energy.offPeakHours")} : {formatKWh(datum.hc)}</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("energy.consumption")} : {formatKWh(consoTotal)}</div>
+                <div style={{ color: HP_COLOR }}>{t("energy.peakHours")} : {formatKWh(hpGrid)}</div>
+                <div style={{ color: HC_COLOR }}>{t("energy.offPeakHours")} : {formatKWh(hcGrid)}</div>
                 {datum.autoconso > 0 && (
                   <div style={{ color: AUTOCONSO_COLOR }}>
                     {t("energy.autoconsumption")} : {formatKWh(datum.autoconso)}
