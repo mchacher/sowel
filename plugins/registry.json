@@ -301,7 +301,7 @@
     "icon": "Zap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-shelly-mqtt",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "tags": ["shelly", "mqtt", "energy", "em", "solar", "grid"],
     "i18n": {
       "fr": {
@@ -309,7 +309,7 @@
         "description": "Appareils Shelly Pro / Plus via MQTT — puissance live + énergies cumulées par canal (Pro 3EM en V1)"
       }
     },
-    "sowelVersion": ">=1.5.4"
+    "sowelVersion": ">=1.5.1"
   },
   {
     "id": "polytropic_master",
