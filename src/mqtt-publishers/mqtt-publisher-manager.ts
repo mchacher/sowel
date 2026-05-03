@@ -29,6 +29,7 @@ interface MappingRow {
   source_type: string;
   source_id: string;
   source_key: string;
+  enabled: number;
   created_at: string;
 }
 
@@ -55,6 +56,7 @@ function rowToMapping(row: MappingRow): MqttPublisherMapping {
     sourceType: row.source_type as "equipment" | "zone" | "recipe",
     sourceId: row.source_id,
     sourceKey: row.source_key,
+    enabled: row.enabled === 1,
     createdAt: toISOUtc(row.created_at),
   };
 }
@@ -91,12 +93,12 @@ export class MqttPublisherManager {
         `SELECT * FROM mqtt_publisher_mappings WHERE publisher_id = ? ORDER BY publish_key`,
       ),
       insertMapping: this.db.prepare(
-        `INSERT INTO mqtt_publisher_mappings (id, publisher_id, publish_key, source_type, source_id, source_key, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+        `INSERT INTO mqtt_publisher_mappings (id, publisher_id, publish_key, source_type, source_id, source_key, enabled, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       ),
       getMapping: this.db.prepare(`SELECT * FROM mqtt_publisher_mappings WHERE id = ?`),
       updateMapping: this.db.prepare(
-        `UPDATE mqtt_publisher_mappings SET publish_key = ?, source_type = ?, source_id = ?, source_key = ?
+        `UPDATE mqtt_publisher_mappings SET publish_key = ?, source_type = ?, source_id = ?, source_key = ?, enabled = ?
          WHERE id = ? AND publisher_id = ?`,
       ),
       deleteMapping: this.db.prepare(
@@ -223,6 +225,7 @@ export class MqttPublisherManager {
       sourceType: "equipment" | "zone" | "recipe";
       sourceId: string;
       sourceKey: string;
+      enabled?: boolean;
     },
   ): MqttPublisherMapping {
     const publisher = this.getById(publisherId);
@@ -239,6 +242,7 @@ export class MqttPublisherManager {
     }
 
     const id = randomUUID();
+    const enabled = input.enabled === false ? 0 : 1;
     try {
       this.stmts.insertMapping.run(
         id,
@@ -247,6 +251,7 @@ export class MqttPublisherManager {
         input.sourceType,
         input.sourceId.trim(),
         input.sourceKey.trim(),
+        enabled,
       );
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
@@ -280,6 +285,7 @@ export class MqttPublisherManager {
       sourceType?: "equipment" | "zone" | "recipe";
       sourceId?: string;
       sourceKey?: string;
+      enabled?: boolean;
     },
   ): MqttPublisherMapping {
     const publisher = this.getById(publisherId);
@@ -295,6 +301,7 @@ export class MqttPublisherManager {
       input.sourceType ?? (existingRow.source_type as "equipment" | "zone" | "recipe");
     const sourceId = input.sourceId?.trim() ?? existingRow.source_id;
     const sourceKey = input.sourceKey?.trim() ?? existingRow.source_key;
+    const enabled = input.enabled !== undefined ? (input.enabled ? 1 : 0) : existingRow.enabled;
 
     try {
       this.stmts.updateMapping.run(
@@ -302,6 +309,7 @@ export class MqttPublisherManager {
         sourceType,
         sourceId,
         sourceKey,
+        enabled,
         mappingId,
         publisherId,
       );

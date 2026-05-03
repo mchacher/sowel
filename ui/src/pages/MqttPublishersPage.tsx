@@ -830,6 +830,15 @@ function MappingRow({
     }
   };
 
+  const handleToggleEnabled = async () => {
+    try {
+      await updateMqttPublisherMapping(publisherId, mapping.id, { enabled: !mapping.enabled });
+      onRefresh();
+    } catch {
+      // ignore
+    }
+  };
+
   const handleCancel = () => {
     setEditing(false);
     setPublishKey(mapping.publishKey);
@@ -994,7 +1003,11 @@ function MappingRow({
   }
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 bg-bg rounded-[4px]">
+    <div
+      className={`flex items-center justify-between px-3 py-1.5 bg-bg rounded-[4px] ${
+        mapping.enabled ? "" : "opacity-50"
+      }`}
+    >
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-[12px] font-mono text-text font-medium shrink-0">
           {mapping.publishKey}
@@ -1008,12 +1021,25 @@ function MappingRow({
         <button
           onClick={() => setEditing(true)}
           className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+          title={t("common.edit")}
         >
           <Pencil size={12} />
         </button>
         <button
+          onClick={handleToggleEnabled}
+          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+          title={
+            mapping.enabled
+              ? t("mqttPublishers.mappingDisable")
+              : t("mqttPublishers.mappingEnable")
+          }
+        >
+          {mapping.enabled ? <Power size={12} /> : <PowerOff size={12} />}
+        </button>
+        <button
           onClick={handleDelete}
           className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-red-500"
+          title={t("common.delete")}
         >
           <Trash2 size={12} />
         </button>

@@ -107,9 +107,10 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
       sourceType: "equipment" | "zone" | "recipe";
       sourceId: string;
       sourceKey: string;
+      enabled?: boolean;
     };
   }>("/api/v1/mqtt-publishers/:id/mappings", async (request, reply) => {
-    const { publishKey, sourceType, sourceId, sourceKey } = request.body ?? {};
+    const { publishKey, sourceType, sourceId, sourceKey, enabled } = request.body ?? {};
     if (!publishKey) return reply.code(400).send({ error: "publishKey is required" });
     if (!sourceType) return reply.code(400).send({ error: "sourceType is required" });
     if (!sourceId) return reply.code(400).send({ error: "sourceId is required" });
@@ -121,6 +122,7 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
         sourceType,
         sourceId,
         sourceKey,
+        enabled,
       });
       return reply.code(201).send(mapping);
     } catch (err) {
@@ -138,6 +140,7 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
       sourceType?: "equipment" | "zone" | "recipe";
       sourceId?: string;
       sourceKey?: string;
+      enabled?: boolean;
     };
   }>("/api/v1/mqtt-publishers/:id/mappings/:mappingId", async (request, reply) => {
     try {
