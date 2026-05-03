@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import type { Logger } from "../core/logger.js";
 import type {
   IntegrationRegistry,
@@ -248,14 +248,36 @@ export class PluginLoader {
       pluginDir: pkgDir,
     };
 
-    // Dynamic import of the plugin entry point
-    const entryPath = resolve(pkgDir, "dist/index.js");
+    // Dynamic import of the plugin entry point.
+    //
+    // Node ESM caches modules by canonical URL forever — once a plugin's
+    // dist/some-file.js is imported, a later hot-reload of the same path
+    // returns the same cached module, even if the file on disk has
+    // changed. The query-string trick (`?t=...`) only cache-busts the
+    // entry point we explicitly call `import()` on; relative imports
+    // inside that entry (e.g. `import "./backfill-manager.js"`) inherit
+    // the canonical URL of the resolved file and are NOT cache-busted.
+    //
+    // Workaround: at every load, copy `dist/` to a fresh subdirectory
+    // `.hot/<timestamp>/` and import from there. Each load gets a brand
+    // new URL space, so all transitive imports are resolved fresh.
+    // Older `.hot/*` directories are pruned (last 2 kept for safety
+    // against in-flight code holding old references).
+    const distDir = resolve(pkgDir, "dist");
+    if (!existsSync(distDir)) {
+      throw new Error(`Plugin dist directory not found: ${distDir}`);
+    }
+    const hotRoot = resolve(pkgDir, ".hot");
+    const hotDir = resolve(hotRoot, String(Date.now()));
+    cpSync(distDir, hotDir, { recursive: true });
+    pruneOldHotDirs(hotRoot, 2, this.logger);
+
+    const entryPath = resolve(hotDir, "index.js");
     if (!existsSync(entryPath)) {
-      throw new Error(`Plugin entry point not found: ${entryPath}`);
+      throw new Error(`Plugin entry point not found after copy: ${entryPath}`);
     }
 
-    // Cache-bust: append timestamp to force fresh import after reinstall
-    const mod = (await import(`${pathToFileURL(entryPath).href}?t=${Date.now()}`)) as {
+    const mod = (await import(pathToFileURL(entryPath).href)) as {
       createPlugin?: PluginFactory;
       default?: { createPlugin?: PluginFactory };
     };
@@ -304,5 +326,29 @@ export class PluginLoader {
     }
 
     this.integrationRegistry.unregister(pluginId);
+  }
+}
+
+/**
+ * Keep at most `keep` newest entries in the plugin's `.hot/` directory.
+ * Older entries are removed best-effort — a failure here is non-fatal
+ * (the plugin keeps working, the disk just keeps a few extra dirs).
+ */
+function pruneOldHotDirs(hotRoot: string, keep: number, logger: Logger): void {
+  if (!existsSync(hotRoot)) return;
+  try {
+    const entries = readdirSync(hotRoot)
+      .filter((n) => /^\d+$/.test(n))
+      .map((n) => ({ name: n, ts: Number(n) }))
+      .sort((a, b) => b.ts - a.ts);
+    for (const e of entries.slice(keep)) {
+      try {
+        rmSync(resolve(hotRoot, e.name), { recursive: true, force: true });
+      } catch (err) {
+        logger.debug({ err, hotDir: e.name }, "Failed to prune hot dir (non-fatal)");
+      }
+    }
+  } catch (err) {
+    logger.debug({ err, hotRoot }, "Failed to list hot dir (non-fatal)");
   }
 }
