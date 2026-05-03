@@ -344,11 +344,14 @@ async function main() {
   historyWriter.init();
 
   // 18-bis. Self-consumption writer: derives autoconso/injection from
-  // Grid + Solar energy ticks (spec 086 step E).
+  // Grid + Solar energy ticks AND overwrites the grid-side energy/hp/hc
+  // points with their household-level equivalent so the consumption
+  // chart matches the legacy Netatmo semantic (spec 086 step F).
   const selfConsumptionWriter = new SelfConsumptionWriter(
     eventBus,
     equipmentManager,
     influxClient,
+    historyWriter.getTariffClassifier(),
     logger,
   );
   selfConsumptionWriter.init();

@@ -2,6 +2,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { InfluxClient } from "../core/influx-client.js";
+import type { TariffClassifier } from "./tariff-classifier.js";
 import { Point } from "../core/influx-client.js";
 
 /**
@@ -22,35 +23,58 @@ interface LatestTick {
 }
 
 /**
- * Computes household-level self-consumption split from Shelly Pro 3EM
- * and writes `autoconso` / `injection` aliases on the production
- * equipment so the existing energy API + UI display them as before.
+ * Self-consumption + household-energy normaliser.
  *
  * Inputs (signed energy deltas, Wh, per minute):
- *   gridΔ  = main_energy_meter `energy`     (positive = imported, negative = exported)
- *   solarΔ = energy_production_meter `energy` (≥ 0 in normal operation)
+ *   gridΔ  = main_energy_meter `energy`        (positive = imported, negative = exported)
+ *   solarΔ = energy_production_meter `energy`  (≥ 0 in normal operation)
  *
- * Output (per minute, written to InfluxDB on the production equipmentId):
- *   injection = max(0, -gridΔ)              (excess solar pushed to the grid)
- *   autoconso = max(0, solarΔ - injection)  (solar consumed in-house)
+ * The plugin emits the raw signed grid delta on the main_energy_meter,
+ * which the HistoryWriter writes to Influx and uses to classify HP/HC.
+ * That representation is internally consistent (grid imports only) but
+ * does not match the legacy Netatmo semantic the consumption chart was
+ * designed against:
+ *
+ *     legacy: hp + hc = TOTAL HOUSEHOLD consumption (grid + solar)
+ *             autoconso ⊂ hp + hc (the share covered by solar)
+ *
+ * With Shelly delivering raw counters, the household total has to be
+ * recomposed from `max(0, gridΔ) + autoconsoΔ`. This writer does it,
+ * and overwrites the HistoryWriter's per-minute Influx points to match
+ * the legacy semantic so the existing charts (Consumption + Production)
+ * keep rendering correctly with no UI change. InfluxDB keys points by
+ * (measurement, tag set, timestamp) — same source timestamp + same
+ * equipmentId/alias tags ⇒ upsert wins last. Both writers commit a
+ * couple of milliseconds apart on the same physical tick, so the
+ * SelfConsumptionWriter's value always lands second and wins.
+ *
+ * Outputs per matched (Grid, Solar) tick, all timestamped at the source
+ * minute:
+ *   On the production_meter:
+ *     - autoconso = max(0, solarΔ - injection)   (solar consumed in-house)
+ *     - injection = max(0, -gridΔ)               (excess solar pushed to grid)
+ *   On the main_energy_meter (overwriting HistoryWriter):
+ *     - energy    = household                    (was: signed grid delta)
+ *     - energy_hp = TariffClassifier(household).hp
+ *     - energy_hc = TariffClassifier(household).hc
  *
  * Properties:
- *   - autoconso + injection ≤ solarΔ      (split conserves total production)
- *   - house_total_consumption ≈ max(0, gridΔ) + autoconso (for charts that
- *     overlay autoconso on top of the grid HP/HC bars).
- *
- * Why this lives outside HistoryWriter: keeps each writer single-purpose
- * (the same precedent as TariffClassifier — the HP/HC writer is also
- * called out from HistoryWriter, but it's a self-contained helper).
+ *   - autoconso + injection ≤ solarΔ
+ *   - household = max(0, gridΔ) + autoconso = max(0, gridΔ) + max(0, solarΔ - max(0, -gridΔ))
  *
  * Discovery: equipment ids are resolved by `type` on every relevant event,
  * so users can add/remove the meters at runtime without restarting Sowel.
+ *
+ * Solo Grid (no production_meter): the writer is inert and the
+ * HistoryWriter's grid-only hp/hc values stand — that's the right answer
+ * when there's no solar to overlay.
  */
 export class SelfConsumptionWriter {
   private readonly logger: Logger;
   private readonly eventBus: EventBus;
   private readonly equipmentManager: EquipmentManager;
   private readonly influxClient: InfluxClient;
+  private readonly tariffClassifier: TariffClassifier;
 
   private latestGrid: LatestTick | null = null;
   private latestSolar: LatestTick | null = null;
@@ -64,11 +88,13 @@ export class SelfConsumptionWriter {
     eventBus: EventBus,
     equipmentManager: EquipmentManager,
     influxClient: InfluxClient,
+    tariffClassifier: TariffClassifier,
     logger: Logger,
   ) {
     this.eventBus = eventBus;
     this.equipmentManager = equipmentManager;
     this.influxClient = influxClient;
+    this.tariffClassifier = tariffClassifier;
     this.logger = logger.child({ module: "self-consumption-writer" });
   }
 
@@ -128,39 +154,96 @@ export class SelfConsumptionWriter {
     const solar = this.latestSolar.value;
     const injection = Math.max(0, -grid);
     const autoconso = Math.max(0, solar - injection);
+    const household = Math.max(0, grid) + autoconso;
 
-    this.writePoints(autoconso, injection, ts);
+    this.writePoints({ autoconso, injection, household, sourceTimestamp: ts });
   }
 
-  private writePoints(autoconso: number, injection: number, sourceTimestamp: number): void {
+  private writePoints(args: {
+    autoconso: number;
+    injection: number;
+    household: number;
+    sourceTimestamp: number;
+  }): void {
     if (!this.influxClient.isConnected()) return;
 
     const prodEquipment = this.findProductionEquipment();
+    const gridEquipment = this.findGridEquipment();
     if (!prodEquipment) return;
 
+    const { autoconso, injection, household, sourceTimestamp } = args;
+
+    // Production-side aliases (autoconso, injection) — new points.
     for (const [alias, value] of [
       ["autoconso", autoconso],
       ["injection", injection],
     ] as const) {
-      const point = new Point("equipment_data")
-        .tag("equipmentId", prodEquipment.id)
-        .tag("alias", alias)
-        .tag("category", "energy")
-        .tag("zoneId", prodEquipment.zoneId)
-        .tag("type", "number")
-        .floatField("value_number", value)
-        .timestamp(sourceTimestamp);
-
-      this.influxClient.writePoint(point);
+      this.writeEquipmentDataPoint({
+        equipmentId: prodEquipment.id,
+        zoneId: prodEquipment.zoneId,
+        alias,
+        value,
+        sourceTimestamp,
+      });
     }
 
-    this.logger.trace({ autoconso, injection, sourceTimestamp }, "Self-consumption points written");
+    // Grid-side overwrites — replace HistoryWriter's grid-only values
+    // with the legacy household semantic (energy = total house, hp/hc =
+    // TariffClassifier(household)). Same equipmentId + alias + timestamp
+    // ⇒ Influx upsert.
+    if (gridEquipment) {
+      const split = this.tariffClassifier.classify(household, sourceTimestamp);
+      for (const [alias, value] of [
+        ["energy", household],
+        ["energy_hp", split.hp],
+        ["energy_hc", split.hc],
+      ] as const) {
+        this.writeEquipmentDataPoint({
+          equipmentId: gridEquipment.id,
+          zoneId: gridEquipment.zoneId,
+          alias,
+          value,
+          sourceTimestamp,
+        });
+      }
+    }
+
+    this.logger.trace(
+      { autoconso, injection, household, sourceTimestamp },
+      "Self-consumption points written",
+    );
+  }
+
+  private writeEquipmentDataPoint(args: {
+    equipmentId: string;
+    zoneId: string;
+    alias: string;
+    value: number;
+    sourceTimestamp: number;
+  }): void {
+    const point = new Point("equipment_data")
+      .tag("equipmentId", args.equipmentId)
+      .tag("alias", args.alias)
+      .tag("category", "energy")
+      .tag("zoneId", args.zoneId)
+      .tag("type", "number")
+      .floatField("value_number", args.value)
+      .timestamp(args.sourceTimestamp);
+    this.influxClient.writePoint(point);
   }
 
   private findProductionEquipment(): { id: string; zoneId: string } | null {
     const eq = this.equipmentManager
       .getAll()
       .find((e) => e.type === "energy_production_meter" && e.enabled);
+    if (!eq) return null;
+    return { id: eq.id, zoneId: eq.zoneId };
+  }
+
+  private findGridEquipment(): { id: string; zoneId: string } | null {
+    const eq = this.equipmentManager
+      .getAll()
+      .find((e) => e.type === "main_energy_meter" && e.enabled);
     if (!eq) return null;
     return { id: eq.id, zoneId: eq.zoneId };
   }

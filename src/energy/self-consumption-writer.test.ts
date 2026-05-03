@@ -5,8 +5,21 @@ import { SelfConsumptionWriter } from "./self-consumption-writer.js";
 import { Point } from "../core/influx-client.js";
 import type { InfluxClient } from "../core/influx-client.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import type { TariffClassifier } from "./tariff-classifier.js";
 
 const logger = createLogger("silent").logger;
+
+/**
+ * Stub TariffClassifier — splits a value 60/40 into hp/hc deterministically.
+ * Real tariff prorata is exercised in tariff-classifier.test.ts; here we
+ * only assert the writer routes household values through the classifier.
+ */
+const stubTariff: TariffClassifier = {
+  classify: (totalWh: number) => ({
+    hp: Math.round(totalWh * 0.6),
+    hc: Math.round(totalWh * 0.4),
+  }),
+} as unknown as TariffClassifier;
 
 const GRID_ID = "grid-uuid";
 const SOLAR_ID = "solar-uuid";
@@ -98,6 +111,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -118,6 +132,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -138,6 +153,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -157,6 +173,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -171,6 +188,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -191,6 +209,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -213,6 +232,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -229,6 +249,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -256,6 +277,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({ hasSolar: false }),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -270,6 +292,7 @@ describe("SelfConsumptionWriter", () => {
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
@@ -279,11 +302,51 @@ describe("SelfConsumptionWriter", () => {
     expect(influx.written).toHaveLength(0);
   });
 
+  it("overwrites grid-side energy/hp/hc with household-semantic values", () => {
+    writer = new SelfConsumptionWriter(
+      bus,
+      makeStubEquipmentManager({}),
+      influx as unknown as InfluxClient,
+      stubTariff,
+      logger,
+    );
+    writer.init();
+
+    const t = 1714723200;
+    // grid imports 5 Wh, solar produces 3 Wh fully consumed in-house.
+    // household = max(0, 5) + max(0, 3 - max(0, -5)) = 5 + 3 = 8
+    emitEnergyChange(bus, GRID_ID, 5, t);
+    emitEnergyChange(bus, SOLAR_ID, 3, t);
+
+    const energy = influx.written.find((p) => p.alias === "energy" && p.equipmentId === GRID_ID);
+    const hp = influx.written.find((p) => p.alias === "energy_hp" && p.equipmentId === GRID_ID);
+    const hc = influx.written.find((p) => p.alias === "energy_hc" && p.equipmentId === GRID_ID);
+    expect(energy?.value).toBe(8); // household
+    expect(hp?.value).toBe(5); // 8 * 0.6 → 4.8 → 5
+    expect(hc?.value).toBe(3); // 8 * 0.4 → 3.2 → 3
+  });
+
+  it("does not overwrite grid-side when grid equipment is missing (solo solar)", () => {
+    writer = new SelfConsumptionWriter(
+      bus,
+      makeStubEquipmentManager({ hasGrid: false }),
+      influx as unknown as InfluxClient,
+      stubTariff,
+      logger,
+    );
+    writer.init();
+
+    emitEnergyChange(bus, SOLAR_ID, 3, 1714723200);
+    // No grid event → no pairing → no writes either way.
+    expect(influx.written).toHaveLength(0);
+  });
+
   it("destroy() unsubscribes — no further writes after destroy", () => {
     writer = new SelfConsumptionWriter(
       bus,
       makeStubEquipmentManager({}),
       influx as unknown as InfluxClient,
+      stubTariff,
       logger,
     );
     writer.init();
