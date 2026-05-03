@@ -383,6 +383,87 @@ describe("EquipmentManager", () => {
     });
   });
 
+  describe("binding mutations emit equipment.updated", () => {
+    // Downstream caches (HistoryWriter, EnergyAggregator) refresh on
+    // equipment.updated — without this event, freshly added bindings would
+    // be invisible until the equipment itself is otherwise modified.
+    it("addDataBinding emits equipment.updated", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Spots", type: "light_dimmable", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [{ key: "state", category: "light_state" }],
+      });
+      events.length = 0;
+
+      manager.addDataBinding(eq.id, dataIds[0], "state");
+
+      const updated = events.filter((e) => e.type === "equipment.updated");
+      expect(updated).toHaveLength(1);
+      if (updated[0].type === "equipment.updated") {
+        expect(updated[0].equipment.id).toBe(eq.id);
+      }
+    });
+
+    it("removeDataBinding emits equipment.updated", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Spots", type: "light_dimmable", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [{ key: "state", category: "light_state" }],
+      });
+      const binding = manager.addDataBinding(eq.id, dataIds[0], "state");
+      events.length = 0;
+
+      manager.removeDataBinding(eq.id, binding.id);
+
+      const updated = events.filter((e) => e.type === "equipment.updated");
+      expect(updated).toHaveLength(1);
+    });
+
+    it("setHistorize emits equipment.updated", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Spots", type: "light_dimmable", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [{ key: "state", category: "light_state" }],
+      });
+      const binding = manager.addDataBinding(eq.id, dataIds[0], "state");
+      events.length = 0;
+
+      manager.setHistorize(binding.id, 1);
+
+      const updated = events.filter((e) => e.type === "equipment.updated");
+      expect(updated).toHaveLength(1);
+    });
+
+    it("addOrderBinding emits equipment.updated", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Spots", type: "light_dimmable", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        orderKeys: [{ key: "state", category: "light_toggle" }],
+      });
+      events.length = 0;
+
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      const updated = events.filter((e) => e.type === "equipment.updated");
+      expect(updated).toHaveLength(1);
+    });
+
+    it("removeOrderBinding emits equipment.updated", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Spots", type: "light_dimmable", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        orderKeys: [{ key: "state", category: "light_toggle" }],
+      });
+      const binding = manager.addOrderBinding(eq.id, orderIds[0], "state");
+      events.length = 0;
+
+      manager.removeOrderBinding(eq.id, binding.id);
+
+      const updated = events.filter((e) => e.type === "equipment.updated");
+      expect(updated).toHaveLength(1);
+    });
+  });
+
   describe("getDataBindingsWithValues", () => {
     it("returns bindings with resolved device data values", () => {
       const zone = zoneManager.create({ name: "Salon" });
