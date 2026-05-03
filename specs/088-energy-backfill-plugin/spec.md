@@ -91,24 +91,48 @@ live or historical. Backfilled minutes therefore land in the raw bucket
 with the correct `_time` and are classified HP/HC against their actual
 hour-of-day, not the time of replay.
 
+**Channel interleaving is required**: SelfConsumptionWriter pairs a Grid
+tick with a Solar tick within a 30-second window before computing
+`autoconso` / `injection`. Replaying all of channel 0 first then all of
+channel 1 would defeat that pairing — only the last 1-2 minutes would
+align. The plugin therefore **emits one minute at a time across all
+channels**, in chronological order: `(grid, T) → (solar, T) → (aux, T)
+→ (grid, T+1) → (solar, T+1) → ...`.
+
 The downsample task `sowel-energy-sum-hourly` then regenerates the
 hourly bucket on its next 1h tick. The same mechanism was validated end
 to end on 2026-05-03 by the `recompute-household-energy.ts` migration.
 
-### Gap detection
+### Gap detection — driven by `device_data.lastUpdated`, no Influx access
 
-A "gap" is an hour in the configured scan window during which:
+Plugins do not have direct InfluxDB access, and giving them a query
+contract would needlessly extend the plugin API for one consumer. The
+plugin already reads persisted `device_data` values (the same path
+`ensureBaseline` uses to hydrate baselines on cold start), and Sowel
+records `lastUpdated` on every write — so the live freshness of any
+channel is observable from the plugin without crossing into Sowel core.
 
-- the plugin's MQTT live stream wrote nothing to the raw bucket, **or**
-- the raw bucket has < N records for that hour where N is the expected
-  cadence (60 for 1-min ticks).
+Algorithm (per channel):
 
-The detection query is a single Flux: `count()` per hour over the scan
-window, filtered by the equipment IDs bound to Shelly channels. Any
-hour with `count < threshold` is a candidate.
+1. At plugin start (after the existing baseline hydration) and on every
+   hourly cron tick, read the `device_data.lastUpdated` for
+   `energy_forward` of channel `id=N`.
+2. Compute `gap = now - lastUpdated`.
+3. If `gap > GAP_THRESHOLD_S` (default 5 min), schedule a backfill for
+   the window `[max(lastUpdated, now - backfill_hours * 3600), now]`.
+4. Otherwise, no-op.
 
-Hours fully outside Shelly's own retention (> 60 days back) are skipped
-silently with a warn log — nothing can recover them.
+The 5-min threshold is conservative: a normal MQTT heartbeat is every
+~60s, so even with a noisy network we expect ticks within 2-3 min.
+Anything past 5 min is a real gap.
+
+Hours fully outside Shelly's own ~60-day retention are skipped silently
+with a warn log — nothing can recover them.
+
+To detect the recovery boundary the plugin calls
+`EM1Data.GetRecords?id=N` first; the response lists the available
+`data_blocks`. The actual fetch range is intersected with `[gap window]`
+to avoid asking for data the device does not hold.
 
 ### Run cadence
 
@@ -127,12 +151,13 @@ re-running on an already-correct hour is a no-op.
 
 Added to the plugin's existing settings schema:
 
-| Key                    | Type     | Default | Range    | Purpose                                                                              |
-| ---------------------- | -------- | ------- | -------- | ------------------------------------------------------------------------------------ |
-| `backfill_enabled`     | boolean  | `true`  | —        | Master toggle.                                                                       |
-| `backfill_hours`       | int      | `24`    | `1..168` | Scan window. 168h = 7d. Above that the use case is exotic and we don't encourage it. |
-| `shelly_auth_user`     | string   | `""`    | —        | Optional, only used if device requires auth.                                         |
-| `shelly_auth_password` | password | `""`    | —        | Same.                                                                                |
+| Key                    | Type     | Default | Range    | Purpose                                                                                                                  |
+| ---------------------- | -------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `backfill_enabled`     | boolean  | `true`  | —        | Master toggle.                                                                                                           |
+| `backfill_hours`       | int      | `24`    | `1..168` | Scan window. 168h = 7d. Above that the use case is exotic and we don't encourage it.                                     |
+| `shelly_host_<sid>`    | string   | `""`    | —        | Optional per-device override (IP or hostname). Empty → fall back to `<sid>.local` mDNS. Free-form key, validated lazily. |
+| `shelly_auth_user`     | string   | `""`    | —        | Optional, only used if device requires auth.                                                                             |
+| `shelly_auth_password` | password | `""`    | —        | Same.                                                                                                                    |
 
 Note: there is no setting for "backfill on boot" vs "periodic" — both
 are always on when the master toggle is on. They share the same logic.
