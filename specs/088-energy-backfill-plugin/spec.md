@@ -1,70 +1,186 @@
-# Spec 088 — Iteration 4: `sowel-plugin-energy-backfill`
+# Spec 088 — Iteration 4: Shelly plugin gap backfill (v2)
 
 > See [spec 084 — overview](../084-shelly-energy-overview/spec.md) for the
 > guiding principles and the full iteration plan.
 
+> **Revised 2026-05-03.** The original version of this spec assumed the
+> existence of an external `energydata-stack` (spec 087) as the source of
+> backfill data. After verifying that the Shelly Pro 3EM stores at least
+> 60 days of 1-minute records in its own flash and exposes them through
+> `EM1Data.GetData`, that dependency was dropped. This spec now describes
+> a self-contained extension of the Shelly plugin.
+
 ## Goal
 
-Sowel-side plugin that, on boot and periodically thereafter, fills any
-gaps in Sowel's internal `sowel-energy-hourly` / `sowel-energy-daily`
-buckets by querying the `energydata-stack` Influx (spec 087). The user
-result: the energy page in Sowel shows continuous charts even after a
-multi-hour Sowel downtime — there is no visible gap because the gap is
-backfilled from the always-on archive.
+Extend the existing `sowel-plugin-shelly-mqtt` to detect missing windows
+in Sowel's internal hourly bucket and reconstruct them from the Shelly
+device's own historical data. The user-visible result: after a Sowel
+restart or downtime of any plausible duration (minutes to days), the
+energy charts come back with the correct minute-by-minute distribution
+and HP/HC classification — no flat zeros, no spike at restart.
 
-This plugin is opt-in. It requires `energydata-stack` to be deployed and
-reachable.
+## Why this iteration matters
 
-## Why this iteration matters (carry-over from IT 086)
+Iteration 086 made the plugin synthesise a signed `energy` delta on each
+`em1data:N` MQTT update. When Sowel is down for a long stretch, the
+plugin's in-memory `lastCumul` baseline survives in SQLite (it is
+persisted under the `energy_forward` / `energy_reverse` device-data
+aliases), so on restart the next event emits the entire gap delta as a
+single point at the restart timestamp. Consequences:
 
-Iteration 086 made the Shelly plugin synthesise an `energy` delta on
-each `em1data:N` update. When Sowel is down for several hours, the
-Shelly counters keep advancing inside the device, but the plugin can
-only observe the gap at the next event after restart. The current
-behaviour is to emit the full delta as a single point at the restart
-timestamp:
+- **Daily kWh totals stay correct** (energy is conserved in the cumul
+  delta).
+- **Hourly granularity collapses**: a single spike at restart, flat
+  zeros during the downtime.
+- **HP/HC classification is wrong** if the downtime crossed an
+  HP↔HC tariff boundary — the whole delta inherits the tariff at restart.
+- **If SQLite itself is restored from a backup**, the persisted cumul is
+  also stale and the gap delta reconstruction is wrong by the difference
+  between the device counter and the restored snapshot.
 
-- Daily kWh totals stay correct.
-- The hourly granularity collapses (a spike at restart, flat zeros
-  during the downtime).
-- HP/HC tariff classification is wrong if the downtime crosses an
-  HP↔HC boundary (the whole delta inherits the tariff at restart).
-
-This iteration's backfill plugin is the proper fix. It pulls the
-missing window from `energydata-stack`'s always-on Influx (which kept
-recording during the Sowel downtime) and reconstructs Sowel's internal
-hourly + daily buckets with the correct timestamps and tariff splits.
-
-Until this iteration ships, the IT 086 behaviour is accepted as-is —
-brief restarts (≤ a few minutes) are barely visible, and longer
-downtimes produce a flagged spike that is easy to spot on the energy
-page.
+This iteration fixes all three by replaying the Shelly's own per-minute
+records over the exact source timestamps, exactly as if those events had
+arrived live.
 
 ## Key design decisions
 
-- The plugin does not write to InfluxDB directly via `HistoryWriter`. It
-  uses the same code path as the `EnergyAggregator` so the math
-  (forward/reverse, HP/HC classification, daily boundaries) is identical
-  to what Sowel would have produced during normal operation.
-- Idempotent: re-running the backfill on an already complete period is a
-  no-op.
-- Gap detection: scan Sowel's hourly bucket for missing time slots over a
-  configurable window (default 30 days).
-- Refresh trigger: at boot, plus a scheduled task (e.g. once per hour) to
-  catch short MQTT disconnects as well.
+### Self-contained in the Shelly plugin
 
-## Out of scope of this iteration
+The backfill logic ships in `sowel-plugin-shelly-mqtt` v1.2.0. The
+plugin already owns:
 
-- Backfilling raw `power` data (only energy aggregates).
-- Detecting and replaying gaps caused by MQTT broker downtime that
-  affected `energydata-stack` itself.
+- The MQTT connection and per-channel routing.
+- The `lastCumul` baseline state and its persistence in `device_data`.
+- The mapping from Shelly channels to Sowel devices.
 
-## To detail later
+Adding HTTP-RPC access for the historical query is a small extension on
+top of that foundation, not a new plugin. No change to Sowel core, no
+change to existing equipment types, no schema migration.
 
-- Configuration: Influx URL / token / org / bucket.
-- Detection algorithm: gap query in Flux, mapping back to forward/reverse
-  delta values.
-- Conflict resolution if both Sowel and `energydata-stack` recorded the
-  same period.
-- Sowel UI: log/notify when a backfill fills a > 1 hour gap.
-- Performance: limit the backfill window scanned at each tick.
+### Query path: HTTP RPC, mDNS resolution
+
+The plugin learns each Shelly device's identifier from its MQTT
+announce. The host name `<device-id>.local` resolves over mDNS on the
+LAN, and the plugin queries `http://<device-id>.local/rpc/EM1Data.*`
+directly. HTTP is used rather than MQTT-RPC because:
+
+- Pagination via `next_record_ts` is naturally request-response.
+- Retries on transient errors are simpler to express.
+- Backfill is a low-frequency operation (≤ once per hour); the slight
+  HTTP overhead vs MQTT is irrelevant.
+
+If `auth_en: true` on the device, the plugin reads
+`shelly_mqtt.shelly_auth_user` / `shelly_mqtt.shelly_auth_password` from
+its settings. Defaults: empty — matches the typical home-LAN install.
+
+### Source of truth: same pipeline as live events
+
+Each retrieved minute-record is fed through the **existing** plugin
+emit path:
+
+```
+record { ts, total_act_energy, total_act_ret_energy, ... }
+  → deviceManager.updateDeviceData(integrationId, sid, {
+      energy_forward: ..., energy_reverse: ..., energy: fwd - rev
+    }, { sourceTimestamp: ts })
+```
+
+The HistoryWriter, TariffClassifier and SelfConsumptionWriter all
+operate on `sourceTimestamp` — they do not know whether the event is
+live or historical. Backfilled minutes therefore land in the raw bucket
+with the correct `_time` and are classified HP/HC against their actual
+hour-of-day, not the time of replay.
+
+The downsample task `sowel-energy-sum-hourly` then regenerates the
+hourly bucket on its next 1h tick. The same mechanism was validated end
+to end on 2026-05-03 by the `recompute-household-energy.ts` migration.
+
+### Gap detection
+
+A "gap" is an hour in the configured scan window during which:
+
+- the plugin's MQTT live stream wrote nothing to the raw bucket, **or**
+- the raw bucket has < N records for that hour where N is the expected
+  cadence (60 for 1-min ticks).
+
+The detection query is a single Flux: `count()` per hour over the scan
+window, filtered by the equipment IDs bound to Shelly channels. Any
+hour with `count < threshold` is a candidate.
+
+Hours fully outside Shelly's own retention (> 60 days back) are skipped
+silently with a warn log — nothing can recover them.
+
+### Run cadence
+
+Two triggers:
+
+1. **At plugin start** (after the existing baseline hydration), once
+   per channel.
+2. **Hourly cron** while the plugin is connected, scanning the
+   configurable window each tick.
+
+Both go through the same `runBackfillWindow()` entry point, idempotent
+by design — InfluxDB upserts on `(measurement, tag set, ts)` mean
+re-running on an already-correct hour is a no-op.
+
+### Configuration
+
+Added to the plugin's existing settings schema:
+
+| Key                    | Type     | Default | Range    | Purpose                                                                              |
+| ---------------------- | -------- | ------- | -------- | ------------------------------------------------------------------------------------ |
+| `backfill_enabled`     | boolean  | `true`  | —        | Master toggle.                                                                       |
+| `backfill_hours`       | int      | `24`    | `1..168` | Scan window. 168h = 7d. Above that the use case is exotic and we don't encourage it. |
+| `shelly_auth_user`     | string   | `""`    | —        | Optional, only used if device requires auth.                                         |
+| `shelly_auth_password` | password | `""`    | —        | Same.                                                                                |
+
+Note: there is no setting for "backfill on boot" vs "periodic" — both
+are always on when the master toggle is on. They share the same logic.
+
+## Acceptance criteria
+
+- [ ] After stopping Sowel for ≥ 1h and restarting, the energy chart
+      for the affected window fills in within 1h (or immediately if the
+      hourly downsample task is triggered manually).
+- [ ] HP/HC classification on backfilled hours matches the tariff in
+      effect at the original timestamp, not the time of replay.
+- [ ] Re-running the backfill on a fully-populated window writes no new
+      points to the raw bucket (idempotent).
+- [ ] If the gap exceeds Shelly's retention (> 60 days), the gap is
+      logged as a structured warn and skipped — Sowel does not crash
+      or silently wedge the live pipeline.
+- [ ] Backfill never blocks live event processing — the live MQTT
+      handler stays responsive even mid-replay.
+- [ ] Unit tests cover: full-gap recovery, no-gap (no-op), partial
+      gap, retention-exceeded, RPC failure with retry.
+
+## Out of scope
+
+- **Backfilling raw `power` data.** Only energy aggregates are
+  reconstructed. The 1Hz `act_power` stream is live-only and any UI
+  feature relying on it (Live page) accepts gaps.
+- **Cross-device gap detection.** Each Shelly is queried for its own
+  channels. Other integrations (Z2M power plugs, etc.) are not in
+  scope.
+- **MQTT-RPC transport.** Only HTTP-RPC is implemented. If LAN-only
+  HTTP becomes a problem later, MQTT-RPC can be added without changing
+  the public surface.
+- **A "backfill on demand" UI.** Reload via service restart for now.
+  A button in the integrations page is a future ergonomic improvement,
+  not a correctness requirement.
+
+## Risks and mitigations
+
+| Risk                                                                         | Mitigation                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| mDNS resolution flaky on some networks                                       | Setting `shelly_mqtt.shelly_host` (optional override per device) — out-of-scope for v1 but room reserved in the schema.                                                                     |
+| Shelly RPC throttles under load                                              | Backfill paginates 27 records / call (Shelly's natural page size); inserts a 100ms delay between pages. Worst case 24h × 60min / 27 ≈ 53 calls × 3 channels ≈ 16s of wall time. Negligible. |
+| The plugin's existing `lastCumul` and a backfill of the same minute conflict | The plugin emits via the same code path; same minute = same `(equipmentId, alias, ts)` key in Influx ⇒ upsert. Last write wins, no duplication.                                             |
+| 60-day retention exceeded for a long-stopped instance                        | Document explicitly in the plugin README. Anything older than 60 days is not recoverable from any source.                                                                                   |
+
+## To detail at implementation time
+
+- Exact Flux query for gap detection (count + threshold).
+- Retry policy on RPC failure (3 retries, exponential backoff).
+- Log structure: one info per backfill run with `{ channelId, gapsDetected, recordsWritten }`, one warn per skipped gap.
+- README update in the plugin repo to document the new settings.
