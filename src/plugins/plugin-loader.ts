@@ -290,11 +290,13 @@ export class PluginLoader {
   private async unloadPlugin(pluginId: string): Promise<void> {
     const plugin = this.loadedPlugins.get(pluginId);
     if (plugin) {
+      // Always call stop() — plugin.stop() must be idempotent. The previous
+      // implementation skipped stop() when status was "disconnected", which
+      // missed plugins still inside an in-flight start() (status not yet
+      // flipped to "connected"). When that races with `update()`, the old
+      // plugin keeps its MQTT/poller running in parallel with the new one.
       try {
-        const status = plugin.getStatus();
-        if (status === "connected" || status === "error") {
-          await plugin.stop();
-        }
+        await plugin.stop();
       } catch (err) {
         this.logger.error({ err, pluginId }, "Error stopping plugin");
       }
