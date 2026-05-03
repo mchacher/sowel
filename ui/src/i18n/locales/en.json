@@ -75,6 +75,18 @@
   "status.error": "Error",
   "status.not_configured": "Not configured",
 
+  "alarms.title": "Active alarms",
+  "alarms.empty": "No active alarms.",
+  "alarms.pill.title_one": "{{count}} active issue",
+  "alarms.pill.title_other": "{{count}} active issues",
+  "alarms.level.error": "error",
+  "alarms.level.warning": "warning",
+  "alarms.integration.error": "Plugin in error state — unreachable",
+  "alarms.integration.disconnected": "Plugin disconnected",
+  "updates.pill.title_one": "{{count}} update available",
+  "updates.pill.title_other": "{{count}} updates available",
+  "restart.pill.title": "Restart required",
+
   "devices.title": "Devices",
   "devices.subtitle_one": "{{count}} device · {{online}} online",
   "devices.subtitle_other": "{{count}} devices · {{online}} online",
