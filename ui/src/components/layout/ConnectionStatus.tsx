@@ -1,12 +1,15 @@
 import { useWebSocket } from "../../store/useWebSocket";
-import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Wifi, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { INTEGRATION_LABELS, INTEGRATION_SHORT_LABELS } from "../../constants";
 
+/**
+ * Discreet WebSocket connection indicator. Integration-level errors are
+ * surfaced through the alarms pill (see AlarmsSheet) — this component
+ * is now purely about the WS link to the backend.
+ */
 export function ConnectionStatus() {
   const { t } = useTranslation();
   const status = useWebSocket((s) => s.status);
-  const integrationStatuses = useWebSocket((s) => s.integrationStatuses);
 
   if (status === "disconnected") {
     return (
@@ -26,32 +29,16 @@ export function ConnectionStatus() {
     );
   }
 
-  // status === "connected" — check if any integration has issues
-  const errorEntries = Object.entries(integrationStatuses)
-    .filter(([, s]) => s === "disconnected" || s === "error");
-  const shortNames = errorEntries.map(([id]) => INTEGRATION_SHORT_LABELS[id] ?? id);
-  const fullNames = errorEntries.map(([id]) => INTEGRATION_LABELS[id] ?? id);
-
-  if (errorEntries.length > 0) {
-    return (
-      <div className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-warning/10 text-warning">
-        <AlertTriangle size={14} strokeWidth={1.5} />
-        <span className="text-[12px] font-medium">
-          <span className="sm:hidden">{shortNames.join(", ")}</span>
-          <span className="hidden sm:inline">{t("status.integrationWarning", { names: fullNames.join(", ") })}</span>
-        </span>
-      </div>
-    );
-  }
-
-  // Connected — mobile: just a green dot, desktop: dot + label
+  // status === "connected" — mobile: just a green dot, desktop: dot + label.
   return (
     <div className="flex items-center gap-2 sm:px-3 sm:py-1.5 sm:rounded-full sm:bg-success/10">
       <span className="relative flex h-2 w-2">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
       </span>
-      <span className="text-[12px] font-medium text-success hidden sm:inline">{t("status.connected")}</span>
+      <span className="text-[12px] font-medium text-success hidden sm:inline">
+        {t("status.connected")}
+      </span>
     </div>
   );
 }

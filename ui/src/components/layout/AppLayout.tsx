@@ -12,10 +12,13 @@ import { useZones } from "../../store/useZones";
 import { useEquipments } from "../../store/useEquipments";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import { Home, Layers, LayoutDashboard, LogOut, Menu, Settings, User, Zap, X, Calendar, Plug, Send, Bell, BarChart3, ChevronRight } from "lucide-react";
+import { Home, Layers, LayoutDashboard, LogOut, Menu, Settings, User, Zap, X, Calendar, Plug, Send, Bell, BarChart3, ChevronRight, AlertTriangle, RefreshCw, Power } from "lucide-react";
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
-import { AlarmBanner } from "./AlarmBanner";
+import { HeaderPill } from "./HeaderPill";
+import { AlarmsSheet } from "./AlarmsSheet";
+import { useAggregatedIssues } from "./useAggregatedIssues";
+import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { InstallPrompt } from "./InstallPrompt";
 import { UpdateOverlay } from "../system/UpdateOverlay";
@@ -36,7 +39,16 @@ export function AppLayout() {
   const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
   const [homeName, setHomeName] = useState("");
   const pluginUpdateCount = usePluginUpdates(user?.role === "admin");
+  const sowelUpdateAvailable = useUpdateAvailable();
+  const restartRequired = useWebSocket((s) => s.restartRequired);
   const fetchTimezone = useTimezone((s) => s.fetch);
+  const issues = useAggregatedIssues();
+  const [alarmsOpen, setAlarmsOpen] = useState(false);
+
+  // Updates pill: combines Sowel core + plugin updates into a single counter.
+  const totalUpdates = pluginUpdateCount + (sowelUpdateAvailable ? 1 : 0);
+  // Alarms pill: red when at least one error, amber otherwise.
+  const alarmTone = issues.some((i) => i.level === "error") ? "error" : "warning";
 
   useEffect(() => {
     fetchDevices();
@@ -84,17 +96,34 @@ export function AppLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <ConnectionStatus />
-            {pluginUpdateCount > 0 && (
-              <NavLink
-                to="/plugins"
-                className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] bg-error/10 text-error hover:bg-error/20 transition-colors text-[11px] font-medium"
-                title={t("plugins.updatesAvailable", { count: pluginUpdateCount })}
-              >
-                <span className="w-1.5 h-1.5 bg-error rounded-full" />
-                {pluginUpdateCount}
-              </NavLink>
+            {issues.length > 0 && (
+              <HeaderPill
+                icon={<AlertTriangle size={14} strokeWidth={1.5} />}
+                count={issues.length}
+                tone={alarmTone}
+                title={t("alarms.pill.title", { count: issues.length })}
+                onClick={() => setAlarmsOpen(true)}
+              />
+            )}
+            {totalUpdates > 0 && (
+              <HeaderPill
+                icon={<RefreshCw size={14} strokeWidth={1.5} />}
+                count={totalUpdates}
+                tone="error"
+                title={t("updates.pill.title", { count: totalUpdates })}
+                href="/plugins"
+              />
+            )}
+            {restartRequired && (
+              <HeaderPill
+                icon={<Power size={14} strokeWidth={1.5} />}
+                tone="info"
+                title={t("restart.pill.title")}
+                pulse
+                href="/settings"
+              />
             )}
             {/* User info — desktop only */}
             {user && (
@@ -122,8 +151,6 @@ export function AppLayout() {
 
         {/* Offline banner */}
         <OfflineBanner />
-        {/* System alarm banner */}
-        <AlarmBanner />
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <Outlet />
@@ -135,6 +162,9 @@ export function AppLayout() {
 
       {/* PWA install prompt */}
       <InstallPrompt />
+
+      {/* Alarms sheet — opened by the header pill */}
+      <AlarmsSheet open={alarmsOpen} onClose={() => setAlarmsOpen(false)} />
 
       {/* Self-update overlay (shown during sowel self-update) */}
       <UpdateOverlay />

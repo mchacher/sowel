@@ -75,6 +75,18 @@
   "status.error": "Erreur",
   "status.not_configured": "Non configuré",
 
+  "alarms.title": "Alarmes actives",
+  "alarms.empty": "Aucune alarme.",
+  "alarms.pill.title_one": "{{count}} problème actif",
+  "alarms.pill.title_other": "{{count}} problèmes actifs",
+  "alarms.level.error": "erreur",
+  "alarms.level.warning": "avertissement",
+  "alarms.integration.error": "Plugin en erreur — non joignable",
+  "alarms.integration.disconnected": "Plugin déconnecté",
+  "updates.pill.title_one": "{{count}} mise à jour disponible",
+  "updates.pill.title_other": "{{count}} mises à jour disponibles",
+  "restart.pill.title": "Redémarrage requis",
+
   "devices.title": "Appareils",
   "devices.subtitle_one": "{{count}} appareil · {{online}} en ligne",
   "devices.subtitle_other": "{{count}} appareils · {{online}} en ligne",
