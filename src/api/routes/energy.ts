@@ -129,20 +129,27 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       }
       consumptionPoints.sort((a, b) => a.time.localeCompare(b.time));
 
-      // Query production data if production Equipment exists
+      // Query production data if production Equipment exists.
+      // Same bucket-fallback logic as the consumption side: when period=day
+      // the primary bucket is raw (7d retention), but a backfill — or simply
+      // the live downsample — may have written the data only to
+      // `-energy-hourly`. Fall back to it when the primary bucket is empty.
       const prodMap = new Map<string, { prod: number; autoconso: number; injection: number }>();
       if (productionEquipmentId) {
-        const prodPoints = await queryProductionPoints(
-          client,
-          config.org,
-          bucket,
-          productionEquipmentId,
-          from,
-          to,
-          resolution,
-        );
-        for (const p of prodPoints) {
-          prodMap.set(p.time, p);
+        for (const b of buckets) {
+          const prodPoints = await queryProductionPoints(
+            client,
+            config.org,
+            b,
+            productionEquipmentId,
+            from,
+            to,
+            resolution,
+          );
+          for (const p of prodPoints) {
+            prodMap.set(p.time, p);
+          }
+          if (prodMap.size > 0) break;
         }
       }
 
