@@ -229,7 +229,7 @@
     "icon": "Bell",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-state-trigger-light",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "tags": ["automation", "state", "trigger", "light"],
     "i18n": {
       "fr": {
@@ -237,7 +237,7 @@
         "description": "Allume des lumières pour une durée fixe quand l'état d'un équipement passe à une valeur cible (ex: portail ouvert la nuit)."
       }
     },
-    "sowelVersion": ">=1.5.7"
+    "sowelVersion": ">=1.5.8"
   },
   {
     "id": "motion-light-dimmable",

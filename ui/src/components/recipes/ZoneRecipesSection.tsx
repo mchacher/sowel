@@ -420,14 +420,15 @@ function RecipeInstanceRow({
     const slot = recipe?.slots.find((s) => s.id === slotId);
     if (!slot) return [];
 
-    // Check if this slot targets a global equipment type
+    // Check if this slot targets a global equipment type or opts in to cross-zone selection.
     const isGlobalSlot = slot.constraints?.equipmentType &&
       (Array.isArray(slot.constraints.equipmentType)
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
+    const isCrossZone = slot.constraints?.crossZone === true;
 
     return equipments.filter((eq) => {
-      if (!isGlobalSlot && eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && !isCrossZone && eq.zoneId !== zoneId) return false;
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -771,9 +772,15 @@ function RecipeInstanceRow({
                             className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                           >
                             <option value="">{t("common.select")}</option>
-                            {getEquipmentOptions(slot.id).map((eq) => (
-                              <option key={eq.id} value={eq.id}>{eq.name}</option>
-                            ))}
+                            {getEquipmentOptions(slot.id).map((eq) => {
+                              const showZone = slot.constraints?.crossZone === true;
+                              const zoneName = showZone ? allZones.find((z) => z.id === eq.zoneId)?.name : null;
+                              return (
+                                <option key={eq.id} value={eq.id}>
+                                  {zoneName ? `${eq.name} — ${zoneName}` : eq.name}
+                                </option>
+                              );
+                            })}
                           </select>
                         ) : slot.type === "data-key" ? (
                           (() => {
@@ -1418,9 +1425,10 @@ function AddRecipeForm({
       (Array.isArray(slot.constraints.equipmentType)
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
+    const isCrossZone = slot.constraints?.crossZone === true;
 
     return equipments.filter((eq) => {
-      if (!isGlobalSlot && eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && !isCrossZone && eq.zoneId !== zoneId) return false;
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1434,8 +1442,9 @@ function AddRecipeForm({
     for (const slot of recipe.slots) {
       if (slot.type !== "equipment") continue;
       if (!slot.required) continue; // optional equipment slots don't block creation
+      const isCrossZone = slot.constraints?.crossZone === true;
       const available = equipments.filter((eq) => {
-        if (eq.zoneId !== zoneId) return false;
+        if (!isCrossZone && eq.zoneId !== zoneId) return false;
         if (!slot.list && usedLightIds.has(eq.id)) return false;
         if (slot.constraints?.equipmentType) {
           return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1786,9 +1795,15 @@ function AddRecipeForm({
                           className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                         >
                           <option value="">{t("common.select")}</option>
-                          {getEquipmentOptions(slot.id).map((eq) => (
-                            <option key={eq.id} value={eq.id}>{eq.name}</option>
-                          ))}
+                          {getEquipmentOptions(slot.id).map((eq) => {
+                            const showZone = slot.constraints?.crossZone === true;
+                            const zoneName = showZone ? allZones.find((z) => z.id === eq.zoneId)?.name : null;
+                            return (
+                              <option key={eq.id} value={eq.id}>
+                                {zoneName ? `${eq.name} — ${zoneName}` : eq.name}
+                              </option>
+                            );
+                          })}
                         </select>
                       ) : slot.type === "data-key" ? (
                         (() => {
