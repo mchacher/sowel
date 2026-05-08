@@ -708,16 +708,19 @@ async function queryMainConsumptionPoints(
   return points;
 }
 
-/** Deterministic palette for submeter colors (Tailwind-friendly). */
+/** Deterministic vivid palette for submeter colors. Aligned with the
+ *  Sowel design system (primary, accent, active) plus the in-chart
+ *  conventions already used by the consumption chart (HP/HC blues,
+ *  autoconso green). Picked for distinct, lively bars. */
 const SUBMETER_PALETTE = [
-  "#1A4F6E", // primary
-  "#D4963F", // accent
-  "#7DB46C", // sage
-  "#B05B7B", // wine
-  "#5A8FB8", // pale blue
-  "#C97D4A", // terracotta
-  "#6E5BA6", // violet
-  "#3F8D87", // teal
+  "#4F7BE8", // vivid blue (matches HP_COLOR in EnergyBarChart)
+  "#D4963F", // amber — design system accent
+  "#6BCB77", // green (matches AUTOCONSO_COLOR)
+  "#E15A5A", // coral
+  "#9C7DD9", // violet
+  "#4FBDD0", // bright teal
+  "#E89A4F", // orange
+  "#FACC15", // yellow — design system active
 ];
 
 function pickPaletteColor(index: number): string {
