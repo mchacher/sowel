@@ -333,6 +333,9 @@ export interface RecipeSlotDef {
     /** When true on an `equipment` slot, the recipe form shows
      *  equipments from any zone, not just the recipe's. */
     crossZone?: boolean;
+    /** When true on an `equipment` slot, the recipe form also shows
+     *  equipments living in descendant zones of the recipe's zone. */
+    includeDescendants?: boolean;
   };
   group?: string;
 }

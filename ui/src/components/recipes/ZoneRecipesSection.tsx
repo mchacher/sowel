@@ -246,6 +246,18 @@ function RecipeInstanceRow({
     walk(zoneTree);
     return flat;
   }, [zoneTree]);
+  const zoneAndDescendantIds = useMemo(() => {
+    const ids = new Set<string>();
+    const collect = (nodes: ZoneWithChildren[], inside: boolean): void => {
+      for (const n of nodes) {
+        const here = inside || n.id === zoneId;
+        if (here) ids.add(n.id);
+        if (n.children.length > 0) collect(n.children, here);
+      }
+    };
+    collect(zoneTree, false);
+    return ids;
+  }, [zoneTree, zoneId]);
   const [showLog, setShowLog] = useState(false);
   const [logs, setLogs] = useState<RecipeLogEntry[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -426,9 +438,15 @@ function RecipeInstanceRow({
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
     const isCrossZone = slot.constraints?.crossZone === true;
+    const includeDescendants = slot.constraints?.includeDescendants === true;
 
     return equipments.filter((eq) => {
-      if (!isGlobalSlot && !isCrossZone && eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && !isCrossZone) {
+        const allowed = includeDescendants
+          ? zoneAndDescendantIds.has(eq.zoneId)
+          : eq.zoneId === zoneId;
+        if (!allowed) return false;
+      }
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -773,7 +791,9 @@ function RecipeInstanceRow({
                           >
                             <option value="">{t("common.select")}</option>
                             {getEquipmentOptions(slot.id).map((eq) => {
-                              const showZone = slot.constraints?.crossZone === true;
+                              const showZone =
+                                slot.constraints?.crossZone === true ||
+                                slot.constraints?.includeDescendants === true;
                               const zoneName = showZone ? allZones.find((z) => z.id === eq.zoneId)?.name : null;
                               return (
                                 <option key={eq.id} value={eq.id}>
@@ -1398,6 +1418,20 @@ function AddRecipeForm({
     return flat;
   }, [zoneTree]);
 
+  // Set of {zoneId} ∪ {descendantIds(zoneId)} used by slots with constraints.includeDescendants.
+  const zoneAndDescendantIds = useMemo(() => {
+    const ids = new Set<string>();
+    const collect = (nodes: ZoneWithChildren[], inside: boolean): void => {
+      for (const n of nodes) {
+        const here = inside || n.id === zoneId;
+        if (here) ids.add(n.id);
+        if (n.children.length > 0) collect(n.children, here);
+      }
+    };
+    collect(zoneTree, false);
+    return ids;
+  }, [zoneTree, zoneId]);
+
   // Light IDs already managed by a recipe instance in this zone
   const usedLightIds = useMemo(() => {
     const ids = new Set<string>();
@@ -1426,9 +1460,15 @@ function AddRecipeForm({
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
     const isCrossZone = slot.constraints?.crossZone === true;
+    const includeDescendants = slot.constraints?.includeDescendants === true;
 
     return equipments.filter((eq) => {
-      if (!isGlobalSlot && !isCrossZone && eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && !isCrossZone) {
+        const allowed = includeDescendants
+          ? zoneAndDescendantIds.has(eq.zoneId)
+          : eq.zoneId === zoneId;
+        if (!allowed) return false;
+      }
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1443,8 +1483,14 @@ function AddRecipeForm({
       if (slot.type !== "equipment") continue;
       if (!slot.required) continue; // optional equipment slots don't block creation
       const isCrossZone = slot.constraints?.crossZone === true;
+      const includeDescendants = slot.constraints?.includeDescendants === true;
       const available = equipments.filter((eq) => {
-        if (!isCrossZone && eq.zoneId !== zoneId) return false;
+        if (!isCrossZone) {
+          const allowed = includeDescendants
+            ? zoneAndDescendantIds.has(eq.zoneId)
+            : eq.zoneId === zoneId;
+          if (!allowed) return false;
+        }
         if (!slot.list && usedLightIds.has(eq.id)) return false;
         if (slot.constraints?.equipmentType) {
           return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1796,7 +1842,9 @@ function AddRecipeForm({
                         >
                           <option value="">{t("common.select")}</option>
                           {getEquipmentOptions(slot.id).map((eq) => {
-                            const showZone = slot.constraints?.crossZone === true;
+                            const showZone =
+                              slot.constraints?.crossZone === true ||
+                              slot.constraints?.includeDescendants === true;
                             const zoneName = showZone ? allZones.find((z) => z.id === eq.zoneId)?.name : null;
                             return (
                               <option key={eq.id} value={eq.id}>
