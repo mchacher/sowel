@@ -784,24 +784,27 @@ function RecipeInstanceRow({
                             })}
                           </div>
                         ) : slot.type === "equipment" ? (
-                          <select
-                            value={editParams[slot.id] ?? ""}
-                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
-                          >
-                            <option value="">{t("common.select")}</option>
-                            {getEquipmentOptions(slot.id).map((eq) => {
-                              const showZone =
-                                slot.constraints?.crossZone === true ||
-                                slot.constraints?.includeDescendants === true;
-                              const zoneName = showZone ? allZones.find((z) => z.id === eq.zoneId)?.name : null;
-                              return (
-                                <option key={eq.id} value={eq.id}>
-                                  {zoneName ? `${eq.name} — ${zoneName}` : eq.name}
-                                </option>
-                              );
-                            })}
-                          </select>
+                          slot.constraints?.crossZone === true ||
+                          slot.constraints?.includeDescendants === true ? (
+                            <SingleEquipmentZonePicker
+                              value={editParams[slot.id] ?? ""}
+                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                              equipments={getEquipmentOptions(slot.id)}
+                              zones={allZones}
+                              matchesConstraint={() => true /* already filtered upstream */}
+                            />
+                          ) : (
+                            <select
+                              value={editParams[slot.id] ?? ""}
+                              onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                            >
+                              <option value="">{t("common.select")}</option>
+                              {getEquipmentOptions(slot.id).map((eq) => (
+                                <option key={eq.id} value={eq.id}>{eq.name}</option>
+                              ))}
+                            </select>
+                          )
                         ) : slot.type === "data-key" ? (
                           (() => {
                             const eqSlot = recipe?.slots.find((s) => s.type === "equipment" && !s.list);
@@ -1260,6 +1263,84 @@ function TimeInput({
       placeholder={placeholder ?? "08:00"}
       className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
     />
+  );
+}
+
+// ============================================================
+// Single equipment picker with zone-first selection — used for slots
+// with constraints.crossZone or includeDescendants
+// ============================================================
+
+function SingleEquipmentZonePicker({
+  value,
+  onChange,
+  equipments,
+  zones,
+  matchesConstraint,
+  zoneIdsAllowed,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  equipments: EquipmentWithDetails[];
+  zones: { id: string; name: string }[];
+  matchesConstraint: (eq: EquipmentWithDetails) => boolean;
+  /** When set, only zones in this set are listed. */
+  zoneIdsAllowed?: Set<string>;
+}) {
+  const { t } = useTranslation();
+
+  const selectedEq = value ? equipments.find((e) => e.id === value) : undefined;
+  const [pickerZoneId, setPickerZoneId] = useState<string>(selectedEq?.zoneId ?? "");
+
+  // Zones that have at least one matching equipment (and are within
+  // the allowed scope when one is provided).
+  const zonesWithOptions = useMemo(() => {
+    return zones.filter((z) => {
+      if (zoneIdsAllowed && !zoneIdsAllowed.has(z.id)) return false;
+      return equipments.some((eq) => eq.zoneId === z.id && matchesConstraint(eq));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zones, equipments, zoneIdsAllowed]);
+
+  const pickerOptions = useMemo(() => {
+    if (!pickerZoneId) return [];
+    return equipments.filter((eq) => eq.zoneId === pickerZoneId && matchesConstraint(eq));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerZoneId, equipments]);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        value={pickerZoneId}
+        onChange={(e) => {
+          const zid = e.target.value;
+          setPickerZoneId(zid);
+          // Clear the equipment if it no longer belongs to the chosen zone
+          if (selectedEq && selectedEq.zoneId !== zid) onChange("");
+        }}
+        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+      >
+        <option value="">Zone…</option>
+        {zonesWithOptions.map((z) => (
+          <option key={z.id} value={z.id}>
+            {z.name}
+          </option>
+        ))}
+      </select>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={!pickerZoneId}
+        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+      >
+        <option value="">{t("common.select")}</option>
+        {pickerOptions.map((eq) => (
+          <option key={eq.id} value={eq.id}>
+            {eq.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
@@ -1835,24 +1916,27 @@ function AddRecipeForm({
                           })}
                         </div>
                       ) : slot.type === "equipment" ? (
-                        <select
-                          value={params[slot.id] ?? ""}
-                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
-                        >
-                          <option value="">{t("common.select")}</option>
-                          {getEquipmentOptions(slot.id).map((eq) => {
-                            const showZone =
-                              slot.constraints?.crossZone === true ||
-                              slot.constraints?.includeDescendants === true;
-                            const zoneName = showZone ? allZones.find((z) => z.id === eq.zoneId)?.name : null;
-                            return (
-                              <option key={eq.id} value={eq.id}>
-                                {zoneName ? `${eq.name} — ${zoneName}` : eq.name}
-                              </option>
-                            );
-                          })}
-                        </select>
+                        slot.constraints?.crossZone === true ||
+                        slot.constraints?.includeDescendants === true ? (
+                          <SingleEquipmentZonePicker
+                            value={params[slot.id] ?? ""}
+                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                            equipments={getEquipmentOptions(slot.id)}
+                            zones={allZones}
+                            matchesConstraint={() => true}
+                          />
+                        ) : (
+                          <select
+                            value={params[slot.id] ?? ""}
+                            onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                          >
+                            <option value="">{t("common.select")}</option>
+                            {getEquipmentOptions(slot.id).map((eq) => (
+                              <option key={eq.id} value={eq.id}>{eq.name}</option>
+                            ))}
+                          </select>
+                        )
                       ) : slot.type === "data-key" ? (
                         (() => {
                           const eqSlot = selectedRecipe?.slots.find((s) => s.type === "equipment" && !s.list);
