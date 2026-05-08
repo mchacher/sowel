@@ -48,6 +48,9 @@ function makeStubs(
         ? { id, name: "PAC", zoneId: "zone-1", type: "energy_meter", enabled: true }
         : null,
     ),
+    getAll: vi.fn(() => [
+      { id: "eq-pac", name: "PAC", zoneId: "zone-1", type: "energy_meter", enabled: true },
+    ]),
     getDataBindingsWithValues: vi.fn(() =>
       opts.isPowerOnly
         ? [{ alias: "power", category: "power", value: 1000 }]
@@ -219,6 +222,25 @@ describe("PowerSubmeterIntegrator", () => {
 
     expect(stubs2.writePoint).toHaveBeenCalledOnce();
     integ2.stop();
+  });
+
+  it("catchUpFromBindings: integrates from current binding value when no events arrive (steady-state device)", () => {
+    const { equipmentManager, influxClient, writePoint } = makeStubs();
+    let now = 1_700_000_000_000;
+    const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+      now: () => now,
+      flushIntervalMs: 60_000,
+    });
+    integ.init();
+    integ.start();
+
+    // No event emitted, but binding has a value (steady 1000 W).
+    integ.flushAll(); // 1st: sets baseline only
+    now += 60_000;
+    integ.flushAll(); // 2nd: should integrate 1000W * 60s = 16.67 Wh
+
+    expect(writePoint).toHaveBeenCalledOnce();
+    integ.stop();
   });
 
   it("getComputedDataForEquipment exposes cumulative_wh as a computed energy entry", () => {

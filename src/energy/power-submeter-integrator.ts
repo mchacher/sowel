@@ -119,10 +119,35 @@ export class PowerSubmeterIntegrator {
 
   /**
    * Test / shutdown helper: flush pending Wh deltas to InfluxDB now.
+   *
+   * Also catches up integration for any submeter equipment that hasn't
+   * received an event since the last flush — many zigbee meters only
+   * report on value change, so a steady load would otherwise integrate
+   * to 0. We synthesize a sample at "now" using the current binding value
+   * and the last known timestamp.
    */
   flushAll(): void {
+    this.catchUpFromBindings();
     for (const [equipmentId, state] of this.states) {
       this.flushOne(equipmentId, state);
+    }
+  }
+
+  /**
+   * For every power-only submeter, look at the equipment's current `power`
+   * binding value and integrate from the last sample to "now". This keeps
+   * the energy counter moving when the device only reports on change.
+   */
+  private catchUpFromBindings(): void {
+    const equipments = this.equipmentManager.getAll().filter((e) => e.type === "energy_meter");
+    for (const eq of equipments) {
+      if (!this.isPowerOnlySubmeter(eq.id)) continue;
+      const bindings = this.equipmentManager.getDataBindingsWithValues(eq.id);
+      const powerBinding = bindings.find((b) => b.alias === "power" || b.category === "power");
+      if (!powerBinding) continue;
+      const value = powerBinding.value;
+      if (typeof value !== "number" || !Number.isFinite(value)) continue;
+      this.handleEvent(eq.id, "power", value);
     }
   }
 
