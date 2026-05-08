@@ -330,6 +330,12 @@ export interface RecipeSlotDef {
     equipmentType?: EquipmentType | EquipmentType[];
     min?: number;
     max?: number;
+    /** When true on an `equipment` slot, the recipe form shows
+     *  equipments from any zone, not just the recipe's. */
+    crossZone?: boolean;
+    /** When true on an `equipment` slot, the recipe form also shows
+     *  equipments living in descendant zones of the recipe's zone. */
+    includeDescendants?: boolean;
   };
   group?: string;
 }

@@ -404,6 +404,13 @@ export interface RecipeSlotDef {
     equipmentType?: EquipmentType | EquipmentType[];
     min?: number;
     max?: number;
+    /** When true on an `equipment` slot, the picker shows equipments
+     *  from any zone (not just the recipe's zone) and disambiguates
+     *  by appending the zone name in the dropdown. */
+    crossZone?: boolean;
+    /** When true on an `equipment` slot, the picker also includes
+     *  equipments living in descendant zones of the recipe's zone. */
+    includeDescendants?: boolean;
   };
   group?: string;
 }

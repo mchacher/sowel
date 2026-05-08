@@ -246,6 +246,18 @@ function RecipeInstanceRow({
     walk(zoneTree);
     return flat;
   }, [zoneTree]);
+  const zoneAndDescendantIds = useMemo(() => {
+    const ids = new Set<string>();
+    const collect = (nodes: ZoneWithChildren[], inside: boolean): void => {
+      for (const n of nodes) {
+        const here = inside || n.id === zoneId;
+        if (here) ids.add(n.id);
+        if (n.children.length > 0) collect(n.children, here);
+      }
+    };
+    collect(zoneTree, false);
+    return ids;
+  }, [zoneTree, zoneId]);
   const [showLog, setShowLog] = useState(false);
   const [logs, setLogs] = useState<RecipeLogEntry[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -420,14 +432,21 @@ function RecipeInstanceRow({
     const slot = recipe?.slots.find((s) => s.id === slotId);
     if (!slot) return [];
 
-    // Check if this slot targets a global equipment type
+    // Check if this slot targets a global equipment type or opts in to cross-zone selection.
     const isGlobalSlot = slot.constraints?.equipmentType &&
       (Array.isArray(slot.constraints.equipmentType)
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
+    const isCrossZone = slot.constraints?.crossZone === true;
+    const includeDescendants = slot.constraints?.includeDescendants === true;
 
     return equipments.filter((eq) => {
-      if (!isGlobalSlot && eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && !isCrossZone) {
+        const allowed = includeDescendants
+          ? zoneAndDescendantIds.has(eq.zoneId)
+          : eq.zoneId === zoneId;
+        if (!allowed) return false;
+      }
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -765,16 +784,27 @@ function RecipeInstanceRow({
                             })}
                           </div>
                         ) : slot.type === "equipment" ? (
-                          <select
-                            value={editParams[slot.id] ?? ""}
-                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
-                          >
-                            <option value="">{t("common.select")}</option>
-                            {getEquipmentOptions(slot.id).map((eq) => (
-                              <option key={eq.id} value={eq.id}>{eq.name}</option>
-                            ))}
-                          </select>
+                          slot.constraints?.crossZone === true ||
+                          slot.constraints?.includeDescendants === true ? (
+                            <SingleEquipmentZonePicker
+                              value={editParams[slot.id] ?? ""}
+                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                              equipments={getEquipmentOptions(slot.id)}
+                              zones={allZones}
+                              matchesConstraint={() => true /* already filtered upstream */}
+                            />
+                          ) : (
+                            <select
+                              value={editParams[slot.id] ?? ""}
+                              onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                            >
+                              <option value="">{t("common.select")}</option>
+                              {getEquipmentOptions(slot.id).map((eq) => (
+                                <option key={eq.id} value={eq.id}>{eq.name}</option>
+                              ))}
+                            </select>
+                          )
                         ) : slot.type === "data-key" ? (
                           (() => {
                             const eqSlot = recipe?.slots.find((s) => s.type === "equipment" && !s.list);
@@ -1237,6 +1267,84 @@ function TimeInput({
 }
 
 // ============================================================
+// Single equipment picker with zone-first selection — used for slots
+// with constraints.crossZone or includeDescendants
+// ============================================================
+
+function SingleEquipmentZonePicker({
+  value,
+  onChange,
+  equipments,
+  zones,
+  matchesConstraint,
+  zoneIdsAllowed,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  equipments: EquipmentWithDetails[];
+  zones: { id: string; name: string }[];
+  matchesConstraint: (eq: EquipmentWithDetails) => boolean;
+  /** When set, only zones in this set are listed. */
+  zoneIdsAllowed?: Set<string>;
+}) {
+  const { t } = useTranslation();
+
+  const selectedEq = value ? equipments.find((e) => e.id === value) : undefined;
+  const [pickerZoneId, setPickerZoneId] = useState<string>(selectedEq?.zoneId ?? "");
+
+  // Zones that have at least one matching equipment (and are within
+  // the allowed scope when one is provided).
+  const zonesWithOptions = useMemo(() => {
+    return zones.filter((z) => {
+      if (zoneIdsAllowed && !zoneIdsAllowed.has(z.id)) return false;
+      return equipments.some((eq) => eq.zoneId === z.id && matchesConstraint(eq));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zones, equipments, zoneIdsAllowed]);
+
+  const pickerOptions = useMemo(() => {
+    if (!pickerZoneId) return [];
+    return equipments.filter((eq) => eq.zoneId === pickerZoneId && matchesConstraint(eq));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerZoneId, equipments]);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <select
+        value={pickerZoneId}
+        onChange={(e) => {
+          const zid = e.target.value;
+          setPickerZoneId(zid);
+          // Clear the equipment if it no longer belongs to the chosen zone
+          if (selectedEq && selectedEq.zoneId !== zid) onChange("");
+        }}
+        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+      >
+        <option value="">Zone…</option>
+        {zonesWithOptions.map((z) => (
+          <option key={z.id} value={z.id}>
+            {z.name}
+          </option>
+        ))}
+      </select>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={!pickerZoneId}
+        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+      >
+        <option value="">{t("common.select")}</option>
+        {pickerOptions.map((eq) => (
+          <option key={eq.id} value={eq.id}>
+            {eq.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ============================================================
 // Equipment list picker — zone + equipment + add button
 // ============================================================
 
@@ -1391,6 +1499,20 @@ function AddRecipeForm({
     return flat;
   }, [zoneTree]);
 
+  // Set of {zoneId} ∪ {descendantIds(zoneId)} used by slots with constraints.includeDescendants.
+  const zoneAndDescendantIds = useMemo(() => {
+    const ids = new Set<string>();
+    const collect = (nodes: ZoneWithChildren[], inside: boolean): void => {
+      for (const n of nodes) {
+        const here = inside || n.id === zoneId;
+        if (here) ids.add(n.id);
+        if (n.children.length > 0) collect(n.children, here);
+      }
+    };
+    collect(zoneTree, false);
+    return ids;
+  }, [zoneTree, zoneId]);
+
   // Light IDs already managed by a recipe instance in this zone
   const usedLightIds = useMemo(() => {
     const ids = new Set<string>();
@@ -1418,9 +1540,16 @@ function AddRecipeForm({
       (Array.isArray(slot.constraints.equipmentType)
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
+    const isCrossZone = slot.constraints?.crossZone === true;
+    const includeDescendants = slot.constraints?.includeDescendants === true;
 
     return equipments.filter((eq) => {
-      if (!isGlobalSlot && eq.zoneId !== zoneId) return false;
+      if (!isGlobalSlot && !isCrossZone) {
+        const allowed = includeDescendants
+          ? zoneAndDescendantIds.has(eq.zoneId)
+          : eq.zoneId === zoneId;
+        if (!allowed) return false;
+      }
       if (slot.type === "equipment" && !slot.list && usedLightIds.has(eq.id)) return false;
       if (slot.constraints?.equipmentType) {
         return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1434,8 +1563,15 @@ function AddRecipeForm({
     for (const slot of recipe.slots) {
       if (slot.type !== "equipment") continue;
       if (!slot.required) continue; // optional equipment slots don't block creation
+      const isCrossZone = slot.constraints?.crossZone === true;
+      const includeDescendants = slot.constraints?.includeDescendants === true;
       const available = equipments.filter((eq) => {
-        if (eq.zoneId !== zoneId) return false;
+        if (!isCrossZone) {
+          const allowed = includeDescendants
+            ? zoneAndDescendantIds.has(eq.zoneId)
+            : eq.zoneId === zoneId;
+          if (!allowed) return false;
+        }
         if (!slot.list && usedLightIds.has(eq.id)) return false;
         if (slot.constraints?.equipmentType) {
           return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
@@ -1780,16 +1916,27 @@ function AddRecipeForm({
                           })}
                         </div>
                       ) : slot.type === "equipment" ? (
-                        <select
-                          value={params[slot.id] ?? ""}
-                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
-                        >
-                          <option value="">{t("common.select")}</option>
-                          {getEquipmentOptions(slot.id).map((eq) => (
-                            <option key={eq.id} value={eq.id}>{eq.name}</option>
-                          ))}
-                        </select>
+                        slot.constraints?.crossZone === true ||
+                        slot.constraints?.includeDescendants === true ? (
+                          <SingleEquipmentZonePicker
+                            value={params[slot.id] ?? ""}
+                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                            equipments={getEquipmentOptions(slot.id)}
+                            zones={allZones}
+                            matchesConstraint={() => true}
+                          />
+                        ) : (
+                          <select
+                            value={params[slot.id] ?? ""}
+                            onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                          >
+                            <option value="">{t("common.select")}</option>
+                            {getEquipmentOptions(slot.id).map((eq) => (
+                              <option key={eq.id} value={eq.id}>{eq.name}</option>
+                            ))}
+                          </select>
+                        )
                       ) : slot.type === "data-key" ? (
                         (() => {
                           const eqSlot = selectedRecipe?.slots.find((s) => s.type === "equipment" && !s.list);
