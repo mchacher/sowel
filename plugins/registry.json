@@ -222,6 +222,24 @@
     "sowelVersion": ">=0.10.0"
   },
   {
+    "id": "state-trigger-light",
+    "type": "recipe",
+    "name": "State-Triggered Light",
+    "description": "Turn lights on for a fixed duration when an equipment's state changes to a target value (e.g. gate → open at night)",
+    "icon": "Bell",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-state-trigger-light",
+    "version": "0.1.0",
+    "tags": ["automation", "state", "trigger", "light"],
+    "i18n": {
+      "fr": {
+        "name": "Lumière sur changement d'état",
+        "description": "Allume des lumières pour une durée fixe quand l'état d'un équipement passe à une valeur cible (ex: portail ouvert la nuit)."
+      }
+    },
+    "sowelVersion": ">=1.5.7"
+  },
+  {
     "id": "motion-light-dimmable",
     "type": "recipe",
     "name": "Motion Light (Dimmable)",
