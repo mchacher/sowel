@@ -221,6 +221,28 @@ describe("PowerSubmeterIntegrator", () => {
     integ2.stop();
   });
 
+  it("getComputedDataForEquipment exposes cumulative_wh as a computed energy entry", () => {
+    const { equipmentManager, influxClient } = makeStubs();
+    let now = 1_700_000_000_000;
+    const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+      now: () => now,
+      flushIntervalMs: 60_000,
+    });
+    integ.init();
+    integ.start();
+
+    emitPower(bus, "eq-pac", 1000);
+    now += 60_000;
+    emitPower(bus, "eq-pac", 1000);
+
+    const computed = integ.getComputedDataForEquipment("eq-pac");
+    expect(computed).toHaveLength(1);
+    expect(computed[0].alias).toBe("energy");
+    expect(computed[0].category).toBe("energy");
+    expect(computed[0].value).toBeCloseTo((1000 * 60) / 3600, 2);
+    integ.stop();
+  });
+
   it("flush with zero pending_wh writes nothing", () => {
     const { equipmentManager, influxClient, writePoint } = makeStubs();
     const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {

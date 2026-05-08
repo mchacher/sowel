@@ -375,6 +375,9 @@ async function main() {
   );
   powerSubmeterIntegrator.init();
   powerSubmeterIntegrator.start();
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    powerSubmeterIntegrator.getComputedDataForEquipment(eqId),
+  );
 
   // 18a-bis. Start Weather Aggregator (rain cumuls)
   const { WeatherAggregator } = await import("./weather/weather-aggregator.js");

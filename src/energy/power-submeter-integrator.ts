@@ -34,6 +34,9 @@ const MIN_WRITE_WH = 0.001; // skip writing absurdly small deltas
 
 interface IntegratorState {
   pendingWh: number;
+  /** Lifetime Wh integrated by Sowel for this submeter. Surfaced as
+   *  computed data on the equipment so the user sees something growing. */
+  cumulativeWh: number;
   lastSampleAt: number | null; // epoch seconds
   lastSampleW: number | null;
   lastWriteAt: string | null;
@@ -43,6 +46,7 @@ interface IntegratorState {
 interface StateRow {
   equipment_id: string;
   pending_wh: number;
+  cumulative_wh: number;
   last_sample_at: string | null;
   last_sample_w: number | null;
   last_write_at: string | null;
@@ -130,10 +134,11 @@ export class PowerSubmeterIntegrator {
     return {
       selectAll: this.db.prepare(`SELECT * FROM submeter_integrator_state`),
       upsert: this.db.prepare(
-        `INSERT INTO submeter_integrator_state (equipment_id, pending_wh, last_sample_at, last_sample_w, last_write_at, updated_at)
-         VALUES (@equipmentId, @pendingWh, @lastSampleAt, @lastSampleW, @lastWriteAt, datetime('now'))
+        `INSERT INTO submeter_integrator_state (equipment_id, pending_wh, cumulative_wh, last_sample_at, last_sample_w, last_write_at, updated_at)
+         VALUES (@equipmentId, @pendingWh, @cumulativeWh, @lastSampleAt, @lastSampleW, @lastWriteAt, datetime('now'))
          ON CONFLICT(equipment_id) DO UPDATE SET
            pending_wh = excluded.pending_wh,
+           cumulative_wh = excluded.cumulative_wh,
            last_sample_at = excluded.last_sample_at,
            last_sample_w = excluded.last_sample_w,
            last_write_at = excluded.last_write_at,
@@ -147,6 +152,7 @@ export class PowerSubmeterIntegrator {
     for (const row of rows) {
       this.states.set(row.equipment_id, {
         pendingWh: row.pending_wh,
+        cumulativeWh: row.cumulative_wh,
         lastSampleAt: row.last_sample_at ? Math.floor(Date.parse(row.last_sample_at) / 1000) : null,
         lastSampleW: row.last_sample_w,
         lastWriteAt: row.last_write_at,
@@ -177,6 +183,7 @@ export class PowerSubmeterIntegrator {
     const nowS = Math.floor(this.now() / 1000);
     const state = this.states.get(equipmentId) ?? {
       pendingWh: 0,
+      cumulativeWh: 0,
       lastSampleAt: null,
       lastSampleW: null,
       lastWriteAt: null,
@@ -203,6 +210,7 @@ export class PowerSubmeterIntegrator {
         const meanW = (prevAbsW + absW) / 2;
         const deltaWh = (meanW * dtS) / 3600;
         state.pendingWh += deltaWh;
+        state.cumulativeWh += deltaWh;
       } else if (dtS > STALE_THRESHOLD_S) {
         this.logger.debug({ equipmentId, dtS }, "Stale sample, skipping integration window");
       }
@@ -251,9 +259,34 @@ export class PowerSubmeterIntegrator {
     this.stmts.upsert.run({
       equipmentId,
       pendingWh: state.pendingWh,
+      cumulativeWh: state.cumulativeWh,
       lastSampleAt: lastSampleAtIso,
       lastSampleW: state.lastSampleW,
       lastWriteAt: state.lastWriteAt,
     });
+  }
+
+  /**
+   * ComputedDataProvider: surface a live `energy` cumulative on the submeter
+   * equipment so the user sees a growing Wh value alongside the raw `power`
+   * binding. Called by EquipmentManager when serializing the equipment.
+   */
+  getComputedDataForEquipment(
+    equipmentId: string,
+  ): import("../shared/types.js").ComputedDataEntry[] {
+    const state = this.states.get(equipmentId);
+    if (!state) return [];
+    if (!this.isPowerOnlySubmeter(equipmentId)) return [];
+    const lastUpdated =
+      state.lastSampleAt !== null ? new Date(state.lastSampleAt * 1000).toISOString() : null;
+    return [
+      {
+        alias: "energy",
+        value: Math.round(state.cumulativeWh * 100) / 100,
+        unit: "Wh",
+        category: "energy",
+        lastUpdated,
+      },
+    ];
   }
 }
