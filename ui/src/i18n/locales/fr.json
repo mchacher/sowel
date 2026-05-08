@@ -916,6 +916,9 @@
   "energy.autoconsumption": "Autoconsommation",
   "energy.gridInjection": "Injection réseau",
   "energy.gridConsumption": "Réseau",
+  "energy.viewMode.total": "Total",
+  "energy.viewMode.byUsage": "Par usage",
+  "energy.byUsage.other": "Autre",
 
   "tariff.title": "Tarifs énergie",
   "tariff.priceHp": "Prix HP (€/kWh)",
