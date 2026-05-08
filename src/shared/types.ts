@@ -971,6 +971,33 @@ export interface EnergyStatus {
   tariffConfigured: boolean;
 }
 
+export interface EnergyByUsagePoint {
+  time: string;
+  wh: number;
+}
+
+export interface SubmeterSeries {
+  id: string;
+  name: string;
+  color: string;
+  points: EnergyByUsagePoint[];
+}
+
+export interface EnergyByUsageResponse {
+  period: string;
+  from: string;
+  to: string;
+  resolution: "5min" | "1h" | "1d";
+  submeters: SubmeterSeries[];
+  /** Residual = main meter consumption minus sum of submeters (clamped ≥ 0). Empty if no main meter. */
+  other: { points: EnergyByUsagePoint[] };
+  totals: {
+    byEquipment: Record<string, number>;
+    other: number;
+    total: number;
+  };
+}
+
 // ============================================================
 // Tariff Configuration
 // ============================================================

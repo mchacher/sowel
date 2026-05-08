@@ -916,6 +916,9 @@
   "energy.autoconsumption": "Self-consumption",
   "energy.gridInjection": "Grid injection",
   "energy.gridConsumption": "Grid",
+  "energy.viewMode.total": "Total",
+  "energy.viewMode.byUsage": "By usage",
+  "energy.byUsage.other": "Other",
 
   "tariff.title": "Energy tariffs",
   "tariff.priceHp": "Peak price (€/kWh)",

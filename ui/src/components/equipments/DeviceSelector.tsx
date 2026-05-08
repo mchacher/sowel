@@ -17,7 +17,7 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise"],
   gate: ["generic", "contact_door"],
   heater: ["generic", "light_state"],
-  energy_meter: ["energy"],
+  energy_meter: ["energy", "power"],
   main_energy_meter: ["energy"],
   energy_production_meter: ["energy", "power"],
   // Polytropic PAC matches via pool_water_temperature; Sonoff filtration relay

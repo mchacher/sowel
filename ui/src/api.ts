@@ -17,7 +17,7 @@ import type {
   MqttBroker,
   MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
   DashboardWidget, WidgetConfig, WidgetFamily,
-  EnergyHistoryResponse, EnergyStatus, TariffConfig,
+  EnergyHistoryResponse, EnergyStatus, TariffConfig, EnergyByUsageResponse,
 } from "./types";
 
 const API_BASE = "/api/v1";
@@ -1225,6 +1225,15 @@ export async function getEnergyHistory(
 ): Promise<EnergyHistoryResponse> {
   return fetchJSON<EnergyHistoryResponse>(
     `${API_BASE}/energy/history?period=${period}&date=${date}`,
+  );
+}
+
+export async function getEnergyByUsage(
+  period: string,
+  date: string,
+): Promise<EnergyByUsageResponse> {
+  return fetchJSON<EnergyByUsageResponse>(
+    `${API_BASE}/energy/by-usage?period=${period}&date=${date}`,
   );
 }
 

@@ -810,6 +810,32 @@ export interface EnergyStatus {
   tariffConfigured: boolean;
 }
 
+export interface EnergyByUsagePoint {
+  time: string;
+  wh: number;
+}
+
+export interface SubmeterSeries {
+  id: string;
+  name: string;
+  color: string;
+  points: EnergyByUsagePoint[];
+}
+
+export interface EnergyByUsageResponse {
+  period: string;
+  from: string;
+  to: string;
+  resolution: "5min" | "1h" | "1d";
+  submeters: SubmeterSeries[];
+  other: { points: EnergyByUsagePoint[] };
+  totals: {
+    byEquipment: Record<string, number>;
+    other: number;
+    total: number;
+  };
+}
+
 export interface TariffSlot {
   start: string;
   end: string;

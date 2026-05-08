@@ -28,6 +28,7 @@ import { IntegrationRegistry } from "./integrations/integration-registry.js";
 import { EnergyAggregator } from "./energy/energy-aggregator.js";
 import { SelfConsumptionWriter } from "./energy/self-consumption-writer.js";
 import { HistoryWriter } from "./history/history-writer.js";
+import { PowerSubmeterIntegrator } from "./energy/power-submeter-integrator.js";
 import { InfluxClient } from "./core/influx-client.js";
 import { ChartManager } from "./charts/chart-manager.js";
 import { MqttBrokerManager } from "./mqtt-publishers/mqtt-broker-manager.js";
@@ -362,6 +363,19 @@ async function main() {
     .start()
     .catch((err) => logger.warn({ err }, "Energy aggregator start failed"));
 
+  // 18b. Power-only submeter integrator (Legrand GEM-style clamps that
+  // expose `power` but not cumulative `energy`). Integrates W → Wh and
+  // writes per-minute deltas attributed to the submeter equipment.
+  const powerSubmeterIntegrator = new PowerSubmeterIntegrator(
+    db,
+    eventBus,
+    equipmentManager,
+    influxClient,
+    logger,
+  );
+  powerSubmeterIntegrator.init();
+  powerSubmeterIntegrator.start();
+
   // 18a-bis. Start Weather Aggregator (rain cumuls)
   const { WeatherAggregator } = await import("./weather/weather-aggregator.js");
   const weatherAggregator = new WeatherAggregator(equipmentManager, influxClient, eventBus, logger);
@@ -444,6 +458,12 @@ async function main() {
       selfConsumptionWriter.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping self-consumption writer");
+    }
+    try {
+      powerSubmeterIntegrator.flushAll();
+      powerSubmeterIntegrator.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping power submeter integrator");
     }
     try {
       await influxClient.disconnect();
