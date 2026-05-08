@@ -248,6 +248,18 @@ export class PowerSubmeterIntegrator {
       "Submeter delta written",
     );
 
+    // Emit equipment.data.changed for alias=energy so EnergyAggregator
+    // picks up this submeter and computes hour/day/month/year cumuls from
+    // InfluxDB, like it does for main_energy_meter. HistoryWriter ignores
+    // this event because no binding for `energy` exists on the equipment.
+    this.eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId,
+      alias: "energy",
+      value: state.pendingWh,
+      previous: null,
+    });
+
     state.pendingWh = 0;
     state.lastWriteAt = new Date(minuteEpochMs).toISOString();
     this.persist(equipmentId, state);
