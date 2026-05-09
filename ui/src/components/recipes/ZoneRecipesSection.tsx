@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ChefHat, Plus, Minus, Trash2, ScrollText, X, Loader2, ChevronLeft, ChevronRight, Timer, Check, Copy, ShieldOff } from "lucide-react";
+import { ChefHat, Plus, Minus, Trash2, ScrollText, X, Loader2, Timer, Check, Copy, ShieldOff } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -70,23 +70,42 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
   const instances = useRecipes((s) => s.instances);
   const fetchRecipes = useRecipes((s) => s.fetchRecipes);
   const fetchInstances = useRecipes((s) => s.fetchInstances);
-  const [showForm, setShowForm] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickedRecipeId, setPickedRecipeId] = useState<string | null>(null);
+  const pickerWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchRecipes();
     fetchInstances();
   }, [fetchRecipes, fetchInstances]);
 
+  // Close popover on outside click
+  useEffect(() => {
+    if (!showPicker) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (pickerWrapRef.current && !pickerWrapRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [showPicker]);
+
   // Filter instances that belong to this zone
   const zoneInstances = useMemo(() => {
     return instances.filter((inst) => inst.params.zone === zoneId);
   }, [instances, zoneId]);
 
+  const handlePickRecipe = (recipeId: string) => {
+    setShowPicker(false);
+    setPickedRecipeId(recipeId);
+  };
+
   if (recipes.length === 0 && zoneInstances.length === 0) return null;
 
   return (
-    <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/8">
+    <div className="rounded-[10px] border border-border bg-surface">
+      <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/8 rounded-t-[10px]">
         <span className="text-accent">
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
@@ -96,13 +115,23 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         <span className="text-[11px] text-text-tertiary ml-auto tabular-nums">
           {zoneInstances.length}
         </span>
-        <button
-          onClick={() => setShowForm(true)}
-          className="ml-2 p-1 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-          title={t("recipes.addRecipe")}
-        >
-          <Plus size={14} strokeWidth={1.5} />
-        </button>
+        <div ref={pickerWrapRef} className="relative ml-2">
+          <button
+            onClick={() => setShowPicker((v) => !v)}
+            className="p-1 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+            title={t("recipes.addRecipe")}
+          >
+            <Plus size={14} strokeWidth={1.5} />
+          </button>
+          {showPicker && (
+            <RecipePickerPopover
+              recipes={recipes}
+              zoneId={zoneId}
+              onPick={handlePickRecipe}
+              onClose={() => setShowPicker(false)}
+            />
+          )}
+        </div>
       </div>
 
       {zoneInstances.length > 0 && (
@@ -113,11 +142,11 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         </div>
       )}
 
-      {zoneInstances.length === 0 && !showForm && (
+      {zoneInstances.length === 0 && !pickedRecipeId && (
         <div className="flex items-center justify-center gap-2 px-4 py-3 text-[12px] text-text-tertiary">
           <span>{t("recipes.noActiveRecipes", { name: zoneName })}</span>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => setShowPicker(true)}
             className="text-primary hover:text-primary-hover transition-colors duration-150"
           >
             {t("recipes.addRecipe")}
@@ -125,14 +154,152 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         </div>
       )}
 
-      {showForm && (
+      {pickedRecipeId && (
         <AddRecipeForm
           zoneId={zoneId}
           recipes={recipes}
-          onClose={() => setShowForm(false)}
+          initialRecipeId={pickedRecipeId}
+          onClose={() => setPickedRecipeId(null)}
         />
       )}
     </div>
+  );
+}
+
+// ============================================================
+// Recipe picker popover — opens from the "+" button in the zone header
+// ============================================================
+
+function RecipePickerPopover({
+  recipes,
+  zoneId,
+  onPick,
+  onClose,
+}: {
+  recipes: RecipeInfo[];
+  zoneId: string;
+  onPick: (recipeId: string) => void;
+  onClose: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("fr") ? "fr" : "en";
+  const equipments = useEquipments((s) => s.equipments);
+  const instances = useRecipes((s) => s.instances);
+  const zoneTree = useZones((s) => s.tree);
+
+  const zoneAndDescendantIds = useMemo(() => {
+    const ids = new Set<string>();
+    const collect = (nodes: ZoneWithChildren[], inside: boolean): void => {
+      for (const n of nodes) {
+        const here = inside || n.id === zoneId;
+        if (here) ids.add(n.id);
+        if (n.children.length > 0) collect(n.children, here);
+      }
+    };
+    collect(zoneTree, false);
+    return ids;
+  }, [zoneTree, zoneId]);
+
+  const usedLightIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const inst of instances) {
+      if (inst.params.zone !== zoneId) continue;
+      if (typeof inst.params.light === "string") ids.add(inst.params.light);
+      if (Array.isArray(inst.params.lights)) {
+        for (const id of inst.params.lights) {
+          if (typeof id === "string") ids.add(id);
+        }
+      }
+    }
+    return ids;
+  }, [instances, zoneId]);
+
+  const availableRecipes = useMemo(() => {
+    return recipes.filter((recipe) => {
+      for (const slot of recipe.slots) {
+        if (slot.type !== "equipment" || !slot.required) continue;
+        const isCrossZone = slot.constraints?.crossZone === true;
+        const includeDescendants = slot.constraints?.includeDescendants === true;
+        const matches = equipments.some((eq) => {
+          if (!isCrossZone) {
+            const allowed = includeDescendants
+              ? zoneAndDescendantIds.has(eq.zoneId)
+              : eq.zoneId === zoneId;
+            if (!allowed) return false;
+          }
+          if (!slot.list && usedLightIds.has(eq.id)) return false;
+          if (slot.constraints?.equipmentType) {
+            return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
+          }
+          return true;
+        });
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [recipes, equipments, zoneId, zoneAndDescendantIds, usedLightIds]);
+
+  const list = availableRecipes.length === 0 ? (
+    <div className="px-3 py-4 text-center text-[12px] text-text-tertiary">
+      {t("recipes.noRecipesAvailable")}
+    </div>
+  ) : (
+    availableRecipes.map((recipe) => (
+      <button
+        key={recipe.id}
+        onClick={() => onPick(recipe.id)}
+        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] hover:bg-border-light/60 transition-colors duration-150 text-left"
+      >
+        <div className="w-7 h-7 rounded-[6px] bg-accent/10 text-accent flex items-center justify-center flex-shrink-0">
+          <ChefHat size={14} strokeWidth={1.5} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium text-text leading-tight">
+            {recipeName(recipe, lang)}
+          </div>
+          <div
+            className="text-[11px] text-text-tertiary leading-snug mt-0.5 overflow-hidden"
+            style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+          >
+            {recipeDescription(recipe, lang)}
+          </div>
+        </div>
+      </button>
+    ))
+  );
+
+  return (
+    <>
+      {/* Desktop side-popover: opens to the right of the "+" button */}
+      <div className="hidden sm:block absolute left-full top-0 ml-1 z-20 w-[320px] max-h-[360px] overflow-y-auto bg-surface border border-border rounded-[8px] shadow-lg p-1">
+        {list}
+      </div>
+
+      {/* Mobile bottom sheet with backdrop */}
+      <div className="sm:hidden">
+        <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+        <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] flex flex-col bg-surface border-t border-border rounded-t-[16px] shadow-xl">
+          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-border" />
+          </div>
+          <div className="flex items-center justify-between px-4 pb-2 flex-shrink-0">
+            <span className="text-[13px] font-semibold text-text">{t("recipes.addRecipe")}</span>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60"
+            >
+              <X size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+          <div
+            className="flex-1 overflow-y-auto p-1 pb-[env(safe-area-inset-bottom,0px)]"
+            style={{ overscrollBehavior: "contain" }}
+          >
+            {list}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1462,15 +1629,15 @@ function EquipmentListPicker({
 // Add recipe wizard (step 1: choose recipe, step 2: configure)
 // ============================================================
 
-type WizardStep = "choose" | "configure";
-
 function AddRecipeForm({
   zoneId,
   recipes,
+  initialRecipeId,
   onClose,
 }: {
   zoneId: string;
   recipes: RecipeInfo[];
+  initialRecipeId: string;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -1480,8 +1647,7 @@ function AddRecipeForm({
   const equipments = useEquipments((s) => s.equipments);
   const zoneAggregation = useZoneAggregation((s) => s.data);
   const zoneTree = useZones((s) => s.tree);
-  const [step, setStep] = useState<WizardStep>("choose");
-  const [selectedRecipeId, setSelectedRecipeId] = useState("");
+  const selectedRecipeId = initialRecipeId;
   const [params, setParams] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -1558,31 +1724,6 @@ function AddRecipeForm({
     });
   };
 
-  // Check if a recipe has available equipment slots (to disable recipes with no free lights)
-  const hasAvailableEquipments = (recipe: RecipeInfo): boolean => {
-    for (const slot of recipe.slots) {
-      if (slot.type !== "equipment") continue;
-      if (!slot.required) continue; // optional equipment slots don't block creation
-      const isCrossZone = slot.constraints?.crossZone === true;
-      const includeDescendants = slot.constraints?.includeDescendants === true;
-      const available = equipments.filter((eq) => {
-        if (!isCrossZone) {
-          const allowed = includeDescendants
-            ? zoneAndDescendantIds.has(eq.zoneId)
-            : eq.zoneId === zoneId;
-          if (!allowed) return false;
-        }
-        if (!slot.list && usedLightIds.has(eq.id)) return false;
-        if (slot.constraints?.equipmentType) {
-          return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
-        }
-        return true;
-      });
-      if (available.length === 0) return false;
-    }
-    return true;
-  };
-
   // Hide luxThreshold when zone has no lux sensor
   const shouldShowSlot = (slotId: string): boolean => {
     if (slotId === "luxThreshold") {
@@ -1617,17 +1758,6 @@ function AddRecipeForm({
     }
     setVisibleGroups(requiredGroups); // eslint-disable-line react-hooks/set-state-in-effect -- sync with recipe selection
   }, [selectedRecipeId, selectedRecipe, zoneId]);
-
-  const handleSelectRecipe = (recipeId: string) => {
-    setSelectedRecipeId(recipeId);
-    setStep("configure");
-  };
-
-  const handleBack = () => {
-    setStep("choose");
-    setSelectedRecipeId("");
-    setError("");
-  };
 
   const handleSubmit = async () => {
     if (!selectedRecipe) return;
@@ -1664,98 +1794,15 @@ function AddRecipeForm({
     <div className="border-t border-border-light px-4 py-3 bg-border-light/20">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {step === "configure" && (
-            <button
-              onClick={handleBack}
-              className="p-1 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
-            >
-              <ChevronLeft size={14} strokeWidth={1.5} />
-            </button>
-          )}
-          <span className="text-[13px] font-medium text-text">
-            {step === "choose" ? t("recipes.chooseRecipe") : selectedRecipe ? recipeName(selectedRecipe, lang) : ""}
-          </span>
-        </div>
+        <span className="text-[13px] font-medium text-text">
+          {selectedRecipe ? recipeName(selectedRecipe, lang) : ""}
+        </span>
         <button onClick={onClose} className="p-1 text-text-tertiary hover:text-text transition-colors duration-150">
           <X size={14} strokeWidth={1.5} />
         </button>
       </div>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`h-1 flex-1 rounded-full ${step === "choose" ? "bg-primary" : "bg-primary/30"}`} />
-        <div className={`h-1 flex-1 rounded-full ${step === "configure" ? "bg-primary" : "bg-border-light"}`} />
-      </div>
-
-      {/* Step 1: Choose recipe */}
-      {step === "choose" && (() => {
-        const allUnavailable = recipes.length > 0 && recipes.every((r) => !hasAvailableEquipments(r));
-
-        if (allUnavailable) {
-          return (
-            <div className="text-center py-4">
-              <p className="text-[13px] text-text-secondary">
-                {t("recipes.allLightsManaged")}
-              </p>
-              <p className="text-[11px] text-text-tertiary mt-1">
-                {t("recipes.deleteSuggestion")}
-              </p>
-              <button
-                onClick={onClose}
-                className="mt-3 px-4 py-1.5 bg-border-light text-text-secondary text-[12px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
-              >
-                {t("common.close")}
-              </button>
-            </div>
-          );
-        }
-
-        return (
-          <div className="space-y-2">
-            {recipes.map((recipe) => {
-              const available = hasAvailableEquipments(recipe);
-              return (
-                <button
-                  key={recipe.id}
-                  onClick={() => available && handleSelectRecipe(recipe.id)}
-                  disabled={!available}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border transition-all duration-150 text-left group ${
-                    available
-                      ? "border-border hover:border-primary/40 hover:bg-primary/5"
-                      : "border-border-light opacity-50 cursor-not-allowed"
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-[6px] flex items-center justify-center flex-shrink-0 transition-colors duration-150 ${
-                    available ? "bg-accent/10 group-hover:bg-accent/15" : "bg-border-light"
-                  }`}>
-                    <ChefHat size={16} strokeWidth={1.5} className={available ? "text-accent" : "text-text-tertiary"} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium text-text">
-                      {recipeName(recipe, lang)}
-                    </div>
-                    <div className="text-[11px] text-text-tertiary line-clamp-1">
-                      {available ? recipeDescription(recipe, lang) : t("recipes.allLightsManagedShort")}
-                    </div>
-                  </div>
-                  {available && (
-                    <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary group-hover:text-primary flex-shrink-0 transition-colors duration-150" />
-                  )}
-                </button>
-              );
-            })}
-            {recipes.length === 0 && (
-              <p className="text-[13px] text-text-tertiary text-center py-4">
-                {t("recipes.noRecipesAvailable")}
-              </p>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Step 2: Configure parameters */}
-      {step === "configure" && selectedRecipe && (
+      {selectedRecipe && (
         <>
           <p className="text-[11px] text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
 
