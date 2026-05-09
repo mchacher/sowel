@@ -104,8 +104,8 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
   if (recipes.length === 0 && zoneInstances.length === 0) return null;
 
   return (
-    <div className="rounded-[10px] border border-border bg-surface overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/8">
+    <div className="rounded-[10px] border border-border bg-surface">
+      <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/8 rounded-t-[10px]">
         <span className="text-accent">
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
@@ -128,6 +128,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
               recipes={recipes}
               zoneId={zoneId}
               onPick={handlePickRecipe}
+              onClose={() => setShowPicker(false)}
             />
           )}
         </div>
@@ -173,10 +174,12 @@ function RecipePickerPopover({
   recipes,
   zoneId,
   onPick,
+  onClose,
 }: {
   recipes: RecipeInfo[];
   zoneId: string;
   onPick: (recipeId: string) => void;
+  onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
@@ -236,37 +239,67 @@ function RecipePickerPopover({
     });
   }, [recipes, equipments, zoneId, zoneAndDescendantIds, usedLightIds]);
 
-  return (
-    <div className="absolute right-0 top-full mt-1 z-20 w-[320px] max-h-[320px] overflow-y-auto bg-surface border border-border rounded-[8px] shadow-lg p-1">
-      {availableRecipes.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-text-tertiary">
-          {t("recipes.noRecipesAvailable")}
-        </div>
-      ) : (
-        availableRecipes.map((recipe) => (
-          <button
-            key={recipe.id}
-            onClick={() => onPick(recipe.id)}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] hover:bg-border-light/60 transition-colors duration-150 text-left"
-          >
-            <div className="w-7 h-7 rounded-[6px] bg-accent/10 text-accent flex items-center justify-center flex-shrink-0">
-              <ChefHat size={14} strokeWidth={1.5} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-text leading-tight">
-                {recipeName(recipe, lang)}
-              </div>
-              <div
-                className="text-[11px] text-text-tertiary leading-snug mt-0.5 overflow-hidden"
-                style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
-              >
-                {recipeDescription(recipe, lang)}
-              </div>
-            </div>
-          </button>
-        ))
-      )}
+  const list = availableRecipes.length === 0 ? (
+    <div className="px-3 py-4 text-center text-[12px] text-text-tertiary">
+      {t("recipes.noRecipesAvailable")}
     </div>
+  ) : (
+    availableRecipes.map((recipe) => (
+      <button
+        key={recipe.id}
+        onClick={() => onPick(recipe.id)}
+        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] hover:bg-border-light/60 transition-colors duration-150 text-left"
+      >
+        <div className="w-7 h-7 rounded-[6px] bg-accent/10 text-accent flex items-center justify-center flex-shrink-0">
+          <ChefHat size={14} strokeWidth={1.5} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium text-text leading-tight">
+            {recipeName(recipe, lang)}
+          </div>
+          <div
+            className="text-[11px] text-text-tertiary leading-snug mt-0.5 overflow-hidden"
+            style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+          >
+            {recipeDescription(recipe, lang)}
+          </div>
+        </div>
+      </button>
+    ))
+  );
+
+  return (
+    <>
+      {/* Desktop side-popover: opens to the right of the "+" button */}
+      <div className="hidden sm:block absolute left-full top-0 ml-1 z-20 w-[320px] max-h-[360px] overflow-y-auto bg-surface border border-border rounded-[8px] shadow-lg p-1">
+        {list}
+      </div>
+
+      {/* Mobile bottom sheet with backdrop */}
+      <div className="sm:hidden">
+        <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+        <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] flex flex-col bg-surface border-t border-border rounded-t-[16px] shadow-xl">
+          <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-border" />
+          </div>
+          <div className="flex items-center justify-between px-4 pb-2 flex-shrink-0">
+            <span className="text-[13px] font-semibold text-text">{t("recipes.addRecipe")}</span>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60"
+            >
+              <X size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+          <div
+            className="flex-1 overflow-y-auto p-1 pb-[env(safe-area-inset-bottom,0px)]"
+            style={{ overscrollBehavior: "contain" }}
+          >
+            {list}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
