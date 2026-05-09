@@ -84,8 +84,47 @@ interface RecipeSlotDef {
     equipmentType?: EquipmentType | EquipmentType[]; // Filter equipment selector
     min?: number;
     max?: number;
+    crossZone?: boolean; // Allow picking equipments from any zone
+    includeDescendants?: boolean; // Widen candidates to descendant zones
   };
 }
+```
+
+### Equipment slot scope: `crossZone` and `includeDescendants`
+
+By default, an `equipment` slot's picker is filtered to equipments that live in the recipe's `zone`. Two constraints widen that set:
+
+| Constraint           | Effect                                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `crossZone`          | Lets the user pick an equipment from **any** zone in the system. Useful for triggers like "the gate" that semantically belong to a different zone than the action.  |
+| `includeDescendants` | Widens the candidate set to the recipe zone **plus all descendant zones**. Useful when the actuators (e.g. lights) live in subzones rather than directly in `zone`. |
+
+The two flags are independent: `crossZone` ignores zone scope entirely, while `includeDescendants` keeps the zone-rooted scope but recursively includes children. A picker with both set behaves like `crossZone` alone.
+
+```typescript
+slots: RecipeSlotDef[] = [
+  { id: "zone", name: "Zone", description: "...", type: "zone", required: true },
+  {
+    id: "trigger",
+    name: "Trigger equipment",
+    description: "Equipment whose state change fires the recipe",
+    type: "equipment",
+    required: true,
+    constraints: { crossZone: true }, // can be in another zone
+  },
+  {
+    id: "lights",
+    name: "Lights",
+    description: "Lights to turn on",
+    type: "equipment",
+    required: true,
+    list: true,
+    constraints: {
+      equipmentType: ["light_onoff", "light_dimmable"],
+      includeDescendants: true, // lights may live in subzones of `zone`
+    },
+  },
+];
 ```
 
 **Common slot patterns:**

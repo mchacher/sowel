@@ -56,7 +56,23 @@ Go to **Settings > Tariff Configuration**:
 !!! tip
 If no tariff is configured, all consumption is classified as HP by default. The Energy page still works -- you just do not see the HP/HC breakdown.
 
-### Step 4: (Optional) Set up production tracking
+### Step 4: (Optional) Set up submeters for a by-usage breakdown
+
+You can add **submeter equipments** of type `energy_meter` on dedicated circuits (heat pump, pool, EV charger, etc.) to break down what your main meter measures into named usages.
+
+To set up a submeter:
+
+1. Bind a Zigbee or Wi-Fi power clamp / energy plug to the relevant circuit (e.g., a Legrand GEM clamp on the heat pump line).
+2. Go to **Administration > Equipments** and create an equipment of type **Energy Meter**.
+3. Bind it to the clamp's `energy` (Wh) **or** `power` (W) data — both are accepted.
+4. If your device only reports `power` (W), Sowel integrates it locally in the background and produces a Wh stream attributed to that submeter equipment. No extra configuration needed.
+
+Once at least one submeter is configured, the Energy page shows a **Total / By usage** toggle. The "By usage" view renders a stacked bar chart with one stack per submeter, plus an **Other** stack for the residual not captured by any submeter (i.e. `main meter - sum of submeters`).
+
+!!! tip "Power-only submeters resume cleanly across restarts"
+The cumulative Wh value for each submeter is persisted to SQLite and resumes after a restart. There is no backfill of the off-period, and the integrator freezes the value if the device stops reporting for more than ~10 minutes (so a flaky clamp does not produce runaway numbers).
+
+### Step 5: (Optional) Set up production tracking
 
 If you have solar panels, create an equipment of type **energy_production_meter** and bind it to your production meter device. Sowel will then track:
 
@@ -87,6 +103,15 @@ A bar chart showing energy consumption over the selected period. Each bar is col
 - **Blue** -- grid consumption
 - **Light blue** -- off-peak (HC) portion, if HP/HC is configured
 - **Green** -- autoconsumption, if production tracking is configured
+
+#### Total / By usage toggle
+
+If you have configured at least one submeter (see [Step 4](#step-4-optional-set-up-submeters-for-a-by-usage-breakdown)), a **Total / By usage** toggle appears above the chart:
+
+- **Total** -- the standard HP/HC/production view described above
+- **By usage** -- a stacked bar chart with one color per submeter (e.g. PAC, Pool) plus an **Other** residual that represents what the main meter saw but no submeter accounted for
+
+The toggle is hidden when no submeter is configured. Totals widgets (HP/HC, autoconsumption) keep their values across both views.
 
 ### Totals
 

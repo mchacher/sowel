@@ -71,8 +71,21 @@ Integration message (MQTT, cloud API poll, etc.)
                   -> Actions may emit Orders -> Integration Plugin -> device
             -> MQTT Publish Service (outbound to external brokers, with optional on-change filter)
             -> Notification Publish Service (Telegram, etc.)
+            -> Submeter Integrator (for power-only `energy_meter` equipments — see below)
             -> WebSocket pushes to UI clients
 ```
+
+### Power-only submeter integration (spec 091)
+
+When an `energy_meter` equipment is bound to a device that exposes only instantaneous power (W) and not cumulative energy (Wh), the **`SubmeterIntegrator`** in `src/energy/power-submeter-integrator.ts` synthesizes the missing `energy` stream:
+
+- On every `equipment.data.changed` event with `alias = "power"` for an `energy_meter`, the integrator updates an in-memory cumulative Wh value via **trapezoidal integration** between the previous and current sample (`(prevW + currW) / 2 * Δt`). Negative or stale (>10 min gap) samples are clamped to avoid runaway values.
+- Once per minute, a **flush ticker** writes the cumulative value to InfluxDB on the submeter's `equipmentId` with `category=energy`, hitting the same buckets and downsampling tasks as the main meter (no new buckets, no new tasks).
+- The submeter writer skips the HP/HC tariff split (submeters are usage-only, not tariff-bucketed).
+- State (`pending_wh`, `last_sample_at`, `last_sample_w`, `last_write_at`) is **persisted to SQLite** in `submeter_integrator_state` so cumulative values resume after a restart with no backfill of the off-period.
+- Steady-state devices (constant power, no fresh events) are still flushed on the minute ticker — it acts as a heartbeat that keeps the integrated value monotonic.
+
+This makes the by-usage breakdown chart possible without requiring meters that natively report Wh.
 
 ### Event Bus
 
@@ -215,6 +228,7 @@ Settings for integrations are stored in SQLite `settings` under `integration.<id
 | `presence-heater`       | `mchacher/sowel-recipe-presence-heater`       | recipe      |
 | `presence-thermostat`   | `mchacher/sowel-recipe-presence-thermostat`   | recipe      |
 | `state-watch`           | `mchacher/sowel-recipe-state-watch`           | recipe      |
+| `state-trigger-light`   | `mchacher/sowel-recipe-state-trigger-light`   | recipe      |
 
 The live list is in `plugins/registry.json` at the repo root.
 

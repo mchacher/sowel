@@ -228,12 +228,13 @@ All user management routes require admin role.
 
 ## Energy
 
-| Method | Path                             | Description                                                                                                                                       |
-| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/energy/status`          | Energy module status (available, sources, tariff configured).                                                                                     |
-| `GET`  | `/api/v1/energy/history`         | Query energy history. Query: `?period=day&date=2026-01-15`. Periods: `day`, `week`, `month`, `year`. Returns HP/HC breakdown and production data. |
-| `GET`  | `/api/v1/settings/energy/tariff` | Get tariff configuration (HP/HC schedules and prices).                                                                                            |
-| `PUT`  | `/api/v1/settings/energy/tariff` | Update tariff configuration. Body: `{ schedules, prices }`.                                                                                       |
+| Method | Path                             | Description                                                                                                                                                                                                                                                    |
+| ------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/energy/status`          | Energy module status (available, sources, tariff configured).                                                                                                                                                                                                  |
+| `GET`  | `/api/v1/energy/history`         | Query energy history. Query: `?period=day&date=2026-01-15`. Periods: `day`, `week`, `month`, `year`. Returns HP/HC breakdown and production data.                                                                                                              |
+| `GET`  | `/api/v1/energy/by-usage`        | Per-submeter consumption time series for the same period buckets as `/energy/history`. Query: `?period=day&date=2026-01-15`. Returns one series per submeter `energy_meter` plus an `other` residual (`max(0, total - Σ submeters)`) and per-equipment totals. |
+| `GET`  | `/api/v1/settings/energy/tariff` | Get tariff configuration (HP/HC schedules and prices).                                                                                                                                                                                                         |
+| `PUT`  | `/api/v1/settings/energy/tariff` | Update tariff configuration. Body: `{ schedules, prices }`.                                                                                                                                                                                                    |
 
 ---
 
@@ -309,17 +310,19 @@ External MQTT brokers for outbound publishing.
 
 Outbound MQTT publishers that push Sowel data to external brokers. Each publisher targets a single MQTT topic and can have multiple data mappings (equipment, zone, or recipe sources). When `onChangeOnly` is enabled, the publisher only publishes when a value actually changes — useful to avoid flooding external displays with periodic heartbeats.
 
-| Method   | Path                                              | Description                                                                      |
-| -------- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/mqtt-publishers`                         | List all publishers with mappings.                                               |
-| `GET`    | `/api/v1/mqtt-publishers/:id`                     | Get publisher with mappings.                                                     |
-| `POST`   | `/api/v1/mqtt-publishers`                         | Create publisher. Body: `{ name, brokerId, topic, enabled?, onChangeOnly? }`.    |
-| `PUT`    | `/api/v1/mqtt-publishers/:id`                     | Update publisher. Body: `{ name?, brokerId?, topic?, enabled?, onChangeOnly? }`. |
-| `DELETE` | `/api/v1/mqtt-publishers/:id`                     | Delete publisher. Returns 204.                                                   |
-| `POST`   | `/api/v1/mqtt-publishers/:id/test`                | Test publish a snapshot.                                                         |
-| `POST`   | `/api/v1/mqtt-publishers/:id/mappings`            | Add data mapping. Body: `{ publishKey, sourceType, sourceId, sourceKey }`.       |
-| `PUT`    | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Update mapping.                                                                  |
-| `DELETE` | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Delete mapping. Returns 204.                                                     |
+Each mapping carries its own `enabled` flag (default `true`). Disabled mappings are skipped in live publishing, the initial snapshot, and the manual "Test" button — so a seasonal source can be silenced without losing its source/key wiring. The publisher-level `enabled` flag still wins: if the publisher is off, all its mappings are off regardless of their per-mapping flag.
+
+| Method   | Path                                              | Description                                                                                                                                                          |
+| -------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/mqtt-publishers`                         | List all publishers with mappings.                                                                                                                                   |
+| `GET`    | `/api/v1/mqtt-publishers/:id`                     | Get publisher with mappings.                                                                                                                                         |
+| `POST`   | `/api/v1/mqtt-publishers`                         | Create publisher. Body: `{ name, brokerId, topic, enabled?, onChangeOnly? }`.                                                                                        |
+| `PUT`    | `/api/v1/mqtt-publishers/:id`                     | Update publisher. Body: `{ name?, brokerId?, topic?, enabled?, onChangeOnly? }`.                                                                                     |
+| `DELETE` | `/api/v1/mqtt-publishers/:id`                     | Delete publisher. Returns 204.                                                                                                                                       |
+| `POST`   | `/api/v1/mqtt-publishers/:id/test`                | Test publish a snapshot.                                                                                                                                             |
+| `POST`   | `/api/v1/mqtt-publishers/:id/mappings`            | Add data mapping. Body: `{ publishKey, sourceType, sourceId, sourceKey, enabled? }`. `enabled` defaults to `true` when omitted.                                      |
+| `PUT`    | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Update mapping. Accepts `{ publishKey?, sourceType?, sourceId?, sourceKey?, enabled? }` — the `enabled` flag toggles publishing on/off without deleting the mapping. |
+| `DELETE` | `/api/v1/mqtt-publishers/:id/mappings/:mappingId` | Delete mapping. Returns 204.                                                                                                                                         |
 
 ---
 
