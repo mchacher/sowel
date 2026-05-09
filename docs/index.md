@@ -35,33 +35,35 @@ Your house stops being a side project. It just works.
 
 ## What makes Sowel singular
 
+Sowel starts by **standardizing what's in your house**: lights, shutters, thermostats, sensors, energy meters. Once your home is described in those terms, everything else — zones, modes, recipes — follows naturally.
+
 <div class="grid cards" markdown>
 
-- :material-chef-hat:{ .lg .middle } **Recipes, not scripts**
+- :material-home-outline:{ .lg .middle } **Equipments — a standard vocabulary for your home**
 
   ***
 
-  Each recipe is a curated automation pattern: motion-triggered lighting, presence-based heating, scheduled irrigation, sunset shutters. You drop it on a zone, set a few values, and it runs.
-
-  No flows to wire. No edge cases to chase.
-
-- :material-home-outline:{ .lg .middle } **Equipments, not devices**
-
-  ***
-
-  Three switches and a motion sensor in your kitchen become one _Kitchen Lights_ equipment. Network plumbing vanishes into something you can name, group, and reason about.
+  Sowel turns the wiring of your house into a small, well-defined catalogue: lights, shutters, thermostats, motion sensors, energy meters. Three switches and a motion sensor in your kitchen become one _Kitchen Lights_ equipment — something you can name, group, and reason about.
 
 - :material-shape-outline:{ .lg .middle } **Zones that aggregate themselves**
 
   ***
 
-  A zone called _Ground Floor_ tells you the average temperature, the brightest room, the highest humidity — automatically. No formulas, no glue code, no dashboards to wire.
+  Group equipments into zones — by room, by floor, by purpose. A zone called _Ground Floor_ tells you the average temperature, the brightest room, the highest humidity — automatically. No formulas, no glue code, no dashboards to wire.
 
 - :material-weather-night:{ .lg .middle } **Modes that switch the whole house**
 
   ***
 
   Day, Night, Holiday, Cocoon — one tap flips your home over: dimmer lights, lower thermostats, closed shutters. Modes follow a calendar that knows when you're away.
+
+- :material-chef-hat:{ .lg .middle } **Recipes, not scripts**
+
+  ***
+
+  Drop a curated automation pattern onto a zone — motion-triggered lighting, presence-based heating, scheduled irrigation, sunset shutters — set a few values, and it runs.
+
+  No flows to wire. No edge cases to chase.
 
 </div>
 
