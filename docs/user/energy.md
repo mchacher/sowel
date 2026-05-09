@@ -62,15 +62,11 @@ You can add **submeter equipments** of type `energy_meter` on dedicated circuits
 
 To set up a submeter:
 
-1. Bind a Zigbee or Wi-Fi power clamp / energy plug to the relevant circuit (e.g., a Legrand GEM clamp on the heat pump line).
+1. Bind a Zigbee or Wi-Fi energy meter / energy plug to the relevant circuit.
 2. Go to **Administration > Equipments** and create an equipment of type **Energy Meter**.
-3. Bind it to the clamp's `energy` (Wh) **or** `power` (W) data — both are accepted.
-4. If your device only reports `power` (W), Sowel integrates it locally in the background and produces a Wh stream attributed to that submeter equipment. No extra configuration needed.
+3. Bind it to the device's `energy` (Wh) data.
 
 Once at least one submeter is configured, the Energy page shows a **Total / By usage** toggle. The "By usage" view renders a stacked bar chart with one stack per submeter, plus an **Other** stack for the residual not captured by any submeter (i.e. `main meter - sum of submeters`).
-
-!!! tip "Power-only submeters resume cleanly across restarts"
-The cumulative Wh value for each submeter is persisted to SQLite and resumes after a restart. There is no backfill of the off-period, and the integrator freezes the value if the device stops reporting for more than ~10 minutes (so a flaky clamp does not produce runaway numbers).
 
 ### Step 5: (Optional) Set up production tracking
 

@@ -151,10 +151,7 @@ Physical button or remote control. Not directly controlled -- used as a trigger 
 Tracks energy consumption for a specific circuit or device. Often used as a **submeter** on a dedicated line (heat pump, pool, EV charger) to feed the [by-usage breakdown](energy.md#total-by-usage-toggle) on the Energy page.
 
 - **Controls:** Power (W) and daily energy (Wh/kWh) display
-- **Expected data:** instantaneous power **or** cumulative energy — the device only needs to expose one of the two
-
-!!! tip "Power-only meters are supported"
-If your device only reports instantaneous power (W) — typical of cheap Zigbee clamps such as the Legrand GEM — Sowel integrates the signal in the background to produce a cumulative Wh stream. The Wh value resumes across restarts and is what the by-usage chart displays.
+- **Expected data:** cumulative energy (Wh)
 
 #### Main Energy Meter
 
