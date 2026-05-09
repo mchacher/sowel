@@ -13,3 +13,139 @@
   --md-primary-fg-color--dark: #13405A;
   --md-accent-fg-color: #D4963F;
 }
+
+/* ============================================================
+   Landing page hero
+   ============================================================ */
+
+.sowel-hero {
+  text-align: center;
+  padding: 2.5rem 0 1rem;
+  margin-bottom: 2rem;
+}
+
+.sowel-hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0.75rem 0 0.5rem;
+  border-bottom: none;
+  color: var(--md-primary-fg-color);
+}
+
+.sowel-hero p {
+  font-size: 1.15rem;
+  color: var(--md-default-fg-color--light);
+  margin: 0.5rem auto 1.25rem;
+  max-width: 36rem;
+  line-height: 1.5;
+}
+
+.sowel-hero p em {
+  color: var(--md-accent-fg-color);
+  font-style: normal;
+  font-weight: 600;
+}
+
+[data-md-color-scheme="slate"] .sowel-hero h1 {
+  color: #6FB3D9;
+}
+
+/* Logo — winking house */
+.sowel-logo {
+  width: 140px;
+  height: 140px;
+  filter: drop-shadow(0 4px 12px rgba(26, 79, 110, 0.15));
+}
+
+.sowel-logo path {
+  fill: none;
+  stroke: var(--md-primary-fg-color);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+[data-md-color-scheme="slate"] .sowel-logo path {
+  stroke: #6FB3D9;
+}
+
+.sowel-logo .house     { stroke-width: 12; }
+.sowel-logo .smile     { stroke-width: 9; }
+.sowel-logo .left-eye,
+.sowel-logo .right-eye { stroke-width: 8; }
+
+/* The wink — right eye scales down briefly every 5s */
+.sowel-logo .right-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sowel-wink 5s ease-in-out infinite;
+}
+
+@keyframes sowel-wink {
+  0%, 88%, 100% { transform: scaleY(1); }
+  91%, 95%      { transform: scaleY(0.05); }
+}
+
+/* Hover: house "nods" subtly */
+.sowel-logo:hover {
+  animation: sowel-nod 0.6s ease-in-out;
+}
+@keyframes sowel-nod {
+  0%, 100% { transform: rotate(0); }
+  25%      { transform: rotate(-3deg); }
+  75%      { transform: rotate(3deg); }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .sowel-logo .right-eye { animation: none; }
+  .sowel-logo:hover      { animation: none; }
+}
+
+/* CTA buttons row */
+.sowel-hero .md-button {
+  margin: 0.25rem;
+}
+
+/* Tagline mobile */
+@media (max-width: 600px) {
+  .sowel-hero h1 { font-size: 2.25rem; }
+  .sowel-hero p  { font-size: 1rem; }
+  .sowel-logo    { width: 110px; height: 110px; }
+}
+
+/* ============================================================
+   Pills row (What's inside)
+   ============================================================ */
+
+.sowel-pills ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.sowel-pills li {
+  background: var(--md-code-bg-color);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  border-left: 3px solid var(--md-accent-fg-color);
+}
+
+.sowel-pills li strong { color: var(--md-primary-fg-color); }
+[data-md-color-scheme="slate"] .sowel-pills li strong { color: #6FB3D9; }
+
+/* ============================================================
+   Footer line
+   ============================================================ */
+
+.sowel-foot {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 3rem;
+}
