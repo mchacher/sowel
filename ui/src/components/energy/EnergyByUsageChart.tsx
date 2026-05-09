@@ -18,8 +18,27 @@ interface Props {
   height?: number;
 }
 
-const OTHER_COLOR = "#94A3B8";
+const OTHER_COLOR = "#CBD5E1";
 const OTHER_KEY = "__other__";
+
+/** SVG path for a rectangle with only top corners rounded — same helper
+ *  as EnergyBarChart so the topmost segment of a stack matches the
+ *  rounded look of the total view. */
+function roundedTopRect(x: number, y: number, w: number, h: number, r: number): string {
+  const radius = Math.min(r, h, w / 2);
+  return `M${x},${y + h} L${x},${y + radius} Q${x},${y} ${x + radius},${y} L${x + w - radius},${y} Q${x + w},${y} ${x + w},${y + radius} L${x + w},${y + h}Z`;
+}
+
+/** Returns the id of the topmost non-zero series in a datum's stack.
+ *  Series array is rendered bottom→top, so the topmost is the LAST
+ *  entry with value > 0. */
+function topmostSeriesIdInStack(datum: Datum, series: Series[]): string | null {
+  for (let i = series.length - 1; i >= 0; i--) {
+    const v = datum[series[i].id];
+    if (typeof v === "number" && v > 0) return series[i].id;
+  }
+  return null;
+}
 
 interface Series {
   id: string;
@@ -203,7 +222,20 @@ export function EnergyByUsageChart({ data, period, date, height = 300 }: Props) 
             }}
           />
           {seriesWithI18n.map((s) => (
-            <Bar key={s.id} dataKey={s.id} stackId="usage" fill={s.color} name={s.name} radius={[0, 0, 0, 0]} />
+            <Bar
+              key={s.id}
+              dataKey={s.id}
+              stackId="usage"
+              fill={s.color}
+              name={s.name}
+              shape={(props: { x?: number; y?: number; width?: number; height?: number; payload?: Datum }) => {
+                const { x = 0, y = 0, width: w = 0, height: h = 0, payload } = props;
+                if (h <= 0) return <g />;
+                const isTop = payload ? topmostSeriesIdInStack(payload, seriesWithI18n) === s.id : false;
+                if (isTop) return <path d={roundedTopRect(x, y, w, h, 4)} fill={s.color} />;
+                return <rect x={x} y={y} width={w} height={h} fill={s.color} />;
+              }}
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>
