@@ -160,11 +160,13 @@
       // The hero (page 1) already carries the Sowel logo + wordmark
       // in its copy column, so hide the duplicate header house mark
       // while we're on slide 1; bring it back from slide 2 onward.
+      // We force opacity 1 (not "") because the landing's base CSS
+      // pins it to 0 to prevent a flash on initial load.
       var headerLogo = document.querySelector(".md-header__button.md-logo");
       if (headerLogo) {
         var onHero = progress < 0.5 / (n - 1);
-        headerLogo.style.opacity = onHero ? "0" : "";
-        headerLogo.style.pointerEvents = onHero ? "none" : "";
+        headerLogo.style.opacity = onHero ? "0" : "1";
+        headerLogo.style.pointerEvents = onHero ? "none" : "auto";
       }
     }
 
