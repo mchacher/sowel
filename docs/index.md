@@ -97,11 +97,27 @@ hide:
   </div>
   <div class="sowel-phone sowel-patchwork__mobile sowel-patchwork__mobile--1">
     <div class="sowel-phone__screen">
+      <div class="sowel-phone__status" aria-hidden="true">
+        <span class="sowel-phone__time">9:41</span>
+        <span class="sowel-phone__icons">
+          <svg width="14" height="9" viewBox="0 0 14 9" fill="currentColor"><rect x="0" y="6" width="2" height="3" rx="0.5"/><rect x="3.5" y="4" width="2" height="5" rx="0.5"/><rect x="7" y="2" width="2" height="7" rx="0.5"/><rect x="10.5" y="0" width="2" height="9" rx="0.5"/></svg>
+          <svg width="11" height="9" viewBox="0 0 11 9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M0.8 2.4 a 7 7 0 0 1 9.4 0"/><path d="M2.6 4.4 a 4 4 0 0 1 5.8 0"/><circle cx="5.5" cy="7" r="0.7" fill="currentColor" stroke="none"/></svg>
+          <svg width="20" height="9" viewBox="0 0 20 9" fill="none"><rect x="0.5" y="0.5" width="17" height="8" rx="2" stroke="currentColor"/><rect x="18.4" y="3" width="1" height="3" rx="0.4" fill="currentColor"/><rect x="2" y="2" width="11" height="5" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
       <img src="/assets/landing/dashboard-mobile.png" alt="Sowel dashboard on mobile" />
     </div>
   </div>
   <div class="sowel-phone sowel-patchwork__mobile sowel-patchwork__mobile--2">
     <div class="sowel-phone__screen">
+      <div class="sowel-phone__status" aria-hidden="true">
+        <span class="sowel-phone__time">9:41</span>
+        <span class="sowel-phone__icons">
+          <svg width="14" height="9" viewBox="0 0 14 9" fill="currentColor"><rect x="0" y="6" width="2" height="3" rx="0.5"/><rect x="3.5" y="4" width="2" height="5" rx="0.5"/><rect x="7" y="2" width="2" height="7" rx="0.5"/><rect x="10.5" y="0" width="2" height="9" rx="0.5"/></svg>
+          <svg width="11" height="9" viewBox="0 0 11 9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M0.8 2.4 a 7 7 0 0 1 9.4 0"/><path d="M2.6 4.4 a 4 4 0 0 1 5.8 0"/><circle cx="5.5" cy="7" r="0.7" fill="currentColor" stroke="none"/></svg>
+          <svg width="20" height="9" viewBox="0 0 20 9" fill="none"><rect x="0.5" y="0.5" width="17" height="8" rx="2" stroke="currentColor"/><rect x="18.4" y="3" width="1" height="3" rx="0.4" fill="currentColor"/><rect x="2" y="2" width="11" height="5" rx="1" fill="currentColor"/></svg>
+        </span>
+      </div>
       <img src="/assets/landing/energy-mobile.png" alt="Sowel energy live view on mobile" />
     </div>
   </div>

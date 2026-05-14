@@ -1624,22 +1624,48 @@ html:has(.sowel-flip) .md-header__topic:first-child {
     0 6px 14px -6px rgba(26, 79, 110, 0.18);
 }
 .sowel-phone__screen {
-  background: #000;
+  background: #fff;
   border-radius: 17px;
   overflow: hidden;
   position: relative;
 }
+[data-md-color-scheme="slate"] .sowel-phone__screen { background: #0F1518; }
+
+/* Faux iOS status bar above the Sowel screenshot: time on the left,
+ * signal / wifi / battery on the right, dynamic island centered. */
+.sowel-phone__status {
+  position: relative;
+  z-index: 1;
+  height: 22px;
+  padding: 0 10% 0 12%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--sowel-ink);
+  font-family: -apple-system, "SF Pro Text", "Inter", sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+[data-md-color-scheme="slate"] .sowel-phone__status { color: #fff; }
+.sowel-phone__time { font-feature-settings: "tnum"; }
+.sowel-phone__icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sowel-phone__icons svg { display: block; }
+
 .sowel-phone__screen::before {
-  /* narrow dynamic island — sits in the top black strip above the
-   * pushed-down screenshot, doesn't cover the real status bar (time,
-   * battery, signal). */
+  /* Narrow dynamic island, centered in the status bar. */
   content: "";
   position: absolute;
-  top: 6px;
+  top: 5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 22%;
-  height: 9px;
+  width: 24%;
+  height: 12px;
   background: #000;
   border-radius: 999px;
   z-index: 2;
@@ -1649,9 +1675,6 @@ html:has(.sowel-flip) .md-header__topic:first-child {
   display: block;
   width: 100%;
   height: auto;
-  /* Push the capture down so the dynamic island stays clear of the
-   * iPhone status bar baked into the screenshot. */
-  margin-top: 22px;
   /* The PWA install banner at the bottom of the captures is cropped
    * by forcing the screen ratio to 390/779 (was 390/844). */
   aspect-ratio: 390 / 779;
@@ -1664,8 +1687,8 @@ html:has(.sowel-flip) .md-header__topic:first-child {
   .sowel-laptop__base { height: 9px; }
   .sowel-phone { padding: 4px; border-radius: 18px; }
   .sowel-phone__screen { border-radius: 14px; }
-  .sowel-phone__screen::before { height: 7px; top: 4px; }
-  .sowel-phone__screen img { margin-top: 16px; }
+  .sowel-phone__screen::before { height: 10px; top: 4px; }
+  .sowel-phone__status { height: 18px; font-size: 8.5px; }
 }
 
 /* === Terminal mock for the "Deploy in minutes" page === */
