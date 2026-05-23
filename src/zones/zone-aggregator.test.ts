@@ -122,8 +122,6 @@ describe("ZoneAggregator", () => {
         shuttersOpen: 0,
         shuttersTotal: 0,
         averageShutterPosition: null,
-        awningsDeployed: 0,
-        awningsTotal: 0,
         waterValvesOpen: 0,
         waterValvesTotal: 0,
         waterFlowTotal: null,
@@ -356,10 +354,10 @@ describe("ZoneAggregator", () => {
       expect(data?.averageShutterPosition).toBe(43); // round((80+0+50)/3) = 43
     });
 
-    it("counts awnings deployed/total separately from shutters", () => {
+    it("ignores awnings in zone aggregates (no awningsTotal/Deployed, no shutter pollution)", () => {
       const zone = zoneManager.create({ name: "Terrasse" });
 
-      // Awning at 50 (deployed)
+      // Awning at 50 (deployed) — must not bump shutter counts
       const devA = seedDevice(db, {
         name: "AwningRtm",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
@@ -369,7 +367,7 @@ describe("ZoneAggregator", () => {
         name: "ShutterRtm",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
       });
-      // Awning at 0 (retracted)
+      // Awning at 0 (retracted) — also must not bump shutter counts
       const devA0 = seedDevice(db, {
         name: "AwningRet",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "0" }],
@@ -395,12 +393,13 @@ describe("ZoneAggregator", () => {
       aggregator.computeAll();
 
       const data = aggregator.getByZoneId(zone.id);
-      expect(data?.awningsTotal).toBe(2);
-      expect(data?.awningsDeployed).toBe(1); // only the one at 50 counts
+      // Awnings are intentionally excluded from zone aggregates (spec 115
+      // scope decision) — only the shutter feeds the shutter counters.
       expect(data?.shuttersTotal).toBe(1);
       expect(data?.shuttersOpen).toBe(1);
-      // averageShutterPosition stays a shutter-only summary — awning is not in it
       expect(data?.averageShutterPosition).toBe(50);
+      // ZoneAggregatedData no longer exposes awningsTotal/awningsDeployed —
+      // the awning dashboard widgets compute their counts locally.
     });
 
     it("returns null averageShutterPosition when no shutters", () => {

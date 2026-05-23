@@ -116,11 +116,9 @@ L'agrégation est **récursive** : une Zone parent agrège ses propres Equipment
 | `lightsOn`               | number         | COUNT (on)         | `light_state`         | Nombre de lumières allumées                                   |
 | `lightsTotal`            | number         | COUNT (all)        | `light_state`         | Nombre total d'équipements lumière                            |
 | `averageBrightness`      | number \| null | AVG (on only)      | `light_brightness`    | Luminosité moyenne des lumières allumées                      |
-| `shuttersOpen`           | number         | COUNT (open)       | `shutter_position`    | Nombre de volets ouverts (type=shutter)                       |
-| `shuttersTotal`          | number         | COUNT (all)        | `shutter_position`    | Nombre total de volets (type=shutter)                         |
-| `averageShutterPosition` | number \| null | AVG                | `shutter_position`    | Position moyenne des volets (%)                               |
-| `awningsDeployed`        | number         | COUNT (position>0) | `shutter_position`    | Nombre de stores bannes déployés (type=awning)                |
-| `awningsTotal`           | number         | COUNT (all)        | `shutter_position`    | Nombre total de stores bannes (type=awning)                   |
+| `shuttersOpen`           | number         | COUNT (open)       | `shutter_position`    | Nombre de volets ouverts (type=shutter uniquement)            |
+| `shuttersTotal`          | number         | COUNT (all)        | `shutter_position`    | Nombre total de volets (type=shutter uniquement)              |
+| `averageShutterPosition` | number \| null | AVG                | `shutter_position`    | Position moyenne des volets (%) — volets seuls                |
 | `totalPower`             | number         | SUM                | `power`               | Puissance instantanée totale (W)                              |
 | `totalEnergy`            | number         | SUM                | `energy`              | Consommation d'énergie totale (kWh)                           |
 | `heatingActive`          | boolean        | OR                 | thermostat equipments | true si un thermostat chauffe activement                      |

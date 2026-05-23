@@ -63,9 +63,10 @@ interface ZoneAggregatedData {
   lightsTotal: number; // COUNT(all light equipments)
   shuttersOpen: number; // COUNT(open), category=shutter_position, type=shutter
   shuttersTotal: number; // COUNT(all shutter equipments)
-  averageShutterPosition: number | null; // AVG of shutter_position (%) on shutters
-  awningsDeployed: number; // COUNT(position>0), category=shutter_position, type=awning
-  awningsTotal: number; // COUNT(all awning equipments)
+  averageShutterPosition: number | null; // AVG of shutter_position (%) on shutters only
+  // Awnings (type=awning) share the shutter_position category but are
+  // intentionally NOT aggregated at the zone level. The awning dashboard
+  // widgets compute their own deployed/total counts locally.
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null; // SUM of current water flow (when supported)

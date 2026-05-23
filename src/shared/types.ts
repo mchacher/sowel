@@ -168,8 +168,6 @@ export interface ZoneAggregatedData {
   shuttersOpen: number;
   shuttersTotal: number;
   averageShutterPosition: number | null;
-  awningsDeployed: number;
-  awningsTotal: number;
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null;
