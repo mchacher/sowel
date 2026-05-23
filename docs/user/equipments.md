@@ -56,9 +56,12 @@ Sowel ships a closed catalogue of equipment types. Every equipment in your home 
 
 ### Shutters
 
-| Type        | Controls                               | Expected data                       |
-| ----------- | -------------------------------------- | ----------------------------------- |
-| **Shutter** | Open / Stop / Close + position display | position (0% = closed, 100% = open) |
+| Type        | Controls                                   | Expected data                              |
+| ----------- | ------------------------------------------ | ------------------------------------------ |
+| **Shutter** | Open / Stop / Close + position display     | position (0% = closed, 100% = open)        |
+| **Awning**  | Retract / Stop / Extend + position display | position (0% = retracted, 100% = deployed) |
+
+Awnings share the shutter control surface (same position binding, same OPEN/STOP/CLOSE buttons) but speak the awning vocabulary throughout the UI: _Déployé / Rétracté_ state pills, _Déployer / Rétracter_ button labels, dedicated "Stores bannes" group in the zone view. Mapping: RF-up = retract = position 0, RF-down = deploy = position 100. See the [somfy-rts plugin](https://github.com/mchacher/sowel-plugin-somfy-rts) for an integration example that handles both shutter and awning families against the same Somfy RTS hardware.
 
 ### Climate
 

@@ -78,6 +78,15 @@ Volet roulant motorisé, store ou volet.
 - **Contrôles :** Boutons Ouvrir / Stop / Fermer, affichage de la position
 - **Données attendues :** position (0 % = fermé, 100 % = ouvert)
 
+#### Store banne
+
+Store banne extérieur motorisé.
+
+- **Contrôles :** Boutons Rétracter / Stop / Déployer, affichage de la position
+- **Données attendues :** position (0 % = rétracté, 100 % = déployé)
+
+Le store banne partage la surface de contrôle du volet (même binding `shutter_position`, mêmes boutons OPEN/STOP/CLOSE) mais affiche un vocabulaire dédié dans toute l'UI : pastilles _Déployé / Rétracté_, boutons _Déployer / Rétracter_, groupe "Stores bannes" séparé dans la vue zone. Mapping : RF-up = rétracter = position 0, RF-down = déployer = position 100. Le plugin [somfy-rts](https://github.com/mchacher/sowel-plugin-somfy-rts) couvre les deux familles (volets + stores) sur le même matériel Somfy RTS.
+
 ---
 
 ### Climatisation

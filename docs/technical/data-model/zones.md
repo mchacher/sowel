@@ -61,9 +61,11 @@ interface ZoneAggregatedData {
   smoke: boolean; // OR, category=smoke
   lightsOn: number; // COUNT(on), category=light_state
   lightsTotal: number; // COUNT(all light equipments)
-  shuttersOpen: number; // COUNT(open), category=shutter_position
+  shuttersOpen: number; // COUNT(open), category=shutter_position, type=shutter
   shuttersTotal: number; // COUNT(all shutter equipments)
-  averageShutterPosition: number | null; // AVG of shutter_position (%)
+  averageShutterPosition: number | null; // AVG of shutter_position (%) on shutters
+  awningsDeployed: number; // COUNT(position>0), category=shutter_position, type=awning
+  awningsTotal: number; // COUNT(all awning equipments)
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null; // SUM of current water flow (when supported)
@@ -87,6 +89,9 @@ Zones expose bulk commands that fan out to all Equipments of matching types with
 | `allShuttersOpen`        | shutter                                  | `shutter_move`           | `"OPEN"`               |
 | `allShuttersStop`        | shutter                                  | `shutter_move`           | `"STOP"`               |
 | `allShuttersClose`       | shutter                                  | `shutter_move`           | `"CLOSE"`              |
+| `allAwningsRetract`      | awning                                   | `shutter_move`           | `"OPEN"`               |
+| `allAwningsStop`         | awning                                   | `shutter_move`           | `"STOP"`               |
+| `allAwningsExtend`       | awning                                   | `shutter_move`           | `"CLOSE"`              |
 | `allThermostatsPowerOn`  | thermostat                               | `toggle_power`           | `true`                 |
 | `allThermostatsPowerOff` | thermostat                               | `toggle_power`           | `false`                |
 | `allThermostatsSetpoint` | thermostat                               | `set_setpoint`           | from request body (°C) |

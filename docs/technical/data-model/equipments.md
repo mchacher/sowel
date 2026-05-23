@@ -16,6 +16,7 @@ type EquipmentType =
   | "light_dimmable"
   | "light_color"
   | "shutter"
+  | "awning"
   | "switch"
   | "sensor"
   | "button"
