@@ -11,6 +11,15 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.13.x — Équipement store banne
+
+### v1.13.0 — 2026-05-23 { #v1-13-0 }
+
+- Équipements : nouveau type `awning` (store banne, spec 115), frère du `shutter`. Même surface de contrôle (position 0–100 + OPEN/STOP/CLOSE) avec un vocabulaire dédié partout dans l'UI : boutons "Déployer / Rétracter", pastilles d'état "Déployé / Rétracté", et un groupe "Stores bannes" dédié dans la vue zone. Mapping RF-up = rétracter (position 0), RF-down = déployer (position 100).
+- UI : illustration V3 du store déployée sur tout le dashboard (widget équipement, widget famille, widget zone-famille, carte mobile, drawer détail) et la vue maison (compact card, hero card, pastilles d'agrégation, en-tête de groupe). État ouvert = fenêtre + cassette + 10 bandes trapézoïdales festonnées en bleu primaire Sowel / primary-light. État fermé = fenêtre + cassette + petite frise rétractée. Deux composants : `AwningIcon` (viewBox 24, state-aware) pour les contextes icône, `AwningWidgetIcon` (viewBox 56, 120 px, finition gradient) pour les widgets dashboard.
+- Correctif : la card détail d'un store apparaissait vide — les contrôles étaient gatés sur `isShutter` seulement, donc Déployer/Stop/Rétracter ne s'affichait jamais. Le même gate manquait sur le widget équipement du dashboard (n'affichait que le pourcentage, sans icône). Les deux sont corrigés.
+- Plugin : nouvelle intégration `somfy-rts` dans le registry ([repo](https://github.com/mchacher/sowel-plugin-somfy-rts), v1.0.3). Fait le pont entre la passerelle open source [somfyrts2mqtt](https://github.com/mchacher/somfyrts2mqtt) (ESP32 + CC1101, v0.2.0+) et Sowel : auto-découverte des volets/stores Somfy RTS via les topics SENSOR Tasmota retained, parsing position/direction/target, et envoi OPEN/STOP/CLOSE + pourcentage vers `cmnd/<root>/<remote>/...`.
+
 ## 1.12.x — UX station météo
 
 ### v1.12.1 — 2026-05-20 { #v1-12-1 }

@@ -11,6 +11,15 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.13.x — Awning equipment
+
+### v1.13.0 — 2026-05-23 { #v1-13-0 }
+
+- Equipments: new `awning` equipment type (spec 115), sibling of `shutter`. Same control surface (position 0–100 + OPEN/STOP/CLOSE), with awning-specific vocabulary throughout the UI: "Déployer / Rétracter" buttons, "Déployé / Rétracté" state pills, and a dedicated "Stores bannes" group in the zone view. The mapping is RF-up = retract (position 0), RF-down = deploy (position 100).
+- UI: V3 awning illustration shipped across the dashboard (single-equipment widget, family widget, zone-family widget, mobile widget card, detail sheet slider) and the home view (compact card, hero icon, aggregation pills, group header). Open state = window + cassette + 10 trapezoidal scalloped stripes in Sowel primary blue / primary-light. Closed state = window + cassette + small retracted fringe. Two icon components: `AwningIcon` (24 viewBox, state-aware) for icon contexts, `AwningWidgetIcon` (56 viewBox, 120 px, gradient polish) for dashboard widgets.
+- Fix: the awning detail page used to render an empty card — controls were gated on `isShutter` only, so `Extend/Stop/Retract` never showed. Same gate was missing on the single-equipment dashboard widget (showed only the position number, no icon). Both fixed.
+- Plugin: new `somfy-rts` integration in the registry ([repo](https://github.com/mchacher/sowel-plugin-somfy-rts), v1.0.3). Bridges the open-source [somfyrts2mqtt](https://github.com/mchacher/somfyrts2mqtt) ESP32 + CC1101 hardware (v0.2.0+) into Sowel: auto-discovers Somfy RTS shutters and awnings from retained Tasmota SENSOR topics, parses position/direction/target, and dispatches OPEN/STOP/CLOSE + percentage to `cmnd/<root>/<remote>/...`.
+
 ## 1.12.x — Weather station UX
 
 ### v1.12.1 — 2026-05-20 { #v1-12-1 }
