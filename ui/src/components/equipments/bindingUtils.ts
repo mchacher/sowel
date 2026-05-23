@@ -102,6 +102,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   light_dimmable: ["light_state", "light_brightness"],
   light_color: ["light_state", "light_brightness", "light_color", "light_color_temp"],
   shutter: ["shutter_position"],
+  awning: ["shutter_position"],
   switch: ["light_state"],
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   button: ["action", "battery"],
@@ -135,6 +136,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   light_dimmable: ["state", "on", "brightness", "R1", "R2", "R3", "R4"],
   light_color: ["state", "on", "brightness", "color", "color_temp", "R1", "R2", "R3", "R4"],
   shutter: ["position", "state", "target_position"],
+  awning: ["position", "state", "target_position"],
   switch: ["state", "on", "R1", "R2", "R3", "R4"],
   button: [],
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
@@ -289,6 +291,7 @@ const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>
   "light_color",
   "switch",
   "shutter",
+  "awning",
   "water_valve",
 ]);
 

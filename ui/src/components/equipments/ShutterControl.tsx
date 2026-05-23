@@ -45,10 +45,21 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   const hasState = !!moveBinding;
   const hasPositionOrder = !!positionOrderBinding;
 
-  // Pool covers slide horizontally → ←/→ arrows. Window shutters keep ↑/↓.
+  // Pool covers slide horizontally → ←/→ arrows. Window shutters and awnings keep ↑/↓.
   const isHorizontal = equipment.type === "pool_cover";
+  const isAwning = equipment.type === "awning";
   const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
   const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
+
+  // Awning relabels:
+  //   OPEN (RF up) = retract  · CLOSE (RF down) = extend (deploy)
+  //   pos 0  = retracted    · pos 100 = deployed
+  // The control wiring stays identical to a shutter — only the user-facing
+  // vocabulary changes.
+  const openKey = isAwning ? "controls.retract" : "controls.open";
+  const closeKey = isAwning ? "controls.extend" : "controls.close";
+  const pillAtZeroKey = isAwning ? "controls.retracted" : "controls.closed";
+  const pillAtHundredKey = isAwning ? "controls.deployed" : "controls.opened";
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE", e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -95,11 +106,11 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
         {position !== null && (
           position === 100 ? (
             <span className="text-[11px] font-semibold text-success px-[7px] py-[1px] rounded-full bg-success/10">
-              {t("controls.opened")}
+              {t(pillAtHundredKey)}
             </span>
           ) : position === 0 ? (
             <span className="text-[11px] font-semibold text-shutter-500 px-[7px] py-[1px] rounded-full bg-shutter-50">
-              {t("controls.closed")}
+              {t(pillAtZeroKey)}
             </span>
           ) : (
             <span className="text-[11px] text-text-tertiary tabular-nums w-8 text-right">
@@ -115,7 +126,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               onClick={(e) => handleCommand("OPEN", e)}
               disabled={executing}
               className={sttClass}
-              title={t("controls.open")}
+              title={t(openKey)}
             >
               <OpenIcon size={10} strokeWidth={2} />
             </button>
@@ -131,7 +142,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               onClick={(e) => handleCommand("CLOSE", e)}
               disabled={executing}
               className={sttClass}
-              title={t("controls.close")}
+              title={t(closeKey)}
             >
               <CloseIcon size={10} strokeWidth={2} />
             </button>
@@ -170,7 +181,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             </div>
           )}
           <span className="text-[12px] text-text-secondary w-auto text-right tabular-nums">
-            {position === 0 ? t("controls.closed") : position === 100 ? t("controls.opened") : `${position}%`}
+            {position === 0 ? t(pillAtZeroKey) : position === 100 ? t(pillAtHundredKey) : `${position}%`}
           </span>
         </div>
       )}
@@ -184,7 +195,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
             <OpenIcon size={16} strokeWidth={1.5} />
-            {t("controls.open")}
+            {t(openKey)}
           </button>
           <button
             onClick={() => handleCommand("STOP")}
@@ -200,7 +211,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
             <CloseIcon size={16} strokeWidth={1.5} />
-            {t("controls.close")}
+            {t(closeKey)}
           </button>
         </div>
       )}

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
+import { AwningIcon } from "../icons/AwningIcon";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
 import { SensorValues } from "./SensorValues";
@@ -32,6 +33,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   light_dimmable: <SunDim size={18} strokeWidth={1.5} />,
   light_color: <Palette size={18} strokeWidth={1.5} />,
   shutter: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
+  awning: <AwningIcon size={18} strokeWidth={1.5} />,
   switch: <ToggleLeft size={18} strokeWidth={1.5} />,
   sensor: <Gauge size={18} strokeWidth={1.5} />,
   button: <CircleDot size={18} strokeWidth={1.5} />,
@@ -56,6 +58,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   light_dimmable: "equipments.type.light_dimmable",
   light_color: "equipments.type.light_color",
   shutter: "equipments.type.shutter",
+  awning: "equipments.type.awning",
   switch: "equipments.type.switch",
   sensor: "equipments.type.sensor",
   button: "equipments.type.button",
@@ -84,7 +87,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
   const { t } = useTranslation();
   const {
     isLight,
-    isShutter,
+    isShutterFamily,
     isSensor,
     isThermostat,
     isGate,
@@ -139,8 +142,8 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         />
       )}
 
-      {/* Shutter quick control */}
-      {isShutter && equipment.enabled && (
+      {/* Shutter / Awning quick control (shared control surface, awning relabels) */}
+      {isShutterFamily && equipment.enabled && (
         <ShutterControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}

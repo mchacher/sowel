@@ -33,6 +33,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "light_dimmable",
   "light_color",
   "shutter",
+  "awning",
   "switch",
   "sensor",
   "button",
@@ -839,6 +840,9 @@ export class EquipmentManager {
     allShuttersOpen: { types: ["shutter"], orderCategory: "shutter_move", value: "OPEN" },
     allShuttersStop: { types: ["shutter"], orderCategory: "shutter_move", value: "STOP" },
     allShuttersClose: { types: ["shutter"], orderCategory: "shutter_move", value: "CLOSE" },
+    allAwningsRetract: { types: ["awning"], orderCategory: "shutter_move", value: "OPEN" },
+    allAwningsStop: { types: ["awning"], orderCategory: "shutter_move", value: "STOP" },
+    allAwningsExtend: { types: ["awning"], orderCategory: "shutter_move", value: "CLOSE" },
     allThermostatsPowerOn: { types: ["thermostat"], orderCategory: "toggle_power", value: true },
     allThermostatsPowerOff: { types: ["thermostat"], orderCategory: "toggle_power", value: false },
     allThermostatsSetpoint: {

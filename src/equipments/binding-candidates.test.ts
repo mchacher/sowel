@@ -62,6 +62,19 @@ describe("computeBindingCandidates", () => {
     expect(result[0].dataKeys.sort()).toEqual(["shutter_position", "shutter_state"]);
   });
 
+  it("awning with shutter_state + shutter_position → one candidate (mirrors shutter)", () => {
+    const orders = [
+      order("shutter_state", "enum", { enumValues: ["OPEN", "CLOSE", "STOP"] }),
+      order("shutter_position", "number", { min: 0, max: 100 }),
+    ];
+    const datas = [data("shutter_state", "enum"), data("shutter_position", "number")];
+    const result = computeBindingCandidates("awning", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("shutter1");
+    expect(result[0].orderKeys.sort()).toEqual(["shutter_position", "shutter_state"]);
+    expect(result[0].dataKeys.sort()).toEqual(["shutter_position", "shutter_state"]);
+  });
+
   it("switch on a single-relay device → one candidate", () => {
     const orders = [order("R1", "enum", { enumValues: ["ON", "OFF"] })];
     const datas = [data("R1", "enum")];

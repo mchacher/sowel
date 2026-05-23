@@ -35,6 +35,8 @@ interface Accumulator {
   shutterPositionCount: number;
   shuttersOpen: number;
   shuttersTotal: number;
+  awningsDeployed: number;
+  awningsTotal: number;
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowSum: number;
@@ -61,6 +63,8 @@ function emptyAccumulator(): Accumulator {
     shutterPositionCount: 0,
     shuttersOpen: 0,
     shuttersTotal: 0,
+    awningsDeployed: 0,
+    awningsTotal: 0,
     waterValvesOpen: 0,
     waterValvesTotal: 0,
     waterFlowSum: 0,
@@ -88,6 +92,8 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     shutterPositionCount: a.shutterPositionCount + b.shutterPositionCount,
     shuttersOpen: a.shuttersOpen + b.shuttersOpen,
     shuttersTotal: a.shuttersTotal + b.shuttersTotal,
+    awningsDeployed: a.awningsDeployed + b.awningsDeployed,
+    awningsTotal: a.awningsTotal + b.awningsTotal,
     waterValvesOpen: a.waterValvesOpen + b.waterValvesOpen,
     waterValvesTotal: a.waterValvesTotal + b.waterValvesTotal,
     waterFlowSum: a.waterFlowSum + b.waterFlowSum,
@@ -120,6 +126,8 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       acc.shutterPositionCount > 0
         ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
         : null,
+    awningsDeployed: acc.awningsDeployed,
+    awningsTotal: acc.awningsTotal,
     waterValvesOpen: acc.waterValvesOpen,
     waterValvesTotal: acc.waterValvesTotal,
     waterFlowTotal: acc.waterFlowHasData ? Math.round(acc.waterFlowSum * 100) / 100 : null,
@@ -148,6 +156,8 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.shuttersOpen === b.shuttersOpen &&
     a.shuttersTotal === b.shuttersTotal &&
     a.averageShutterPosition === b.averageShutterPosition &&
+    a.awningsDeployed === b.awningsDeployed &&
+    a.awningsTotal === b.awningsTotal &&
     a.waterValvesOpen === b.waterValvesOpen &&
     a.waterValvesTotal === b.waterValvesTotal &&
     a.waterFlowTotal === b.waterFlowTotal &&
@@ -560,12 +570,22 @@ export class ZoneAggregator {
           break;
 
         case "shutter_position":
-          acc.shuttersTotal += 1;
-          if (typeof value === "number") {
-            acc.shutterPositionSum += value;
-            acc.shutterPositionCount += 1;
-            if (value > 0) {
-              acc.shuttersOpen += 1;
+          // Shared category between shutter + awning equipments; the type
+          // decides which counter family increments. averageShutterPosition
+          // stays a shutter-only summary.
+          if (equipmentType === "awning") {
+            acc.awningsTotal += 1;
+            if (typeof value === "number" && value > 0) {
+              acc.awningsDeployed += 1;
+            }
+          } else {
+            acc.shuttersTotal += 1;
+            if (typeof value === "number") {
+              acc.shutterPositionSum += value;
+              acc.shutterPositionCount += 1;
+              if (value > 0) {
+                acc.shuttersOpen += 1;
+              }
             }
           }
           break;

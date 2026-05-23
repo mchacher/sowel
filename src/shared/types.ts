@@ -168,6 +168,8 @@ export interface ZoneAggregatedData {
   shuttersOpen: number;
   shuttersTotal: number;
   averageShutterPosition: number | null;
+  awningsDeployed: number;
+  awningsTotal: number;
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null;
@@ -185,6 +187,7 @@ export type EquipmentType =
   | "light_dimmable"
   | "light_color"
   | "shutter"
+  | "awning"
   | "switch"
   | "sensor"
   | "button"
@@ -933,7 +936,14 @@ export interface NotificationPublisherWithMappings extends NotificationPublisher
 // Dashboard Widget
 // ============================================================
 
-export type WidgetFamily = "lights" | "shutters" | "heating" | "sensors" | "water" | "pool";
+export type WidgetFamily =
+  | "lights"
+  | "shutters"
+  | "awnings"
+  | "heating"
+  | "sensors"
+  | "water"
+  | "pool";
 
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */

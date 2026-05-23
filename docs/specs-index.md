@@ -165,6 +165,12 @@ Specs are grouped by theme and annotated with status:
 | 112 | Process crash handlers | ✅     | Global `uncaughtException` and `unhandledRejection` listeners installed at boot. A throw that escapes every other guard now produces a structured `fatal` log line (stdout + `data/logs/sowel.N.log`) before the process exits, so Docker's restart policy reboots the container with a usable trace instead of a silent loop. Audit F03, spec 112. Shipped in v1.11.1.                                      |
 | 113 | Audit log              | ✅     | Persistent SQLite trail of every security-sensitive action (auth, user CRUD, settings, mode, backup, plugin). New `audit_log` table + `AuditLogger` service called from API route handlers with actor and IP context. Admin-only `GET /api/v1/audit` endpoint with pagination and filtering. 365-day retention purged at boot. Sensitive values redacted from meta. Audit F13, spec 113. Shipped in v1.11.1. |
 
+## V1.12 — awning equipment + Somfy RTS bridge
+
+| #   | Title                               | Status     | Summary                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | ----------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 115 | Awning equipment + Somfy RTS bridge | 🟡 partial | New `awning` equipment type (sibling of `shutter`) in its own `awnings` widget family. Reuses `shutter_position` / `shutter_move` / `set_shutter_position` categories so any integration emitting them can drive an awning. Three new zone commands `allAwningsExtend/Stop/Retract`. Companion plugin `sowel-plugin-somfy-rts` for the `somfyrts2mqtt` bridge tracked in that plugin's repo. |
+
 ---
 
 ## How to use this index after context loss

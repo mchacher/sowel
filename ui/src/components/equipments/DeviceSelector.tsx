@@ -70,6 +70,7 @@ const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>
   "light_color",
   "switch",
   "shutter",
+  "awning",
   "water_valve",
 ]);
 

@@ -82,6 +82,7 @@ export function computeBindingCandidates(
     }
 
     case "pool_cover":
+    case "awning":
     case "shutter": {
       // Group orders by shutter index (e.g. shutter_state + shutter_position).
       const byGroup = new Map<string, { dataKeys: string[]; orderKeys: string[] }>();

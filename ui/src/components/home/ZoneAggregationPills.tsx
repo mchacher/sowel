@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
+import { AwningIcon } from "../icons/AwningIcon";
 import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
 
@@ -129,6 +130,18 @@ export function ZoneAggregationPills({
       variant: "default",
       iconTint: "text-text-secondary",
       valueTint: someOpen ? "text-text" : "text-text-tertiary",
+    });
+  }
+
+  if (data.awningsTotal > 0) {
+    const someDeployed = data.awningsDeployed > 0;
+    counterPills.push({
+      key: "awnings",
+      icon: <AwningIcon size={14} strokeWidth={1.5} />,
+      label: `${data.awningsDeployed}/${data.awningsTotal}`,
+      variant: someDeployed ? "active" : "default",
+      iconTint: "text-text-secondary",
+      valueTint: someDeployed ? "text-text" : "text-text-tertiary",
     });
   }
 

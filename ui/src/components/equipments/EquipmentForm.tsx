@@ -10,6 +10,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "light_dimmable", labelKey: "equipments.type.light_dimmable" },
   { value: "light_color", labelKey: "equipments.type.light_color" },
   { value: "shutter", labelKey: "equipments.type.shutter" },
+  { value: "awning", labelKey: "equipments.type.awning" },
   { value: "switch", labelKey: "equipments.type.switch" },
   { value: "sensor", labelKey: "equipments.type.sensor" },
   { value: "button", labelKey: "equipments.type.button" },

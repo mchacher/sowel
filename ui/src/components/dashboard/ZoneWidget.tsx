@@ -22,6 +22,7 @@ import {
   MultiSensorIcon,
 } from "./WidgetIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
+import { AwningIcon } from "../icons/AwningIcon";
 import { shutterLevel } from "./widget-icons";
 import { WidgetCard } from "./WidgetCard";
 
@@ -29,6 +30,7 @@ import { WidgetCard } from "./WidgetCard";
 const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],
   shutters: ["shutter"],
+  awnings: ["awning"],
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
   water: ["water_valve"],
@@ -85,6 +87,17 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
   if (family === "shutters") {
     return (
       <ZoneShutterWidget
+        label={label}
+        filteredEquipments={filteredEquipments}
+        commandLoading={commandLoading}
+        onCommand={handleZoneCommand}
+      />
+    );
+  }
+
+  if (family === "awnings") {
+    return (
+      <ZoneAwningWidget
         label={label}
         filteredEquipments={filteredEquipments}
         commandLoading={commandLoading}
@@ -349,6 +362,101 @@ function ZoneShutterWidget({
           title={t("zones.commands.allShuttersClose")}
         >
           {commandLoading === "allShuttersClose" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
+        </button>
+      </div>
+    </ZoneWidgetCard>
+  );
+}
+
+// ============================================================
+// Awning zone widget — canopy icon + deployed/total count
+// ============================================================
+
+function ZoneAwningWidget({
+  label,
+  filteredEquipments,
+  commandLoading,
+  onCommand,
+}: {
+  label: string;
+  filteredEquipments: EquipmentWithDetails[];
+  commandLoading: string | null;
+  onCommand: (orderKey: string, value?: unknown) => void;
+}) {
+  const { t } = useTranslation();
+
+  const { deployedCount, total } = useMemo(() => {
+    let deployed = 0;
+    for (const eq of filteredEquipments) {
+      const binding = eq.dataBindings.find((b) => b.category === "shutter_position");
+      if (binding && typeof binding.value === "number" && binding.value > 0) {
+        deployed += 1;
+      }
+    }
+    return { deployedCount: deployed, total: filteredEquipments.length };
+  }, [filteredEquipments]);
+
+  return (
+    <ZoneWidgetCard label={label} empty={filteredEquipments.length === 0}>
+      {/* Picto + count */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        <div
+          className={
+            deployedCount > 0
+              ? "text-primary"
+              : "text-text-tertiary"
+          }
+        >
+          <AwningIcon size={56} strokeWidth={1.5} />
+        </div>
+        <div className="pl-2">
+          {total === 0 ? (
+            <span className="text-[16px] text-text-tertiary">{"—"}</span>
+          ) : deployedCount === total ? (
+            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+              {t("controls.deployed")}
+            </span>
+          ) : deployedCount === 0 ? (
+            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+              {t("controls.retracted")}
+            </span>
+          ) : (
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+                {deployedCount}
+              </span>
+              <span className="text-[12px] font-medium text-text-tertiary">/{total}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Command buttons — retract (up), stop, extend (down) — mapping mirrors shutter UI */}
+      <div className="flex justify-center gap-3 mt-auto pt-1">
+        <button
+          onClick={() => onCommand("allAwningsRetract")}
+          disabled={commandLoading !== null}
+          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          title={t("zones.commands.allAwningsRetract")}
+        >
+          {commandLoading === "allAwningsRetract" ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
+        </button>
+        <button
+          onClick={() => onCommand("allAwningsStop")}
+          disabled={commandLoading !== null}
+          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          title={t("zones.commands.allAwningsStop")}
+        >
+          {commandLoading === "allAwningsStop" ? <Loader2 size={16} className="animate-spin" /> : <Square size={11} strokeWidth={2.5} />}
+        </button>
+        <button
+          onClick={() => onCommand("allAwningsExtend")}
+          disabled={commandLoading !== null}
+          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          title={t("zones.commands.allAwningsExtend")}
+        >
+          {commandLoading === "allAwningsExtend" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
         </button>
       </div>
     </ZoneWidgetCard>

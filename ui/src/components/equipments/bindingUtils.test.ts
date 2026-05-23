@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { isRelevantData, isRelevantOrder } from "./bindingUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 
 describe("findOrderByCategory", () => {
@@ -115,5 +116,20 @@ describe("findDataByCategory", () => {
     ];
     const match = findDataByCategory(bindings, ["shutter_position"], ["position"]);
     expect(match?.alias).toBe("shutter_position");
+  });
+});
+
+describe("awning equipment type relevance", () => {
+  it("treats awning the same as shutter for relevant data (shutter_position)", () => {
+    expect(isRelevantData("shutter_position", "awning")).toBe(true);
+    expect(isRelevantData("shutter_position", "shutter")).toBe(true);
+    expect(isRelevantData("light_state", "awning")).toBe(false);
+  });
+
+  it("treats awning the same as shutter for relevant orders (position/state/target_position)", () => {
+    expect(isRelevantOrder("position", "awning")).toBe(true);
+    expect(isRelevantOrder("state", "awning")).toBe(true);
+    expect(isRelevantOrder("target_position", "awning")).toBe(true);
+    expect(isRelevantOrder("color", "awning")).toBe(false);
   });
 });

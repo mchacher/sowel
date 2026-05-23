@@ -11,7 +11,7 @@ interface AddWidgetModalProps {
   onClose: () => void;
 }
 
-const FAMILIES: WidgetFamily[] = ["lights", "shutters", "heating", "sensors"];
+const FAMILIES: WidgetFamily[] = ["lights", "shutters", "awnings", "heating", "sensors"];
 
 export function AddWidgetModal({
   equipments,

@@ -122,6 +122,8 @@ describe("ZoneAggregator", () => {
         shuttersOpen: 0,
         shuttersTotal: 0,
         averageShutterPosition: null,
+        awningsDeployed: 0,
+        awningsTotal: 0,
         waterValvesOpen: 0,
         waterValvesTotal: 0,
         waterFlowTotal: null,
@@ -352,6 +354,53 @@ describe("ZoneAggregator", () => {
       expect(data?.shuttersTotal).toBe(3);
       expect(data?.shuttersOpen).toBe(2); // position > 0
       expect(data?.averageShutterPosition).toBe(43); // round((80+0+50)/3) = 43
+    });
+
+    it("counts awnings deployed/total separately from shutters", () => {
+      const zone = zoneManager.create({ name: "Terrasse" });
+
+      // Awning at 50 (deployed)
+      const devA = seedDevice(db, {
+        name: "AwningRtm",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
+      });
+      // Shutter at 50 (open)
+      const devS = seedDevice(db, {
+        name: "ShutterRtm",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
+      });
+      // Awning at 0 (retracted)
+      const devA0 = seedDevice(db, {
+        name: "AwningRet",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "0" }],
+      });
+
+      const awning = equipmentManager.create({ name: "Store 1", type: "awning", zoneId: zone.id });
+      equipmentManager.addDataBinding(awning.id, devA.dataIds[0], "position");
+
+      const shutter = equipmentManager.create({
+        name: "Volet 1",
+        type: "shutter",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(shutter.id, devS.dataIds[0], "position");
+
+      const awning2 = equipmentManager.create({
+        name: "Store 2",
+        type: "awning",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(awning2.id, devA0.dataIds[0], "position");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.awningsTotal).toBe(2);
+      expect(data?.awningsDeployed).toBe(1); // only the one at 50 counts
+      expect(data?.shuttersTotal).toBe(1);
+      expect(data?.shuttersOpen).toBe(1);
+      // averageShutterPosition stays a shutter-only summary — awning is not in it
+      expect(data?.averageShutterPosition).toBe(50);
     });
 
     it("returns null averageShutterPosition when no shutters", () => {

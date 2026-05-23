@@ -189,6 +189,17 @@ describe("EquipmentManager", () => {
       expect(eq.name).toBe("Vanne potager");
     });
 
+    it("creates an awning equipment", () => {
+      const zone = zoneManager.create({ name: "Terrasse" });
+      const eq = manager.create({
+        name: "Store banne",
+        type: "awning",
+        zoneId: zone.id,
+      });
+      expect(eq.type).toBe("awning");
+      expect(eq.name).toBe("Store banne");
+    });
+
     it("rejects non-existent zone", () => {
       expect(() => {
         manager.create({ name: "Test", type: "light_onoff", zoneId: "non-existent" });
@@ -688,6 +699,60 @@ describe("EquipmentManager", () => {
       // No order bindings at all
       const result = await manager.executeZoneOrder([zone.id], "allLightsOn");
       expect(result.executed).toBe(0);
+    });
+
+    it("allAwningsExtend hits awnings only, never shutters in the same zone", async () => {
+      const zone = zoneManager.create({ name: "Terrasse" });
+      const shutter = manager.create({ name: "Volet", type: "shutter", zoneId: zone.id });
+      const awning = manager.create({ name: "Store", type: "awning", zoneId: zone.id });
+
+      const { orderIds: shutterOrderIds } = seedDevice(db, {
+        name: "ZShutterX",
+        orderKeys: [
+          { key: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      });
+      manager.addOrderBinding(shutter.id, shutterOrderIds[0], "state");
+
+      const { orderIds: awningOrderIds } = seedDevice(db, {
+        name: "ZAwningX",
+        orderKeys: [
+          { key: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      });
+      manager.addOrderBinding(awning.id, awningOrderIds[0], "state");
+
+      mockPublished.length = 0;
+      const result = await manager.executeZoneOrder([zone.id], "allAwningsExtend");
+      expect(result.executed).toBe(1);
+      expect(mockPublished).toHaveLength(1);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "CLOSE" });
+
+      mockPublished.length = 0;
+      const shutterResult = await manager.executeZoneOrder([zone.id], "allShuttersOpen");
+      expect(shutterResult.executed).toBe(1);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "OPEN" });
+    });
+
+    it("allAwningsRetract maps to RF OPEN, allAwningsExtend to CLOSE", async () => {
+      const zone = zoneManager.create({ name: "Terrasse2" });
+      const awning = manager.create({ name: "Store2", type: "awning", zoneId: zone.id });
+
+      const { orderIds } = seedDevice(db, {
+        name: "ZAwning2",
+        orderKeys: [
+          { key: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      });
+      manager.addOrderBinding(awning.id, orderIds[0], "state");
+
+      mockPublished.length = 0;
+      await manager.executeZoneOrder([zone.id], "allAwningsRetract");
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "OPEN" });
+
+      mockPublished.length = 0;
+      await manager.executeZoneOrder([zone.id], "allAwningsStop");
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "STOP" });
     });
   });
 

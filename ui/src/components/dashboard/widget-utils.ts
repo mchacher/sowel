@@ -4,6 +4,7 @@ export function needsDetailSheet(equipmentType: string): boolean {
     "light_dimmable",
     "light_color",
     "shutter",
+    "awning",
     "pool_cover",
     "thermostat",
     "pool_heat_pump",

@@ -56,6 +56,8 @@ const ZONE_AGG_KEYS = [
   "shuttersOpen",
   "shuttersTotal",
   "averageShutterPosition",
+  "awningsDeployed",
+  "awningsTotal",
   "isDaylight",
 ];
 

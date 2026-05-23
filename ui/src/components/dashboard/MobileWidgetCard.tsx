@@ -18,6 +18,7 @@ import {
   WaterValveWidgetIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
+import { AwningIcon } from "../icons/AwningIcon";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { Cloud, WashingMachine, Tv } from "lucide-react";
 
@@ -70,6 +71,7 @@ function useMobileState(
   const {
     isLight,
     isShutter,
+    isAwning,
     isThermostat,
     isGate,
     isHeater,
@@ -118,6 +120,24 @@ function useMobileState(
       icon: customEntry
         ? createElement(customEntry.component, customEntry.previewProps)
         : <ShutterWidgetIcon level={level} />,
+      stateLines: text ? [text] : [],
+    };
+  }
+
+  if (isAwning) {
+    const pos = equipment.dataBindings.find((b) => b.category === "shutter_position");
+    const position = pos && typeof pos.value === "number" ? pos.value : null;
+    const text = position === 100
+      ? t("controls.deployed")
+      : position === 0
+        ? t("controls.retracted")
+        : position !== null
+          ? `${position}%`
+          : null;
+    return {
+      icon: customEntry
+        ? createElement(customEntry.component, customEntry.previewProps)
+        : <AwningIcon size={28} strokeWidth={1.5} />,
       stateLines: text ? [text] : [],
     };
   }

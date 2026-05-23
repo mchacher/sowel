@@ -71,6 +71,7 @@ import {
   PoolCoverIcon,
   WaterValveWidgetIcon,
 } from "./WidgetIcons";
+import { AwningIcon } from "../icons/AwningIcon";
 
 // ============================================================
 // Utility — shutter level bucket (moved from WidgetIcons.tsx to avoid react-refresh lint)
@@ -110,6 +111,12 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
     component: ShutterWidgetIcon as ComponentType<Record<string, unknown>>,
     previewProps: { level: 2 },
     types: ["shutter", "shutters"],
+  },
+  awning: {
+    label: "Store banne",
+    component: AwningIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { size: 24, strokeWidth: 1.5 },
+    types: ["awning", "awnings"],
   },
   thermometer: {
     label: "Thermomètre",
@@ -289,6 +296,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   light_dimmable: "Lightbulb",
   light_color: "Lightbulb",
   shutter: "ArrowUpDown",
+  awning: "ArrowUpDown",
   sensor: "Thermometer",
   thermostat: "Thermometer",
   heater: "Flame",
@@ -304,6 +312,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
   lights: "Lightbulb",
   shutters: "ArrowUpDown",
+  awnings: "ArrowUpDown",
   heating: "Flame",
   sensors: "Gauge",
   water: "Droplets",

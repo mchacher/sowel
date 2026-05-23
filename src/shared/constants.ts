@@ -168,6 +168,7 @@ export const LIGHT_INDICATOR_PROPERTIES = new Set([
 export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],
   shutters: ["shutter"],
+  awnings: ["awning"],
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
   water: ["water_valve"],
