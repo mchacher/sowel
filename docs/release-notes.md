@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.13.x — Awning equipment
 
+### v1.13.1 — 2026-05-24 { #v1-13-1 }
+
+- Fix (zones): dropped the `awningsDeployed` / `awningsTotal` zone aggregates that shipped by mistake with v1.13.0. Awnings reuse the `shutter_position` data category but are intentionally not aggregated at the zone level — the dashboard awning widgets compute their counts locally. The "Stores bannes X/Y" pill is removed from the zone view, and a regression assertion now guarantees awnings don't pollute the shutter aggregates either. Bulk zone commands (`allAwningsExtend/Stop/Retract`) are untouched.
+
 ### v1.13.0 — 2026-05-23 { #v1-13-0 }
 
 - Equipments: new `awning` equipment type (spec 115), sibling of `shutter`. Same control surface (position 0–100 + OPEN/STOP/CLOSE), with awning-specific vocabulary throughout the UI: "Déployer / Rétracter" buttons, "Déployé / Rétracté" state pills, and a dedicated "Stores bannes" group in the zone view. The mapping is RF-up = retract (position 0), RF-down = deploy (position 100).

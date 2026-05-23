@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.13.x — Équipement store banne
 
+### v1.13.1 — 2026-05-24 { #v1-13-1 }
+
+- Correctif (zones) : suppression des agrégats `awningsDeployed` / `awningsTotal` livrés par erreur en v1.13.0. Les stores bannes réutilisent la catégorie `shutter_position` mais ne sont volontairement pas agrégés au niveau zone — les widgets dashboard awning calculent leurs comptes localement. La pastille "Stores bannes X/Y" disparaît de la vue zone, et un test de régression garantit que les stores ne polluent plus les agrégats des volets. Les commandes de zone (`allAwningsExtend/Stop/Retract`) ne sont pas touchées.
+
 ### v1.13.0 — 2026-05-23 { #v1-13-0 }
 
 - Équipements : nouveau type `awning` (store banne, spec 115), frère du `shutter`. Même surface de contrôle (position 0–100 + OPEN/STOP/CLOSE) avec un vocabulaire dédié partout dans l'UI : boutons "Déployer / Rétracter", pastilles d'état "Déployé / Rétracté", et un groupe "Stores bannes" dédié dans la vue zone. Mapping RF-up = rétracter (position 0), RF-down = déployer (position 100).
