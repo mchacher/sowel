@@ -61,6 +61,7 @@ export function computeBindingCandidates(
     }
 
     case "pool_cover":
+    case "awning":
     case "shutter": {
       const byGroup = new Map<string, { dataKeys: string[]; orderKeys: string[] }>();
       for (const o of deviceOrders) {

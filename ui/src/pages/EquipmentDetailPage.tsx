@@ -16,7 +16,7 @@ import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
-import { TYPE_ICONS, TYPE_LABELS } from "../components/equipments/EquipmentCard";
+import { TYPE_LABELS } from "../components/equipments/EquipmentCard";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";
 import { GateControl } from "../components/equipments/GateControl";
@@ -177,7 +177,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const { isLight, isShutter, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
+  const { isLight, isShutterFamily, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
 
   return (
     <div className="p-4 sm:p-6">
@@ -198,7 +198,7 @@ export function EquipmentDetailPage() {
       <div className="flex items-start justify-between mb-4 sm:mb-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-[8px] bg-primary-light flex items-center justify-center text-primary">
-            {TYPE_ICONS[equipment.type]}
+            {equipmentState.iconElement}
           </div>
           <div>
             <h1>
@@ -254,8 +254,10 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
-      {/* Shutter controls (also used for pool_cover) */}
-      {(isShutter || equipment.type === "pool_cover") && equipment.enabled && (
+      {/* Shutter / Awning controls (also used for pool_cover). isShutterFamily
+          covers both shutters and awnings — ShutterControl handles the
+          vocabulary swap (extend/retract) when type === "awning". */}
+      {(isShutterFamily || equipment.type === "pool_cover") && equipment.enabled && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ShutterControl

@@ -30,7 +30,9 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   light_dimmable:          { bg: "bg-light-50",     text: "text-light-500" },
   light_color:             { bg: "bg-light-50",     text: "text-light-500" },
   shutter:                 { bg: "bg-shutter-50",   text: "text-shutter-500" },
-  awning:                  { bg: "bg-shutter-50",   text: "text-shutter-500" },
+  // Awning uses the Sowel primary-light backdrop — the V3 illustration is
+  // already colored (primary blue + primary light) and harmonises with it.
+  awning:                  { bg: "bg-primary-light",text: "text-primary" },
   pool_cover:              { bg: "bg-shutter-50",   text: "text-shutter-500" },
   sensor:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
   button:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },

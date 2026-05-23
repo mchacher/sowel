@@ -149,6 +149,95 @@ export function ShutterWidgetIcon({ level }: { level: number | null }) {
 }
 
 // ============================================================
+// Awning icon — open/closed states with the Sowel V3 visual
+// (window + cassette + striped trapezoidal canopy with scallops).
+// Mirrors ShutterWidgetIcon dimensions (viewBox 56, 120px display).
+// Uses fixed Sowel palette colors (primary + primary-light) — does not
+// inherit currentColor; the shape itself conveys deployed vs retracted.
+// ============================================================
+
+export function AwningWidgetIcon({ deployed }: { deployed: boolean }) {
+  const id = useId();
+  const darkGradId = `awning-dark-${id}`;
+  const lightGradId = `awning-light-${id}`;
+  const cassetteGradId = `awning-cass-${id}`;
+  const glassId = `awning-glass-${id}`;
+
+  const winX = 4, winY = 10, winW = 48, winH = 42;
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none">
+      <defs>
+        <linearGradient id={darkGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1A4F6E" stopOpacity="1" />
+          <stop offset="100%" stopColor="#1A4F6E" stopOpacity="0.82" />
+        </linearGradient>
+        <linearGradient id={lightGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#E6F0F6" stopOpacity="1" />
+          <stop offset="100%" stopColor="#D6E5EF" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id={cassetteGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1A4F6E" stopOpacity="1" />
+          <stop offset="100%" stopColor="#13405A" stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id={glassId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1A4F6E" stopOpacity="0.04" />
+          <stop offset="100%" stopColor="#1A4F6E" stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
+
+      {/* Window — backdrop, drawn first so cassette + canopy overlay it */}
+      <rect
+        x={winX} y={winY} width={winW} height={winH}
+        rx="2" stroke="#1A4F6E" strokeWidth="1.2" fill={`url(#${glassId})`}
+      />
+
+      {deployed ? (
+        <>
+          {/*
+            10 trapezoidal stripes — perspective: top edge x=4..52 (narrower),
+            bottom edge x=1..55 (wider). Scalloped bottom (arc r=2.7).
+            Alternating dark blue / primary-light fills.
+          */}
+          <g stroke="none">
+            <path d="M 4    9 L 8.8  9 L 6.4  22 A 2.7 2.7 0 0 1 1    22 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 8.8  9 L 13.6 9 L 11.8 22 A 2.7 2.7 0 0 1 6.4  22 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 13.6 9 L 18.4 9 L 17.2 22 A 2.7 2.7 0 0 1 11.8 22 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 18.4 9 L 23.2 9 L 22.6 22 A 2.7 2.7 0 0 1 17.2 22 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 23.2 9 L 28   9 L 28   22 A 2.7 2.7 0 0 1 22.6 22 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 28   9 L 32.8 9 L 33.4 22 A 2.7 2.7 0 0 1 28   22 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 32.8 9 L 37.6 9 L 38.8 22 A 2.7 2.7 0 0 1 33.4 22 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 37.6 9 L 42.4 9 L 44.2 22 A 2.7 2.7 0 0 1 38.8 22 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 42.4 9 L 47.2 9 L 49.6 22 A 2.7 2.7 0 0 1 44.2 22 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 47.2 9 L 52   9 L 55   22 A 2.7 2.7 0 0 1 49.6 22 Z" fill={`url(#${lightGradId})`} />
+          </g>
+
+          {/* Cassette — mounting bar above the canopy */}
+          <rect x="3" y="4" width="50" height="5" rx="1.2" fill={`url(#${cassetteGradId})`} />
+        </>
+      ) : (
+        <>
+          {/* Small retracted fringe — 8 alternating scallops just below the cassette */}
+          <g stroke="none">
+            <path d="M 4  13 L 10 13 L 10 13.5 A 3 3 0 0 1 4  13.5 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 10 13 L 16 13 L 16 13.5 A 3 3 0 0 1 10 13.5 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 16 13 L 22 13 L 22 13.5 A 3 3 0 0 1 16 13.5 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 22 13 L 28 13 L 28 13.5 A 3 3 0 0 1 22 13.5 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 28 13 L 34 13 L 34 13.5 A 3 3 0 0 1 28 13.5 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 34 13 L 40 13 L 40 13.5 A 3 3 0 0 1 34 13.5 Z" fill={`url(#${lightGradId})`} />
+            <path d="M 40 13 L 46 13 L 46 13.5 A 3 3 0 0 1 40 13.5 Z" fill={`url(#${darkGradId})`} />
+            <path d="M 46 13 L 52 13 L 52 13.5 A 3 3 0 0 1 46 13.5 Z" fill={`url(#${lightGradId})`} />
+          </g>
+
+          {/* Cassette — rolled-up box covering the top of the window */}
+          <rect x="3" y="7" width="50" height="6" rx="1.5" fill={`url(#${cassetteGradId})`} />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// ============================================================
 // Thermometer icon — for thermostat / heating widgets
 // ============================================================
 

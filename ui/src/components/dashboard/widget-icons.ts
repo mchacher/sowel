@@ -52,6 +52,7 @@ import type { EquipmentType, WidgetFamily } from "../../types";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
+  AwningWidgetIcon,
   ThermometerIcon,
   MultiSensorIcon,
   HumiditySensorIcon,
@@ -71,7 +72,6 @@ import {
   PoolCoverIcon,
   WaterValveWidgetIcon,
 } from "./WidgetIcons";
-import { AwningIcon } from "../icons/AwningIcon";
 
 // ============================================================
 // Utility — shutter level bucket (moved from WidgetIcons.tsx to avoid react-refresh lint)
@@ -114,8 +114,8 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
   },
   awning: {
     label: "Store banne",
-    component: AwningIcon as ComponentType<Record<string, unknown>>,
-    previewProps: { size: 24, strokeWidth: 1.5 },
+    component: AwningWidgetIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { deployed: true },
     types: ["awning", "awnings"],
   },
   thermometer: {

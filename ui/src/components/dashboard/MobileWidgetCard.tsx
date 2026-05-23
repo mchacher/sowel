@@ -6,6 +6,7 @@ import { getSensorBindings, formatSensorValue } from "../equipments/sensorUtils"
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
+  AwningWidgetIcon,
   ThermometerIcon,
   MultiSensorIcon,
   GateWidgetIcon,
@@ -18,7 +19,6 @@ import {
   WaterValveWidgetIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
-import { AwningIcon } from "../icons/AwningIcon";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { Cloud, WashingMachine, Tv } from "lucide-react";
 
@@ -137,7 +137,7 @@ function useMobileState(
     return {
       icon: customEntry
         ? createElement(customEntry.component, customEntry.previewProps)
-        : <AwningIcon size={28} strokeWidth={1.5} />,
+        : <AwningWidgetIcon deployed={position !== null && position > 0} />,
       stateLines: text ? [text] : [],
     };
   }

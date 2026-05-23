@@ -18,11 +18,11 @@ import { useSliderOverride } from "../../hooks/useSliderOverride";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
+  AwningWidgetIcon,
   ThermometerIcon,
   MultiSensorIcon,
 } from "./WidgetIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
-import { AwningIcon } from "../icons/AwningIcon";
 import { shutterLevel } from "./widget-icons";
 import { WidgetCard } from "./WidgetCard";
 
@@ -401,15 +401,7 @@ function ZoneAwningWidget({
       {/* Picto + count */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <div
-          className={
-            deployedCount > 0
-              ? "text-primary"
-              : "text-text-tertiary"
-          }
-        >
-          <AwningIcon size={56} strokeWidth={1.5} />
-        </div>
+        <AwningWidgetIcon deployed={deployedCount > 0} />
         <div className="pl-2">
           {total === 0 ? (
             <span className="text-[16px] text-text-tertiary">{"—"}</span>

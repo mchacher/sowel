@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
+import { AwningIcon } from "../icons/AwningIcon";
 import { useTranslation } from "react-i18next";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
@@ -27,6 +28,7 @@ interface EquipmentGroup {
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ShutterClosedIcon size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.awnings", types: ["awning"], icon: <AwningIcon size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.climate", types: ["thermostat", "heater"], icon: <Thermometer size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.energy", types: ["energy_meter", "main_energy_meter", "energy_production_meter"], icon: <Zap size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },

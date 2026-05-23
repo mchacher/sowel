@@ -26,6 +26,7 @@ import { createElement } from "react";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
+  AwningWidgetIcon,
   ThermometerIcon,
   MultiSensorIcon,
   GateWidgetIcon,
@@ -53,7 +54,7 @@ interface EquipmentWidgetProps {
 export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetail }: EquipmentWidgetProps) {
   const {
     isLight,
-    isShutter,
+    isShutterFamily,
     isSensor,
     isWeatherForecast,
     isEnergyMeter,
@@ -71,7 +72,10 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetai
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
   if (isLight) return <LightEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
-  if (isShutter) return <ShutterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  // Awnings share the shutter widget shape (icon + position + 3-button row).
+  // ShutterEquipmentWidget swaps the icon (AwningWidgetIcon) and the vocabulary
+  // (deployed/retracted, extend/retract) when type === "awning".
+  if (isShutterFamily) return <ShutterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isThermostat || isPoolHeatPump) return <ThermostatEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isGate) return <GateEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
@@ -224,6 +228,8 @@ function ShutterEquipmentWidget({
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
 
+  const isAwning = equipment.type === "awning";
+
   const positionBinding = equipment.dataBindings.find(
     (db) => db.category === "shutter_position",
   );
@@ -244,6 +250,14 @@ function ShutterEquipmentWidget({
   const hasState = !!moveBinding;
   const level = position !== null ? shutterLevel(position) : null;
 
+  // Awning vocabulary swap (mirrors ShutterControl):
+  //   OPEN (RF up) = retract  · CLOSE (RF down) = extend (deploy)
+  //   pos 0  = retracted    · pos 100 = deployed
+  const pillAtHundred = isAwning ? t("controls.deployed") : t("controls.opened");
+  const pillAtZero = isAwning ? t("controls.retracted") : t("controls.closed");
+  const openTitle = isAwning ? t("controls.retract") : t("controls.open");
+  const closeTitle = isAwning ? t("controls.extend") : t("controls.close");
+
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
     if (executing || !moveBinding) return;
     setExecuting(true);
@@ -260,14 +274,18 @@ function ShutterEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <ShutterWidgetIcon level={level} />
+        {isAwning ? (
+          <AwningWidgetIcon deployed={position !== null && position > 0} />
+        ) : (
+          <ShutterWidgetIcon level={level} />
+        )}
         <div className="pl-2">
           {position === null ? (
             <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">{t("controls.opened")}</span>
+            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">{pillAtHundred}</span>
           ) : position === 0 ? (
-            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.closed")}</span>
+            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{pillAtZero}</span>
           ) : (
             <div className="flex items-baseline gap-0.5">
               <span className="text-[16px] font-semibold text-text tabular-nums leading-none">{position}</span>
@@ -284,7 +302,7 @@ function ShutterEquipmentWidget({
             onClick={() => handleCommand("OPEN")}
             disabled={executing}
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("controls.open")}
+            title={openTitle}
           >
             {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
           </button>
@@ -300,7 +318,7 @@ function ShutterEquipmentWidget({
             onClick={() => handleCommand("CLOSE")}
             disabled={executing}
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            title={t("controls.close")}
+            title={closeTitle}
           >
             <ChevronDown size={16} strokeWidth={2} />
           </button>

@@ -137,7 +137,7 @@ export function ZoneAggregationPills({
     const someDeployed = data.awningsDeployed > 0;
     counterPills.push({
       key: "awnings",
-      icon: <AwningIcon size={14} strokeWidth={1.5} />,
+      icon: <AwningIcon size={14} state={someDeployed ? "open" : "closed"} />,
       label: `${data.awningsDeployed}/${data.awningsTotal}`,
       variant: someDeployed ? "active" : "default",
       iconTint: "text-text-secondary",

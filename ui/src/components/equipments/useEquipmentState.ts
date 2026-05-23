@@ -1,6 +1,7 @@
 import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "./EquipmentCard";
 import { ShutterIcon } from "../icons/ShutterIcons";
+import { AwningIcon } from "../icons/AwningIcon";
 import {
   getSensorIcon,
   getSensorIconColor,
@@ -96,14 +97,15 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       ? equipment.dataBindings.find((b) => b.category === "action")
       : null;
 
-  // Icon
+  // Icon — shutters and awnings render their own state-aware illustration
+  // (slats lowered for shutters, canopy deployed/retracted for awnings).
   const iconElement: React.ReactNode = isSensor
     ? getSensorIcon(equipment.dataBindings)
     : isShutter
       ? ShutterIcon({ size: 18, strokeWidth: 1.5, position: shutterPosition })
-      : TYPE_ICONS[equipment.type];
-  // Awnings use the standard TYPE_ICONS lookup populated in EquipmentCard
-  // (AwningIcon registered alongside the other custom icons).
+      : isAwning
+        ? AwningIcon({ size: 22, state: shutterIsOpen ? "open" : "closed" })
+        : TYPE_ICONS[equipment.type];
 
   // Gate state for icon color
   const gateStateBinding = isGate

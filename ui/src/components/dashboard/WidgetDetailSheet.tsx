@@ -26,6 +26,7 @@ import { formatSensorValue } from "../equipments/sensorUtils";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
+  AwningWidgetIcon,
   ThermometerIcon,
   MultiSensorIcon,
   HeaterWidgetIcon,
@@ -35,7 +36,6 @@ import {
   PoolCoverIcon,
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
-import { AwningIcon } from "../icons/AwningIcon";
 import { BottomSheet } from "./BottomSheet";
 
 // ============================================================
@@ -577,9 +577,7 @@ function ZoneAwningsDetail({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-center">
-        <span className={deployedCount > 0 ? "text-primary" : "text-text-tertiary"}>
-          <AwningIcon size={72} strokeWidth={1.5} />
-        </span>
+        <AwningWidgetIcon deployed={deployedCount > 0} />
       </div>
 
       <div className="text-center text-[14px] font-medium text-text">{stateText}</div>
@@ -897,6 +895,8 @@ function ShutterDetailContent({
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
 
+  const isAwning = equipment.type === "awning";
+
   const positionBinding = equipment.dataBindings.find(
     (db) => db.category === "shutter_position",
   );
@@ -905,6 +905,10 @@ function ShutterDetailContent({
     : null;
   const position = slider.displayValue(devicePosition);
   const level = position !== null ? shutterLevel(position) : null;
+
+  // Awning vocabulary — mirrors ShutterControl + ShutterEquipmentWidget.
+  const labelHundred = isAwning ? t("controls.deployed") : t("controls.opened");
+  const labelZero = isAwning ? t("controls.retracted") : t("controls.closed");
 
   // Resolve the move + position-set bindings by category first, falling back
   // to the conventional alias (`state`, `position`) and finally to any
@@ -943,10 +947,12 @@ function ShutterDetailContent({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Icon centered — pool covers get the pool-specific picto */}
+      {/* Icon centered — pool covers + awnings get their own picto */}
       <div className="flex justify-center">
         {equipment.type === "pool_cover" ? (
           <PoolCoverIcon position={position} />
+        ) : isAwning ? (
+          <AwningWidgetIcon deployed={position !== null && position > 0} />
         ) : (
           <ShutterWidgetIcon level={level} />
         )}
@@ -967,7 +973,7 @@ function ShutterDetailContent({
             className="flex-1 h-12"
           />
           <span className="text-[18px] font-semibold text-text tabular-nums min-w-[40px] text-right">
-            {position === 100 ? t("controls.opened") : position === 0 ? t("controls.closed") : `${position}%`}
+            {position === 100 ? labelHundred : position === 0 ? labelZero : `${position}%`}
           </span>
         </div>
       )}
