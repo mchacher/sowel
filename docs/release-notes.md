@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.13.x — Awning equipment
 
+### v1.13.2 — 2026-05-24 { #v1-13-2 }
+
+- Fix (zones): excluded `pool_cover` equipments from the shutter zone aggregates (`shuttersOpen` / `shuttersTotal` / `averageShutterPosition`). Pool covers share the `shutter_position` data category with shutters and were being counted, which surfaced phantom "all shutters" pills and bulk commands on Piscine zones (and their parent zones — e.g. an Outdoor → Pool subtree inherited them recursively). The `allShuttersOpen/Stop/Close` zone orders already targeted `type=shutter` only so executing the phantom command was a no-op — only the UI lied. The fix also makes awning and pool_cover exclusions uniform (positive `type === "shutter"` check).
+
 ### v1.13.1 — 2026-05-24 { #v1-13-1 }
 
 - Fix (zones): dropped the `awningsDeployed` / `awningsTotal` zone aggregates that shipped by mistake with v1.13.0. Awnings reuse the `shutter_position` data category but are intentionally not aggregated at the zone level — the dashboard awning widgets compute their counts locally. The "Stores bannes X/Y" pill is removed from the zone view, and a regression assertion now guarantees awnings don't pollute the shutter aggregates either. Bulk zone commands (`allAwningsExtend/Stop/Retract`) are untouched.
