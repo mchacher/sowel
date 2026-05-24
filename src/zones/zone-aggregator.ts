@@ -560,11 +560,16 @@ export class ZoneAggregator {
           break;
 
         case "shutter_position":
-          // Awnings share this category but are intentionally not aggregated
-          // at the zone level — the dashboard awning widgets compute their
-          // own deployed counts locally. Only shutters feed shuttersOpen /
-          // shuttersTotal / averageShutterPosition.
-          if (equipmentType !== "awning") {
+          // Only `shutter` equipments feed the shutter zone aggregates.
+          // Awnings and pool covers share this data category but are
+          // intentionally NOT aggregated at the zone level — their dashboard
+          // widgets compute their own counts locally, and letting them in
+          // here would surface zone-level shutter pills and bulk commands
+          // on zones that contain only awnings or pool covers (e.g. an
+          // Outdoor → Pool subtree showing a phantom "all shutters" command).
+          // The `allShuttersOpen/Stop/Close` zone orders already target
+          // type=shutter only.
+          if (equipmentType === "shutter") {
             acc.shuttersTotal += 1;
             if (typeof value === "number") {
               acc.shutterPositionSum += value;

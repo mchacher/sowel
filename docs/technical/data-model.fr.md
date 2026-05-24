@@ -99,30 +99,30 @@ Le moteur **calcule automatiquement** les données agrégées de chaque Zone à 
 
 L'agrégation est **récursive** : une Zone parent agrège ses propres Equipments plus toutes les Zones enfants.
 
-| Attribute                | Type           | Règle d'agrégation | Source (DataCategory) | Description                                                   |
-| ------------------------ | -------------- | ------------------ | --------------------- | ------------------------------------------------------------- |
-| `temperature`            | number \| null | AVG                | `temperature`         | Température moyenne de la zone                                |
-| `humidity`               | number \| null | AVG                | `humidity`            | Humidité moyenne                                              |
-| `pressure`               | number \| null | AVG                | `pressure`            | Pression atmosphérique moyenne                                |
-| `luminosity`             | number \| null | AVG                | `luminosity`          | Luminosité moyenne (lux)                                      |
-| `co2`                    | number \| null | AVG                | `co2`                 | Niveau de CO2 moyen (ppm)                                     |
-| `voc`                    | number \| null | AVG                | `voc`                 | Niveau de COV moyen (ppb)                                     |
-| `motion`                 | boolean        | OR                 | `motion`              | true si AU MOINS UN capteur de mouvement détecte du mouvement |
-| `presence`               | boolean        | OR + timeout       | `motion`              | true si du mouvement détecté dans un timeout configurable     |
-| `openDoors`              | number         | COUNT (open)       | `contact_door`        | Nombre de contacts de porte ouverts                           |
-| `openWindows`            | number         | COUNT (open)       | `contact_window`      | Nombre de contacts de fenêtre ouverts                         |
-| `waterLeak`              | boolean        | OR                 | `water_leak`          | true si AU MOINS UN capteur de fuite d'eau se déclenche       |
-| `smoke`                  | boolean        | OR                 | `smoke`               | true si AU MOINS UN détecteur de fumée se déclenche           |
-| `lightsOn`               | number         | COUNT (on)         | `light_state`         | Nombre de lumières allumées                                   |
-| `lightsTotal`            | number         | COUNT (all)        | `light_state`         | Nombre total d'équipements lumière                            |
-| `averageBrightness`      | number \| null | AVG (on only)      | `light_brightness`    | Luminosité moyenne des lumières allumées                      |
-| `shuttersOpen`           | number         | COUNT (open)       | `shutter_position`    | Nombre de volets ouverts (type=shutter uniquement)            |
-| `shuttersTotal`          | number         | COUNT (all)        | `shutter_position`    | Nombre total de volets (type=shutter uniquement)              |
-| `averageShutterPosition` | number \| null | AVG                | `shutter_position`    | Position moyenne des volets (%) — volets seuls                |
-| `totalPower`             | number         | SUM                | `power`               | Puissance instantanée totale (W)                              |
-| `totalEnergy`            | number         | SUM                | `energy`              | Consommation d'énergie totale (kWh)                           |
-| `heatingActive`          | boolean        | OR                 | thermostat equipments | true si un thermostat chauffe activement                      |
-| `targetTemperature`      | number \| null | AVG                | thermostat equipments | Consigne de température cible moyenne                         |
+| Attribute                | Type           | Règle d'agrégation | Source (DataCategory) | Description                                                          |
+| ------------------------ | -------------- | ------------------ | --------------------- | -------------------------------------------------------------------- |
+| `temperature`            | number \| null | AVG                | `temperature`         | Température moyenne de la zone                                       |
+| `humidity`               | number \| null | AVG                | `humidity`            | Humidité moyenne                                                     |
+| `pressure`               | number \| null | AVG                | `pressure`            | Pression atmosphérique moyenne                                       |
+| `luminosity`             | number \| null | AVG                | `luminosity`          | Luminosité moyenne (lux)                                             |
+| `co2`                    | number \| null | AVG                | `co2`                 | Niveau de CO2 moyen (ppm)                                            |
+| `voc`                    | number \| null | AVG                | `voc`                 | Niveau de COV moyen (ppb)                                            |
+| `motion`                 | boolean        | OR                 | `motion`              | true si AU MOINS UN capteur de mouvement détecte du mouvement        |
+| `presence`               | boolean        | OR + timeout       | `motion`              | true si du mouvement détecté dans un timeout configurable            |
+| `openDoors`              | number         | COUNT (open)       | `contact_door`        | Nombre de contacts de porte ouverts                                  |
+| `openWindows`            | number         | COUNT (open)       | `contact_window`      | Nombre de contacts de fenêtre ouverts                                |
+| `waterLeak`              | boolean        | OR                 | `water_leak`          | true si AU MOINS UN capteur de fuite d'eau se déclenche              |
+| `smoke`                  | boolean        | OR                 | `smoke`               | true si AU MOINS UN détecteur de fumée se déclenche                  |
+| `lightsOn`               | number         | COUNT (on)         | `light_state`         | Nombre de lumières allumées                                          |
+| `lightsTotal`            | number         | COUNT (all)        | `light_state`         | Nombre total d'équipements lumière                                   |
+| `averageBrightness`      | number \| null | AVG (on only)      | `light_brightness`    | Luminosité moyenne des lumières allumées                             |
+| `shuttersOpen`           | number         | COUNT (open)       | `shutter_position`    | Nombre de volets ouverts (type=shutter — exclut awning + pool_cover) |
+| `shuttersTotal`          | number         | COUNT (all)        | `shutter_position`    | Nombre total de volets (type=shutter — exclut awning + pool_cover)   |
+| `averageShutterPosition` | number \| null | AVG                | `shutter_position`    | Position moyenne des volets (%) — type=shutter uniquement            |
+| `totalPower`             | number         | SUM                | `power`               | Puissance instantanée totale (W)                                     |
+| `totalEnergy`            | number         | SUM                | `energy`              | Consommation d'énergie totale (kWh)                                  |
+| `heatingActive`          | boolean        | OR                 | thermostat equipments | true si un thermostat chauffe activement                             |
+| `targetTemperature`      | number \| null | AVG                | thermostat equipments | Consigne de température cible moyenne                                |
 
 > **Note** : cette liste évoluera. De nouveaux attributs agrégés peuvent être ajoutés à mesure que de nouveaux types d'Equipment et DataCategories sont introduits.
 

@@ -354,10 +354,10 @@ describe("ZoneAggregator", () => {
       expect(data?.averageShutterPosition).toBe(43); // round((80+0+50)/3) = 43
     });
 
-    it("ignores awnings in zone aggregates (no awningsTotal/Deployed, no shutter pollution)", () => {
+    it("ignores awnings and pool covers in shutter zone aggregates (shutter type only)", () => {
       const zone = zoneManager.create({ name: "Terrasse" });
 
-      // Awning at 50 (deployed) — must not bump shutter counts
+      // Awning at 50 — must not bump shutter counts
       const devA = seedDevice(db, {
         name: "AwningRtm",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
@@ -367,10 +367,15 @@ describe("ZoneAggregator", () => {
         name: "ShutterRtm",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "50" }],
       });
-      // Awning at 0 (retracted) — also must not bump shutter counts
+      // Awning at 0
       const devA0 = seedDevice(db, {
         name: "AwningRet",
         dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "0" }],
+      });
+      // Pool cover at 80 — must not bump shutter counts either
+      const devPc = seedDevice(db, {
+        name: "PoolCoverRtm",
+        dataKeys: [{ key: "position", type: "number", category: "shutter_position", value: "80" }],
       });
 
       const awning = equipmentManager.create({ name: "Store 1", type: "awning", zoneId: zone.id });
@@ -390,16 +395,23 @@ describe("ZoneAggregator", () => {
       });
       equipmentManager.addDataBinding(awning2.id, devA0.dataIds[0], "position");
 
+      const poolCover = equipmentManager.create({
+        name: "Volet Piscine",
+        type: "pool_cover",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(poolCover.id, devPc.dataIds[0], "position");
+
       aggregator.computeAll();
 
       const data = aggregator.getByZoneId(zone.id);
-      // Awnings are intentionally excluded from zone aggregates (spec 115
-      // scope decision) — only the shutter feeds the shutter counters.
+      // Awnings and pool covers are intentionally excluded from zone
+      // aggregates — only `type=shutter` feeds the shutter counters. This
+      // prevents zone-level phantom "all shutters" commands appearing on
+      // pool / outdoor zones that contain only pool covers or awnings.
       expect(data?.shuttersTotal).toBe(1);
       expect(data?.shuttersOpen).toBe(1);
       expect(data?.averageShutterPosition).toBe(50);
-      // ZoneAggregatedData no longer exposes awningsTotal/awningsDeployed —
-      // the awning dashboard widgets compute their counts locally.
     });
 
     it("returns null averageShutterPosition when no shutters", () => {
