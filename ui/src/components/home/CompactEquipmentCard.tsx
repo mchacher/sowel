@@ -13,6 +13,7 @@ import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
+import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import type { DataBindingWithValue } from "../../types";
 
 interface CompactEquipmentCardProps {
@@ -94,6 +95,26 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const iconText = isLightOn ? "text-white" : baseTint.text;
   const iconAnimation = isLightOn ? "animate-glow" : "";
 
+  // Spec 116: when the equipment is fully offline, render a minimal row —
+  // just icon (muted) + name + badge — instead of stale controls + values.
+  if (equipment.status === "offline") {
+    return (
+      <div className="grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
+        <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 opacity-55 ${baseTint.bg} ${baseTint.text}`}>
+          {iconElement}
+        </div>
+        <Link
+          to={`/equipments/${equipment.id}`}
+          state={zoneName ? { fromZone: zoneName } : undefined}
+          className="min-w-0 text-[14px] font-medium text-text truncate hover:text-primary transition-colors"
+        >
+          {equipment.name}
+        </Link>
+        <EquipmentStatusBadge status="offline" reason={equipment.statusReason} size="sm" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
       {/* Slot 1: Icon */}
@@ -101,14 +122,24 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         {iconElement}
       </div>
 
-      {/* Slot 2: Name */}
-      <Link
-        to={`/equipments/${equipment.id}`}
-        state={zoneName ? { fromZone: zoneName } : undefined}
-        className="min-w-0 text-[14px] font-medium text-text truncate hover:text-primary transition-colors"
-      >
-        {equipment.name}
-      </Link>
+      {/* Slot 2: Name (+ degraded badge inline, spec 116) */}
+      <div className="min-w-0 flex items-center gap-2">
+        <Link
+          to={`/equipments/${equipment.id}`}
+          state={zoneName ? { fromZone: zoneName } : undefined}
+          className="min-w-0 text-[14px] font-medium text-text truncate hover:text-primary transition-colors"
+        >
+          {equipment.name}
+        </Link>
+        {equipment.status === "degraded" && (
+          <EquipmentStatusBadge
+            status="degraded"
+            reason={equipment.statusReason}
+            size="sm"
+            iconOnly
+          />
+        )}
+      </div>
 
       {/* Slots 3-5: per-type content. Grid auto columns collapse when unused. */}
 

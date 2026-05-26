@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Clock, WifiOff } from "lucide-react";
 import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 import { EnergyMobileNav } from "./EnergyMobileNav";
@@ -40,6 +41,42 @@ function sumPower(equipments: EquipmentWithDetails[]): number | null {
     }
   }
   return any ? total : null;
+}
+
+/**
+ * Spec 116: detect whether the live diagram is showing trustworthy data.
+ * Returns null when everything is online — caller renders nothing.
+ * Returns { mode: "stale" | "offline", oldestSince } when the upstream
+ * meters are degraded or fully offline.
+ */
+function detectLiveStaleness(
+  contributors: EquipmentWithDetails[],
+): { mode: "stale" | "offline"; oldestSince: string | null } | null {
+  if (contributors.length === 0) return null;
+  const anyDegraded = contributors.some(
+    (e) => e.status === "degraded" || e.status === "offline",
+  );
+  if (!anyDegraded) return null;
+  const allOffline = contributors.every((e) => e.status === "offline");
+  const sinces = contributors
+    .map((e) => e.statusReason?.offlineSince ?? null)
+    .filter((s): s is string => s !== null);
+  const oldestSince = sinces.length > 0 ? sinces.reduce((a, b) => (a < b ? a : b)) : null;
+  return { mode: allOffline ? "offline" : "stale", oldestSince };
+}
+
+function formatRelative(iso: string | null): string {
+  if (!iso) return "";
+  const normalized = iso.includes("T") ? iso : iso.replace(" ", "T").replace("Z", "") + "Z";
+  const ms = Date.parse(normalized);
+  if (!Number.isFinite(ms)) return "";
+  const seconds = Math.floor((Date.now() - ms) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h`;
+  return `${Math.floor(hours / 24)} j`;
 }
 
 /** Flow duration (s) inversely log-scaled with power. Stays calm — bubbles never zoom. */
@@ -111,6 +148,10 @@ export function LiveEnergyPage() {
   const gridPower = sumPower(gridEqs);
   const solarPower = sumPower(solarEqs);
   const hasSources = gridEqs.length > 0 || solarEqs.length > 0;
+  const staleness = useMemo(
+    () => detectLiveStaleness([...gridEqs, ...solarEqs]),
+    [gridEqs, solarEqs],
+  );
 
   return (
     <div className="p-4 sm:p-6">
@@ -118,6 +159,31 @@ export function LiveEnergyPage() {
       <div className="hidden sm:flex items-center gap-1.5 mb-6">
         <h1>{t("energy.live")}</h1>
       </div>
+
+      {staleness && (
+        <div
+          className={`mb-4 flex items-center gap-2 rounded-[10px] border px-4 py-3 text-[13px] ${
+            staleness.mode === "offline"
+              ? "bg-error/10 border-error/20 text-error"
+              : "bg-warning/10 border-warning/20 text-warning"
+          }`}
+          role="status"
+        >
+          {staleness.mode === "offline" ? (
+            <WifiOff size={16} strokeWidth={1.75} />
+          ) : (
+            <Clock size={16} strokeWidth={1.75} />
+          )}
+          <span className="font-medium">
+            {t(
+              staleness.mode === "offline"
+                ? "energy.live.metersOffline"
+                : "energy.live.dataStale",
+              { when: formatRelative(staleness.oldestSince) },
+            )}
+          </span>
+        </div>
+      )}
 
       {!hasSources ? (
         <EmptyState />

@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import type { Equipment, EquipmentType, EquipmentWithDetails } from "../types";
+import type {
+  Equipment,
+  EquipmentType,
+  EquipmentStatus,
+  EquipmentWithDetails,
+} from "../types";
 import {
   getEquipments,
   createEquipment as apiCreateEquipment,
@@ -50,6 +55,7 @@ interface EquipmentsState {
   handleEquipmentUpdated: () => void;
   handleEquipmentRemoved: () => void;
   handleEquipmentDataChanged: (equipmentId: string, alias: string, value: unknown) => void;
+  handleEquipmentStatusChanged: (equipmentId: string, newStatus: EquipmentStatus) => void;
 }
 
 export const useEquipments = create<EquipmentsState>((set, get) => ({
@@ -145,6 +151,19 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
           : [...existing, entry];
         return { ...eq, computedData: updated };
       }),
+    }));
+  },
+  handleEquipmentStatusChanged: (equipmentId, newStatus) => {
+    // Spec 116: refetch when status changes — statusReason needs the full
+    // server-side derivation (offlineDevices, staleBindings, offlineSince).
+    // Status transitions are rare enough that a refetch is fine.
+    get().fetchEquipments();
+    // Optimistic local update for instant badge feedback while the fetch
+    // is in flight (~100ms RTT on LAN).
+    set((state) => ({
+      equipments: state.equipments.map((eq) =>
+        eq.id === equipmentId ? { ...eq, status: newStatus } : eq,
+      ),
     }));
   },
 }));

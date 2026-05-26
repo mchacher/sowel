@@ -15,6 +15,7 @@ import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
+import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBadge";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_LABELS } from "../components/equipments/EquipmentCard";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
@@ -201,9 +202,17 @@ export function EquipmentDetailPage() {
             {equipmentState.iconElement}
           </div>
           <div>
-            <h1>
-              {equipment.name}
-            </h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1>
+                {equipment.name}
+              </h1>
+              {/* Spec 116: availability badge next to the equipment name */}
+              <EquipmentStatusBadge
+                status={equipment.status}
+                reason={equipment.statusReason}
+                size="md"
+              />
+            </div>
             <p className="text-[13px] text-text-secondary">
               {t(TYPE_LABELS[equipment.type])}
               {equipment.description && ` · ${equipment.description}`}
@@ -363,7 +372,11 @@ export function EquipmentDetailPage() {
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
         equipment.type === "energy_meter") && equipment.computedData && (
-        <EnergyDataPanel computedData={equipment.computedData} />
+        <EnergyDataPanel
+          computedData={equipment.computedData}
+          status={equipment.status}
+          statusReason={equipment.statusReason}
+        />
       )}
 
       {/* Button actions */}

@@ -1053,5 +1053,23 @@
   "activity.toggleDescendants.on": "Hide sub-zone activity",
   "activity.toggleDescendants.off": "Include sub-zone activity",
 
-  "activity.bucket.now": "now"
+  "activity.bucket.now": "now",
+
+  "equipment.status.online": "Online",
+  "equipment.status.degraded": "Degraded",
+  "equipment.status.offline": "Disconnected",
+  "equipment.status.tooltip.offlineDevices_one": "1 device offline:",
+  "equipment.status.tooltip.offlineDevices_other": "{{count}} devices offline:",
+  "equipment.status.tooltip.staleBindings_one": "1 stale value:",
+  "equipment.status.tooltip.staleBindings_other": "{{count}} stale values:",
+  "equipment.status.tooltip.since": "Since {{when}}",
+
+  "energy.cumul.lastLive": "Last live datapoint {{when}} ago",
+  "energy.cumul.offlineSince": "Meter offline for {{when}}",
+
+  "energy.live.dataStale": "Live data stale, last update {{when}} ago",
+  "energy.live.metersOffline": "Meters disconnected for {{when}}",
+
+  "zones.aggregate.unavailable_one": "(1 unavailable)",
+  "zones.aggregate.unavailable_other": "({{count}} unavailable)"
 }

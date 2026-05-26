@@ -47,6 +47,17 @@ export function ZoneAggregationPills({
   const { t } = useTranslation();
   const duration = useRelativeTime(data.motionSince, t);
 
+  // Spec 116: append "(N unavailable)" hint when offline equipments of this
+  // category were excluded from the aggregation.
+  const unavail = (cat: string): string => {
+    const count = data.unavailableEquipmentsByCategory?.[cat as never] as
+      | number
+      | undefined;
+    return count && count > 0
+      ? ` ${t("zones.aggregate.unavailable", { count })}`
+      : "";
+  };
+
   // ── Cluster 1: Sensors (passive measurement) ────────────────
   const sensorPills: StatusItem[] = [];
 
@@ -54,7 +65,7 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "temp",
       icon: <Thermometer size={14} strokeWidth={1.5} />,
-      label: `${data.temperature}°C`,
+      label: `${data.temperature}°C${unavail("temperature")}`,
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -66,7 +77,7 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "hum",
       icon: <Droplets size={14} strokeWidth={1.5} />,
-      label: `${data.humidity}%`,
+      label: `${data.humidity}%${unavail("humidity")}`,
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -78,7 +89,7 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "lux",
       icon: <Sun size={14} strokeWidth={1.5} />,
-      label: `${data.luminosity} lx`,
+      label: `${data.luminosity} lx${unavail("luminosity")}`,
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -108,7 +119,7 @@ export function ZoneAggregationPills({
     counterPills.push({
       key: "lights",
       icon: <Lightbulb size={14} strokeWidth={1.5} />,
-      label: `${data.lightsOn}/${data.lightsTotal}`,
+      label: `${data.lightsOn}/${data.lightsTotal}${unavail("light_state")}`,
       variant: isOn ? "active" : "default",
       iconTint: "text-text-tertiary",
       valueTint: "text-text-tertiary",
@@ -125,7 +136,7 @@ export function ZoneAggregationPills({
     counterPills.push({
       key: "shutters",
       icon: <ShutterIcon size={14} strokeWidth={1.5} position={pos} />,
-      label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}`,
+      label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}${unavail("shutter_position")}`,
       variant: "default",
       iconTint: "text-text-secondary",
       valueTint: someOpen ? "text-text" : "text-text-tertiary",

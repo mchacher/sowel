@@ -169,6 +169,10 @@ export interface ZoneAggregatedData {
   sunrise: string | null;
   sunset: string | null;
   isDaylight: boolean | null;
+  /** Per-DataCategory count of equipments excluded from aggregation because
+   *  status === "offline" (spec 116). Used by the UI to render "(N unavailable)"
+   *  hints next to affected metrics. */
+  unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
 }
 
 // ============================================================
@@ -211,6 +215,16 @@ export interface Equipment {
   updatedAt: string;
 }
 
+/** Derived availability of an equipment (spec 116). Computed server-side
+ *  from devices.status + streaming bindings freshness. Never persisted. */
+export type EquipmentStatus = "online" | "degraded" | "offline";
+
+export interface EquipmentStatusReason {
+  offlineDevices: string[];
+  staleBindings: string[];
+  offlineSince: string | null;
+}
+
 export interface DataBinding {
   id: string;
   equipmentId: string;
@@ -238,6 +252,8 @@ export interface DataBindingWithValue extends DataBinding {
   lastUpdated: string | null;
   lastChanged: string | null;
   historize?: number | null;
+  /** True iff category is streaming AND lastUpdated > category timeout (spec 116). */
+  stale: boolean;
 }
 
 export interface OrderBindingWithDetails extends OrderBinding {
@@ -266,6 +282,10 @@ export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
   computedData?: ComputedDataEntry[];
+  /** Derived availability (spec 116). Always present. */
+  status: EquipmentStatus;
+  /** Populated only when status !== "online". */
+  statusReason?: EquipmentStatusReason;
 }
 
 // ============================================================
@@ -401,6 +421,13 @@ export type EngineEvent =
       alias: string;
       value: unknown;
       previous: unknown;
+    }
+  | {
+      type: "equipment.status.changed";
+      equipmentId: string;
+      equipmentName: string;
+      oldStatus: EquipmentStatus;
+      newStatus: EquipmentStatus;
     }
   | {
       type: "equipment.order.executed";

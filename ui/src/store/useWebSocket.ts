@@ -131,6 +131,12 @@ function handleEvent(event: EngineEvent): void {
         event.value
       );
       break;
+    case "equipment.status.changed":
+      useEquipments.getState().handleEquipmentStatusChanged(
+        event.equipmentId,
+        event.newStatus
+      );
+      break;
     case "recipe.instance.created":
     case "recipe.instance.removed":
     case "recipe.instance.started":
