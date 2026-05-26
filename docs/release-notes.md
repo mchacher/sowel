@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.14.x — Equipment availability
 
+### v1.14.1 — 2026-05-26 { #v1-14-1 }
+
+- Fix (UI): the "Total" label under the Production solar chart now equals the sum of the stacked bars (autoconsumption + grid injection). Previously the label was sourced from the raw inverter `energy` series while the bars summed the per-minute `autoconso` and `injection` series, and the two could drift by ~1 kWh per day because of cross-meter timing skew. Visual only, no data lost.
+
 ### v1.14.0 — 2026-05-26 { #v1-14-0 }
 
 - Equipments: every equipment now exposes a derived `status` field (`online` / `degraded` / `offline`) computed in memory from the backing devices' `status` and the freshness of streaming bindings (spec 116). The UI ships ambre "Degraded" and red "Disconnected" badges on every surface where users see equipment values: compact zone rows (badge replaces controls when fully offline), equipment detail header, energy cumuls panel (with last-update caption), zone aggregation pills (`(N unavailable)` hint when an offline equipment was excluded from a metric). The Live Energy page gains a top banner that flags stale or disconnected meters explicitly. Triggered by a real bug: a Shelly Pro 3EM coupé au tableau kept the live energy graph displaying its last value as if it was live, with zero indication of staleness.

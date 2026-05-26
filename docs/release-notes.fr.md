@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.14.x — Disponibilité des équipements
 
+### v1.14.1 — 2026-05-26 { #v1-14-1 }
+
+- Fix (UI) : le libellé "Total" sous le graphique Production solaire correspond désormais à la somme des barres empilées (autoconsommation + injection réseau). Avant, ce libellé venait de la série brute `energy` de l'onduleur alors que les barres cumulaient les séries `autoconso` et `injection` calculées par minute, et les deux pouvaient diverger d'environ 1 kWh par jour à cause du décalage entre les compteurs solaire et réseau. Cosmétique uniquement, aucune donnée perdue.
+
 ### v1.14.0 — 2026-05-26 { #v1-14-0 }
 
 - Équipements : chaque équipement expose désormais un champ `status` dérivé (`online` / `degraded` / `offline`), calculé en mémoire à partir du `status` des devices sous-jacents et de la fraîcheur des bindings streaming (spec 116). L'UI affiche des pastilles ambre "Dégradé" et rouge "Déconnecté" sur toutes les surfaces où l'utilisateur voit des valeurs d'équipement : lignes compactes de zone (la pastille remplace les contrôles quand l'équipement est offline), header de la page détail, panneau de cumuls énergie (avec caption de fraîcheur), pastilles d'agrégation de zone (hint `(N indispo.)` quand un équipement offline a été exclu d'une métrique). La page Live Energy gagne une bannière en haut qui flag explicitement les compteurs périmés ou déconnectés. Déclenché par un vrai bug : un Shelly Pro 3EM coupé au tableau gardait le graphe d'énergie live affichant sa dernière valeur comme si c'était live, sans aucune indication.
