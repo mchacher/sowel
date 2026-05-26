@@ -32,6 +32,7 @@ export function syntheticBindingFromComputed(
     unit: computed.unit,
     lastUpdated: computed.lastUpdated,
     lastChanged: computed.lastUpdated,
+    stale: false,
   };
 }
 

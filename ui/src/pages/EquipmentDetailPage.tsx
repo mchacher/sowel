@@ -86,7 +86,7 @@ export function EquipmentDetailPage() {
   }, [fetchZones]);
 
   // Must call hooks before any early returns
-  const EMPTY: EquipmentWithDetails = { id: "", name: "", type: "sensor", zoneId: "", enabled: true, createdAt: "", updatedAt: "", dataBindings: [], orderBindings: [] };
+  const EMPTY: EquipmentWithDetails = { id: "", name: "", type: "sensor", zoneId: "", enabled: true, createdAt: "", updatedAt: "", dataBindings: [], orderBindings: [], status: "online" };
   const equipmentState = useEquipmentState(equipment ?? EMPTY);
 
   useEffect(() => {
