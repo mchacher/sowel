@@ -36,6 +36,7 @@ import type { NotificationPublishService } from "../notifications/notification-p
 import type { PackageManager } from "../packages/package-manager.js";
 import type { PluginLoader } from "../plugins/plugin-loader.js";
 import type { BackupManager } from "../backup/backup-manager.js";
+import type { SunlightManager } from "../zones/sunlight-manager.js";
 import { registerAuthMiddleware } from "../auth/auth-middleware.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -98,6 +99,7 @@ interface ServerDeps {
     source: "env" | "auto" | "fallback";
     offsetHours: number;
   };
+  sunlightManager: SunlightManager;
   eventBus: EventBus;
   integrationRegistry: IntegrationRegistry;
   logBuffer: LogRingBuffer;
@@ -136,6 +138,7 @@ export async function createServer(deps: ServerDeps) {
     versionChecker,
     updateManager,
     tzInfo,
+    sunlightManager,
     eventBus,
     integrationRegistry,
     logBuffer,
@@ -290,7 +293,13 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerAuditRoutes(app, { auditLogger, logger });
-  registerSystemRoutes(app, { versionChecker, updateManager, tzInfo, logger });
+  registerSystemRoutes(app, {
+    versionChecker,
+    updateManager,
+    tzInfo,
+    sunlightManager,
+    logger,
+  });
   registerLogRoutes(app, { logBuffer, logger });
   registerActivityRoutes(app, { activityBuffer, logger });
   registerWebSocket(app, { eventBus, authService, logBuffer, logger, corsOrigins });

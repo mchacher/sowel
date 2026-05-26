@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import type { VersionChecker } from "../../core/version-checker.js";
 import type { UpdateManager } from "../../core/update-manager.js";
+import type { SunlightManager } from "../../zones/sunlight-manager.js";
 
 export interface TzInfo {
   tz: string;
@@ -13,6 +14,7 @@ interface SystemDeps {
   versionChecker: VersionChecker;
   updateManager: UpdateManager;
   tzInfo: TzInfo;
+  sunlightManager: SunlightManager;
   logger: Logger;
 }
 
@@ -20,7 +22,7 @@ interface SystemDeps {
 const CHECK_NOW_MIN_INTERVAL_MS = 10_000;
 
 export function registerSystemRoutes(app: FastifyInstance, deps: SystemDeps): void {
-  const { versionChecker, updateManager, tzInfo, logger: parentLogger } = deps;
+  const { versionChecker, updateManager, tzInfo, sunlightManager, logger: parentLogger } = deps;
   const logger = parentLogger.child({ module: "system-routes" });
 
   let lastCheckNow = 0;
@@ -105,6 +107,30 @@ export function registerSystemRoutes(app: FastifyInstance, deps: SystemDeps): vo
       return reply.code(401).send({ error: "Authentication required" });
     }
     return tzInfo;
+  });
+
+  // GET /api/v1/system/sunlight — current server time + daylight state
+  //
+  // Combines the SunlightManager's cached sunrise/sunset/isDaylight
+  // with a fresh `now` ISO timestamp and the timezone snapshot so that
+  // headless clients (the energy display firmware) can derive local
+  // time and switch to a dimmed brightness profile after sunset
+  // without running their own NTP client.
+  //
+  // Accessible to ANY authenticated user (read-only, no PII).
+  app.get("/api/v1/system/sunlight", async (request, reply) => {
+    if (!request.auth) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    const data = sunlightManager.getSunlightData();
+    return {
+      now: new Date().toISOString(),
+      tz: tzInfo.tz,
+      offsetHours: tzInfo.offsetHours,
+      sunrise: data.sunrise,
+      sunset: data.sunset,
+      isDaylight: data.isDaylight,
+    };
   });
 
   // POST /api/v1/system/restart — trigger a container restart via helper

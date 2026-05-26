@@ -357,6 +357,7 @@ async function main() {
     versionChecker,
     updateManager,
     tzInfo,
+    sunlightManager,
     eventBus,
     integrationRegistry,
     logBuffer,
