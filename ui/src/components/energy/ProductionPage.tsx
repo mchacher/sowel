@@ -4,6 +4,7 @@ import { useEnergy } from "../../store/useEnergy";
 import { PeriodSelector } from "./PeriodSelector";
 import { ProductionBarChart } from "./ProductionBarChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
+import { displayedProductionTotalWh } from "./productionTotal";
 
 function formatKWh(wh: number, period: string): string {
   const kwh = wh / 1000;
@@ -64,7 +65,7 @@ export function ProductionPage() {
                 </span>
               </div>
               <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                Total : {formatKWh(history.totals.total_production, period)} kWh
+                Total : {formatKWh(displayedProductionTotalWh(history.totals), period)} kWh
               </div>
             </div>
           )}
