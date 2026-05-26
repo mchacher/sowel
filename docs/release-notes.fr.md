@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.14.x — Disponibilité des équipements
+
+### v1.14.0 — 2026-05-26 { #v1-14-0 }
+
+- Équipements : chaque équipement expose désormais un champ `status` dérivé (`online` / `degraded` / `offline`), calculé en mémoire à partir du `status` des devices sous-jacents et de la fraîcheur des bindings streaming (spec 116). L'UI affiche des pastilles ambre "Dégradé" et rouge "Déconnecté" sur toutes les surfaces où l'utilisateur voit des valeurs d'équipement : lignes compactes de zone (la pastille remplace les contrôles quand l'équipement est offline), header de la page détail, panneau de cumuls énergie (avec caption de fraîcheur), pastilles d'agrégation de zone (hint `(N indispo.)` quand un équipement offline a été exclu d'une métrique). La page Live Energy gagne une bannière en haut qui flag explicitement les compteurs périmés ou déconnectés. Déclenché par un vrai bug : un Shelly Pro 3EM coupé au tableau gardait le graphe d'énergie live affichant sa dernière valeur comme si c'était live, sans aucune indication.
+- Contrat plugin : une nouvelle section obligatoire de `plugin-development.md` documente que chaque plugin DOIT maintenir `device.status` à jour via `updateDeviceStatus()`. Un audit prod a trouvé 24 devices coincés à "online" avec un `lastSeen` entre 1 heure et 49 jours ; ce sont des bugs plugin upstream à corriger (topic `availability` Z2M, déconnexion Socket.IO MCZ, etc.), pas des gaps du core Sowel. Sowel n'ajoute volontairement pas de watchdog générique `device.lastSeen > timeout` car les capteurs Zigbee sur pile peuvent rester silencieux pendant des jours sans être offline.
+- API : nouvel endpoint `GET /api/v1/system/sunlight` qui expose sunrise / sunset / isDaylight (#218). Aussi : les payloads `GET /equipments` et `GET /equipments/:id` gagnent `status` + `statusReason` optionnel ; le payload `GET /zones/:id/aggregated` gagne `unavailableEquipmentsByCategory` ; le WebSocket gagne un nouvel event `equipment.status.changed` diffusé à chaque transition.
+
 ## 1.13.x — Équipement store banne
 
 ### v1.13.2 — 2026-05-24 { #v1-13-2 }

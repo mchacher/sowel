@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.14.x — Equipment availability
+
+### v1.14.0 — 2026-05-26 { #v1-14-0 }
+
+- Equipments: every equipment now exposes a derived `status` field (`online` / `degraded` / `offline`) computed in memory from the backing devices' `status` and the freshness of streaming bindings (spec 116). The UI ships ambre "Degraded" and red "Disconnected" badges on every surface where users see equipment values: compact zone rows (badge replaces controls when fully offline), equipment detail header, energy cumuls panel (with last-update caption), zone aggregation pills (`(N unavailable)` hint when an offline equipment was excluded from a metric). The Live Energy page gains a top banner that flags stale or disconnected meters explicitly. Triggered by a real bug: a Shelly Pro 3EM coupé au tableau kept the live energy graph displaying its last value as if it was live, with zero indication of staleness.
+- Plugin contract: a new mandatory section in `plugin-development.md` documents that every plugin MUST keep `device.status` truthful via `updateDeviceStatus()`. A prod audit found 24 devices stuck at "online" with `lastSeen` between 1 hour and 49 days; those are upstream plugin bugs to fix (Z2M `availability` topic, MCZ Socket.IO disconnect, etc.), not Sowel core gaps. Sowel intentionally does not add a generic `device.lastSeen > timeout` watchdog because battery-powered Zigbee endpoints can stay silent for days without being offline.
+- API: new `GET /api/v1/system/sunlight` endpoint exposing sunrise / sunset / isDaylight (#218). Also: `GET /equipments` and `GET /equipments/:id` payloads gain `status` + optional `statusReason`; `GET /zones/:id/aggregated` payload gains `unavailableEquipmentsByCategory`; WebSocket gains a new `equipment.status.changed` event broadcast on every transition.
+
 ## 1.13.x — Awning equipment
 
 ### v1.13.2 — 2026-05-24 { #v1-13-2 }
