@@ -98,12 +98,24 @@ All user management routes require admin role.
 
 | Method   | Path                                   | Description                                                                                                                            |
 | -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/equipments`                   | List all equipments with bindings and current data.                                                                                    |
-| `GET`    | `/api/v1/equipments/:id`               | Get equipment with bindings and current data.                                                                                          |
+| `GET`    | `/api/v1/equipments`                   | List all equipments with bindings, current data, and derived `status` (see [Equipment status](#equipment-status-spec-116)).            |
+| `GET`    | `/api/v1/equipments/:id`               | Get equipment with bindings, current data, and derived `status`.                                                                       |
 | `POST`   | `/api/v1/equipments`                   | Create equipment. Body: `{ name, type, zoneId, icon?, description?, deviceIds? }`. If `deviceIds` provided, auto-bindings are created. |
 | `PUT`    | `/api/v1/equipments/:id`               | Update equipment. Body: `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                    |
 | `DELETE` | `/api/v1/equipments/:id`               | Delete equipment. Returns 204.                                                                                                         |
 | `POST`   | `/api/v1/equipments/:id/orders/:alias` | Execute an equipment order. Body: `{ value }`.                                                                                         |
+
+### Equipment status (spec 116)
+
+`GET /equipments` and `GET /equipments/:id` include two derived fields:
+
+- `status: "online" | "degraded" | "offline"` — computed in memory from the backing devices' `status` and the freshness of streaming bindings.
+  - `offline`: every bound device is `offline`, OR the equipment has no device bindings.
+  - `degraded`: at least one device is `offline`, OR at least one streaming binding (`power`, `temperature`, etc.) has not been refreshed within its category timeout.
+  - `online`: everything healthy.
+- `statusReason?: { offlineDevices: string[]; staleBindings: string[]; offlineSince: string | null }` — present only when status ≠ `online`. Used by the UI tooltip.
+
+Each entry of `dataBindings[]` also gains `stale: boolean`. Only streaming categories ever flip to `true`; event-based categories (motion, contact_door, action, light_state, shutter_position, etc.) are always `false`.
 
 ### Data Bindings
 
@@ -464,9 +476,18 @@ Events are batched every 200ms and sent as a JSON array. High-frequency data eve
 [
   { "type": "device.data.updated", "deviceId": "...", "key": "temperature", "value": 22.5 },
   { "type": "equipment.data.changed", "equipmentId": "...", "alias": "state", "value": "ON" },
+  {
+    "type": "equipment.status.changed",
+    "equipmentId": "...",
+    "equipmentName": "Compteur Shelly",
+    "oldStatus": "online",
+    "newStatus": "offline"
+  },
   { "type": "zone.data.changed", "zoneId": "...", "key": "temperature", "value": 21.8 }
 ]
 ```
+
+The `equipment.status.changed` event (spec 116) is emitted by the EquipmentStatusTracker on every transition between `online` / `degraded` / `offline`. Deduplicated per equipment ID per batch.
 
 ### Activity Stream
 

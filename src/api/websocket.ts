@@ -135,6 +135,8 @@ function getDedupKey(event: EngineEvent): string | null {
       return `dh:${event.deviceId}`;
     case "equipment.data.changed":
       return `e:${event.equipmentId}:${event.alias}`;
+    case "equipment.status.changed":
+      return `es:${event.equipmentId}`;
     case "zone.data.changed":
       return `z:${event.zoneId}`;
     default:

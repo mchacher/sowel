@@ -128,6 +128,7 @@ describe("ZoneAggregator", () => {
         sunrise: null,
         sunset: null,
         isDaylight: null,
+        unavailableEquipmentsByCategory: {},
       });
     });
 
@@ -154,6 +155,51 @@ describe("ZoneAggregator", () => {
 
       const data = aggregator.getByZoneId(zone.id);
       expect(data?.temperature).toBe(21);
+    });
+
+    // ──────────────────────────────────────────────────────────────
+    // Spec 116 — offline equipments excluded from aggregation
+    // ──────────────────────────────────────────────────────────────
+
+    it("skips offline equipments from aggregation and counts them in unavailableEquipmentsByCategory", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+
+      const dev1 = seedDevice(db, {
+        name: "Temp1",
+        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "20" }],
+      });
+      const dev2 = seedDevice(db, {
+        name: "Temp2",
+        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "22" }],
+      });
+      // Flip dev2 offline directly in DB — simulates a plugin reporting offline.
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev2.deviceId);
+
+      const eq1 = equipmentManager.create({ name: "Sensor 1", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq1.id, dev1.dataIds[0], "temperature");
+      const eq2 = equipmentManager.create({ name: "Sensor 2", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq2.id, dev2.dataIds[0], "temperature");
+
+      aggregator.computeAll();
+      const data = aggregator.getByZoneId(zone.id);
+
+      // Average uses only the online sensor (20°C), not the (20+22)/2 = 21.
+      expect(data?.temperature).toBe(20);
+      expect(data?.unavailableEquipmentsByCategory).toEqual({ temperature: 1 });
+    });
+
+    it("leaves unavailableEquipmentsByCategory empty when all equipments are online", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const dev = seedDevice(db, {
+        name: "Temp",
+        dataKeys: [{ key: "temperature", type: "number", category: "temperature", value: "21" }],
+      });
+      const eq = equipmentManager.create({ name: "Sensor", type: "sensor", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "temperature");
+
+      aggregator.computeAll();
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.unavailableEquipmentsByCategory).toEqual({});
     });
 
     it("aggregates humidity as AVG", () => {

@@ -1,0 +1,1326 @@
+<!doctype html>
+<html lang="fr" data-theme="hybrid">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spec 116 — UX mockups (Equipment availability)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ──────────────────────────────────────────────────────────────
+   Sowel design tokens — copy of design-system/tokens.css
+   ────────────────────────────────────────────────────────────── */
+:root, [data-theme="hybrid"] {
+  --p-50:#EEF5F8;  --p-100:#D9E7EF; --p-500:#1A4F6E; --p-600:#144159; --p-700:#0F3146;
+  --a-50:#FFF6D6;  --a-100:#FCE89A; --a-500:#F2C035; --a-600:#D4A41C;
+  --n-0:#FFFFFF;   --n-25:#FAFAFA;  --n-50:#F4F4F5;  --n-100:#E9E9EB; --n-200:#D4D4D8;
+  --n-300:#A1A1AA; --n-400:#71717A; --n-500:#52525B; --n-600:#3F3F46; --n-700:#27272A;
+  --green-50:#E6F7EE; --green-500:#1FA260; --green-700:#0E6B3F;
+  --info-50:#E0EFFA;  --info-500:#247EB5;
+  --red-50:#FBE9E1;   --red-500:#C7522E;
+  --light-50:#FFF6D6;    --light-500:#F2C035;
+  --shutter-50:#E8EBEE;  --shutter-500:#4F5763;
+  --sensor-50:#EBF2EC;   --sensor-500:#4F7559;
+  --media-50:#EAE9F2;    --media-500:#5759A5;
+  --line:rgba(24,24,27,.08);
+  --line-2:rgba(24,24,27,.14);
+}
+[data-theme="dark"] {
+  --p-50:#1A2A38;  --p-100:#243B4E; --p-500:#5BA5CC; --p-600:#82BCDD;
+  --a-50:#332715;  --a-100:#5C3F1A; --a-500:#F2BC6E; --a-600:#FFCF8C;
+  --n-0:#16181E;   --n-25:#1B1D24;  --n-50:#1F2128;  --n-100:#262931; --n-200:#363941;
+  --n-300:#52565F; --n-400:#7E828B; --n-500:#9CA0AA; --n-600:#C7C9CF; --n-700:#E2E3E7;
+  --green-50:#0F2A1E; --green-500:#3DDB89; --green-700:#9AF0C6;
+  --info-50:#0F1F33;  --info-500:#5DA8F0;
+  --red-50:#2E1614;   --red-500:#F37B5F;
+  --light-50:#2D2415;   --light-500:#F2BC6E;
+  --shutter-50:#1B2230; --shutter-500:#94A3B8;
+  --sensor-50:#152920;  --sensor-500:#6BCF8C;
+  --media-50:#1B1F36;   --media-500:#9D9FE6;
+  --line:rgba(255,255,255,.06);
+  --line-2:rgba(255,255,255,.14);
+}
+:root {
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  color: var(--n-700);
+  background: var(--n-50);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11" 1, "ss01" 1;
+}
+.font-mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+
+/* ────────────────────────────────────────────────────────────── */
+/* Page layout                                                    */
+/* ────────────────────────────────────────────────────────────── */
+.page { max-width: 1320px; margin: 0 auto; padding: 32px 24px 80px; }
+.page__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.page__title { font-size: 28px; font-weight: 700; letter-spacing: -.025em; margin: 0; color: var(--n-700); }
+.page__subtitle { color: var(--n-500); font-size: 14px; margin-top: 4px; margin-bottom: 32px; max-width: 720px; }
+
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--n-0); border: 1px solid var(--line-2);
+  font-size: 13px; color: var(--n-600); cursor: pointer;
+}
+.theme-toggle:hover { background: var(--p-50); border-color: var(--p-100); color: var(--p-500); }
+
+.section { margin-top: 56px; }
+.section__title {
+  font-size: 18px; font-weight: 600; color: var(--n-700);
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 4px;
+}
+.section__num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 999px;
+  background: var(--p-500); color: var(--n-0);
+  font-size: 12px; font-weight: 600;
+}
+.section__desc { color: var(--n-500); font-size: 13px; margin: 0 0 16px 36px; max-width: 800px; }
+.section__file { color: var(--n-400); font-size: 11px; font-family: var(--font-mono); margin: 4px 0 16px 36px; }
+
+.triplet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.triplet__col { display: flex; flex-direction: column; gap: 8px; }
+.triplet__label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--n-500); padding-left: 4px;
+}
+.triplet__label.is-online { color: var(--green-700); }
+.triplet__label.is-degraded { color: var(--a-600); }
+.triplet__label.is-offline { color: var(--red-500); }
+@media (max-width: 1000px) { .triplet { grid-template-columns: 1fr; } }
+
+/* ────────────────────────────────────────────────────────────── */
+/* Atoms                                                          */
+/* ────────────────────────────────────────────────────────────── */
+
+.surface {
+  background: var(--n-0);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+/* Badge — spec 116 central component */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.badge--md { padding: 3px 10px; font-size: 12px; gap: 5px; }
+.badge--degraded {
+  background: color-mix(in srgb, var(--a-500) 14%, transparent);
+  color: var(--a-600);
+}
+.badge--offline {
+  background: color-mix(in srgb, var(--red-500) 12%, transparent);
+  color: var(--red-500);
+}
+.badge svg { stroke-width: 1.75; }
+
+/* Generic chip-state (matches polished + production .chip-state) */
+.chip-state {
+  display: inline-flex; align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  background: var(--n-100); color: var(--n-500);
+}
+.chip-state--on { background: var(--green-50); color: var(--green-700); }
+.chip-state--closed { background: var(--n-100); color: var(--n-500); }
+
+/* Stale inline indicator on a single value */
+.stale { color: var(--n-400); font-style: italic; }
+.stale__age { font-size: 11px; font-family: var(--font-mono); color: var(--n-400); }
+
+/* ────────────────────────────────────────────────────────────── */
+/* 1. CompactEquipmentCard (.eq row pattern from production)      */
+/* ────────────────────────────────────────────────────────────── */
+.eq-host {
+  /* Mimics the zone container — devices rows live inside a card */
+  background: var(--n-0);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.eq-host__sep { height: 1px; background: var(--line); margin: 0 18px; }
+
+.eq {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.55rem 1.1rem;
+  min-height: 52px;
+  transition: background 150ms ease;
+  position: relative;
+}
+.eq:hover { background: color-mix(in srgb, var(--line) 50%, transparent); }
+.eq__icon {
+  width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.eq__icon svg { width: 15px; height: 15px; }
+.eq__icon--light    { background: var(--light-50);    color: var(--light-500); }
+.eq__icon--shutter  { background: var(--shutter-50);  color: var(--shutter-500); }
+.eq__icon--sensor   { background: var(--sensor-50);   color: var(--sensor-500); }
+.eq__icon--accent   { background: var(--a-50);        color: var(--a-600); }
+.eq__icon--primary  { background: var(--p-50);        color: var(--p-500); }
+.eq__icon--success  { background: var(--green-50);    color: var(--green-700); }
+.eq__name {
+  min-width: 0;
+  font-size: 14px; font-weight: 500; color: var(--n-700);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.eq__values {
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.eq__sensor-val {
+  display: inline-flex; align-items: baseline; gap: 2px;
+  font-size: 13px; color: var(--n-600); font-family: var(--font-mono);
+}
+.eq__sensor-val svg { width: 13px; height: 13px; opacity: .6; margin-right: 4px; align-self: center; }
+.eq__sensor-val .u { font-size: 11px; color: var(--n-400); margin-left: 1px; }
+.eq__chip { /* boolean state like ON/OFF */
+  font-size: 11px; font-weight: 500;
+  padding: 2px 10px; border-radius: 999px;
+  background: var(--green-50); color: var(--green-700);
+}
+.eq__chip--off { background: var(--n-100); color: var(--n-400); }
+
+/* Slider compact (light dimmable) */
+.eq__slider-mini { display: inline-flex; align-items: center; gap: 6px; }
+.eq__slider-mini input { width: 80px; }
+
+/* Stale value variant for the degraded case */
+.eq__sensor-val--stale { color: var(--n-400); font-style: italic; }
+.eq__sensor-val--stale .u { color: var(--n-400); }
+.eq__stale-age {
+  font-size: 10px; font-family: var(--font-mono); color: var(--n-400);
+  margin-left: 6px;
+}
+
+/* Shutter mini buttons (compact row) */
+.shutter-grp { display: inline-flex; gap: 4px; }
+.shutter-btn {
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--line-2); background: var(--n-0); color: var(--n-500);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 150ms ease;
+}
+.shutter-btn:hover { color: var(--p-500); border-color: var(--p-100); background: var(--p-50); }
+.shutter-btn svg { width: 14px; height: 14px; stroke-width: 2; }
+
+.eq--offline .eq__icon,
+.eq--offline .shutter-grp { opacity: .55; }
+
+/* ────────────────────────────────────────────────────────────── */
+/* 2. EquipmentDetailPage card                                    */
+/* ────────────────────────────────────────────────────────────── */
+.detail {
+  background: var(--n-0);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px;
+}
+.detail__head {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 18px;
+}
+.detail__head-icon {
+  width: 40px; height: 40px; border-radius: 8px;
+  background: var(--p-50); color: var(--p-500);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.detail__title-line {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.detail__name { font-size: 16px; font-weight: 600; color: var(--n-700); }
+.detail__zone { font-size: 12px; color: var(--n-400); margin-top: 2px; }
+
+.detail__section-title {
+  font-size: 14px; font-weight: 600; color: var(--n-700);
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 10px;
+}
+.detail__section-title svg { width: 14px; height: 14px; stroke-width: 1.5; color: var(--n-500); }
+
+.detail__value-row {
+  background: color-mix(in srgb, var(--line) 50%, transparent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.detail__value {
+  font-family: var(--font-mono); font-size: 20px; font-weight: 500;
+  color: var(--n-700); line-height: 1;
+}
+.detail__value--stale { color: var(--n-400); font-style: italic; }
+.detail__caption {
+  font-size: 11px; font-family: var(--font-mono); color: var(--n-400);
+}
+
+.detail__controls { display: flex; gap: 8px; margin-top: 14px; }
+.btn {
+  flex: 1; padding: 8px 12px;
+  background: var(--n-0); border: 1px solid var(--line-2);
+  border-radius: 6px; cursor: pointer;
+  font-size: 13px; color: var(--n-600);
+  transition: all 150ms ease;
+}
+.btn:hover { background: var(--p-50); border-color: var(--p-100); color: var(--p-500); }
+.btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.detail--offline .detail__controls,
+.detail--offline .detail__value-row,
+.detail--offline .detail__head-icon { opacity: .55; }
+.detail--offline .detail__title-line { opacity: 1; }
+
+/* ────────────────────────────────────────────────────────────── */
+/* 3. LiveEnergyPage flow diagram                                 */
+/* ────────────────────────────────────────────────────────────── */
+.live-frame {
+  background: var(--n-0);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+  aspect-ratio: 3 / 2;
+}
+.live-flow {
+  position: relative;
+  width: 100%; height: 100%;
+}
+/* The 3 nodes use absolute positioning like production */
+.live-node {
+  position: absolute;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  background: var(--n-0);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  padding: 8px 6px;
+  transition: opacity 200ms ease;
+}
+.live-node--house  { top: 4%;  left: 32%; width: 36%; height: 36%; }
+.live-node--grid   { bottom: 12%; left: 6%;  width: 22%; height: 29%; }
+.live-node--solar  { bottom: 12%; right: 6%; width: 22%; height: 29%; }
+.live-node__lab {
+  font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .15em;
+  color: var(--n-400);
+}
+.live-node__icon { display: block; }
+.live-node__icon svg { width: 28px; height: 28px; stroke-width: 1.5; }
+.live-node--house  .live-node__icon { color: var(--p-500); }
+.live-node--grid   .live-node__icon { color: var(--n-500); }
+.live-node--solar  .live-node__icon { color: var(--green-500); }
+.live-node__val {
+  font-family: var(--font-mono); font-weight: 700; font-size: 20px;
+  display: inline-flex; align-items: baseline; gap: 2px;
+  color: var(--n-700);
+}
+.live-node__val .u { font-size: 11px; font-weight: 600; opacity: .6; }
+.live-node--house  .live-node__val { color: var(--p-500); }
+.live-node--solar  .live-node__val { color: var(--green-700); }
+.live-node__sub {
+  font-size: 10px; color: var(--n-400);
+  margin-top: 2px;
+}
+
+.live-node--inactive { opacity: .4; }
+.live-node--stale .live-node__val { color: var(--n-400); font-style: italic; }
+.live-node--offline {
+  border-color: color-mix(in srgb, var(--red-500) 35%, var(--line-2));
+  background: color-mix(in srgb, var(--red-500) 4%, var(--n-0));
+}
+.live-node--offline .live-node__icon { color: var(--n-300); }
+
+.live-svg { position: absolute; inset: 0; pointer-events: none; }
+.live-svg path { fill: none; }
+.live-status {
+  position: absolute;
+  bottom: 4%; left: 50%; transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  background: color-mix(in srgb, var(--green-500) 14%, transparent);
+  color: var(--green-700);
+  white-space: nowrap;
+}
+.live-status--stale {
+  background: color-mix(in srgb, var(--a-500) 14%, transparent);
+  color: var(--a-600);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.live-status--offline {
+  background: color-mix(in srgb, var(--red-500) 14%, transparent);
+  color: var(--red-500);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+
+/* Percentage pills on the SVG path */
+.live-pct {
+  position: absolute;
+  font-family: var(--font-mono); font-weight: 700; font-size: 11px;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--n-0); border: 1px solid var(--green-500); color: var(--green-700);
+  transform: translate(-50%, -50%);
+}
+
+/* ────────────────────────────────────────────────────────────── */
+/* 4. EnergyDataPanel — 2x2 grid                                  */
+/* ────────────────────────────────────────────────────────────── */
+.energy-panel {
+  background: var(--n-0);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+}
+.energy-panel__head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.energy-panel__title {
+  font-size: 14px; font-weight: 600; color: var(--n-700);
+  display: flex; align-items: center; gap: 8px;
+}
+.energy-panel__title svg { width: 16px; height: 16px; stroke-width: 1.5; color: var(--a-600); }
+.energy-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.cumul {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--line) 60%, transparent);
+}
+.cumul__icon {
+  width: 40px; height: 40px; border-radius: 6px;
+  background: color-mix(in srgb, var(--a-500) 12%, transparent);
+  color: var(--a-600);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cumul__icon svg { width: 16px; height: 16px; stroke-width: 1.5; }
+.cumul__body { flex: 1; min-width: 0; }
+.cumul__lab { font-size: 12px; font-weight: 500; color: var(--n-400); }
+.cumul__val {
+  font-family: var(--font-mono); font-weight: 600; font-size: 18px;
+  line-height: 1; color: var(--n-700);
+  display: inline-flex; align-items: baseline; gap: 4px;
+  margin-top: 4px;
+}
+.cumul__val .u { font-size: 12px; color: var(--n-400); font-weight: 500; }
+.energy-panel__caption {
+  font-size: 11px; font-family: var(--font-mono); color: var(--n-400);
+  margin-top: 14px;
+  text-align: center;
+}
+.energy-panel__caption--err { color: var(--red-500); }
+
+/* ────────────────────────────────────────────────────────────── */
+/* 5+6. Dashboard widget (WidgetCard pattern)                     */
+/* ────────────────────────────────────────────────────────────── */
+.widget {
+  background: var(--n-0);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex; flex-direction: column;
+  height: 240px;
+  position: relative;
+  overflow: hidden;
+}
+.widget__title {
+  text-align: center;
+  font-size: 17px; font-weight: 600; color: var(--n-700);
+  margin: 0 0 8px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.widget__title-badge { /* Place for the spec 116 indicator */
+  display: inline-flex; align-items: center; line-height: 1;
+}
+.widget__art {
+  display: flex; align-items: center; justify-content: center;
+  height: 104px;
+  margin: auto 0;
+  color: var(--p-500);
+}
+.widget__art svg { width: 96px; height: 96px; }
+.widget__art-side {
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+  gap: 8px;
+  padding-left: 10px;
+}
+.widget__big {
+  font-family: var(--font-mono); font-weight: 700; font-size: 22px;
+  color: var(--n-700);
+  display: inline-flex; align-items: baseline; gap: 2px;
+}
+.widget__big .u { font-size: 11px; color: var(--n-400); font-weight: 500; }
+.widget__footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.widget__footer-center { justify-content: center; gap: 12px; }
+.widget__footnote {
+  font-size: 11px; color: var(--n-400);
+  text-align: center;
+  margin-top: 6px;
+}
+.widget__footnote--err { color: var(--red-500); }
+.widget--offline .widget__art { opacity: .35; }
+.widget--offline .shutter-grp .shutter-btn { opacity: .4; cursor: not-allowed; }
+
+/* Mini sensor row inside a multi-metric widget */
+.zone-pills {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px;
+}
+.zone-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--n-600);
+}
+.zone-pill svg { width: 13px; height: 13px; stroke-width: 1.5; }
+.zone-pill__val { font-family: var(--font-mono); font-weight: 600; color: var(--n-700); }
+.zone-pill__hint { font-size: 10px; color: var(--n-400); font-family: var(--font-mono); }
+
+/* ────────────────────────────────────────────────────────────── */
+/* Tooltip                                                        */
+/* ────────────────────────────────────────────────────────────── */
+.tooltip {
+  background: var(--n-700); color: #F4F4F5;
+  padding: 12px 14px; border-radius: 8px;
+  font-size: 12px; line-height: 1.5;
+  max-width: 280px;
+  box-shadow: 0 4px 14px -4px rgba(15,42,60,.18);
+}
+.tooltip__title { font-size: 13px; font-weight: 600; color: var(--n-0); margin-bottom: 6px; }
+.tooltip__group { margin-top: 8px; }
+.tooltip__group-title { font-size: 11px; color: var(--n-300); }
+.tooltip ul { margin: 4px 0 0; padding-left: 16px; }
+.tooltip li { font-family: var(--font-mono); font-size: 11px; color: var(--n-100); }
+.tooltip__since { margin-top: 8px; font-size: 11px; color: var(--n-300); font-family: var(--font-mono); }
+[data-theme="dark"] .tooltip { background: var(--n-200); color: var(--n-700); }
+[data-theme="dark"] .tooltip__title { color: var(--n-700); }
+[data-theme="dark"] .tooltip__group-title,
+[data-theme="dark"] .tooltip__since { color: var(--n-500); }
+[data-theme="dark"] .tooltip li { color: var(--n-600); }
+
+/* Legend */
+.legend {
+  margin-top: 64px; padding-top: 24px;
+  border-top: 1px solid var(--line);
+  display: flex; gap: 24px; flex-wrap: wrap;
+  font-size: 12px; color: var(--n-500);
+}
+.legend__item { display: inline-flex; align-items: center; gap: 8px; }
+.legend__swatch { width: 14px; height: 14px; border-radius: 999px; }
+.legend code { font-family: var(--font-mono); color: var(--p-500); background: var(--p-50); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <div class="page__header">
+    <div>
+      <h1 class="page__title">Spec 116 — Equipment availability</h1>
+      <div class="page__subtitle">Maquettes UX par écran impacté, 3 états comparés côte à côte. Reproduit fidèlement les composants Sowel actuels (CompactEquipmentCard, WidgetCard, EnergyDataPanel, LiveEnergyPage flow).</div>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <span id="theme-label">Thème clair</span>
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- 1. CompactEquipmentCard                                       -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">1</span> CompactEquipmentCard (ligne d'équipement dans une zone)</h2>
+    <p class="section__desc">Le pattern .eq de production : grid 32px/1fr/auto, bg transparent avec hover, séparateurs horizontaux. Badge offline remplace la valeur (1 info au lieu de 3). Degraded garde la valeur grisée + age inline (la valeur reste vaguement pertinente).</p>
+    <p class="section__file">ui/src/components/home/CompactEquipmentCard.tsx</p>
+
+    <div class="triplet">
+
+      <!-- ONLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-online">État online · référence actuelle</div>
+        <div class="eq-host">
+          <div class="eq">
+            <div class="eq__icon eq__icon--light">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c1 .9 1 2.3 1 2.3h6s0-1.4 1-2.3A7 7 0 0 0 12 2Z"/></svg>
+            </div>
+            <span class="eq__name">Lampe salon</span>
+            <div class="eq__values">
+              <span class="eq__chip">ON</span>
+            </div>
+          </div>
+          <div class="eq-host__sep"></div>
+          <div class="eq">
+            <div class="eq__icon eq__icon--sensor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+            </div>
+            <span class="eq__name">Capteur séjour</span>
+            <div class="eq__values">
+              <span class="eq__sensor-val">21.4<span class="u">°C</span></span>
+              <span class="eq__sensor-val">48<span class="u">%</span></span>
+            </div>
+          </div>
+          <div class="eq-host__sep"></div>
+          <div class="eq">
+            <div class="eq__icon eq__icon--accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <span class="eq__name">Compteur principal</span>
+            <div class="eq__values">
+              <span class="eq__sensor-val">385<span class="u">W</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEGRADED -->
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">État degraded · valeur grisée + age inline</div>
+        <div class="eq-host">
+          <div class="eq">
+            <div class="eq__icon eq__icon--light">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c1 .9 1 2.3 1 2.3h6s0-1.4 1-2.3A7 7 0 0 0 12 2Z"/></svg>
+            </div>
+            <span class="eq__name">Lampe salon</span>
+            <div class="eq__values">
+              <span class="eq__chip">ON</span>
+            </div>
+          </div>
+          <div class="eq-host__sep"></div>
+          <div class="eq">
+            <div class="eq__icon eq__icon--sensor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+            </div>
+            <span class="eq__name">Capteur séjour</span>
+            <div class="eq__values">
+              <span class="eq__sensor-val eq__sensor-val--stale">21.4<span class="u">°C</span></span>
+              <span class="eq__sensor-val eq__sensor-val--stale">48<span class="u">%</span></span>
+              <span class="eq__stale-age">23m</span>
+            </div>
+          </div>
+          <div class="eq-host__sep"></div>
+          <div class="eq">
+            <div class="eq__icon eq__icon--accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <span class="eq__name">Compteur principal</span>
+            <div class="eq__values">
+              <span class="eq__sensor-val eq__sensor-val--stale">385<span class="u">W</span></span>
+              <span class="eq__stale-age">5m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OFFLINE — badge replaces value -->
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">État offline · badge remplace la valeur</div>
+        <div class="eq-host">
+          <div class="eq eq--offline">
+            <div class="eq__icon eq__icon--light">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c1 .9 1 2.3 1 2.3h6s0-1.4 1-2.3A7 7 0 0 0 12 2Z"/></svg>
+            </div>
+            <span class="eq__name">Lampe salon</span>
+            <div class="eq__values">
+              <span class="badge badge--offline">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                Déconnecté
+              </span>
+            </div>
+          </div>
+          <div class="eq-host__sep"></div>
+          <div class="eq eq--offline">
+            <div class="eq__icon eq__icon--shutter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            </div>
+            <span class="eq__name">Volet salon</span>
+            <div class="eq__values">
+              <span class="badge badge--offline">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                Déconnecté
+              </span>
+            </div>
+          </div>
+          <div class="eq-host__sep"></div>
+          <div class="eq eq--offline">
+            <div class="eq__icon eq__icon--accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <span class="eq__name">Compteur principal</span>
+            <div class="eq__values">
+              <span class="badge badge--offline">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                Déconnecté
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- 2. EquipmentDetailPage card                                   -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">2</span> EquipmentDetailPage · carte d'équipement</h2>
+    <p class="section__desc">Card bg-surface + border + rounded-[10px], pas de shadow (flat). Badge md à côté du nom dans le header. Caption mono sous la valeur pour la fraicheur. Boutons gardés (`opacity-55` en offline) — la décision passe / ne passe pas reste côté plugin.</p>
+    <p class="section__file">ui/src/pages/EquipmentDetailPage.tsx</p>
+
+    <div class="triplet">
+
+      <!-- ONLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-online">État online</div>
+        <div class="detail">
+          <div class="detail__head">
+            <div class="detail__head-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            </div>
+            <div>
+              <div class="detail__title-line">
+                <span class="detail__name">Volet salon</span>
+              </div>
+              <div class="detail__zone">Salon · Maison</div>
+            </div>
+          </div>
+          <div class="detail__section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12h20M12 2v20"/></svg>
+            Position
+          </div>
+          <div class="detail__value-row">
+            <span class="detail__value">42 <span style="font-size:13px;color:var(--n-400);font-weight:500">%</span></span>
+          </div>
+          <div class="detail__controls">
+            <button class="btn">Ouvrir</button>
+            <button class="btn">Stop</button>
+            <button class="btn">Fermer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEGRADED -->
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">État degraded · badge ambre + caption</div>
+        <div class="detail">
+          <div class="detail__head">
+            <div class="detail__head-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            </div>
+            <div>
+              <div class="detail__title-line">
+                <span class="detail__name">Volet salon</span>
+                <span class="badge badge--md badge--degraded">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Dégradé
+                </span>
+              </div>
+              <div class="detail__zone">Salon · Maison</div>
+            </div>
+          </div>
+          <div class="detail__section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12h20M12 2v20"/></svg>
+            Position
+          </div>
+          <div class="detail__value-row">
+            <span class="detail__value detail__value--stale">42 <span style="font-size:13px;color:var(--n-400);font-weight:500">%</span></span>
+            <span class="detail__caption">il y a 35 min</span>
+          </div>
+          <div class="detail__controls">
+            <button class="btn">Ouvrir</button>
+            <button class="btn">Stop</button>
+            <button class="btn">Fermer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OFFLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">État offline · badge rouge + tout muted</div>
+        <div class="detail detail--offline">
+          <div class="detail__head">
+            <div class="detail__head-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            </div>
+            <div>
+              <div class="detail__title-line">
+                <span class="detail__name">Volet salon</span>
+                <span class="badge badge--md badge--offline">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                  Déconnecté
+                </span>
+              </div>
+              <div class="detail__zone">Salon · Maison</div>
+            </div>
+          </div>
+          <div class="detail__section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12h20M12 2v20"/></svg>
+            Position
+          </div>
+          <div class="detail__value-row">
+            <span class="detail__value detail__value--stale">— <span style="font-size:13px;color:var(--n-400);font-weight:500">%</span></span>
+            <span class="detail__caption">Hors ligne depuis 2 h</span>
+          </div>
+          <div class="detail__controls">
+            <button class="btn">Ouvrir</button>
+            <button class="btn">Stop</button>
+            <button class="btn">Fermer</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- 3. LiveEnergyPage flow diagram                                -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">3</span> LiveEnergyPage · diagramme de flux énergie</h2>
+    <p class="section__desc">Reproduit le vrai layout : 3 nodes (Consommation centré haut, Réseau gauche, Production droite) avec icons + valeur mono. Lignes courbes + pills de répartition. Sur stale : valeur grisée par node + status pill "Données figées". Sur offline : node bordure rouge, statut explicite.</p>
+    <p class="section__file">ui/src/components/energy/LiveEnergyPage.tsx</p>
+
+    <div class="triplet">
+
+      <!-- ONLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-online">État online · live à 1s</div>
+        <div class="live-frame">
+          <div class="live-flow">
+            <!-- SVG flow lines -->
+            <svg class="live-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M 50 36 C 50 50, 30 60, 17 70" stroke="#6BCB77" stroke-width=".5" opacity=".8"/>
+              <path d="M 50 36 C 50 50, 70 60, 83 70" stroke="#6BCB77" stroke-width=".5" opacity=".8"/>
+              <path d="M 17 78 C 35 88, 65 88, 83 78" stroke="#6BCB77" stroke-width=".5" opacity=".8"/>
+            </svg>
+            <div class="live-pct" style="top: 56%; left: 28%;">59%</div>
+            <div class="live-pct" style="top: 84%; left: 50%;">41%</div>
+
+            <div class="live-node live-node--house">
+              <span class="live-node__lab">Consommation</span>
+              <span class="live-node__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M13 9l-3 4h4l-3 4" stroke-width="1.6"/></svg>
+              </span>
+              <span class="live-node__val">380<span class="u">W</span></span>
+            </div>
+
+            <div class="live-node live-node--grid">
+              <span class="live-node__lab">Réseau</span>
+              <span class="live-node__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 22 L20 22"/><path d="M7 22 L10 4"/><path d="M17 22 L14 4"/><path d="M9 4 L15 4"/><path d="M10 10 L14 10"/><path d="M9.5 16 L14.5 16"/></svg>
+              </span>
+              <span class="live-node__val"><span style="font-size:14px">↓</span>265<span class="u">W</span></span>
+            </div>
+
+            <div class="live-node live-node--solar">
+              <span class="live-node__lab">Production</span>
+              <span class="live-node__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="1"/><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+              </span>
+              <span class="live-node__val">650<span class="u">W</span></span>
+            </div>
+
+            <div class="live-status">Excédent solaire</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEGRADED · live stale -->
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">État degraded · données figées</div>
+        <div class="live-frame">
+          <div class="live-flow">
+            <svg class="live-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path d="M 50 36 C 50 50, 30 60, 17 70" stroke="#71717A" stroke-width=".5" opacity=".4" stroke-dasharray="1.5,1"/>
+              <path d="M 50 36 C 50 50, 70 60, 83 70" stroke="#71717A" stroke-width=".5" opacity=".4" stroke-dasharray="1.5,1"/>
+              <path d="M 17 78 C 35 88, 65 88, 83 78" stroke="#71717A" stroke-width=".5" opacity=".4" stroke-dasharray="1.5,1"/>
+            </svg>
+
+            <div class="live-node live-node--house live-node--stale">
+              <span class="live-node__lab">Consommation</span>
+              <span class="live-node__icon" style="color:var(--n-400)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M13 9l-3 4h4l-3 4" stroke-width="1.6"/></svg>
+              </span>
+              <span class="live-node__val">380<span class="u">W</span></span>
+              <span class="live-node__sub">il y a 47 min</span>
+            </div>
+
+            <div class="live-node live-node--grid live-node--stale">
+              <span class="live-node__lab">Réseau</span>
+              <span class="live-node__icon" style="color:var(--n-400)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 22 L20 22"/><path d="M7 22 L10 4"/><path d="M17 22 L14 4"/><path d="M9 4 L15 4"/><path d="M10 10 L14 10"/><path d="M9.5 16 L14.5 16"/></svg>
+              </span>
+              <span class="live-node__val"><span style="font-size:14px">↓</span>265<span class="u">W</span></span>
+              <span class="live-node__sub">il y a 47 min</span>
+            </div>
+
+            <div class="live-node live-node--solar live-node--stale">
+              <span class="live-node__lab">Production</span>
+              <span class="live-node__icon" style="color:var(--n-400)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="1"/><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+              </span>
+              <span class="live-node__val">650<span class="u">W</span></span>
+              <span class="live-node__sub">il y a 47 min</span>
+            </div>
+
+            <div class="live-status live-status--stale">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Données figées il y a 47 min
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OFFLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">État offline · compteur déconnecté</div>
+        <div class="live-frame">
+          <div class="live-flow">
+            <div class="live-node live-node--house live-node--offline">
+              <span class="live-node__lab">Consommation</span>
+              <span class="live-node__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M13 9l-3 4h4l-3 4" stroke-width="1.6"/></svg>
+              </span>
+              <span class="live-node__val" style="color:var(--n-300)">— <span class="u">W</span></span>
+            </div>
+
+            <div class="live-node live-node--grid live-node--offline">
+              <span class="live-node__lab">Réseau</span>
+              <span class="live-node__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 22 L20 22"/><path d="M7 22 L10 4"/><path d="M17 22 L14 4"/><path d="M9 4 L15 4"/><path d="M10 10 L14 10"/><path d="M9.5 16 L14.5 16"/></svg>
+              </span>
+              <span class="live-node__val" style="color:var(--n-300)">— <span class="u">W</span></span>
+            </div>
+
+            <div class="live-node live-node--solar live-node--offline">
+              <span class="live-node__lab">Production</span>
+              <span class="live-node__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="1"/><line x1="9" y1="6" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="18"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+              </span>
+              <span class="live-node__val" style="color:var(--n-300)">— <span class="u">W</span></span>
+            </div>
+
+            <div class="live-status live-status--offline">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+              Compteur déconnecté depuis 2 h
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- 4. EnergyDataPanel                                            -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">4</span> EnergyDataPanel · cumuls</h2>
+    <p class="section__desc">Vrai layout : grid 2x2, chaque cumul = icon box accent + label + valeur mono. Cumuls inchangés (issus d'InfluxDB, donc historiquement justes même si live est mort). Caption sous le grid uniquement.</p>
+    <p class="section__file">ui/src/components/equipments/EnergyDataPanel.tsx</p>
+
+    <div class="triplet">
+
+      <!-- ONLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-online">État online</div>
+        <div class="energy-panel">
+          <div class="energy-panel__head">
+            <div class="energy-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Compteur principal
+            </div>
+          </div>
+          <div class="energy-grid">
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Heure</div><div class="cumul__val">1.20<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Jour</div><div class="cumul__val">12.40<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Mois</div><div class="cumul__val">384<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="17 14 13 18 11 16 7 20"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Année</div><div class="cumul__val">4 320<span class="u">kWh</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEGRADED -->
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">État degraded</div>
+        <div class="energy-panel">
+          <div class="energy-panel__head">
+            <div class="energy-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Compteur principal
+            </div>
+            <span class="badge badge--degraded">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Dégradé
+            </span>
+          </div>
+          <div class="energy-grid">
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Heure</div><div class="cumul__val">1.20<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Jour</div><div class="cumul__val">12.40<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Mois</div><div class="cumul__val">384<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="17 14 13 18 11 16 7 20"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Année</div><div class="cumul__val">4 320<span class="u">kWh</span></div></div>
+            </div>
+          </div>
+          <div class="energy-panel__caption">Dernière donnée live il y a 47 min</div>
+        </div>
+      </div>
+
+      <!-- OFFLINE -->
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">État offline</div>
+        <div class="energy-panel">
+          <div class="energy-panel__head">
+            <div class="energy-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Compteur principal
+            </div>
+            <span class="badge badge--offline">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+              Déconnecté
+            </span>
+          </div>
+          <div class="energy-grid">
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Heure</div><div class="cumul__val">1.20<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Jour</div><div class="cumul__val">12.40<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Mois</div><div class="cumul__val">384<span class="u">kWh</span></div></div>
+            </div>
+            <div class="cumul">
+              <span class="cumul__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="17 14 13 18 11 16 7 20"/></svg></span>
+              <div class="cumul__body"><div class="cumul__lab">Année</div><div class="cumul__val">4 320<span class="u">kWh</span></div></div>
+            </div>
+          </div>
+          <div class="energy-panel__caption energy-panel__caption--err">Hors ligne depuis 2 h</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- 5. Dashboard widget (Volet)                                   -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">5</span> Dashboard widget · exemple Volet</h2>
+    <p class="section__desc">Pattern WidgetCard fidèle : hauteur 240px, titre centré 17px, illustration SVG 96px coloriée par catégorie (ici p-500 pour volet ouvert), footer chip + groupe de 3 boutons. Indicateur degraded/offline : petit triangle ambre ou icône wifi-off à côté du titre + footnote sous le footer.</p>
+    <p class="section__file">ui/src/components/dashboard/ZoneWidget.tsx + WidgetCard.tsx</p>
+
+    <div class="triplet" style="grid-template-columns: repeat(3, minmax(0, 280px));">
+
+      <div class="triplet__col">
+        <div class="triplet__label is-online">État online · 3/3 volets joignables</div>
+        <div class="widget">
+          <h3 class="widget__title">Volets RDC</h3>
+          <div class="widget__art">
+            <svg viewBox="0 0 56 56" fill="none">
+              <rect x="4" y="5" width="48" height="6" rx="3" fill="currentColor" opacity="0.2"/>
+              <rect x="4" y="10" width="48" height="42" rx="2" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity="0.04"/>
+              <line x1="28" y1="11" x2="28" y2="51" stroke="currentColor" stroke-width="0.6" opacity="0.1"/>
+              <rect x="6" y="12" width="44" height="4.5" rx="1" fill="currentColor" opacity=".5"/>
+              <rect x="6" y="17.5" width="44" height="4.5" rx="1" fill="currentColor" opacity=".5"/>
+              <rect x="6" y="17.5" width="44" height="5.5" rx="1.5" fill="currentColor" opacity="0.55"/>
+            </svg>
+          </div>
+          <div class="widget__footer">
+            <span class="chip-state chip-state--on">Ouvert</span>
+            <div class="shutter-grp">
+              <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg></button>
+              <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
+              <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">État degraded · 1 volet sur 3 offline</div>
+        <div class="widget">
+          <h3 class="widget__title">
+            Volets RDC
+            <span class="widget__title-badge" style="color:var(--a-600)" title="1 indisponible">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+          </h3>
+          <div class="widget__art">
+            <svg viewBox="0 0 56 56" fill="none">
+              <rect x="4" y="5" width="48" height="6" rx="3" fill="currentColor" opacity="0.2"/>
+              <rect x="4" y="10" width="48" height="42" rx="2" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity="0.04"/>
+              <line x1="28" y1="11" x2="28" y2="51" stroke="currentColor" stroke-width="0.6" opacity="0.1"/>
+              <rect x="6" y="12" width="44" height="4.5" rx="1" fill="currentColor" opacity=".5"/>
+              <rect x="6" y="17.5" width="44" height="4.5" rx="1" fill="currentColor" opacity=".5"/>
+              <rect x="6" y="23" width="44" height="4.5" rx="1" fill="currentColor" opacity=".5"/>
+              <rect x="6" y="23" width="44" height="5.5" rx="1.5" fill="currentColor" opacity="0.55"/>
+            </svg>
+          </div>
+          <div class="widget__footer">
+            <span class="chip-state chip-state--on">2/3 ouverts</span>
+            <div class="shutter-grp">
+              <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg></button>
+              <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
+              <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
+          </div>
+          <div class="widget__footnote">1 volet hors ligne</div>
+        </div>
+      </div>
+
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">État offline · tous les volets hors ligne</div>
+        <div class="widget widget--offline">
+          <h3 class="widget__title">
+            Volets RDC
+            <span class="widget__title-badge" style="color:var(--red-500)" title="Tous hors ligne">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </span>
+          </h3>
+          <div class="widget__art">
+            <svg viewBox="0 0 56 56" fill="none">
+              <rect x="4" y="5" width="48" height="6" rx="3" fill="currentColor" opacity="0.2"/>
+              <rect x="4" y="10" width="48" height="42" rx="2" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity="0.04"/>
+            </svg>
+          </div>
+          <div class="widget__footer">
+            <span class="badge badge--offline">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+              0/3 joignables
+            </span>
+            <div class="shutter-grp">
+              <button class="shutter-btn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg></button>
+              <button class="shutter-btn" disabled><svg viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="8" width="8" height="8" rx="1"/></svg></button>
+              <button class="shutter-btn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
+          </div>
+          <div class="widget__footnote widget__footnote--err">3 volets hors ligne</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- 6. Dashboard widget — PAC thermostat (with art + side value)  -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">6</span> Dashboard widget · exemple PAC (thermostat)</h2>
+    <p class="section__desc">Variante du widget avec art à gauche + valeur principale à droite. Le triangle ambre dans le header se positionne après le titre. Important : la valeur du widget reste affichée en degraded (l'utilisateur peut encore identifier l'équipement), juste flaggée par le triangle.</p>
+    <p class="section__file">ui/src/components/dashboard/ZoneWidget.tsx (variant heating)</p>
+
+    <div class="triplet" style="grid-template-columns: repeat(3, minmax(0, 280px));">
+
+      <div class="triplet__col">
+        <div class="triplet__label is-online">État online</div>
+        <div class="widget">
+          <h3 class="widget__title">PAC</h3>
+          <div class="widget__art">
+            <svg viewBox="0 0 56 56" fill="none" style="color:var(--p-500);width:80px;height:80px">
+              <path d="M24.5 9.5 A3.5 3.5 0 0 1 31.5 9.5 L31.5 33.7 A9 9 0 1 1 24.5 33.7 Z" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity=".08"/>
+              <rect x="0" y="32" width="56" height="24" fill="currentColor" fill-opacity=".25" clip-path="url(#tc1)"/>
+              <defs><clipPath id="tc1"><path d="M26 11 A1.5 1.5 0 0 1 30 11 L30 35.3 A7.5 7.5 0 1 1 26 35.3 Z"/></clipPath></defs>
+            </svg>
+            <div class="widget__art-side">
+              <div class="widget__big">21.0<span class="u">°C</span></div>
+              <button class="shutter-btn" style="background:var(--p-50);border-color:var(--p-100);color:var(--p-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>
+            </div>
+          </div>
+          <div class="widget__footer widget__footer-center">
+            <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+            <span style="font-family:var(--font-mono);font-weight:600;color:var(--n-700)">18.0<span style="font-size:11px;color:var(--n-400);margin-left:2px">°C</span></span>
+            <button class="shutter-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">État degraded · sonde stale</div>
+        <div class="widget">
+          <h3 class="widget__title">
+            PAC
+            <span class="widget__title-badge" style="color:var(--a-600)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+          </h3>
+          <div class="widget__art">
+            <svg viewBox="0 0 56 56" fill="none" style="color:var(--p-500);width:80px;height:80px;opacity:.7">
+              <path d="M24.5 9.5 A3.5 3.5 0 0 1 31.5 9.5 L31.5 33.7 A9 9 0 1 1 24.5 33.7 Z" stroke="currentColor" stroke-width="1.2" fill="currentColor" fill-opacity=".08"/>
+              <rect x="0" y="32" width="56" height="24" fill="currentColor" fill-opacity=".25" clip-path="url(#tc2)"/>
+              <defs><clipPath id="tc2"><path d="M26 11 A1.5 1.5 0 0 1 30 11 L30 35.3 A7.5 7.5 0 1 1 26 35.3 Z"/></clipPath></defs>
+            </svg>
+            <div class="widget__art-side">
+              <div class="widget__big stale">21.0<span class="u">°C</span></div>
+              <button class="shutter-btn" style="background:var(--p-50);border-color:var(--p-100);color:var(--p-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>
+            </div>
+          </div>
+          <div class="widget__footnote">Température figée il y a 23 min</div>
+        </div>
+      </div>
+
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">État offline · sonde déconnectée</div>
+        <div class="widget widget--offline">
+          <h3 class="widget__title">
+            PAC
+            <span class="widget__title-badge" style="color:var(--red-500)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </span>
+          </h3>
+          <div class="widget__art">
+            <svg viewBox="0 0 56 56" fill="none" style="color:var(--p-500);width:80px;height:80px">
+              <path d="M24.5 9.5 A3.5 3.5 0 0 1 31.5 9.5 L31.5 33.7 A9 9 0 1 1 24.5 33.7 Z" stroke="currentColor" stroke-width="1.2" fill="none"/>
+            </svg>
+            <div class="widget__art-side">
+              <div class="widget__big" style="color:var(--n-300);font-style:italic">—<span class="u">°C</span></div>
+            </div>
+          </div>
+          <div class="widget__footnote widget__footnote--err">Sonde déconnectée depuis 2 h</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <!-- Tooltip preview                                                -->
+  <!-- ════════════════════════════════════════════════════════════ -->
+  <section class="section">
+    <h2 class="section__title"><span class="section__num">+</span> Tooltip détaillé (au survol des badges)</h2>
+    <p class="section__desc">Liste exacte des appareils + bindings concernés. Permet de comprendre pourquoi l'équipement est en degraded sans aller dans la page Devices.</p>
+
+    <div class="triplet">
+
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">Tooltip dégradé · device + binding</div>
+        <div class="tooltip">
+          <div class="tooltip__title">Dégradé</div>
+          <div class="tooltip__group">
+            <div class="tooltip__group-title">1 appareil hors ligne</div>
+            <ul><li>Compteur Shelly</li></ul>
+          </div>
+          <div class="tooltip__group">
+            <div class="tooltip__group-title">1 valeur périmée</div>
+            <ul><li>temperature (il y a 23 min)</li></ul>
+          </div>
+          <div class="tooltip__since">Anomalie depuis 23 min</div>
+        </div>
+      </div>
+
+      <div class="triplet__col">
+        <div class="triplet__label is-offline">Tooltip offline</div>
+        <div class="tooltip">
+          <div class="tooltip__title">Déconnecté</div>
+          <div class="tooltip__group">
+            <div class="tooltip__group-title">Appareil hors ligne</div>
+            <ul><li>SONOFF SWV salle de bain</li></ul>
+          </div>
+          <div class="tooltip__since">Hors ligne depuis 2 h</div>
+        </div>
+      </div>
+
+      <div class="triplet__col">
+        <div class="triplet__label is-degraded">Tooltip stale only · device online</div>
+        <div class="tooltip">
+          <div class="tooltip__title">Dégradé</div>
+          <div class="tooltip__group">
+            <div class="tooltip__group-title">2 valeurs périmées</div>
+            <ul>
+              <li>power (il y a 12 min)</li>
+              <li>voltage (il y a 12 min)</li>
+            </ul>
+          </div>
+          <div class="tooltip__since">Données périmées depuis 12 min</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span class="legend__item">
+      <span class="legend__swatch" style="background:color-mix(in srgb,var(--a-500) 14%,transparent)"></span>
+      Dégradé · <code>bg-warning/10</code> · <code>text-warning</code>
+    </span>
+    <span class="legend__item">
+      <span class="legend__swatch" style="background:color-mix(in srgb,var(--red-500) 12%,transparent)"></span>
+      Déconnecté · <code>bg-error/10</code> · <code>text-error</code>
+    </span>
+    <span class="legend__item">
+      <span class="legend__swatch" style="background:var(--n-100)"></span>
+      Stale value · <code>text-text-tertiary</code> italic
+    </span>
+    <span class="legend__item" style="margin-left:auto">
+      Tokens: <code>design-system/tokens.css</code>
+    </span>
+  </div>
+
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === "dark";
+  html.dataset.theme = isDark ? "hybrid" : "dark";
+  document.getElementById("theme-label").textContent = isDark ? "Thème clair" : "Thème sombre";
+}
+</script>
+
+</body>
+</html>

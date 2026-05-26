@@ -174,6 +174,13 @@ export interface ZoneAggregatedData {
   sunrise: string | null;
   sunset: string | null;
   isDaylight: boolean | null;
+  /**
+   * Per-DataCategory count of equipments in this zone (and descendants) that
+   * were skipped from aggregation because their status === "offline" (spec 116).
+   * Missing keys mean zero. Lets UI render "(N unavailable)" hints next to the
+   * affected metric.
+   */
+  unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
 }
 
 // ============================================================
@@ -214,6 +221,22 @@ export interface Equipment {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Derived availability of an equipment (spec 116). Computed in memory from
+ * the underlying devices' `status` and the freshness of streaming bindings.
+ * Never persisted.
+ */
+export type EquipmentStatus = "online" | "degraded" | "offline";
+
+export interface EquipmentStatusReason {
+  /** Names of bound devices whose status is "offline". */
+  offlineDevices: string[];
+  /** Aliases of streaming bindings whose lastUpdated exceeds the timeout. */
+  staleBindings: string[];
+  /** Earliest lastSeen (devices) / lastUpdated (bindings) among the issues. */
+  offlineSince: string | null;
 }
 
 export interface DataBinding {
@@ -284,6 +307,12 @@ export interface DataBindingWithValue extends DataBinding {
   lastUpdated: string | null;
   lastChanged: string | null;
   historize?: number | null;
+  /**
+   * True iff the category is streaming AND lastUpdated exceeds the per-category
+   * timeout (spec 116). Always false for event-based categories such as motion
+   * or contact_door (absence of update is not anomaly).
+   */
+  stale: boolean;
 }
 
 export interface OrderBindingWithDetails extends OrderBinding {
@@ -313,6 +342,10 @@ export interface EquipmentWithDetails extends Equipment {
   orderBindings: OrderBindingWithDetails[];
   /** Computed data not backed by device bindings (e.g. energy aggregator cumuls). */
   computedData?: ComputedDataEntry[];
+  /** Derived availability (spec 116). Always present. */
+  status: EquipmentStatus;
+  /** Populated only when status !== "online". */
+  statusReason?: EquipmentStatusReason;
 }
 
 // ============================================================
@@ -646,6 +679,13 @@ export type EngineEvent =
       value: unknown;
       error: string;
       source?: OrderSource;
+    }
+  | {
+      type: "equipment.status.changed";
+      equipmentId: string;
+      equipmentName: string;
+      oldStatus: EquipmentStatus;
+      newStatus: EquipmentStatus;
     }
   // Recipe events
   | { type: "recipe.instance.created"; instanceId: string; recipeId: string }

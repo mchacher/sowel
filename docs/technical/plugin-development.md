@@ -181,14 +181,48 @@ deps.settingsManager.set("integration.weather-forecast.last_poll", Date.now().to
 
 ### `deviceManager`
 
-Manage devices discovered by your plugin. Two main methods are used:
+Manage devices discovered by your plugin. Three main methods are used:
 
-| Method                | Signature                                                                                   | Description                                   |
-| --------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`             | Create or update a device from discovery data |
-| `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>) => void` | Push new data values for an existing device   |
+| Method                | Signature                                                                                   | Description                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`             | Create or update a device from discovery data                                                                       |
+| `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>) => void` | Push new data values for an existing device                                                                         |
+| `updateDeviceStatus`  | `(integrationId: string, sourceDeviceId: string, status: "online" \| "offline") => void`    | Reflect device availability (mandatory, see [Device availability contract](#device-availability-contract-spec-116)) |
 
 See [Device Discovery](#device-discovery) and [Device Data Updates](#device-data-updates) for detailed usage.
+
+---
+
+## Device availability contract (spec 116)
+
+**Mandatory.** Every plugin MUST keep `device.status` truthful — it is the single source of truth Sowel relies on to derive equipment availability (`online` / `degraded` / `offline`), to drive UI badges, and to exclude offline equipments from zone aggregations.
+
+### What to call
+
+- `deviceManager.updateDeviceStatus(integrationId, sourceDeviceId, "online")` when the device starts responding (LWT topic flips to `online`, polling succeeds again, bridge reconnects, etc.).
+- `deviceManager.updateDeviceStatus(integrationId, sourceDeviceId, "offline")` when the device stops responding (LWT topic flips to `offline`, polling times out N times, plugin disconnects from its broker/cloud, bridge availability changes, etc.).
+
+Both calls are idempotent: emitting the same status twice in a row is cheap and does not re-emit events. Set the status as soon as you observe the transition; Sowel debounces downstream propagation.
+
+### Examples by transport
+
+| Transport                        | Source of truth                                                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| MQTT (Tasmota, Shelly, somfyrts) | LWT topic (`tele/<root>/LWT` payload `Online`/`Offline`)                                                                       |
+| Zigbee2MQTT                      | `<friendlyName>/availability` topic (retained, `online`/`offline`)                                                             |
+| Cloud polling                    | After N consecutive HTTP failures, call `updateDeviceStatus(..., "offline")`. Reset to `"online"` on the next successful poll. |
+| Socket.IO / WebSocket            | `disconnect` event → mark offline; `connect` event → mark online                                                               |
+| Custom heartbeat                 | Internal timer: no heartbeat received past timeout → mark offline                                                              |
+
+### Why this matters
+
+Plugins that do not maintain `device.status` leave their devices stuck at `online` indefinitely, which makes equipments appear functional in the UI when they are not. A real bug in v1.13 surfaced this: a Shelly Pro 3EM was hors-tension for 30+ minutes; the Live Energy page kept displaying the last known value as if it was live because the plugin had not yet been wired to the LWT topic.
+
+An audit on a 96-device production instance (2026-05-24) found 24 devices stuck at `online` with `lastSeen` between 1 hour and 49 days — every one of those is a missed `updateDeviceStatus("offline")` call in the upstream plugin.
+
+### Limitations Sowel core does NOT compensate for
+
+Sowel core does **not** add a generic `device.lastSeen > timeout` watchdog on top of plugin-reported status. Battery-powered Zigbee endpoints (PIR, contact, water-leak) can legitimately stay silent for days without being offline, and any generic timeout produces too many false positives. The contract above is the only mechanism. Plugins that cannot meet it (fire-and-forget LoRa receivers, etc.) should consider implementing their own staleness logic and calling `updateDeviceStatus("offline")` on their own terms.
 
 ### `pluginDir`
 

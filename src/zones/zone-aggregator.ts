@@ -39,6 +39,8 @@ interface Accumulator {
   waterValvesTotal: number;
   waterFlowSum: number;
   waterFlowHasData: boolean;
+  /** Per-DataCategory count of equipments skipped because status === "offline" (spec 116). */
+  unavailableByCategory: Partial<Record<DataCategory, number>>;
 }
 
 function emptyAccumulator(): Accumulator {
@@ -65,7 +67,19 @@ function emptyAccumulator(): Accumulator {
     waterValvesTotal: 0,
     waterFlowSum: 0,
     waterFlowHasData: false,
+    unavailableByCategory: {},
   };
+}
+
+function mergeUnavailable(
+  a: Partial<Record<DataCategory, number>>,
+  b: Partial<Record<DataCategory, number>>,
+): Partial<Record<DataCategory, number>> {
+  const result: Partial<Record<DataCategory, number>> = { ...a };
+  for (const [cat, count] of Object.entries(b) as [DataCategory, number][]) {
+    result[cat] = (result[cat] ?? 0) + count;
+  }
+  return result;
 }
 
 function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
@@ -92,6 +106,7 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     waterValvesTotal: a.waterValvesTotal + b.waterValvesTotal,
     waterFlowSum: a.waterFlowSum + b.waterFlowSum,
     waterFlowHasData: a.waterFlowHasData || b.waterFlowHasData,
+    unavailableByCategory: mergeUnavailable(a.unavailableByCategory, b.unavailableByCategory),
   };
 }
 
@@ -126,6 +141,7 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     sunrise: null,
     sunset: null,
     isDaylight: null,
+    unavailableEquipmentsByCategory: acc.unavailableByCategory,
   };
 }
 
@@ -153,8 +169,22 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.waterFlowTotal === b.waterFlowTotal &&
     a.sunrise === b.sunrise &&
     a.sunset === b.sunset &&
-    a.isDaylight === b.isDaylight
+    a.isDaylight === b.isDaylight &&
+    unavailableEqual(a.unavailableEquipmentsByCategory, b.unavailableEquipmentsByCategory)
   );
+}
+
+function unavailableEqual(
+  a: Partial<Record<DataCategory, number>>,
+  b: Partial<Record<DataCategory, number>>,
+): boolean {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (const key of keysA) {
+    if (a[key as DataCategory] !== b[key as DataCategory]) return false;
+  }
+  return true;
 }
 
 /**
@@ -442,6 +472,11 @@ export class ZoneAggregator {
 
   /**
    * Compute the direct accumulator for a zone from its own equipments.
+   *
+   * Spec 116: equipments whose derived status === "offline" are excluded from
+   * numeric aggregation. Each of their data-binding categories increments
+   * `unavailableByCategory` so the UI can surface "(N unavailable)" hints.
+   * Degraded equipments still contribute their last known values.
    */
   private computeDirectAccumulator(zoneId: string): Accumulator {
     const equipments = this.equipmentManager.getByZone(zoneId);
@@ -449,7 +484,18 @@ export class ZoneAggregator {
 
     for (const equipment of equipments) {
       if (equipment.type === "weather") continue; // Exclude weather from zone aggregation
-      const bindings = this.equipmentManager.getDataBindingsWithValues(equipment.id);
+      const withDetails = this.equipmentManager.getByIdWithDetails(equipment.id);
+      if (!withDetails) continue;
+
+      if (withDetails.status === "offline") {
+        for (const binding of withDetails.dataBindings) {
+          acc.unavailableByCategory[binding.category] =
+            (acc.unavailableByCategory[binding.category] ?? 0) + 1;
+        }
+        continue;
+      }
+
+      const bindings = withDetails.dataBindings;
       if (equipment.type === "water_valve") {
         this.accumulateWaterValve(acc, bindings);
       } else {

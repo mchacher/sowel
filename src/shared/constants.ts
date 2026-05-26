@@ -174,3 +174,60 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   water: ["water_valve"],
   pool: ["pool_pump", "pool_cover", "pool_heat_pump"],
 };
+
+// ============================================================
+// Equipment availability — streaming categories (spec 116)
+// ============================================================
+
+/**
+ * Categories where the device pushes a value at regular intervals, even when
+ * unchanged. Absence of update past the timeout = anomaly. Event-based
+ * categories (motion, contact_door, action, light_state, shutter_position…)
+ * are intentionally NOT here: a PIR not firing for 3 weeks is normal.
+ */
+export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
+  "power",
+  "energy",
+  "voltage",
+  "current",
+  "temperature",
+  "temperature_outdoor",
+  "humidity",
+  "humidity_outdoor",
+  "pressure",
+  "luminosity",
+  "co2",
+  "voc",
+  "noise",
+  "battery",
+  "setpoint",
+  "pool_water_temperature",
+  "pool_temperature_setpoint",
+]);
+
+/**
+ * Per-category freshness window. A streaming binding whose lastUpdated is
+ * older than this value is flagged stale (spec 116). Categories listed in
+ * STREAMING_CATEGORIES but missing here fall back to DEFAULT_STREAMING_TIMEOUT_MS.
+ */
+export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
+  power: 2 * 60 * 1000, // 2 min — live electrical reads
+  energy: 10 * 60 * 1000, // 10 min — cumulative counter
+  voltage: 5 * 60 * 1000,
+  current: 5 * 60 * 1000,
+  temperature: 15 * 60 * 1000,
+  temperature_outdoor: 15 * 60 * 1000,
+  humidity: 15 * 60 * 1000,
+  humidity_outdoor: 15 * 60 * 1000,
+  pressure: 30 * 60 * 1000,
+  luminosity: 15 * 60 * 1000,
+  co2: 15 * 60 * 1000,
+  voc: 15 * 60 * 1000,
+  noise: 15 * 60 * 1000,
+  battery: 2 * 60 * 60 * 1000, // 2 h — battery reports are sparse
+  setpoint: 60 * 60 * 1000, // 1 h
+  pool_water_temperature: 15 * 60 * 1000,
+  pool_temperature_setpoint: 60 * 60 * 1000,
+};
+
+export const DEFAULT_STREAMING_TIMEOUT_MS = 15 * 60 * 1000;

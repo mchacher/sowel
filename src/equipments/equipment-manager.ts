@@ -20,6 +20,8 @@ import type {
   OrderSource,
 } from "../shared/types.js";
 import { inferBindingCategory } from "./binding-candidates.js";
+import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
+import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
 export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
@@ -363,11 +365,20 @@ export class EquipmentManager {
     const equipment = this.getById(id);
     if (!equipment) return null;
 
+    const dataBindings = this.getDataBindingsWithValues(id);
+    const orderBindings = this.getOrderBindingsWithDetails(id);
     const computedData = this.getComputedData(id);
+
+    // Spec 116: derive equipment status from bindings + backing devices.
+    const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
+    const { status, reason } = deriveEquipmentStatus(dataBindings, devicesByBindingId);
+
     return {
       ...equipment,
-      dataBindings: this.getDataBindingsWithValues(id),
-      orderBindings: this.getOrderBindingsWithDetails(id),
+      dataBindings,
+      orderBindings,
+      status,
+      ...(reason !== null ? { statusReason: reason } : {}),
       ...(computedData.length > 0 ? { computedData } : {}),
     };
   }
@@ -375,11 +386,17 @@ export class EquipmentManager {
   getAllWithDetails(): EquipmentWithDetails[] {
     const equipments = this.getAll();
     return equipments.map((eq) => {
+      const dataBindings = this.getDataBindingsWithValues(eq.id);
+      const orderBindings = this.getOrderBindingsWithDetails(eq.id);
       const computedData = this.getComputedData(eq.id);
+      const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
+      const { status, reason } = deriveEquipmentStatus(dataBindings, devicesByBindingId);
       return {
         ...eq,
-        dataBindings: this.getDataBindingsWithValues(eq.id),
-        orderBindings: this.getOrderBindingsWithDetails(eq.id),
+        dataBindings,
+        orderBindings,
+        status,
+        ...(reason !== null ? { statusReason: reason } : {}),
         ...(computedData.length > 0 ? { computedData } : {}),
       };
     });
@@ -533,7 +550,34 @@ export class EquipmentManager {
       bindings.unshift(this.buildCoverStateBinding(equipmentId, state));
     }
 
+    // Annotate staleness on streaming bindings (spec 116).
+    const now = Date.now();
+    for (const binding of bindings) {
+      binding.stale = isStaleBinding(binding.category, binding.lastUpdated, now);
+    }
+
     return bindings;
+  }
+
+  /**
+   * Resolve the Device behind each binding for status derivation (spec 116).
+   * Returns a Map<bindingId, Device>. Virtual bindings (deviceId === "") are
+   * skipped. A small in-memory cache deduplicates device fetches across
+   * bindings that share a deviceId.
+   */
+  private resolveDevicesForBindings(bindings: DataBindingWithValue[]): Map<string, Device> {
+    const result = new Map<string, Device>();
+    const deviceCache = new Map<string, Device | null>();
+    for (const binding of bindings) {
+      if (!binding.deviceId) continue;
+      let device = deviceCache.get(binding.deviceId);
+      if (device === undefined) {
+        device = this.deviceManager.getById(binding.deviceId);
+        deviceCache.set(binding.deviceId, device);
+      }
+      if (device) result.set(binding.id, device);
+    }
+    return result;
   }
 
   /** Set the historize flag on a data binding. NULL = category default, 1 = force ON, 0 = force OFF. */
@@ -1010,6 +1054,7 @@ export class EquipmentManager {
       unit: undefined,
       lastUpdated: new Date().toISOString(),
       lastChanged: new Date().toISOString(),
+      stale: false, // virtual binding, always fresh
     };
   }
 
@@ -1032,6 +1077,7 @@ export class EquipmentManager {
       unit: undefined,
       lastUpdated: new Date().toISOString(),
       lastChanged: new Date().toISOString(),
+      stale: false, // virtual binding, always fresh
     };
   }
 
@@ -1256,6 +1302,7 @@ function rowToDataBindingWithValue(row: DataBindingJoinRow): DataBindingWithValu
     enumValues,
     lastUpdated: toISOUtc(row.last_updated),
     lastChanged: toISOUtc(row.last_changed),
+    stale: false, // annotated downstream by getDataBindingsWithValues (spec 116)
   };
 }
 

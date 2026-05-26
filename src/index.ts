@@ -11,6 +11,7 @@ import { EventBus } from "./core/event-bus.js";
 import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
+import { EquipmentStatusTracker } from "./equipments/equipment-status-tracker.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
@@ -190,6 +191,12 @@ async function main() {
   const zoneAggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
   const sunlightManager = new SunlightManager(settingsManager, eventBus, logger);
   zoneAggregator.setSunlightManager(sunlightManager);
+
+  // 10b. Equipment availability tracker (spec 116) — emits equipment.status.changed
+  // on transitions between online/degraded/offline so the WebSocket layer can push
+  // the new state to UI clients without polling.
+  const equipmentStatusTracker = new EquipmentStatusTracker(equipmentManager, eventBus, logger);
+  equipmentStatusTracker.start();
 
   // 11. Create InfluxDB client and connect
   const influxClient = new InfluxClient(logger);
