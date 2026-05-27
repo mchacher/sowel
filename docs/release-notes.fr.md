@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.1 — 2026-05-27 { #v1-15-1 }
+
+- Feature (API) : nouveau paramètre optionnel `?type=<EquipmentType>` sur `GET /api/v1/equipments`. Renvoie uniquement les équipements du type demandé (par ex. `?type=energy_meter`). Les valeurs inconnues retournent une liste vide plutôt qu'une 400, pour qu'un appelant puisse forwarder une saisie utilisateur sans validation préalable. Permet aux clients à mémoire contrainte (comme le firmware ESP32 sowel-energy-display) de passer d'un payload de 100 Ko à quelques Ko en ne demandant que les entrées utiles.
+
 ### v1.15.0 — 2026-05-27 { #v1-15-0 }
 
 - Feature (UI Énergie) : un donut "Décomposition consommation" apparaît désormais sous le diagramme Maison/Réseau/Solaire de la page Live (spec 117). Un segment par sous-compteur `energy_meter` et un segment "Autre" pour la part non instrumentée, dimensionnés par la puissance instantanée (W). Mise à jour réactive via le flux WebSocket des équipements, aucun nouvel endpoint ni changement de base. Les couleurs reprennent celles du graphique By-usage historique pour qu'un même clamp ait la même couleur dans les deux vues. Les sous-compteurs hors-ligne disparaissent du donut mais restent grisés dans la légende.

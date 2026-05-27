@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.1 — 2026-05-27 { #v1-15-1 }
+
+- Feature (API): new optional `?type=<EquipmentType>` query parameter on `GET /api/v1/equipments`. Returns only equipments of the requested type (e.g. `?type=energy_meter`). Unknown values return an empty list rather than a 400 so callers can safely forward user input. Lets memory-constrained clients (like the sowel-energy-display ESP32 firmware) drop a 100 KB payload to a few KB by asking only for the entries they need.
+
 ### v1.15.0 — 2026-05-27 { #v1-15-0 }
 
 - Feature (Energy UI): a "Consumption breakdown" donut now sits below the Maison/Réseau/Solaire diagram on the Live page (spec 117). One segment per `energy_meter` submeter and an "Other" residual for what no clamp measures, sized by instantaneous power (W). Updates reactively from the existing equipments WebSocket stream, no new endpoint or DB change. Colors match the historical By-usage chart so a given clamp keeps the same color in both views. Offline submeters drop out of the donut but stay listed greyed in the legend.
