@@ -87,7 +87,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
         </h2>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 max-w-[600px]">
         <Donut
           segments={segments}
           totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.num}
@@ -96,7 +96,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
           idle={isIdle}
         />
 
-        <div className="flex-1 w-full flex flex-col gap-2">
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-2">
           {rows.map((row) => (
             <LegendRow key={row.id} row={row} total={total} t={t} />
           ))}
