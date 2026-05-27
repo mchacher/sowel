@@ -710,7 +710,10 @@ async function queryMainConsumptionPoints(
 
 /** Deterministic pastel palette for submeter colors. Medium saturation,
  *  modern dashboard feel — readable on light background, comfortable
- *  next to the brighter HP/HC/autoconso bars of the total chart. */
+ *  next to the brighter HP/HC/autoconso bars of the total chart.
+ *  Mirrored in `ui/src/components/energy/submeterPalette.ts` (spec 117)
+ *  so the Live donut paints each submeter with the same color the
+ *  historical By-usage chart assigns to it. Update both in lockstep. */
 const SUBMETER_PALETTE = [
   "#60A5FA", // soft blue
   "#34D399", // emerald

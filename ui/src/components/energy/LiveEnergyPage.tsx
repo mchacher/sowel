@@ -19,6 +19,7 @@ import { Clock, WifiOff } from "lucide-react";
 import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 import { EnergyMobileNav } from "./EnergyMobileNav";
+import { LiveSubmeterBreakdown } from "./LiveSubmeterBreakdown";
 import { useWsSubscription } from "../../hooks/useWsSubscription";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
@@ -188,7 +189,17 @@ export function LiveEnergyPage() {
       {!hasSources ? (
         <EmptyState />
       ) : (
-        <LiveDiagram gridPower={gridPower} solarPower={solarPower} />
+        <>
+          <LiveDiagram gridPower={gridPower} solarPower={solarPower} />
+          <LiveSubmeterBreakdown
+            house={
+              gridPower !== null || solarPower !== null
+                ? Math.max(0, (gridPower ?? 0) + (solarPower ?? 0))
+                : null
+            }
+            hasMainMeter={gridEqs.length > 0}
+          />
+        </>
       )}
     </div>
   );
