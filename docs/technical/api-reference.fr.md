@@ -96,14 +96,14 @@ Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
 ## Equipments
 
-| Method   | Path                                   | Description                                                                                                                                             |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/equipments`                   | Liste tous les équipements avec leurs liaisons et données courantes.                                                                                    |
-| `GET`    | `/api/v1/equipments/:id`               | Récupère un équipement avec liaisons et données courantes.                                                                                              |
-| `POST`   | `/api/v1/equipments`                   | Crée un équipement. Body : `{ name, type, zoneId, icon?, description?, deviceIds? }`. Si `deviceIds` est fourni, des liaisons automatiques sont créées. |
-| `PUT`    | `/api/v1/equipments/:id`               | Met à jour un équipement. Body : `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                            |
-| `DELETE` | `/api/v1/equipments/:id`               | Supprime un équipement. Retourne 204.                                                                                                                   |
-| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Exécute un ordre d'équipement. Body : `{ value }`.                                                                                                      |
+| Method   | Path                                   | Description                                                                                                                                                                                                      |
+| -------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/equipments`                   | Liste tous les équipements avec leurs liaisons et données courantes. Paramètre optionnel `?type=<EquipmentType>` pour filtrer sur un seul type (ex. `energy_meter`). Une valeur inconnue renvoie une liste vide. |
+| `GET`    | `/api/v1/equipments/:id`               | Récupère un équipement avec liaisons et données courantes.                                                                                                                                                       |
+| `POST`   | `/api/v1/equipments`                   | Crée un équipement. Body : `{ name, type, zoneId, icon?, description?, deviceIds? }`. Si `deviceIds` est fourni, des liaisons automatiques sont créées.                                                          |
+| `PUT`    | `/api/v1/equipments/:id`               | Met à jour un équipement. Body : `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                     |
+| `DELETE` | `/api/v1/equipments/:id`               | Supprime un équipement. Retourne 204.                                                                                                                                                                            |
+| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Exécute un ordre d'équipement. Body : `{ value }`.                                                                                                                                                               |
 
 ### Data Bindings
 

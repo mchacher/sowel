@@ -12,9 +12,15 @@ interface EquipmentsDeps {
 export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDeps): void {
   const { equipmentManager } = deps;
 
-  // GET /api/v1/equipments — List all equipments with bindings and current data
-  app.get("/api/v1/equipments", async () => {
-    return equipmentManager.getAllWithDetails();
+  // GET /api/v1/equipments — List all equipments with bindings and current data.
+  // Optional ?type=<EquipmentType> narrows the response to a single type
+  // (e.g. ?type=energy_meter for clients that only render submeter clamps).
+  // Unknown values yield an empty list rather than 400 so callers can
+  // safely pass-through user input without their own validation.
+  app.get<{ Querystring: { type?: string } }>("/api/v1/equipments", async (request) => {
+    const all = equipmentManager.getAllWithDetails();
+    const typeFilter = request.query.type;
+    return typeFilter ? all.filter((eq) => eq.type === typeFilter) : all;
   });
 
   // GET /api/v1/equipments/:id — Get equipment with bindings and current data

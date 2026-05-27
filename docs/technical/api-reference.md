@@ -96,14 +96,14 @@ All user management routes require admin role.
 
 ## Equipments
 
-| Method   | Path                                   | Description                                                                                                                            |
-| -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/equipments`                   | List all equipments with bindings, current data, and derived `status` (see [Equipment status](#equipment-status-spec-116)).            |
-| `GET`    | `/api/v1/equipments/:id`               | Get equipment with bindings, current data, and derived `status`.                                                                       |
-| `POST`   | `/api/v1/equipments`                   | Create equipment. Body: `{ name, type, zoneId, icon?, description?, deviceIds? }`. If `deviceIds` provided, auto-bindings are created. |
-| `PUT`    | `/api/v1/equipments/:id`               | Update equipment. Body: `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                    |
-| `DELETE` | `/api/v1/equipments/:id`               | Delete equipment. Returns 204.                                                                                                         |
-| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Execute an equipment order. Body: `{ value }`.                                                                                         |
+| Method   | Path                                   | Description                                                                                                                                                                                                                                       |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/equipments`                   | List all equipments with bindings, current data, and derived `status` (see [Equipment status](#equipment-status-spec-116)). Optional `?type=<EquipmentType>` narrows to a single type (e.g. `energy_meter`). Unknown values return an empty list. |
+| `GET`    | `/api/v1/equipments/:id`               | Get equipment with bindings, current data, and derived `status`.                                                                                                                                                                                  |
+| `POST`   | `/api/v1/equipments`                   | Create equipment. Body: `{ name, type, zoneId, icon?, description?, deviceIds? }`. If `deviceIds` provided, auto-bindings are created.                                                                                                            |
+| `PUT`    | `/api/v1/equipments/:id`               | Update equipment. Body: `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                                                               |
+| `DELETE` | `/api/v1/equipments/:id`               | Delete equipment. Returns 204.                                                                                                                                                                                                                    |
+| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Execute an equipment order. Body: `{ value }`.                                                                                                                                                                                                    |
 
 ### Equipment status (spec 116)
 
