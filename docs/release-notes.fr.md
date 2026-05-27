@@ -11,6 +11,12 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.15.x — Décomposition consommation live
+
+### v1.15.0 — 2026-05-27 { #v1-15-0 }
+
+- Feature (UI Énergie) : un donut "Décomposition consommation" apparaît désormais sous le diagramme Maison/Réseau/Solaire de la page Live (spec 117). Un segment par sous-compteur `energy_meter` et un segment "Autre" pour la part non instrumentée, dimensionnés par la puissance instantanée (W). Mise à jour réactive via le flux WebSocket des équipements, aucun nouvel endpoint ni changement de base. Les couleurs reprennent celles du graphique By-usage historique pour qu'un même clamp ait la même couleur dans les deux vues. Les sous-compteurs hors-ligne disparaissent du donut mais restent grisés dans la légende.
+
 ## 1.14.x — Disponibilité des équipements
 
 ### v1.14.1 — 2026-05-26 { #v1-14-1 }

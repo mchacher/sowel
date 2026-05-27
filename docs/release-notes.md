@@ -11,6 +11,12 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.15.x — Live submeter breakdown
+
+### v1.15.0 — 2026-05-27 { #v1-15-0 }
+
+- Feature (Energy UI): a "Consumption breakdown" donut now sits below the Maison/Réseau/Solaire diagram on the Live page (spec 117). One segment per `energy_meter` submeter and an "Other" residual for what no clamp measures, sized by instantaneous power (W). Updates reactively from the existing equipments WebSocket stream, no new endpoint or DB change. Colors match the historical By-usage chart so a given clamp keeps the same color in both views. Offline submeters drop out of the donut but stay listed greyed in the legend.
+
 ## 1.14.x — Equipment availability
 
 ### v1.14.1 — 2026-05-26 { #v1-14-1 }
