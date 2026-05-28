@@ -119,6 +119,24 @@ describe("findDataByCategory", () => {
   });
 });
 
+describe("weather_forecast equipment type relevance", () => {
+  it("treats Open-Meteo forecast categories as relevant", () => {
+    expect(isRelevantData("weather_condition", "weather_forecast")).toBe(true);
+    expect(isRelevantData("temperature_outdoor", "weather_forecast")).toBe(true);
+    expect(isRelevantData("rain", "weather_forecast")).toBe(true);
+    expect(isRelevantData("wind", "weather_forecast")).toBe(true);
+  });
+
+  it("ignores unrelated categories on weather_forecast", () => {
+    expect(isRelevantData("light_state", "weather_forecast")).toBe(false);
+    expect(isRelevantData("temperature", "weather_forecast")).toBe(false);
+  });
+
+  it("declares no relevant orders (Open-Meteo plugin is read-only)", () => {
+    expect(isRelevantOrder("state", "weather_forecast")).toBe(false);
+  });
+});
+
 describe("awning equipment type relevance", () => {
   it("treats awning the same as shutter for relevant data (shutter_position)", () => {
     expect(isRelevantData("shutter_position", "awning")).toBe(true);
