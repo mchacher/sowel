@@ -13,6 +13,12 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.2 — 2026-05-28 { #v1-15-2 }
+
+- Correctif (core) : le `docker-compose.yml` officiel déclare désormais `extra_hosts: ["host.docker.internal:host-gateway"]` sur le service `sowel`. Les plugins MQTT (Zigbee2MQTT, LoRa2MQTT, Tasmota, Shelly, pont Somfy RTS...) peuvent enfin joindre un broker hébergé sur la même machine via `host.docker.internal:1883`, sans coder en dur l'IP LAN de l'hôte (fragile sous DHCP). Les installations existantes prennent le changement en rafraîchissant leur compose ou en ajoutant le bloc manuellement (voir `docs/user/host-setup.md`).
+- Correctif (UI/PWA) : suppression d'une boucle qui désinscrivait tous les service workers à chaque chargement de page et tuait la PWA aussitôt après son enregistrement par `vite-plugin-pwa`. Chrome Android refusait de proposer l'installation parce qu'aucun SW actif n'existait au moment de l'évaluation. La bannière d'installation réapparaît sur les déploiements HTTPS ; les utilisateurs existants doivent vider une fois les données du site pour que l'ancienne purge ne se rejoue pas.
+- Correctif (UI/Prévision météo) : la création d'un équipement `weather_forecast` depuis l'UI auto-bind à nouveau les 25 points de donnée émis par le plugin Open-Meteo. La table d'auto-binding du front n'avait pas d'entrée `weather_forecast`, donc chaque clé `j1_*`..`j5_*` était filtrée silencieusement et l'équipement résultant affichait un panneau de prévision vide. Les catégories Sowel concernées (`weather_condition`, `temperature_outdoor`, `rain`, `wind`) sont maintenant déclarées et verrouillées par un test unitaire.
+
 ### v1.15.1 — 2026-05-27 { #v1-15-1 }
 
 - Feature (API) : nouveau paramètre optionnel `?type=<EquipmentType>` sur `GET /api/v1/equipments`. Renvoie uniquement les équipements du type demandé (par ex. `?type=energy_meter`). Les valeurs inconnues retournent une liste vide plutôt qu'une 400, pour qu'un appelant puisse forwarder une saisie utilisateur sans validation préalable. Permet aux clients à mémoire contrainte (comme le firmware ESP32 sowel-energy-display) de passer d'un payload de 100 Ko à quelques Ko en ne demandant que les entrées utiles.

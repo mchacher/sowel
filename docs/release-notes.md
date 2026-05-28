@@ -13,6 +13,12 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.2 — 2026-05-28 { #v1-15-2 }
+
+- Fix (core): the official `docker-compose.yml` now declares `extra_hosts: ["host.docker.internal:host-gateway"]` on the `sowel` service. MQTT-based plugins (Zigbee2MQTT, LoRa2MQTT, Tasmota, Shelly, Somfy RTS bridge...) can now reach a broker hosted on the same machine via `host.docker.internal:1883` — no need to hard-code the host's LAN IP (fragile under DHCP). Existing installs pick up the change after refreshing their compose file or pulling the new image with the manual block added (see `docs/user/host-setup.md`).
+- Fix (UI/PWA): removed an unconditional service-worker unregister loop that ran on every page load and killed the PWA registration as soon as `vite-plugin-pwa` installed it. Chrome on Android refused to show the install prompt because no controlling SW existed at evaluation time. Install banners now appear again on HTTPS deployments; existing visitors should clear site data once so the previous wipe doesn't replay.
+- Fix (UI/weather forecast): creating a `weather_forecast` equipment from the UI now auto-binds the 25 data points emitted by the Open-Meteo plugin. The frontend auto-binding map had no entry for `weather_forecast`, so every `j1_*`..`j5_*` key was silently filtered out and the resulting equipment displayed an empty forecast panel. The relevant Sowel categories (`weather_condition`, `temperature_outdoor`, `rain`, `wind`) are now declared and locked by a unit test.
+
 ### v1.15.1 — 2026-05-27 { #v1-15-1 }
 
 - Feature (API): new optional `?type=<EquipmentType>` query parameter on `GET /api/v1/equipments`. Returns only equipments of the requested type (e.g. `?type=energy_meter`). Unknown values return an empty list rather than a 400 so callers can safely forward user input. Lets memory-constrained clients (like the sowel-energy-display ESP32 firmware) drop a 100 KB payload to a few KB by asking only for the entries they need.
