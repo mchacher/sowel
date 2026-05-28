@@ -7,6 +7,9 @@ Cette page vous guide à travers l'installation de Sowel, la première connexion
 - **Docker** (recommandé) ou **Node.js 20+** pour une installation manuelle
 - Au moins une intégration installée depuis le catalogue intégré (**Administration > Plugins**). Sowel propose des plugins pour Zigbee2MQTT, Shelly, Panasonic, MCZ, Netatmo, Legrand, Tasmota, SmartThings, et bien d'autres. Un nouveau plugin s'installe en quelques secondes et le catalogue s'enrichit régulièrement.
 
+!!! tip "Hôte vierge ?"
+Si Docker n'est pas encore installé sur votre machine, ou si vous prévoyez d'utiliser des plugins MQTT (Zigbee2MQTT, Tasmota, Shelly...) sans broker existant, consultez d'abord [Préparer l'hôte](host-setup.md). Cette page couvre l'installation de Docker et de Mosquitto sur Raspberry Pi, Debian et Ubuntu.
+
 ## Installation
 
 ### Option 1 : Installation en une commande (recommandée)

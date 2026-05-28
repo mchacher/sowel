@@ -123,6 +123,7 @@ nav:
     - Specs Index: specs-index.md
   - User Guide:
     - user/index.md
+    - Preparing the Host: user/host-setup.md
     - Getting Started: user/getting-started.md
     - Devices: user/devices.md
     - Equipments: user/equipments.md

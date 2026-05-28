@@ -28,6 +28,10 @@ Cette séparation vous permet de penser en termes de _pièces et de fonctions_, 
 
 <div class="grid cards" markdown>
 
+- **[Préparer l'hôte](host-setup.md)**
+
+  Installation de Docker et Mosquitto sur Raspberry Pi, Debian ou Ubuntu. À sauter si vous avez déjà les deux.
+
 - **[Premiers pas](getting-started.md)**
 
   Installation, première connexion et configuration initiale.

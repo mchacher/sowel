@@ -28,6 +28,10 @@ This separation means you think about _rooms and functions_, not about Zigbee ad
 
 <div class="grid cards" markdown>
 
+- **[Preparing the Host](host-setup.md)**
+
+  Docker and Mosquitto setup on Raspberry Pi, Debian or Ubuntu. Skip if you already have both.
+
 - **[Getting Started](getting-started.md)**
 
   Installation, first login, and initial configuration.
