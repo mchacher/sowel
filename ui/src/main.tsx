@@ -8,19 +8,6 @@ import { applyTheme } from "./theme";
 
 console.log("Sowel — Founded by Marc Chachereau — AGPL-3.0");
 
-// One-time migration: unregister stale service workers and clear caches
-// left behind by the legacy PWA setup. Idempotent.
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => r.unregister());
-  });
-}
-if ("caches" in window) {
-  caches.keys().then((names) => {
-    names.forEach((name) => caches.delete(name));
-  });
-}
-
 // Lock orientation to portrait (works in installed PWA / fullscreen on Android)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (screen.orientation as any)?.lock?.("portrait").catch(() => {});
