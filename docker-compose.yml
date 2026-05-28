@@ -26,6 +26,13 @@ services:
       # docker-compose.override.example.yml to docker-compose.override.yml
       # and run `docker compose up -d`. Read the override file's header
       # for the security trade-off before enabling.
+    extra_hosts:
+      # Makes the host machine reachable as `host.docker.internal` from
+      # inside the Sowel container. Required for MQTT-based plugins
+      # (Zigbee2MQTT, LoRa2MQTT, Tasmota, Shelly, Somfy RTS bridge...)
+      # to reach a broker running on the host without relying on the
+      # host's LAN IP (which can change with DHCP).
+      - "host.docker.internal:host-gateway"
     depends_on:
       - influxdb
 
