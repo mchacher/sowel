@@ -23,7 +23,9 @@ import type { DataBindingWithValue, DataCategory } from "../../types";
 /** Sensor data categories (excludes power, energy, etc.) */
 export const SENSOR_DATA_CATEGORIES: DataCategory[] = [
   "temperature",
+  "temperature_outdoor",
   "humidity",
+  "humidity_outdoor",
   "pressure",
   "luminosity",
   "motion",

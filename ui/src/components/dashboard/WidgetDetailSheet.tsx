@@ -15,14 +15,27 @@ import {
   Lightbulb,
   LightbulbOff,
   CloudRain,
+  Wind,
+  Thermometer,
 } from "lucide-react";
-import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren } from "../../types";
+import type {
+  DashboardWidget,
+  DataBindingWithValue,
+  EquipmentWithDetails,
+  ZoneWithChildren,
+} from "../../types";
 import { executeZoneOrder } from "../../api";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
-import { formatSensorValue } from "../equipments/sensorUtils";
+import {
+  formatSensorValue,
+  getBatteryColor,
+  getBatteryIcon,
+  SENSOR_DATA_CATEGORIES,
+} from "../equipments/sensorUtils";
+import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -180,71 +193,122 @@ const WEATHER_KEY_HIDDEN = new Set(["rain"]);
 /** Computed-data aliases surfaced on weather equipments (in addition to dataBindings). */
 const WEATHER_COMPUTED_ALIASES = ["rain_24h", "rain_1h"];
 
-interface WeatherRow {
-  id: string;
-  key: string;
-  category?: string;
-  value: unknown;
-  unit?: string;
+/** Maps a computed alias to the binding key it should pretend to be. */
+const COMPUTED_RAIN_TO_KEY: Record<string, string> = {
+  rain_24h: "sum_rain_24",
+  rain_1h: "sum_rain_1",
+};
+
+type WeatherKind = "outdoor" | "indoor" | "wind" | "rain";
+
+/** Classify a device by the categories its bindings expose. */
+function detectWeatherKind(bindings: readonly DataBindingWithValue[]): WeatherKind {
+  const cats = new Set(bindings.map((b) => b.category));
+  if (cats.has("wind")) return "wind";
+  if (cats.has("rain")) return "rain";
+  if (cats.has("temperature_outdoor") || cats.has("humidity_outdoor")) return "outdoor";
+  return "indoor";
+}
+
+const KIND_SORT: Record<WeatherKind, number> = { outdoor: 0, indoor: 1, wind: 2, rain: 3 };
+
+function getKindIcon(kind: WeatherKind) {
+  switch (kind) {
+    case "wind":
+      return <Wind size={16} strokeWidth={1.5} />;
+    case "rain":
+      return <CloudRain size={16} strokeWidth={1.5} />;
+    case "outdoor":
+    case "indoor":
+      return <Thermometer size={16} strokeWidth={1.5} />;
+  }
 }
 
 function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }) {
   const { t } = useTranslation();
-  const { sensorBindings, batteryBindings } = useEquipmentState(equipment);
 
-  // Merge dataBindings (filtered to hide instantaneous `rain`) with selected
-  // computedData entries (rain_24h, rain_1h) so the drawer surfaces the rain
-  // cumulative values even when only the bare `rain` binding is attached.
-  const rows: WeatherRow[] = [
-    ...sensorBindings
-      .filter((b) => !WEATHER_KEY_HIDDEN.has(b.key))
-      .map((b): WeatherRow => ({
-        id: `b-${b.id}`,
-        key: b.key,
-        category: b.category,
-        value: b.value,
-        unit: b.unit ?? undefined,
-      })),
-    ...(equipment.computedData ?? [])
-      .filter((c) => WEATHER_COMPUTED_ALIASES.includes(c.alias))
-      .map((c): WeatherRow => ({
-        id: `c-${c.alias}`,
-        key: c.alias,
-        value: c.value,
-        unit: c.unit,
-      })),
-  ];
+  // Group sensor bindings by physical device. Mirrors the layout used in
+  // the equipment detail page (WeatherPanel) so a user who knows that view
+  // gets the same mental model here, just rendered as compact sections
+  // instead of card grid.
+  const sensorBindings = equipment.dataBindings.filter(
+    (b) =>
+      SENSOR_DATA_CATEGORIES.includes(b.category) &&
+      b.category !== "battery" &&
+      !WEATHER_KEY_HIDDEN.has(b.key),
+  );
 
-  // Temperature and humidity both have a documented indoor/outdoor pair
-  // (`*` vs `*_outdoor`). Always qualify the row label by the actual
-  // category so the user knows which is which, even when only one variant
-  // is bound today (a Netatmo with only the base station, or only the
-  // outdoor module). Other categories (wind, rain, pressure, co2, noise)
-  // are unambiguous by their physical source — no suffix.
-  const labelFor = (r: WeatherRow): string => {
-    const base = WEATHER_KEY_LABELS[r.key] ? t(WEATHER_KEY_LABELS[r.key]) : r.key;
-    if (r.category === "temperature_outdoor") return `${base} (${t("weather.outdoor")})`;
-    if (r.category === "temperature") return `${base} (${t("weather.indoor")})`;
-    if (r.category === "humidity_outdoor") return `${base} (${t("weather.outdoor")})`;
-    if (r.category === "humidity") return `${base} (${t("weather.indoor")})`;
-    return base;
-  };
+  interface DeviceGroup {
+    deviceName: string;
+    bindings: DataBindingWithValue[];
+    battery: DataBindingWithValue | null;
+  }
+  const byDevice = new Map<string, DeviceGroup>();
+  for (const b of sensorBindings) {
+    let g = byDevice.get(b.deviceId);
+    if (!g) {
+      g = { deviceName: b.deviceName, bindings: [], battery: null };
+      byDevice.set(b.deviceId, g);
+    }
+    g.bindings.push(b);
+  }
+  // Attach one battery per device group
+  for (const bat of equipment.dataBindings.filter((b) => b.category === "battery")) {
+    const g = byDevice.get(bat.deviceId);
+    if (g) g.battery = bat;
+  }
 
-  // Outdoor variants sort before indoor for the same key (mirrors the compact
-  // widget layout where outdoor is on the left).
-  const outdoorRank = (r: WeatherRow): number =>
-    r.category === "temperature_outdoor" || r.category === "humidity_outdoor" ? 0 : 1;
+  // Inject synthetic rain rows from computedData (rain_24h / rain_1h) so the
+  // sheet still surfaces cumulative rain even when only the bare instantaneous
+  // `rain` binding is attached. Attach to the existing rain device if any,
+  // otherwise create a virtual "Pluviomètre" group.
+  const rainHost = sensorBindings.find((b) => b.category === "rain");
+  const rainDeviceId = rainHost?.deviceId ?? "computed-rain";
+  const rainDeviceName = rainHost?.deviceName ?? t("weather.rainCurrent");
+  const existingRainKeys = new Set(
+    (byDevice.get(rainDeviceId)?.bindings ?? []).map((b) => b.key),
+  );
+  for (const c of (equipment.computedData ?? []).filter((c) =>
+    WEATHER_COMPUTED_ALIASES.includes(c.alias),
+  )) {
+    const targetKey = COMPUTED_RAIN_TO_KEY[c.alias];
+    if (!targetKey || existingRainKeys.has(targetKey)) continue;
+    const synthetic = syntheticBindingFromComputed(equipment.id, c, {
+      key: targetKey,
+      deviceId: rainDeviceId,
+      deviceName: rainDeviceName,
+    });
+    let g = byDevice.get(rainDeviceId);
+    if (!g) {
+      g = { deviceName: rainDeviceName, bindings: [], battery: null };
+      byDevice.set(rainDeviceId, g);
+    }
+    g.bindings.push(synthetic);
+    existingRainKeys.add(targetKey);
+  }
 
-  rows.sort((a, b) => {
+  // Order rows within each device by WEATHER_KEY_ORDER.
+  const sortBindings = (a: DataBindingWithValue, b: DataBindingWithValue): number => {
     const ia = WEATHER_KEY_ORDER.indexOf(a.key);
     const ib = WEATHER_KEY_ORDER.indexOf(b.key);
-    if (ia !== -1 && ib !== -1 && ia !== ib) return ia - ib;
-    if (ia !== -1 && ib === -1) return -1;
-    if (ib !== -1 && ia === -1) return 1;
-    const ro = outdoorRank(a) - outdoorRank(b);
-    if (ro !== 0) return ro;
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
     return a.key.localeCompare(b.key);
-  });
+  };
+
+  // Sort devices: outdoor first (matches compact widget), indoor next,
+  // then wind, then rain. Empty groups are dropped silently.
+  const devices = [...byDevice.entries()]
+    .filter(([, g]) => g.bindings.length > 0)
+    .map(([id, g]) => ({
+      id,
+      deviceName: g.deviceName,
+      bindings: [...g.bindings].sort(sortBindings),
+      battery: g.battery,
+      kind: detectWeatherKind(g.bindings),
+    }))
+    .sort((a, b) => KIND_SORT[a.kind] - KIND_SORT[b.kind]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -253,29 +317,56 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
           <CloudRain size={28} strokeWidth={1.5} />
         </div>
       </div>
-      <div className="divide-y divide-border-light">
-        {rows.map((r) => (
-          <div key={r.id} className="flex items-baseline justify-between py-2">
-            <span className="text-[13px] text-text-secondary">{labelFor(r)}</span>
-            <span className="text-[14px] font-mono font-semibold text-text tabular-nums">
-              {formatSensorValue(r.value, undefined, t)}
-              {r.unit && (
-                <span className="text-text-tertiary font-normal text-[12px] ml-1">{r.unit}</span>
-              )}
-            </span>
-          </div>
-        ))}
-        {batteryBindings.map((b) => (
-          <div key={b.id} className="flex items-baseline justify-between py-2">
-            <span className="text-[13px] text-text-secondary">
-              {b.deviceName} · {t("sensors.battery")}
-            </span>
-            <span className="text-[14px] font-mono font-semibold text-text tabular-nums">
-              {formatSensorValue(b.value, undefined, t)}
-              <span className="text-text-tertiary font-normal text-[12px] ml-1">%</span>
-            </span>
-          </div>
-        ))}
+      <div className="space-y-3">
+        {devices.map((dev) => {
+          const batteryLevel =
+            dev.battery && typeof dev.battery.value === "number"
+              ? dev.battery.value
+              : null;
+          return (
+            <div
+              key={dev.id}
+              className="rounded-[8px] border border-border-light overflow-hidden"
+            >
+              <div className="bg-border-light/40 px-3 py-2 flex items-center gap-2">
+                <span className="text-text-tertiary">{getKindIcon(dev.kind)}</span>
+                <span className="text-[12px] font-semibold uppercase tracking-wide text-text-secondary flex-1 min-w-0 truncate">
+                  {dev.deviceName}
+                </span>
+                {dev.battery && (
+                  <span
+                    className={`flex items-center gap-1 flex-shrink-0 ${getBatteryColor(batteryLevel)}`}
+                  >
+                    {getBatteryIcon(batteryLevel, 13, 1.5)}
+                    <span className="text-[11px] tabular-nums">
+                      {batteryLevel !== null ? `${batteryLevel}%` : "?"}
+                    </span>
+                  </span>
+                )}
+              </div>
+              <div className="divide-y divide-border-light">
+                {dev.bindings.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex items-baseline justify-between px-3 py-2"
+                  >
+                    <span className="text-[13px] text-text-secondary">
+                      {WEATHER_KEY_LABELS[b.key] ? t(WEATHER_KEY_LABELS[b.key]) : b.key}
+                    </span>
+                    <span className="text-[14px] font-mono font-semibold text-text tabular-nums">
+                      {formatSensorValue(b.value, undefined, t)}
+                      {b.unit && (
+                        <span className="text-text-tertiary font-normal text-[12px] ml-1">
+                          {b.unit}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
