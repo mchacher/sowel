@@ -48,3 +48,26 @@ export function angleToCompass(angle: number): string {
   const idx = Math.round(normalized / 22.5) % 16;
   return COMPASS_FR[idx];
 }
+
+/**
+ * Find the indoor/outdoor temperature or humidity binding by data category.
+ *
+ * Lookup by category (not by key/alias) is mandatory because a single weather
+ * equipment can carry two bindings sharing the same key, e.g. both the Netatmo
+ * base station (`category: "temperature"`, indoor) and the outdoor module
+ * (`category: "temperature_outdoor"`) push a `temperature` key. The auto-binding
+ * deduplicates aliases (`temperature` / `temperature_2`) so the alias alone is
+ * ambiguous about which is which — only the category is stable.
+ */
+export function findTempOutdoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+  return bindings.find((b) => b.category === "temperature_outdoor");
+}
+export function findTempIndoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+  return bindings.find((b) => b.category === "temperature");
+}
+export function findHumidityOutdoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+  return bindings.find((b) => b.category === "humidity_outdoor");
+}
+export function findHumidityIndoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+  return bindings.find((b) => b.category === "humidity");
+}

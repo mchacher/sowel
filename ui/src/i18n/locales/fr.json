@@ -346,6 +346,9 @@
   "category.value.smoke.ok": "OK",
 
   "weather.outdoor": "Extérieur",
+  "weather.indoor": "Intérieur",
+  "weather.outdoorShort": "Ext.",
+  "weather.indoorShort": "Int.",
   "weather.windSpeed": "Vitesse",
   "weather.windDirection": "Direction",
   "weather.gustSpeed": "Rafales",

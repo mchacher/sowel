@@ -183,6 +183,7 @@ const WEATHER_COMPUTED_ALIASES = ["rain_24h", "rain_1h"];
 interface WeatherRow {
   id: string;
   key: string;
+  category?: string;
   value: unknown;
   unit?: string;
 }
@@ -200,6 +201,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
       .map((b): WeatherRow => ({
         id: `b-${b.id}`,
         key: b.key,
+        category: b.category,
         value: b.value,
         unit: b.unit ?? undefined,
       })),
@@ -213,12 +215,39 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
       })),
   ];
 
+  // Outdoor variants share their key with the indoor variant. When both are
+  // bound, qualify the row label so the user can tell them apart. When only
+  // one variant is bound (typical: only the base station, or only outdoor),
+  // stay implicit — no suffix.
+  const hasTempIndoor = rows.some((r) => r.category === "temperature");
+  const hasTempOutdoor = rows.some((r) => r.category === "temperature_outdoor");
+  const tempAmbiguous = hasTempIndoor && hasTempOutdoor;
+  const hasHumIndoor = rows.some((r) => r.category === "humidity");
+  const hasHumOutdoor = rows.some((r) => r.category === "humidity_outdoor");
+  const humAmbiguous = hasHumIndoor && hasHumOutdoor;
+
+  const labelFor = (r: WeatherRow): string => {
+    const base = WEATHER_KEY_LABELS[r.key] ? t(WEATHER_KEY_LABELS[r.key]) : r.key;
+    if (tempAmbiguous && r.category === "temperature_outdoor") return `${base} (${t("weather.outdoor")})`;
+    if (tempAmbiguous && r.category === "temperature") return `${base} (${t("weather.indoor")})`;
+    if (humAmbiguous && r.category === "humidity_outdoor") return `${base} (${t("weather.outdoor")})`;
+    if (humAmbiguous && r.category === "humidity") return `${base} (${t("weather.indoor")})`;
+    return base;
+  };
+
+  // Outdoor variants sort before indoor for the same key (mirrors the compact
+  // widget layout where outdoor is on the left).
+  const outdoorRank = (r: WeatherRow): number =>
+    r.category === "temperature_outdoor" || r.category === "humidity_outdoor" ? 0 : 1;
+
   rows.sort((a, b) => {
     const ia = WEATHER_KEY_ORDER.indexOf(a.key);
     const ib = WEATHER_KEY_ORDER.indexOf(b.key);
-    if (ia !== -1 && ib !== -1) return ia - ib;
-    if (ia !== -1) return -1;
-    if (ib !== -1) return 1;
+    if (ia !== -1 && ib !== -1 && ia !== ib) return ia - ib;
+    if (ia !== -1 && ib === -1) return -1;
+    if (ib !== -1 && ia === -1) return 1;
+    const ro = outdoorRank(a) - outdoorRank(b);
+    if (ro !== 0) return ro;
     return a.key.localeCompare(b.key);
   });
 
@@ -232,9 +261,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
       <div className="divide-y divide-border-light">
         {rows.map((r) => (
           <div key={r.id} className="flex items-baseline justify-between py-2">
-            <span className="text-[13px] text-text-secondary">
-              {WEATHER_KEY_LABELS[r.key] ? t(WEATHER_KEY_LABELS[r.key]) : r.key}
-            </span>
+            <span className="text-[13px] text-text-secondary">{labelFor(r)}</span>
             <span className="text-[14px] font-mono font-semibold text-text tabular-nums">
               {formatSensorValue(r.value, undefined, t)}
               {r.unit && (

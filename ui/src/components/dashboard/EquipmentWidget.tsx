@@ -14,12 +14,12 @@ import {
   Snowflake,
   WashingMachine,
   Timer,
-  Droplets,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
+import { findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
 import { createElement } from "react";
@@ -683,49 +683,53 @@ function WeatherStationWidget({
 }) {
   const { t } = useTranslation();
 
-  const find = (key: string) => equipment.dataBindings.find((b) => b.key === key);
-  const tempBinding = find("temperature");
-  const humidityBinding = find("humidity");
+  const outdoor = findTempOutdoor(equipment.dataBindings);
+  const indoor = findTempIndoor(equipment.dataBindings);
 
-  const tempValue =
-    tempBinding && typeof tempBinding.value === "number"
-      ? tempBinding.value.toFixed(1)
-      : "—";
-  const humidityValue =
-    humidityBinding && typeof humidityBinding.value === "number"
-      ? `${Math.round(humidityBinding.value)}`
-      : "—";
+  const fmt = (b: typeof outdoor) =>
+    b && typeof b.value === "number" ? b.value.toFixed(1) : "—";
 
   const clickClass = onOpenDetail
     ? "cursor-pointer transition-colors hover:bg-primary-light/30"
     : "";
 
+  // Both modules present → side-by-side. Only one → centered with no label
+  // (implicit). Neither → single em-dash.
+  const both = !!outdoor && !!indoor;
+  const single = outdoor ?? indoor;
+
   return (
     <WidgetCard label={label} onClick={onOpenDetail} className={clickClass}>
-      <div className="flex flex-col items-center justify-center flex-1 min-h-0 gap-3">
-        {/* Outdoor temperature */}
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
-            {t("weather.outdoor")}
-          </span>
-          <div className="flex items-baseline leading-none">
-            <span className="font-mono font-bold text-[34px] sm:text-[40px] text-text tabular-nums leading-none">
-              {tempValue}
-            </span>
-            <span className="text-text-tertiary font-medium text-[16px] sm:text-[18px] leading-none ml-1">°C</span>
+      <div className="flex items-stretch justify-center flex-1 min-h-0">
+        {both ? (
+          <div className="flex items-stretch gap-4 sm:gap-6">
+            <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} />
+            <div className="w-px bg-border self-stretch" />
+            <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} />
           </div>
-        </div>
-
-        {/* Humidity */}
-        <div className="flex items-center gap-1.5">
-          <Droplets size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          <span className="font-mono font-semibold text-[16px] sm:text-[18px] text-text tabular-nums">
-            {humidityValue}
-            <span className="text-text-tertiary font-normal text-[12px] ml-0.5">%</span>
-          </span>
-        </div>
+        ) : (
+          <WeatherTempColumn label={null} value={fmt(single)} />
+        )}
       </div>
     </WidgetCard>
+  );
+}
+
+function WeatherTempColumn({ label, value }: { label: string | null; value: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1">
+      {label && (
+        <span className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+          {label}
+        </span>
+      )}
+      <div className="flex items-baseline leading-none">
+        <span className="font-mono font-bold text-[32px] sm:text-[36px] text-text tabular-nums leading-none">
+          {value}
+        </span>
+        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">°C</span>
+      </div>
+    </div>
   );
 }
 

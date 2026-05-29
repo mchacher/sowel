@@ -20,6 +20,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
+import { findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { Cloud, WashingMachine, Tv } from "lucide-react";
 
 interface MobileWidgetCardProps {
@@ -197,26 +198,45 @@ function useMobileState(
   }
 
   if (equipment.type === "weather") {
-    const find = (key: string) => equipment.dataBindings.find((b) => b.key === key);
-    const temp = find("temperature");
-    const hum = find("humidity");
-    const tempStr = typeof temp?.value === "number" ? `${temp.value.toFixed(1)}°` : "—";
-    const humStr = typeof hum?.value === "number" ? `${Math.round(hum.value)} %` : "—";
-    // We ignore widget.icon on purpose: the configured icon (e.g. a sun) is
-    // less useful than the actual outdoor temperature. Icon slot is scaled 50%
-    // in MobileWidgetCard, so we size the text 2x what we want visible.
+    const outdoor = findTempOutdoor(equipment.dataBindings);
+    const indoor = findTempIndoor(equipment.dataBindings);
+    const fmt = (b: typeof outdoor) =>
+      b && typeof b.value === "number" ? `${b.value.toFixed(1)}°` : "—";
+    const both = !!outdoor && !!indoor;
+    const single = outdoor ?? indoor;
+    // Icon slot is scaled 50% by MobileWidgetCard, so we size text 2x what
+    // we want visible. Both-modules layout puts the temps side by side with
+    // small "Ext./Int." captions above each. Single-module layout falls back
+    // to one centered temperature with no label (implicit).
     return {
-      icon: (
+      icon: both ? (
+        <div className="flex items-end gap-3 leading-none whitespace-nowrap">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+              {t("weather.outdoorShort")}
+            </span>
+            <span className="font-mono font-bold text-[48px] text-text tabular-nums leading-none">
+              {fmt(outdoor)}
+            </span>
+          </div>
+          <div className="w-px self-stretch bg-border" />
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+              {t("weather.indoorShort")}
+            </span>
+            <span className="font-mono font-bold text-[48px] text-text tabular-nums leading-none">
+              {fmt(indoor)}
+            </span>
+          </div>
+        </div>
+      ) : (
         <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-          <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
-            {t("weather.outdoor")}
-          </span>
           <span className="font-mono font-bold text-[56px] text-text tabular-nums">
-            {tempStr}
+            {fmt(single)}
           </span>
         </div>
       ),
-      stateLines: [`${humStr} ${t("category.humidity").toLowerCase()}`],
+      stateLines: [],
     };
   }
 
