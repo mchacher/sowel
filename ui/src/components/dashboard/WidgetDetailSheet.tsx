@@ -215,23 +215,18 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
       })),
   ];
 
-  // Outdoor variants share their key with the indoor variant. When both are
-  // bound, qualify the row label so the user can tell them apart. When only
-  // one variant is bound (typical: only the base station, or only outdoor),
-  // stay implicit — no suffix.
-  const hasTempIndoor = rows.some((r) => r.category === "temperature");
-  const hasTempOutdoor = rows.some((r) => r.category === "temperature_outdoor");
-  const tempAmbiguous = hasTempIndoor && hasTempOutdoor;
-  const hasHumIndoor = rows.some((r) => r.category === "humidity");
-  const hasHumOutdoor = rows.some((r) => r.category === "humidity_outdoor");
-  const humAmbiguous = hasHumIndoor && hasHumOutdoor;
-
+  // Temperature and humidity both have a documented indoor/outdoor pair
+  // (`*` vs `*_outdoor`). Always qualify the row label by the actual
+  // category so the user knows which is which, even when only one variant
+  // is bound today (a Netatmo with only the base station, or only the
+  // outdoor module). Other categories (wind, rain, pressure, co2, noise)
+  // are unambiguous by their physical source — no suffix.
   const labelFor = (r: WeatherRow): string => {
     const base = WEATHER_KEY_LABELS[r.key] ? t(WEATHER_KEY_LABELS[r.key]) : r.key;
-    if (tempAmbiguous && r.category === "temperature_outdoor") return `${base} (${t("weather.outdoor")})`;
-    if (tempAmbiguous && r.category === "temperature") return `${base} (${t("weather.indoor")})`;
-    if (humAmbiguous && r.category === "humidity_outdoor") return `${base} (${t("weather.outdoor")})`;
-    if (humAmbiguous && r.category === "humidity") return `${base} (${t("weather.indoor")})`;
+    if (r.category === "temperature_outdoor") return `${base} (${t("weather.outdoor")})`;
+    if (r.category === "temperature") return `${base} (${t("weather.indoor")})`;
+    if (r.category === "humidity_outdoor") return `${base} (${t("weather.outdoor")})`;
+    if (r.category === "humidity") return `${base} (${t("weather.indoor")})`;
     return base;
   };
 

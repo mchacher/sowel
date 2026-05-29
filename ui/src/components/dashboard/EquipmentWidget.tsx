@@ -693,10 +693,10 @@ function WeatherStationWidget({
     ? "cursor-pointer transition-colors hover:bg-primary-light/30"
     : "";
 
-  // Both modules present → side-by-side. Only one → centered with no label
-  // (implicit). Neither → single em-dash.
+  // Both bound → side by side with explicit labels.
+  // Only one bound → keep the explicit label (outdoor or indoor) so the user
+  // still knows which one they're reading — no implicit single.
   const both = !!outdoor && !!indoor;
-  const single = outdoor ?? indoor;
 
   return (
     <WidgetCard label={label} onClick={onOpenDetail} className={clickClass}>
@@ -707,8 +707,12 @@ function WeatherStationWidget({
             <div className="w-px bg-border self-stretch" />
             <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} />
           </div>
+        ) : outdoor ? (
+          <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} />
+        ) : indoor ? (
+          <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} />
         ) : (
-          <WeatherTempColumn label={null} value={fmt(single)} />
+          <WeatherTempColumn label={null} value="—" />
         )}
       </div>
     </WidgetCard>

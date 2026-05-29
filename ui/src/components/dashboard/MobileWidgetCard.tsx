@@ -203,11 +203,21 @@ function useMobileState(
     const fmt = (b: typeof outdoor) =>
       b && typeof b.value === "number" ? `${b.value.toFixed(1)}°` : "—";
     const both = !!outdoor && !!indoor;
-    const single = outdoor ?? indoor;
     // Icon slot is scaled 50% by MobileWidgetCard, so we size text 2x what
-    // we want visible. Both-modules layout puts the temps side by side with
-    // small "Ext./Int." captions above each. Single-module layout falls back
-    // to one centered temperature with no label (implicit).
+    // we want visible. Both: temps side by side with short "Ext./Int."
+    // captions. Single: one temperature with its explicit scope label —
+    // never implicit, since reading just "20.5°" leaves the user wondering
+    // which one this is.
+    const singleColumn = (b: typeof outdoor, captionKey: string) => (
+      <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
+        <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+          {t(captionKey)}
+        </span>
+        <span className="font-mono font-bold text-[56px] text-text tabular-nums leading-none">
+          {fmt(b)}
+        </span>
+      </div>
+    );
     return {
       icon: both ? (
         <div className="flex items-end gap-3 leading-none whitespace-nowrap">
@@ -229,11 +239,13 @@ function useMobileState(
             </span>
           </div>
         </div>
+      ) : outdoor ? (
+        singleColumn(outdoor, "weather.outdoorShort")
+      ) : indoor ? (
+        singleColumn(indoor, "weather.indoorShort")
       ) : (
         <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-          <span className="font-mono font-bold text-[56px] text-text tabular-nums">
-            {fmt(single)}
-          </span>
+          <span className="font-mono font-bold text-[56px] text-text tabular-nums">—</span>
         </div>
       ),
       stateLines: [],
