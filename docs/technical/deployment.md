@@ -83,24 +83,19 @@ Since v1.7.0, the Sowel container runs as a non-root user (`sowel`, uid 1000). T
 
 If you override `user:` in a `docker-compose.override.yml` to run as a different UID, the entrypoint skips the chown and you must manage volume ownership yourself.
 
-### Self-update is opt-in (spec 105)
+### Self-update (default on since v1.15.3)
 
-For **self-update** to work, the Docker socket must be mounted. Since v1.7.0 this is **opt-in** — the default `docker-compose.yml` no longer mounts it.
+The official `docker-compose.yml` mounts `/var/run/docker.sock` into the Sowel container so that the **"Update now"** button in the Admin UI works out of the box.
 
-To enable in-app self-update, copy the override template and bring the stack up again:
+**Security trade-off**: mounting the Docker socket gives the container effective control over the Docker daemon on the host. A successful RCE against Sowel (e.g. via a compromised dependency) would escalate to root on the host. For a single-user home install behind a trusted network or a Cloudflare Tunnel + admin auth this is generally acceptable, but it is a conscious trade-off.
 
-```bash
-cp docker-compose.override.example.yml docker-compose.override.yml
-docker compose up -d
-```
-
-The override mounts `/var/run/docker.sock` into the container, restoring the "Update now" button in the UI. Read the security note at the top of the override file before enabling: mounting the Docker socket gives the container effective control over the Docker daemon on the host, so a successful RCE against Sowel would escalate to host root.
-
-Without this override, the "Update now" button is disabled in the UI and `POST /api/v1/system/update` returns 503. You can still update manually:
+To **opt out** (e.g. on a hardened or multi-tenant deployment), remove the `/var/run/docker.sock:/var/run/docker.sock` line from `docker-compose.yml` and run `docker compose up -d`. The "Update now" button becomes disabled and `POST /api/v1/system/update` returns 503; manual updates still work:
 
 ```bash
 docker compose pull && docker compose up -d sowel
 ```
+
+This default was changed in v1.15.3, reversing the v1.7.0 (spec 105) decision after field feedback showed that nearly all installs hit the "update unavailable" message without realising they needed to copy an override file.
 
 ---
 

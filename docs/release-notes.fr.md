@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.3 — 2026-05-29 { #v1-15-3 }
+
+- Changement (déploiement) : l'auto-update depuis l'UI est désormais **activé par défaut**. Le `docker-compose.yml` officiel monte `/var/run/docker.sock` dans le conteneur Sowel, donc le bouton "Mettre à jour maintenant" de l'UI Admin fonctionne dès la première installation. Le modèle opt-in `docker-compose.override.example.yml` est supprimé. **Compromis sécurité** : monter le socket Docker donne au conteneur Sowel le contrôle effectif du démon Docker hôte, donc une RCE réussie contre Sowel escaladerait en root sur l'hôte. Pour les déploiements hardening ou multi-tenants, retirer la ligne `docker.sock` du compose pour revenir au comportement précédent : le reste de Sowel continue à fonctionner, seul l'updater intégré est désactivé. Ce changement inverse la décision v1.7.0 (spec 105) après retour terrain : la quasi-totalité des installs tombait sur le message "mise à jour indisponible" sans deviner qu'il fallait copier un fichier override. Les installs existantes ne sont PAS touchées ; le nouveau défaut ne s'applique qu'aux compose fraîchement récupérés du repo.
+
 ### v1.15.2 — 2026-05-28 { #v1-15-2 }
 
 - Correctif (core) : le `docker-compose.yml` officiel déclare désormais `extra_hosts: ["host.docker.internal:host-gateway"]` sur le service `sowel`. Les plugins MQTT (Zigbee2MQTT, LoRa2MQTT, Tasmota, Shelly, pont Somfy RTS...) peuvent enfin joindre un broker hébergé sur la même machine via `host.docker.internal:1883`, sans coder en dur l'IP LAN de l'hôte (fragile sous DHCP). Les installations existantes prennent le changement en rafraîchissant leur compose ou en ajoutant le bloc manuellement (voir `docs/user/host-setup.md`).

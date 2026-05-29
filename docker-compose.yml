@@ -22,10 +22,13 @@ services:
     volumes:
       - sowel-data:/app/data
       - sowel-plugins:/app/plugins
-      # In-app self-update is opt-in. To enable it, copy
-      # docker-compose.override.example.yml to docker-compose.override.yml
-      # and run `docker compose up -d`. Read the override file's header
-      # for the security trade-off before enabling.
+      # Enables in-app self-update from the Admin UI. The container gets
+      # effective control over the host Docker daemon, so a successful
+      # RCE against Sowel escalates to root on the host. Remove this
+      # line if you prefer to update manually (`docker compose pull &&
+      # docker compose up -d`) — the "Update now" button in the UI will
+      # be disabled and the prerequisite warning surfaced.
+      - /var/run/docker.sock:/var/run/docker.sock
     extra_hosts:
       # Makes the host machine reachable as `host.docker.internal` from
       # inside the Sowel container. Required for MQTT-based plugins

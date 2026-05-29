@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.3 — 2026-05-29 { #v1-15-3 }
+
+- Change (deployment): in-app self-update is now **enabled by default**. The official `docker-compose.yml` mounts `/var/run/docker.sock` into the Sowel container, so the "Update now" button in the Admin UI works out of the box on a fresh install. The `docker-compose.override.example.yml` opt-in template is gone. **Security trade-off**: mounting the Docker socket gives the Sowel container effective control over the host's Docker daemon, so a successful RCE against Sowel would escalate to host root. For hardened or multi-tenant deployments, remove the `docker.sock` line from the compose file to opt back out — the rest of Sowel keeps working, only the in-app updater is disabled. This reverses the v1.7.0 (spec 105) decision after field feedback: nearly every install hit the "update unavailable" message without guessing they had to copy an override template. Existing installs are NOT touched; the new default only applies to compose files freshly fetched from the repo.
+
 ### v1.15.2 — 2026-05-28 { #v1-15-2 }
 
 - Fix (core): the official `docker-compose.yml` now declares `extra_hosts: ["host.docker.internal:host-gateway"]` on the `sowel` service. MQTT-based plugins (Zigbee2MQTT, LoRa2MQTT, Tasmota, Shelly, Somfy RTS bridge...) can now reach a broker hosted on the same machine via `host.docker.internal:1883` — no need to hard-code the host's LAN IP (fragile under DHCP). Existing installs pick up the change after refreshing their compose file or pulling the new image with the manual block added (see `docs/user/host-setup.md`).

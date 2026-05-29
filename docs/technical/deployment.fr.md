@@ -77,18 +77,19 @@ Au premier boot, Sowel :
 
 Ce sont des **volumes Docker nommés**, persistants à travers les recréations de conteneurs. Ce sont eux qui font fonctionner l'auto-update et le backup/restore : les données stateful survivent.
 
-### Bind requis sur l'hôte
+### Auto-update activé par défaut (depuis v1.15.3)
 
-Pour que l'**auto-update** (spec 060) fonctionne, le socket Docker doit être monté :
+Le `docker-compose.yml` officiel monte `/var/run/docker.sock` dans le conteneur Sowel afin que le bouton **"Mettre à jour maintenant"** de l'UI Admin fonctionne dès la première installation.
 
-```yaml
-services:
-  sowel:
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+**Compromis sécurité** : monter le socket Docker donne au conteneur le contrôle effectif du démon Docker hôte. Une RCE réussie contre Sowel (par ex. via une dépendance compromise) escalade en root sur l'hôte. Pour une installation domestique mono-utilisateur derrière un réseau de confiance ou un tunnel Cloudflare + auth admin, ce trade-off est généralement acceptable, mais reste un choix conscient.
+
+Pour **désactiver** (déploiement hardening ou multi-tenant), retirer la ligne `/var/run/docker.sock:/var/run/docker.sock` du `docker-compose.yml` et relancer `docker compose up -d`. Le bouton "Mettre à jour" sera désactivé et `POST /api/v1/system/update` renverra 503 ; la mise à jour manuelle reste possible :
+
+```bash
+docker compose pull && docker compose up -d sowel
 ```
 
-Sans cela, le bouton "Update now" dans l'UI est désactivé.
+Ce défaut a été inversé en v1.15.3 (par rapport à la décision v1.7.0 / spec 105) après retour terrain : la quasi-totalité des installs tombait sur le message "update unavailable" sans deviner qu'il fallait copier un fichier override.
 
 ---
 
