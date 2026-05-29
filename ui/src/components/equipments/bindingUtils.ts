@@ -107,7 +107,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   button: ["action", "battery"],
   thermostat: ["temperature", "generic"],
-  weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise", "battery"],
+  weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise", "battery"],
   weather_forecast: ["weather_condition", "temperature_outdoor", "rain", "wind"],
   gate: ["generic", "contact_door"],
   heater: ["generic", "light_state"],

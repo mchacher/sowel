@@ -119,6 +119,34 @@ describe("findDataByCategory", () => {
   });
 });
 
+describe("weather equipment type relevance", () => {
+  it("accepts the Netatmo outdoor module categories (NAModule1)", () => {
+    // NAModule1 emits temperature_outdoor + humidity_outdoor; without these
+    // entries the outdoor module would be hidden from the weather creation
+    // flow and even a manual pick would yield 0 bindings.
+    expect(isRelevantData("temperature_outdoor", "weather")).toBe(true);
+    expect(isRelevantData("humidity_outdoor", "weather")).toBe(true);
+  });
+
+  it("still accepts indoor categories (base + indoor module)", () => {
+    expect(isRelevantData("temperature", "weather")).toBe(true);
+    expect(isRelevantData("humidity", "weather")).toBe(true);
+    expect(isRelevantData("pressure", "weather")).toBe(true);
+    expect(isRelevantData("noise", "weather")).toBe(true);
+  });
+
+  it("accepts wind, rain and battery", () => {
+    expect(isRelevantData("wind", "weather")).toBe(true);
+    expect(isRelevantData("rain", "weather")).toBe(true);
+    expect(isRelevantData("battery", "weather")).toBe(true);
+  });
+
+  it("ignores unrelated categories", () => {
+    expect(isRelevantData("light_state", "weather")).toBe(false);
+    expect(isRelevantData("shutter_position", "weather")).toBe(false);
+  });
+});
+
 describe("weather_forecast equipment type relevance", () => {
   it("treats Open-Meteo forecast categories as relevant", () => {
     expect(isRelevantData("weather_condition", "weather_forecast")).toBe(true);

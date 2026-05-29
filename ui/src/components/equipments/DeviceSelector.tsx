@@ -14,7 +14,7 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   switch: ["light_state"],
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
   button: ["action"],
-  weather: ["temperature", "humidity", "pressure", "wind", "rain", "noise"],
+  weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise"],
   gate: ["generic", "contact_door"],
   heater: ["generic", "light_state"],
   energy_meter: ["energy", "power"],
