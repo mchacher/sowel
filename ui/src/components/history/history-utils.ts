@@ -52,8 +52,19 @@ export function rangeToDurationMs(range: TimeRange): number {
 
 export type Period = "day" | "week" | "month" | "year";
 
+/** YYYY-MM-DD in the **local** timezone — NOT UTC. `.toISOString().slice(0,10)`
+ *  is unsafe here because midnight local sits in the previous UTC day for
+ *  any positive timezone offset, causing date-string arithmetic to silently
+ *  fall back to "the previous local day" (no forward motion). */
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateStr(new Date());
 }
 
 /** Returns the start of the period that contains `dateStr`, in local time. */
@@ -154,7 +165,7 @@ export function shiftPeriod(dateStr: string, period: Period, delta: number): str
       d.setFullYear(d.getFullYear() + delta);
       break;
   }
-  return d.toISOString().slice(0, 10);
+  return toLocalDateStr(d);
 }
 
 export const periodTodayStr = todayStr;

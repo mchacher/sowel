@@ -510,13 +510,18 @@ export function AnalyseView() {
               )}
             </>
           )}
-          <PeriodSelector
-            period={period}
-            date={date}
-            onPeriodChange={setPeriod}
-            onDateChange={setDate}
-          />
         </div>
+      </div>
+
+      {/* Period navigator — own row, centered. Mirrors the Energy page's
+          PeriodSelector placement so the date scrubber has breathing room. */}
+      <div className="flex justify-center">
+        <PeriodSelector
+          period={period}
+          date={date}
+          onPeriodChange={setPeriod}
+          onDateChange={setDate}
+        />
       </div>
 
       {/* Series pills + add button */}
