@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.7 — 2026-05-30 { #v1-15-7 }
+
+- Correctif (UI/Analyse) : dans les vues Année / Mois, l'axe des X répétait le même libellé de mois plusieurs fois (« mars mars mars … avr. avr. avr. »). Cause : l'axe X était câblé en mode catégorique (chaque point quotidien était sa propre catégorie). Passage à une échelle temporelle continue (epoch ms + `tickFormatter`) : Recharts espace désormais les ticks régulièrement dans le temps et le formatter ne rend « mars » qu'une fois là où un tick atterrit. `minTickGap` est désormais sensible à la période (60/70/80/90 px pour jour/sem/mois/année).
+
 ### v1.15.6 — 2026-05-30 { #v1-15-6 }
 
 - Évolution (UI/Analyse) : le sélecteur de plage temporelle de la page Analyse est remplacé par le même bandeau calendaire que la page Énergie — onglets de période (Jour / Sem / Mois / Année) + flèches précédent/suivant + bouton « Aujourd'hui ». Permet de naviguer sur n'importe quelle fenêtre absolue (un mardi précis, août dernier, 2025 en entier) au lieu de juste « les N dernières heures/jours ». Indispensable pour visualiser des données historisées rétroactivement. Les 4 onglets sont en largeur égale et le layout copie celui d'Énergie (titre à gauche, navigateur à droite).

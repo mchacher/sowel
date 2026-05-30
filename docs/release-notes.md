@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.7 — 2026-05-30 { #v1-15-7 }
+
+- Fix (UI/Analyse): in the Année / Mois views, the X axis repeated the same month label many times ("mars mars mars … avr. avr. avr."). Root cause: the X axis was wired as categorical strings so every daily data point became its own X position. Switch to a continuous time scale (epoch ms + `tickFormatter`) so Recharts spaces ticks evenly by time and the formatter renders "mars" only where a tick actually lands. `minTickGap` is now period-aware (60/70/80/90 px for day/week/month/year).
+
 ### v1.15.6 — 2026-05-30 { #v1-15-6 }
 
 - Feat (UI/Analyse): the Analyse page time-range selector is replaced with the same calendar navigator the Energy page uses — period tabs (Jour / Sem / Mois / Année) + prev/next chevrons + an "Aujourd'hui" reset. Users can now scrub to any absolute calendar window (a specific Tuesday, last August, 2025 overall) instead of only "the last N hours/days ending now", which was a blocker for visualising backfilled historical data on a chart. The 4 tabs are equal-width for visual rhythm, and the navigator layout mirrors the Energy header (title left, navigator right).
