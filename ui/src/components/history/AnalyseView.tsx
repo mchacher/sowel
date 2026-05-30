@@ -228,8 +228,9 @@ export function AnalyseView() {
     if (equipments.length === 0) return; // wait for equipments to resolve names
 
     setLoadingChart(true);
-    getChart(chartId)
-      .then((chart) => {
+    (async () => {
+      try {
+        const chart = await getChart(chartId);
         setCurrentChart(chart);
         loadedChartIdRef.current = chartId;
         // New format (period + date) takes precedence. Legacy charts saved
@@ -245,9 +246,32 @@ export function AnalyseView() {
           setPeriod(mapped);
           setDate(periodTodayStr());
         }
+
+        // Enrich saved series with category + deviceName + sameCategoryCount
+        // so humanBindingLabel can render friendly labels in pills, tooltip
+        // and legend. Without this, freshly-loaded charts fall back to raw
+        // aliases ("Bureau / THR / humidity") instead of the equipment-level
+        // label ("Humidité intérieure").
+        const uniqueEqIds = [...new Set(chart.config.series.map((s) => s.equipmentId))];
+        const bindingsPerEq = new Map<string, HistoryBindingState[]>();
+        await Promise.all(
+          uniqueEqIds.map(async (eqId) => {
+            try {
+              bindingsPerEq.set(eqId, await getHistoryBindings(eqId));
+            } catch {
+              // Best-effort: an equipment may have been deleted since save.
+            }
+          }),
+        );
+
         const newSeries: SeriesConfig[] = [];
         for (const sc of chart.config.series) {
           const eq = equipments.find((e) => e.id === sc.equipmentId);
+          const eqBindings = bindingsPerEq.get(sc.equipmentId) ?? [];
+          const binding = eqBindings.find((b) => b.alias === sc.alias);
+          const sameCategoryCount = binding
+            ? eqBindings.filter((b) => b.category === binding.category).length
+            : 1;
           const id = `${sc.equipmentId}:${sc.alias}`;
           newSeries.push({
             id,
@@ -255,20 +279,21 @@ export function AnalyseView() {
             equipmentName: eq?.name ?? sc.equipmentId,
             zoneName: eq?.zoneId ? (zoneNameById.get(eq.zoneId) ?? "") : "",
             alias: sc.alias,
-            category: "",
-            deviceName: "",
-            sameCategoryCount: 1,
+            category: binding?.category ?? "",
+            deviceName: binding?.deviceName ?? "",
+            sameCategoryCount,
             color: SERIES_COLORS[newSeries.length % SERIES_COLORS.length],
           });
         }
         setSeries(newSeries);
         setSeriesData({});
-      })
-      .catch(() => {
+      } catch {
         setCurrentChart(null);
         loadedChartIdRef.current = chartId;
-      })
-      .finally(() => setLoadingChart(false));
+      } finally {
+        setLoadingChart(false);
+      }
+    })();
   }, [chartId, equipments, zoneNameById]);
 
   const filteredEquipments = useMemo(() => {
@@ -464,13 +489,20 @@ export function AnalyseView() {
 
   return (
     <div className="space-y-4">
-      {/* Header with range selector + save buttons */}
-      <div className="flex items-center justify-between">
+      {/* Header: title (left) · period navigator (center) · save actions (right).
+          Wraps to a column on narrow screens via flex-wrap + gap. */}
+      <div className="flex flex-wrap items-center gap-4 justify-between">
         <div className="flex items-center gap-3">
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <PeriodSelector
+          period={period}
+          date={date}
+          onPeriodChange={setPeriod}
+          onDateChange={setDate}
+        />
+        <div className="flex items-center gap-1">
           {series.length > 0 && (
             <>
               <button
@@ -489,9 +521,8 @@ export function AnalyseView() {
                 type="button"
                 onClick={handleSaveAs}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
-                  text-text-secondary hover:bg-border-light hover:text-text
-                  transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+                  hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
                 title={t("analyse.saveAs")}
               >
                 <Copy size={14} strokeWidth={1.5} />
@@ -500,9 +531,8 @@ export function AnalyseView() {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
-                    text-text-secondary hover:bg-error/10 hover:text-error
-                    transition-colors cursor-pointer"
+                  className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+                    hover:bg-error/10 hover:text-error transition-colors cursor-pointer"
                   title={t("analyse.deleteChart")}
                 >
                   <Trash2 size={14} strokeWidth={1.5} />
@@ -511,17 +541,6 @@ export function AnalyseView() {
             </>
           )}
         </div>
-      </div>
-
-      {/* Period navigator — own row, centered. Mirrors the Energy page's
-          PeriodSelector placement so the date scrubber has breathing room. */}
-      <div className="flex justify-center">
-        <PeriodSelector
-          period={period}
-          date={date}
-          onPeriodChange={setPeriod}
-          onDateChange={setDate}
-        />
       </div>
 
       {/* Series pills + add button */}
