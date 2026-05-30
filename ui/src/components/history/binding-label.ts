@@ -76,18 +76,23 @@ export function humanBindingLabel(input: BindingLabelInput, t: TFunction): strin
     return t(METRIC_LABELS[strippedKey]);
   }
 
-  // 2. Indoor / outdoor disambiguation via the category itself
+  // 2. Indoor / outdoor disambiguation via the category itself.
+  // When several bindings share the same category on the equipment
+  // (typical: a Netatmo NAMain `temperature` + a polytropic PAC
+  // `temperature` — both indoor by category, but from physically
+  // different sources), append the device name so the chips/legend
+  // remain distinguishable. Otherwise the bare label is enough.
   const indoor = t("weather.indoor").toLowerCase();
   const outdoor = t("weather.outdoor").toLowerCase();
-  if (category === "temperature_outdoor") return `${t("category.temperature")} ${outdoor}`;
-  if (category === "temperature") return `${t("category.temperature")} ${indoor}`;
-  if (category === "humidity_outdoor") return `${t("category.humidity")} ${outdoor}`;
-  if (category === "humidity") return `${t("category.humidity")} ${indoor}`;
+  const ambiguous = sameCategoryCount > 1 && !!deviceName;
+  const withDevice = (base: string): string => (ambiguous ? `${base} (${deviceName})` : base);
+  if (category === "temperature_outdoor") return withDevice(`${t("category.temperature")} ${outdoor}`);
+  if (category === "temperature") return withDevice(`${t("category.temperature")} ${indoor}`);
+  if (category === "humidity_outdoor") return withDevice(`${t("category.humidity")} ${outdoor}`);
+  if (category === "humidity") return withDevice(`${t("category.humidity")} ${indoor}`);
 
   // 3. Multi-instance category → device name as disambiguator
-  if (sameCategoryCount > 1 && deviceName) {
-    return `${categoryLabel(category, t)} ${deviceName}`;
-  }
+  if (ambiguous) return `${categoryLabel(category, t)} ${deviceName}`;
 
   // 4. Plain category
   return categoryLabel(category, t);

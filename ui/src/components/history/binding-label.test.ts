@@ -101,6 +101,39 @@ describe("humanBindingLabel — Netatmo weather station full set", () => {
   });
 });
 
+describe("humanBindingLabel — same-category disambiguation", () => {
+  // Real-world case on sowelox: a Netatmo NAMain `temperature` binding and a
+  // polytropic PAC `temperature` binding share category=temperature on the
+  // same Station Météo equipment. Without disambiguation both labels read
+  // "Température intérieure" and the user picks the wrong one in the chart
+  // selector.
+  const all: HistoryBindingState[] = [
+    b("temperature_2", "temperature", "Weather Station"),
+    b("insideTemperature", "temperature", "PAC"),
+    b("temperature", "temperature_outdoor", "Outdoor Module"),
+    b("outsideTemperature", "temperature_outdoor", "PAC"),
+  ];
+  const labelOf = (alias: string) =>
+    humanBindingLabelFromList(all.find((x) => x.alias === alias)!, all, t);
+
+  it("appends the device name when two indoor temperatures coexist", () => {
+    expect(labelOf("temperature_2")).toBe("Température intérieure (Weather Station)");
+    expect(labelOf("insideTemperature")).toBe("Température intérieure (PAC)");
+  });
+
+  it("appends the device name when two outdoor temperatures coexist", () => {
+    expect(labelOf("temperature")).toBe("Température extérieure (Outdoor Module)");
+    expect(labelOf("outsideTemperature")).toBe("Température extérieure (PAC)");
+  });
+
+  it("falls back to bare label when only one of the two exists (no ambiguity)", () => {
+    const onlyOne: HistoryBindingState[] = [b("temperature_2", "temperature", "Weather Station")];
+    expect(
+      humanBindingLabelFromList(onlyOne[0], onlyOne, t),
+    ).toBe("Température intérieure");
+  });
+});
+
 describe("humanBindingLabel — fallback behaviour", () => {
   it("returns the plain category label when only one binding of that category exists, even without deviceName", () => {
     const all = [b("battery", "battery", "")];
