@@ -797,6 +797,11 @@
   "analyse.noSavedCharts": "No saved charts",
   "analyse.saved": "Chart saved",
   "analyse.new": "New chart",
+  "analyse.periodDay": "Day",
+  "analyse.periodWeek": "Week",
+  "analyse.periodMonth": "Month",
+  "analyse.periodYear": "Year",
+  "analyse.today": "Today",
 
   "mqttPublishers.title": "MQTT Publishers",
   "mqttPublishers.subtitle": "Publish equipment, zone and recipe data to MQTT topics",

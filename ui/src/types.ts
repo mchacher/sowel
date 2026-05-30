@@ -682,7 +682,14 @@ export interface SavedChartSeriesConfig {
 
 export interface SavedChartConfig {
   series: SavedChartSeriesConfig[];
-  timeRange: string;
+  /** Legacy relative window (`6h` / `24h` / `7d` / `30d`). Kept for backwards
+   * compatibility with charts saved before the period navigator landed —
+   * if `period` is present, it wins. */
+  timeRange?: string;
+  /** Absolute calendar period — present on charts saved with the new navigator. */
+  period?: "day" | "week" | "month" | "year";
+  /** Anchor date for the period (YYYY-MM-DD). Required when `period` is set. */
+  date?: string;
 }
 
 export interface SavedChart {

@@ -30,9 +30,12 @@ import type {
   HistoryPoint,
   SavedChart,
 } from "../../types";
-import { TimeRangeSelector } from "./TimeRangeSelector";
-import { rangeToFrom } from "./history-utils";
-import type { TimeRange } from "./history-utils";
+import { PeriodSelector } from "./PeriodSelector";
+import {
+  periodTodayStr,
+  periodToWindow,
+  type Period,
+} from "./history-utils";
 import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
 
 // ============================================================
@@ -113,15 +116,18 @@ function flattenZones(zones: ZoneWithChildren[]): { id: string; name: string; de
   return result;
 }
 
-function formatTime(iso: string, range: TimeRange): string {
+function formatTime(iso: string, period: Period): string {
   const d = new Date(iso);
-  if (range === "6h" || range === "24h") {
-    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  switch (period) {
+    case "day":
+      return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    case "week":
+      return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    case "month":
+      return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    case "year":
+      return d.toLocaleDateString(undefined, { month: "short" });
   }
-  if (range === "7d") {
-    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  }
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function formatTooltipTime(iso: string): string {
@@ -153,7 +159,10 @@ export function AnalyseView() {
   const [loading, setLoading] = useState(true);
 
   // --- Selection state ---
-  const [range, setRange] = useState<TimeRange>("24h");
+  // Period + date drives the chart window (absolute, Energy-style navigator).
+  // Default: today as a day.
+  const [period, setPeriod] = useState<Period>("day");
+  const [date, setDate] = useState<string>(() => periodTodayStr());
   const [series, setSeries] = useState<SeriesConfig[]>([]);
   const [seriesData, setSeriesData] = useState<Record<string, SeriesData>>({});
 
@@ -208,7 +217,8 @@ export function AnalyseView() {
         setCurrentChart(null);
         setSeries([]);
         setSeriesData({});
-        setRange("24h");
+        setPeriod("day");
+        setDate(periodTodayStr());
         loadedChartIdRef.current = undefined;
       }
       return;
@@ -222,7 +232,19 @@ export function AnalyseView() {
       .then((chart) => {
         setCurrentChart(chart);
         loadedChartIdRef.current = chartId;
-        setRange((chart.config.timeRange as TimeRange) || "24h");
+        // New format (period + date) takes precedence. Legacy charts saved
+        // with `timeRange` are mapped to the closest period on today, so the
+        // user can pick the date back to whatever they had in mind.
+        if (chart.config.period && chart.config.date) {
+          setPeriod(chart.config.period);
+          setDate(chart.config.date);
+        } else {
+          const legacy = chart.config.timeRange;
+          const mapped: Period =
+            legacy === "30d" ? "month" : legacy === "7d" ? "week" : "day";
+          setPeriod(mapped);
+          setDate(periodTodayStr());
+        }
         const newSeries: SeriesConfig[] = [];
         for (const sc of chart.config.series) {
           const eq = equipments.find((e) => e.id === sc.equipmentId);
@@ -266,7 +288,9 @@ export function AnalyseView() {
   }, [selectedEquipmentId]);
 
   const fetchSeriesData = useCallback(
-    async (seriesList: SeriesConfig[], timeRange: TimeRange) => {
+    async (seriesList: SeriesConfig[], window: { from: Date; to: Date }) => {
+      const fromIso = window.from.toISOString();
+      const toIso = window.to.toISOString();
       for (const s of seriesList) {
         setSeriesData((prev) => ({
           ...prev,
@@ -274,7 +298,8 @@ export function AnalyseView() {
         }));
         try {
           const result = await getHistoryData(s.equipmentId, s.alias, {
-            from: rangeToFrom(timeRange),
+            from: fromIso,
+            to: toIso,
             aggregation: "auto",
           });
           setSeriesData((prev) => ({
@@ -292,11 +317,13 @@ export function AnalyseView() {
     [],
   );
 
+  const chartWindow = useMemo(() => periodToWindow(date, period), [date, period]);
+
   useEffect(() => {
     if (series.length > 0) {
-      fetchSeriesData(series, range);
+      fetchSeriesData(series, chartWindow);
     }
-  }, [series, range, fetchSeriesData]);
+  }, [series, chartWindow, fetchSeriesData]);
 
   // --- Actions ---
   const addSeries = (binding: HistoryBindingState) => {
@@ -337,7 +364,8 @@ export function AnalyseView() {
   // --- Save handlers ---
   const buildConfig = () => ({
     series: series.map((s) => ({ equipmentId: s.equipmentId, alias: s.alias })),
-    timeRange: range,
+    period,
+    date,
   });
 
   const handleSave = async () => {
@@ -414,10 +442,10 @@ export function AnalyseView() {
     const sorted = Array.from(timeMap.entries()).sort(([a], [b]) => a.localeCompare(b));
     return sorted.map(([time, values]) => ({
       time,
-      label: formatTime(time, range),
+      label: formatTime(time, period),
       ...values,
     }));
-  }, [series, seriesData, range]);
+  }, [series, seriesData, period]);
 
   const anyLoading = series.some((s) => seriesData[s.id]?.loading);
 
@@ -482,7 +510,12 @@ export function AnalyseView() {
               )}
             </>
           )}
-          <TimeRangeSelector value={range} onChange={setRange} />
+          <PeriodSelector
+            period={period}
+            date={date}
+            onPeriodChange={setPeriod}
+            onDateChange={setDate}
+          />
         </div>
       </div>
 

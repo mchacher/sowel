@@ -797,6 +797,11 @@
   "analyse.noSavedCharts": "Aucun graphique sauvegardé",
   "analyse.saved": "Graphique enregistré",
   "analyse.new": "Nouveau graphique",
+  "analyse.periodDay": "Jour",
+  "analyse.periodWeek": "Sem",
+  "analyse.periodMonth": "Mois",
+  "analyse.periodYear": "Année",
+  "analyse.today": "Aujourd'hui",
 
   "mqttPublishers.title": "Publications MQTT",
   "mqttPublishers.subtitle": "Publier les données d'équipements, zones et recettes vers des topics MQTT",
