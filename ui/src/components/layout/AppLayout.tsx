@@ -32,7 +32,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Power,
-  MoreVertical,
 } from "lucide-react";
 
 // Display name → 1-2 uppercase initials for the avatar pill.
@@ -186,15 +185,6 @@ export function AppLayout() {
                 </button>
               </div>
             )}
-            {/* Mobile ⋮ menu — opens drawer (same one bottom nav uses) */}
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="sm:hidden w-10 h-10 flex items-center justify-center rounded-[6px] text-text-secondary hover:bg-border-light/60 transition-colors duration-150"
-              aria-label={t("nav.more", "Plus")}
-              title={t("nav.more", "Plus")}
-            >
-              <MoreVertical size={20} strokeWidth={1.7} />
-            </button>
           </div>
         </header>
 
