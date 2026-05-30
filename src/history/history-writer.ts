@@ -15,7 +15,9 @@ import { Point } from "../core/influx-client.js";
 /** Categories historized ON by default. */
 const CATEGORY_DEFAULTS_ON: ReadonlySet<string> = new Set([
   "temperature",
+  "temperature_outdoor",
   "humidity",
+  "humidity_outdoor",
   "pressure",
   "luminosity",
   "power",
@@ -50,7 +52,9 @@ const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set([
 /** Deadband thresholds by category — skip writes if delta is below this. */
 const DEADBAND: Record<string, number> = {
   temperature: 0.2,
+  temperature_outdoor: 0.2,
   humidity: 1.0,
+  humidity_outdoor: 1.0,
   luminosity: 0.05, // 5% relative
   power: 5,
   energy: 0.01,
