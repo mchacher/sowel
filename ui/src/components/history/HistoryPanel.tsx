@@ -8,6 +8,7 @@ import { rangeToFrom, isCumulativeBarChart } from "./history-utils";
 import type { TimeRange } from "./history-utils";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 import { HistoryBarChart } from "./HistoryBarChart";
+import { humanBindingLabelFromList } from "./binding-label";
 
 /** Chart entry derived from a historized binding. */
 interface ChartEntry {
@@ -129,10 +130,11 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
   // Build chart list from historized bindings only
   // (computed data like rain_1h/rain_24h are snapshot values without their own
   // InfluxDB history — they show in the equipment card, not as charts)
-  const allCharts: ChartEntry[] = historizedBindings.map((b) => ({
+  const allCharts: (ChartEntry & { label: string })[] = historizedBindings.map((b) => ({
     alias: b.alias,
     category: b.category,
     unit: CATEGORY_UNITS[b.category],
+    label: humanBindingLabelFromList(b, historizedBindings, t),
   }));
 
   // Don't render if history is not enabled or no charts to show
@@ -182,8 +184,8 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-primary">{entry.alias}</span>
-                  <span className="text-text-tertiary">({entry.category})</span>
+                  <span className="font-medium text-primary" title={entry.alias}>{entry.label}</span>
+                  {unit && <span className="text-text-tertiary">({unit})</span>}
                 </div>
                 <BarChart3
                   size={12}

@@ -304,6 +304,9 @@ export interface HistoryBindingState {
   bindingId: string;
   alias: string;
   category: DataCategory;
+  /** Name of the backing physical device. Used as a disambiguator when an
+   * equipment has multiple bindings sharing the same category. */
+  deviceName: string;
   type: string; // "number" | "boolean" | "enum"
   historize: number | null;
   effectiveOn: boolean;

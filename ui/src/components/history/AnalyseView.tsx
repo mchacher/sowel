@@ -33,6 +33,7 @@ import type {
 import { TimeRangeSelector } from "./TimeRangeSelector";
 import { rangeToFrom } from "./history-utils";
 import type { TimeRange } from "./history-utils";
+import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
 
 // ============================================================
 // Types
@@ -45,6 +46,14 @@ interface SeriesConfig {
   zoneName: string;
   alias: string;
   category: string;
+  /** Backing physical device name. Empty for saved charts loaded from
+   * `chart.config.series` (which only carries equipmentId + alias) until
+   * the bindings have been refetched. */
+  deviceName: string;
+  /** Number of bindings sharing this category on the source equipment.
+   * Used by humanBindingLabel to decide whether device-name disambiguation
+   * is needed. */
+  sameCategoryCount: number;
   color: string;
 }
 
@@ -225,6 +234,8 @@ export function AnalyseView() {
             zoneName: eq?.zoneId ? (zoneNameById.get(eq.zoneId) ?? "") : "",
             alias: sc.alias,
             category: "",
+            deviceName: "",
+            sameCategoryCount: 1,
             color: SERIES_COLORS[newSeries.length % SERIES_COLORS.length],
           });
         }
@@ -295,6 +306,10 @@ export function AnalyseView() {
     const id = `${selectedEquipmentId}:${binding.alias}`;
     if (series.some((s) => s.id === id)) return;
 
+    const sameCategoryCount = availableBindings.filter(
+      (b) => b.category === binding.category,
+    ).length;
+
     const newSeries: SeriesConfig = {
       id,
       equipmentId: selectedEquipmentId,
@@ -302,6 +317,8 @@ export function AnalyseView() {
       zoneName: zoneNameById.get(equipment.zoneId ?? "") ?? "",
       alias: binding.alias,
       category: binding.category,
+      deviceName: binding.deviceName,
+      sameCategoryCount,
       color: SERIES_COLORS[series.length % SERIES_COLORS.length],
     };
 
@@ -482,7 +499,15 @@ export function AnalyseView() {
             />
             {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
             <span className="text-text">{s.equipmentName}</span>
-            <span className="text-text-tertiary">/ {s.alias}</span>
+            <span className="text-text-tertiary">
+              /{" "}
+              {s.category
+                ? humanBindingLabel(
+                    { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                    t,
+                  )
+                : s.alias}
+            </span>
             {CATEGORY_UNITS[s.category] && (
               <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
             )}
@@ -588,13 +613,14 @@ export function AnalyseView() {
                         type="button"
                         disabled={alreadyAdded}
                         onClick={() => addSeries(b)}
+                        title={b.alias}
                         className={`px-2.5 py-1 rounded-[4px] text-[12px] font-medium transition-colors cursor-pointer ${
                           alreadyAdded
                             ? "bg-border-light text-text-tertiary cursor-not-allowed"
                             : "bg-border-light/50 text-text hover:bg-primary-light hover:text-primary"
                         }`}
                       >
-                        {b.alias}
+                        {humanBindingLabelFromList(b, availableBindings, t)}
                         {CATEGORY_UNITS[b.category] && (
                           <span className="text-text-tertiary ml-1">({CATEGORY_UNITS[b.category]})</span>
                         )}
@@ -666,8 +692,14 @@ export function AnalyseView() {
                     const s = series.find((ser) => ser.id === name);
                     const unit = s ? CATEGORY_UNITS[s.category] : "";
                     const formatted = Number.isInteger(v) ? String(v) : v.toFixed(1);
+                    const metricLabel = s && s.category
+                      ? humanBindingLabel(
+                          { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                          t,
+                        )
+                      : (s?.alias ?? (name ?? ""));
                     const label = s
-                      ? (s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${s.alias}` : `${s.equipmentName} / ${s.alias}`)
+                      ? (s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}` : `${s.equipmentName} / ${metricLabel}`)
                       : (name ?? "");
                     return [unit ? `${formatted} ${unit}` : formatted, label];
                   }}
@@ -676,9 +708,15 @@ export function AnalyseView() {
                   formatter={(value: string) => {
                     const s = series.find((ser) => ser.id === value);
                     if (!s) return value;
+                    const metricLabel = s.category
+                      ? humanBindingLabel(
+                          { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                          t,
+                        )
+                      : s.alias;
                     return s.zoneName
-                      ? `${s.zoneName} / ${s.equipmentName} / ${s.alias}`
-                      : `${s.equipmentName} / ${s.alias}`;
+                      ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
+                      : `${s.equipmentName} / ${metricLabel}`;
                   }}
                   wrapperStyle={{ fontSize: "11px" }}
                 />

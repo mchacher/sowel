@@ -263,6 +263,10 @@ export interface HistoryBindingState {
   bindingId: string;
   alias: string;
   category: DataCategory;
+  /** Name of the backing physical device, used as a disambiguator when an
+   * equipment has multiple bindings sharing the same category (e.g. several
+   * batteries on a multi-module weather station). */
+  deviceName: string;
   historize: number | null; // NULL = default, 1 = force ON, 0 = force OFF
   effectiveOn: boolean; // Resolved from override → alias default → category default
 }

@@ -74,6 +74,7 @@ export function registerHistoryRoutes(
           bindingId: b.id,
           alias: b.alias,
           category: b.category,
+          deviceName: b.deviceName,
           type: b.type,
           historize: b.historize ?? null,
           effectiveOn: HistoryWriter.resolveHistorize(
