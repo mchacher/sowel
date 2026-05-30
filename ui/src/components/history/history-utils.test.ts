@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { isCumulativeBarChart } from "./history-utils";
+import {
+  booleanTickLabels,
+  familyOf,
+  hasEnvelope,
+  isBooleanCategory,
+  isCumulativeBarChart,
+  isCumulativeChart,
+} from "./history-utils";
 
 describe("isCumulativeBarChart", () => {
   it("routes energy bindings to the bar chart", () => {
@@ -17,5 +24,118 @@ describe("isCumulativeBarChart", () => {
     expect(isCumulativeBarChart("humidity")).toBe(false);
     expect(isCumulativeBarChart("pressure")).toBe(false);
     expect(isCumulativeBarChart("wind")).toBe(false);
+  });
+});
+
+describe("familyOf", () => {
+  it("classifies continuous measurements", () => {
+    expect(familyOf("temperature")).toBe("measurements");
+    expect(familyOf("humidity_outdoor")).toBe("measurements");
+    expect(familyOf("pressure")).toBe("measurements");
+    expect(familyOf("wind")).toBe("measurements");
+    expect(familyOf("battery")).toBe("measurements");
+  });
+
+  it("classifies cumulative categories", () => {
+    expect(familyOf("rain")).toBe("cumulative");
+    expect(familyOf("energy")).toBe("cumulative");
+  });
+
+  it("classifies boolean/state categories", () => {
+    expect(familyOf("motion")).toBe("states");
+    expect(familyOf("contact_door")).toBe("states");
+    expect(familyOf("water_leak")).toBe("states");
+  });
+
+  it("returns null for unknown categories", () => {
+    expect(familyOf("unknown_category")).toBeNull();
+    expect(familyOf("setpoint")).toBeNull();
+  });
+});
+
+describe("isCumulativeChart", () => {
+  it("returns true when every series is cumulative", () => {
+    expect(isCumulativeChart(["rain"])).toBe(true);
+    expect(isCumulativeChart(["rain", "energy"])).toBe(true);
+  });
+
+  it("returns false when any series is non-cumulative", () => {
+    expect(isCumulativeChart(["rain", "temperature"])).toBe(false);
+    expect(isCumulativeChart(["temperature"])).toBe(false);
+  });
+
+  it("returns false for an empty list", () => {
+    expect(isCumulativeChart([])).toBe(false);
+  });
+});
+
+describe("hasEnvelope", () => {
+  it("flags slow-moving continuous categories for the envelope", () => {
+    expect(hasEnvelope("temperature")).toBe(true);
+    expect(hasEnvelope("humidity")).toBe(true);
+    expect(hasEnvelope("pressure")).toBe(true);
+    expect(hasEnvelope("co2")).toBe(true);
+  });
+
+  it("excludes fast-varying or stepwise series from the envelope", () => {
+    expect(hasEnvelope("wind")).toBe(false);
+    expect(hasEnvelope("battery")).toBe(false);
+    expect(hasEnvelope("voltage")).toBe(false);
+  });
+});
+
+describe("isBooleanCategory", () => {
+  it("identifies state categories", () => {
+    expect(isBooleanCategory("motion")).toBe(true);
+    expect(isBooleanCategory("contact_door")).toBe(true);
+    expect(isBooleanCategory("contact_window")).toBe(true);
+    expect(isBooleanCategory("water_leak")).toBe(true);
+    expect(isBooleanCategory("smoke")).toBe(true);
+  });
+
+  it("rejects non-state categories", () => {
+    expect(isBooleanCategory("temperature")).toBe(false);
+    expect(isBooleanCategory("rain")).toBe(false);
+  });
+});
+
+describe("booleanTickLabels", () => {
+  it("returns motion-specific labels", () => {
+    expect(booleanTickLabels("motion")).toEqual([
+      "analyse.bool.motion.off",
+      "analyse.bool.motion.on",
+    ]);
+  });
+
+  it("returns contact-specific labels for both door and window", () => {
+    expect(booleanTickLabels("contact_door")).toEqual([
+      "analyse.bool.contact.closed",
+      "analyse.bool.contact.open",
+    ]);
+    expect(booleanTickLabels("contact_window")).toEqual([
+      "analyse.bool.contact.closed",
+      "analyse.bool.contact.open",
+    ]);
+  });
+
+  it("returns leak-specific labels", () => {
+    expect(booleanTickLabels("water_leak")).toEqual([
+      "analyse.bool.leak.dry",
+      "analyse.bool.leak.wet",
+    ]);
+  });
+
+  it("returns smoke-specific labels", () => {
+    expect(booleanTickLabels("smoke")).toEqual([
+      "analyse.bool.smoke.clear",
+      "analyse.bool.smoke.detected",
+    ]);
+  });
+
+  it("falls back to generic on/off for unsupported categories", () => {
+    expect(booleanTickLabels("unknown")).toEqual([
+      "analyse.bool.generic.off",
+      "analyse.bool.generic.on",
+    ]);
   });
 });

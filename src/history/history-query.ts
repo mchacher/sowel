@@ -68,7 +68,7 @@ function resolveBucket(baseBucket: string, resolution: Resolution, category?: st
  * For 1h/1d: queries the pre-aggregated downsampled bucket (mean field).
  * Falls back to on-the-fly aggregation if downsampled bucket has no data.
  */
-function buildFluxQuery(params: {
+export function buildFluxQuery(params: {
   bucket: string;
   equipmentId: string;
   alias: string;
@@ -77,13 +77,30 @@ function buildFluxQuery(params: {
   resolution: Resolution;
   isDiscrete?: boolean;
   category?: string;
+  isDownsampled?: boolean;
 }): string {
-  const { bucket, equipmentId, alias, from, to, resolution, isDiscrete, category } = params;
+  const { bucket, equipmentId, alias, from, to, resolution, isDiscrete, category, isDownsampled } =
+    params;
 
   const fromStr = from.toISOString();
   const toStr = to.toISOString();
 
-  // Base query: filter by measurement, equipmentId, alias
+  // Downsampled buckets (sowel-hourly, sowel-daily, sowel-energy-*) store pre-aggregated
+  // mean/min/max fields, one point per period. Filtering on value_number returns nothing
+  // there. Read the mean field directly — no aggregateWindow needed since the bucket
+  // already matches the resolution.
+  if (isDownsampled && resolution !== "raw") {
+    return `from(bucket: "${bucket}")
+  |> range(start: ${fromStr}, stop: ${toStr})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "mean")
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
+  }
+
+  // Raw bucket: filter by value_number, optionally aggregate on the fly
   let query = `from(bucket: "${bucket}")
   |> range(start: ${fromStr}, stop: ${toStr})
   |> filter(fn: (r) => r._measurement == "equipment_data")
@@ -98,7 +115,7 @@ function buildFluxQuery(params: {
   |> sort(columns: ["_time"])
   |> limit(n: ${limit})`;
   } else {
-    // Aggregated data — window + sum (cumulative) or mean (continuous)
+    // Raw-bucket fallback for aggregated resolution — sum (cumulative) or mean (continuous)
     const every = resolution === "1h" ? "1h" : "1d";
     const fn = CUMULATIVE_CATEGORIES.has(category ?? "") ? "sum" : "mean";
     query += `
@@ -226,7 +243,9 @@ export async function queryHistory(
         }
       }
     } else if (CUMULATIVE_CATEGORIES.has(params.category ?? "")) {
-      // Cumulative categories (energy, rain): use sum aggregation, no min/max
+      // Cumulative categories (energy, rain): read the pre-aggregated mean field directly
+      // from the downsampled bucket. The bucket already stores one point per resolution
+      // period (1h or 1d) with the mean/min/max fields populated.
       const flux = buildFluxQuery({
         bucket: targetBucket,
         equipmentId: params.equipmentId,
@@ -235,6 +254,7 @@ export async function queryHistory(
         to: toDate,
         resolution,
         category: params.category,
+        isDownsampled: targetBucket !== config.bucket,
       });
 
       for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {

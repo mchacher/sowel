@@ -1,5 +1,75 @@
 export type TimeRange = "6h" | "24h" | "7d" | "30d";
 
+// ============================================================
+// Chart families (spec 118)
+// ============================================================
+//
+// Every chartable DataCategory belongs to one family. A chart contains
+// series from a single family (see F7 — family-locked picker in AnalyseView).
+
+export type ChartFamily = "measurements" | "cumulative" | "states";
+
+const CUMULATIVE_CATEGORIES = new Set<string>(["rain", "energy"]);
+
+export const BOOLEAN_CATEGORIES = new Set<string>([
+  "motion",
+  "contact_door",
+  "contact_window",
+  "water_leak",
+  "smoke",
+]);
+
+const MEASUREMENT_CATEGORIES = new Set<string>([
+  "temperature",
+  "temperature_outdoor",
+  "humidity",
+  "humidity_outdoor",
+  "pressure",
+  "co2",
+  "voc",
+  "noise",
+  "luminosity",
+  "power",
+  "voltage",
+  "current",
+  "wind",
+  "battery",
+]);
+
+// Categories that benefit from the min/max envelope at 1h / 1d resolution.
+// Slow-moving continuous measurements only — wind/battery/voltage/current
+// vary fast or step-wise and the envelope would be noise.
+export const ENVELOPE_CATEGORIES = new Set<string>([
+  "temperature",
+  "temperature_outdoor",
+  "humidity",
+  "humidity_outdoor",
+  "pressure",
+  "co2",
+  "voc",
+  "noise",
+  "luminosity",
+  "power",
+]);
+
+/** Return the chart family for a DataCategory, or null if not chartable. */
+export function familyOf(category: string): ChartFamily | null {
+  if (CUMULATIVE_CATEGORIES.has(category)) return "cumulative";
+  if (BOOLEAN_CATEGORIES.has(category)) return "states";
+  if (MEASUREMENT_CATEGORIES.has(category)) return "measurements";
+  return null;
+}
+
+/** Whether `category` qualifies for the min/max envelope. */
+export function hasEnvelope(category: string): boolean {
+  return ENVELOPE_CATEGORIES.has(category);
+}
+
+/** Whether `category` is a boolean/state series rendered as a step chart. */
+export function isBooleanCategory(category: string): boolean {
+  return BOOLEAN_CATEGORIES.has(category);
+}
+
 /**
  * Decide whether a binding should be visualised as a bar chart.
  *
@@ -10,7 +80,33 @@ export type TimeRange = "6h" | "24h" | "7d" | "30d";
  * later without changing the call site.
  */
 export function isCumulativeBarChart(category: string): boolean {
-  return category === "rain" || category === "energy";
+  return CUMULATIVE_CATEGORIES.has(category);
+}
+
+/** True when every category in the list is cumulative (rain/energy). */
+export function isCumulativeChart(categories: string[]): boolean {
+  return categories.length > 0 && categories.every((c) => familyOf(c) === "cumulative");
+}
+
+/**
+ * Return the i18n key pair `[labelForFalse, labelForTrue]` used to render
+ * tick labels and tooltip text for a boolean series. Falls back to the
+ * generic on/off keys when no specific mapping exists for the category.
+ */
+export function booleanTickLabels(category: string): [string, string] {
+  switch (category) {
+    case "motion":
+      return ["analyse.bool.motion.off", "analyse.bool.motion.on"];
+    case "contact_door":
+    case "contact_window":
+      return ["analyse.bool.contact.closed", "analyse.bool.contact.open"];
+    case "water_leak":
+      return ["analyse.bool.leak.dry", "analyse.bool.leak.wet"];
+    case "smoke":
+      return ["analyse.bool.smoke.clear", "analyse.bool.smoke.detected"];
+    default:
+      return ["analyse.bool.generic.off", "analyse.bool.generic.on"];
+  }
 }
 
 /** Convert a TimeRange to a relative "from" string for the API. */

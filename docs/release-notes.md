@@ -11,6 +11,19 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.16.x — Analyse chart improvements
+
+### v1.16.0 — 2026-05-30 { #v1-16-0 }
+
+- Feat (UI/Analyse): per-category chart families locked to a single chart. `temperature` / `humidity` / `pressure` / `co2` / `voc` / `noise` / `luminosity` / `power` / `voltage` / `current` / `wind` / `battery` form the **Measurements** family (line chart). `rain` / `energy` form the **Cumulative** family (bar chart). `motion` / `contact_door` / `contact_window` / `water_leak` / `smoke` form the **States** family (step chart on a `[0, 1]` axis with semantic tick labels — "fermé" / "ouvert", "absent" / "présent", etc.). The series picker greys out cross-family bindings with a "Famille incompatible" tooltip; a "Vider le graphe" button resets the family lock. Spec 118 F2 / F5 / F7.
+- Feat (UI/Analyse): min/max envelope band on slow-moving Measurements series (temperature, humidity, pressure, CO2, VOC, noise, luminosity, power) at 1h / 1d resolution. A semi-transparent shaded area is drawn around the mean line between the API's `min` and `max` fields (already returned by the downsampled buckets). A global header toggle "Enveloppe min/max" turns the band on/off in memory; default on. Tooltip rows show `21.5 °C (18 / 26)` when the band is rendered. Spec 118 F1.
+- Fix (backend/history): cumulative-category history queries (`rain`, `energy`) now read the pre-aggregated `mean` field from downsampled buckets (`sowel-hourly`, `sowel-daily`) instead of filtering on the raw `value_number` field that only exists in the raw bucket. The previous query path silently returned zero points on every aggregated rain / energy chart and fell back to the raw bucket, which holds only a few days of live-writer data. Caught on sowelox right after a 12-month rain backfill: the "Pluie" chart on Mois view stayed empty despite `sum_rain_24` daily totals being correctly written by the Netatmo backfill script. Spec 118 F8, with new `buildFluxQuery` unit tests covering both the downsampled and raw-bucket branches.
+- Fix (UI/nav): clicking "Analyse" in the sidebar while on a saved-chart sub-route (`/analyse/<chartId>`) now navigates back to the empty workspace at `/analyse` instead of only toggling the section expansion. The previous click handler called `preventDefault` for any path starting with `/analyse`, making the new-chart workspace unreachable once a saved chart had been opened. Spec 118 F9.
+- Feat (UI/Analyse): the empty Analyse workspace opens the add-series picker by default and preselects the first zone, so the chart-creation flow (zone → equipment → metric) is visible immediately on `/analyse`. The empty-chart placeholder shrinks to a quiet dashed panel pointing at the picker above. Spec 118 F9.
+- Change (history): wind direction and gust details (`wind_angle`, `gust_strength`, `gust_angle`) are no longer historized by default. They remain visible live in the `WeatherPanel` (compass arrow, gust hero) but disappear from the Analyse picker on new installs and after redeploy on existing ones. Legacy points already in InfluxDB are harmless and decay with retention. Spec 118 F6.
+
+---
+
 ## 1.15.x — Live submeter breakdown
 
 ### v1.15.7 — 2026-05-30 { #v1-15-7 }

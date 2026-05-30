@@ -47,6 +47,9 @@ const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set([
   "demand_30min",
   "energy_forward",
   "energy_reverse",
+  "wind_angle",
+  "gust_strength",
+  "gust_angle",
 ]);
 
 /** Deadband thresholds by category — skip writes if delta is below this. */

@@ -10,11 +10,17 @@ import {
   Save,
   Copy,
   Trash2,
+  Eraser,
+  Layers,
 } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
+  BarChart,
+  ComposedChart,
   Line,
+  Bar,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -32,8 +38,12 @@ import type {
 } from "../../types";
 import { PeriodSelector } from "./PeriodSelector";
 import {
+  booleanTickLabels,
+  familyOf,
+  hasEnvelope,
   periodTodayStr,
   periodToWindow,
+  type ChartFamily,
   type Period,
 } from "./history-utils";
 import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
@@ -165,6 +175,8 @@ export function AnalyseView() {
   const [date, setDate] = useState<string>(() => periodTodayStr());
   const [series, setSeries] = useState<SeriesConfig[]>([]);
   const [seriesData, setSeriesData] = useState<Record<string, SeriesData>>({});
+  // F1 — global envelope toggle. Default on; persisted in memory only.
+  const [envelopeOn, setEnvelopeOn] = useState(true);
 
   // --- Saved chart state ---
   const [currentChart, setCurrentChart] = useState<SavedChart | null>(null);
@@ -181,7 +193,10 @@ export function AnalyseView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // --- Add series form ---
-  const [showAddForm, setShowAddForm] = useState(false);
+  // Open by default on the empty workspace (`/analyse` with no chartId) so
+  // the user immediately sees the zone / equipment / metric pickers instead
+  // of an inscrutable empty chart placeholder.
+  const [showAddForm, setShowAddForm] = useState(() => !chartId);
   const [selectedZoneId, setSelectedZoneId] = useState<string>("");
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
   const [availableBindings, setAvailableBindings] = useState<HistoryBindingState[]>([]);
@@ -466,6 +481,10 @@ export function AnalyseView() {
       for (const p of data.points) {
         const existing = timeMap.get(p.time) ?? {};
         existing[s.id] = p.value;
+        // F1 — carry the envelope band keys when the API returned them
+        // (downsampled buckets at 1h / 1d resolution).
+        if (typeof p.min === "number") existing[`${s.id}:min`] = p.min;
+        if (typeof p.max === "number") existing[`${s.id}:max`] = p.max;
         timeMap.set(p.time, existing);
       }
     }
@@ -476,6 +495,51 @@ export function AnalyseView() {
       ...values,
     }));
   }, [series, seriesData]);
+
+  // F7 — family of the first series determines the chart family. The picker
+  // forbids cross-family mixing, so all series share this family at render time.
+  const lockedFamily: ChartFamily | null = useMemo(() => {
+    if (series.length === 0) return null;
+    return familyOf(series[0].category);
+  }, [series]);
+
+  // Active aggregation resolution across all series. Envelope only renders at
+  // 1h or 1d (raw points have min = max = mean by definition).
+  const activeResolution = useMemo(() => {
+    for (const s of series) {
+      const r = seriesData[s.id]?.resolution;
+      if (r === "1h" || r === "1d") return r;
+    }
+    return "raw" as const;
+  }, [series, seriesData]);
+
+  const showEnvelopeToggle =
+    lockedFamily === "measurements" &&
+    activeResolution !== "raw" &&
+    series.some((s) => hasEnvelope(s.category));
+
+  const familyLabel = useMemo(() => {
+    if (!lockedFamily) return "";
+    return t(`analyse.family.${lockedFamily}`);
+  }, [lockedFamily, t]);
+
+  const clearChart = useCallback(() => {
+    setSeries([]);
+    setSeriesData({});
+    setShowAddForm(true);
+    if (!selectedZoneId && flatZones.length > 0) {
+      setSelectedZoneId(flatZones[0].id);
+    }
+  }, [flatZones, selectedZoneId]);
+
+  // Auto-preselect the first zone when the workspace loads empty so the
+  // equipment dropdown is immediately populated. Without this, the user has
+  // to pick a zone manually before any equipment shows up.
+  useEffect(() => {
+    if (showAddForm && !selectedZoneId && flatZones.length > 0) {
+      setSelectedZoneId(flatZones[0].id);
+    }
+  }, [showAddForm, selectedZoneId, flatZones]);
 
   /** Minimum pixel gap between X ticks per period. Tighter for shorter
    * windows (day shows hours), looser for longer windows (year shows
@@ -578,10 +642,48 @@ export function AnalyseView() {
             <Plus size={12} strokeWidth={2} />
             {t("analyse.addSeries")}
           </button>
+
+          {/* F7 — family-lock indicator */}
+          {lockedFamily && (
+            <span
+              className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-border-light text-text-secondary"
+              title={t("analyse.familyLocked", { family: familyLabel })}
+            >
+              {familyLabel}
+            </span>
+          )}
         </div>
 
         {series.length > 0 && (
           <div className="flex items-center gap-1">
+            {/* F1 — global envelope toggle. Only meaningful for the
+                measurements family at aggregated resolutions. */}
+            {showEnvelopeToggle && (
+              <button
+                type="button"
+                onClick={() => setEnvelopeOn((v) => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                  transition-colors cursor-pointer ${
+                    envelopeOn
+                      ? "bg-primary-light text-primary hover:bg-primary hover:text-white"
+                      : "text-text-secondary hover:bg-border-light hover:text-text"
+                  }`}
+                title={t("analyse.envelopeToggle")}
+              >
+                <Layers size={14} strokeWidth={1.5} />
+                <span className="hidden sm:inline">{t("analyse.envelopeToggle")}</span>
+              </button>
+            )}
+            {/* F7 — clear chart (resets the family lock) */}
+            <button
+              type="button"
+              onClick={clearChart}
+              className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+                hover:bg-border-light hover:text-text transition-colors cursor-pointer"
+              title={t("analyse.clearChart")}
+            >
+              <Eraser size={14} strokeWidth={1.5} />
+            </button>
             <button
               type="button"
               onClick={handleSave}
@@ -687,16 +789,27 @@ export function AnalyseView() {
                     const alreadyAdded = series.some(
                       (s) => s.equipmentId === selectedEquipmentId && s.alias === b.alias,
                     );
+                    // F7 — family lock: once a series is added, only bindings
+                    // of the same family can be added.
+                    const bindingFamily = familyOf(b.category);
+                    const familyMismatch =
+                      lockedFamily !== null &&
+                      bindingFamily !== null &&
+                      bindingFamily !== lockedFamily;
+                    const disabled = alreadyAdded || familyMismatch;
+                    const title = familyMismatch
+                      ? t("analyse.familyIncompatible")
+                      : b.alias;
                     return (
                       <button
                         key={b.bindingId}
                         type="button"
-                        disabled={alreadyAdded}
+                        disabled={disabled}
                         onClick={() => addSeries(b)}
-                        title={b.alias}
+                        title={title}
                         className={`px-2.5 py-1 rounded-[4px] text-[12px] font-medium transition-colors cursor-pointer ${
-                          alreadyAdded
-                            ? "bg-border-light text-text-tertiary cursor-not-allowed"
+                          disabled
+                            ? "bg-border-light text-text-tertiary cursor-not-allowed opacity-60"
                             : "bg-border-light/50 text-text hover:bg-primary-light hover:text-primary"
                         }`}
                       >
@@ -716,10 +829,12 @@ export function AnalyseView() {
 
       {/* Chart */}
       {series.length === 0 ? (
-        <div className="bg-surface rounded-[10px] border border-border flex flex-col items-center justify-center py-20 text-center">
-          <BarChart3 size={40} strokeWidth={1} className="text-border mb-3" />
-          <p className="text-[14px] text-text-secondary">{t("analyse.empty")}</p>
-          <p className="text-[12px] text-text-tertiary mt-1">{t("analyse.emptyHint")}</p>
+        // Quiet placeholder when the workspace is empty. The add-series form
+        // above is the call to action; the placeholder just signals the chart
+        // area without competing for attention.
+        <div className="bg-surface/50 rounded-[10px] border border-dashed border-border flex flex-col items-center justify-center py-12 text-center">
+          <BarChart3 size={28} strokeWidth={1} className="text-border mb-2" />
+          <p className="text-[12px] text-text-tertiary">{t("analyse.emptyHint")}</p>
         </div>
       ) : (
         <div className="bg-surface rounded-[10px] border border-border p-4">
@@ -736,89 +851,259 @@ export function AnalyseView() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-                <XAxis
-                  dataKey="time"
-                  type="number"
-                  domain={["dataMin", "dataMax"]}
-                  scale="time"
-                  tick={{ fontSize: 10, fill: textTertiary }}
-                  tickLine={false}
-                  axisLine={{ stroke: borderColor }}
-                  minTickGap={xMinTickGap}
-                  tickFormatter={(ts: number) => formatTime(new Date(ts).toISOString(), period)}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: textTertiary }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={52}
-                  tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "var(--color-text)",
-                  }}
-                  labelFormatter={(_, payload) => {
-                    const ts = payload?.[0]?.payload?.time;
-                    if (typeof ts === "number") {
-                      return formatTooltipTime(new Date(ts).toISOString());
-                    }
-                    return "";
-                  }}
-                  formatter={(value?: number, name?: string) => {
-                    const v = value ?? 0;
-                    const s = series.find((ser) => ser.id === name);
-                    const unit = s ? CATEGORY_UNITS[s.category] : "";
-                    const formatted = Number.isInteger(v) ? String(v) : v.toFixed(1);
-                    const metricLabel = s && s.category
-                      ? humanBindingLabel(
-                          { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                          t,
-                        )
-                      : (s?.alias ?? (name ?? ""));
-                    const label = s
-                      ? (s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}` : `${s.equipmentName} / ${metricLabel}`)
-                      : (name ?? "");
-                    return [unit ? `${formatted} ${unit}` : formatted, label];
-                  }}
-                />
-                <Legend
-                  formatter={(value: string) => {
-                    const s = series.find((ser) => ser.id === value);
-                    if (!s) return value;
-                    const metricLabel = s.category
-                      ? humanBindingLabel(
-                          { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                          t,
-                        )
-                      : s.alias;
-                    return s.zoneName
-                      ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
-                      : `${s.equipmentName} / ${metricLabel}`;
-                  }}
-                  wrapperStyle={{ fontSize: "11px" }}
-                />
-                {series.map((s) => (
-                  <Line
-                    key={s.id}
-                    type="monotone"
-                    dataKey={s.id}
-                    name={s.id}
-                    stroke={s.color}
-                    strokeWidth={1.5}
-                    dot={false}
-                    activeDot={{ r: 3, fill: s.color }}
-                    isAnimationActive={false}
-                    connectNulls
+              {(() => {
+                // Common X axis, Y axis, Tooltip, Legend props shared by every
+                // family. Built inline (not extracted as constants) because
+                // each family renders a different chart container (BarChart /
+                // LineChart / ComposedChart) and Recharts requires the axes
+                // to be direct children of the container.
+                const commonGrid = <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />;
+                const commonXAxis = (
+                  <XAxis
+                    dataKey="time"
+                    type="number"
+                    domain={["dataMin", "dataMax"]}
+                    scale="time"
+                    tick={{ fontSize: 10, fill: textTertiary }}
+                    tickLine={false}
+                    axisLine={{ stroke: borderColor }}
+                    minTickGap={xMinTickGap}
+                    tickFormatter={(ts: number) => formatTime(new Date(ts).toISOString(), period)}
                   />
-                ))}
-              </LineChart>
+                );
+                const commonLegend = (
+                  <Legend
+                    formatter={(value: string) => {
+                      const s = series.find((ser) => ser.id === value);
+                      if (!s) return value;
+                      const metricLabel = s.category
+                        ? humanBindingLabel(
+                            { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                            t,
+                          )
+                        : s.alias;
+                      return s.zoneName
+                        ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
+                        : `${s.equipmentName} / ${metricLabel}`;
+                    }}
+                    wrapperStyle={{ fontSize: "11px" }}
+                  />
+                );
+                const labelFormatter = (_: unknown, payload?: readonly { payload?: Record<string, unknown> }[]) => {
+                  const ts = payload?.[0]?.payload?.time;
+                  if (typeof ts === "number") {
+                    return formatTooltipTime(new Date(ts).toISOString());
+                  }
+                  return "";
+                };
+                const measurementFormatter = (
+                  value?: number | string,
+                  name?: string,
+                  item?: { payload?: Record<string, number> },
+                ) => {
+                  const num = typeof value === "number" ? value : Number(value);
+                  if (!Number.isFinite(num)) return ["", ""];
+                  // Skip min/max keys — only the mean shows in the tooltip row;
+                  // the band values are appended next to it.
+                  if (name?.endsWith(":min") || name?.endsWith(":max")) return [null, null] as unknown as [string, string];
+                  const s = series.find((ser) => ser.id === name);
+                  const unit = s ? CATEGORY_UNITS[s.category] : "";
+                  const formatted = Number.isInteger(num) ? String(num) : num.toFixed(1);
+                  let valueText = unit ? `${formatted} ${unit}` : formatted;
+                  if (s && item?.payload) {
+                    const min = item.payload[`${s.id}:min`];
+                    const max = item.payload[`${s.id}:max`];
+                    if (typeof min === "number" && typeof max === "number") {
+                      const fmt = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+                      valueText += ` (${fmt(min)} / ${fmt(max)})`;
+                    }
+                  }
+                  const metricLabel = s && s.category
+                    ? humanBindingLabel(
+                        { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                        t,
+                      )
+                    : (s?.alias ?? (name ?? ""));
+                  const label = s
+                    ? (s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}` : `${s.equipmentName} / ${metricLabel}`)
+                    : (name ?? "");
+                  return [valueText, label];
+                };
+                const booleanFormatter = (value?: number | string, name?: string) => {
+                  const s = series.find((ser) => ser.id === name);
+                  if (!s) return [String(value ?? ""), name ?? ""];
+                  const num = typeof value === "number" ? value : Number(value);
+                  const [offKey, onKey] = booleanTickLabels(s.category);
+                  let stateText: string;
+                  if (!Number.isFinite(num)) {
+                    stateText = "";
+                  } else if (num <= 0.05) {
+                    stateText = t(offKey);
+                  } else if (num >= 0.95) {
+                    stateText = t(onKey);
+                  } else {
+                    // Aggregated bucket: mean ∈ (0, 1) → percent of active time.
+                    stateText = `${Math.round(num * 100)}% ${t(onKey)}`;
+                  }
+                  const metricLabel = humanBindingLabel(
+                    { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                    t,
+                  );
+                  const label = s.zoneName
+                    ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
+                    : `${s.equipmentName} / ${metricLabel}`;
+                  return [stateText, label];
+                };
+                const tooltipStyle = {
+                  backgroundColor: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  color: "var(--color-text)",
+                };
+
+                if (lockedFamily === "cumulative") {
+                  // F2 — bar chart for rain / energy.
+                  return (
+                    <BarChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+                      {commonGrid}
+                      {commonXAxis}
+                      <YAxis
+                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={52}
+                        tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        labelFormatter={labelFormatter}
+                        formatter={measurementFormatter}
+                      />
+                      {commonLegend}
+                      {series.map((s) => (
+                        <Bar
+                          key={s.id}
+                          dataKey={s.id}
+                          name={s.id}
+                          fill={s.color}
+                          isAnimationActive={false}
+                        />
+                      ))}
+                    </BarChart>
+                  );
+                }
+
+                if (lockedFamily === "states") {
+                  // F5 — step chart on a [0, 1] axis with semantic tick labels.
+                  // Tick labels come from the first series' category (every
+                  // series in the chart shares the same axis).
+                  const [offKey, onKey] = booleanTickLabels(series[0].category);
+                  return (
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+                      {commonGrid}
+                      {commonXAxis}
+                      <YAxis
+                        domain={[0, 1]}
+                        ticks={[0, 1]}
+                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={68}
+                        tickFormatter={(v: number) => (v >= 0.5 ? t(onKey) : t(offKey))}
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        labelFormatter={labelFormatter}
+                        formatter={booleanFormatter}
+                      />
+                      {commonLegend}
+                      {series.map((s) => (
+                        <Line
+                          key={s.id}
+                          type="stepAfter"
+                          dataKey={s.id}
+                          name={s.id}
+                          stroke={s.color}
+                          strokeWidth={1.5}
+                          dot={false}
+                          activeDot={{ r: 3, fill: s.color }}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  );
+                }
+
+                // measurements (default) — line chart, optionally with envelope band.
+                const showBand = envelopeOn && activeResolution !== "raw";
+                return (
+                  <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+                    {commonGrid}
+                    {commonXAxis}
+                    <YAxis
+                      tick={{ fontSize: 10, fill: textTertiary }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={52}
+                      tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
+                    />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelFormatter={labelFormatter}
+                      formatter={measurementFormatter}
+                    />
+                    {commonLegend}
+                    {showBand &&
+                      series
+                        .filter((s) => hasEnvelope(s.category))
+                        .map((s) => {
+                          // Recharts Area renders a band when dataKey returns
+                          // a [min, max] tuple. Function dataKey is evaluated
+                          // per data point.
+                          const minKey = `${s.id}:min`;
+                          const maxKey = `${s.id}:max`;
+                          return (
+                            <Area
+                              key={`${s.id}:band`}
+                              type="monotone"
+                              dataKey={(d: Record<string, number>) => {
+                                const lo = d[minKey];
+                                const hi = d[maxKey];
+                                if (typeof lo === "number" && typeof hi === "number") {
+                                  return [lo, hi];
+                                }
+                                return undefined as unknown as [number, number];
+                              }}
+                              stroke="none"
+                              fill={s.color}
+                              fillOpacity={0.15}
+                              isAnimationActive={false}
+                              legendType="none"
+                              name={`${s.id}:band`}
+                              connectNulls
+                              activeDot={false}
+                            />
+                          );
+                        })}
+                    {series.map((s) => (
+                      <Line
+                        key={s.id}
+                        type="monotone"
+                        dataKey={s.id}
+                        name={s.id}
+                        stroke={s.color}
+                        strokeWidth={1.5}
+                        dot={false}
+                        activeDot={{ r: 3, fill: s.color }}
+                        isAnimationActive={false}
+                        connectNulls
+                      />
+                    ))}
+                  </ComposedChart>
+                );
+              })()}
             </ResponsiveContainer>
           )}
         </div>

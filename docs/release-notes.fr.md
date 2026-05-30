@@ -11,6 +11,19 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.16.x — Améliorations des graphiques Analyse
+
+### v1.16.0 — 2026-05-30 { #v1-16-0 }
+
+- Évolution (UI/Analyse) : familles de catégories verrouillées par graphique. `temperature` / `humidity` / `pressure` / `co2` / `voc` / `noise` / `luminosity` / `power` / `voltage` / `current` / `wind` / `battery` forment la famille **Mesures** (graphique linéaire). `rain` / `energy` forment la famille **Cumuls** (graphique en barres). `motion` / `contact_door` / `contact_window` / `water_leak` / `smoke` forment la famille **États** (graphique en marches sur axe `[0, 1]` avec ticks sémantiques — « fermé » / « ouvert », « absent » / « présent », etc.). Le picker grise les bindings d'une autre famille avec un tooltip « Famille incompatible » ; un bouton « Vider le graphe » réinitialise le verrouillage. Spec 118 F2 / F5 / F7.
+- Évolution (UI/Analyse) : enveloppe min/max sur les séries Mesures à dynamique lente (température, humidité, pression, CO2, COV, bruit, luminosité, puissance) en résolution 1h / 1d. Une zone semi-transparente est rendue autour de la ligne moyenne entre les champs `min` et `max` retournés par l'API (déjà présents dans les buckets downsampled). Un toggle « Enveloppe min/max » dans l'en-tête active/désactive la bande, par défaut activée, mémorisée en mémoire seulement. Le tooltip affiche `21.5 °C (18 / 26)` quand la bande est visible. Spec 118 F1.
+- Correctif (backend/history) : les requêtes d'historique pour les catégories cumulatives (`rain`, `energy`) lisent désormais le champ pré-agrégé `mean` directement dans les buckets downsampled (`sowel-hourly`, `sowel-daily`) au lieu de filtrer sur `value_number`, qui n'existe que dans le bucket raw. L'ancienne requête retournait systématiquement zéro point sur tout graphique pluie / énergie agrégé, puis bascule en fallback sur le bucket raw qui ne contient que quelques jours du writer live. Détecté sur sowelox juste après un backfill 12 mois de la pluie : le graphique « Pluie » en vue Mois restait vide alors que les totaux journaliers `sum_rain_24` étaient correctement écrits par le script Netatmo. Spec 118 F8, avec nouveaux tests `buildFluxQuery` couvrant les deux branches downsampled et raw.
+- Correctif (UI/nav) : cliquer sur « Analyse » dans la sidebar depuis une route de chart sauvegardé (`/analyse/<chartId>`) navigue désormais bien vers le workspace vide `/analyse` au lieu de juste replier la section. L'ancien gestionnaire appelait `preventDefault` pour tout chemin commençant par `/analyse`, ce qui rendait le workspace de création de nouveau graphique inaccessible une fois qu'un graphique enregistré avait été ouvert. Spec 118 F9.
+- Évolution (UI/Analyse) : le workspace Analyse vide ouvre le picker d'ajout par défaut et présélectionne la première zone, pour que le flow de création (zone → équipement → métrique) soit visible immédiatement à l'entrée sur `/analyse`. Le placeholder de graphique vide se réduit à un panneau discret en pointillés pointant vers le picker au-dessus. Spec 118 F9.
+- Changement (history) : la direction du vent et les détails des rafales (`wind_angle`, `gust_strength`, `gust_angle`) ne sont plus historisés par défaut. Ils restent visibles en live dans le widget `WeatherPanel` (flèche de direction, hero des rafales) mais disparaissent du picker Analyse sur nouvelle installation et après redéploiement sur les installations existantes. Les points existants dans InfluxDB sont inoffensifs et disparaîtront avec la rétention. Spec 118 F6.
+
+---
+
 ## 1.15.x — Décomposition consommation live
 
 ### v1.15.7 — 2026-05-30 { #v1-15-7 }

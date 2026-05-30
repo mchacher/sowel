@@ -211,7 +211,11 @@ export function Sidebar() {
           expanded={collapsed ? undefined : expandedSection === "analyse"}
           title={collapsed ? t("nav.analyse") : undefined}
           onClick={(e) => {
-            if (location.pathname.startsWith("/analyse")) {
+            // Suppress navigation only when we are already on the bare
+            // /analyse workspace (no saved-chart sub-route). On a saved-chart
+            // route, the click must navigate back to /analyse so the user can
+            // create a new chart — otherwise the workspace is unreachable.
+            if (location.pathname === "/analyse") {
               e.preventDefault();
               toggleSection("analyse");
             }
