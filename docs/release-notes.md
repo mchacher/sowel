@@ -13,6 +13,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.6 — 2026-05-30 { #v1-15-6 }
+
+- Feat (UI/Analyse): the Analyse page time-range selector is replaced with the same calendar navigator the Energy page uses — period tabs (Jour / Sem / Mois / Année) + prev/next chevrons + an "Aujourd'hui" reset. Users can now scrub to any absolute calendar window (a specific Tuesday, last August, 2025 overall) instead of only "the last N hours/days ending now", which was a blocker for visualising backfilled historical data on a chart. The 4 tabs are equal-width for visual rhythm, and the navigator layout mirrors the Energy header (title left, navigator right).
+- Feat (UI/Analyse): mobile burger + saved-charts drawer (`AnalyseMobileNav`) — mirrors the Energy mobile nav. On `/analyse/*` the topbar burger opens a drawer listing the user's saved charts plus a "Nouveau graphique" entry, so users can switch between charts without going through the desktop sidebar. The h1 page title is hidden on mobile (the topbar already shows it), reclaiming vertical space for the chart.
+- Feat (UI/Analyse): friendly metric labels everywhere a binding chip or legend appears, even on saved charts. The chart pills, tooltip and legend now show "Température extérieure" / "Batterie Module Extérieur" / etc., rather than the raw alias (`temperature_2`, `battery_3`). Saved charts re-fetch their equipment's bindings at load to enrich the labels.
+- Change (mobile UX): drop the redundant `⋮` MoreVertical button in the mobile topbar — it opened the same drawer (Settings / Plugins / Account / Logout) as the bottom-nav "Plus" button. One entry point, no duplicate.
+- Fix (UI/Analyse): TZ-correct date arithmetic in the period navigator. The previous shift used `toISOString().slice(0, 10)` (= UTC date string), which silently lost a day when local time was ahead of UTC — the forward arrow appeared stuck and backward skipped days. Replaced with a local-date formatter.
+
 ### v1.15.5 — 2026-05-30 { #v1-15-5 }
 
 - Fix (history): outdoor temperature and humidity bindings (`temperature_outdoor` / `humidity_outdoor` categories — typically the Netatmo outdoor module) are now historized by default. The `CATEGORY_DEFAULTS_ON` whitelist in `history-writer.ts` only knew the indoor variants, so on-by-default fell through to OFF and no point was ever written to InfluxDB. Existing equipments pick up the change at next history-writer cache refresh (any `equipment.updated` event, or boot). First `resolveHistorize` unit-test file added to lock the contract for the on-by-default set.

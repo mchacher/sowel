@@ -13,6 +13,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.6 — 2026-05-30 { #v1-15-6 }
+
+- Évolution (UI/Analyse) : le sélecteur de plage temporelle de la page Analyse est remplacé par le même bandeau calendaire que la page Énergie — onglets de période (Jour / Sem / Mois / Année) + flèches précédent/suivant + bouton « Aujourd'hui ». Permet de naviguer sur n'importe quelle fenêtre absolue (un mardi précis, août dernier, 2025 en entier) au lieu de juste « les N dernières heures/jours ». Indispensable pour visualiser des données historisées rétroactivement. Les 4 onglets sont en largeur égale et le layout copie celui d'Énergie (titre à gauche, navigateur à droite).
+- Évolution (UI/Analyse) : burger mobile + drawer des charts sauvegardés (`AnalyseMobileNav`) — copie du pattern mobile d'Énergie. Sur `/analyse/*`, le burger de la topbar ouvre un drawer listant les charts enregistrés + une entrée « Nouveau graphique ». Le titre `h1` est caché sur mobile (déjà présent dans la topbar), récupérant de l'espace vertical pour le graphe.
+- Évolution (UI/Analyse) : libellés humains partout où une chip ou une légende de binding apparaît, y compris sur les charts sauvegardés. Les pills, le tooltip et la légende affichent désormais « Température extérieure » / « Batterie Module Extérieur » / etc., au lieu de l'alias brut (`temperature_2`, `battery_3`). Les charts sauvegardés re-fetchent les bindings de l'équipement à l'ouverture pour enrichir les labels.
+- Changement (UX mobile) : suppression du bouton `⋮` MoreVertical redondant dans la topbar mobile — il ouvrait exactement le même drawer (Réglages / Plugins / Compte / Déconnexion) que le bouton « Plus » de la bottom-nav. Un seul point d'entrée, plus de doublon.
+- Correctif (UI/Analyse) : arithmétique de date TZ-correcte dans le navigateur de période. L'ancien shift utilisait `toISOString().slice(0, 10)` (= date UTC), ce qui perdait silencieusement un jour quand l'heure locale est en avance sur UTC — la flèche « suivant » paraissait bloquée et « précédent » sautait des jours. Remplacé par un formatter de date locale.
+
 ### v1.15.5 — 2026-05-30 { #v1-15-5 }
 
 - Correctif (history) : les bindings de température et d'humidité extérieures (catégories `temperature_outdoor` / `humidity_outdoor` — typiquement le module extérieur Netatmo) sont désormais historisés par défaut. La liste blanche `CATEGORY_DEFAULTS_ON` de `history-writer.ts` ne connaissait que les variantes intérieures, donc on-par-défaut tombait sur OFF et aucun point n'était jamais écrit dans InfluxDB. Les équipements existants reprennent automatiquement au prochain rafraîchissement du cache du history-writer (event `equipment.updated` ou démarrage). Premier fichier de tests unitaires sur `resolveHistorize` pour verrouiller le contrat.
