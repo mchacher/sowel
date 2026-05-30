@@ -449,6 +449,12 @@ export function AnalyseView() {
   }, [fetchCharts]);
 
   // --- Merge all series into a unified chart dataset ---
+  // The X axis is a continuous time-scale (epoch milliseconds), not a
+  // categorical string. Otherwise Recharts treats each point as its own
+  // category and a month label like "mars" appears multiple times on the
+  // X axis (once per data point in that month). With a time scale,
+  // tickFormatter renders "mars" / "avr." / ... only where Recharts
+  // places a tick, and minTickGap controls the spacing.
   const chartData = useMemo(() => {
     if (series.length === 0) return [];
 
@@ -466,11 +472,26 @@ export function AnalyseView() {
 
     const sorted = Array.from(timeMap.entries()).sort(([a], [b]) => a.localeCompare(b));
     return sorted.map(([time, values]) => ({
-      time,
-      label: formatTime(time, period),
+      time: new Date(time).getTime(),
       ...values,
     }));
-  }, [series, seriesData, period]);
+  }, [series, seriesData]);
+
+  /** Minimum pixel gap between X ticks per period. Tighter for shorter
+   * windows (day shows hours), looser for longer windows (year shows
+   * months — we want roughly one tick per month). */
+  const xMinTickGap = useMemo(() => {
+    switch (period) {
+      case "day":
+        return 60;
+      case "week":
+        return 70;
+      case "month":
+        return 80;
+      case "year":
+        return 90;
+    }
+  }, [period]);
 
   const anyLoading = series.some((s) => seriesData[s.id]?.loading);
 
@@ -718,12 +739,15 @@ export function AnalyseView() {
               <LineChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="time"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  scale="time"
                   tick={{ fontSize: 10, fill: textTertiary }}
                   tickLine={false}
                   axisLine={{ stroke: borderColor }}
-                  interval="preserveStartEnd"
-                  minTickGap={50}
+                  minTickGap={xMinTickGap}
+                  tickFormatter={(ts: number) => formatTime(new Date(ts).toISOString(), period)}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: textTertiary }}
@@ -741,8 +765,9 @@ export function AnalyseView() {
                     color: "var(--color-text)",
                   }}
                   labelFormatter={(_, payload) => {
-                    if (payload?.[0]?.payload?.time) {
-                      return formatTooltipTime(payload[0].payload.time as string);
+                    const ts = payload?.[0]?.payload?.time;
+                    if (typeof ts === "number") {
+                      return formatTooltipTime(new Date(ts).toISOString());
                     }
                     return "";
                   }}
