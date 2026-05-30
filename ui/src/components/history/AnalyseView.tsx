@@ -489,10 +489,10 @@ export function AnalyseView() {
 
   return (
     <div className="space-y-4">
-      {/* Header: title (left, hidden on mobile — topbar shows it) · period
-          navigator (center) · save actions (right). Wraps to a column on
-          narrow screens via flex-wrap + gap. */}
-      <div className="flex flex-wrap items-center gap-4 justify-between">
+      {/* Header — copies Energy's two-child flex layout (title left,
+          PeriodSelector right, justify-between). Save actions move to the
+          end of the series-pills row so the header stays clean. */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="hidden sm:flex items-center gap-3">
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>
@@ -503,98 +503,99 @@ export function AnalyseView() {
           onPeriodChange={setPeriod}
           onDateChange={setDate}
         />
-        <div className="flex items-center gap-1">
-          {series.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
-                  bg-primary-light text-primary hover:bg-primary hover:text-white
-                  transition-colors cursor-pointer disabled:opacity-50"
-                title={t("analyse.save")}
-              >
-                <Save size={14} strokeWidth={1.5} />
-                {t("analyse.save")}
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAs}
-                disabled={saving}
-                className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
-                  hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
-                title={t("analyse.saveAs")}
-              >
-                <Copy size={14} strokeWidth={1.5} />
-              </button>
-              {currentChart && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
-                    hover:bg-error/10 hover:text-error transition-colors cursor-pointer"
-                  title={t("analyse.deleteChart")}
-                >
-                  <Trash2 size={14} strokeWidth={1.5} />
-                </button>
-              )}
-            </>
-          )}
-        </div>
       </div>
 
-      {/* Series pills + add button */}
-      <div className="flex flex-wrap items-center gap-2">
-        {series.map((s) => (
-          <div
-            key={s.id}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium bg-surface border border-border"
+      {/* Series pills + add button (left) — save / save-as / delete (right) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {series.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium bg-surface border border-border"
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: s.color }}
+              />
+              {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
+              <span className="text-text">{s.equipmentName}</span>
+              <span className="text-text-tertiary">
+                /{" "}
+                {s.category
+                  ? humanBindingLabel(
+                      { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+                      t,
+                    )
+                  : s.alias}
+              </span>
+              {CATEGORY_UNITS[s.category] && (
+                <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
+              )}
+              <button
+                type="button"
+                onClick={() => removeSeries(s.id)}
+                className="ml-0.5 text-text-tertiary hover:text-error transition-colors cursor-pointer"
+              >
+                <X size={12} strokeWidth={2} />
+              </button>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showAddForm;
+              setShowAddForm(next);
+              if (next && !selectedZoneId && flatZones.length > 0) {
+                setSelectedZoneId(flatZones[0].id);
+              }
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium
+              bg-primary-light text-primary hover:bg-primary hover:text-white
+              transition-colors cursor-pointer"
           >
-            <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: s.color }}
-            />
-            {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
-            <span className="text-text">{s.equipmentName}</span>
-            <span className="text-text-tertiary">
-              /{" "}
-              {s.category
-                ? humanBindingLabel(
-                    { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                    t,
-                  )
-                : s.alias}
-            </span>
-            {CATEGORY_UNITS[s.category] && (
-              <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
-            )}
+            <Plus size={12} strokeWidth={2} />
+            {t("analyse.addSeries")}
+          </button>
+        </div>
+
+        {series.length > 0 && (
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => removeSeries(s.id)}
-              className="ml-0.5 text-text-tertiary hover:text-error transition-colors cursor-pointer"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                bg-primary-light text-primary hover:bg-primary hover:text-white
+                transition-colors cursor-pointer disabled:opacity-50"
+              title={t("analyse.save")}
             >
-              <X size={12} strokeWidth={2} />
+              <Save size={14} strokeWidth={1.5} />
+              <span className="hidden sm:inline">{t("analyse.save")}</span>
             </button>
+            <button
+              type="button"
+              onClick={handleSaveAs}
+              disabled={saving}
+              className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+                hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
+              title={t("analyse.saveAs")}
+            >
+              <Copy size={14} strokeWidth={1.5} />
+            </button>
+            {currentChart && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+                  hover:bg-error/10 hover:text-error transition-colors cursor-pointer"
+                title={t("analyse.deleteChart")}
+              >
+                <Trash2 size={14} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={() => {
-            const next = !showAddForm;
-            setShowAddForm(next);
-            if (next && !selectedZoneId && flatZones.length > 0) {
-              setSelectedZoneId(flatZones[0].id);
-            }
-          }}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium
-            bg-primary-light text-primary hover:bg-primary hover:text-white
-            transition-colors cursor-pointer"
-        >
-          <Plus size={12} strokeWidth={2} />
-          {t("analyse.addSeries")}
-        </button>
+        )}
       </div>
 
       {/* Add series form */}
