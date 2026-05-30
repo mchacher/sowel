@@ -289,9 +289,11 @@ function MobileTopbarBurger() {
   const hasProduction = useEnergy((s) => s.hasProduction);
   const openZoneDrawer = useUiState((s) => s.openZoneDrawer);
   const openEnergyNav = useUiState((s) => s.openEnergyNav);
+  const openAnalyseNav = useUiState((s) => s.openAnalyseNav);
 
   const onZonePage = location.pathname === "/home" || location.pathname.startsWith("/home/");
   const onEnergyPage = location.pathname.startsWith("/energy");
+  const onAnalysePage = location.pathname.startsWith("/analyse");
 
   let onClick: (() => void) | null = null;
   let label = "";
@@ -301,6 +303,9 @@ function MobileTopbarBurger() {
   } else if (onEnergyPage && hasProduction) {
     onClick = openEnergyNav;
     label = t("nav.energy");
+  } else if (onAnalysePage) {
+    onClick = openAnalyseNav;
+    label = t("analyse.title");
   }
 
   if (onClick) {

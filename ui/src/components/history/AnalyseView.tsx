@@ -489,10 +489,11 @@ export function AnalyseView() {
 
   return (
     <div className="space-y-4">
-      {/* Header: title (left) · period navigator (center) · save actions (right).
-          Wraps to a column on narrow screens via flex-wrap + gap. */}
+      {/* Header: title (left, hidden on mobile — topbar shows it) · period
+          navigator (center) · save actions (right). Wraps to a column on
+          narrow screens via flex-wrap + gap. */}
       <div className="flex flex-wrap items-center gap-4 justify-between">
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>
         </div>
