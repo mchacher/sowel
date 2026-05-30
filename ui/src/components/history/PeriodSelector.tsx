@@ -65,7 +65,7 @@ export function PeriodSelector({ period, date, onPeriodChange, onDateChange }: P
             key={p.key}
             type="button"
             onClick={() => onPeriodChange(p.key)}
-            className={`px-3 py-1.5 text-[12px] font-medium transition-colors cursor-pointer ${
+            className={`min-w-[60px] px-3 py-1.5 text-[12px] font-medium text-center transition-colors cursor-pointer ${
               period === p.key
                 ? "bg-primary text-white"
                 : "bg-surface text-text-secondary hover:bg-border-light hover:text-text"
