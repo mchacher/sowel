@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.5 — 2026-05-30 { #v1-15-5 }
+
+- Correctif (history) : les bindings de température et d'humidité extérieures (catégories `temperature_outdoor` / `humidity_outdoor` — typiquement le module extérieur Netatmo) sont désormais historisés par défaut. La liste blanche `CATEGORY_DEFAULTS_ON` de `history-writer.ts` ne connaissait que les variantes intérieures, donc on-par-défaut tombait sur OFF et aucun point n'était jamais écrit dans InfluxDB. Les équipements existants reprennent automatiquement au prochain rafraîchissement du cache du history-writer (event `equipment.updated` ou démarrage). Premier fichier de tests unitaires sur `resolveHistorize` pour verrouiller le contrat.
+- Évolution (UI/historique) : remplace les aliases bruts (`temperature_2`, `humidity_2`, `battery_3`…) par des libellés humains équipement-level partout où une chip ou une légende de binding apparaît — sélecteur Analyse, pilules de séries, Tooltip et Légende du graphe, et fiche historique de la page équipement. La distinction intérieur / extérieur vient directement de la catégorie (`Température intérieure` vs `Température extérieure`) ; seules les catégories multi-instances sans frère sémantique (typiquement plusieurs batteries sur une station multi-modules) remontent un nom de device en discriminant (`Batterie Module Extérieur` / `Anémomètre` / `Pluviomètre`). Survol d'une chip = affichage de l'alias brut en tooltip pour les power users.
+
 ### v1.15.4 — 2026-05-29 { #v1-15-4 }
 
 - Correctif (UI/météo) : le module extérieur Netatmo (NAModule1) est désormais sélectionnable lors de la création d'un équipement `weather`. Le filtre du sélecteur ne listait que `temperature` / `humidity` (variantes intérieur), donc le module extérieur — celui qui porte précisément la température extérieure, ironiquement — était masqué de la liste des devices compatibles et silencieusement ignoré par la boucle d'auto-binding. Ajout de `temperature_outdoor` et `humidity_outdoor` dans le filtre, ainsi que dans `SENSOR_DATA_CATEGORIES` pour que la vue détail (bottom sheet) les voie aussi. Verrouillé par des tests unitaires.

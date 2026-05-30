@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.5 — 2026-05-30 { #v1-15-5 }
+
+- Fix (history): outdoor temperature and humidity bindings (`temperature_outdoor` / `humidity_outdoor` categories — typically the Netatmo outdoor module) are now historized by default. The `CATEGORY_DEFAULTS_ON` whitelist in `history-writer.ts` only knew the indoor variants, so on-by-default fell through to OFF and no point was ever written to InfluxDB. Existing equipments pick up the change at next history-writer cache refresh (any `equipment.updated` event, or boot). First `resolveHistorize` unit-test file added to lock the contract for the on-by-default set.
+- Feat (UI/history): replace raw binding aliases (`temperature_2`, `humidity_2`, `battery_3`, …) with equipment-level human-readable labels everywhere a binding chip or legend appears — Analyse picker chips, series pills, chart Tooltip / Legend, and the History panel of the equipment detail page. Indoor / outdoor disambiguation comes from the data category itself (`Température intérieure` vs `Température extérieure`); only multi-instance categories with no semantic sibling (typically multiple batteries on a multi-module weather station) leak a device name as a disambiguator (`Batterie Module Extérieur` / `Anémomètre` / `Pluviomètre`). Hovering a chip still shows the raw alias as a tooltip for power users.
+
 ### v1.15.4 — 2026-05-29 { #v1-15-4 }
 
 - Fix (UI/weather): the Netatmo outdoor module (NAModule1) is now bindable on a `weather` equipment. The category filter in the device selector only listed `temperature` / `humidity` (indoor variants), so the outdoor module — the only one carrying the _outdoor_ temperature, ironically — was hidden from the compatible-devices list and silently skipped by the auto-binding loop. Add `temperature_outdoor` and `humidity_outdoor` to the filter, and to `SENSOR_DATA_CATEGORIES` so the bottom-sheet detail view picks them up too. Locked with unit tests.
