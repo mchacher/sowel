@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.15.x — Décomposition consommation live
 
+### v1.15.8 — 2026-05-30 { #v1-15-8 }
+
+- Correctif (UI/Analyse) : quand deux bindings du même équipement partagent une catégorie (par ex. un `temperature` Netatmo NAMain et un `temperature` polytropic PAC — tous les deux intérieurs par catégorie, mais physiquement distincts), le sélecteur de chips et la légende du graphe affichaient deux entrées « Température intérieure » impossibles à distinguer. Désormais on suffixe `(deviceName)` quand plusieurs bindings de la même catégorie coexistent sur l'équipement, en cohérence avec ce que faisait déjà le helper pour les autres catégories multi-instances comme la batterie.
+
 ### v1.15.7 — 2026-05-30 { #v1-15-7 }
 
 - Correctif (UI/Analyse) : dans les vues Année / Mois, l'axe des X répétait le même libellé de mois plusieurs fois (« mars mars mars … avr. avr. avr. »). Cause : l'axe X était câblé en mode catégorique (chaque point quotidien était sa propre catégorie). Passage à une échelle temporelle continue (epoch ms + `tickFormatter`) : Recharts espace désormais les ticks régulièrement dans le temps et le formatter ne rend « mars » qu'une fois là où un tick atterrit. `minTickGap` est désormais sensible à la période (60/70/80/90 px pour jour/sem/mois/année).

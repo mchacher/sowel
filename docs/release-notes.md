@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.15.x — Live submeter breakdown
 
+### v1.15.8 — 2026-05-30 { #v1-15-8 }
+
+- Fix (UI/Analyse): when two bindings on the same equipment share a category (e.g. a Netatmo NAMain `temperature` and a polytropic PAC `temperature` — both indoor by category, but from physically different sources), the chip selector and the chart legend both showed two entries labelled "Température intérieure" with no way to tell them apart. Now appends `(deviceName)` when more than one binding of the same category exists on the equipment, in line with the helper's existing behaviour for other multi-instance categories like battery.
+
 ### v1.15.7 — 2026-05-30 { #v1-15-7 }
 
 - Fix (UI/Analyse): in the Année / Mois views, the X axis repeated the same month label many times ("mars mars mars … avr. avr. avr."). Root cause: the X axis was wired as categorical strings so every daily data point became its own X position. Switch to a continuous time scale (epoch ms + `tickFormatter`) so Recharts spaces ticks evenly by time and the formatter renders "mars" only where a tick actually lands. `minTickGap` is now period-aware (60/70/80/90 px for day/week/month/year).
