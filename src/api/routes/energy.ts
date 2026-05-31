@@ -33,6 +33,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   } = deps;
   const logger = parentLogger.child({ module: "energy-api" });
 
+  // Spec 119 — surface the resolved server TZ once at boot so an
+  // operator can catch a misconfigured `docker-compose.yml` (a wrong
+  // TZ silently shifts every week / month / year bucket boundary by
+  // ±1 day).  The TZ is reused by every Flux `aggregateWindow(location:)`
+  // call across the four query helpers below.
+  logger.info({ tz: getServerTz() }, "energy routes: aggregation TZ resolved");
+
   // ============================================================
   // GET /api/v1/energy/status
   // ============================================================
@@ -156,23 +163,22 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         }
       }
 
-      // Build final EnergyPoint array
+      // Spec 119 — always return N buckets for the period.  Walk the
+      // expected bucket times in local TZ and zero-fill any bucket
+      // that neither consumption nor production data filled.  This
+      // gives consumers (web UI, sowel-energy-display firmware) a
+      // fixed-length array to iterate without gap-handling code.
+      const consoByTime = new Map(consumptionPoints.map((p) => [p.time, p]));
       const points: EnergyPoint[] = [];
-      const allTimes = new Set([...consumptionPoints.map((p) => p.time), ...prodMap.keys()]);
-      const sortedTimes = [...allTimes].sort();
-
-      for (const time of sortedTimes) {
-        const conso = consumptionPoints.find((p) => p.time === time);
+      for (const time of expectedBucketTimes(from, to, resolution)) {
+        const conso = consoByTime.get(time);
         const hp = conso?.hp ?? 0;
         const hc = conso?.hc ?? 0;
         const prodData = prodMap.get(time);
         const prod = prodData?.prod ?? 0;
         const autoconso = prodData?.autoconso ?? 0;
         const injection = prodData?.injection ?? 0;
-
-        if (hp + hc > 0 || prod > 0) {
-          points.push({ time, hp, hc, prod, autoconso, injection });
-        }
+        points.push({ time, hp, hc, prod, autoconso, injection });
       }
 
       const totals = computeTotals(points);
@@ -223,6 +229,12 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         buckets.push(`${config.bucket}-energy-hourly`);
       }
 
+      // Spec 119 — every series in the response is N buckets long
+      // (fixed per period).  Compute the canonical bucket times once
+      // up front; each submeter and the "other" residual zero-fill
+      // against this list.
+      const bucketTimes = expectedBucketTimes(from, to, resolution);
+
       // Per-submeter series
       const submeters: SubmeterSeries[] = [];
       const totalsByEquipment: Record<string, number> = {};
@@ -231,11 +243,17 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       const sortedSubmeters = [...submeterEquipments].sort((a, b) => a.id.localeCompare(b.id));
       for (let i = 0; i < sortedSubmeters.length; i++) {
         const eq = sortedSubmeters[i];
-        let points: EnergyByUsagePoint[] = [];
+        let rawPoints: EnergyByUsagePoint[] = [];
         for (const b of buckets) {
-          points = await querySubmeterPoints(client, config.org, b, eq.id, from, to, resolution);
-          if (points.length > 0) break;
+          rawPoints = await querySubmeterPoints(client, config.org, b, eq.id, from, to, resolution);
+          if (rawPoints.length > 0) break;
         }
+        const byTime = new Map(rawPoints.map((p) => [p.time, p.wh] as const));
+        // Build the always-N series.
+        const points: EnergyByUsagePoint[] = bucketTimes.map((time) => ({
+          time,
+          wh: byTime.get(time) ?? 0,
+        }));
         const total = points.reduce((acc, p) => acc + p.wh, 0);
         totalsByEquipment[eq.id] = total;
         for (const p of points) {
@@ -249,7 +267,8 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         });
       }
 
-      // "Other" residual = main meter consumption per time - Σ submeters per time, clamped ≥ 0
+      // "Other" residual = main meter consumption per time - Σ submeters per time, clamped ≥ 0.
+      // Built against the canonical bucket list so the array length matches the submeters'.
       const otherPoints: EnergyByUsagePoint[] = [];
       let otherTotal = 0;
       let mainTotal = 0;
@@ -268,11 +287,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           );
           if (mainPoints.length > 0) break;
         }
-        for (const p of mainPoints) {
-          mainTotal += p.wh;
-          const subs = sumPerTime.get(p.time) ?? 0;
-          const other = Math.max(0, p.wh - subs);
-          if (other > 0) otherPoints.push({ time: p.time, wh: other });
+        const mainByTime = new Map(mainPoints.map((p) => [p.time, p.wh] as const));
+        for (const time of bucketTimes) {
+          const wh = mainByTime.get(time) ?? 0;
+          mainTotal += wh;
+          const subs = sumPerTime.get(time) ?? 0;
+          const other = Math.max(0, wh - subs);
+          otherPoints.push({ time, wh: other });
           otherTotal += other;
         }
       }
@@ -368,11 +389,68 @@ function findProductionEquipmentId(equipmentManager: EquipmentManager): string |
   return meter?.id ?? null;
 }
 
+// Spec 119 — resolution literal extended to include "1mo" for the
+// yearly bucket.  The same literal is exposed on
+// `EnergyHistoryResponse.resolution`; keep the two in sync.
+type Resolution = "5min" | "1h" | "1d" | "1mo";
+
+// Spec 119 — Influx aggregateWindow `every` string per resolution.
+const EVERY_BY_RESOLUTION: Record<Resolution, string> = {
+  "5min": "5m",
+  "1h": "1h",
+  "1d": "1d",
+  "1mo": "1mo",
+};
+
+/**
+ * Spec 119 — server timezone used by Flux `aggregateWindow(location:)`
+ * to align week / month / year buckets on the local midnight (and the
+ * 1st of the local month / year), not UTC.  Reads `process.env.TZ`
+ * with the docker-compose default `"Europe/Paris"` as the fallback.
+ */
+function getServerTz(): string {
+  return process.env.TZ ?? "Europe/Paris";
+}
+
+/**
+ * Spec 119 — walk `[from, to)` by `resolution` steps in the server's
+ * local TZ and return each bucket-start as a UTC ISO string.  Used
+ * by the route handlers to produce a fixed N-points response: any
+ * bucket Influx did not return a row for is zero-filled.
+ *
+ * For `"5min"` / `"1h"` the walk is a fixed millis bump.  For
+ * `"1d"` and `"1mo"` it goes through `setDate` / `setMonth`, which
+ * keep the same local time across DST switches and clamp end-of-month
+ * correctly (Jan 31 + 1 month → Feb 28/29).
+ */
+function expectedBucketTimes(from: Date, to: Date, resolution: Resolution): string[] {
+  const times: string[] = [];
+  let cursor = new Date(from);
+  while (cursor < to) {
+    times.push(cursor.toISOString());
+    if (resolution === "5min") {
+      cursor = new Date(cursor.getTime() + 5 * 60 * 1000);
+    } else if (resolution === "1h") {
+      cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
+    } else if (resolution === "1d") {
+      const next = new Date(cursor);
+      next.setDate(next.getDate() + 1);
+      cursor = next;
+    } else {
+      // "1mo"
+      const next = new Date(cursor);
+      next.setMonth(next.getMonth() + 1);
+      cursor = next;
+    }
+  }
+  return times;
+}
+
 function computeRange(
   period: string,
   dateStr: string,
   baseBucket: string,
-): { from: Date; to: Date; resolution: "5min" | "1h" | "1d"; bucket: string } {
+): { from: Date; to: Date; resolution: Resolution; bucket: string } {
   const date = new Date(dateStr + "T00:00:00");
 
   switch (period) {
@@ -396,7 +474,10 @@ function computeRange(
       from.setDate(from.getDate() + mondayOffset);
       const to = new Date(from);
       to.setDate(to.getDate() + 7);
-      return { from, to, resolution: "1h", bucket: `${baseBucket}-energy-hourly` };
+      // Spec 119 — daily resolution so the response is 7 buckets,
+      // not 168 hourly points.  Flux aggregates the hourly bucket up
+      // to 1 day at query time.
+      return { from, to, resolution: "1d", bucket: `${baseBucket}-energy-hourly` };
     }
     case "month": {
       const from = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -406,7 +487,9 @@ function computeRange(
     case "year": {
       const from = new Date(date.getFullYear(), 0, 1);
       const to = new Date(date.getFullYear() + 1, 0, 1);
-      return { from, to, resolution: "1d", bucket: `${baseBucket}-energy-daily` };
+      // Spec 119 — monthly resolution so the response is 12 buckets,
+      // not ~365 daily points.
+      return { from, to, resolution: "1mo", bucket: `${baseBucket}-energy-daily` };
     }
     default: {
       const from = new Date(date);
@@ -419,6 +502,12 @@ function computeRange(
 
 /**
  * Query energy_hp and energy_hc points from InfluxDB, merge by timestamp.
+ *
+ * Spec 119 — always passes through `aggregateWindow(every: $resolution,
+ * location: $tz)`, so bucket boundaries align with the server's local
+ * TZ (week starts Monday 00:00 local, month on the 1st local 00:00,
+ * year on Jan 1st local 00:00).  Empty buckets are NOT preserved here —
+ * the route handler zero-fills them based on `expectedBucketTimes()`.
  */
 async function queryEnergyHpHcPoints(
   client: import("@influxdata/influxdb-client").InfluxDB,
@@ -427,30 +516,29 @@ async function queryEnergyHpHcPoints(
   equipmentId: string,
   from: Date,
   to: Date,
-  _resolution: "5min" | "1h" | "1d",
+  resolution: Resolution,
 ): Promise<Array<{ time: string; hp: number; hc: number }>> {
   const queryApi = client.getQueryApi(org);
-  const needsAggregation = _resolution === "1h" && !bucket.includes("-energy-");
+  const every = EVERY_BY_RESOLUTION[resolution];
+  const tz = getServerTz();
 
   // Query both energy_hp and energy_hc in a single Flux query using alias filter
   const aliasFilter = `r.alias == "energy_hp" or r.alias == "energy_hc"`;
-  const flux = needsAggregation
-    ? `from(bucket: "${bucket}")
+  const flux = `import "timezone"
+from(bucket: "${bucket}")
   |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => ${aliasFilter})
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
-  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
-  |> sort(columns: ["_time"])`
-    : `from(bucket: "${bucket}")
-  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => ${aliasFilter})
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(
+       every: ${every},
+       fn: sum,
+       createEmpty: false,
+       timeSrc: "_start",
+       location: timezone.location(name: "${tz}"),
+     )
   |> sort(columns: ["_time"])`;
 
   // Collect HP and HC values indexed by timestamp
@@ -461,10 +549,14 @@ async function queryEnergyHpHcPoints(
   for await (const { values, tableMeta } of rows) {
     const row = tableMeta.toObject(values) as { _time: string; _value: number; alias: string };
     if (row._value == null) continue;
+    // Spec 119 — normalise the timestamp so it matches the canonical
+    // ".000Z" form returned by `expectedBucketTimes()` (Date.toISOString)
+    // regardless of how Influx formats `_time` in its raw response.
+    const time = new Date(row._time).toISOString();
     if (row.alias === "energy_hp") {
-      hpMap.set(row._time, (hpMap.get(row._time) ?? 0) + row._value);
+      hpMap.set(time, (hpMap.get(time) ?? 0) + row._value);
     } else if (row.alias === "energy_hc") {
-      hcMap.set(row._time, (hcMap.get(row._time) ?? 0) + row._value);
+      hcMap.set(time, (hcMap.get(time) ?? 0) + row._value);
     }
   }
 
@@ -494,28 +586,27 @@ async function queryEnergyLegacyPoints(
   equipmentId: string,
   from: Date,
   to: Date,
-  _resolution: "5min" | "1h" | "1d",
+  resolution: Resolution,
 ): Promise<Array<{ time: string; hp: number; hc: number }>> {
   const queryApi = client.getQueryApi(org);
-  const needsAggregation = _resolution === "1h" && !bucket.includes("-energy-");
+  const every = EVERY_BY_RESOLUTION[resolution];
+  const tz = getServerTz();
 
-  const flux = needsAggregation
-    ? `from(bucket: "${bucket}")
+  const flux = `import "timezone"
+from(bucket: "${bucket}")
   |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
-  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
-  |> sort(columns: ["_time"])`
-    : `from(bucket: "${bucket}")
-  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.alias == "energy")
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(
+       every: ${every},
+       fn: sum,
+       createEmpty: false,
+       timeSrc: "_start",
+       location: timezone.location(name: "${tz}"),
+     )
   |> sort(columns: ["_time"])`;
 
   const points: Array<{ time: string; hp: number; hc: number }> = [];
@@ -523,7 +614,7 @@ async function queryEnergyLegacyPoints(
   for await (const { values, tableMeta } of rows) {
     const row = tableMeta.toObject(values) as { _time: string; _value: number };
     if (row._value != null && row._value > 0) {
-      points.push({ time: row._time, hp: row._value, hc: 0 });
+      points.push({ time: new Date(row._time).toISOString(), hp: row._value, hc: 0 });
     }
   }
 
@@ -541,29 +632,28 @@ async function queryProductionPoints(
   equipmentId: string,
   from: Date,
   to: Date,
-  _resolution: "5min" | "1h" | "1d",
+  resolution: Resolution,
 ): Promise<Array<{ time: string; prod: number; autoconso: number; injection: number }>> {
   const queryApi = client.getQueryApi(org);
-  const needsAggregation = _resolution === "1h" && !bucket.includes("-energy-");
+  const every = EVERY_BY_RESOLUTION[resolution];
+  const tz = getServerTz();
 
   const aliasFilter = `r.alias == "energy" or r.alias == "autoconso" or r.alias == "injection"`;
-  const flux = needsAggregation
-    ? `from(bucket: "${bucket}")
+  const flux = `import "timezone"
+from(bucket: "${bucket}")
   |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => ${aliasFilter})
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
-  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
-  |> sort(columns: ["_time"])`
-    : `from(bucket: "${bucket}")
-  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => ${aliasFilter})
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(
+       every: ${every},
+       fn: sum,
+       createEmpty: false,
+       timeSrc: "_start",
+       location: timezone.location(name: "${tz}"),
+     )
   |> sort(columns: ["_time"])`;
 
   const prodMap = new Map<string, number>();
@@ -574,12 +664,13 @@ async function queryProductionPoints(
   for await (const { values, tableMeta } of rows) {
     const row = tableMeta.toObject(values) as { _time: string; _value: number; alias: string };
     if (row._value == null) continue;
+    const time = new Date(row._time).toISOString();
     if (row.alias === "energy") {
-      prodMap.set(row._time, (prodMap.get(row._time) ?? 0) + row._value);
+      prodMap.set(time, (prodMap.get(time) ?? 0) + row._value);
     } else if (row.alias === "autoconso") {
-      autoMap.set(row._time, (autoMap.get(row._time) ?? 0) + row._value);
+      autoMap.set(time, (autoMap.get(time) ?? 0) + row._value);
     } else if (row.alias === "injection") {
-      injMap.set(row._time, (injMap.get(row._time) ?? 0) + row._value);
+      injMap.set(time, (injMap.get(time) ?? 0) + row._value);
     }
   }
 
@@ -609,28 +700,27 @@ async function querySubmeterPoints(
   equipmentId: string,
   from: Date,
   to: Date,
-  resolution: "5min" | "1h" | "1d",
+  resolution: Resolution,
 ): Promise<EnergyByUsagePoint[]> {
   const queryApi = client.getQueryApi(org);
-  const needsAggregation = resolution === "1h" && !bucket.includes("-energy-");
+  const every = EVERY_BY_RESOLUTION[resolution];
+  const tz = getServerTz();
 
-  const flux = needsAggregation
-    ? `from(bucket: "${bucket}")
+  const flux = `import "timezone"
+from(bucket: "${bucket}")
   |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.alias == "energy")
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
-  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
-  |> sort(columns: ["_time"])`
-    : `from(bucket: "${bucket}")
-  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.alias == "energy")
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(
+       every: ${every},
+       fn: sum,
+       createEmpty: false,
+       timeSrc: "_start",
+       location: timezone.location(name: "${tz}"),
+     )
   |> sort(columns: ["_time"])`;
 
   const sums = new Map<string, number>();
@@ -638,7 +728,8 @@ async function querySubmeterPoints(
   for await (const { values, tableMeta } of rows) {
     const row = tableMeta.toObject(values) as { _time: string; _value: number };
     if (row._value == null) continue;
-    sums.set(row._time, (sums.get(row._time) ?? 0) + row._value);
+    const time = new Date(row._time).toISOString();
+    sums.set(time, (sums.get(time) ?? 0) + row._value);
   }
   return [...sums.entries()]
     .filter(([, wh]) => wh > 0)
@@ -658,29 +749,28 @@ async function queryMainConsumptionPoints(
   equipmentId: string,
   from: Date,
   to: Date,
-  resolution: "5min" | "1h" | "1d",
+  resolution: Resolution,
 ): Promise<EnergyByUsagePoint[]> {
   const queryApi = client.getQueryApi(org);
-  const needsAggregation = resolution === "1h" && !bucket.includes("-energy-");
+  const every = EVERY_BY_RESOLUTION[resolution];
+  const tz = getServerTz();
   const aliasFilter = `r.alias == "energy_hp" or r.alias == "energy_hc" or r.alias == "energy"`;
 
-  const flux = needsAggregation
-    ? `from(bucket: "${bucket}")
+  const flux = `import "timezone"
+from(bucket: "${bucket}")
   |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => ${aliasFilter})
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
-  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false, timeSrc: "_start")
-  |> sort(columns: ["_time"])`
-    : `from(bucket: "${bucket}")
-  |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => ${aliasFilter})
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
+  |> aggregateWindow(
+       every: ${every},
+       fn: sum,
+       createEmpty: false,
+       timeSrc: "_start",
+       location: timezone.location(name: "${tz}"),
+     )
   |> sort(columns: ["_time"])`;
 
   // Sum HP+HC at each timestamp (legacy "energy" rows are already the total).
@@ -691,10 +781,11 @@ async function queryMainConsumptionPoints(
   for await (const { values, tableMeta } of rows) {
     const row = tableMeta.toObject(values) as { _time: string; _value: number; alias: string };
     if (row._value == null) continue;
+    const time = new Date(row._time).toISOString();
     if (row.alias === "energy_hp" || row.alias === "energy_hc") {
-      hpHcByTime.set(row._time, (hpHcByTime.get(row._time) ?? 0) + row._value);
+      hpHcByTime.set(time, (hpHcByTime.get(time) ?? 0) + row._value);
     } else if (row.alias === "energy") {
-      legacyByTime.set(row._time, (legacyByTime.get(row._time) ?? 0) + row._value);
+      legacyByTime.set(time, (legacyByTime.get(time) ?? 0) + row._value);
     }
   }
 

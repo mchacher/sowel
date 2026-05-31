@@ -899,7 +899,7 @@ export interface EnergyHistoryResponse {
   period: string;
   from: string;
   to: string;
-  resolution: "5min" | "1h" | "1d";
+  resolution: "5min" | "1h" | "1d" | "1mo"; // "1mo" added in spec 119 for the year period
   points: EnergyPoint[];
   totals: EnergyTotals;
 }
@@ -928,7 +928,7 @@ export interface EnergyByUsageResponse {
   period: string;
   from: string;
   to: string;
-  resolution: "5min" | "1h" | "1d";
+  resolution: "5min" | "1h" | "1d" | "1mo"; // "1mo" added in spec 119 for the year period
   submeters: SubmeterSeries[];
   other: { points: EnergyByUsagePoint[] };
   totals: {
