@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.17.x — Agrégation des historiques énergie par période
+
+### v1.17.0 — 2026-05-31 { #v1-17-0 }
+
+- Feat (backend/api) : `GET /api/v1/energy/history` et `GET /api/v1/energy/by-usage` renvoient désormais un nombre fixe de buckets pré-agrégés par période — 24 horaires en `day`, 7 quotidiens lundi à dimanche en `week`, 28 à 31 quotidiens en `month`, 12 mensuels janvier à décembre en `year`. Avant la spec 119, un appel `?period=week` renvoyait 168 points horaires et `?period=year` renvoyait environ 365 points journaliers, forçant chaque consommateur (le `EnergyBarChart.tsx` du web UI et le nouveau firmware sowel-energy-display iter 034) à ré-agréger côté client. L'agrégation se fait maintenant en une fois dans InfluxDB via `aggregateWindow(every: $resolution, location: $tz)`, avec des bornes de buckets alignées sur le fuseau local du serveur (`Europe/Paris` par défaut, journalisé au démarrage). La séparation tarifaire HP / HC est préservée sur chaque bucket. Les buckets vides sont retournés zéro-fillés pour que les consommateurs puissent itérer `0..N-1` sans gérer les trous. Le littéral `EnergyHistoryResponse.resolution` gagne `"1mo"` pour le bucket annuel. Spec 119.
+
+---
+
 ## 1.16.x — Améliorations des graphiques Analyse
 
 ### v1.16.0 — 2026-05-30 { #v1-16-0 }

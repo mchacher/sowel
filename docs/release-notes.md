@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.17.x — Energy history per-period aggregation
+
+### v1.17.0 — 2026-05-31 { #v1-17-0 }
+
+- Feat (backend/api): `GET /api/v1/energy/history` and `GET /api/v1/energy/by-usage` now return a fixed number of pre-aggregated buckets per period — 24 hourly for `day`, 7 daily Mon-Sun for `week`, 28-31 daily for `month`, 12 monthly Jan-Dec for `year`. Pre-spec-119 a `?period=week` query returned 168 hourly points and `?period=year` returned ~365 daily points, forcing every consumer (web UI `EnergyBarChart.tsx` and the new sowel-energy-display firmware iter 034) to re-aggregate client-side. The aggregation now happens once in InfluxDB via Flux `aggregateWindow(every: $resolution, location: $tz)`, with bucket boundaries aligned to the server's local TZ (`Europe/Paris` by default; logged at startup). HP / HC tariff split is preserved on every bucket. Empty buckets are returned zero-filled so consumers iterate `0..N-1` without gap-handling code. `EnergyHistoryResponse.resolution` gains a new `"1mo"` literal for the yearly bucket. Spec 119.
+
+---
+
 ## 1.16.x — Analyse chart improvements
 
 ### v1.16.0 — 2026-05-30 { #v1-16-0 }
