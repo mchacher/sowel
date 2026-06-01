@@ -11,6 +11,15 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.18.x — Display equipment type
+
+### v1.18.0 — 2026-06-01 { #v1-18-0 }
+
+- Feat (equipments): new `display` equipment type for Sowel-supervised displays. Companion plugin `sowel-plugin-displays` (separate repo) discovers displays via MQTT (retained `state` payload, LWT-driven availability) and exposes them as Sowel devices that bind to the new `display` equipment. The first vendor is the sowel-energy-display AMOLED firmware (iter 035, separate repo); future e-paper / OLED / ePOS displays follow the same wire contract with zero plugin change. New `DataCategory` values: `firmware_version`, `uptime`, `rssi`, `language`, `display_brightness`. New `OrderCategory` values: `set_language`, `set_display_brightness`. New widget family `displays` (zone-level aggregation `displaysOnline / displaysTotal`). New `DisplayPanel.tsx` on the equipment detail page renders the canonical fields with an inline language dropdown and brightness slider, hidden when the matching binding is absent. The dashboard widget picker hides displays — they are meta / control surfaces, not "things in the home" to be summarised. Spec 120 + 121.
+- Feat (plugins/registry): added `displays` plugin (v0.1.0, owner mchacher, official) — install from Admin → Plugins → Browse to start supervising displays. The plugin exposes `mqtt_url` / `mqtt_username` / `mqtt_password` / `topic_prefix` (default `sowel-display`) in its settings page.
+
+---
+
 ## 1.17.x — Energy history per-period aggregation
 
 ### v1.17.0 — 2026-05-31 { #v1-17-0 }

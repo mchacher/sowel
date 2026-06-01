@@ -11,6 +11,15 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.18.x — Type d'équipement Afficheur
+
+### v1.18.0 — 2026-06-01 { #v1-18-0 }
+
+- Feat (équipements) : nouveau type d'équipement `display` pour les afficheurs supervisés par Sowel. Le plugin compagnon `sowel-plugin-displays` (repo séparé) découvre les afficheurs via MQTT (payload `state` retenu, disponibilité pilotée par le LWT) et les expose comme des devices Sowel à binder sur le nouvel équipement `display`. Le premier vendeur est le firmware AMOLED sowel-energy-display (iter 035, repo séparé) ; tout futur afficheur e-paper / OLED / ePOS suit le même contrat de format de message sans modification du plugin. Nouvelles catégories `DataCategory` : `firmware_version`, `uptime`, `rssi`, `language`, `display_brightness`. Nouvelles catégories `OrderCategory` : `set_language`, `set_display_brightness`. Nouvelle famille de widget `displays` (agrégation à la zone `displaysOnline / displaysTotal`). Nouveau `DisplayPanel.tsx` sur la page de détail de l'équipement, qui affiche les champs canoniques avec un menu langue et un curseur de luminosité en ligne, masqués si la liaison correspondante est absente. Le sélecteur de widget du dashboard masque les afficheurs — ce sont des surfaces de contrôle, pas des choses de la maison à résumer. Spec 120 + 121.
+- Feat (plugins/registry) : ajout du plugin `displays` (v0.1.0, owner mchacher, officiel) — installable depuis Admin → Plugins → Parcourir pour commencer à superviser des afficheurs. Le plugin expose `mqtt_url` / `mqtt_username` / `mqtt_password` / `topic_prefix` (défaut `sowel-display`) dans sa page de réglages.
+
+---
+
 ## 1.17.x — Agrégation des historiques énergie par période
 
 ### v1.17.0 — 2026-05-31 { #v1-17-0 }

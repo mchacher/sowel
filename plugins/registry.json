@@ -406,5 +406,25 @@
     "sowelVersion": ">=1.4.0",
     "owner": "mchacher",
     "sha256": "3ce4c7a3fe3607ecf44fd6db5b7c5b4f7da3fd665f4a0c88815f3ee46164e1ac"
+  },
+  {
+    "id": "displays",
+    "type": "integration",
+    "name": "Sowel Displays",
+    "description": "MQTT supervision for Sowel-supervised displays (energy display, e-paper, ...)",
+    "icon": "Monitor",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-displays",
+    "version": "0.1.0",
+    "tags": ["display", "mqtt", "energy-display", "supervision"],
+    "i18n": {
+      "fr": {
+        "name": "Afficheurs Sowel",
+        "description": "Supervision MQTT des afficheurs supervisés par Sowel (energy display, e-paper, ...)"
+      }
+    },
+    "sowelVersion": ">=1.18.0",
+    "owner": "mchacher",
+    "sha256": "ea146ccffd50a3adbb2ce08a5c5a0f2506623984218ea75454c792fafe760551"
   }
 ]
