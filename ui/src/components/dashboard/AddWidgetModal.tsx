@@ -98,10 +98,14 @@ export function AddWidgetModal({
               </div>
 
               {/* Equipment list filtered by zone */}
+              {/* Spec 120 — `display` is excluded from the dashboard picker.
+                  Displays are meta / control surfaces, not "things in the home"
+                  the dashboard is meant to summarise. They remain visible in
+                  the zone view and their equipment detail page. */}
               {eqZoneId && (
                 <div className="space-y-0.5">
                   {equipments
-                    .filter((eq) => eq.zoneId === eqZoneId)
+                    .filter((eq) => eq.zoneId === eqZoneId && eq.type !== "display")
                     .map((eq) => (
                       <button
                         key={eq.id}
@@ -115,7 +119,7 @@ export function AddWidgetModal({
                         <span className="ml-2 text-[11px] text-text-tertiary">{eq.type}</span>
                       </button>
                     ))}
-                  {equipments.filter((eq) => eq.zoneId === eqZoneId).length === 0 && (
+                  {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.type !== "display").length === 0 && (
                     <p className="text-[13px] text-text-tertiary text-center py-4">{t("dashboard.noEquipmentsAvailable")}</p>
                   )}
                 </div>
