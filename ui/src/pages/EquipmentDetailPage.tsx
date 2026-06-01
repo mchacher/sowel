@@ -14,6 +14,7 @@ import { PoolHeatPumpControl } from "../components/equipments/PoolHeatPumpContro
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
+import { DisplayPanel } from "../components/equipments/DisplayPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBadge";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
@@ -355,7 +356,7 @@ export function EquipmentDetailPage() {
         <AppliancePanel equipment={equipment} />
       )}
 
-      {/* Sensor / Weather data */}
+      {/* Sensor / Weather / Display data */}
       {equipment.type === "weather_forecast" ? (
         <WeatherForecastPanel bindings={equipment.dataBindings} />
       ) : equipment.type === "weather" ? (
@@ -363,6 +364,13 @@ export function EquipmentDetailPage() {
           bindings={equipment.dataBindings}
           equipmentId={equipment.id}
           computedData={equipment.computedData}
+        />
+      ) : equipment.type === "display" ? (
+        <DisplayPanel
+          dataBindings={equipment.dataBindings}
+          orderBindings={equipment.orderBindings}
+          equipmentId={equipment.id}
+          onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
         />
       ) : isSensor ? (
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />

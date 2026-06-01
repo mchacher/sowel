@@ -200,6 +200,18 @@ describe("EquipmentManager", () => {
       expect(eq.name).toBe("Store banne");
     });
 
+    // Spec 120 — display equipment.
+    it("creates a display equipment", () => {
+      const zone = zoneManager.create({ name: "Cuisine" });
+      const eq = manager.create({
+        name: "Cadran énergie",
+        type: "display",
+        zoneId: zone.id,
+      });
+      expect(eq.type).toBe("display");
+      expect(eq.name).toBe("Cadran énergie");
+    });
+
     it("rejects non-existent zone", () => {
       expect(() => {
         manager.create({ name: "Test", type: "light_onoff", zoneId: "non-existent" });

@@ -95,6 +95,39 @@ describe("computeBindingCandidates", () => {
     expect(result[0].dataKeys).toEqual(["temperature", "humidity", "pressure"]);
     expect(result[0].orderKeys).toEqual([]);
   });
+
+  // Spec 120 — display equipment polymorphism.
+  it("display with all telemetry → one all-data candidate", () => {
+    const datas = [
+      data("version", "text", { category: "firmware_version" }),
+      data("uptime", "number", { category: "uptime" }),
+      data("rssi", "number", { category: "rssi" }),
+      data("language", "text", { category: "language" }),
+      data("brightness", "number", { category: "display_brightness" }),
+    ];
+    const orders = [order("set_language", "text"), order("set_brightness", "number")];
+    const result = computeBindingCandidates("display", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("all");
+    expect(result[0].dataKeys).toEqual(["version", "uptime", "rssi", "language", "brightness"]);
+    expect(result[0].orderKeys).toEqual(["set_language", "set_brightness"]);
+  });
+
+  it("display with only mandatory fields (version + uptime) → still bindable", () => {
+    const datas = [
+      data("version", "text", { category: "firmware_version" }),
+      data("uptime", "number", { category: "uptime" }),
+    ];
+    const result = computeBindingCandidates("display", datas, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys).toEqual(["version", "uptime"]);
+    expect(result[0].orderKeys).toEqual([]);
+  });
+
+  it("display with no data + no orders → no candidate (cannot bind to nothing)", () => {
+    const result = computeBindingCandidates("display", [], []);
+    expect(result).toHaveLength(0);
+  });
 });
 
 describe("hasFreeCandidates", () => {

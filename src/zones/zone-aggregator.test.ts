@@ -128,6 +128,8 @@ describe("ZoneAggregator", () => {
         sunrise: null,
         sunset: null,
         isDaylight: null,
+        displaysOnline: 0,
+        displaysTotal: 0,
         unavailableEquipmentsByCategory: {},
       });
     });
@@ -476,6 +478,67 @@ describe("ZoneAggregator", () => {
       expect(data?.shuttersTotal).toBe(0);
       expect(data?.shuttersOpen).toBe(0);
       expect(data?.averageShutterPosition).toBeNull();
+    });
+
+    // ──────────────────────────────────────────────────────────────
+    // Spec 120 — display equipment aggregation
+    // ──────────────────────────────────────────────────────────────
+
+    it("counts displays total and online (one online + one offline)", () => {
+      const zone = zoneManager.create({ name: "Cuisine" });
+
+      // Online display: bound to an online device with a fresh telemetry value.
+      const devOnline = seedDevice(db, {
+        name: "Cadran cuisine",
+        dataKeys: [
+          {
+            key: "version",
+            type: "text",
+            category: "firmware_version",
+            value: JSON.stringify("1.0.0"),
+          },
+        ],
+      });
+      const eqOnline = equipmentManager.create({
+        name: "Cadran cuisine",
+        type: "display",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(eqOnline.id, devOnline.dataIds[0], "version");
+
+      // Offline display: same shape but the device is offline.
+      const devOffline = seedDevice(db, {
+        name: "Cadran garage",
+        dataKeys: [
+          {
+            key: "version",
+            type: "text",
+            category: "firmware_version",
+            value: JSON.stringify("1.0.0"),
+          },
+        ],
+      });
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(devOffline.deviceId);
+      const eqOffline = equipmentManager.create({
+        name: "Cadran garage",
+        type: "display",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(eqOffline.id, devOffline.dataIds[0], "version");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.displaysTotal).toBe(2);
+      expect(data?.displaysOnline).toBe(1);
+    });
+
+    it("returns zero displays in a zone with none", () => {
+      const zone = zoneManager.create({ name: "Vide" });
+      aggregator.computeAll();
+      const data = aggregator.getByZoneId(zone.id);
+      expect(data?.displaysTotal).toBe(0);
+      expect(data?.displaysOnline).toBe(0);
     });
 
     it("counts water valves total and open with state alias", () => {

@@ -13,6 +13,7 @@ import {
   Heater,
   Zap,
   Tv,
+  Monitor,
   WashingMachine,
   Waves,
 } from "lucide-react";
@@ -51,6 +52,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   pool_pump: <Waves size={18} strokeWidth={1.5} />,
   pool_cover: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
   pool_heat_pump: <Thermometer size={18} strokeWidth={1.5} />,
+  display: <Monitor size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -76,6 +78,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   pool_pump: "equipments.type.pool_pump",
   pool_cover: "equipments.type.pool_cover",
   pool_heat_pump: "equipments.type.pool_heat_pump",
+  display: "equipments.type.display",
 };
 
 interface EquipmentCardProps {

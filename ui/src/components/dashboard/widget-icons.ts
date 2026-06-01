@@ -46,6 +46,7 @@ import {
   ToggleLeft,
   Settings,
   Radio,
+  Monitor,
   type LucideIcon,
 } from "lucide-react";
 import type { EquipmentType, WidgetFamily } from "../../types";
@@ -279,6 +280,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   ToggleLeft,
   Settings,
   Radio,
+  Monitor,
 };
 
 export const ICON_CATEGORIES: { label: string; icons: string[] }[] = [
@@ -288,7 +290,7 @@ export const ICON_CATEGORIES: { label: string; icons: string[] }[] = [
   { label: "Security", icons: ["Shield", "ShieldCheck", "Camera", "Bell", "Eye", "AlertTriangle"] },
   { label: "Sensors", icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "Signal", "Wifi"] },
   { label: "Rooms", icons: ["Home", "Sofa", "Bed", "CookingPot", "Bath", "Car", "Trees", "Flower2"] },
-  { label: "General", icons: ["Star", "Heart", "CircleDot", "ToggleLeft", "Settings", "Radio"] },
+  { label: "General", icons: ["Star", "Heart", "CircleDot", "ToggleLeft", "Settings", "Radio", "Monitor"] },
 ];
 
 const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
@@ -307,6 +309,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   pool_pump: "Droplets",
   pool_cover: "ArrowUpDown",
   pool_heat_pump: "Thermometer",
+  display: "Monitor",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
@@ -317,6 +320,7 @@ const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
   sensors: "Gauge",
   water: "Droplets",
   pool: "Droplets",
+  displays: "Monitor",
 };
 
 export function getWidgetIcon(

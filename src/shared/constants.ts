@@ -173,6 +173,8 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   sensors: ["sensor"],
   water: ["water_valve"],
   pool: ["pool_pump", "pool_cover", "pool_heat_pump"],
+  // Spec 120 — Sowel-supervised displays.
+  displays: ["display"],
 };
 
 // ============================================================

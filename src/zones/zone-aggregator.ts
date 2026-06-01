@@ -39,6 +39,9 @@ interface Accumulator {
   waterValvesTotal: number;
   waterFlowSum: number;
   waterFlowHasData: boolean;
+  /** Spec 120 — displays online (EquipmentStatus === "online") vs total. */
+  displaysOnline: number;
+  displaysTotal: number;
   /** Per-DataCategory count of equipments skipped because status === "offline" (spec 116). */
   unavailableByCategory: Partial<Record<DataCategory, number>>;
 }
@@ -67,6 +70,8 @@ function emptyAccumulator(): Accumulator {
     waterValvesTotal: 0,
     waterFlowSum: 0,
     waterFlowHasData: false,
+    displaysOnline: 0,
+    displaysTotal: 0,
     unavailableByCategory: {},
   };
 }
@@ -106,6 +111,8 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     waterValvesTotal: a.waterValvesTotal + b.waterValvesTotal,
     waterFlowSum: a.waterFlowSum + b.waterFlowSum,
     waterFlowHasData: a.waterFlowHasData || b.waterFlowHasData,
+    displaysOnline: a.displaysOnline + b.displaysOnline,
+    displaysTotal: a.displaysTotal + b.displaysTotal,
     unavailableByCategory: mergeUnavailable(a.unavailableByCategory, b.unavailableByCategory),
   };
 }
@@ -141,6 +148,8 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     sunrise: null,
     sunset: null,
     isDaylight: null,
+    displaysOnline: acc.displaysOnline,
+    displaysTotal: acc.displaysTotal,
     unavailableEquipmentsByCategory: acc.unavailableByCategory,
   };
 }
@@ -170,6 +179,8 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.sunrise === b.sunrise &&
     a.sunset === b.sunset &&
     a.isDaylight === b.isDaylight &&
+    a.displaysOnline === b.displaysOnline &&
+    a.displaysTotal === b.displaysTotal &&
     unavailableEqual(a.unavailableEquipmentsByCategory, b.unavailableEquipmentsByCategory)
   );
 }
@@ -486,6 +497,17 @@ export class ZoneAggregator {
       if (equipment.type === "weather") continue; // Exclude weather from zone aggregation
       const withDetails = this.equipmentManager.getByIdWithDetails(equipment.id);
       if (!withDetails) continue;
+
+      // Spec 120 — `display` zone counters are equipment-level (not
+      // binding-level), so they run before the offline early-out: total
+      // counts every display regardless of status, online counts only
+      // those with EquipmentStatus === "online" (degraded / offline excluded).
+      if (equipment.type === "display") {
+        acc.displaysTotal += 1;
+        if (withDetails.status === "online") {
+          acc.displaysOnline += 1;
+        }
+      }
 
       if (withDetails.status === "offline") {
         for (const binding of withDetails.dataBindings) {

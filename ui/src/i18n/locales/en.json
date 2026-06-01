@@ -241,6 +241,18 @@
   "equipments.type.pool_pump": "Pool pump",
   "equipments.type.pool_cover": "Pool cover",
   "equipments.type.pool_heat_pump": "Pool heat pump",
+  "equipments.type.display": "Sowel display",
+
+  "displays.panel.title": "Display state",
+  "displays.panel.noData": "No telemetry from this display yet.",
+  "displays.fields.firmware_version": "Firmware version",
+  "displays.fields.uptime": "Up since",
+  "displays.fields.rssi": "Wi-Fi signal",
+  "displays.fields.language": "Language",
+  "displays.fields.display_brightness": "Brightness",
+  "displays.widget.title": "Displays",
+  "displays.widget.empty": "No displays",
+  "displays.widget.onlineCount": "{{online}}/{{total}} online",
 
   "water.open": "Open",
   "water.closed": "Closed",

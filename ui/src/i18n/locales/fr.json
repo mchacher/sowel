@@ -241,6 +241,18 @@
   "equipments.type.pool_pump": "Pompe de piscine",
   "equipments.type.pool_cover": "Volet de piscine",
   "equipments.type.pool_heat_pump": "Pompe à chaleur piscine",
+  "equipments.type.display": "Afficheur Sowel",
+
+  "displays.panel.title": "État de l'afficheur",
+  "displays.panel.noData": "Aucune donnée encore remontée par cet afficheur.",
+  "displays.fields.firmware_version": "Version du firmware",
+  "displays.fields.uptime": "Démarré depuis",
+  "displays.fields.rssi": "Signal Wi-Fi",
+  "displays.fields.language": "Langue",
+  "displays.fields.display_brightness": "Luminosité",
+  "displays.widget.title": "Afficheurs",
+  "displays.widget.empty": "Aucun afficheur",
+  "displays.widget.onlineCount": "{{online}}/{{total}} en ligne",
 
   "water.open": "Ouverte",
   "water.closed": "Fermée",

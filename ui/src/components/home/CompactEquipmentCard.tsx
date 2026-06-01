@@ -51,6 +51,8 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   energy_meter:            { bg: "bg-accent-light", text: "text-accent" },
   main_energy_meter:       { bg: "bg-accent-light", text: "text-accent" },
   appliance:               { bg: "bg-border-light", text: "text-text-secondary" },
+  // Spec 120 — displays use the muted "info-only" tint, matching sensors.
+  display:                 { bg: "bg-sensor-50",    text: "text-sensor-500" },
 };
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {

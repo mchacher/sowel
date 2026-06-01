@@ -35,6 +35,7 @@ const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
   sensors: ["sensor"],
   water: ["water_valve"],
   pool: ["pool_pump", "pool_cover", "pool_heat_pump"],
+  displays: ["display"],
 };
 
 interface ZoneWidgetProps {

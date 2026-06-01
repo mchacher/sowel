@@ -46,6 +46,12 @@ export type DataCategory =
   | "appliance_state"
   | "pool_water_temperature"
   | "pool_temperature_setpoint"
+  // Spec 120 — display equipment telemetry.
+  | "firmware_version"
+  | "uptime"
+  | "rssi"
+  | "language"
+  | "display_brightness"
   | "generic";
 
 export type OrderCategory =
@@ -64,7 +70,10 @@ export type OrderCategory =
   | "pool_pump_toggle"
   | "pool_cover_move"
   | "pool_cover_position"
-  | "set_pool_temperature_setpoint";
+  | "set_pool_temperature_setpoint"
+  // Spec 120 — display equipment.
+  | "set_language"
+  | "set_display_brightness";
 
 // ============================================================
 // Device
@@ -169,6 +178,10 @@ export interface ZoneAggregatedData {
   sunrise: string | null;
   sunset: string | null;
   isDaylight: boolean | null;
+  /** Spec 120 — count of `display` equipments in this zone (+ descendants)
+   *  whose EquipmentStatus === "online" vs total. */
+  displaysOnline: number;
+  displaysTotal: number;
   /** Per-DataCategory count of equipments excluded from aggregation because
    *  status === "offline" (spec 116). Used by the UI to render "(N unavailable)"
    *  hints next to affected metrics. */
@@ -201,7 +214,9 @@ export type EquipmentType =
   | "water_valve"
   | "pool_pump"
   | "pool_cover"
-  | "pool_heat_pump";
+  | "pool_heat_pump"
+  // Spec 120 — Sowel-supervised display (energy display, e-paper, ...).
+  | "display";
 
 export interface Equipment {
   id: string;
@@ -853,7 +868,9 @@ export type WidgetFamily =
   | "heating"
   | "sensors"
   | "water"
-  | "pool";
+  | "pool"
+  // Spec 120 — Sowel-supervised displays.
+  | "displays";
 
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */

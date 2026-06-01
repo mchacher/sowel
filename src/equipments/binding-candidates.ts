@@ -152,8 +152,12 @@ export function computeBindingCandidates(
     case "energy_production_meter":
     case "button":
     case "appliance":
-    case "media_player": {
+    case "media_player":
+    case "display": {
       // Multi-value equipment: single candidate that groups everything.
+      // Spec 120 — `display` binds whatever telemetry the plugin exposes
+      // (firmware_version / uptime / rssi / language / display_brightness)
+      // + matching orders. Polymorphic: missing fields are fine.
       if (deviceData.length === 0 && deviceOrders.length === 0) return [];
       return [
         {
