@@ -16,6 +16,7 @@ This page summarises every published version, newest first. For the full diff be
 ### v1.19.1 — 2026-06-02 { #v1-19-1 }
 
 - Fix (UI/equipments): the auto-binding flow now picks up the `wake` order on display equipments. Before this fix, the `RELEVANT_ORDERS["display"]` whitelist in `bindingUtils.ts` listed only `language` and `brightness`, so even after the firmware advertised the new `display_wake` capability (iter 036) and the displays plugin v0.2.1 exposed it on the device, the equipment creation flow silently filtered it out. Result: the presence-display recipe v0.2.0 refused to start with `Display "..." has no order of category "display_wake" — firmware too old`. Fix: add `wake` to the display whitelist. Companion to spec 122. Note: the UI's `CANDIDATE_BASED_TYPES` set still excludes `display` (asymmetry with the backend's `binding-candidates.ts` which treats display as an "all"-candidate type). Aligning those is a follow-up; the whitelist fix is the minimal patch for the user-visible issue.
+- Feat (UI/displays): the equipment card in the zone view now surfaces a display's current brightness inline next to the type label — `Display · 30 %` when lit, `Display · Off` when brightness is 0 (the recipe-driven sleep state). Previously the user had to click into the equipment detail page to read the slider value to know whether the panel was asleep.
 
 ### v1.19.0 — 2026-06-02 { #v1-19-0 }
 

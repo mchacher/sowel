@@ -16,6 +16,7 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 ### v1.19.1 — 2026-06-02 { #v1-19-1 }
 
 - Fix (UI/équipements) : l'auto-binding ramasse désormais l'ordre `wake` sur les équipements display. Avant ce correctif, la whitelist `RELEVANT_ORDERS["display"]` dans `bindingUtils.ts` ne listait que `language` et `brightness`, donc même après que le firmware ait annoncé la nouvelle capacité `display_wake` (iter 036) et que le plugin displays v0.2.1 l'ait exposée sur le device, le flow de création d'équipement la filtrait silencieusement. Résultat : la recette presence-display v0.2.0 refusait de démarrer avec `Display "..." has no order of category "display_wake" — firmware too old`. Correctif : ajout de `wake` à la whitelist display. Compagnon de la spec 122. Note : le `CANDIDATE_BASED_TYPES` côté UI exclut encore `display` (asymétrie avec le `binding-candidates.ts` du backend qui traite display en "all"-candidate). L'alignement est un suivi ; ce correctif est le patch minimal pour le problème utilisateur.
+- Feat (UI/afficheurs) : la carte d'équipement dans la vue zone fait désormais apparaître la luminosité courante de l'afficheur à côté du label de type — `Afficheur · 30 %` quand allumé, `Afficheur · Éteint` quand la luminosité vaut 0 (état de veille piloté par la recette). Avant, il fallait cliquer sur l'équipement pour lire la valeur du slider et savoir si le panneau était endormi.
 
 ### v1.19.0 — 2026-06-02 { #v1-19-0 }
 
