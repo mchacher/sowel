@@ -129,6 +129,17 @@ const RELEVANT_DATA: Record<string, string[]> = {
     "appliance_state",
     "light_state",
   ],
+  // Spec 120 — Sowel-supervised displays. `generic` catches the
+  // hostname / ip_address informational fields surfaced by the
+  // plugin alongside the canonical 5.
+  display: [
+    "firmware_version",
+    "uptime",
+    "rssi",
+    "language",
+    "display_brightness",
+    "generic",
+  ],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -182,6 +193,10 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
     "shutter2_position",
   ],
   pool_heat_pump: ["setpoint"],
+  // Spec 120 — Sowel-supervised displays.  Order keys mirror what
+  // the displays plugin declares (see parse-state.ts of
+  // sowel-plugin-displays): the key IS the topic suffix.
+  display: ["language", "brightness"],
 };
 
 /**

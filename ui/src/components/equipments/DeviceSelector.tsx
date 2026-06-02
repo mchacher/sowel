@@ -23,6 +23,14 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   // Polytropic PAC matches via pool_water_temperature; Sonoff filtration relay
   // matches via light_state (used as the optional `filtration_state` binding).
   pool_heat_pump: ["pool_water_temperature", "light_state"],
+  // Spec 120 — Sowel-supervised displays (energy display, e-paper, ...).
+  // Any device that exposes one of the canonical display fields is a
+  // candidate. `firmware_version` / `uptime` would be too generic on
+  // their own (a future Zigbee plugin might emit them too), so the
+  // match keys on `display_brightness` / `language` first; if a vendor
+  // ships a passive single-screen display reporting only uptime, the
+  // user can still pick it via "Show all" toggle.
+  display: ["display_brightness", "language", "rssi"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
