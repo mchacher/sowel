@@ -415,7 +415,7 @@
     "icon": "Monitor",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-displays",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "tags": ["display", "mqtt", "energy-display", "supervision"],
     "i18n": {
       "fr": {
@@ -423,28 +423,28 @@
         "description": "Supervision MQTT des afficheurs supervisés par Sowel (energy display, e-paper, ...)"
       }
     },
-    "sowelVersion": ">=1.18.0",
+    "sowelVersion": ">=1.19.0",
     "owner": "mchacher",
-    "sha256": "ea146ccffd50a3adbb2ce08a5c5a0f2506623984218ea75454c792fafe760551"
+    "sha256": "d7b47de176d5c7bdc563c31ab0724ec607cbaaeb3aa58c8402ae9656464bb169"
   },
   {
     "id": "presence-display",
     "type": "recipe",
     "name": "Presence-driven display sleep",
-    "description": "Turns Sowel-supervised displays off after a configurable absence in a zone, wakes them on the next motion event.",
+    "description": "Turns Sowel-supervised displays off after a configurable absence in a zone, wakes them at the user's last-chosen brightness on the next motion event.",
     "icon": "Monitor",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-presence-display",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "tags": ["automation", "display", "motion", "presence", "sleep", "energy"],
     "i18n": {
       "fr": {
         "name": "Veille afficheur sur absence",
-        "description": "Éteint les afficheurs supervisés par Sowel après une période d'absence dans une zone, les réveille au mouvement suivant."
+        "description": "Éteint les afficheurs supervisés par Sowel après une période d'absence dans une zone, les réveille à la dernière luminosité choisie par l'utilisateur au mouvement suivant."
       }
     },
-    "sowelVersion": ">=1.18.0",
+    "sowelVersion": ">=1.19.0",
     "owner": "mchacher",
-    "sha256": "ceaa93d373f93bda1802a2f48df106cdf3238983ce71949a9c5a3c2bf9219350"
+    "sha256": "ac22da1f83e97b6c398286ed422a9968870dba3160db15a54fb971e02273fd44"
   }
 ]
