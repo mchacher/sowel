@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.18.x — Display equipment type
 
+### v1.18.4 — 2026-06-02 { #v1-18-4 }
+
+- Fix (UI/display): brightness slider polish. The v1.18.3 echo-driven draft clear left a short window where the rendered value could flash back to the previous binding value between the user release and the server echo. Replaced by a flat 1.5 s post-commit hold — the slider pins on the user's target until the firmware round-trip has reliably landed, no flicker. Slider step bumped from 5 to 10 (`min=0 max=100 step=10` → 11 well-spaced stops including the "Off" position at 0), per user feedback that the 5 % step felt too fine and the touch hit on 0 was unreliable.
+
 ### v1.18.3 — 2026-06-02 { #v1-18-3 }
 
 - Fix (UI/display): brightness slider now commits the order on `onPointerUp` (pointer release) instead of via the 300 ms trailing debounce of v1.18.2 — zero perceived latency between releasing the slider and the panel reacting. A 500 ms fallback debounce on `onChange` still covers keyboard / accessibility paths where pointerup never fires. The local draft value also stays pinned to the user's target until the WebSocket round-trip echoes the same value back, so the thumb no longer snaps back to the stale binding during the ~700 ms server cycle.

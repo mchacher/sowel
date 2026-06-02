@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.18.x — Type d'équipement Afficheur
 
+### v1.18.4 — 2026-06-02 { #v1-18-4 }
+
+- Fix (UI/afficheur) : finition du curseur de luminosité. La mise en place v1.18.3 du clear basé sur l'echo serveur laissait une courte fenêtre où la valeur affichée pouvait flasher en arrière sur la valeur précédente, entre le relâchement et l'écho serveur. Remplacé par un hold plat de 1,5 s post-commit : le curseur reste fixé sur la cible utilisateur jusqu'à ce que l'aller-retour firmware soit arrivé à coup sûr, plus de flicker. Pas du curseur porté de 5 à 10 (`min=0 max=100 step=10` → 11 paliers bien espacés dont la position "Off" à 0), suite à un retour utilisateur (pas de 5 % trop fin et difficulté à toucher exactement 0).
+
 ### v1.18.3 — 2026-06-02 { #v1-18-3 }
 
 - Fix (UI/afficheur) : le curseur de luminosité envoie maintenant la commande sur `onPointerUp` (relâchement du pointeur) au lieu de passer par le debounce 300 ms de la v1.18.2 — latence quasi nulle entre le relâchement et la réaction du panel. Un debounce 500 ms de secours sur `onChange` couvre toujours la navigation clavier / accessibilité où pointerup ne se déclenche pas. La valeur locale du curseur reste fixée sur la cible utilisateur jusqu'à ce que le WebSocket renvoie la même valeur du serveur, ce qui élimine le saut-arrière du pouce pendant les ~700 ms de l'aller-retour.
