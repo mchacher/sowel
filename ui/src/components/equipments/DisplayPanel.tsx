@@ -8,13 +8,16 @@ import type {
   OrderCategory,
 } from "../../types";
 
-/** Debounce a brightness slider — fires the order only after the drag
- *  settles for ~300 ms.  Without this, every onChange event during a
- *  pointer drag fires a POST to /orders, which then publishes an MQTT
- *  cmd to the display.  The firmware can handle the flood now (cmds
- *  are coalesced LVGL-side) but the API round-trip is wasted work
- *  and the 30 / 100 % rail values would never land cleanly. */
-const BRIGHTNESS_DEBOUNCE_MS = 300;
+/** Brightness slider behaviour:
+ *  - commit immediately on `onPointerUp` / `onTouchEnd` (pointer release)
+ *    so the user gets near-zero latency between releasing the slider
+ *    and the display reacting,
+ *  - fallback debounce (500 ms) on `onChange` to catch keyboard / a11y
+ *    paths that never fire a pointerup,
+ *  - the local draft value stays visible until the server value
+ *    catches up, so the slider never snaps back to the previous
+ *    position during the round-trip. */
+const BRIGHTNESS_FALLBACK_DEBOUNCE_MS = 500;
 
 interface DisplayPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -69,7 +72,8 @@ function formatValue(category: DataCategory, value: unknown): string {
     case "rssi":
       return typeof value === "number" ? `${value} dBm` : String(value);
     case "display_brightness":
-      return typeof value === "number" ? `${value} %` : String(value);
+      if (typeof value !== "number") return String(value);
+      return value === 0 ? "Off" : `${value} %`;
     default:
       return String(value);
   }
@@ -83,10 +87,13 @@ export function DisplayPanel({
   const { t } = useTranslation();
 
   // Local drag state for the brightness slider — null when the slider
-  // tracks the server value, a number while the user is dragging
-  // (before the debounce fires).
+  // tracks the server value, a number while the user is dragging or
+  // waiting for the server to acknowledge.
   const [draftBrightness, setDraftBrightness] = useState<number | null>(null);
   const brightnessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Last value the user committed; cleared once the server (i.e. the
+  // display via the displays plugin via WS) reports the same value.
+  const lastSentBrightnessRef = useRef<number | null>(null);
   useEffect(() => {
     return () => {
       if (brightnessTimeoutRef.current) clearTimeout(brightnessTimeoutRef.current);
@@ -108,6 +115,22 @@ export function DisplayPanel({
     }
   }
 
+  // Once the server value catches up to what we sent, drop the draft
+  // so the slider tracks the binding again — otherwise it would stay
+  // pinned on the user's target forever (and miss a remote change).
+  // Declared here so the hooks order stays stable across the empty-
+  // panel early return below.
+  const liveBrightnessValue = dataByCategory.get("display_brightness")?.value;
+  useEffect(() => {
+    if (lastSentBrightnessRef.current === null) return;
+    const serverValue = Number(liveBrightnessValue ?? NaN);
+    if (Number.isFinite(serverValue) && serverValue === lastSentBrightnessRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- gated on server-value-equals-last-sent, fires at most once per round-trip
+      setDraftBrightness(null);
+      lastSentBrightnessRef.current = null;
+    }
+  }, [liveBrightnessValue]);
+
   const visibleRows = ROW_ORDER.filter((c) => dataByCategory.has(c));
   if (visibleRows.length === 0) {
     return (
@@ -125,6 +148,16 @@ export function DisplayPanel({
   const languageOrder = orderByCategory.get("set_language");
   const languageBinding = dataByCategory.get("language");
   const brightnessBinding = dataByCategory.get("display_brightness");
+
+  const commitBrightness = (val: number) => {
+    if (brightnessTimeoutRef.current) {
+      clearTimeout(brightnessTimeoutRef.current);
+      brightnessTimeoutRef.current = null;
+    }
+    if (!brightnessOrder) return;
+    lastSentBrightnessRef.current = val;
+    void onExecuteOrder(brightnessOrder.alias, val);
+  };
 
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
@@ -173,21 +206,24 @@ export function DisplayPanel({
                   <div className="flex items-center gap-2">
                     <input
                       type="range"
-                      min={5}
+                      min={0}
                       max={100}
                       step={5}
                       value={draftBrightness ?? Number(brightnessBinding.value ?? 0)}
                       onChange={(e) => {
                         const next = Number(e.target.value);
                         setDraftBrightness(next);
+                        // Fallback debounce for keyboard nav (no pointerup).
                         if (brightnessTimeoutRef.current) {
                           clearTimeout(brightnessTimeoutRef.current);
                         }
-                        brightnessTimeoutRef.current = setTimeout(() => {
-                          onExecuteOrder(brightnessOrder.alias, next);
-                          setDraftBrightness(null);
-                          brightnessTimeoutRef.current = null;
-                        }, BRIGHTNESS_DEBOUNCE_MS);
+                        brightnessTimeoutRef.current = setTimeout(
+                          () => commitBrightness(next),
+                          BRIGHTNESS_FALLBACK_DEBOUNCE_MS,
+                        );
+                      }}
+                      onPointerUp={() => {
+                        if (draftBrightness !== null) commitBrightness(draftBrightness);
                       }}
                       className="w-24"
                     />
