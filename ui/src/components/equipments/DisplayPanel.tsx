@@ -9,15 +9,16 @@ import type {
 } from "../../types";
 
 /** Brightness slider behaviour:
- *  - commit immediately on `onPointerUp` / `onTouchEnd` (pointer release)
- *    so the user gets near-zero latency between releasing the slider
- *    and the display reacting,
- *  - fallback debounce (500 ms) on `onChange` to catch keyboard / a11y
- *    paths that never fire a pointerup,
- *  - the local draft value stays visible until the server value
- *    catches up, so the slider never snaps back to the previous
- *    position during the round-trip. */
+ *  - commit immediately on `onPointerUp` (pointer release) so the
+ *    user gets near-zero latency between gesture-end and HTTP POST,
+ *  - fallback debounce (500 ms) on `onChange` to catch keyboard /
+ *    a11y paths that never fire a pointerup,
+ *  - the local draft value stays pinned for `BRIGHTNESS_HOLD_MS`
+ *    after commit so the slider never flickers back to the stale
+ *    binding value during the firmware round-trip (~300-600 ms in
+ *    practice).  After that window the binding wins again. */
 const BRIGHTNESS_FALLBACK_DEBOUNCE_MS = 500;
+const BRIGHTNESS_HOLD_MS = 1500;
 
 interface DisplayPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -88,15 +89,14 @@ export function DisplayPanel({
 
   // Local drag state for the brightness slider — null when the slider
   // tracks the server value, a number while the user is dragging or
-  // waiting for the server to acknowledge.
+  // within the post-commit hold window.
   const [draftBrightness, setDraftBrightness] = useState<number | null>(null);
   const brightnessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Last value the user committed; cleared once the server (i.e. the
-  // display via the displays plugin via WS) reports the same value.
-  const lastSentBrightnessRef = useRef<number | null>(null);
+  const brightnessHoldTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
       if (brightnessTimeoutRef.current) clearTimeout(brightnessTimeoutRef.current);
+      if (brightnessHoldTimeoutRef.current) clearTimeout(brightnessHoldTimeoutRef.current);
     };
   }, []);
 
@@ -114,22 +114,6 @@ export function DisplayPanel({
       orderByCategory.set(o.category, o);
     }
   }
-
-  // Once the server value catches up to what we sent, drop the draft
-  // so the slider tracks the binding again — otherwise it would stay
-  // pinned on the user's target forever (and miss a remote change).
-  // Declared here so the hooks order stays stable across the empty-
-  // panel early return below.
-  const liveBrightnessValue = dataByCategory.get("display_brightness")?.value;
-  useEffect(() => {
-    if (lastSentBrightnessRef.current === null) return;
-    const serverValue = Number(liveBrightnessValue ?? NaN);
-    if (Number.isFinite(serverValue) && serverValue === lastSentBrightnessRef.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- gated on server-value-equals-last-sent, fires at most once per round-trip
-      setDraftBrightness(null);
-      lastSentBrightnessRef.current = null;
-    }
-  }, [liveBrightnessValue]);
 
   const visibleRows = ROW_ORDER.filter((c) => dataByCategory.has(c));
   if (visibleRows.length === 0) {
@@ -155,8 +139,18 @@ export function DisplayPanel({
       brightnessTimeoutRef.current = null;
     }
     if (!brightnessOrder) return;
-    lastSentBrightnessRef.current = val;
+    setDraftBrightness(val);
     void onExecuteOrder(brightnessOrder.alias, val);
+    // Keep the draft pinned for the round-trip window — once the
+    // timer fires, the binding takes over.  Resetting the timer on
+    // every commit means a fresh drag extends the hold.
+    if (brightnessHoldTimeoutRef.current) {
+      clearTimeout(brightnessHoldTimeoutRef.current);
+    }
+    brightnessHoldTimeoutRef.current = setTimeout(() => {
+      setDraftBrightness(null);
+      brightnessHoldTimeoutRef.current = null;
+    }, BRIGHTNESS_HOLD_MS);
   };
 
   return (
@@ -208,7 +202,7 @@ export function DisplayPanel({
                       type="range"
                       min={0}
                       max={100}
-                      step={5}
+                      step={10}
                       value={draftBrightness ?? Number(brightnessBinding.value ?? 0)}
                       onChange={(e) => {
                         const next = Number(e.target.value);
