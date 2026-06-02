@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.18.x — Type d'équipement Afficheur
 
+### v1.18.3 — 2026-06-02 { #v1-18-3 }
+
+- Fix (UI/afficheur) : le curseur de luminosité envoie maintenant la commande sur `onPointerUp` (relâchement du pointeur) au lieu de passer par le debounce 300 ms de la v1.18.2 — latence quasi nulle entre le relâchement et la réaction du panel. Un debounce 500 ms de secours sur `onChange` couvre toujours la navigation clavier / accessibilité où pointerup ne se déclenche pas. La valeur locale du curseur reste fixée sur la cible utilisateur jusqu'à ce que le WebSocket renvoie la même valeur du serveur, ce qui élimine le saut-arrière du pouce pendant les ~700 ms de l'aller-retour.
+- Feat (UI/afficheur) : `min` du curseur passe de 5 à 0 pour rendre la position "Off" (extinction complète du panel, duty LEDC à zéro côté firmware) accessible depuis la page détail de l'équipement. Le readout numérique affiche "Off" au lieu de "0 %" quand la valeur atteint zéro. Modifications compagnon sur sowel-energy-display iter 035 : 0 accepté comme valeur d'extinction, repli sur 80 % au boot si la NVS est restée bloquée à 0 (récupération suite à une coupure pendant qu'une recette de veille était active), et réveil du panel sur n'importe quel tap quand il est éteint (failsafe si la recette ne dispatche plus).
+
 ### v1.18.2 — 2026-06-02 { #v1-18-2 }
 
 - Fix (UI/afficheur) : le curseur de luminosité sur la page détail d'un équipement afficheur est désormais debouncé (300 ms en sortie). Le `onChange` React sur un `<input type="range">` se déclenche sur chaque mouvement du pointeur pendant un drag (5..10 / s) — avant 1.18.2 chaque événement postait sur `/api/v1/equipments/:id/orders` et le plugin afficheurs republiait un `cmd/brightness`, ce qui martelait le firmware et amplifiait l'avalanche de commandes. Un scrub lent de 100 % à 5 % produit maintenant exactement une seule commande MQTT (la valeur finale). Le curseur et la valeur numérique suivent toujours le drag localement pour rester réactifs. Correctif firmware compagnon sur sowel-energy-display iter 035 : la commande est marshalée via `lv_async_call` avec coalescing pour absorber tout flood qui passerait encore.

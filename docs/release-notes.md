@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.18.x — Display equipment type
 
+### v1.18.3 — 2026-06-02 { #v1-18-3 }
+
+- Fix (UI/display): brightness slider now commits the order on `onPointerUp` (pointer release) instead of via the 300 ms trailing debounce of v1.18.2 — zero perceived latency between releasing the slider and the panel reacting. A 500 ms fallback debounce on `onChange` still covers keyboard / accessibility paths where pointerup never fires. The local draft value also stays pinned to the user's target until the WebSocket round-trip echoes the same value back, so the thumb no longer snaps back to the stale binding during the ~700 ms server cycle.
+- Feat (UI/display): the slider's `min` lowered from 5 to 0 so the panel-off state ("Off" — full LEDC duty zero on the firmware side) is reachable from the equipment detail card. The numeric readout renders "Off" instead of "0 %" when the value reaches zero. Companion firmware change on sowel-energy-display iter 035 supports 0 as the explicit off value, falls back to the default 80 % at boot if NVS holds 0 (recovery against a stuck panel after a power cycle while a sleep recipe was active), and wakes the panel on any tap when off (failsafe in case the recipe stops dispatching).
+
 ### v1.18.2 — 2026-06-02 { #v1-18-2 }
 
 - Fix (UI/display): the brightness slider on the display equipment detail page is now debounced (300 ms trailing). React's `onChange` on a `<input type="range">` fires on every pointer-move event during a drag (5..10 / s) — pre-1.18.2 each event posted to `/api/v1/equipments/:id/orders` and the displays plugin republished a `cmd/brightness` per event, hammering the firmware and amplifying the cmd flood. A slow scrub from 100 % to 5 % now produces exactly one MQTT cmd (the final value). Live thumb + numeric readout still track the drag locally for responsiveness. Companion firmware fix on sowel-energy-display iter 035 marshals the cmd through `lv_async_call` with coalescing to absorb any flood that still slips through.
