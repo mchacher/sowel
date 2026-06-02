@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.18.x — Type d'équipement Afficheur
 
+### v1.18.5 — 2026-06-02 { #v1-18-5 }
+
+- Feat (plugins/registry) : ajout de la recette `presence-display` (v0.1.0, owner mchacher, officielle) — éteint les afficheurs supervisés par Sowel après une période d'absence dans une zone et les réveille au mouvement suivant. S'utilise avec le type d'équipement `display` (spec 120) et le plugin `displays` (v0.1.0) ; le firmware `sowel-energy-display` v1.3.0+ honore `set_display_brightness=0` comme extinction réelle du panel. Installable depuis Admin → Plugins → Parcourir, puis instanciable depuis la section Recettes d'une zone (choisir la zone + les afficheurs, défauts 5 min d'absence et 80 % au réveil ou ajuster).
+
 ### v1.18.4 — 2026-06-02 { #v1-18-4 }
 
 - Fix (UI/afficheur) : finition du curseur de luminosité. La mise en place v1.18.3 du clear basé sur l'echo serveur laissait une courte fenêtre où la valeur affichée pouvait flasher en arrière sur la valeur précédente, entre le relâchement et l'écho serveur. Remplacé par un hold plat de 1,5 s post-commit : le curseur reste fixé sur la cible utilisateur jusqu'à ce que l'aller-retour firmware soit arrivé à coup sûr, plus de flicker. Pas du curseur porté de 5 à 10 (`min=0 max=100 step=10` → 11 paliers bien espacés dont la position "Off" à 0), suite à un retour utilisateur (pas de 5 % trop fin et difficulté à toucher exactement 0).
