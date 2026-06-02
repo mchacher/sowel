@@ -13,10 +13,6 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.18.x — Display equipment type
 
-### v1.18.5 — 2026-06-02 { #v1-18-5 }
-
-- Feat (plugins/registry): added `presence-display` recipe plugin (v0.1.0, owner mchacher, official) — turns Sowel-supervised displays off after a configurable absence in a zone, wakes them on the next motion event. Pairs with the `display` equipment type (spec 120) and the `displays` plugin (v0.1.0); the firmware on `sowel-energy-display` v1.3.0+ honours `set_display_brightness=0` as a true panel-off. Install from Admin → Plugins → Browse, then create an instance from a zone's Recipes section, pick the zone + displays, leave defaults (5 min absence, 80 % wake brightness) or tune.
-
 ### v1.18.4 — 2026-06-02 { #v1-18-4 }
 
 - Fix (UI/display): brightness slider polish. The v1.18.3 echo-driven draft clear left a short window where the rendered value could flash back to the previous binding value between the user release and the server echo. Replaced by a flat 1.5 s post-commit hold — the slider pins on the user's target until the firmware round-trip has reliably landed, no flicker. Slider step bumped from 5 to 10 (`min=0 max=100 step=10` → 11 well-spaced stops including the "Off" position at 0), per user feedback that the 5 % step felt too fine and the touch hit on 0 was unreliable.
