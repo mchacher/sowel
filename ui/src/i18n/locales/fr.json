@@ -253,6 +253,8 @@
   "displays.widget.title": "Afficheurs",
   "displays.widget.empty": "Aucun afficheur",
   "displays.widget.onlineCount": "{{online}}/{{total}} en ligne",
+  "displays.card.off": "Éteint",
+  "displays.card.brightness": "{{pct}} %",
 
   "water.open": "Ouverte",
   "water.closed": "Fermée",

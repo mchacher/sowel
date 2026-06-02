@@ -253,6 +253,8 @@
   "displays.widget.title": "Displays",
   "displays.widget.empty": "No displays",
   "displays.widget.onlineCount": "{{online}}/{{total}} online",
+  "displays.card.off": "Off",
+  "displays.card.brightness": "{{pct}} %",
 
   "water.open": "Open",
   "water.closed": "Closed",

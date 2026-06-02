@@ -86,6 +86,24 @@ interface EquipmentCardProps {
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
 }
 
+/**
+ * Spec 122 — surface the display's current brightness inline in the
+ * card subtitle so the zone view shows at-a-glance whether the panel
+ * is asleep (`Off`) or lit (`<pct> %`).  Returns null when the data
+ * binding is missing or the value is not numeric.
+ */
+function displayBrightnessSummary(
+  equipment: EquipmentWithDetails,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string | null {
+  const binding = equipment.dataBindings.find((b) => b.category === "display_brightness");
+  if (!binding) return null;
+  const v = binding.value;
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  if (v <= 0) return t("displays.card.off");
+  return t("displays.card.brightness", { pct: Math.round(v) });
+}
+
 export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps) {
   const { t } = useTranslation();
   const {
@@ -125,6 +143,8 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
           {t(TYPE_LABELS[equipment.type])}
           {equipment.dataBindings.length === 0 && ` · ${t("equipments.noBindings")}`}
           {!equipment.enabled && ` · ${t("common.disabled")}`}
+          {equipment.type === "display" && equipment.enabled && displayBrightnessSummary(equipment, t) &&
+            ` · ${displayBrightnessSummary(equipment, t)}`}
         </div>
       </Link>
 
