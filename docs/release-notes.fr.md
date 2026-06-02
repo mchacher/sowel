@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.18.x — Type d'équipement Afficheur
 
+### v1.18.2 — 2026-06-02 { #v1-18-2 }
+
+- Fix (UI/afficheur) : le curseur de luminosité sur la page détail d'un équipement afficheur est désormais debouncé (300 ms en sortie). Le `onChange` React sur un `<input type="range">` se déclenche sur chaque mouvement du pointeur pendant un drag (5..10 / s) — avant 1.18.2 chaque événement postait sur `/api/v1/equipments/:id/orders` et le plugin afficheurs republiait un `cmd/brightness`, ce qui martelait le firmware et amplifiait l'avalanche de commandes. Un scrub lent de 100 % à 5 % produit maintenant exactement une seule commande MQTT (la valeur finale). Le curseur et la valeur numérique suivent toujours le drag localement pour rester réactifs. Correctif firmware compagnon sur sowel-energy-display iter 035 : la commande est marshalée via `lv_async_call` avec coalescing pour absorber tout flood qui passerait encore.
+
 ### v1.18.1 — 2026-06-02 { #v1-18-1 }
 
 - Fix (UI/équipements) : le sélecteur d'appareils à la création d'équipement filtre désormais correctement quand le type est `display`. La v1.18.0 avait oublié l'entrée `display` dans les tables `EQUIPMENT_TYPE_CATEGORIES` (DeviceSelector) et `RELEVANT_DATA / RELEVANT_ORDERS` (bindingUtils), ce qui listait tous les appareils du système et créait l'équipement sans aucune liaison automatique. Les filtres matchent maintenant sur les champs canoniques d'un afficheur (`display_brightness` / `language` / `rssi`) et l'auto-binding crée les 5 liaisons de données (firmware_version / uptime / rssi / language / display_brightness) + 2 liaisons d'ordre (language / brightness) à la sélection d'un appareil supervisé. Suite de la spec 120.

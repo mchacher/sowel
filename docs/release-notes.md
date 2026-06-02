@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.18.x — Display equipment type
 
+### v1.18.2 — 2026-06-02 { #v1-18-2 }
+
+- Fix (UI/display): the brightness slider on the display equipment detail page is now debounced (300 ms trailing). React's `onChange` on a `<input type="range">` fires on every pointer-move event during a drag (5..10 / s) — pre-1.18.2 each event posted to `/api/v1/equipments/:id/orders` and the displays plugin republished a `cmd/brightness` per event, hammering the firmware and amplifying the cmd flood. A slow scrub from 100 % to 5 % now produces exactly one MQTT cmd (the final value). Live thumb + numeric readout still track the drag locally for responsiveness. Companion firmware fix on sowel-energy-display iter 035 marshals the cmd through `lv_async_call` with coalescing to absorb any flood that still slips through.
+
 ### v1.18.1 — 2026-06-02 { #v1-18-1 }
 
 - Fix (UI/equipments): the "Add equipment" device picker now filters down to display-capable devices when the equipment type is `display`. The v1.18.0 version forgot the `display` entry in `DeviceSelector`'s `EQUIPMENT_TYPE_CATEGORIES` and `bindingUtils`'s `RELEVANT_DATA / RELEVANT_ORDERS` maps, so the picker listed every device on the system and the create-with-devices flow silently bound nothing. Filters now match on the canonical display fields (`display_brightness` / `language` / `rssi`) and auto-create the 5 data bindings (firmware_version / uptime / rssi / language / display_brightness) + 2 order bindings (language / brightness) when the user picks a supervised device. Spec 120 follow-up.
