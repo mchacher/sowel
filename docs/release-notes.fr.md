@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.18.x — Type d'équipement Afficheur
 
+### v1.18.1 — 2026-06-02 { #v1-18-1 }
+
+- Fix (UI/équipements) : le sélecteur d'appareils à la création d'équipement filtre désormais correctement quand le type est `display`. La v1.18.0 avait oublié l'entrée `display` dans les tables `EQUIPMENT_TYPE_CATEGORIES` (DeviceSelector) et `RELEVANT_DATA / RELEVANT_ORDERS` (bindingUtils), ce qui listait tous les appareils du système et créait l'équipement sans aucune liaison automatique. Les filtres matchent maintenant sur les champs canoniques d'un afficheur (`display_brightness` / `language` / `rssi`) et l'auto-binding crée les 5 liaisons de données (firmware_version / uptime / rssi / language / display_brightness) + 2 liaisons d'ordre (language / brightness) à la sélection d'un appareil supervisé. Suite de la spec 120.
+
 ### v1.18.0 — 2026-06-01 { #v1-18-0 }
 
 - Feat (équipements) : nouveau type d'équipement `display` pour les afficheurs supervisés par Sowel. Le plugin compagnon `sowel-plugin-displays` (repo séparé) découvre les afficheurs via MQTT (payload `state` retenu, disponibilité pilotée par le LWT) et les expose comme des devices Sowel à binder sur le nouvel équipement `display`. Le premier vendeur est le firmware AMOLED sowel-energy-display (iter 035, repo séparé) ; tout futur afficheur e-paper / OLED / ePOS suit le même contrat de format de message sans modification du plugin. Nouvelles catégories `DataCategory` : `firmware_version`, `uptime`, `rssi`, `language`, `display_brightness`. Nouvelles catégories `OrderCategory` : `set_language`, `set_display_brightness`. Nouvelle famille de widget `displays` (agrégation à la zone `displaysOnline / displaysTotal`). Nouveau `DisplayPanel.tsx` sur la page de détail de l'équipement, qui affiche les champs canoniques avec un menu langue et un curseur de luminosité en ligne, masqués si la liaison correspondante est absente. Le sélecteur de widget du dashboard masque les afficheurs — ce sont des surfaces de contrôle, pas des choses de la maison à résumer. Spec 120 + 121.

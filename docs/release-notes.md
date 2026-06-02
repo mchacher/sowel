@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.18.x — Display equipment type
 
+### v1.18.1 — 2026-06-02 { #v1-18-1 }
+
+- Fix (UI/equipments): the "Add equipment" device picker now filters down to display-capable devices when the equipment type is `display`. The v1.18.0 version forgot the `display` entry in `DeviceSelector`'s `EQUIPMENT_TYPE_CATEGORIES` and `bindingUtils`'s `RELEVANT_DATA / RELEVANT_ORDERS` maps, so the picker listed every device on the system and the create-with-devices flow silently bound nothing. Filters now match on the canonical display fields (`display_brightness` / `language` / `rssi`) and auto-create the 5 data bindings (firmware_version / uptime / rssi / language / display_brightness) + 2 order bindings (language / brightness) when the user picks a supervised device. Spec 120 follow-up.
+
 ### v1.18.0 — 2026-06-01 { #v1-18-0 }
 
 - Feat (equipments): new `display` equipment type for Sowel-supervised displays. Companion plugin `sowel-plugin-displays` (separate repo) discovers displays via MQTT (retained `state` payload, LWT-driven availability) and exposes them as Sowel devices that bind to the new `display` equipment. The first vendor is the sowel-energy-display AMOLED firmware (iter 035, separate repo); future e-paper / OLED / ePOS displays follow the same wire contract with zero plugin change. New `DataCategory` values: `firmware_version`, `uptime`, `rssi`, `language`, `display_brightness`. New `OrderCategory` values: `set_language`, `set_display_brightness`. New widget family `displays` (zone-level aggregation `displaysOnline / displaysTotal`). New `DisplayPanel.tsx` on the equipment detail page renders the canonical fields with an inline language dropdown and brightness slider, hidden when the matching binding is absent. The dashboard widget picker hides displays — they are meta / control surfaces, not "things in the home" to be summarised. Spec 120 + 121.
