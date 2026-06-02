@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.19.x — Display wake action
+
+### v1.19.0 — 2026-06-02 { #v1-19-0 }
+
+- Feat (core): new `display_wake` order category for the display equipment type. A no-value action that tells the display to restore its last user-chosen brightness from local NVS. Spec 122. Used by the presence-driven sleep recipe (`sowel-recipe-presence-display` v0.2.0+) so the recipe no longer needs to know the user's preferred brightness level. Companion changes: `sowel-plugin-displays` v0.2.0 routes the order to `<prefix>/<id>/cmd/wake`; sowel-energy-display iter 035 splits NVS into `current_pct` + `user_pct`, restores `user_pct` on tap-wake or `cmd/wake`, and auto-extinguishes 2 minutes after a tap-wake if the recipe has not confirmed the wake.
+
+---
+
 ## 1.18.x — Display equipment type
 
 ### v1.18.4 — 2026-06-02 { #v1-18-4 }

@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.19.x — Action wake afficheur
+
+### v1.19.0 — 2026-06-02 { #v1-19-0 }
+
+- Feat (core) : nouvelle catégorie d'ordre `display_wake` pour le type d'équipement afficheur. Action sans valeur qui demande à l'afficheur de restaurer la dernière luminosité choisie par l'utilisateur (stockée dans sa NVS locale). Spec 122. Utilisée par la recette de mise en veille sur absence (`sowel-recipe-presence-display` v0.2.0+) qui n'a donc plus besoin de connaître la luminosité préférée. Changements compagnons : `sowel-plugin-displays` v0.2.0 route l'ordre vers `<prefix>/<id>/cmd/wake` ; sowel-energy-display iter 035 sépare la NVS en `current_pct` + `user_pct`, restaure `user_pct` sur tap ou `cmd/wake`, et s'éteint automatiquement 2 minutes après un tap-wake si la recette n'a pas confirmé.
+
+---
+
 ## 1.18.x — Type d'équipement Afficheur
 
 ### v1.18.4 — 2026-06-02 { #v1-18-4 }

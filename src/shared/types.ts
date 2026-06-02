@@ -74,7 +74,11 @@ export type OrderCategory =
   | "set_pool_temperature_setpoint"
   // Spec 120 — display equipment.
   | "set_language"
-  | "set_display_brightness";
+  | "set_display_brightness"
+  // Spec 122 — display wake action. No value: the firmware restores its
+  // own last user-chosen brightness. Used by presence-driven recipes so
+  // the recipe does not need to know the user's preferred level.
+  | "display_wake";
 
 // ============================================================
 // Device
