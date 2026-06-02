@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.19.x — Action wake afficheur
 
+### v1.19.1 — 2026-06-02 { #v1-19-1 }
+
+- Fix (UI/équipements) : l'auto-binding ramasse désormais l'ordre `wake` sur les équipements display. Avant ce correctif, la whitelist `RELEVANT_ORDERS["display"]` dans `bindingUtils.ts` ne listait que `language` et `brightness`, donc même après que le firmware ait annoncé la nouvelle capacité `display_wake` (iter 036) et que le plugin displays v0.2.1 l'ait exposée sur le device, le flow de création d'équipement la filtrait silencieusement. Résultat : la recette presence-display v0.2.0 refusait de démarrer avec `Display "..." has no order of category "display_wake" — firmware too old`. Correctif : ajout de `wake` à la whitelist display. Compagnon de la spec 122. Note : le `CANDIDATE_BASED_TYPES` côté UI exclut encore `display` (asymétrie avec le `binding-candidates.ts` du backend qui traite display en "all"-candidate). L'alignement est un suivi ; ce correctif est le patch minimal pour le problème utilisateur.
+
 ### v1.19.0 — 2026-06-02 { #v1-19-0 }
 
 - Feat (core) : nouvelle catégorie d'ordre `display_wake` pour le type d'équipement afficheur. Action sans valeur qui demande à l'afficheur de restaurer la dernière luminosité choisie par l'utilisateur (stockée dans sa NVS locale). Spec 122. Utilisée par la recette de mise en veille sur absence (`sowel-recipe-presence-display` v0.2.0+) qui n'a donc plus besoin de connaître la luminosité préférée. Changements compagnons : `sowel-plugin-displays` v0.2.0 route l'ordre vers `<prefix>/<id>/cmd/wake` ; sowel-energy-display iter 035 sépare la NVS en `current_pct` + `user_pct`, restaure `user_pct` sur tap ou `cmd/wake`, et s'éteint automatiquement 2 minutes après un tap-wake si la recette n'a pas confirmé.

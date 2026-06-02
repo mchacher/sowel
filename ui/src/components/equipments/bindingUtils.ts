@@ -196,7 +196,11 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   // Spec 120 — Sowel-supervised displays.  Order keys mirror what
   // the displays plugin declares (see parse-state.ts of
   // sowel-plugin-displays): the key IS the topic suffix.
-  display: ["language", "brightness"],
+  // Spec 122 — `wake` added: a no-value action that asks the firmware
+  // to restore its last user-chosen brightness via the cmd/wake MQTT
+  // topic.  Without this whitelist entry, the UI auto-binding would
+  // drop the wake order during equipment creation.
+  display: ["language", "brightness", "wake"],
 };
 
 /**
