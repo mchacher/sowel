@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Monitor, Wifi, Tag, Clock, Languages, Sun } from "lucide-react";
 import type {
@@ -6,6 +7,14 @@ import type {
   DataCategory,
   OrderCategory,
 } from "../../types";
+
+/** Debounce a brightness slider — fires the order only after the drag
+ *  settles for ~300 ms.  Without this, every onChange event during a
+ *  pointer drag fires a POST to /orders, which then publishes an MQTT
+ *  cmd to the display.  The firmware can handle the flood now (cmds
+ *  are coalesced LVGL-side) but the API round-trip is wasted work
+ *  and the 30 / 100 % rail values would never land cleanly. */
+const BRIGHTNESS_DEBOUNCE_MS = 300;
 
 interface DisplayPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -72,6 +81,17 @@ export function DisplayPanel({
   onExecuteOrder,
 }: DisplayPanelProps) {
   const { t } = useTranslation();
+
+  // Local drag state for the brightness slider — null when the slider
+  // tracks the server value, a number while the user is dragging
+  // (before the debounce fires).
+  const [draftBrightness, setDraftBrightness] = useState<number | null>(null);
+  const brightnessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (brightnessTimeoutRef.current) clearTimeout(brightnessTimeoutRef.current);
+    };
+  }, []);
 
   // Index bindings by category. A category may have multiple bindings (e.g.
   // two displays merged into one equipment) — we render the first match, which
@@ -156,14 +176,23 @@ export function DisplayPanel({
                       min={5}
                       max={100}
                       step={5}
-                      value={Number(brightnessBinding.value ?? 0)}
-                      onChange={(e) =>
-                        onExecuteOrder(brightnessOrder.alias, Number(e.target.value))
-                      }
+                      value={draftBrightness ?? Number(brightnessBinding.value ?? 0)}
+                      onChange={(e) => {
+                        const next = Number(e.target.value);
+                        setDraftBrightness(next);
+                        if (brightnessTimeoutRef.current) {
+                          clearTimeout(brightnessTimeoutRef.current);
+                        }
+                        brightnessTimeoutRef.current = setTimeout(() => {
+                          onExecuteOrder(brightnessOrder.alias, next);
+                          setDraftBrightness(null);
+                          brightnessTimeoutRef.current = null;
+                        }, BRIGHTNESS_DEBOUNCE_MS);
+                      }}
                       className="w-24"
                     />
                     <span className="text-[13px] font-mono text-text-secondary w-12 text-right">
-                      {formatValue(category, brightnessBinding.value)}
+                      {formatValue(category, draftBrightness ?? brightnessBinding.value)}
                     </span>
                   </div>
                 )}
