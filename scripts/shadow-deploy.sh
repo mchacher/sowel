@@ -384,6 +384,129 @@ EOF
   ok "Shadow data dir removed"
 }
 
+cmd_seed() {
+  resolved_target_or_die
+
+  local prod_host="${SOWEL_PROD_HOST:-192.168.0.230:3000}"
+  local prod_user="${SOWEL_PROD_USER:-admin}"
+  local prod_password="${SOWEL_PROD_PASSWORD:-}"
+  local prod_url="http://$prod_host"
+  local shadow_url
+  shadow_url=$(target_url)
+
+  if [[ -z "$prod_password" ]]; then
+    # Prompt without echoing the password. The script never logs it.
+    read -r -s -p "Prod password for $prod_user@$prod_host: " prod_password
+    echo
+  fi
+
+  echo
+  log "Seeding shadow from prod"
+  log "  Source : $prod_url ($prod_user)"
+  log "  Target : $shadow_url (target=$TARGET)"
+  echo
+
+  # 1. Verify shadow is reachable (it should be up after `up` ran).
+  if ! curl -sf -o /dev/null "$shadow_url/api/v1/auth/status"; then
+    err "Shadow is not responding at $shadow_url"
+    err "Start it first: ./scripts/run-swap.sh shadow"
+    exit 1
+  fi
+
+  # 2. Login on prod. Use --data-raw with single quotes so `!` in the
+  #    password is not expanded by bash.
+  log "Authenticating on prod..."
+  local prod_token
+  prod_token=$(curl -sf -X POST "$prod_url/api/v1/auth/login" \
+    -H 'Content-Type: application/json' \
+    --data-raw '{"username":"'"$prod_user"'","password":"'"$prod_password"'"}' \
+    | jq -r '.accessToken // empty')
+  if [[ -z "$prod_token" ]]; then
+    err "Failed to login on prod ($prod_url). Check credentials."
+    exit 1
+  fi
+  ok "Prod auth OK"
+
+  # 3. Download backup from prod.
+  local backup_file
+  backup_file=$(mktemp -t sowel-shadow-backup-XXXXXX.zip)
+  log "Downloading backup from prod (this can take a minute)..."
+  if ! curl -sf -o "$backup_file" -H "Authorization: Bearer $prod_token" \
+       "$prod_url/api/v1/backup"; then
+    err "Backup download failed."
+    rm -f "$backup_file"
+    exit 1
+  fi
+  ok "Backup saved ($(du -h "$backup_file" | cut -f1)) at $backup_file"
+
+  # 4. Authenticate on shadow. First-run → POST /auth/setup; subsequent
+  #    runs → POST /auth/login. We use the same prod creds in both cases
+  #    so the shadow admin matches prod's admin (the restore would
+  #    overwrite anything else anyway).
+  local setup_required
+  setup_required=$(curl -sf "$shadow_url/api/v1/auth/status" | jq -r '.setupRequired // false')
+
+  local shadow_token
+  if [[ "$setup_required" == "true" ]]; then
+    log "Shadow first-run: creating admin..."
+    shadow_token=$(curl -sf -X POST "$shadow_url/api/v1/auth/setup" \
+      -H 'Content-Type: application/json' \
+      --data-raw '{"username":"'"$prod_user"'","password":"'"$prod_password"'","displayName":"Shadow Admin"}' \
+      | jq -r '.accessToken // empty')
+  else
+    log "Shadow already initialised, logging in..."
+    shadow_token=$(curl -sf -X POST "$shadow_url/api/v1/auth/login" \
+      -H 'Content-Type: application/json' \
+      --data-raw '{"username":"'"$prod_user"'","password":"'"$prod_password"'"}' \
+      | jq -r '.accessToken // empty')
+  fi
+  if [[ -z "$shadow_token" ]]; then
+    err "Failed to authenticate on shadow."
+    rm -f "$backup_file"
+    exit 1
+  fi
+  ok "Shadow auth OK"
+
+  # 5. Upload backup to shadow.
+  log "Restoring backup on shadow..."
+  local restore_response
+  restore_response=$(curl -sf -X POST "$shadow_url/api/v1/backup" \
+    -H "Authorization: Bearer $shadow_token" \
+    -F "file=@$backup_file" || echo "")
+  if [[ -z "$restore_response" ]]; then
+    err "Restore failed. Backup kept at $backup_file for inspection."
+    exit 1
+  fi
+  ok "Restore result: $restore_response"
+  rm -f "$backup_file"
+
+  # 6. Restart shadow container so plugins / aggregators pick up the
+  #    restored DB. SOWEL_SHADOW_MODE=1 stays in the container env, so
+  #    the inert invariant survives the restart.
+  log "Restarting shadow container..."
+  cat <<EOF | run_on_target
+set -euo pipefail
+docker restart $SHADOW_SOWEL_CONTAINER >/dev/null
+
+# Wait up to 30s for the safety banner to reappear after restart.
+for _ in {1..30}; do
+  if docker logs --since 30s $SHADOW_SOWEL_CONTAINER 2>&1 | grep -q "SHADOW MODE ACTIVE"; then
+    echo "Safety banner re-confirmed after restart."
+    exit 0
+  fi
+  sleep 1
+done
+echo "WARNING: safety banner not observed after restart." >&2
+docker logs --tail 30 $SHADOW_SOWEL_CONTAINER >&2
+exit 1
+EOF
+
+  ok "Shadow seeded from prod and restarted"
+  echo
+  echo -e "${GREEN} → Open $shadow_url and log in with the prod admin.${NC}"
+  echo
+}
+
 cmd_status() {
   resolved_target_or_die
   echo
@@ -425,7 +548,7 @@ while [[ $# -gt 0 ]]; do
       TARGET="${2:-}"
       shift 2
       ;;
-    up|update|down|destroy|status)
+    up|update|down|destroy|status|seed)
       CMD="$1"
       shift
       ;;
@@ -450,19 +573,25 @@ case "$CMD" in
   down)      cmd_down ;;
   destroy)   cmd_destroy ;;
   status)    cmd_status ;;
+  seed)      cmd_seed ;;
   help|"")
-    echo "Usage: $0 {up|update|down|destroy|status} [--target=local|sowelox]"
+    echo "Usage: $0 {up|update|down|destroy|status|seed} [--target=local|sowelox]"
     echo
     echo "  up       Build current branch, create+start the shadow stack (default --target=local)"
     echo "  update   Alias for up (rebuild + recreate sowel-shadow with the new image)"
     echo "  down     Stop and remove the shadow containers + network. Keep data dir."
     echo "  destroy  down + delete the data dir. IRREVERSIBLE."
     echo "  status   Print containers + network + data dir state"
+    echo "  seed     Login on prod, download backup, restore on shadow, restart container."
+    echo "           Reads SOWEL_PROD_HOST (default 192.168.0.230:3000),"
+    echo "                 SOWEL_PROD_USER (default admin),"
+    echo "                 SOWEL_PROD_PASSWORD (prompted if unset)."
     echo
     echo "Targets:"
     echo "  --target=local     Mac (Docker Desktop), http://localhost:3001 (default)"
     echo "  --target=sowelox   side-by-side with prod, http://192.168.0.230:3001"
     echo
+    echo "Typical flow: up → seed → open the URL → test"
     echo "Daily start/stop after deployment: ./scripts/run-swap.sh shadow {start|stop}"
     echo
     exit 0
