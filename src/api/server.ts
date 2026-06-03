@@ -107,6 +107,8 @@ interface ServerDeps {
   auditLogger: AuditLogger;
   logger: Logger;
   corsOrigins: string[];
+  /** Spec 124 — exposed by GET /api/v1/system/mode for the UI banner. */
+  shadowMode: boolean;
 }
 
 export async function createServer(deps: ServerDeps) {
@@ -146,6 +148,7 @@ export async function createServer(deps: ServerDeps) {
     auditLogger,
     logger,
     corsOrigins,
+    shadowMode,
   } = deps;
 
   const app = Fastify({
@@ -298,6 +301,7 @@ export async function createServer(deps: ServerDeps) {
     updateManager,
     tzInfo,
     sunlightManager,
+    shadowMode,
     logger,
   });
   registerLogRoutes(app, { logBuffer, logger });

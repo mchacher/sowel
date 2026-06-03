@@ -161,3 +161,46 @@ describe("PluginLoader.unloadPlugin", () => {
     expect(registry.unregisterCalls).toContain("does-not-exist");
   });
 });
+
+// Spec 124 — runtime gate on loadPlugin: every code path that boots a
+// plugin (boot loadAll, install, enable, update) funnels through the
+// private loadPlugin method. When constructed with shadowMode=true, it
+// must early-return without touching the filesystem or the registry.
+describe("PluginLoader.loadPlugin (shadow mode runtime gate)", () => {
+  function loadPluginOf(loader: PluginLoader, pluginId: string): Promise<void> {
+    return (loader as unknown as { loadPlugin: (id: string) => Promise<void> }).loadPlugin(
+      pluginId,
+    );
+  }
+
+  it("shadowMode=true: refuses to load, does not touch the registry", async () => {
+    const packageManager = makePackageManager();
+    const registry = makeIntegrationRegistry();
+    const loader = new PluginLoader(packageManager, registry, makeCoreDeps(), logger, true);
+
+    await loadPluginOf(loader, "any-plugin");
+
+    expect(registry.register).not.toHaveBeenCalled();
+  });
+
+  it("shadowMode=true: returns even for a pluginId that does not exist on disk", async () => {
+    // Without shadow mode this would throw on the manifest existence
+    // check. The guard runs before any FS access.
+    const packageManager = makePackageManager();
+    const registry = makeIntegrationRegistry();
+    const loader = new PluginLoader(packageManager, registry, makeCoreDeps(), logger, true);
+
+    await expect(loadPluginOf(loader, "unknown")).resolves.toBeUndefined();
+  });
+
+  it("shadowMode=false: behaves as before (still throws on missing manifest)", async () => {
+    const packageManager = makePackageManager();
+    // Point getPackageDir at a path that won't exist.
+    (packageManager as unknown as { getPackageDir: (id: string) => string }).getPackageDir = () =>
+      "/tmp/sowel-shadow-mode-test-missing";
+    const registry = makeIntegrationRegistry();
+    const loader = new PluginLoader(packageManager, registry, makeCoreDeps(), logger, false);
+
+    await expect(loadPluginOf(loader, "missing")).rejects.toThrow(/manifest/i);
+  });
+});

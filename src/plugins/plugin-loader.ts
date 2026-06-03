@@ -39,17 +39,23 @@ export class PluginLoader {
   private logger: Logger;
   private loadedPlugins: Map<string, IntegrationPlugin> = new Map();
   private booted = false;
+  /** Spec 124 — when true, `loadPlugin` is a no-op + warn log so that
+   * neither boot, nor user-triggered install/enable/update paths can
+   * dial out. Set via `SOWEL_SHADOW_MODE` in env. */
+  private readonly shadowMode: boolean;
 
   constructor(
     packageManager: PackageManager,
     integrationRegistry: IntegrationRegistry,
     deps: Omit<PluginDeps, "pluginDir">,
     logger: Logger,
+    shadowMode = false,
   ) {
     this.packageManager = packageManager;
     this.integrationRegistry = integrationRegistry;
     this.coreDeps = deps;
     this.logger = logger.child({ module: "plugin-loader" });
+    this.shadowMode = shadowMode;
   }
 
   /**
@@ -238,6 +244,18 @@ export class PluginLoader {
   // ============================================================
 
   private async loadPlugin(pluginId: string): Promise<void> {
+    // Spec 124 — central choke point. Every code path that boots a
+    // plugin (boot loadAll, install, enable, update, reload) funnels
+    // through here. Gating here ensures no admin click in the shadow
+    // UI can rotate an OAuth token or fire a real MQTT publish.
+    if (this.shadowMode) {
+      this.logger.warn(
+        { pluginId, module: "shadow-mode" },
+        "Shadow mode: refusing to load plugin (boot stays inert)",
+      );
+      return;
+    }
+
     const pkgDir = this.packageManager.getPackageDir(pluginId);
     const manifestPath = resolve(pkgDir, "manifest.json");
 

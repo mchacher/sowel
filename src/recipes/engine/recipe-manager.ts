@@ -53,6 +53,9 @@ export class RecipeManager {
   private zoneAggregator: ZoneAggregator;
   private logger: Logger;
   private stmts: ReturnType<typeof this.prepareStatements>;
+  /** Spec 124 — when true, `startInstance` is a no-op so no recipe
+   * ever emits an order while the shadow instance is up. */
+  private readonly shadowMode: boolean;
 
   constructor(
     db: Database.Database,
@@ -61,6 +64,7 @@ export class RecipeManager {
     zoneManager: ZoneManager,
     zoneAggregator: ZoneAggregator,
     logger: Logger,
+    shadowMode = false,
   ) {
     this.db = db;
     this.eventBus = eventBus;
@@ -69,6 +73,7 @@ export class RecipeManager {
     this.zoneAggregator = zoneAggregator;
     this.logger = logger.child({ module: "recipe-manager" });
     this.stmts = this.prepareStatements();
+    this.shadowMode = shadowMode;
   }
 
   private prepareStatements() {
@@ -447,6 +452,19 @@ export class RecipeManager {
   // ============================================================
 
   private startInstance(recipe: Recipe, instance: RecipeInstance): void {
+    // Spec 124 — central choke point. Every code path that activates
+    // a recipe (init restore, create, update, enable, mode change)
+    // funnels through here. Gating here ensures the shadow never
+    // emits an order to a real device, regardless of how the user
+    // shapes the recipe DB rows from the UI.
+    if (this.shadowMode) {
+      this.logger.warn(
+        { instanceId: instance.id, recipeId: instance.recipeId, module: "shadow-mode" },
+        "Shadow mode: refusing to start recipe instance",
+      );
+      return;
+    }
+
     // Stop any existing runner for this instance first (prevents orphaned subscriptions)
     this.stopInstance(instance.id);
 

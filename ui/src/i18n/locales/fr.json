@@ -94,6 +94,7 @@
   "updates.badge.recipe": "Recette",
   "updates.error.generic": "Échec de la mise à jour",
   "restart.pill.title": "Redémarrage requis",
+  "shadow.banner": "MODE SHADOW — les intégrations sortantes et les publishers sont désactivés. Cette instance n'a aucun effet sur la production.",
 
   "devices.title": "Appareils",
   "devices.subtitle_one": "{{count}} appareil · {{online}} en ligne",

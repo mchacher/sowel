@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.20.x — Mode shadow
+
+### v1.20.0 — 2026-06-03 { #v1-20-0 }
+
+- Feat (core) : nouvelle variable d'environnement `SOWEL_SHADOW_MODE=1`. Quand elle est positionnée, Sowel démarre son serveur HTTP et sert l'UI normalement, mais chaque sous-système sortant est coupé à la fois au boot et au runtime : aucun plugin ne démarre (pas de MQTT connect, pas de poll cloud, pas de refresh OAuth), aucune instance de recette n'est restaurée ou armée, aucun MQTT publisher ne se connecte, aucun notification publisher ne s'abonne, aucun poll GitHub. Les runtime gates sur `PluginLoader.loadPlugin` et `RecipeManager.startInstance` font qu'un admin qui clique _Enable_ sur un plugin ou une recette à l'intérieur d'une instance shadow NE déclenche PAS de connexion sortante : la ligne SQLite est écrite, mais le runtime reste inerte. Spec 124.
+- Feat (api) : `GET /api/v1/system/mode` renvoie `{ shadowMode: boolean }`, consommé par le bandeau UI. Auth requise, accessible à tout utilisateur authentifié.
+- Feat (ui) : bandeau **MODE SHADOW** ambre pleine largeur au-dessus du sidebar et du contenu, sur toutes les pages, non-dismissable, quand `shadowMode === true`. Localisé FR + EN.
+- Feat (logs) : quand le mode shadow est actif, une ligne de log structurée `warn` `module: "shadow-mode"` est émise au boot avec le hostname du conteneur, pour qu'une activation accidentelle du mode shadow sur la production soit immédiatement visible dans `docker logs sowel` et puisse déclencher une alerte.
+- Docs : nouveau playbook interne dans `dev-notes/shadow-instance.md` (non publié sur docs.sowel.org) qui décrit le cycle de vie complet d'une instance shadow : checklist pré-vol, backup, run avec `SOWEL_SHADOW_MODE=1`, restore, test, cleanup, et une section de recovery pour le cas "j'ai oublié de positionner la variable".
+
+---
+
 ## 1.19.x — Action wake afficheur
 
 ### v1.19.1 — 2026-06-02 { #v1-19-1 }

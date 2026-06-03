@@ -44,3 +44,69 @@ describe("config — CORS defaults", () => {
     expect(cfg.cors.origins).toEqual(["*"]);
   });
 });
+
+// Spec 124 — SOWEL_SHADOW_MODE resolution truth table.
+describe("config — SOWEL_SHADOW_MODE", () => {
+  let tmpDataDir: string;
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    tmpDataDir = mkdtempSync(join(tmpdir(), "sowel-config-test-"));
+    process.env["SQLITE_PATH"] = join(tmpDataDir, "sowel.db");
+    delete process.env["SOWEL_SHADOW_MODE"];
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    rmSync(tmpDataDir, { recursive: true, force: true });
+  });
+
+  it("defaults to false when unset", () => {
+    expect(loadConfig().shadowMode).toBe(false);
+  });
+
+  it("is false when empty string", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "";
+    expect(loadConfig().shadowMode).toBe(false);
+  });
+
+  it("is false when 0", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "0";
+    expect(loadConfig().shadowMode).toBe(false);
+  });
+
+  it("is true when 1", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "1";
+    expect(loadConfig().shadowMode).toBe(true);
+  });
+
+  it("is true when true (lowercase)", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "true";
+    expect(loadConfig().shadowMode).toBe(true);
+  });
+
+  it("is true when TRUE (uppercase)", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "TRUE";
+    expect(loadConfig().shadowMode).toBe(true);
+  });
+
+  it("is true when yes", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "yes";
+    expect(loadConfig().shadowMode).toBe(true);
+  });
+
+  it("is false for unknown truthy-looking strings (defensive)", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "on";
+    expect(loadConfig().shadowMode).toBe(false);
+  });
+
+  it("is false for garbage", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "garbage";
+    expect(loadConfig().shadowMode).toBe(false);
+  });
+
+  it("tolerates surrounding whitespace", () => {
+    process.env["SOWEL_SHADOW_MODE"] = "  TRUE  ";
+    expect(loadConfig().shadowMode).toBe(true);
+  });
+});

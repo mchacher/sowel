@@ -129,6 +129,11 @@ export async function getSystemTimezone(): Promise<SystemTimezoneInfo> {
   return fetchJSON(`${API_BASE}/system/timezone`);
 }
 
+// Spec 124 — surfaces the shadowMode flag for the ShadowBanner.
+export async function getSystemMode(): Promise<{ shadowMode: boolean }> {
+  return fetchJSON(`${API_BASE}/system/mode`);
+}
+
 export async function triggerSystemRestart(): Promise<{ success: boolean; message: string }> {
   return fetchJSON(`${API_BASE}/system/restart`, { method: "POST" });
 }

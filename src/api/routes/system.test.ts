@@ -9,6 +9,7 @@ const logger = createLogger("silent").logger;
 interface BuildOpts {
   authed?: boolean;
   sunlight?: SunlightData;
+  shadowMode?: boolean;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -35,6 +36,7 @@ async function buildApp(opts: BuildOpts = {}) {
     updateManager: {} as never,
     tzInfo,
     sunlightManager,
+    shadowMode: opts.shadowMode ?? false,
     logger,
   });
   await app.ready();
@@ -83,5 +85,35 @@ describe("GET /api/v1/system/sunlight", () => {
     expect(body.sunrise).toBeNull();
     expect(body.sunset).toBeNull();
     expect(body.isDaylight).toBeNull();
+  });
+});
+
+// Spec 124 — surfaces the shadowMode flag to authenticated UI clients.
+describe("GET /api/v1/system/mode", () => {
+  let openApp: ReturnType<typeof Fastify> | null = null;
+
+  afterEach(async () => {
+    if (openApp) await openApp.close();
+    openApp = null;
+  });
+
+  it("rejects unauthenticated callers with 401", async () => {
+    openApp = await buildApp({ authed: false });
+    const res = await openApp.inject({ method: "GET", url: "/api/v1/system/mode" });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("returns shadowMode=false when the env var is not set", async () => {
+    openApp = await buildApp({ authed: true, shadowMode: false });
+    const res = await openApp.inject({ method: "GET", url: "/api/v1/system/mode" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ shadowMode: false });
+  });
+
+  it("returns shadowMode=true when the env var is set", async () => {
+    openApp = await buildApp({ authed: true, shadowMode: true });
+    const res = await openApp.inject({ method: "GET", url: "/api/v1/system/mode" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ shadowMode: true });
   });
 });

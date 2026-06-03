@@ -1,5 +1,6 @@
 import { resolve, dirname } from "node:path";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { hostname } from "node:os";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./core/logger.js";
 import { LogRingBuffer } from "./core/log-buffer.js";
@@ -121,6 +122,22 @@ async function main() {
 
   logger.info("Sowel — Founded by Marc Chachereau — AGPL-3.0");
 
+  // Spec 124 — Shadow mode banner. Emit BEFORE any subsystem boots so
+  // the warning is the first non-tz line in the log. The hostname is
+  // included so the operator can verify they did not flip the env var
+  // on production by mistake (`os.hostname()` returns the container's
+  // hostname under Docker, but for shadow runs that is meaningful
+  // enough).
+  if (config.shadowMode) {
+    logger.warn(
+      {
+        module: "shadow-mode",
+        hostname: hostname(),
+      },
+      "SHADOW MODE ACTIVE — outbound integrations, recipes, publishers, and version checks are disabled. This instance is safe to run against a copy of production data.",
+    );
+  }
+
   // WAN exposure warnings (spec 105)
   const corsRaw = process.env["CORS_ORIGINS"];
   if (corsRaw === "*") {
@@ -236,6 +253,7 @@ async function main() {
     zoneManager,
     zoneAggregator,
     logger,
+    config.shadowMode, // spec 124 — runtime gate on startInstance
   );
   // All recipes are now external packages loaded by RecipeLoader
 
@@ -306,12 +324,24 @@ async function main() {
     integrationRegistry,
     { logger, eventBus, settingsManager, deviceManager },
     logger,
+    config.shadowMode, // spec 124 — runtime gate on loadPlugin
   );
-  await pluginLoader.loadAll();
+  // Spec 124 — loadAll iterates installed packages and calls
+  // loadPlugin per id; the runtime gate would no-op every one of
+  // them. Skip the whole pass to keep the boot log clean.
+  if (!config.shadowMode) {
+    await pluginLoader.loadAll();
+  } else {
+    logger.warn({ module: "shadow-mode" }, "Skipping pluginLoader.loadAll()");
+  }
 
   // 14b. Load external recipe packages (must be before recipeManager.init)
   const recipeLoader = new RecipeLoader(packageManager, recipeManager, logger);
-  await recipeLoader.loadAll();
+  if (!config.shadowMode) {
+    await recipeLoader.loadAll();
+  } else {
+    logger.warn({ module: "shadow-mode" }, "Skipping recipeLoader.loadAll()");
+  }
 
   // 14c. Create backup manager (used by routes and update manager)
   const backupManager = new BackupManager({
@@ -365,6 +395,7 @@ async function main() {
     auditLogger,
     logger,
     corsOrigins: config.cors.origins,
+    shadowMode: config.shadowMode,
   });
 
   await server.listen({ port: config.api.port, host: config.api.host });
@@ -380,13 +411,25 @@ async function main() {
   activityBuffer.start();
 
   // 16b. Start version checker (polls GitHub releases for updates)
-  versionChecker.start();
+  // Spec 124 — skip in shadow mode (no outbound, including GitHub).
+  if (!config.shadowMode) {
+    versionChecker.start();
+  } else {
+    logger.warn({ module: "shadow-mode" }, "Skipping versionChecker.start()");
+  }
 
   // 17. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
 
   // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
-  recipeManager.init();
+  // Spec 124 — skip in shadow mode (no recipe should re-arm on a
+  // shadow). The runtime gate on startInstance is the second line
+  // of defence for runtime UI actions.
+  if (!config.shadowMode) {
+    recipeManager.init();
+  } else {
+    logger.warn({ module: "shadow-mode" }, "Skipping recipeManager.init()");
+  }
 
   // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
   poolRuntimeTracker.start();
@@ -440,10 +483,20 @@ async function main() {
     .catch((err) => logger.warn({ err }, "Weather aggregator start failed"));
 
   // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
-  mqttPublishService.init();
+  // Spec 124 — skip in shadow mode; the service is monolithic and has
+  // no runtime entry point, so the boot gate alone keeps it inert.
+  if (!config.shadowMode) {
+    mqttPublishService.init();
+  } else {
+    logger.warn({ module: "shadow-mode" }, "Skipping mqttPublishService.init()");
+  }
 
   // 18c. Initialize notification publish service (subscribes to events)
-  notificationPublishService.init();
+  if (!config.shadowMode) {
+    notificationPublishService.init();
+  } else {
+    logger.warn({ module: "shadow-mode" }, "Skipping notificationPublishService.init()");
+  }
 
   // 19. Initialize mode manager, calendar, and button actions
   modeManager.init();

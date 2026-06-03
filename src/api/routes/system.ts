@@ -15,6 +15,8 @@ interface SystemDeps {
   updateManager: UpdateManager;
   tzInfo: TzInfo;
   sunlightManager: SunlightManager;
+  /** Spec 124 — surfaced via GET /api/v1/system/mode so the UI can render its banner. */
+  shadowMode: boolean;
   logger: Logger;
 }
 
@@ -22,7 +24,14 @@ interface SystemDeps {
 const CHECK_NOW_MIN_INTERVAL_MS = 10_000;
 
 export function registerSystemRoutes(app: FastifyInstance, deps: SystemDeps): void {
-  const { versionChecker, updateManager, tzInfo, sunlightManager, logger: parentLogger } = deps;
+  const {
+    versionChecker,
+    updateManager,
+    tzInfo,
+    sunlightManager,
+    shadowMode,
+    logger: parentLogger,
+  } = deps;
   const logger = parentLogger.child({ module: "system-routes" });
 
   let lastCheckNow = 0;
@@ -107,6 +116,16 @@ export function registerSystemRoutes(app: FastifyInstance, deps: SystemDeps): vo
       return reply.code(401).send({ error: "Authentication required" });
     }
     return tzInfo;
+  });
+
+  // GET /api/v1/system/mode — surfaces the shadow-mode flag so the UI
+  // can render its sticky banner. Accessible to ANY authenticated user
+  // (read-only, no PII). Spec 124.
+  app.get("/api/v1/system/mode", async (request, reply) => {
+    if (!request.auth) {
+      return reply.code(401).send({ error: "Authentication required" });
+    }
+    return { shadowMode };
   });
 
   // GET /api/v1/system/sunlight — current server time + daylight state

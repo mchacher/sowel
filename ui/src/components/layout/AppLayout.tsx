@@ -7,6 +7,8 @@ import { SunlightBanner } from "./SunlightBanner";
 import { CurrentTimePill } from "./CurrentTimePill";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useTimezone } from "../../store/useTimezone";
+import { useShadowMode } from "../../store/useShadowMode";
+import { ShadowBanner } from "./ShadowBanner";
 import { useDevices } from "../../store/useDevices";
 import { useZones } from "../../store/useZones";
 import type { ZoneWithChildren } from "../../types";
@@ -74,6 +76,7 @@ export function AppLayout() {
   const sowelUpdateAvailable = useUpdateAvailable();
   const restartRequired = useWebSocket((s) => s.restartRequired);
   const fetchTimezone = useTimezone((s) => s.fetch);
+  const fetchShadowMode = useShadowMode((s) => s.fetch);
   const issues = useAggregatedIssues();
   const [alarmsOpen, setAlarmsOpen] = useState(false);
   const [updatesOpen, setUpdatesOpen] = useState(false);
@@ -90,6 +93,7 @@ export function AppLayout() {
     fetchEquipments();
     fetchAggregation();
     fetchTimezone();
+    fetchShadowMode();
     connect();
     getSettings()
       .then((s) => setHomeName(s["home.name"] ?? ""))
@@ -101,12 +105,16 @@ export function AppLayout() {
     fetchEquipments,
     fetchAggregation,
     fetchTimezone,
+    fetchShadowMode,
     connect,
     disconnect,
   ]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Spec 124 — full-width shadow-mode stripe above sidebar + content. */}
+      <ShadowBanner />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       {/* Sidebar — desktop only (lg: 1024px+, unreachable on phones) */}
       <div className="hidden lg:flex">
         <Sidebar />
@@ -216,6 +224,7 @@ export function AppLayout() {
 
       {/* Self-update overlay (shown during sowel self-update / restart) */}
       <UpdateOverlay />
+      </div>
     </div>
   );
 }

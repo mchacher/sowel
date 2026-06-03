@@ -94,6 +94,7 @@
   "updates.badge.recipe": "Recipe",
   "updates.error.generic": "Update failed",
   "restart.pill.title": "Restart required",
+  "shadow.banner": "SHADOW MODE — outbound integrations and publishers are disabled. This instance does not affect production.",
 
   "devices.title": "Devices",
   "devices.subtitle_one": "{{count}} device · {{online}} online",

@@ -1097,6 +1097,13 @@ export interface AppConfig {
     org: string;
     bucket: string;
   };
+  /**
+   * Spec 124 — when true, every outbound subsystem is gated off at
+   * boot AND at runtime. Used to run a candidate build against a copy
+   * of production state without affecting production. Set via
+   * `SOWEL_SHADOW_MODE=1`.
+   */
+  shadowMode: boolean;
 }
 
 // ============================================================

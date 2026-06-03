@@ -25,6 +25,23 @@ function envInt(key: string, fallback: number): number {
 }
 
 /**
+ * Spec 124 — Strict boolean parser.
+ *
+ * Only known truthy literals trip the flag: `1`, `true`, `yes` (case
+ * insensitive, whitespace tolerated). Everything else — including
+ * undefined, empty string, `0`, `false`, and typos like `on` — is
+ * treated as false. Failing safe in the false direction is
+ * deliberate: missing a shadow-mode opt-in is recoverable; flipping
+ * it on accidentally is not.
+ */
+function envBool(key: string, fallback = false): boolean {
+  const raw = process.env[key];
+  if (raw === undefined) return fallback;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/**
  * Resolve or auto-generate the JWT secret.
  * Priority: JWT_SECRET env var > persisted file > generate new.
  */
@@ -99,5 +116,6 @@ export function loadConfig(): AppConfig {
       org: env("INFLUX_ORG", "sowel"),
       bucket: env("INFLUX_BUCKET", "sowel"),
     },
+    shadowMode: envBool("SOWEL_SHADOW_MODE"),
   };
 }
