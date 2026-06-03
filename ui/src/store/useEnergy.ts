@@ -10,6 +10,8 @@ interface EnergyState {
   history: EnergyHistoryResponse | null;
   available: boolean | null; // null = not checked yet
   hasProduction: boolean;
+  /** Spec 123 — gates the Wh/€ toggle in the UI. */
+  tariffConfigured: boolean;
   loading: boolean;
   error: string | null;
 
@@ -74,6 +76,7 @@ export const useEnergy = create<EnergyState>((set, get) => ({
   history: null,
   available: null,
   hasProduction: false,
+  tariffConfigured: false,
   loading: false,
   error: null,
 
@@ -110,9 +113,13 @@ export const useEnergy = create<EnergyState>((set, get) => ({
   checkAvailability: async () => {
     try {
       const status = await getEnergyStatus();
-      set({ available: status.available, hasProduction: status.hasProduction });
+      set({
+        available: status.available,
+        hasProduction: status.hasProduction,
+        tariffConfigured: status.tariffConfigured,
+      });
     } catch {
-      set({ available: false, hasProduction: false });
+      set({ available: false, hasProduction: false, tariffConfigured: false });
     }
   },
 }));

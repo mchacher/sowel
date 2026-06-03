@@ -10,6 +10,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { EnergyPoint } from "../../types";
+import type { EnergyUnit } from "../../store/useUiState";
+import { formatEur } from "./format";
 
 interface EnergyBarChartProps {
   points: EnergyPoint[];
@@ -17,6 +19,8 @@ interface EnergyBarChartProps {
   /** Current date string "YYYY-MM-DD" — used to compute week start */
   date?: string;
   height?: number;
+  /** Spec 123 — Wh / € unit selector. */
+  unit?: EnergyUnit;
 }
 
 interface ChartDatum {
@@ -25,6 +29,8 @@ interface ChartDatum {
   hp: number; // kWh
   hc: number; // kWh
   autoconso: number; // kWh — already included in hp+hc
+  cost_hp: number; // € (spec 123)
+  cost_hc: number; // € (spec 123)
 }
 
 const HP_COLOR = "#4F7BE8";
@@ -35,49 +41,71 @@ const AUTOCONSO_COLOR = "#6BCB77";
 // Aggregation: collapse raw points into period-appropriate bars
 // ============================================================
 
-function toDatum(label: string, tooltipLabel: string, hpWh: number, hcWh: number, autoWh: number): ChartDatum {
+function toDatum(
+  label: string,
+  tooltipLabel: string,
+  hpWh: number,
+  hcWh: number,
+  autoWh: number,
+  costHp: number,
+  costHc: number,
+): ChartDatum {
   const hp = hpWh / 1000;
   const hc = hcWh / 1000;
   const autoconso = Math.min(autoWh / 1000, hp + hc);
-  return { label, tooltipLabel, hp, hc, autoconso };
+  return { label, tooltipLabel, hp, hc, autoconso, cost_hp: costHp, cost_hc: costHc };
+}
+
+interface BucketAcc {
+  hp: number;
+  hc: number;
+  auto: number;
+  costHp: number;
+  costHc: number;
+}
+
+function newAcc(): BucketAcc {
+  return { hp: 0, hc: 0, auto: 0, costHp: 0, costHc: 0 };
+}
+
+function accumulate(acc: BucketAcc, p: EnergyPoint): void {
+  acc.hp += p.hp;
+  acc.hc += p.hc;
+  acc.auto += p.autoconso;
+  acc.costHp += p.cost_hp ?? 0;
+  acc.costHc += p.cost_hc ?? 0;
 }
 
 /** Day view: always 24 bars (00:00–23:00) */
 function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
-  const hpByHour = new Map<number, number>();
-  const hcByHour = new Map<number, number>();
-  const autoByHour = new Map<number, number>();
-
+  const byHour = new Map<number, BucketAcc>();
+  for (let h = 0; h < 24; h++) byHour.set(h, newAcc());
   for (const p of points) {
-    const d = new Date(p.time);
-    const hour = d.getHours();
-    hpByHour.set(hour, (hpByHour.get(hour) ?? 0) + p.hp);
-    hcByHour.set(hour, (hcByHour.get(hour) ?? 0) + p.hc);
-    autoByHour.set(hour, (autoByHour.get(hour) ?? 0) + p.autoconso);
+    const acc = byHour.get(new Date(p.time).getHours());
+    if (acc) accumulate(acc, p);
   }
-
-  return Array.from({ length: 24 }, (_, hour) =>
-    toDatum(
+  return Array.from({ length: 24 }, (_, hour) => {
+    const a = byHour.get(hour)!;
+    return toDatum(
       `${String(hour).padStart(2, "0")}h`,
       `${String(hour).padStart(2, "0")}h00 – ${String((hour + 1) % 24).padStart(2, "0")}h00`,
-      hpByHour.get(hour) ?? 0,
-      hcByHour.get(hour) ?? 0,
-      autoByHour.get(hour) ?? 0,
-    ),
-  );
+      a.hp,
+      a.hc,
+      a.auto,
+      a.costHp,
+      a.costHc,
+    );
+  });
 }
 
 /** Week view: always 7 bars (Mon–Sun) */
 function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  const hpByDay = new Map<string, number>();
-  const hcByDay = new Map<string, number>();
-  const autoByDay = new Map<string, number>();
+  const byDay = new Map<string, BucketAcc>();
   for (const p of points) {
-    const d = new Date(p.time);
-    const key = localDateKey(d);
-    hpByDay.set(key, (hpByDay.get(key) ?? 0) + p.hp);
-    hcByDay.set(key, (hcByDay.get(key) ?? 0) + p.hc);
-    autoByDay.set(key, (autoByDay.get(key) ?? 0) + p.autoconso);
+    const key = localDateKey(new Date(p.time));
+    const a = byDay.get(key) ?? newAcc();
+    accumulate(a, p);
+    byDay.set(key, a);
   }
 
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
@@ -90,27 +118,27 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     const day = new Date(monday);
     day.setDate(day.getDate() + i);
     const key = localDateKey(day);
+    const a = byDay.get(key) ?? newAcc();
     return toDatum(
       capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })),
       capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
-      hpByDay.get(key) ?? 0,
-      hcByDay.get(key) ?? 0,
-      autoByDay.get(key) ?? 0,
+      a.hp,
+      a.hc,
+      a.auto,
+      a.costHp,
+      a.costHc,
     );
   });
 }
 
 /** Month view: always N bars (1 per day of the month) */
 function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  const hpByDay = new Map<string, number>();
-  const hcByDay = new Map<string, number>();
-  const autoByDay = new Map<string, number>();
+  const byDay = new Map<string, BucketAcc>();
   for (const p of points) {
-    const d = new Date(p.time);
-    const key = localDateKey(d);
-    hpByDay.set(key, (hpByDay.get(key) ?? 0) + p.hp);
-    hcByDay.set(key, (hcByDay.get(key) ?? 0) + p.hc);
-    autoByDay.set(key, (autoByDay.get(key) ?? 0) + p.autoconso);
+    const key = localDateKey(new Date(p.time));
+    const a = byDay.get(key) ?? newAcc();
+    accumulate(a, p);
+    byDay.set(key, a);
   }
 
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
@@ -121,12 +149,15 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   return Array.from({ length: daysInMonth }, (_, i) => {
     const day = new Date(year, month, i + 1);
     const key = localDateKey(day);
+    const a = byDay.get(key) ?? newAcc();
     return toDatum(
       String(i + 1),
       capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
-      hpByDay.get(key) ?? 0,
-      hcByDay.get(key) ?? 0,
-      autoByDay.get(key) ?? 0,
+      a.hp,
+      a.hc,
+      a.auto,
+      a.costHp,
+      a.costHc,
     );
   });
 }
@@ -136,24 +167,22 @@ function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
   const year = ref.getFullYear();
 
-  const hpTotals = new Array<number>(12).fill(0);
-  const hcTotals = new Array<number>(12).fill(0);
-  const autoTotals = new Array<number>(12).fill(0);
+  const accs = Array.from({ length: 12 }, () => newAcc());
   for (const p of points) {
-    const d = new Date(p.time);
-    hpTotals[d.getMonth()] += p.hp;
-    hcTotals[d.getMonth()] += p.hc;
-    autoTotals[d.getMonth()] += p.autoconso;
+    accumulate(accs[new Date(p.time).getMonth()], p);
   }
 
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(year, i, 1);
+    const a = accs[i];
     return toDatum(
       capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "short" })),
       capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })),
-      hpTotals[i],
-      hcTotals[i],
-      autoTotals[i],
+      a.hp,
+      a.hc,
+      a.auto,
+      a.costHp,
+      a.costHc,
     );
   });
 }
@@ -206,14 +235,24 @@ function roundedTopRect(x: number, y: number, w: number, h: number, r: number): 
 // Component
 // ============================================================
 
-export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBarChartProps) {
+export function EnergyBarChart({ points, period, date, height = 300, unit = "wh" }: EnergyBarChartProps) {
   const { t } = useTranslation();
   const data = useMemo(() => buildChartData(points, period, date), [points, period, date]);
 
-  const hasAutoconso = useMemo(() => data.some((d) => d.autoconso > 0), [data]);
+  // Spec 123 — when unit==="eur", bars show cost_hp / cost_hc instead
+  // of hp / hc kWh. Autoconso has no billed cost so its overlay is
+  // hidden in € mode to keep the bar height = "what you pay".
+  const isEur = unit === "eur";
+  const hasAutoconso = useMemo(
+    () => !isEur && data.some((d) => d.autoconso > 0),
+    [data, isEur],
+  );
 
-  // Fixed gridline intervals per period
+  // Fixed gridline intervals per period — only meaningful in kWh mode.
+  // In € mode let recharts auto-pick (cost distributions vary too much
+  // across tariffs for hard-coded ticks to look right).
   const yTicks = useMemo(() => {
+    if (isEur) return undefined;
     const stepByPeriod: Record<string, number> = {
       day: 1,
       week: 10,
@@ -223,7 +262,7 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
     const step = stepByPeriod[period] ?? 1;
     const max = Math.ceil(Math.max(...data.map((d) => d.hp + d.hc), step) / step) * step;
     return Array.from({ length: max / step + 1 }, (_, i) => i * step);
-  }, [data, period]);
+  }, [data, period, isEur]);
 
   // Store HC bar baseline positions (bottom y of each HC bar = bottom of full stack)
   // Populated during HC shape render, consumed during HP shape render for autoconso overlay
@@ -256,10 +295,10 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
           tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={formatYAxis}
+          tickFormatter={isEur ? formatEur : formatYAxis}
           width={70}
-          domain={[0, yTicks[yTicks.length - 1] ?? "dataMax"]}
-          ticks={yTicks}
+          domain={isEur ? [0, "auto"] : [0, yTicks?.[yTicks.length - 1] ?? "dataMax"]}
+          ticks={isEur ? undefined : yTicks}
         />
         <Tooltip
           cursor={false}
@@ -280,6 +319,7 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
               consoTotal > 0
                 ? Math.max(0, datum.hc - datum.autoconso * (datum.hc / consoTotal))
                 : datum.hc;
+            const costTotal = datum.cost_hp + datum.cost_hc;
             return (
               <div
                 style={{
@@ -291,10 +331,19 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("energy.consumption")} : {formatKWh(consoTotal)}</div>
-                <div style={{ color: HP_COLOR }}>{t("energy.peakHours")} : {formatKWh(hpGrid)}</div>
-                <div style={{ color: HC_COLOR }}>{t("energy.offPeakHours")} : {formatKWh(hcGrid)}</div>
-                {datum.autoconso > 0 && (
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                  {t("energy.consumption")} :{" "}
+                  {isEur ? formatEur(costTotal) : formatKWh(consoTotal)}
+                </div>
+                <div style={{ color: HP_COLOR }}>
+                  {t("energy.peakHours")} :{" "}
+                  {isEur ? formatEur(datum.cost_hp) : formatKWh(hpGrid)}
+                </div>
+                <div style={{ color: HC_COLOR }}>
+                  {t("energy.offPeakHours")} :{" "}
+                  {isEur ? formatEur(datum.cost_hc) : formatKWh(hcGrid)}
+                </div>
+                {!isEur && datum.autoconso > 0 && (
                   <div style={{ color: AUTOCONSO_COLOR }}>
                     {t("energy.autoconsumption")} : {formatKWh(datum.autoconso)}
                   </div>
@@ -305,7 +354,7 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
         />
         {/* HC (light blue) at bottom — captures baseline for autoconso overlay */}
         <Bar
-          dataKey="hc"
+          dataKey={isEur ? "cost_hc" : "hc"}
           stackId="consumption"
           fill={HC_COLOR}
           maxBarSize={maxBarSize}
@@ -315,14 +364,15 @@ export function EnergyBarChart({ points, period, date, height = 300 }: EnergyBar
             // Record baseline for autoconso overlay
             hcBaselines[index] = { x, width: w, baseline: y + h };
             if (!h || h <= 0) return null;
-            const rounded = !payload || payload.hp <= 0;
+            const topValue = payload ? (isEur ? payload.cost_hp : payload.hp) : 0;
+            const rounded = topValue <= 0;
             if (!rounded) return <rect x={x} y={y} width={w} height={h} fill={HC_COLOR} />;
             return <path d={roundedTopRect(x, y, w, h, 4)} fill={HC_COLOR} />;
           }}
         />
         {/* HP (dark blue) on top — also draws autoconso green overlay */}
         <Bar
-          dataKey="hp"
+          dataKey={isEur ? "cost_hp" : "hp"}
           stackId="consumption"
           fill={HP_COLOR}
           radius={[4, 4, 0, 0]}

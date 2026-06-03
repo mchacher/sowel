@@ -282,6 +282,13 @@ export function TariffSettings() {
         </div>
       </div>
 
+      {/* Spec 123 — costs are applied to all historical data when the
+          Energy page is displayed in €; this hint warns the user that
+          changing prices retroactively re-values past consumption. */}
+      <p className="text-[12px] text-text-tertiary -mt-2 mb-5">
+        {t("tariff.priceRetroactiveHint")}
+      </p>
+
       {/* Visual timeline */}
       <TariffTimeline slots={slots} />
 

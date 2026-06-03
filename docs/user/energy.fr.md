@@ -115,6 +115,12 @@ Code couleur sur le graphique **Total** :
 
 Sous le graphique, les totaux sont affichés en kWh : réseau (réparti HP / HC), autoconsommation, et total (avec le pourcentage d'autoconsommation).
 
+#### Bascule Wh / €
+
+Un sélecteur segmenté **Wh / €** est placé à côté du sélecteur de période en haut de la page. En mode **€**, chaque valeur en kWh du graphique (axe Y, hauteur de barre, tooltip) et de la carte récap est remplacée par le coût correspondant en euros, calculé à partir des prix saisis dans **Réglages > Tarifs énergie**. La bascule est désactivée — avec une tooltip qui renvoie vers les réglages — tant qu'au moins un des prix HP / HC n'est pas non nul.
+
+La valorisation est appliquée au moment de l'affichage : modifier votre tarif (après une renégociation, par exemple) revalorise la consommation passée avec les nouveaux prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode €.
+
 #### Bascule Total / Par usage
 
 Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît au-dessus du graphique. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs.

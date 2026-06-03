@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEnergy } from "../../store/useEnergy";
+import { useUiState } from "../../store/useUiState";
 import { PeriodSelector } from "./PeriodSelector";
 import { EnergyBarChart } from "./EnergyBarChart";
 import { EnergyByUsageChart } from "./EnergyByUsageChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
+import { UnitToggle } from "./UnitToggle";
+import { formatEnergyOrCost, formatKWh } from "./format";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse } from "../../types";
-
-function formatKWh(wh: number, period: string): string {
-  const kwh = wh / 1000;
-  if (period === "day") return kwh.toFixed(2);
-  return Math.round(kwh).toString();
-}
 
 const AUTOCONSO_COLOR = "#6BCB77";
 
@@ -25,7 +22,11 @@ export function EnergyPage() {
   const date = useEnergy((s) => s.date);
   const loading = useEnergy((s) => s.loading);
   const hasProduction = useEnergy((s) => s.hasProduction);
+  const tariffConfigured = useEnergy((s) => s.tariffConfigured);
   const fetchHistory = useEnergy((s) => s.fetchHistory);
+  const checkAvailability = useEnergy((s) => s.checkAvailability);
+  const unit = useUiState((s) => s.energyUnit);
+  const effectiveUnit = tariffConfigured ? unit : "wh";
 
   const [viewMode, setViewMode] = useState<ViewMode>("total");
   const [hasSubmeters, setHasSubmeters] = useState(false);
@@ -34,7 +35,8 @@ export function EnergyPage() {
 
   useEffect(() => {
     fetchHistory();
-  }, [fetchHistory]);
+    checkAvailability();
+  }, [fetchHistory, checkAvailability]);
 
   // Detect whether at least one submeter is configured.
   useEffect(() => {
@@ -80,7 +82,10 @@ export function EnergyPage() {
       {/* Header — h1 hidden on mobile (title in topbar). PeriodSelector visible on both. */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <h1 className="hidden sm:block">{t("energy.consumption")}</h1>
-        <PeriodSelector />
+        <div className="flex items-center gap-3 sm:gap-4">
+          <UnitToggle enabled={tariffConfigured} />
+          <PeriodSelector />
+        </div>
       </div>
 
       {/* Content */}
@@ -127,7 +132,13 @@ export function EnergyPage() {
                   {t("common.loading")}
                 </div>
               ) : byUsage ? (
-                <EnergyByUsageChart data={byUsage} period={period} date={date} height={350} />
+                <EnergyByUsageChart
+                  data={byUsage}
+                  period={period}
+                  date={date}
+                  height={350}
+                  unit={effectiveUnit}
+                />
               ) : (
                 <div className="flex items-center justify-center h-[350px] text-text-tertiary text-[13px]">
                   —
@@ -139,20 +150,42 @@ export function EnergyPage() {
                 period={period}
                 date={date}
                 height={350}
+                unit={effectiveUnit}
               />
             )}
 
-            {/* Legend below chart */}
+            {/* Legend below chart — Wh / € via formatEnergyOrCost (spec 123).
+                Autoconso has no € counterpart (it's avoided cost, not billed) so
+                it always renders in kWh, even when the toggle is on €. */}
             {history && viewMode === "total" && (
               <div className="flex flex-col items-center mt-3 gap-1">
                 <div className="flex items-center gap-4 text-[13px] text-text-secondary flex-wrap justify-center">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4F7BE8" }} />
-                    {t("energy.gridConsumption")} : {formatKWh(history.totals.total_consumption, period)} kWh
+                    {t("energy.gridConsumption")} :{" "}
+                    {formatEnergyOrCost(
+                      history.totals.total_consumption,
+                      history.totals.cost_total,
+                      effectiveUnit,
+                      period,
+                    )}
                   </span>
                   {hasHpHc && (
                     <span className="text-text-tertiary">
-                      ({t("energy.peakHours")} : {formatKWh(history.totals.total_hp, period)} kWh — {t("energy.offPeakHours")} : {formatKWh(history.totals.total_hc, period)} kWh)
+                      ({t("energy.peakHours")} :{" "}
+                      {formatEnergyOrCost(
+                        history.totals.total_hp,
+                        history.totals.cost_hp,
+                        effectiveUnit,
+                        period,
+                      )}{" "}
+                      / {t("energy.offPeakHours")} :{" "}
+                      {formatEnergyOrCost(
+                        history.totals.total_hc,
+                        history.totals.cost_hc,
+                        effectiveUnit,
+                        period,
+                      )})
                     </span>
                   )}
                   {hasProduction && history.totals.total_autoconso > 0 && (
@@ -163,7 +196,13 @@ export function EnergyPage() {
                   )}
                 </div>
                 <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                  Total : {formatKWh(history.totals.total_consumption + (history.totals.total_autoconso ?? 0), period)} kWh
+                  Total :{" "}
+                  {formatEnergyOrCost(
+                    history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
+                    history.totals.cost_total,
+                    effectiveUnit,
+                    period,
+                  )}
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">
                       ({Math.round(history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso) * 100)}% {t("energy.autoconsumption").toLowerCase()})

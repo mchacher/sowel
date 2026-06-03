@@ -3,6 +3,7 @@ import type { Logger } from "../../core/logger.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
+import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   EnergyPoint,
@@ -10,6 +11,7 @@ import type {
   EnergyHistoryResponse,
   EnergyStatus,
   TariffConfig,
+  TariffPrices,
   EnergyByUsageResponse,
   SubmeterSeries,
   EnergyByUsagePoint,
@@ -46,12 +48,18 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   app.get("/api/v1/energy/status", async (): Promise<EnergyStatus> => {
     const eqId = findEnergyEquipmentId(equipmentManager);
     const prodId = findProductionEquipmentId(equipmentManager);
+    // Spec 123: a tariff is only "configured" (cost UI enabled) when at
+    // least one price is set. A schedule with prices 0/0 leaves cost
+    // valuation pointless, so the UnitToggle must stay disabled.
+    const tariff = tariffClassifier.getConfig();
+    const tariffConfigured =
+      tariff !== null && ((tariff.prices.hp ?? 0) > 0 || (tariff.prices.hc ?? 0) > 0);
     return {
       available: eqId !== null,
       hasProduction: prodId !== null,
       sources: eqId ? ["legrand"] : [],
       lastDataAt: null, // TODO: query InfluxDB for latest point
-      tariffConfigured: tariffClassifier.getConfig() !== null,
+      tariffConfigured,
     };
   });
 
@@ -168,6 +176,12 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // that neither consumption nor production data filled.  This
       // gives consumers (web UI, sowel-energy-display firmware) a
       // fixed-length array to iterate without gap-handling code.
+      // Spec 123 — value each bucket in € at read time using the
+      // current TariffPrices. Per-point cost matches the raw bucket
+      // consumption (chart bar tooltips); totals' cost uses the
+      // grid-side hp/hc (autoconso-subtracted) to match the summary
+      // card "grid consumption" semantics.
+      const prices: TariffPrices = tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
       const consoByTime = new Map(consumptionPoints.map((p) => [p.time, p]));
       const points: EnergyPoint[] = [];
       for (const time of expectedBucketTimes(from, to, resolution)) {
@@ -178,10 +192,11 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         const prod = prodData?.prod ?? 0;
         const autoconso = prodData?.autoconso ?? 0;
         const injection = prodData?.injection ?? 0;
-        points.push({ time, hp, hc, prod, autoconso, injection });
+        const cost = computeCost(hp, hc, prices);
+        points.push({ time, hp, hc, prod, autoconso, injection, ...cost });
       }
 
-      const totals = computeTotals(points);
+      const totals = computeTotals(points, prices);
 
       const response: EnergyHistoryResponse = {
         period,
@@ -264,6 +279,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           name: eq.name,
           color: pickPaletteColor(i),
           points,
+          cost: 0, // Spec 123 — filled below once blended rate is known.
         });
       }
 
@@ -301,6 +317,56 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       const totalSubmeters = Object.values(totalsByEquipment).reduce((a, b) => a + b, 0);
       const total = mainEquipmentId ? mainTotal : totalSubmeters;
 
+      // Spec 123 — derive a period-blended €/kWh from the main meter's
+      // HP/HC split for the same window, then value each submeter +
+      // "other" with that single rate. Submeters store only `energy`
+      // (no HP/HC channel), so a per-bucket split would require N×2
+      // extra Influx queries per submeter; the blended period rate
+      // gets us a single consistent number at the cost of slight
+      // attribution skew for equipments running exclusively in HC.
+      const prices: TariffPrices = tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
+      const costByEquipment: Record<string, number> = {};
+      let otherCost = 0;
+      let totalCost = 0;
+      if (mainEquipmentId) {
+        const consumptionTotalsWh = await sumConsumptionHpHc(
+          client,
+          config.org,
+          buckets,
+          mainEquipmentId,
+          from,
+          to,
+          resolution,
+        );
+        const { cost_total } = computeCost(consumptionTotalsWh.hp, consumptionTotalsWh.hc, prices);
+        const rate = blendedRate(consumptionTotalsWh.hp + consumptionTotalsWh.hc, cost_total);
+        if (rate > 0) {
+          for (const eq of submeters) {
+            const eqCost = round4((totalsByEquipment[eq.id] / 1000) * rate);
+            costByEquipment[eq.id] = eqCost;
+            eq.cost = eqCost;
+          }
+          otherCost = round4((otherTotal / 1000) * rate);
+          totalCost = round4((total / 1000) * rate);
+          logger.debug(
+            { rate, period, date: dateStr, mainEquipmentId },
+            "Computed by-usage blended €/kWh",
+          );
+        } else {
+          // Tariff missing or zero — fall through with empty cost maps.
+          for (const eq of submeters) {
+            costByEquipment[eq.id] = 0;
+            eq.cost = 0;
+          }
+        }
+      } else {
+        // No main meter → no aggregate HP/HC available → no cost.
+        for (const eq of submeters) {
+          costByEquipment[eq.id] = 0;
+          eq.cost = 0;
+        }
+      }
+
       const response: EnergyByUsageResponse = {
         period,
         from: from.toISOString(),
@@ -312,6 +378,9 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           byEquipment: totalsByEquipment,
           other: otherTotal,
           total,
+          costByEquipment,
+          otherCost,
+          totalCost,
         },
       };
 
@@ -622,6 +691,53 @@ from(bucket: "${bucket}")
 }
 
 /**
+ * Spec 123 — sum HP/HC consumption over a window using the same
+ * bucket-fallback strategy as /energy/history. Used by /energy/by-usage
+ * to derive a blended period €/kWh without re-implementing the merge.
+ */
+async function sumConsumptionHpHc(
+  client: import("@influxdata/influxdb-client").InfluxDB,
+  org: string,
+  buckets: string[],
+  equipmentId: string,
+  from: Date,
+  to: Date,
+  resolution: Resolution,
+): Promise<{ hp: number; hc: number }> {
+  let hpHcPoints: Array<{ time: string; hp: number; hc: number }> = [];
+  let legacyPoints: Array<{ time: string; hp: number; hc: number }> = [];
+  for (const b of buckets) {
+    if (hpHcPoints.length === 0) {
+      hpHcPoints = await queryEnergyHpHcPoints(client, org, b, equipmentId, from, to, resolution);
+    }
+    if (legacyPoints.length === 0) {
+      legacyPoints = await queryEnergyLegacyPoints(
+        client,
+        org,
+        b,
+        equipmentId,
+        from,
+        to,
+        resolution,
+      );
+    }
+    if (hpHcPoints.length > 0 || legacyPoints.length > 0) break;
+  }
+  const hpHcByTime = new Map(hpHcPoints.map((p) => [p.time, p]));
+  let hp = 0;
+  let hc = 0;
+  const allTimes = new Set([...hpHcPoints.map((p) => p.time), ...legacyPoints.map((p) => p.time)]);
+  for (const time of allTimes) {
+    const p = hpHcByTime.get(time) ?? legacyPoints.find((lp) => lp.time === time);
+    if (p) {
+      hp += p.hp;
+      hc += p.hc;
+    }
+  }
+  return { hp, hc };
+}
+
+/**
  * Query production energy points from InfluxDB.
  * Production Equipment stores 3 aliases: "energy" (total), "autoconso", "injection".
  */
@@ -816,11 +932,16 @@ const SUBMETER_PALETTE = [
   "#818CF8", // pale indigo
 ];
 
+/** Spec 123 — local 4-decimal rounding mirror of cost-calculator. */
+function round4(n: number): number {
+  return Math.round(n * 10_000) / 10_000;
+}
+
 function pickPaletteColor(index: number): string {
   return SUBMETER_PALETTE[index % SUBMETER_PALETTE.length];
 }
 
-function computeTotals(points: EnergyPoint[]): EnergyTotals {
+function computeTotals(points: EnergyPoint[], prices: TariffPrices): EnergyTotals {
   let totalHp = 0;
   let totalHc = 0;
   let totalProduction = 0;
@@ -842,6 +963,10 @@ function computeTotals(points: EnergyPoint[]): EnergyTotals {
     totalAutoconso += p.autoconso;
     totalInjection += p.injection;
   }
+  // Spec 123 — totals cost reflects the grid-side hp/hc (post autoconso
+  // subtraction) so the summary card matches what the user actually
+  // pays the utility.
+  const totalsCost = computeCost(totalHp, totalHc, prices);
   return {
     total_consumption: totalHp + totalHc,
     total_hp: totalHp,
@@ -849,5 +974,8 @@ function computeTotals(points: EnergyPoint[]): EnergyTotals {
     total_production: totalProduction,
     total_autoconso: totalAutoconso,
     total_injection: totalInjection,
+    cost_hp: totalsCost.cost_hp,
+    cost_hc: totalsCost.cost_hc,
+    cost_total: totalsCost.cost_total,
   };
 }

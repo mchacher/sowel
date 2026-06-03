@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerEnergyRoutes } from "./energy.js";
+import type { TariffConfig } from "../../shared/types.js";
 
 // Spec 119 — Integration tests on /api/v1/energy/history and
 // /api/v1/energy/by-usage.  Validates the always-N-points-per-period
@@ -41,6 +42,8 @@ interface BuildOpts {
     enabled?: boolean;
   }>;
   envTz?: string | undefined;
+  /** Spec 123 — inject a tariff config for cost-wiring tests. */
+  tariff?: TariffConfig | null;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -93,8 +96,8 @@ async function buildApp(opts: BuildOpts = {}) {
     getAll: () => equipments,
   } as never;
 
-  // tariffClassifier and settingsManager are unused by /history and /by-usage.
-  const tariffClassifier = { getConfig: () => null } as never;
+  // tariffClassifier returns the injected config (spec 123 — used for cost wiring).
+  const tariffClassifier = { getConfig: () => opts.tariff ?? null } as never;
   const settingsManager = {} as never;
 
   const app = Fastify({ logger: false });
@@ -371,5 +374,271 @@ describe("Spec 119 — /api/v1/energy/by-usage", () => {
     expect(body.resolution).toBe("1mo");
     expect(body.submeters[0].points).toHaveLength(12);
     expect(body.submeters[0].points.every((p: { wh: number }) => p.wh === 0)).toBe(true);
+  });
+});
+
+// ===============================================================
+// Spec 123 — cost valuation
+// ===============================================================
+
+const TARIFF_20_10: TariffConfig = {
+  schedules: [],
+  prices: { hp: 0.2, hc: 0.1 },
+};
+
+describe("Spec 123 — /api/v1/energy/history cost valuation", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("attaches cost_hp / cost_hc / cost_total to each point when tariff is configured", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      hpHcRows: [
+        { _time: "2026-05-29T22:00:00Z", _value: 1000, alias: "energy_hp" }, // 1 kWh HP
+        { _time: "2026-05-29T22:00:00Z", _value: 500, alias: "energy_hc" }, // 0.5 kWh HC
+      ],
+      tariff: TARIFF_20_10,
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=day&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.points[0]).toMatchObject({
+      hp: 1000,
+      hc: 500,
+      cost_hp: 0.2, // 1 kWh × 0.20
+      cost_hc: 0.05, // 0.5 kWh × 0.10
+      cost_total: 0.25,
+    });
+  });
+
+  it("totals.cost_* reflect grid-side hp/hc (autoconso-subtracted)", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      hpHcRows: [{ _time: "2026-05-29T22:00:00Z", _value: 2000, alias: "energy_hp" }],
+      tariff: TARIFF_20_10,
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=day&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.totals).toMatchObject({
+      total_hp: 2000,
+      total_hc: 0,
+      cost_hp: 0.4,
+      cost_hc: 0,
+      cost_total: 0.4,
+    });
+  });
+
+  it("returns zero cost when tariff config is missing", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      hpHcRows: [{ _time: "2026-05-29T22:00:00Z", _value: 1000, alias: "energy_hp" }],
+      // no tariff
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=day&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.points[0].cost_hp).toBe(0);
+    expect(body.points[0].cost_hc).toBe(0);
+    expect(body.points[0].cost_total).toBe(0);
+    expect(body.totals.cost_total).toBe(0);
+  });
+
+  it("returns zero cost when both prices are 0", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      hpHcRows: [{ _time: "2026-05-29T22:00:00Z", _value: 1000, alias: "energy_hp" }],
+      tariff: { schedules: [], prices: { hp: 0, hc: 0 } },
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=day&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().totals.cost_total).toBe(0);
+  });
+
+  it("empty points (no data) → totals cost = 0", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      tariff: TARIFF_20_10,
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=year&date=2026-06-15",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.totals.cost_total).toBe(0);
+    expect(body.points.every((p: { cost_total: number }) => p.cost_total === 0)).toBe(true);
+  });
+});
+
+describe("Spec 123 — /api/v1/energy/by-usage cost valuation (blended)", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("submeter cost = wh × blended rate when main meter HP/HC present", async () => {
+    // Main meter: 1000 Wh HP + 1000 Wh HC over the week → 2 kWh × blended 0.15 €/kWh = 0.30 €
+    // Submeter A: 500 Wh total → 0.5 kWh × 0.15 = 0.075 €
+    app = await buildApp({
+      equipments: [
+        { id: "meter-1", name: "Compteur", type: "main_energy_meter" },
+        { id: "sub-A", name: "Cuisine", type: "energy_meter" },
+      ],
+      hpHcRows: [
+        { _time: "2026-05-24T22:00:00Z", _value: 1000, alias: "energy_hp" },
+        { _time: "2026-05-24T22:00:00Z", _value: 1000, alias: "energy_hc" },
+      ],
+      submeterRowsById: {
+        "sub-A": [{ _time: "2026-05-24T22:00:00Z", _value: 500, alias: "energy" }],
+      },
+      mainConsumptionRows: [{ _time: "2026-05-24T22:00:00Z", _value: 2000, alias: "energy" }],
+      tariff: TARIFF_20_10,
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    const subA = body.submeters.find((s: { id: string }) => s.id === "sub-A");
+    expect(subA.cost).toBeCloseTo(0.075, 4);
+    expect(body.totals.costByEquipment["sub-A"]).toBeCloseTo(0.075, 4);
+    // total: 2 kWh × 0.15 = 0.30
+    expect(body.totals.totalCost).toBeCloseTo(0.3, 4);
+  });
+
+  it("zero consumption → every cost = 0 (no NaN)", async () => {
+    app = await buildApp({
+      equipments: [
+        { id: "meter-1", name: "Compteur", type: "main_energy_meter" },
+        { id: "sub-A", name: "Cuisine", type: "energy_meter" },
+      ],
+      // No main, no submeter consumption data.
+      tariff: TARIFF_20_10,
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.submeters[0].cost).toBe(0);
+    expect(body.totals.totalCost).toBe(0);
+    expect(body.totals.otherCost).toBe(0);
+  });
+
+  it("no main meter → submeter costs = 0 (no aggregate HP/HC available)", async () => {
+    app = await buildApp({
+      equipments: [{ id: "sub-A", name: "Cuisine", type: "energy_meter" }],
+      submeterRowsById: {
+        "sub-A": [{ _time: "2026-05-24T22:00:00Z", _value: 500, alias: "energy" }],
+      },
+      tariff: TARIFF_20_10,
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.submeters[0].cost).toBe(0);
+    expect(body.totals.totalCost).toBe(0);
+  });
+
+  it("tariff missing → every cost = 0, request still succeeds", async () => {
+    app = await buildApp({
+      equipments: [
+        { id: "meter-1", name: "Compteur", type: "main_energy_meter" },
+        { id: "sub-A", name: "Cuisine", type: "energy_meter" },
+      ],
+      hpHcRows: [{ _time: "2026-05-24T22:00:00Z", _value: 1000, alias: "energy_hp" }],
+      submeterRowsById: {
+        "sub-A": [{ _time: "2026-05-24T22:00:00Z", _value: 500, alias: "energy" }],
+      },
+      mainConsumptionRows: [{ _time: "2026-05-24T22:00:00Z", _value: 1000, alias: "energy" }],
+      // no tariff
+    });
+
+    const r = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    expect(body.submeters[0].cost).toBe(0);
+    expect(body.totals.totalCost).toBe(0);
+  });
+});
+
+describe("Spec 123 — /api/v1/energy/status tariffConfigured", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("false when no tariff set", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+    });
+    const r = await app.inject({ method: "GET", url: "/api/v1/energy/status" });
+    expect(r.json().tariffConfigured).toBe(false);
+  });
+
+  it("false when prices are 0/0 even if schedules are set", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      tariff: {
+        schedules: [{ days: [1], slots: [{ start: "00:00", end: "06:00", tariff: "hc" }] }],
+        prices: { hp: 0, hc: 0 },
+      },
+    });
+    const r = await app.inject({ method: "GET", url: "/api/v1/energy/status" });
+    expect(r.json().tariffConfigured).toBe(false);
+  });
+
+  it("true when at least one price > 0", async () => {
+    app = await buildApp({
+      equipments: [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" }],
+      tariff: { schedules: [], prices: { hp: 0.2, hc: 0 } },
+    });
+    const r = await app.inject({ method: "GET", url: "/api/v1/energy/status" });
+    expect(r.json().tariffConfigured).toBe(true);
   });
 });

@@ -1117,6 +1117,9 @@ export interface EnergyPoint {
   prod: number; // Wh total production
   autoconso: number; // min(prod, consumption) Wh
   injection: number; // max(0, prod - consumption) Wh
+  cost_hp: number; // € (spec 123)
+  cost_hc: number; // € (spec 123)
+  cost_total: number; // € = cost_hp + cost_hc (spec 123)
 }
 
 export interface EnergyTotals {
@@ -1126,6 +1129,9 @@ export interface EnergyTotals {
   total_production: number; // Wh
   total_autoconso: number; // Wh
   total_injection: number; // Wh
+  cost_hp: number; // € (spec 123)
+  cost_hc: number; // € (spec 123)
+  cost_total: number; // € = cost_hp + cost_hc (spec 123)
 }
 
 export interface EnergyHistoryResponse {
@@ -1155,6 +1161,7 @@ export interface SubmeterSeries {
   name: string;
   color: string;
   points: EnergyByUsagePoint[];
+  cost: number; // € for the whole series (spec 123)
 }
 
 export interface EnergyByUsageResponse {
@@ -1169,6 +1176,9 @@ export interface EnergyByUsageResponse {
     byEquipment: Record<string, number>;
     other: number;
     total: number;
+    costByEquipment: Record<string, number>; // € per equipment (spec 123)
+    otherCost: number; // € (spec 123)
+    totalCost: number; // € (spec 123)
   };
 }
 

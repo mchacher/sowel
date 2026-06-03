@@ -10,12 +10,16 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { EnergyByUsageResponse } from "../../types";
+import type { EnergyUnit } from "../../store/useUiState";
+import { formatEur } from "./format";
 
 interface Props {
   data: EnergyByUsageResponse;
   period: string;
   date?: string;
   height?: number;
+  /** Spec 123 — Wh / € unit selector. */
+  unit?: EnergyUnit;
 }
 
 const OTHER_COLOR = "#CBD5E1";
@@ -175,14 +179,27 @@ function formatYAxis(kwh: number): string {
   return `${kwh.toFixed(2)} kWh`;
 }
 
-export function EnergyByUsageChart({ data, period, date, height = 300 }: Props) {
+export function EnergyByUsageChart({ data, period, date, height = 300, unit = "wh" }: Props) {
   const { t } = useTranslation();
   const { data: rows, series } = useMemo(() => buildChart(data, period, date), [data, period, date]);
+  const isEur = unit === "eur";
+
+  // Spec 123 — derive the period's blended €/kWh from the totals
+  // already on the response. Each bucket's kWh is then multiplied by
+  // this constant to display €. The user sees the same per-period
+  // attribution skew documented on the backend (~5% for HC-only loads).
+  const blendedRate = useMemo(() => {
+    if (!isEur) return 0;
+    if (data.totals.total <= 0) return 0;
+    return data.totals.totalCost / (data.totals.total / 1000);
+  }, [data, isEur]);
 
   // Re-label "Other" using i18n (we only know the t() at render time)
   const seriesWithI18n = useMemo(() => {
     return series.map((s) => (s.id === OTHER_KEY ? { ...s, name: t("energy.byUsage.other") } : s));
   }, [series, t]);
+
+  const formatValue = (kwh: number): string => (isEur ? formatEur(kwh * blendedRate) : formatKWh(kwh));
 
   return (
     <div style={{ width: "100%", height }}>
@@ -190,7 +207,10 @@ export function EnergyByUsageChart({ data, period, date, height = 300 }: Props) 
         <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="label" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
-          <YAxis tickFormatter={formatYAxis} tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
+          <YAxis
+            tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate) : formatYAxis}
+            tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
+          />
           <Tooltip
             cursor={{ fill: "rgba(0,0,0,0.03)" }}
             content={({ active, payload, label }) => {
@@ -207,14 +227,14 @@ export function EnergyByUsageChart({ data, period, date, height = 300 }: Props) 
                       <div key={s.id} className="flex items-center gap-2 text-text-secondary">
                         <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
                         <span>{s.name}</span>
-                        <span className="ml-auto tabular-nums">{formatKWh(v)}</span>
+                        <span className="ml-auto tabular-nums">{formatValue(v)}</span>
                       </div>
                     );
                   })}
                   {total > 0 && (
                     <div className="mt-1 pt-1 border-t border-border flex items-center text-text">
                       <span className="font-semibold">Total</span>
-                      <span className="ml-auto tabular-nums font-semibold">{formatKWh(total)}</span>
+                      <span className="ml-auto tabular-nums font-semibold">{formatValue(total)}</span>
                     </div>
                   )}
                 </div>

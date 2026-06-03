@@ -115,6 +115,12 @@ Color coding on the **Total** chart:
 
 Below the chart, totals are shown in kWh: grid (split into peak / off-peak), autoconsumption, and total (with the self-consumption share as a percentage).
 
+#### Wh / € unit toggle
+
+A **Wh / €** segmented toggle sits next to the period selector at the top of the page. In **€** mode, every kWh figure on the bar chart (Y axis, bar height, tooltip) and on the totals card is replaced by the corresponding cost in euros, computed from the prices you entered in **Settings > Energy tariffs**. The toggle is disabled — with a tooltip pointing back to the tariff settings — until you set at least one of the HP / HC prices to a non-zero value.
+
+Pricing is applied at read time, so changing your tariff (after a contract renegotiation, for example) re-values past consumption with the new prices. Autoconsumption has no billed cost and is therefore hidden from the chart in € mode.
+
 #### Total / By usage toggle
 
 When at least one submeter is configured, a **Total / By usage** toggle appears above the chart. The **By usage** view replaces the peak / off-peak split with one stack per submeter, plus an **Other** stack for the residual that the main meter saw but no submeter accounted for.

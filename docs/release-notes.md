@@ -11,11 +11,21 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
-## 1.20.x — Shadow mode
+## 1.20.x — Energy cost valuation + shadow mode
 
 ### v1.20.0 — 2026-06-03 { #v1-20-0 }
 
-- Feat (core): new `SOWEL_SHADOW_MODE=1` env var. When set, Sowel boots its HTTP server and serves the UI normally, but every outbound subsystem is gated off both at boot and at runtime: no plugin starts (no MQTT connect, no cloud poll, no OAuth refresh), no recipe instance is restored or armed, no MQTT publisher connects, no notification publisher subscribes, no GitHub version polling. The runtime gates on `PluginLoader.loadPlugin` and `RecipeManager.startInstance` mean that an admin clicking _Enable_ on a plugin or recipe inside a shadow instance does NOT cause it to dial out — the SQLite row updates, but the runtime stays inert. Spec 124.
+Energy cost valuation (spec 123):
+
+- Feat (energy/api): `GET /api/v1/energy/history` now returns `cost_hp`, `cost_hc` and `cost_total` (€) on every point and in totals, computed at read time from the existing `TariffPrices.hp` / `TariffPrices.hc` (€/kWh) already stored in `energy.tariff` settings. Per-point cost reflects the raw bucket consumption (matches chart bar tooltips); totals cost reflects the grid-side hp/hc (autoconso-subtracted) and matches the summary card. When the tariff is missing or both prices are 0, every cost field is exactly 0 and the request succeeds.
+- Feat (energy/api): `GET /api/v1/energy/by-usage` adds per-submeter `cost` plus `totals.costByEquipment`, `totals.otherCost`, `totals.totalCost`, using a period-blended €/kWh derived from the main meter's HP/HC totals for the same window. Submeters store only `energy` (no HP/HC channel) so the blended rate keeps the cost computation to a single Influx pass; the trade-off is a slight (~5 %) attribution skew for an equipment running exclusively in HC vs. invoice-grade attribution. When there is no main meter, the blended rate is 0 and submeter costs are 0.
+- Feat (UI/energy): new Wh / € toggle in the Energy page header. Cost mode swaps the bar chart Y axis and tooltips, the summary card totals and the by-usage stacked bar to euros. Toggle preference persisted in `localStorage` (`sowel_energy_unit`). When the tariff is not configured the toggle is disabled with a tooltip pointing to Settings > Tariff. Autoconso has no billed cost and is therefore hidden from the chart in € mode.
+- Feat (UI/settings): TariffSettings shows a one-line hint under the prices — "Ces prix valorisent toute votre consommation passée et future" — making the read-time pricing semantic discoverable (changing prices re-values past data).
+- Change (energy/api): `/api/v1/energy/status.tariffConfigured` semantics tightened from "any `energy.tariff` setting blob exists" to "at least one of `prices.hp` / `prices.hc` is > 0". A schedule-only tariff with 0/0 prices no longer enables the cost UI.
+
+Shadow mode (spec 124):
+
+- Feat (core): new `SOWEL_SHADOW_MODE=1` env var. When set, Sowel boots its HTTP server and serves the UI normally, but every outbound subsystem is gated off both at boot and at runtime: no plugin starts (no MQTT connect, no cloud poll, no OAuth refresh), no recipe instance is restored or armed, no MQTT publisher connects, no notification publisher subscribes, no GitHub version polling. The runtime gates on `PluginLoader.loadPlugin` and `RecipeManager.startInstance` mean that an admin clicking _Enable_ on a plugin or recipe inside a shadow instance does NOT cause it to dial out — the SQLite row updates, but the runtime stays inert.
 - Feat (api): `GET /api/v1/system/mode` returns `{ shadowMode: boolean }`, used by the UI banner. Auth required, accessible to any authenticated user.
 - Feat (ui): full-width amber **SHADOW MODE** stripe above the sidebar and content on every page, non-dismissable, when `shadowMode === true`. Localized FR + EN.
 - Feat (logs): when shadow mode is active, a `warn`-level structured log line `module: "shadow-mode"` is emitted at boot with the container hostname, so any accidental activation of shadow mode on production is immediately visible in `docker logs sowel` and can be alerted on.
