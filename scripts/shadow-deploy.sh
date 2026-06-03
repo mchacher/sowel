@@ -23,7 +23,7 @@ set -euo pipefail
 #
 # Targets:
 #   --target=local     Mac, http://localhost:3001 (default — per
-#                      dev-notes/shadow-instance.md, shadow should
+#                      scripts/howto-shadow.md, shadow should
 #                      run on a machine that is NOT sowelox).
 #   --target=sowelox   side-by-side with prod, http://192.168.0.230:3001
 #
@@ -47,7 +47,7 @@ set -euo pipefail
 # - Image tag is local-only (sowel:shadow-<branch>-<sha>); never pushed.
 # - On --target=sowelox, prod container is untouched (port 3000 stays).
 #
-# See dev-notes/shadow-instance.md for the playbook.
+# See scripts/howto-shadow.md for the playbook.
 # ============================================================
 
 SOWELOX_HOST="mchacher@192.168.0.230"

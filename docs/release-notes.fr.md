@@ -19,7 +19,7 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 - Feat (api) : `GET /api/v1/system/mode` renvoie `{ shadowMode: boolean }`, consommé par le bandeau UI. Auth requise, accessible à tout utilisateur authentifié.
 - Feat (ui) : bandeau **MODE SHADOW** ambre pleine largeur au-dessus du sidebar et du contenu, sur toutes les pages, non-dismissable, quand `shadowMode === true`. Localisé FR + EN.
 - Feat (logs) : quand le mode shadow est actif, une ligne de log structurée `warn` `module: "shadow-mode"` est émise au boot avec le hostname du conteneur, pour qu'une activation accidentelle du mode shadow sur la production soit immédiatement visible dans `docker logs sowel` et puisse déclencher une alerte.
-- Docs : nouveau playbook interne dans `dev-notes/shadow-instance.md` (non publié sur docs.sowel.org) qui décrit le cycle de vie complet d'une instance shadow : checklist pré-vol, backup, run avec `SOWEL_SHADOW_MODE=1`, restore, test, cleanup, et une section de recovery pour le cas "j'ai oublié de positionner la variable".
+- Docs : nouveau playbook interne dans `scripts/howto-shadow.md` (non publié sur docs.sowel.org) qui décrit le cycle de vie complet d'une instance shadow : checklist pré-vol, backup, run avec `SOWEL_SHADOW_MODE=1`, restore, test, cleanup, et une section de recovery pour le cas "j'ai oublié de positionner la variable".
 
 ---
 

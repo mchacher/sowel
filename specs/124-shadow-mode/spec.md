@@ -2,7 +2,7 @@
 
 ## Context
 
-The shadow-instance playbook in `dev-notes/shadow-instance.md` (added alongside spec 123) describes how to test a candidate build against a copy of production state. The procedure works, but it has a dangerous gap: the production backup carries `enabled = 1` on every plugin / recipe instance / publisher row, so the shadow's _first restart after restore_ boots all of those subsystems and connects out — duplicating MQTT subscriptions, polling cloud APIs, rotating OAuth refresh tokens (silently kicking production off), and firing notifications and device orders.
+The shadow-instance playbook in `scripts/howto-shadow.md` (added alongside spec 123) describes how to test a candidate build against a copy of production state. The procedure works, but it has a dangerous gap: the production backup carries `enabled = 1` on every plugin / recipe instance / publisher row, so the shadow's _first restart after restore_ boots all of those subsystems and connects out — duplicating MQTT subscriptions, polling cloud APIs, rotating OAuth refresh tokens (silently kicking production off), and firing notifications and device orders.
 
 Today the only way to avoid this is a manual SQL session between the restore and the restart. That step is easy to forget. Spec 124 turns it into a single env var, evaluated at boot, so the inert state is impossible to miss.
 
@@ -74,7 +74,7 @@ Implementation: a `<ShadowBanner />` component rendered above the routing outlet
 
 After this spec ships:
 
-- `dev-notes/shadow-instance.md` is rewritten so that step 4 ("Lock the shadow into an inert state") becomes a single line: `-e SOWEL_SHADOW_MODE=1`. The SQL fallback stays documented as a recovery path in case someone runs an older image without the flag.
+- `scripts/howto-shadow.md` is rewritten so that step 4 ("Lock the shadow into an inert state") becomes a single line: `-e SOWEL_SHADOW_MODE=1`. The SQL fallback stays documented as a recovery path in case someone runs an older image without the flag.
 - A new section "What shadow mode does NOT prevent" lists the residual risks (e.g. an InfluxDB pointed at prod would still write — the playbook still mandates a separate Influx).
 
 ## Acceptance criteria

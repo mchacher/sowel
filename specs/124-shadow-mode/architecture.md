@@ -217,7 +217,7 @@ shadow.banner = "SHADOW MODE — outbound integrations and publishers are disabl
 | `ui/src/components/layout/ShadowBanner.tsx`           | NEW                                                       |
 | `ui/src/components/layout/AppShell.tsx`               | Mount `<ShadowBanner />`, call `fetch()` on mount         |
 | `ui/src/i18n/locales/{en,fr}.json`                    | `shadow.banner` key                                       |
-| `dev-notes/shadow-instance.md`                        | Replace step 4 (manual SQL) with `-e SOWEL_SHADOW_MODE=1` |
+| `scripts/howto-shadow.md`                             | Replace step 4 (manual SQL) with `-e SOWEL_SHADOW_MODE=1` |
 | `docs/release-notes.md`, `docs/release-notes.fr.md`   | Version entry                                             |
 | `docs/technical/api-reference.md`, `.fr.md`           | `GET /api/v1/system/mode` row                             |
 

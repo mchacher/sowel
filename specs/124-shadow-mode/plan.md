@@ -46,7 +46,7 @@
 
 ### Docs & release
 
-25. [x] Rewrite step 4 of `dev-notes/shadow-instance.md` ("Lock the shadow into an inert state") so the inert state is now `-e SOWEL_SHADOW_MODE=1`. Keep the SQL fallback as a recovery section labelled "If you have to use an older image".
+25. [x] Rewrite step 4 of `scripts/howto-shadow.md` ("Lock the shadow into an inert state") so the inert state is now `-e SOWEL_SHADOW_MODE=1`. Keep the SQL fallback as a recovery section labelled "If you have to use an older image".
 26. [x] Add a "What shadow mode does NOT prevent" section in the playbook (Influx pollution, MQTT broker pointed at prod, etc.).
 27. [x] Add the `GET /api/v1/system/mode` row to `docs/technical/api-reference.{md,fr.md}`.
 28. [x] Add a release-notes entry under v1.X.Y in `docs/release-notes.{md,fr.md}` (spec 108 enforcement).
