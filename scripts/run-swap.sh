@@ -215,9 +215,9 @@ cmd_stop() {
   fi
 
   # 3. Stop shadow (only the container, do not destroy the stack)
-  if sowelox_shadow_running; then
-    log "Stopping shadow container on sowelox..."
-    ssh "$SOWELOX_HOST" "docker stop sowel-shadow shadow-influx" > /dev/null
+  if shadow_target >/dev/null 2>&1 && shadow_container_running; then
+    log "Stopping shadow container (target=$(shadow_target))..."
+    shadow_docker stop sowel-shadow shadow-influx > /dev/null
     ok "Shadow stopped"
   else
     warn "Shadow already stopped (or not deployed)"
@@ -241,10 +241,14 @@ cmd_status() {
     warn "Remote sowel: stopped"
   fi
 
-  if sowelox_shadow_running; then
-    ok "Shadow: running on http://192.168.0.230:3001"
+  if shadow_target >/dev/null 2>&1; then
+    if shadow_container_running; then
+      ok "Shadow: running on $(shadow_url) (target=$(shadow_target))"
+    else
+      warn "Shadow: deployed (target=$(shadow_target)) but not running"
+    fi
   else
-    warn "Shadow: not running"
+    warn "Shadow: not deployed"
   fi
 
   if is_running "$BACKEND_PID_FILE"; then
@@ -274,9 +278,42 @@ cmd_status() {
 # scripts/shadow-deploy.sh. This block only toggles the existing
 # containers on and off, mirroring the local/remote pattern.
 
-shadow_exists() {
-  ssh -o ConnectTimeout=5 "$SOWELOX_HOST" \
-    "docker ps -a --format '{{.Names}}' | grep -q '^sowel-shadow\$'" 2>/dev/null
+SHADOW_TARGET_FILE="$REPO_ROOT/data/.shadow-target"
+
+# Resolves where the shadow was deployed by reading the state file
+# written by shadow-deploy.sh. Echoes "local" or "sowelox", or
+# returns 1 when no shadow has been deployed.
+shadow_target() {
+  if [[ -f "$SHADOW_TARGET_FILE" ]]; then
+    cat "$SHADOW_TARGET_FILE"
+    return 0
+  fi
+  return 1
+}
+
+shadow_url() {
+  case "$(shadow_target 2>/dev/null)" in
+    local)   echo "http://localhost:3001" ;;
+    sowelox) echo "http://192.168.0.230:3001" ;;
+    *)       echo "(unknown)" ;;
+  esac
+}
+
+# Run a docker command on whichever target the shadow was deployed to.
+shadow_docker() {
+  case "$(shadow_target 2>/dev/null)" in
+    local)   docker "$@" ;;
+    sowelox) ssh -o ConnectTimeout=5 "$SOWELOX_HOST" "docker $*" ;;
+    *)       return 1 ;;
+  esac
+}
+
+shadow_container_exists() {
+  shadow_docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^sowel-shadow$'
+}
+
+shadow_container_running() {
+  shadow_docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^sowel-shadow$'
 }
 
 cmd_shadow() {
@@ -296,24 +333,32 @@ cmd_shadow() {
 
 shadow_start() {
   echo
-  if ! shadow_exists; then
-    err "No shadow container on sowelox."
-    echo "  Create it with: scripts/shadow-deploy.sh up"
+  if ! shadow_target >/dev/null 2>&1; then
+    err "No shadow deployed."
+    echo "  Create it with: scripts/shadow-deploy.sh up [--target=local|sowelox]"
+    exit 1
+  fi
+  local target
+  target=$(shadow_target)
+
+  if ! shadow_container_exists; then
+    err "State file says target=$target but no sowel-shadow container is there."
+    echo "  Re-deploy with: scripts/shadow-deploy.sh up --target=$target"
     exit 1
   fi
 
-  if sowelox_shadow_running; then
-    warn "Shadow already running on http://192.168.0.230:3001"
+  if shadow_container_running; then
+    warn "Shadow already running on $(shadow_url)"
     return 0
   fi
 
-  log "Starting shadow stack on sowelox..."
-  ssh "$SOWELOX_HOST" "docker start shadow-influx sowel-shadow" > /dev/null
+  log "Starting shadow stack (target=$target)..."
+  shadow_docker start shadow-influx sowel-shadow > /dev/null
   sleep 3
-  if sowelox_shadow_running; then
-    ok "Shadow started on http://192.168.0.230:3001"
+  if shadow_container_running; then
+    ok "Shadow started on $(shadow_url)"
   else
-    err "Shadow did not come up — check 'docker logs sowel-shadow' on sowelox"
+    err "Shadow did not come up — check 'docker logs sowel-shadow' on $target"
     exit 1
   fi
   echo
@@ -321,35 +366,47 @@ shadow_start() {
 
 shadow_stop() {
   echo
-  if ! sowelox_shadow_running; then
+  if ! shadow_target >/dev/null 2>&1; then
+    warn "No shadow deployed"
+    return 0
+  fi
+  if ! shadow_container_running; then
     warn "Shadow already stopped"
     return 0
   fi
 
-  log "Stopping shadow on sowelox..."
-  ssh "$SOWELOX_HOST" "docker stop sowel-shadow shadow-influx" > /dev/null
+  log "Stopping shadow (target=$(shadow_target))..."
+  shadow_docker stop sowel-shadow shadow-influx > /dev/null
   ok "Shadow stopped (containers kept, restart with: $0 shadow)"
   echo
 }
 
 shadow_status() {
   echo
-  if ! shadow_exists; then
+  if ! shadow_target >/dev/null 2>&1; then
     warn "Shadow not deployed (run scripts/shadow-deploy.sh up)"
     echo
     return 0
   fi
-  if sowelox_shadow_running; then
-    ok "Shadow: running on http://192.168.0.230:3001"
+  local target
+  target=$(shadow_target)
+
+  if ! shadow_container_exists; then
+    warn "Shadow state file says target=$target but container is missing"
+    echo
+    return 0
+  fi
+  if shadow_container_running; then
+    ok "Shadow: running on $(shadow_url) (target=$target)"
     local banner
-    banner=$(ssh "$SOWELOX_HOST" "docker logs sowel-shadow 2>&1 | grep 'SHADOW MODE' | head -1" 2>/dev/null || true)
+    banner=$(shadow_docker logs sowel-shadow 2>&1 | grep 'SHADOW MODE' | head -1 || true)
     if [[ -n "$banner" ]]; then
       ok "Safety banner observed in shadow logs"
     else
       warn "Safety banner NOT observed — verify SOWEL_SHADOW_MODE=1 on the container env"
     fi
   else
-    warn "Shadow: deployed but not running (start with: $0 shadow)"
+    warn "Shadow: deployed (target=$target) but not running (start with: $0 shadow)"
   fi
   echo
 }
