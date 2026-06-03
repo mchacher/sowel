@@ -1,188 +1,126 @@
-# Shadow instance — testing a candidate build against production data
+# Shadow instance — quick reference
 
-A **shadow instance** is a second Sowel server, run on a separate machine, restored from a production backup, and started with `SOWEL_SHADOW_MODE=1`. With that env var set, every outbound subsystem — plugin lifecycle, recipes, MQTT publishers, notification publishers, GitHub version polling — is gated off both at boot and at runtime. The shadow can serve the UI against real data and can be poked at, but it cannot dial out and therefore cannot touch production.
+A **shadow** is a second Sowel server, started with `SOWEL_SHADOW_MODE=1`, that you seed from a production backup so you can test a candidate build against real data without dialing out to anything (no MQTT connect, no cloud poll, no OAuth refresh, no notification fire, no GitHub poll, no recipe order).
 
-> The env var is the safety: as long as it is set on the shadow process, the inert invariant holds. If you forget to set it, the shadow boots like a normal Sowel — see [Recovery](#recovery-if-the-shadow-connected-out).
+Spec 124 makes the inert state a runtime invariant, so you cannot break it by clicking around in the shadow UI: an admin enabling a plugin or recipe persists the SQLite row but the runtime stays inert.
 
-## When to use a shadow
-
-- Validating a read-time feature against real energy / history data before a release (e.g. spec 123 cost valuation).
-- Reproducing a UI bug that needs real data.
-- Trying a migration on a copy of production data before publishing the version.
-- Practising a restore flow.
-
-Do **not** use a shadow when a one-line dev environment would suffice. The shadow is heavyweight and the cleanup steps matter.
-
-## Hard rules
-
-1. **The shadow runs on a machine that is NOT sowelox.** A laptop is fine. A container on sowelox itself is not — too easy to bind-mount the wrong path.
-2. **The shadow has its own InfluxDB.** Never point `INFLUX_URL` at production's Influx — `SOWEL_SHADOW_MODE` gates outbound integrations but does not protect a misconfigured Influx URL.
-3. **The shadow has its own Docker network.** No shared `host.docker.internal` to sowelox.
-4. **`SOWEL_SHADOW_MODE=1` must be set on every `docker run` of the shadow container.** Without it, the inert invariant is gone.
-5. **Never push the shadow image to ghcr.io with a tag production might pull.** Build it locally and keep it local. If you must publish, use `:shadow-YYYYMMDD` and never `:latest`.
-
-## The procedure
-
-### Step 0 — Pre-flight checklist
-
-- [ ] You are on a workstation that has the `sowel` repo checked out on the branch you want to test.
-- [ ] You have SSH access to `mchacher@192.168.0.230` (sowelox).
-- [ ] The candidate branch has been pushed and CI is green (or you accept building locally).
-
-### Step 1 — Create the backup on production
-
-On the production UI (`http://192.168.0.230:3000`):
-
-1. **Admin > Backup > Create backup**
-2. Wait for the spinner to finish, then **Download** the resulting ZIP. The file looks like `sowel-backup-YYYY-MM-DD-HHMMSS.zip`.
-
-Backup creation is read-only on SQLite (transaction) and read-only on InfluxDB (query). Safe to run while production is in use.
-
-Verify the archive before going further:
+## TL;DR — three commands
 
 ```bash
-unzip -l ~/Downloads/sowel-backup-*.zip | head -30
-# Expect: sowel-backup.json, influx-raw.lp, influx-hourly.lp, influx-daily.lp,
-#         influx-energy-hourly.lp, influx-energy-daily.lp, data/...
+# 1. Deploy the candidate image (build current branch, start containers on http://localhost:3001)
+./scripts/shadow-deploy.sh up
+
+# 2. Seed from prod (login, download backup, restore, restart). Reads SOWEL_PROD_PASSWORD.
+SOWEL_PROD_PASSWORD='…' ./scripts/shadow-deploy.sh seed
+
+# 3. Open the UI. Login with the same admin / password as prod (the seed reused prod creds).
+open http://localhost:3001
 ```
 
-If `sowel-backup.json` is missing, the backup is invalid — stop and re-create.
-
-### Step 2 — Launch the shadow with the candidate image and `SOWEL_SHADOW_MODE=1`
+When done:
 
 ```bash
-# On the dev workstation, at the repo root, on the feature branch
-git status                       # confirm you are on the right branch
-docker build -t sowel:candidate .
-
-export SHADOW_DIR="$HOME/sowel-shadow"
-mkdir -p "$SHADOW_DIR/data" "$SHADOW_DIR/influx"
-
-# Dedicated Docker network — no shared host bridge.
-docker network create sowel-shadow-net
-
-docker run -d --name shadow-influx \
-  --network sowel-shadow-net \
-  -v "$SHADOW_DIR/influx:/var/lib/influxdb2" \
-  -e DOCKER_INFLUXDB_INIT_MODE=setup \
-  -e DOCKER_INFLUXDB_INIT_USERNAME=shadow \
-  -e DOCKER_INFLUXDB_INIT_PASSWORD=shadowpass \
-  -e DOCKER_INFLUXDB_INIT_ORG=sowel \
-  -e DOCKER_INFLUXDB_INIT_BUCKET=sowel \
-  -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=shadow-influx-token \
-  influxdb:2.7
-
-docker run -d --name sowel-shadow \
-  --network sowel-shadow-net \
-  -p 3001:3000 \
-  -v "$SHADOW_DIR/data:/app/data" \
-  -e TZ=Europe/Paris \
-  -e INFLUX_URL=http://shadow-influx:8086 \
-  -e INFLUX_TOKEN=shadow-influx-token \
-  -e INFLUX_ORG=sowel \
-  -e INFLUX_BUCKET=sowel \
-  -e SOWEL_SHADOW_MODE=1 \
-  sowel:candidate
+./scripts/shadow-deploy.sh destroy   # remove containers + data dir
 ```
 
-Wait ~10 s, open `http://localhost:3001`. You should see:
+## What lives where
 
-- An amber **SHADOW MODE** banner stripe at the very top of every page.
-- The Sowel **first-run setup** screen below the banner.
+| Concern        | Local target (default)        | Sowelox target              |
+| -------------- | ----------------------------- | --------------------------- |
+| URL            | `http://localhost:3001`       | `http://192.168.0.230:3001` |
+| Data dir       | `$HOME/sowel-shadow/`         | `/opt/sowel-shadow/`        |
+| InfluxDB       | dedicated `shadow-influx`     | dedicated `shadow-influx`   |
+| Docker network | `sowel-shadow-net`            | `sowel-shadow-net`          |
+| Image tag      | `sowel:shadow-<branch>-<sha>` | same (transferred via ssh)  |
+| State pointer  | `data/.shadow-target`         | `data/.shadow-target`       |
 
-Verify the boot log emitted the safety banner:
+Local is the default and recommended path — no SSH transfer, faster iteration, isolated from prod.
+
+## Scripts
+
+### `scripts/shadow-deploy.sh` — lifecycle
+
+```
+up [--target=local|sowelox]   Build current branch, create containers, start. Default local.
+update                         Alias for `up` (rebuild + recreate sowel-shadow with the new image).
+seed                           Login on prod, download backup, restore on shadow, restart container.
+                               Env: SOWEL_PROD_HOST (default 192.168.0.230:3000),
+                                    SOWEL_PROD_USER (default admin),
+                                    SOWEL_PROD_PASSWORD (prompted if unset).
+down                           Stop and remove containers + network. Keep data dir.
+destroy                        down + delete the data dir. IRREVERSIBLE (prompts).
+status                         Containers + network + data dir state on the chosen target.
+```
+
+Guards on `up`:
+
+- Refuses with `--target=sowelox` if prod is not running on sowelox (fix prod first).
+- Warns + prompts if the working tree is dirty (the image tag carries the SHA but not your uncommitted diff).
+- Refuses to switch target while a shadow exists on the other target — run `down` first.
+
+### `scripts/run-swap.sh` — daily on/off
+
+```
+shadow [start]   Start the deployed shadow container.
+shadow stop      Stop the shadow container. Containers preserved.
+shadow status    Running / stopped / safety banner observed.
+stop             Global stop (local dev + remote prod + shadow).
+status           Global state (local dev + remote prod + shadow).
+```
+
+The shadow target is auto-detected from `data/.shadow-target` written by `shadow-deploy.sh`. Local vs sowelox is transparent to `run-swap.sh`.
+
+## Verifying inert state
+
+The deploy and seed steps both wait for the safety banner before they return success. To check at any time:
 
 ```bash
+# In logs
 docker logs sowel-shadow 2>&1 | grep "SHADOW MODE"
-# SHADOW MODE ACTIVE — outbound integrations, recipes, publishers, and version checks are disabled. ...
+
+# Via API (any authenticated user)
+curl -H "Authorization: Bearer <jwt>" http://localhost:3001/api/v1/system/mode
+# → {"shadowMode": true}
 ```
 
-Create a temporary admin (`shadow` / `shadow`); it will be overwritten by the restore.
+In the UI: a non-dismissable amber **MODE SHADOW** stripe at the top of every page when the flag is on.
 
-### Step 3 — Restore the production backup
-
-In the shadow UI:
-
-1. **Admin > Backup > Restore**
-2. Upload the ZIP from Step 1.
-3. Confirm. The restore finishes with a banner saying _Restart required to reload_.
-
-Restart the shadow container so the restored state is picked up:
-
-```bash
-docker restart sowel-shadow
-# Verify the safety banner still shows in the boot log after restart.
-docker logs sowel-shadow 2>&1 | tail -50 | grep "SHADOW MODE"
-```
-
-`SOWEL_SHADOW_MODE=1` is still set, so even though the restored SQLite has every plugin / recipe / publisher row at `enabled = 1`, nothing connects out. The amber banner stays. The integrations page lists every plugin as disconnected.
-
-### Step 4 — Test
-
-Browse `http://localhost:3001`, exercise the change you are validating. Any action that would normally fire an outbound effect (enable a plugin, save a recipe instance, configure an MQTT publisher) is silently neutered at runtime — the SQLite row is written, but the plugin / recipe / publisher never boots. Check the shadow logs to see the `shadow-mode` warn lines whenever this happens.
-
-### Step 5 — Cleanup
-
-```bash
-docker stop sowel-shadow shadow-influx
-docker rm sowel-shadow shadow-influx
-docker network rm sowel-shadow-net
-rm -rf "$SHADOW_DIR"
-docker image rm sowel:candidate    # optional
-```
-
-The production backup ZIP can be kept in cold storage or deleted — it contains the same data the next backup will contain.
+After a `seed` followed by `docker restart`, every prod plugin has `enabled=1` in the restored SQLite but every one is `disconnected` in `/api/v1/plugins`. That is the proof that the runtime gates work.
 
 ## What shadow mode does NOT prevent
 
-Spec 124's gates close the outbound paths inside Sowel itself. They do not protect against misconfiguration of the surrounding environment:
+The runtime gates close outbound paths inside Sowel. They do not guard against host-level misconfiguration:
 
-- **InfluxDB URL pointed at production.** If `INFLUX_URL` aims at the production Influx, the history writer (which is gated off neither by shadow mode nor by anything else — it serves the UI's energy / Analyse charts) would write into prod's bucket. The playbook above creates a dedicated `shadow-influx` container; do not skip it.
-- **MQTT broker URL inside backed-up settings.** The shadow's SQLite carries the production MQTT broker URL. Plugins do not connect because shadow mode gates them off, but if you ever toggle the env var off while still on the shadow data dir, they will. Treat `data-shadow/` as toxic and discard it after the test.
-- **OAuth credentials inside backed-up settings.** Same logic. Shadow mode never lets the plugins boot, so the refresh tokens are never touched. Manual SQL that pokes a plugin's runtime state would defeat this — don't.
-- **Filesystem / docker socket access.** Self-update and backup-helper containers are independent of shadow mode. Don't trigger them on the shadow.
+- **`INFLUX_URL` pointed at prod.** Would write into prod's bucket via the history writer. The deploy script always provisions a dedicated `shadow-influx` container; do not override `INFLUX_URL`.
+- **MQTT broker URLs inside backed-up settings.** Plugins do not connect because they are gated, but if you toggle the env var off while still on the shadow data dir, they will. Treat the shadow data dir as toxic and `destroy` it after the test.
+- **OAuth credentials inside backed-up settings.** Same logic — gated as long as plugins do not boot. Manual SQL pokes that fire a plugin's runtime path defeat the gate.
+- **Self-update / backup-helper containers.** Independent of shadow mode. Don't trigger them on a shadow.
 
 ## Recovery if the shadow connected out
 
-If you realise too late that you started the shadow without `SOWEL_SHADOW_MODE=1` — typically because the env var fell off a `docker run` line — act immediately:
+You realised the shadow boot lacked `SOWEL_SHADOW_MODE=1` — typically because the env var fell off a `docker run` line.
 
-1. **Stop the shadow** to cap further damage:
+```bash
+# 1. Stop the shadow now
+./scripts/run-swap.sh shadow stop
+```
 
-   ```bash
-   docker stop sowel-shadow
-   ```
+2. Force OAuth re-auth on prod for every cloud integration whose refresh token may have rotated on the shadow: open prod UI → **Integrations** → Reconnect (Legrand Control / Legrand Energy / Panasonic Comfort Cloud / Netatmo Weather / Netatmo Security / SmartThings).
 
-2. **Force OAuth re-auth on production** for every cloud integration whose refresh token may have rotated on the shadow:
-   - Open production UI > **Integrations** > for each of Legrand Control / Legrand Energy / Panasonic Comfort Cloud / Netatmo Weather / Netatmo Security / SmartThings: **Reconnect**.
-   - If reconnect fails (refresh token already burned), the plugin needs the OAuth flow restarted from scratch.
-
-3. **Check production logs** for any order or notification that the shadow may have fired in the meantime:
+3. Check prod logs for stray orders or notifications fired by the shadow:
 
    ```bash
    ssh mchacher@192.168.0.230 'docker exec sowel grep -E "order|notif" /app/data/logs/sowel.0.log | tail -50'
    ```
 
-4. If a physical device acted (light turned on, valve opened), restore its state manually from the UI.
-
-5. **Record what happened** in this page's lessons-learned section so the procedure can be hardened.
+4. Record the incident below so the procedure can be tightened.
 
 ## Why a shared production DB cannot be the shadow
 
-A common temptation is to bind-mount production's `/opt/sowel/data` into a second container. **Do not do this.** Sowel uses SQLite in WAL mode and writes on every boot (settings, plugin states, audit log, last-events table). Two writers on the same SQLite file with WAL is not safe and will eventually corrupt the journal — silently first, then catastrophically. The backup > restore > shadow-mode-env path is the only safe pattern.
-
-## Verifying shadow mode is actually on
-
-If you ever want to confirm a running container is inert without reading logs:
-
-```bash
-curl -s -b auth-cookie http://localhost:3001/api/v1/system/mode
-# {"shadowMode":true}
-```
-
-(`/api/v1/system/mode` requires authentication, like the rest of `/system/*`.)
+Two writers on the same SQLite file with WAL is not safe — it will eventually corrupt the journal. The backup-restore-shadow-mode path is the only safe pattern.
 
 ## Lessons learned
 
-> Append a dated entry every time the procedure is exercised, especially when something surprised you. The goal is to make the next person's run faster and safer.
+> Append a dated entry every time the procedure is exercised, especially when something surprised you.
 
 - (No entries yet — be the first.)
