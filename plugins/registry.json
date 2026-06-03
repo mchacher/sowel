@@ -435,7 +435,7 @@
     "icon": "Monitor",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-presence-display",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "tags": ["automation", "display", "motion", "presence", "sleep", "energy"],
     "i18n": {
       "fr": {
@@ -445,6 +445,6 @@
     },
     "sowelVersion": ">=1.19.0",
     "owner": "mchacher",
-    "sha256": "ac22da1f83e97b6c398286ed422a9968870dba3160db15a54fb971e02273fd44"
+    "sha256": "3f6749e6d2328f91feccc52d5fb297afcee9a90f40c7838663a1ed8a23f9265f"
   }
 ]
