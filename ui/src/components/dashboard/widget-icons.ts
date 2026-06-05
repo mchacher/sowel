@@ -300,6 +300,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   shutter: "ArrowUpDown",
   awning: "ArrowUpDown",
   sensor: "Thermometer",
+  solar_panel: "Sun",
   thermostat: "Thermometer",
   heater: "Flame",
   gate: "DoorOpen",

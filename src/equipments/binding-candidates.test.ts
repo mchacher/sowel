@@ -128,6 +128,72 @@ describe("computeBindingCandidates", () => {
     const result = computeBindingCandidates("display", [], []);
     expect(result).toHaveLength(0);
   });
+
+  // ── solar_panel (spec 125) — one candidate per inverter channel ──
+
+  function inverterData(channels: number, withTemp = true): DeviceData[] {
+    const d: DeviceData[] = [
+      data("power", "number", { category: "power" }),
+      data("energy", "number", { category: "energy" }),
+      data("ac_voltage", "number", { category: "voltage" }),
+      data("frequency", "number", { category: "generic" }),
+      data("signal", "number", { category: "rssi" }),
+    ];
+    if (withTemp) d.push(data("inverter_temp", "number", { category: "temperature_device" }));
+    for (let n = 1; n <= channels; n++) {
+      d.push(
+        data(`ch${n}_voltage`, "number", { category: "voltage" }),
+        data(`ch${n}_current`, "number", { category: "current" }),
+        data(`ch${n}_power`, "number", { category: "power" }),
+        data(`ch${n}_energy`, "number", { category: "energy" }),
+      );
+    }
+    return d;
+  }
+
+  it("solar_panel on a 2-channel inverter → 2 candidates, each = channel metrics + inverter_temp", () => {
+    const result = computeBindingCandidates("solar_panel", inverterData(2), []);
+    expect(result).toHaveLength(2);
+    expect(result.map((c) => c.id)).toEqual(["ch1", "ch2"]);
+    expect(result[0].dataKeys).toEqual([
+      "ch1_voltage",
+      "ch1_current",
+      "ch1_power",
+      "ch1_energy",
+      "inverter_temp",
+    ]);
+    expect(result[1].dataKeys).toEqual([
+      "ch2_voltage",
+      "ch2_current",
+      "ch2_power",
+      "ch2_energy",
+      "inverter_temp",
+    ]);
+    expect(result[0].orderKeys).toEqual([]);
+  });
+
+  it("solar_panel on a single-channel inverter → 1 candidate incl. inverter_temp", () => {
+    const result = computeBindingCandidates("solar_panel", inverterData(1), []);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("ch1");
+    expect(result[0].dataKeys).toContain("inverter_temp");
+    expect(result[0].dataKeys).toHaveLength(5);
+  });
+
+  it("solar_panel with a channel but no inverter_temp → channel metrics only", () => {
+    const result = computeBindingCandidates("solar_panel", inverterData(1, false), []);
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys).toEqual(["ch1_voltage", "ch1_current", "ch1_power", "ch1_energy"]);
+  });
+
+  it("solar_panel with inverter-level keys only (no ch<N>_) → no candidate", () => {
+    const datas = [
+      data("power", "number", { category: "power" }),
+      data("inverter_temp", "number", { category: "temperature_device" }),
+    ];
+    const result = computeBindingCandidates("solar_panel", datas, []);
+    expect(result).toHaveLength(0);
+  });
 });
 
 describe("hasFreeCandidates", () => {

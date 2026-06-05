@@ -20,6 +20,8 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy"],
   energy_production_meter: ["energy", "power"],
+  // Solar panel devices expose per-channel DC power; that's the discriminator.
+  solar_panel: ["power", "current"],
   // Polytropic PAC matches via pool_water_temperature; Sonoff filtration relay
   // matches via light_state (used as the optional `filtration_state` binding).
   pool_heat_pump: ["pool_water_temperature", "light_state"],

@@ -12,6 +12,7 @@ import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { WaterValveControl } from "../components/equipments/WaterValveControl";
 import { PoolHeatPumpControl } from "../components/equipments/PoolHeatPumpControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
+import { SolarPanelDataPanel } from "../components/equipments/SolarPanelDataPanel";
 import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
 import { DisplayPanel } from "../components/equipments/DisplayPanel";
@@ -371,6 +372,12 @@ export function EquipmentDetailPage() {
           orderBindings={equipment.orderBindings}
           equipmentId={equipment.id}
           onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+        />
+      ) : equipment.type === "solar_panel" ? (
+        <SolarPanelDataPanel
+          bindings={equipment.dataBindings}
+          status={equipment.status}
+          statusReason={equipment.statusReason}
         />
       ) : isSensor ? (
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />

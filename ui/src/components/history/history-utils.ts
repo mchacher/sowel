@@ -22,6 +22,7 @@ export const BOOLEAN_CATEGORIES = new Set<string>([
 const MEASUREMENT_CATEGORIES = new Set<string>([
   "temperature",
   "temperature_outdoor",
+  "temperature_device",
   "humidity",
   "humidity_outdoor",
   "pressure",
@@ -42,6 +43,7 @@ const MEASUREMENT_CATEGORIES = new Set<string>([
 export const ENVELOPE_CATEGORIES = new Set<string>([
   "temperature",
   "temperature_outdoor",
+  "temperature_device",
   "humidity",
   "humidity_outdoor",
   "pressure",

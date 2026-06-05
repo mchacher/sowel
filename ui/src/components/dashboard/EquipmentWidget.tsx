@@ -14,6 +14,7 @@ import {
   Snowflake,
   WashingMachine,
   Timer,
+  Sun,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
@@ -22,6 +23,7 @@ import { findOrderByCategory } from "../equipments/bindingUtils";
 import { findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
+import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import { createElement } from "react";
 import {
   LightBulbIcon,
@@ -80,6 +82,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetai
   if (isGate) return <GateEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
+  if (equipment.type === "solar_panel") return <SolarPanelEquipmentWidget label={label} equipment={equipment} />;
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
   if (equipment.type === "weather") return <WeatherStationWidget label={label} equipment={equipment} onOpenDetail={onOpenDetail} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
@@ -818,6 +821,87 @@ function EnergyMeterEquipmentWidget({
               {formatWh(energyMonth.value)}
             </span>
             <span className="text-[10px] text-text-tertiary">{unitWh(energyMonth.value)}</span>
+          </div>
+        )}
+      </div>
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Solar panel widget (spec 125) — one PV panel = one inverter channel
+// ============================================================
+
+function SolarPanelEquipmentWidget({
+  label,
+  equipment,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+}) {
+  const { t } = useTranslation();
+
+  // Per-panel bindings: ch<N>_power / _energy / _voltage / _current + shared
+  // inverter_temp. Pick by category (one of each per panel equipment).
+  const bindings = equipment.dataBindings;
+  const power = bindings.find((b) => b.category === "power");
+  const energy = bindings.find((b) => b.category === "energy");
+  const voltage = bindings.find((b) => b.category === "voltage");
+  const temp = bindings.find((b) => b.category === "temperature_device");
+
+  const powerW = typeof power?.value === "number" ? power.value : null;
+  const energyWh = typeof energy?.value === "number" ? energy.value : null;
+  const voltageV = typeof voltage?.value === "number" ? voltage.value : null;
+  const tempC = typeof temp?.value === "number" ? temp.value : null;
+
+  return (
+    <WidgetCard label={label}>
+      {/* Zone 1: status badge (silent when online) */}
+      <div className="flex justify-center min-h-[18px]">
+        <EquipmentStatusBadge status={equipment.status} reason={equipment.statusReason} size="sm" />
+      </div>
+
+      {/* Zone 2: icon + produced power (headline, green = production) */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center flex-1 my-auto">
+        <div />
+        <Sun size={40} strokeWidth={1.5} className="text-accent" />
+        <div className="flex flex-col items-start gap-1.5 pl-2">
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-[20px] font-semibold text-success tabular-nums leading-none font-mono">
+              {powerW === null ? "—" : powerW >= 1000 ? (powerW / 1000).toFixed(2) : Math.round(powerW)}
+            </span>
+            <span className="text-[11px] font-medium text-text-tertiary">
+              {powerW !== null && powerW >= 1000 ? "kW" : "W"}
+            </span>
+          </div>
+          <span className="text-[11px] text-text-tertiary">{t("solar.produced")}</span>
+        </div>
+      </div>
+
+      {/* Zone 3: secondary values — cumulative energy, voltage, inverter temp */}
+      <div className="flex justify-center gap-4 mt-auto pt-1">
+        {energyWh !== null && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+              {energyWh >= 1000 ? (energyWh / 1000).toFixed(1) : Math.round(energyWh)}
+            </span>
+            <span className="text-[10px] text-text-tertiary">{energyWh >= 1000 ? "kWh" : "Wh"}</span>
+          </div>
+        )}
+        {voltageV !== null && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+              {voltageV.toFixed(1)}
+            </span>
+            <span className="text-[10px] text-text-tertiary">V</span>
+          </div>
+        )}
+        {tempC !== null && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+              {tempC.toFixed(1)}
+            </span>
+            <span className="text-[10px] text-text-tertiary">°C</span>
           </div>
         )}
       </div>

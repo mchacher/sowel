@@ -114,6 +114,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy", "power"],
   energy_production_meter: ["energy", "power"],
+  solar_panel: ["power", "energy", "voltage", "current", "temperature_device"],
   media_player: ["generic"],
   appliance: ["generic", "energy"],
   water_valve: ["light_state", "battery", "generic"],

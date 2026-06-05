@@ -64,6 +64,7 @@ const CATEGORY_PRIORITY: DataCategory[] = [
 const CATEGORY_KEYS: Partial<Record<DataCategory, string>> = {
   motion: "category.motion",
   temperature: "category.temperature",
+  temperature_device: "category.temperature_device",
   humidity: "category.humidity",
   pressure: "category.pressure",
   luminosity: "category.luminosity",
@@ -86,6 +87,7 @@ const ICON_STROKE = 1.5;
 function iconForCategory(category: DataCategory, value?: unknown): React.ReactNode {
   switch (category) {
     case "temperature":
+    case "temperature_device":
       return <Thermometer size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "humidity":
       return <Droplets size={ICON_SIZE} strokeWidth={ICON_STROKE} />;

@@ -123,6 +123,29 @@ export function computeBindingCandidates(
       return candidates;
     }
 
+    case "solar_panel": {
+      // One candidate per inverter channel (key prefix `ch<N>_`), each grouping
+      // that channel's metrics plus the shared `inverter_temp`. Mirror of the
+      // backend solar_panel case.
+      const sharedTemp = deviceData.find((d) => d.key === "inverter_temp")?.key;
+      const byChannel = new Map<number, string[]>();
+      for (const d of deviceData) {
+        const m = /^ch(\d+)_/.exec(d.key);
+        if (!m) continue;
+        const n = Number(m[1]);
+        if (!byChannel.has(n)) byChannel.set(n, []);
+        byChannel.get(n)!.push(d.key);
+      }
+      return [...byChannel.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([n, keys]) => ({
+          id: `ch${n}`,
+          label: `Panel ${n}`,
+          dataKeys: sharedTemp ? [...keys, sharedTemp] : keys,
+          orderKeys: [],
+        }));
+    }
+
     default:
       return [];
   }

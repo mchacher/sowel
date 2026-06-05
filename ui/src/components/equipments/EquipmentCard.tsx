@@ -16,6 +16,7 @@ import {
   Monitor,
   WashingMachine,
   Waves,
+  Sun,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -46,6 +47,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   energy_meter: <Zap size={18} strokeWidth={1.5} />,
   main_energy_meter: <Zap size={18} strokeWidth={1.5} />,
   energy_production_meter: <Zap size={18} strokeWidth={1.5} />,
+  solar_panel: <Sun size={18} strokeWidth={1.5} />,
   media_player: <Tv size={18} strokeWidth={1.5} />,
   appliance: <WashingMachine size={18} strokeWidth={1.5} />,
   water_valve: <WaterValveIcon size={18} strokeWidth={1.5} />,
@@ -72,6 +74,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   energy_meter: "equipments.type.energy_meter",
   main_energy_meter: "equipments.type.main_energy_meter",
   energy_production_meter: "equipments.type.energy_production_meter",
+  solar_panel: "equipments.type.solar_panel",
   media_player: "equipments.type.media_player",
   appliance: "equipments.type.appliance",
   water_valve: "equipments.type.water_valve",

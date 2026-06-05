@@ -144,6 +144,32 @@ export function computeBindingCandidates(
       return candidates;
     }
 
+    case "solar_panel": {
+      // One candidate per inverter channel (key prefix `ch<N>_`). Each panel
+      // groups that channel's metrics (voltage/current/power/energy) plus the
+      // shared inverter temperature `inverter_temp` so both panels of a DS3
+      // display the same inverter temperature. Inverter-level keys (total
+      // power/energy, ac_voltage, frequency, signal) are intentionally left
+      // unbound — they belong to the inverter, not a panel.
+      const sharedTemp = deviceData.find((d) => d.key === "inverter_temp")?.key;
+      const byChannel = new Map<number, string[]>();
+      for (const d of deviceData) {
+        const m = /^ch(\d+)_/.exec(d.key);
+        if (!m) continue;
+        const n = Number(m[1]);
+        if (!byChannel.has(n)) byChannel.set(n, []);
+        byChannel.get(n)!.push(d.key);
+      }
+      return [...byChannel.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([n, keys]) => ({
+          id: `ch${n}`,
+          label: `Panel ${n}`,
+          dataKeys: sharedTemp ? [...keys, sharedTemp] : keys,
+          orderKeys: [],
+        }));
+    }
+
     case "sensor":
     case "weather":
     case "weather_forecast":

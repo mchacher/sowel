@@ -16,6 +16,7 @@ import { Point } from "../core/influx-client.js";
 const CATEGORY_DEFAULTS_ON: ReadonlySet<string> = new Set([
   "temperature",
   "temperature_outdoor",
+  "temperature_device",
   "humidity",
   "humidity_outdoor",
   "pressure",
@@ -56,6 +57,7 @@ const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set([
 const DEADBAND: Record<string, number> = {
   temperature: 0.2,
   temperature_outdoor: 0.2,
+  temperature_device: 0.2,
   humidity: 1.0,
   humidity_outdoor: 1.0,
   luminosity: 0.05, // 5% relative
