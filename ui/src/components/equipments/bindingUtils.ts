@@ -160,6 +160,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   energy_meter: [],
   main_energy_meter: [],
   energy_production_meter: [],
+  solar_panel: [],
   media_player: ["power", "input_source"],
   appliance: [],
   water_valve: [
