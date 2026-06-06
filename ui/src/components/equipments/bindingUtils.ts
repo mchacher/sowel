@@ -316,6 +316,9 @@ const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>
   "shutter",
   "awning",
   "water_valve",
+  // Spec 125 — one candidate per inverter channel (ch<N>_*), so a 2-panel DS3
+  // yields Panel 1 / Panel 2 and each equipment binds only its channel.
+  "solar_panel",
 ]);
 
 /** Auto-create DataBindings and OrderBindings for selected devices. */

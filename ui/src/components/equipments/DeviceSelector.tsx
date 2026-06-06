@@ -82,6 +82,8 @@ const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>
   "shutter",
   "awning",
   "water_valve",
+  // Spec 125 — solar panel: one candidate per inverter channel (Panel 1 / Panel 2).
+  "solar_panel",
 ]);
 
 interface DeviceSelectorProps {
