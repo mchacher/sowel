@@ -53,11 +53,13 @@ interface EquipmentFormProps {
   boundDeviceIds?: Set<string>;
   /** Per-device set of device_order keys already bound on other equipments. */
   boundOrderKeysByDevice?: Record<string, Set<string>>;
+  /** Per-device set of device_data keys already bound on other equipments. */
+  boundDataKeysByDevice?: Record<string, Set<string>>;
   /** Equipment types to exclude from the type selector (e.g. singleton types already created). */
   excludeTypes?: Set<EquipmentType>;
 }
 
-export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, boundOrderKeysByDevice, excludeTypes }: EquipmentFormProps) {
+export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, boundOrderKeysByDevice, boundDataKeysByDevice, excludeTypes }: EquipmentFormProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
@@ -211,6 +213,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   onCandidateChange={setCandidateByDevice}
                   boundDeviceIds={boundDeviceIds}
                   boundOrderKeysByDevice={boundOrderKeysByDevice}
+                  boundDataKeysByDevice={boundDataKeysByDevice}
                 />
                 {type === "pool_heat_pump" && !poolHeatPumpValidation.ok && (
                   <p className="text-[12px] text-warning">

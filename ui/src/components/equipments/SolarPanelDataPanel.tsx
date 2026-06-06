@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Sun } from "lucide-react";
 import type { DataBindingWithValue, DataCategory } from "../../types";
+import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { EquipmentStatusBadge } from "./EquipmentStatusBadge";
 import type { EquipmentStatus, EquipmentStatusReason } from "../../types";
 
@@ -54,7 +54,7 @@ export function SolarPanelDataPanel({ bindings, status, statusReason }: SolarPan
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
-          <Sun size={16} strokeWidth={1.5} className="text-accent" />
+          <SolarPanelIcon size={16} strokeWidth={1.5} className="text-primary" />
           {t("solar.title")}
         </h3>
         <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />

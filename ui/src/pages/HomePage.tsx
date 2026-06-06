@@ -25,7 +25,7 @@ import { ZoneModesSection } from "../components/home/ZoneModesSection";
 import { ActivityPanel } from "../components/zones/ActivityPanel";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
-import { buildBoundOrderKeysByDevice } from "../lib/binding-utils";
+import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice } from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import type { EquipmentType, ZoneAggregatedData, ZoneWithChildren } from "../types";
 
@@ -221,6 +221,7 @@ export function HomePage() {
             return exclude;
           })()}
           boundOrderKeysByDevice={buildBoundOrderKeysByDevice(equipments)}
+          boundDataKeysByDevice={buildBoundDataKeysByDevice(equipments)}
           onSubmit={async (data) => {
             const equipment = await createEquipment({
               name: data.name,

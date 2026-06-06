@@ -10,11 +10,11 @@ import {
   Monitor,
   WashingMachine,
   Waves,
-  Sun,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { AwningIcon } from "../icons/AwningIcon";
+import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { useTranslation } from "react-i18next";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
@@ -33,7 +33,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.awnings", types: ["awning"], icon: <AwningIcon size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.climate", types: ["thermostat", "heater"], icon: <Thermometer size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.energy", types: ["energy_meter", "main_energy_meter", "energy_production_meter"], icon: <Zap size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.solar", types: ["solar_panel"], icon: <Sun size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.solar", types: ["solar_panel"], icon: <SolarPanelIcon size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.weather", types: ["weather", "weather_forecast"], icon: <CloudSun size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.media", types: ["media_player"], icon: <Tv size={14} strokeWidth={1.5} /> },

@@ -7,7 +7,7 @@ import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails, ZoneWithChildren } from "../types";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
-import { buildBoundOrderKeysByDevice } from "../lib/binding-utils";
+import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice } from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentsPage() {
@@ -121,6 +121,7 @@ export function EquipmentsPage() {
           zones={tree}
           excludeTypes={singletonExcludeTypes(equipments)}
           boundOrderKeysByDevice={buildBoundOrderKeysByDevice(equipments)}
+          boundDataKeysByDevice={buildBoundDataKeysByDevice(equipments)}
           onSubmit={async (data) => {
             const equipment = await createEquipment({
               name: data.name,

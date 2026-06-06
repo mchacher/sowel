@@ -493,6 +493,7 @@
   "home.backToHome": "Back to Home",
 
   "deviceSelector.pickChannel": "Pick the channel to bind",
+  "deviceSelector.channel": "Channel {{n}}",
   "deviceSelector.loading": "Loading devices...",
   "deviceSelector.noDevices": "No devices found. Connect devices via MQTT first.",
   "deviceSelector.noCompatible": "No compatible devices found for this equipment type.",
@@ -998,6 +999,7 @@
   "energy.today": "Today",
   "energy.hour": "1h",
   "solar.produced": "Produced",
+  "solar.standby": "Standby",
   "solar.title": "Solar panel",
   "energy.month": "Month",
   "energy.cumuls": "Energy consumption",

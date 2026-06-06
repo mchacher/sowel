@@ -4,6 +4,7 @@ import { Radio, Check, ChevronDown, ChevronUp, Search } from "lucide-react";
 import type { DataCategory, EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
 import { computeBindingCandidates, type BindingCandidate } from "../../lib/binding-candidates";
+import { freeCandidates } from "../../lib/binding-utils";
 
 /** Maps EquipmentType to required DataCategories for filtering. */
 const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> = {
@@ -98,6 +99,9 @@ interface DeviceSelectorProps {
   /** Per-device set of device_order keys already bound on other equipments.
    * Used to hide candidates whose order keys are all consumed. */
   boundOrderKeysByDevice?: Record<string, Set<string>>;
+  /** Per-device set of device_data keys already bound on other equipments.
+   * Used to hide data-only candidates (PV channels) already taken. */
+  boundDataKeysByDevice?: Record<string, Set<string>>;
 }
 
 export function DeviceSelector({
@@ -107,6 +111,7 @@ export function DeviceSelector({
   onCandidateChange,
   boundDeviceIds,
   boundOrderKeysByDevice,
+  boundDataKeysByDevice,
 }: DeviceSelectorProps) {
   const { t } = useTranslation();
   const [allDevices, setAllDevices] = useState<DeviceWithData[]>([]);
@@ -144,19 +149,16 @@ export function DeviceSelector({
     const map = new Map<string, BindingCandidate[]>();
     for (const d of availableDevices) {
       const all = computeBindingCandidates(equipmentType, d.data, d.orders ?? []);
-      const bound = boundOrderKeysByDevice?.[d.id];
-      const free = bound
-        ? all.filter((c) =>
-            // Keep the candidate if at least one of its order keys is not yet
-            // bound on this device. Pure-data candidates (orderKeys=[]) always
-            // stay — re-binding data is allowed.
-            c.orderKeys.length === 0 || c.orderKeys.some((k) => !bound.has(k)),
-          )
-        : all;
-      map.set(d.id, free);
+      map.set(d.id, freeCandidates(all, boundOrderKeysByDevice?.[d.id], boundDataKeysByDevice?.[d.id]));
     }
     return map;
-  }, [availableDevices, equipmentType, isCandidateBased, boundOrderKeysByDevice]);
+  }, [
+    availableDevices,
+    equipmentType,
+    isCandidateBased,
+    boundOrderKeysByDevice,
+    boundDataKeysByDevice,
+  ]);
 
   const categories = EQUIPMENT_TYPE_CATEGORIES[equipmentType];
   const requiredKeys = EQUIPMENT_TYPE_DATA_KEYS[equipmentType];
@@ -324,6 +326,14 @@ export function DeviceSelector({
                       </div>
                       {cs.map((c) => {
                         const isPicked = picked === c.id;
+                        // Solar panel: friendly "Canal N" label + the channel's
+                        // live power, so the user can tell which physical panel
+                        // is which. Other types keep the raw label + key list.
+                        const chMatch =
+                          equipmentType === "solar_panel" ? /^ch(\d+)$/.exec(c.id) : null;
+                        const chPower = chMatch
+                          ? device.data.find((x) => x.key === `ch${chMatch[1]}_power`)?.value
+                          : null;
                         return (
                           <label
                             key={c.id}
@@ -340,11 +350,26 @@ export function DeviceSelector({
                               onChange={() => pickCandidate(device.id, c.id)}
                               className="accent-primary"
                             />
-                            <span className="font-mono">{c.label}</span>
-                            {(c.dataKeys.length + c.orderKeys.length) > 0 && (
-                              <span className="text-text-tertiary text-[11px]">
-                                ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})
-                              </span>
+                            {chMatch ? (
+                              <>
+                                <span className="font-medium">
+                                  {t("deviceSelector.channel", { n: chMatch[1] })}
+                                </span>
+                                {typeof chPower === "number" && (
+                                  <span className="text-text-tertiary text-[11px] tabular-nums">
+                                    · {Math.round(chPower)} W
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-mono">{c.label}</span>
+                                {c.dataKeys.length + c.orderKeys.length > 0 && (
+                                  <span className="text-text-tertiary text-[11px]">
+                                    ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})
+                                  </span>
+                                )}
+                              </>
                             )}
                           </label>
                         );

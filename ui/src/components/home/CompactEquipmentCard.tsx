@@ -46,7 +46,7 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   pool_pump:               { bg: "bg-primary-light",text: "text-primary" },
   gate:                    { bg: "bg-success/10",   text: "text-success" },
   energy_production_meter: { bg: "bg-success/10",   text: "text-success" },
-  solar_panel:             { bg: "bg-accent-light",  text: "text-accent" },
+  solar_panel:             { bg: "bg-primary-light",  text: "text-primary" },
   heater:                  { bg: "bg-error/10",     text: "text-error" },
   pool_heat_pump:          { bg: "bg-error/10",     text: "text-error" },
   energy_meter:            { bg: "bg-accent-light", text: "text-accent" },

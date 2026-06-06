@@ -493,6 +493,7 @@
   "home.backToHome": "Retour à l'accueil",
 
   "deviceSelector.pickChannel": "Choisir le canal à lier",
+  "deviceSelector.channel": "Canal {{n}}",
   "deviceSelector.loading": "Chargement des appareils...",
   "deviceSelector.noDevices": "Aucun appareil trouvé. Connectez des appareils via MQTT d'abord.",
   "deviceSelector.noCompatible": "Aucun appareil compatible trouvé pour ce type d'équipement.",
@@ -998,6 +999,7 @@
   "energy.today": "Aujourd'hui",
   "energy.hour": "1h",
   "solar.produced": "Produit",
+  "solar.standby": "Veille",
   "solar.title": "Panneau photovoltaïque",
   "energy.month": "Mois",
   "energy.cumuls": "Consommation énergie",

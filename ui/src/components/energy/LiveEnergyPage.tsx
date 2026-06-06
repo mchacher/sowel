@@ -16,6 +16,7 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Clock, WifiOff } from "lucide-react";
+import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 import { EnergyMobileNav } from "./EnergyMobileNav";
@@ -454,19 +455,7 @@ function LiveDiagram({
           <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
             {t("energy.live.label.production")}
           </div>
-          <svg className="w-9 h-9 sm:w-10 sm:h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-            {/* Solar panel — 4×3 grid (4 wide, 3 tall), small cells, slight rounded corners (Sowel-logo line style) */}
-            <path d="M3.5 5 Q3 5 3 5.5 L3 18.5 Q3 19 3.5 19 L20.5 19 Q21 19 21 18.5 L21 5.5 Q21 5 20.5 5 Z" />
-            {/* 3 vertical separators → 4 columns */}
-            <line x1="7.5" y1="5" x2="7.5" y2="19" />
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="16.5" y1="5" x2="16.5" y2="19" />
-            {/* 2 horizontal separators → 3 rows */}
-            <line x1="3" y1="9.66" x2="21" y2="9.66" />
-            <line x1="3" y1="14.33" x2="21" y2="14.33" />
-            {/* Small foot/stem under the panel */}
-            <line x1="12" y1="19.5" x2="12" y2="21.5" />
-          </svg>
+          <SolarPanelIcon className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.4} />
           <div className="font-mono font-bold text-[16px] sm:text-[19px] leading-none tracking-tight flex items-baseline gap-1">
             {(() => {
               const f = formatPower(solarPower !== null ? solar : null);
