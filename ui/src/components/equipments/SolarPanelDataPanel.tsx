@@ -33,6 +33,9 @@ function formatMetric(category: DataCategory, value: unknown, unit?: string): st
   if (category === "energy") {
     return value >= 1000 ? `${(value / 1000).toFixed(2)} kWh` : `${Math.round(value)} Wh`;
   }
+  if (category === "temperature_device") {
+    return `${value.toFixed(1)} °C`;
+  }
   const rounded = Number.isInteger(value) ? String(value) : value.toFixed(1);
   return unit ? `${rounded} ${unit}` : rounded;
 }

@@ -191,6 +191,10 @@ export function DeviceSelector({
     onCandidateChange?.(next);
   };
 
+  // A solar panel is exactly one inverter channel → one device, one channel.
+  // Selecting another inverter replaces the selection rather than adding to it.
+  const singleDevice = equipmentType === "solar_panel";
+
   const toggleDevice = (deviceId: string) => {
     if (selectedDeviceIds.includes(deviceId)) {
       onSelectionChange(selectedDeviceIds.filter((id) => id !== deviceId));
@@ -199,14 +203,21 @@ export function DeviceSelector({
         const { [deviceId]: _, ...rest } = candidateByDevice;
         emitCandidates(rest);
       }
-    } else {
-      onSelectionChange([...selectedDeviceIds, deviceId]);
-      // Auto-pick the only candidate if there's just one — callers don't need
-      // to know about candidates when there's no choice to make.
-      const cs = candidatesByDevice.get(deviceId);
-      if (cs && cs.length === 1 && !candidateByDevice[deviceId]) {
-        emitCandidates({ ...candidateByDevice, [deviceId]: cs[0].id });
-      }
+      return;
+    }
+    const cs = candidatesByDevice.get(deviceId);
+    if (singleDevice) {
+      // Replace selection; pre-pick the first free channel (the picker still
+      // lets the user switch when the inverter has more than one free channel).
+      onSelectionChange([deviceId]);
+      emitCandidates(cs && cs.length >= 1 ? { [deviceId]: cs[0].id } : {});
+      return;
+    }
+    onSelectionChange([...selectedDeviceIds, deviceId]);
+    // Auto-pick the only candidate if there's just one — callers don't need
+    // to know about candidates when there's no choice to make.
+    if (cs && cs.length === 1 && !candidateByDevice[deviceId]) {
+      emitCandidates({ ...candidateByDevice, [deviceId]: cs[0].id });
     }
   };
 

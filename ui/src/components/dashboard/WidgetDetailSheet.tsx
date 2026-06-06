@@ -50,6 +50,8 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
+import { SolarPanelDataPanel } from "../equipments/SolarPanelDataPanel";
+import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 
 // ============================================================
 // Equipment detail sheets
@@ -136,6 +138,23 @@ export function EquipmentDetailSheet({ widget, equipment, onExecuteOrder, onClos
         icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
       >
         <SensorDetailContent equipment={equipment} visibleBindings={widget.config?.visibleBindings} />
+      </BottomSheet>
+    );
+  }
+
+  if (equipment.type === "solar_panel") {
+    return (
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        icon={<SolarPanelIcon size={20} className="text-primary" />}
+      >
+        <SolarPanelDataPanel
+          bindings={equipment.dataBindings}
+          status={equipment.status}
+          statusReason={equipment.statusReason}
+        />
       </BottomSheet>
     );
   }
