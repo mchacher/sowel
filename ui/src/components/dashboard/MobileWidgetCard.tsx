@@ -20,6 +20,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
+import { solarWidgetState } from "./solarWidget";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { Cloud, WashingMachine, Tv } from "lucide-react";
@@ -333,9 +334,7 @@ function useMobileState(
   }
 
   if (equipment.type === "solar_panel") {
-    const power = equipment.dataBindings.find((b) => b.category === "power");
-    const powerW = typeof power?.value === "number" ? power.value : null;
-    const producing = equipment.status !== "offline" && powerW !== null && powerW > 0;
+    const { producing, lines } = solarWidgetState(equipment, t);
     return {
       icon: (
         <SolarPanelIcon
@@ -344,13 +343,7 @@ function useMobileState(
           className={producing ? "text-primary" : "text-text-tertiary opacity-50"}
         />
       ),
-      stateLines: [
-        producing
-          ? powerW >= 1000
-            ? `${(powerW / 1000).toFixed(2)} kW`
-            : `${Math.round(powerW)} W`
-          : t("solar.standby"),
-      ],
+      stateLines: lines,
     };
   }
 
