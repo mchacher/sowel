@@ -11,6 +11,19 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.21.x — Équipement panneau photovoltaïque
+
+### v1.21.0 — 2026-06-12 { #v1-21-0 }
+
+Équipement Panneau Photovoltaïque + intégration APsystems (spec 125) :
+
+- Feat (equipments) : nouveau type d'équipement `solar_panel` (« Panneau Photovoltaïque »). Un équipement = un panneau = une voie d'onduleur ; lier un onduleur multi-voies propose un candidat par voie (Panel 1 / Panel 2), une voie déjà utilisée par un autre panneau n'est plus proposée, et la sélection est mono-appareil. Lecture seule.
+- Feat (core) : nouvelle catégorie de donnée générique `temperature_device` — la température interne d'un appareil (ex. un onduleur), distincte de `temperature` pour ne jamais polluer la moyenne de température d'une zone. Streaming (fraîcheur 15 min) et historisée par défaut.
+- Feat (ui) : widget dashboard solaire dédié — logo de panneau PV + puissance · courant · tension, identique sur desktop et mobile, « Veille » hors production. Nouveau groupe « Solaire » sur la vue Maison, et un panneau de détail en lecture seule (puissance / énergie / tension / courant / température onduleur).
+- Nouveau plugin : `apsystems` (lecture seule) — découvre les micro-onduleurs APsystems (DS3 / YC600 / QS1) via le pont MQTT [ESP32-ECU](https://github.com/mchacher/ESP32-ECU), un device par onduleur, en utilisant le Name du firmware comme identité stable pour qu'un remplacement matériel préserve la config Sowel (le serial est exposé comme donnée en lecture seule). Installez-le depuis le store de plugins.
+
+---
+
 ## 1.20.x — Valorisation des coûts énergie + mode shadow
 
 ### v1.20.0 — 2026-06-03 { #v1-20-0 }

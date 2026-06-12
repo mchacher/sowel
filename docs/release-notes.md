@@ -11,6 +11,19 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.21.x — Solar panel equipment
+
+### v1.21.0 — 2026-06-12 { #v1-21-0 }
+
+Solar Panel equipment + APsystems integration (spec 125):
+
+- Feat (equipments): new `solar_panel` ("Solar Panel" / "Panneau Photovoltaïque") equipment type. One equipment = one PV panel = one inverter channel; binding a multi-channel inverter offers one candidate per channel (Panel 1 / Panel 2), a channel already used by another panel is no longer offered, and selection is single-device. Read-only.
+- Feat (core): new generic `temperature_device` DataCategory — the internal temperature of a device (e.g. an inverter), distinct from `temperature` so it never pollutes a zone's room-temperature average. Streaming (15 min freshness) and historized by default.
+- Feat (ui): dedicated solar dashboard widget — PV panel logo + produced power · current · voltage, identical on desktop and mobile, "Veille" when not producing. New "Solar" group on the Maison view, and a read-only detail panel (power / energy / voltage / current / inverter temperature).
+- New plugin: `apsystems` (read-only) — discovers APsystems micro-inverters (DS3 / YC600 / QS1) from the [ESP32-ECU](https://github.com/mchacher/ESP32-ECU) MQTT bridge, one device per inverter, using the firmware Name as the stable identity so a hardware swap keeps the Sowel config (the serial is exposed as a read-only data point). Install it from the plugin store.
+
+---
+
 ## 1.20.x — Energy cost valuation + shadow mode
 
 ### v1.20.0 — 2026-06-03 { #v1-20-0 }
