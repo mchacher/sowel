@@ -446,5 +446,25 @@
     "sowelVersion": ">=1.19.0",
     "owner": "mchacher",
     "sha256": "3f6749e6d2328f91feccc52d5fb297afcee9a90f40c7838663a1ed8a23f9265f"
+  },
+  {
+    "id": "apsystems",
+    "type": "integration",
+    "name": "APsystems",
+    "description": "APsystems micro-inverters (DS3/YC600/QS1) via the ESP32-ECU MQTT bridge — local solar production, no cloud",
+    "icon": "Sun",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-apsystems",
+    "version": "0.1.0",
+    "tags": ["apsystems", "solar", "photovoltaic", "inverter", "mqtt", "ds3", "production"],
+    "i18n": {
+      "fr": {
+        "name": "APsystems",
+        "description": "Micro-onduleurs APsystems (DS3/YC600/QS1) via le pont MQTT ESP32-ECU — production solaire locale, sans cloud"
+      }
+    },
+    "sowelVersion": ">=1.21.0",
+    "owner": "mchacher",
+    "sha256": "c83022904a2fb00fd5e6cab875f4bd4be27fdfdf810f64cde27f8f104829675c"
   }
 ]
