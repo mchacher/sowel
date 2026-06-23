@@ -11,6 +11,20 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.22.x: Smart plug controls and Zigbee on/off binding
+
+### v1.22.0 — 2026-06-23 { #v1-22-0 }
+
+Zigbee on/off equipment binding fixes and smart plug controls:
+
+- Fix (equipments): Zigbee2MQTT plugs and relays (Lidl, Legrand, ...) are now proposed when binding a `switch` (smart plug) equipment. Their on/off command is a boolean `light_toggle` order, which the binding matcher previously only recognised as an enum ON/OFF, so only Tasmota devices appeared. (#276)
+- Feat (ui): `switch` (smart plug) equipments now have on/off controls everywhere (compact card, equipment card, detail page) plus a dedicated dashboard widget with a wall-socket picto and ON/OFF toggle, instead of a read-only badge. (#277)
+- Fix (equipments): Zigbee water valves (e.g. SONOFF SWV) are now proposed when binding a `water_valve` equipment, and bind their full surface (state, flow, battery, irrigation) instead of being dropped. (#278)
+
+New recipe in the store: **Schedule On/Off** ("Programmation horaire"), up to 3 daily ON/OFF windows for any on/off equipment.
+
+---
+
 ## 1.21.x — Solar panel equipment
 
 ### v1.21.0 — 2026-06-12 { #v1-21-0 }

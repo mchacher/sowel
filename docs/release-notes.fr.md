@@ -11,6 +11,20 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.22.x: Pilotage des prises et association Zigbee on/off
+
+### v1.22.0 — 2026-06-23 { #v1-22-0 }
+
+Corrections d'association des équipements on/off Zigbee et pilotage des prises :
+
+- Fix (equipments) : les prises et relais Zigbee2MQTT (Lidl, Legrand, ...) sont désormais proposés à l'association d'un équipement `switch` (prise). Leur commande on/off est un ordre booléen `light_toggle`, que le moteur ne reconnaissait qu'en énumération ON/OFF, donc seuls les Tasmota apparaissaient. (#276)
+- Feat (ui) : les équipements `switch` (prise) disposent maintenant de commandes on/off partout (carte compacte, carte équipement, page détail) et d'un widget dashboard dédié (picto prise murale et bouton ON/OFF), au lieu d'un simple badge en lecture seule. (#277)
+- Fix (equipments) : les vannes Zigbee (ex. SONOFF SWV) sont désormais proposées à l'association d'un équipement `water_valve`, et associent toute leur télémétrie (état, débit, batterie, irrigation) au lieu d'être ignorées. (#278)
+
+Nouvelle recette dans le store : **Programmation horaire**, jusqu'à 3 créneaux marche/arrêt par jour pour n'importe quel équipement on/off.
+
+---
+
 ## 1.21.x — Équipement panneau photovoltaïque
 
 ### v1.21.0 — 2026-06-12 { #v1-21-0 }
