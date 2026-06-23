@@ -38,6 +38,24 @@ function isOnOffEnum(order: DeviceOrder): boolean {
   return order.enumValues.every((v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()));
 }
 
+/** Order categories that denote a binary power/on-off command channel. */
+const POWER_TOGGLE_CATEGORIES = new Set<OrderCategory>(["light_toggle", "toggle_power"]);
+
+/**
+ * True for an on/off command channel. Two shapes are accepted:
+ *  - an ON/OFF enum order (`["ON","OFF"]`, e.g. Tasmota `power1`)
+ *  - a boolean power-toggle order (Zigbee2MQTT exposes plug/relay `state` as a
+ *    boolean with category `light_toggle`/`toggle_power`)
+ * Boolean orders of any other category (config toggles like `power_alarm`,
+ * `eco_mode`, …) are intentionally excluded.
+ */
+function isOnOffOrder(order: DeviceOrder): boolean {
+  if (isOnOffEnum(order)) return true;
+  return (
+    order.type === "boolean" && !!order.category && POWER_TOGGLE_CATEGORIES.has(order.category)
+  );
+}
+
 /**
  * Extract the numeric suffix from a key like "power1" → 1, "shutter_state" → null.
  * Used to group shutter orders that share an index.
@@ -62,8 +80,24 @@ export function computeBindingCandidates(
   deviceOrders: readonly DeviceOrder[],
 ): BindingCandidate[] {
   switch (equipmentType) {
+    case "switch": {
+      // One candidate per on/off command channel: ON/OFF enum (Tasmota `power1`)
+      // OR a boolean power-toggle order (Zigbee2MQTT plug/relay `state`).
+      const candidates: BindingCandidate[] = [];
+      for (const o of deviceOrders) {
+        if (!isOnOffOrder(o)) continue;
+        const matchingData = deviceData.find((d) => d.key === o.key);
+        candidates.push({
+          id: o.key,
+          label: o.key,
+          dataKeys: matchingData ? [matchingData.key] : [],
+          orderKeys: [o.key],
+        });
+      }
+      return candidates;
+    }
+
     case "pool_pump":
-    case "switch":
     case "light_onoff":
     case "water_valve": {
       // One candidate per ON/OFF enum order; attach matching data if same key.

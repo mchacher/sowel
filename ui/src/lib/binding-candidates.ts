@@ -28,6 +28,19 @@ function isOnOffEnum(order: DeviceOrder): boolean {
   );
 }
 
+/** Order categories that denote a binary power/on-off command channel. */
+const POWER_TOGGLE_CATEGORIES = new Set<string>(["light_toggle", "toggle_power"]);
+
+/**
+ * True for an on/off command channel: an ON/OFF enum order (Tasmota `power1`)
+ * or a boolean power-toggle order (Zigbee2MQTT plug/relay `state`). Boolean
+ * orders of any other category (config toggles) are excluded.
+ */
+function isOnOffOrder(order: DeviceOrder): boolean {
+  if (isOnOffEnum(order)) return true;
+  return order.type === "boolean" && !!order.category && POWER_TOGGLE_CATEGORIES.has(order.category);
+}
+
 function extractShutterGroupKey(key: string): string | null {
   const indexed = /^shutter(\d+)_(state|position|move)$/.exec(key);
   if (indexed) return indexed[1];
@@ -42,8 +55,23 @@ export function computeBindingCandidates(
   deviceOrders: readonly DeviceOrder[],
 ): BindingCandidate[] {
   switch (equipmentType) {
+    case "switch": {
+      // On/off channel: ON/OFF enum OR boolean power-toggle (Zigbee `state`).
+      const candidates: BindingCandidate[] = [];
+      for (const o of deviceOrders) {
+        if (!isOnOffOrder(o)) continue;
+        const matchingData = deviceData.find((d) => d.key === o.key);
+        candidates.push({
+          id: o.key,
+          label: o.key,
+          dataKeys: matchingData ? [matchingData.key] : [],
+          orderKeys: [o.key],
+        });
+      }
+      return candidates;
+    }
+
     case "pool_pump":
-    case "switch":
     case "light_onoff":
     case "water_valve": {
       const candidates: BindingCandidate[] = [];

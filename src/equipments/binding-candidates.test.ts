@@ -83,6 +83,32 @@ describe("computeBindingCandidates", () => {
     expect(result[0].id).toBe("R1");
   });
 
+  // Regression: Zigbee2MQTT plugs (e.g. LidlSmartPlug) expose their on/off
+  // command as a boolean `state` order (category light_toggle), not an ON/OFF
+  // enum. Such devices must still yield a switch candidate.
+  it("switch on a Zigbee plug (boolean light_toggle `state`) → one candidate", () => {
+    const orders = [
+      order("state", "boolean", { category: "light_toggle" }),
+      order("indicator_mode", "enum", { enumValues: ["off", "off/on", "on/off", "on"] }),
+      order("power_on_behavior", "enum", { enumValues: ["off", "previous", "on"] }),
+    ];
+    const datas = [data("state", "boolean", { category: "light_state", value: "OFF" })];
+    const result = computeBindingCandidates("switch", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("state");
+    expect(result[0].orderKeys).toEqual(["state"]);
+    expect(result[0].dataKeys).toEqual(["state"]);
+  });
+
+  it("switch ignores boolean config toggles (no / non power-toggle category)", () => {
+    const orders = [
+      order("power_alarm", "boolean"),
+      order("mute", "boolean", { category: "toggle_mute" }),
+    ];
+    const result = computeBindingCandidates("switch", [], orders);
+    expect(result).toHaveLength(0);
+  });
+
   it("sensor on a multi-data device → one all-data candidate", () => {
     const datas = [
       data("temperature", "number", { category: "temperature" }),
