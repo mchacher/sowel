@@ -787,22 +787,47 @@ export function GarageDoorIcon({ open }: { open: boolean }) {
 }
 
 // ============================================================
-// Plug icon — prise connectée / smart plug
+// Plug icon — prise connectée / wall socket. Recognizable European outlet:
+// rounded-square faceplate + recessed socket ring + 2 pin holes + earth clips.
+// `on` lifts the opacities and adds a soft glow (text-active amber), `off`
+// renders a quiet ocean-blue outline.
 // ============================================================
 
 export function PlugWidgetIcon({ on }: { on: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
-      {/* Plug body */}
-      <rect x="16" y="20" width="24" height="22" rx="4" fill="currentColor" fillOpacity={on ? 0.12 : 0.06} stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.25" />
-      {/* Prongs */}
-      <rect x="22" y="10" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.3" />
-      <rect x="31" y="10" width="3" height="12" rx="1.5" fill="currentColor" opacity="0.3" />
-      {/* Power indicator */}
-      {on && <circle cx="28" cy="31" r="4" fill="currentColor" opacity="0.2" />}
-      <circle cx="28" cy="31" r="2" fill="currentColor" opacity={on ? 0.5 : 0.15} />
-      {/* Cable */}
-      <path d="M28 42 L28 50" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2" strokeLinecap="round" />
+    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" className={on ? "text-active" : "text-primary"}>
+      {/* Glow when powered */}
+      {on && <circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.08" />}
+
+      {/* Faceplate — rounded-square frame */}
+      <path
+        d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
+        fill="currentColor"
+        fillOpacity={on ? 0.12 : 0.06}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeOpacity={on ? 0.55 : 0.3}
+      />
+
+      {/* Recessed socket ring */}
+      <circle
+        cx="12"
+        cy="12"
+        r="6"
+        fill="currentColor"
+        fillOpacity={on ? 0.1 : 0.04}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeOpacity={on ? 0.55 : 0.3}
+      />
+
+      {/* Earth clips (top + bottom) */}
+      <path d="M12 7.5V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity={on ? 0.5 : 0.28} />
+      <path d="M12 18V16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity={on ? 0.5 : 0.28} />
+
+      {/* Pin holes */}
+      <circle cx="10" cy="12" r="1" fill="currentColor" fillOpacity={on ? 0.9 : 0.55} />
+      <circle cx="14" cy="12" r="1" fill="currentColor" fillOpacity={on ? 0.9 : 0.55} />
     </svg>
   );
 }
