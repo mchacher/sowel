@@ -466,5 +466,25 @@
     "sowelVersion": ">=1.21.0",
     "owner": "mchacher",
     "sha256": "c83022904a2fb00fd5e6cab875f4bd4be27fdfdf810f64cde27f8f104829675c"
+  },
+  {
+    "id": "schedule-on-off",
+    "type": "recipe",
+    "name": "Schedule On/Off",
+    "description": "Scheduled on/off for any on/off equipment, up to 3 daily time windows",
+    "icon": "CalendarClock",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-schedule-on-off",
+    "version": "1.0.0",
+    "tags": ["schedule", "timer", "on-off", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Programmation horaire",
+        "description": "Plages horaires marche/arrêt pour des équipements on/off, jusqu'à 3 créneaux par jour"
+      }
+    },
+    "sowelVersion": ">=1.3.0",
+    "owner": "mchacher",
+    "sha256": "deb107d1db06db0698d303945e1dc317ffc4547a8e7040073b0174ebf8205ae0"
   }
 ]
