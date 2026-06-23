@@ -788,14 +788,14 @@ export function GarageDoorIcon({ open }: { open: boolean }) {
 
 // ============================================================
 // Plug icon — prise connectée / wall socket. Recognizable European outlet:
-// rounded-square faceplate + recessed socket ring + 2 pin holes + earth clips.
+// rounded-square faceplate + recessed socket ring + 2 pin holes.
 // `on` lifts the opacities and adds a soft glow (text-active amber), `off`
 // renders a quiet ocean-blue outline.
 // ============================================================
 
 export function PlugWidgetIcon({ on }: { on: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 24 24" fill="none" className={on ? "text-active" : "text-primary"}>
+    <svg width="108" height="108" viewBox="0 0 24 24" fill="none" className={on ? "text-active" : "text-primary"}>
       {/* Glow when powered */}
       {on && <circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.08" />}
 
@@ -820,10 +820,6 @@ export function PlugWidgetIcon({ on }: { on: boolean }) {
         strokeWidth="1.5"
         strokeOpacity={on ? 0.55 : 0.3}
       />
-
-      {/* Earth clips (top + bottom) */}
-      <path d="M12 7.5V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity={on ? 0.5 : 0.28} />
-      <path d="M12 18V16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity={on ? 0.5 : 0.28} />
 
       {/* Pin holes */}
       <circle cx="10" cy="12" r="1" fill="currentColor" fillOpacity={on ? 0.9 : 0.55} />
