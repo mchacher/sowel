@@ -61,6 +61,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
   const {
     isLight,
+    isSwitch,
     isShutterFamily,
     isSensor,
     isEnergyMeter,
@@ -85,7 +86,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
   // Find primary data value for generic equipments
   const isKnownType =
-    isLight || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
+    isLight || isSwitch || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
     isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
     isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar;
 
@@ -199,8 +200,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         </span>
       )}
 
-      {/* Light controls */}
-      {isLight && equipment.enabled && (
+      {/* Light / switch controls (smart plug = ON/OFF relay, same surface) */}
+      {(isLight || isSwitch) && equipment.enabled && (
         <LightControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}

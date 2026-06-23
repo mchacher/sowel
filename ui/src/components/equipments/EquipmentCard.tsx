@@ -111,6 +111,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
   const { t } = useTranslation();
   const {
     isLight,
+    isSwitch,
     isShutterFamily,
     isSensor,
     isThermostat,
@@ -159,8 +160,8 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         />
       )}
 
-      {/* Light quick control */}
-      {isLight && equipment.enabled && (
+      {/* Light / switch quick control (smart plug = ON/OFF relay, same surface) */}
+      {(isLight || isSwitch) && equipment.enabled && (
         <LightControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}

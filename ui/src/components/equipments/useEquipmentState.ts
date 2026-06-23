@@ -34,6 +34,10 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   const isPoolPump = equipment.type === "pool_pump";
   const isPoolCover = equipment.type === "pool_cover";
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
+  // A switch (smart plug) is an ON/OFF relay: same control surface as a light
+  // (toggle + light_state indicator), but kept as its own flag so it isn't
+  // styled with the light "glow" tint.
+  const isSwitch = equipment.type === "switch";
 
   // State binding — `light_state` is the canonical ON/OFF data category
   // used by lights, heaters, switches, valves and pool pumps (plugins emit
@@ -164,6 +168,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isPoolPump,
     isPoolCover,
     isPoolHeatPump,
+    isSwitch,
     stateBinding,
     isOn,
     shutterPosition,

@@ -180,7 +180,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const { isLight, isShutterFamily, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
+  const { isLight, isSwitch, isShutterFamily, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
 
   return (
     <div className="p-4 sm:p-6">
@@ -254,8 +254,8 @@ export function EquipmentDetailPage() {
         </div>
       </div>
 
-      {/* Controls */}
-      {isLight && equipment.enabled && (
+      {/* Controls — light and switch (smart plug) share the ON/OFF toggle surface */}
+      {(isLight || isSwitch) && equipment.enabled && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <LightControl

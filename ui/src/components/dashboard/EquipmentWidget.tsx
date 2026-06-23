@@ -27,6 +27,7 @@ import { solarWidgetState } from "./solarWidget";
 import { createElement } from "react";
 import {
   LightBulbIcon,
+  PlugWidgetIcon,
   ShutterWidgetIcon,
   AwningWidgetIcon,
   ThermometerIcon,
@@ -83,6 +84,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetai
   if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
   if (equipment.type === "solar_panel") return <SolarPanelEquipmentWidget label={label} equipment={equipment} />;
+  if (equipment.type === "switch") return <SwitchEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
   if (equipment.type === "weather") return <WeatherStationWidget label={label} equipment={equipment} onOpenDetail={onOpenDetail} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
@@ -192,6 +194,88 @@ function LightEquipmentWidget({
               {isOn ? "ON" : "OFF"}
             </span>
           )}
+        </div>
+      </div>
+
+      {/* Zone 3: Bouton — toggle */}
+      {hasToggle && equipment.enabled && (
+        <div className="flex justify-center gap-3 mt-auto pt-1">
+          <button
+            onClick={handleToggle}
+            disabled={executing}
+            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
+            }`}
+            title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
+          >
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+          </button>
+        </div>
+      )}
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Switch (smart plug) widget — plug picto + ON/OFF state + toggle.
+// Mirrors LightEquipmentWidget without the brightness slider. The plug's
+// on/off command is a `light_toggle` order (enum ON/OFF or boolean state),
+// and the state indicator reads the `light_state` data binding.
+// ============================================================
+
+function SwitchEquipmentWidget({
+  label,
+  equipment,
+  onExecuteOrder,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [executing, setExecuting] = useState(false);
+
+  const stateBinding = equipment.dataBindings.find(
+    (db) => db.alias === "state" || db.category === "light_state",
+  );
+  const isOn = stateBinding
+    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
+    : false;
+
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum"),
+  );
+  const hasToggle = !!toggleBinding;
+
+  const handleToggle = async () => {
+    if (executing || !toggleBinding) return;
+    setExecuting(true);
+    try {
+      const alias = toggleBinding.alias;
+      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+      const value =
+        toggleBinding.type === "boolean" && alias !== "state" ? !isOn : isOn ? offVal : onVal;
+      await onExecuteOrder(alias, value);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <WidgetCard label={label}>
+      {/* Zone 2: Picto + état */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        <PlugWidgetIcon on={isOn} />
+        <div className="flex items-center gap-2 pl-2">
+          <span
+            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            }`}
+          >
+            {isOn ? "ON" : "OFF"}
+          </span>
         </div>
       </div>
 
