@@ -315,7 +315,10 @@ const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>
   "switch",
   "shutter",
   "awning",
-  "water_valve",
+  // NOTE: water_valve is intentionally key-driven (RELEVANT_DATA/RELEVANT_ORDERS),
+  // NOT candidate-based — see the matching note in DeviceSelector. It binds its
+  // full surface (state + flow + battery + irrigation), and its open/close is a
+  // boolean `light_toggle` order the candidate path (enum ON/OFF only) ignores.
   // Spec 125 — one candidate per inverter channel (ch<N>_*), so a 2-panel DS3
   // yields Panel 1 / Panel 2 and each equipment binds only its channel.
   "solar_panel",

@@ -179,3 +179,31 @@ describe("awning equipment type relevance", () => {
     expect(isRelevantOrder("color", "awning")).toBe(false);
   });
 });
+
+describe("water_valve equipment type relevance", () => {
+  // water_valve is key-driven (NOT candidate-based): a Zigbee valve like the
+  // SONOFF SWV exposes its open/close as a boolean `light_toggle` `state` order
+  // (which the candidate path, enum ON/OFF only, ignores), plus rich telemetry.
+  // The legacy RELEVANT_DATA/RELEVANT_ORDERS path must cover the full surface so
+  // the valve is proposed AND fully bound (state + flow + battery + irrigation).
+  it("accepts the SONOFF SWV data: state (light_state), battery and generic (flow/irrigation/status)", () => {
+    expect(isRelevantData("light_state", "water_valve")).toBe(true);
+    expect(isRelevantData("battery", "water_valve")).toBe(true);
+    // flow, irrigation_*, current_device_status are emitted as category "generic"
+    expect(isRelevantData("generic", "water_valve")).toBe(true);
+  });
+
+  it("accepts the SONOFF SWV orders: open/close + irrigation params", () => {
+    expect(isRelevantOrder("state", "water_valve")).toBe(true);
+    expect(isRelevantOrder("irrigation_duration", "water_valve")).toBe(true);
+    expect(isRelevantOrder("irrigation_interval", "water_valve")).toBe(true);
+    expect(isRelevantOrder("irrigation_capacity", "water_valve")).toBe(true);
+    expect(isRelevantOrder("auto_close_when_water_shortage", "water_valve")).toBe(true);
+    expect(isRelevantOrder("total_number", "water_valve")).toBe(true);
+  });
+
+  it("ignores unrelated categories/orders", () => {
+    expect(isRelevantData("shutter_position", "water_valve")).toBe(false);
+    expect(isRelevantOrder("color", "water_valve")).toBe(false);
+  });
+});
