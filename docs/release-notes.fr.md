@@ -11,6 +11,21 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.23.x: Briques pour recettes solaires
+
+### v1.23.0 — 2026-06-24 { #v1-23-0 }
+
+Briques de formulaire pour la programmation horaire solaire (spec 126) :
+
+- Feat (recipes) : nouveau type de slot `select`, affiché en menu déroulant avec libellés d'options traduits. Une recette peut désormais proposer une petite liste fermée de choix nommés.
+- Feat (recipes) : nouveau `ctx.helpers.getSunlight()` qui expose aux recettes le lever, le coucher et l'indicateur de jour courants (depuis le gestionnaire de soleil existant, décalages appliqués), pour programmer sur les heures du soleil. À coupler à l'événement `sunlight.changed` pour se resynchroniser au fil des jours.
+- Feat (recipes) : nouvelle règle de slot `hiddenWhen` : le formulaire n'affiche que le champ pertinent (ex. un sélecteur d'heure pour « heure fixe », un décalage en minutes pour « lever/coucher ») ; le champ non pertinent est retiré de la mise en page, qui reste alignée.
+- Feat (ui) : les slots `number` s'affichent en champs numériques (avec min/max), pour saisir proprement un décalage positif ou négatif en minutes ; les grilles de slots utilisent des colonnes de largeur égale.
+
+Ces briques équipent la nouvelle recette **Programmation horaire** (créneaux heure fixe / lever / coucher du soleil), disponible depuis le store de plugins.
+
+---
+
 ## 1.22.x: Pilotage des prises et association Zigbee on/off
 
 ### v1.22.0 — 2026-06-23 { #v1-22-0 }

@@ -11,6 +11,21 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.23.x: Sun-aware recipe building blocks
+
+### v1.23.0 — 2026-06-24 { #v1-23-0 }
+
+Recipe form building blocks for sun-aware scheduling (spec 126):
+
+- Feat (recipes): new `select` recipe slot type, rendered as a dropdown with per-language option labels. A recipe can now offer a small closed list of named choices.
+- Feat (recipes): new `ctx.helpers.getSunlight()` exposing the current sunrise, sunset and daylight flag to recipes (from the existing sunlight manager, offsets applied), so a recipe can schedule on sun times. Pairs with the `sunlight.changed` event to re-sync across days.
+- Feat (recipes): new `hiddenWhen` slot rule, so a recipe form shows only the relevant field (e.g. a fixed-time picker for "fixed time", a minute offset for "sunrise/sunset"); the irrelevant field is removed from the layout, keeping the form aligned.
+- Feat (ui): `number` recipe slots render as numeric inputs (with min/max), so values like a positive or negative minute offset can be entered cleanly; recipe slot grids use equal-width columns.
+
+These ship for the new **Schedule On/Off** recipe (fixed time / sunrise / sunset windows), available from the plugin store.
+
+---
+
 ## 1.22.x: Smart plug controls and Zigbee on/off binding
 
 ### v1.22.0 — 2026-06-23 { #v1-22-0 }
