@@ -141,6 +141,8 @@ slots: RecipeSlotDef[] = [
 
 **`select` slot (spec 126).** Provide `options: { value: string; label: string }[]`; `label` is the English fallback. Per-language option labels live in the recipe's i18n under `slots[<id>].options[<value>]`. The chosen option's `value` is stored as the param. Use it for a small closed list of named choices (e.g. "fixed time / sunrise / sunset").
 
+**Conditional greying (spec 126).** Any slot can declare `disabledWhen: { slot: "<otherSlotId>", equals: <value | value[]> }`. The recipe form greys out (disables) that slot when the referenced sibling's effective value (its param, or its `defaultValue` when untouched) matches. Pairs naturally with a `select`: e.g. a fixed-time picker `disabledWhen` the kind select is `["sunrise", "sunset"]`, and an offset `disabledWhen` it is `"time"`.
+
 ## Translations (i18n)
 
 Translations travel with the recipe, not in the platform locale files. This allows recipes to be hot-loaded without modifying `fr.json`/`en.json`.

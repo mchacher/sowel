@@ -9,6 +9,7 @@ import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, Equip
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
+import { isSlotDisabled } from "../../lib/recipe-slots";
 import type { RecipeSlotDef } from "../../types";
 
 
@@ -786,7 +787,7 @@ function RecipeInstanceRow({
                             return (
                               <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                                 {compactSlots.map((slot) => (
-                                  <div key={slot.id}>
+                                  <div key={slot.id} className={isSlotDisabled(slot, editParams, recipe.slots) ? "opacity-50 pointer-events-none" : ""}>
                                     <label className={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
                                       {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                     </label>
@@ -857,7 +858,7 @@ function RecipeInstanceRow({
                     }
                     // Ungrouped — render each slot individually (original logic)
                     return chunk.slots.map((slot) => (
-                      <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"}`}>
+                      <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"} ${isSlotDisabled(slot, editParams, recipe.slots) ? "opacity-50 pointer-events-none" : ""}`}>
                         {slot.type === "boolean" ? (
                           <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                             <input
@@ -1823,7 +1824,7 @@ function AddRecipeForm({
                           return (
                             <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? twoColClass : "grid-cols-3"}`}>
                               {compactSlots.map((slot) => (
-                                <div key={slot.id} className={slot.type === "number" ? "w-[100px]" : ""}>
+                                <div key={slot.id} className={`${slot.type === "number" ? "w-[100px]" : ""} ${isSlotDisabled(slot, params, selectedRecipe.slots) ? "opacity-50 pointer-events-none" : ""}`}>
                                   <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
                                     {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                   </label>
@@ -1893,7 +1894,7 @@ function AddRecipeForm({
                   }
                   // Ungrouped — render each slot individually
                   return chunk.slots.map((slot) => (
-                    <div key={slot.id} className="mb-3">
+                    <div key={slot.id} className={`mb-3 ${isSlotDisabled(slot, params, selectedRecipe.slots) ? "opacity-50 pointer-events-none" : ""}`}>
                       {slot.type === "boolean" ? (
                         <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                           <input
