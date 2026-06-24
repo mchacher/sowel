@@ -402,10 +402,10 @@ export interface RecipeSlotDef {
    *  `label` is the English fallback; per-language labels live in the recipe's
    *  i18n under `slots[id].options[value]`. Spec 126. */
   options?: { value: string; label: string }[];
-  /** Grey out (disable) this slot in the recipe form when a sibling slot's
-   *  value matches. Lets a recipe disable a now-irrelevant field, e.g. disable
+  /** Hide this slot in the recipe form (removed from the layout) when a sibling
+   *  slot's value matches. Lets a recipe show only the relevant field, e.g. hide
    *  a fixed-time picker when a "kind" select is set to sunrise/sunset. Spec 126. */
-  disabledWhen?: { slot: string; equals: string | string[] };
+  hiddenWhen?: { slot: string; equals: string | string[] };
   constraints?: {
     equipmentType?: EquipmentType | EquipmentType[];
     min?: number;
