@@ -840,7 +840,9 @@ function RecipeInstanceRow({
                                       />
                                     ) : (
                                       <input
-                                        type="text"
+                                        type={slot.type === "number" ? "number" : "text"}
+                                        min={slot.constraints?.min}
+                                        max={slot.constraints?.max}
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                                         placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
@@ -964,7 +966,9 @@ function RecipeInstanceRow({
                           />
                         ) : (
                           <input
-                            type="text"
+                            type={slot.type === "number" ? "number" : "text"}
+                            min={slot.constraints?.min}
+                            max={slot.constraints?.max}
                             value={editParams[slot.id] ?? ""}
                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                             placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
@@ -1877,7 +1881,9 @@ function AddRecipeForm({
                                     />
                                   ) : (
                                     <input
-                                      type="text"
+                                      type={slot.type === "number" ? "number" : "text"}
+                                      min={slot.constraints?.min}
+                                      max={slot.constraints?.max}
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                                       placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
@@ -2000,7 +2006,9 @@ function AddRecipeForm({
                         />
                       ) : (
                         <input
-                          type="text"
+                          type={slot.type === "number" ? "number" : "text"}
+                          min={slot.constraints?.min}
+                          max={slot.constraints?.max}
                           value={params[slot.id] ?? ""}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                           placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
