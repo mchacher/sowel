@@ -10,7 +10,15 @@ import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { RecipeManager, RecipeError } from "./recipe-manager.js";
 import { Recipe } from "./recipe.js";
-import type { RecipeSlotDef, EngineEvent } from "../../shared/types.js";
+import type { SunlightManager } from "../../zones/sunlight-manager.js";
+import type { RecipeSlotDef, EngineEvent, RecipeDefinition } from "../../shared/types.js";
+
+/** Captures `ctx.helpers.getSunlight()` from a running instance (spec 126). */
+let capturedSun: {
+  sunrise: string | null;
+  sunset: string | null;
+  isDaylight: boolean | null;
+} | null = null;
 
 // ============================================================
 // Test helpers
@@ -83,6 +91,7 @@ describe("RecipeManager", () => {
   let zoneManager: ZoneManager;
   let equipmentManager: EquipmentManager;
   let aggregator: ZoneAggregator;
+  let sunlightManager: SunlightManager;
   let manager: RecipeManager;
   let events: EngineEvent[];
 
@@ -100,7 +109,18 @@ describe("RecipeManager", () => {
       logger,
     );
     aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
-    manager = new RecipeManager(db, eventBus, equipmentManager, zoneManager, aggregator, logger);
+    sunlightManager = {
+      getSunlightData: () => ({ sunrise: "07:30", sunset: "21:00", isDaylight: true }),
+    } as unknown as SunlightManager;
+    manager = new RecipeManager(
+      db,
+      eventBus,
+      equipmentManager,
+      zoneManager,
+      aggregator,
+      sunlightManager,
+      logger,
+    );
     events = [];
     eventBus.on((event) => events.push(event));
   });
@@ -133,6 +153,61 @@ describe("RecipeManager", () => {
 
     const missing = manager.getRecipeById("nonexistent");
     expect(missing).toBeNull();
+  });
+
+  // ============================================================
+  // Spec 126 — `select` slot serialization + getSunlight helper
+  // ============================================================
+
+  it("serializes a `select` slot's options through getRecipes()", () => {
+    const def: RecipeDefinition = {
+      id: "select-def",
+      name: "Select Def",
+      description: "has a select slot",
+      slots: [
+        {
+          id: "kind",
+          name: "Kind",
+          description: "Pick a kind",
+          type: "select",
+          required: true,
+          defaultValue: "time",
+          options: [
+            { value: "time", label: "Fixed time" },
+            { value: "sunset", label: "Sunset" },
+          ],
+        },
+      ],
+      validate: () => {},
+      createInstance: () => ({ stop: () => {} }),
+    };
+    manager.registerExternal(def);
+
+    const recipe = manager.getRecipeById("select-def");
+    expect(recipe).not.toBeNull();
+    const slot = recipe!.slots.find((s) => s.id === "kind");
+    expect(slot?.type).toBe("select");
+    expect(slot?.options).toHaveLength(2);
+    expect(slot?.options?.[1]).toEqual({ value: "sunset", label: "Sunset" });
+  });
+
+  it("exposes ctx.helpers.getSunlight() to a running instance", () => {
+    const def: RecipeDefinition = {
+      id: "sun-def",
+      name: "Sun Def",
+      description: "reads sun times",
+      slots: [],
+      validate: () => {},
+      createInstance: (_params, ctx) => {
+        capturedSun = ctx.helpers.getSunlight();
+        return { stop: () => {} };
+      },
+    };
+    manager.registerExternal(def);
+
+    capturedSun = null;
+    manager.createInstance("sun-def", {});
+    expect(capturedSun).toEqual({ sunrise: "07:30", sunset: "21:00", isDaylight: true });
   });
 
   // ============================================================
@@ -204,6 +279,7 @@ describe("RecipeManager", () => {
       equipmentManager,
       zoneManager,
       aggregator,
+      sunlightManager,
       logger,
     );
     newManager.register(TestRecipe);

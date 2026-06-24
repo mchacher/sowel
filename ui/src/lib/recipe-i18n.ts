@@ -39,3 +39,20 @@ export function recipeSlotDescription(recipe: RecipeInfo, slot: RecipeSlotDef, l
 export function recipeGroupLabel(recipe: RecipeInfo, groupKey: string, lang: string): string {
   return recipe.i18n?.[lang]?.groups?.[groupKey] ?? groupKey;
 }
+
+/**
+ * Resolve a `select` slot option's translated label for the given language (spec 126).
+ * Fallback chain: i18n option label -> the option's English `label` -> the raw value.
+ */
+export function recipeSlotOptionLabel(
+  recipe: RecipeInfo,
+  slot: RecipeSlotDef,
+  value: string,
+  lang: string,
+): string {
+  return (
+    recipe.i18n?.[lang]?.slots?.[slot.id]?.options?.[value] ??
+    slot.options?.find((o) => o.value === value)?.label ??
+    value
+  );
+}

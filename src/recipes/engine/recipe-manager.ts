@@ -5,6 +5,7 @@ import type { EventBus } from "../../core/event-bus.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
+import type { SunlightManager } from "../../zones/sunlight-manager.js";
 import type {
   RecipeInfo,
   RecipeInstance,
@@ -51,6 +52,7 @@ export class RecipeManager {
   private equipmentManager: EquipmentManager;
   private zoneManager: ZoneManager;
   private zoneAggregator: ZoneAggregator;
+  private sunlightManager: SunlightManager;
   private logger: Logger;
   private stmts: ReturnType<typeof this.prepareStatements>;
   /** Spec 124 — when true, `startInstance` is a no-op so no recipe
@@ -63,6 +65,7 @@ export class RecipeManager {
     equipmentManager: EquipmentManager,
     zoneManager: ZoneManager,
     zoneAggregator: ZoneAggregator,
+    sunlightManager: SunlightManager,
     logger: Logger,
     shadowMode = false,
   ) {
@@ -71,6 +74,7 @@ export class RecipeManager {
     this.equipmentManager = equipmentManager;
     this.zoneManager = zoneManager;
     this.zoneAggregator = zoneAggregator;
+    this.sunlightManager = sunlightManager;
     this.logger = logger.child({ module: "recipe-manager" });
     this.stmts = this.prepareStatements();
     this.shadowMode = shadowMode;
@@ -516,6 +520,9 @@ export class RecipeManager {
     setLightsBrightness,
     parseDuration,
     formatDuration,
+    // Arrow keeps the read lazy: `sunlightManager` is assigned in the
+    // constructor body, but getSunlight is only ever called at recipe runtime.
+    getSunlight: () => this.sunlightManager.getSunlightData(),
   };
 
   private buildContext(instanceId: string, recipeId: string): RecipeContext {

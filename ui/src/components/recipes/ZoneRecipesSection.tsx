@@ -8,7 +8,7 @@ import { useZoneAggregation } from "../../store/useZoneAggregation";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
-import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel } from "../../lib/recipe-i18n";
+import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
 import type { RecipeSlotDef } from "../../types";
 
 
@@ -820,6 +820,18 @@ function RecipeInstanceRow({
                                           </select>
                                         );
                                       })()
+                                    ) : slot.type === "select" ? (
+                                      <select
+                                        value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
+                                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                        className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                      >
+                                        {(slot.options ?? []).map((o) => (
+                                          <option key={o.value} value={o.value}>
+                                            {recipeSlotOptionLabel(recipe, slot, o.value, lang)}
+                                          </option>
+                                        ))}
+                                      </select>
                                     ) : slot.type === "time" ? (
                                       <TimeInput
                                         value={editParams[slot.id] ?? ""}
@@ -931,6 +943,18 @@ function RecipeInstanceRow({
                             onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
                             placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
                           />
+                        ) : slot.type === "select" ? (
+                          <select
+                            value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
+                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                          >
+                            {(slot.options ?? []).map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {recipeSlotOptionLabel(recipe, slot, o.value, lang)}
+                              </option>
+                            ))}
+                          </select>
                         ) : slot.type === "time" ? (
                           <TimeInput
                             value={editParams[slot.id] ?? ""}
@@ -1833,6 +1857,18 @@ function AddRecipeForm({
                                         </select>
                                       );
                                     })()
+                                  ) : slot.type === "select" ? (
+                                    <select
+                                      value={String(params[slot.id] ?? slot.defaultValue ?? "")}
+                                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                      className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                    >
+                                      {(slot.options ?? []).map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                          {recipeSlotOptionLabel(selectedRecipe, slot, o.value, lang)}
+                                        </option>
+                                      ))}
+                                    </select>
                                   ) : slot.type === "time" ? (
                                     <TimeInput
                                       value={params[slot.id] ?? ""}
@@ -1943,6 +1979,18 @@ function AddRecipeForm({
                           onChange={(v) => setParams({ ...params, [slot.id]: v })}
                           placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
                         />
+                      ) : slot.type === "select" ? (
+                        <select
+                          value={String(params[slot.id] ?? slot.defaultValue ?? "")}
+                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                        >
+                          {(slot.options ?? []).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {recipeSlotOptionLabel(selectedRecipe, slot, o.value, lang)}
+                            </option>
+                          ))}
+                        </select>
                       ) : slot.type === "time" ? (
                         <TimeInput
                           value={params[slot.id] ?? ""}

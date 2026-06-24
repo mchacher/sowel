@@ -252,6 +252,7 @@ async function main() {
     equipmentManager,
     zoneManager,
     zoneAggregator,
+    sunlightManager, // spec 126 — exposes ctx.helpers.getSunlight() to recipes
     logger,
     config.shadowMode, // spec 124 — runtime gate on startInstance
   );

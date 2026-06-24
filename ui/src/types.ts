@@ -498,10 +498,14 @@ export interface RecipeSlotDef {
   id: string;
   name: string;
   description: string;
-  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text" | "data-key";
+  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text" | "data-key" | "select";
   required: boolean;
   list?: boolean;
   defaultValue?: unknown;
+  /** For `type: "select"` — the closed list of choices rendered as a dropdown.
+   *  `label` is the English fallback; per-language labels live in the recipe's
+   *  i18n under `slots[id].options[value]`. Spec 126. */
+  options?: { value: string; label: string }[];
   constraints?: {
     equipmentType?: EquipmentType | EquipmentType[];
     min?: number;
@@ -520,6 +524,8 @@ export interface RecipeSlotDef {
 export interface RecipeSlotI18n {
   name: string;
   description: string;
+  /** Per-language labels for a `select` slot's options, keyed by option value. Spec 126. */
+  options?: Record<string, string>;
 }
 
 export interface RecipeLangPack {
