@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { NotificationPublisherManager } from "../../notifications/notification-publisher-manager.js";
 import type { NotificationPublishService } from "../../notifications/notification-publish-service.js";
 import { NotificationPublisherError } from "../../notifications/notification-publisher-manager.js";
-import type { TelegramChannelConfig } from "../../shared/types.js";
+import type { NotificationChannelType, NotificationChannelConfig } from "../../shared/types.js";
 
 interface NotificationPublishersDeps {
   notificationPublisherManager: NotificationPublisherManager;
@@ -34,23 +34,19 @@ export function registerNotificationPublisherRoutes(
   app.post<{
     Body: {
       name: string;
-      channelType: "telegram";
-      channelConfig: TelegramChannelConfig;
+      channelType: NotificationChannelType;
+      channelConfig: NotificationChannelConfig;
       enabled?: boolean;
     };
   }>("/api/v1/notification-publishers", async (request, reply) => {
     const { name, channelType, channelConfig, enabled } = request.body ?? {};
     if (!name) return reply.code(400).send({ error: "name is required" });
-    if (!channelConfig?.botToken)
-      return reply.code(400).send({ error: "channelConfig.botToken is required" });
-    if (!channelConfig?.chatId)
-      return reply.code(400).send({ error: "channelConfig.chatId is required" });
 
     try {
       const publisher = notificationPublisherManager.create({
         name,
         channelType: channelType ?? "telegram",
-        channelConfig,
+        channelConfig: channelConfig ?? ({} as NotificationChannelConfig),
         enabled,
       });
       return reply.code(201).send(publisher);
@@ -66,8 +62,8 @@ export function registerNotificationPublisherRoutes(
     Params: { id: string };
     Body: {
       name?: string;
-      channelType?: "telegram";
-      channelConfig?: TelegramChannelConfig;
+      channelType?: NotificationChannelType;
+      channelConfig?: NotificationChannelConfig;
       enabled?: boolean;
     };
   }>("/api/v1/notification-publishers/:id", async (request, reply) => {

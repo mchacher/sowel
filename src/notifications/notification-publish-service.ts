@@ -7,6 +7,9 @@ import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { ZoneAggregatedData } from "../shared/types.js";
 import type { NotificationChannel } from "./channels/channel.js";
 import { TelegramChannel } from "./channels/telegram.js";
+import { WebPushChannel } from "./channels/web-push.js";
+import type { PushSubscriptionManager } from "./push-subscription-manager.js";
+import type { VapidKeys } from "./vapid.js";
 
 // ============================================================
 // Internal types
@@ -16,7 +19,7 @@ interface MappingRef {
   mappingId: string;
   publisherId: string;
   message: string;
-  channelType: "telegram";
+  channelType: string;
   channelConfig: unknown;
   enabled: boolean;
   throttleMs: number;
@@ -43,9 +46,7 @@ export class NotificationPublishService {
   private lastEventTs: Map<string, number> = new Map();
 
   /** Channel providers by type */
-  private readonly channels: Record<string, NotificationChannel> = {
-    telegram: new TelegramChannel(),
-  };
+  private readonly channels: Record<string, NotificationChannel>;
 
   constructor(
     private readonly eventBus: EventBus,
@@ -53,9 +54,15 @@ export class NotificationPublishService {
     private readonly equipmentManager: EquipmentManager,
     private readonly zoneAggregator: ZoneAggregator,
     private readonly recipeManager: RecipeManager,
+    pushSubscriptionManager: PushSubscriptionManager,
+    vapid: VapidKeys,
     logger: Logger,
   ) {
     this.logger = logger.child({ module: "notification-publish-service" });
+    this.channels = {
+      telegram: new TelegramChannel(),
+      "web-push": new WebPushChannel(pushSubscriptionManager, vapid, this.logger),
+    };
   }
 
   // ── Lifecycle ────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Loader2,
   Bell,
+  BellOff,
   Plus,
   Trash2,
   Power,
@@ -30,11 +31,15 @@ import type {
   NotificationPublisherWithMappings,
   NotificationPublisherMapping,
   TelegramChannelConfig,
+  NotificationChannelType,
+  NotificationChannelConfig,
+  WebPushChannelConfig,
   EquipmentWithDetails,
   ZoneWithChildren,
   RecipeInstance,
   RecipeInfo,
 } from "../types";
+import { usePushSubscription } from "../hooks/usePushSubscription";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -57,6 +62,59 @@ const ZONE_AGG_KEYS = [
 ];
 
 const DEFAULT_THROTTLE_MS = 300_000; // 5 min
+
+// ── Web Push: enable on this device (spec 127) ────────────────
+
+function PushEnableCard() {
+  const { t } = useTranslation();
+  const { status, supported, busy, error, subscribe, unsubscribe } = usePushSubscription();
+
+  let action: React.ReactNode;
+  if (!supported) {
+    action = <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushUnsupported")}</span>;
+  } else if (status === "insecure") {
+    action = <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushInsecure")}</span>;
+  } else if (status === "denied") {
+    action = <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushDenied")}</span>;
+  } else if (status === "subscribed") {
+    action = (
+      <button
+        onClick={() => void unsubscribe()}
+        disabled={busy}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-[6px] border border-border text-text-secondary hover:text-text disabled:opacity-50"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
+        {t("notifPublishers.pushDisable")}
+      </button>
+    );
+  } else {
+    action = (
+      <button
+        onClick={() => void subscribe()}
+        disabled={busy}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+        {t("notifPublishers.pushEnable")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[13px] font-medium text-text">{t("notifPublishers.pushTitle")}</div>
+          <div className="text-[12px] text-text-secondary">
+            {status === "subscribed" ? t("notifPublishers.pushOn") : t("notifPublishers.pushOff")}
+          </div>
+        </div>
+        {action}
+      </div>
+      {error && <div className="text-[11px] text-red-500 mt-2">{error}</div>}
+    </div>
+  );
+}
 
 export function NotificationPublishersPage() {
   const { t } = useTranslation();
@@ -114,6 +172,9 @@ export function NotificationPublishersPage() {
           {t("notifPublishers.subtitle")}
         </p>
       </div>
+
+      {/* Web Push — enable on this device (spec 127) */}
+      <PushEnableCard />
 
       {/* Actions */}
       <div className="flex items-center gap-3 mb-4">
@@ -174,32 +235,39 @@ function PublisherForm({
 }) {
   const { t } = useTranslation();
   const [name, setName] = useState(publisher?.name ?? "");
-  const [botToken, setBotToken] = useState(publisher?.channelConfig?.botToken ?? "");
-  const [chatId, setChatId] = useState(publisher?.channelConfig?.chatId ?? "");
+  const [channelType, setChannelType] = useState<NotificationChannelType>(
+    publisher?.channelType ?? "telegram",
+  );
+  const tg =
+    publisher?.channelType === "telegram"
+      ? (publisher.channelConfig as TelegramChannelConfig)
+      : undefined;
+  const [botToken, setBotToken] = useState(tg?.botToken ?? "");
+  const [chatId, setChatId] = useState(tg?.chatId ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const telegramReady = channelType !== "telegram" || (!!botToken.trim() && !!chatId.trim());
+  const canSubmit = !!name.trim() && telegramReady;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !botToken.trim() || !chatId.trim()) return;
+    if (!canSubmit) return;
     setSaving(true);
     setError("");
     try {
-      const channelConfig: TelegramChannelConfig = {
-        botToken: botToken.trim(),
-        chatId: chatId.trim(),
-      };
+      const channelConfig: NotificationChannelConfig =
+        channelType === "telegram"
+          ? { botToken: botToken.trim(), chatId: chatId.trim() }
+          : ({} as WebPushChannelConfig);
       if (publisher) {
         await updateNotificationPublisher(publisher.id, {
           name: name.trim(),
+          channelType,
           channelConfig,
         });
       } else {
-        await createNotificationPublisher({
-          name: name.trim(),
-          channelType: "telegram",
-          channelConfig,
-        });
+        await createNotificationPublisher({ name: name.trim(), channelType, channelConfig });
       }
       onSaved();
     } catch (err: unknown) {
@@ -227,33 +295,52 @@ function PublisherForm({
         </div>
         <div>
           <label className="block text-[12px] text-text-secondary mb-1">
-            {t("notifPublishers.botToken")}
+            {t("notifPublishers.channelType")}
           </label>
-          <input
-            type="password"
-            value={botToken}
-            onChange={(e) => setBotToken(e.target.value)}
-            placeholder="123456:ABC-DEF..."
-            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
-          />
+          <select
+            value={channelType}
+            onChange={(e) => setChannelType(e.target.value as NotificationChannelType)}
+            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
+          >
+            <option value="telegram">Telegram</option>
+            <option value="web-push">{t("notifPublishers.webPush")}</option>
+          </select>
         </div>
-        <div>
-          <label className="block text-[12px] text-text-secondary mb-1">
-            {t("notifPublishers.chatId")}
-          </label>
-          <input
-            type="text"
-            value={chatId}
-            onChange={(e) => setChatId(e.target.value)}
-            placeholder="-1001234567890"
-            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
-          />
-        </div>
+        {channelType === "telegram" ? (
+          <>
+            <div>
+              <label className="block text-[12px] text-text-secondary mb-1">
+                {t("notifPublishers.botToken")}
+              </label>
+              <input
+                type="password"
+                value={botToken}
+                onChange={(e) => setBotToken(e.target.value)}
+                placeholder="123456:ABC-DEF..."
+                className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
+              />
+            </div>
+            <div>
+              <label className="block text-[12px] text-text-secondary mb-1">
+                {t("notifPublishers.chatId")}
+              </label>
+              <input
+                type="text"
+                value={chatId}
+                onChange={(e) => setChatId(e.target.value)}
+                placeholder="-1001234567890"
+                className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
+              />
+            </div>
+          </>
+        ) : (
+          <p className="text-[11px] text-text-tertiary">{t("notifPublishers.webPushHint")}</p>
+        )}
         {error && <div className="text-[11px] text-red-500">{error}</div>}
         <div className="flex items-center gap-2">
           <button
             type="submit"
-            disabled={saving || !name.trim() || !botToken.trim() || !chatId.trim()}
+            disabled={saving || !canSubmit}
             className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : publisher ? t("common.save") : t("common.create")}

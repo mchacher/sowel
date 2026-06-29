@@ -40,6 +40,8 @@ import { MqttBrokerManager } from "./mqtt-publishers/mqtt-broker-manager.js";
 import { MqttPublisherManager } from "./mqtt-publishers/mqtt-publisher-manager.js";
 import { MqttPublishService } from "./mqtt-publishers/mqtt-publish-service.js";
 import { NotificationPublisherManager } from "./notifications/notification-publisher-manager.js";
+import { PushSubscriptionManager } from "./notifications/push-subscription-manager.js";
+import { ensureVapidKeys } from "./notifications/vapid.js";
 import { NotificationPublishService } from "./notifications/notification-publish-service.js";
 import { PackageManager } from "./packages/package-manager.js";
 import { PluginLoader } from "./plugins/plugin-loader.js";
@@ -260,12 +262,17 @@ async function main() {
 
   // 12b. Create Notification Publisher Manager & Service
   const notificationPublisherManager = new NotificationPublisherManager(db, eventBus, logger);
+  // Spec 127 — Web Push: per-user subscriptions + server-global VAPID keys.
+  const pushSubscriptionManager = new PushSubscriptionManager(db, logger);
+  const vapidKeys = ensureVapidKeys(settingsManager, logger);
   const notificationPublishService = new NotificationPublishService(
     eventBus,
     notificationPublisherManager,
     equipmentManager,
     zoneAggregator,
     recipeManager,
+    pushSubscriptionManager,
+    vapidKeys,
     logger,
   );
 
@@ -381,6 +388,8 @@ async function main() {
     mqttPublishService,
     notificationPublisherManager,
     notificationPublishService,
+    pushSubscriptionManager,
+    vapidKeys,
     packageManager,
     pluginLoader,
     recipeLoader,

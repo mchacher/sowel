@@ -7,8 +7,23 @@ import type {
   NotificationPublisher,
   NotificationPublisherMapping,
   NotificationPublisherWithMappings,
+  NotificationChannelType,
+  NotificationChannelConfig,
   TelegramChannelConfig,
 } from "../shared/types.js";
+
+/** Validate a publisher's config for its channel type (spec 127). */
+function validateChannelConfig(
+  channelType: NotificationChannelType,
+  config: NotificationChannelConfig,
+): void {
+  if (channelType === "telegram") {
+    const c = config as TelegramChannelConfig;
+    if (!c?.botToken?.trim()) throw new NotificationPublisherError("botToken is required", 400);
+    if (!c?.chatId?.trim()) throw new NotificationPublisherError("chatId is required", 400);
+  }
+  // "web-push": no per-publisher config (broadcasts to all subscriptions).
+}
 
 // ── Row types ────────────────────────────────────────────────
 
@@ -39,8 +54,8 @@ function rowToPublisher(row: PublisherRow): NotificationPublisher {
   return {
     id: row.id,
     name: row.name,
-    channelType: row.channel_type as "telegram",
-    channelConfig: JSON.parse(row.channel_config) as TelegramChannelConfig,
+    channelType: row.channel_type as NotificationChannelType,
+    channelConfig: JSON.parse(row.channel_config) as NotificationChannelConfig,
     enabled: row.enabled === 1,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
@@ -134,15 +149,12 @@ export class NotificationPublisherManager {
 
   create(input: {
     name: string;
-    channelType: "telegram";
-    channelConfig: TelegramChannelConfig;
+    channelType: NotificationChannelType;
+    channelConfig: NotificationChannelConfig;
     enabled?: boolean;
   }): NotificationPublisher {
     if (!input.name?.trim()) throw new NotificationPublisherError("name is required", 400);
-    if (!input.channelConfig?.botToken?.trim())
-      throw new NotificationPublisherError("botToken is required", 400);
-    if (!input.channelConfig?.chatId?.trim())
-      throw new NotificationPublisherError("chatId is required", 400);
+    validateChannelConfig(input.channelType, input.channelConfig);
 
     const id = randomUUID();
     const enabled = input.enabled !== false ? 1 : 0;
@@ -164,8 +176,8 @@ export class NotificationPublisherManager {
     id: string,
     updates: {
       name?: string;
-      channelType?: "telegram";
-      channelConfig?: TelegramChannelConfig;
+      channelType?: NotificationChannelType;
+      channelConfig?: NotificationChannelConfig;
       enabled?: boolean;
     },
   ): NotificationPublisher {
@@ -175,6 +187,7 @@ export class NotificationPublisherManager {
     const name = updates.name?.trim() ?? existing.name;
     const channelType = updates.channelType ?? existing.channelType;
     const channelConfig = updates.channelConfig ?? existing.channelConfig;
+    validateChannelConfig(channelType, channelConfig);
     const enabled =
       updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : existing.enabled ? 1 : 0;
 

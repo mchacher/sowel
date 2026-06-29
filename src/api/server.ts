@@ -60,6 +60,7 @@ import { registerChartRoutes } from "./routes/charts.js";
 import { registerMqttBrokerRoutes } from "./routes/mqtt-brokers.js";
 import { registerMqttPublisherRoutes } from "./routes/mqtt-publishers.js";
 import { registerNotificationPublisherRoutes } from "./routes/notification-publishers.js";
+import { registerPushRoutes } from "./routes/push.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerPluginRoutes } from "./routes/plugins.js";
 import { registerSystemRoutes } from "./routes/system.js";
@@ -88,6 +89,8 @@ interface ServerDeps {
   mqttPublishService: MqttPublishService;
   notificationPublisherManager: NotificationPublisherManager;
   notificationPublishService: NotificationPublishService;
+  pushSubscriptionManager: import("../notifications/push-subscription-manager.js").PushSubscriptionManager;
+  vapidKeys: import("../notifications/vapid.js").VapidKeys;
   packageManager: PackageManager;
   pluginLoader: PluginLoader;
   recipeLoader: import("../recipes/recipe-loader.js").RecipeLoader;
@@ -133,6 +136,8 @@ export async function createServer(deps: ServerDeps) {
     mqttPublishService,
     notificationPublisherManager,
     notificationPublishService,
+    pushSubscriptionManager,
+    vapidKeys,
     packageManager,
     pluginLoader,
     recipeLoader,
@@ -278,6 +283,7 @@ export async function createServer(deps: ServerDeps) {
     notificationPublisherManager,
     notificationPublishService,
   });
+  registerPushRoutes(app, { pushSubscriptionManager, vapidKeys });
   registerEnergyRoutes(app, {
     equipmentManager,
     influxClient,

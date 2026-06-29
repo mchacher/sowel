@@ -341,7 +341,7 @@ Each mapping carries its own `enabled` flag (default `true`). Disabled mappings 
 
 ## Notification Publishers
 
-Push notifications (currently Telegram) triggered by data changes.
+Notifications triggered by data changes. The `channelType` is `telegram` or `web-push`. For `telegram`, `channelConfig` is `{ botToken, chatId }`. For `web-push`, `channelConfig` is `{}` (empty) — the channel broadcasts to every browser subscription registered via the Web Push routes below.
 
 | Method   | Path                                                      | Description                                                                             |
 | -------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -355,6 +355,17 @@ Push notifications (currently Telegram) triggered by data changes.
 | `POST`   | `/api/v1/notification-publishers/:id/mappings`            | Add trigger mapping. Body: `{ message, sourceType, sourceId, sourceKey, throttleMs? }`. |
 | `PUT`    | `/api/v1/notification-publishers/:id/mappings/:mappingId` | Update mapping.                                                                         |
 | `DELETE` | `/api/v1/notification-publishers/:id/mappings/:mappingId` | Delete mapping. Returns 204.                                                            |
+
+### Web Push
+
+Per-user browser subscriptions for the `web-push` channel. Requires a secure context (HTTPS) on the client. The server holds a single VAPID key pair, generated on first boot; the private key is never exposed.
+
+| Method   | Path                            | Description                                                                                                 |
+| -------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/push/vapid-public-key` | The VAPID public key the browser subscribes with. Returns `{ publicKey }`.                                  |
+| `GET`    | `/api/v1/push/subscriptions`    | List the authenticated user's device subscriptions.                                                         |
+| `POST`   | `/api/v1/push/subscriptions`    | Register/upsert this device. Body: `{ endpoint, keys: { p256dh, auth }, userAgent? }`. Upserts by endpoint. |
+| `DELETE` | `/api/v1/push/subscriptions`    | Remove this device. Body: `{ endpoint }`. Returns 204.                                                      |
 
 ---
 

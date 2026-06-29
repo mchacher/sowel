@@ -784,14 +784,32 @@ export interface TelegramChannelConfig {
   chatId: string;
 }
 
+/** Web Push publisher config (spec 127) — empty; VAPID is server-global and
+ *  subscriptions are stored per user. */
+export type WebPushChannelConfig = Record<string, never>;
+
+export type NotificationChannelType = "telegram" | "web-push";
+export type NotificationChannelConfig = TelegramChannelConfig | WebPushChannelConfig;
+
 export interface NotificationPublisher {
   id: string;
   name: string;
-  channelType: "telegram";
-  channelConfig: TelegramChannelConfig;
+  channelType: NotificationChannelType;
+  channelConfig: NotificationChannelConfig;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** A browser Web Push subscription owned by a user (spec 127). */
+export interface PushSubscription {
+  id: string;
+  userId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string;
+  createdAt: string;
 }
 
 export interface NotificationPublisherMapping {
