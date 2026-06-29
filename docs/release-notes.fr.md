@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.24.x: Notifications Web Push
 
+### v1.24.1 — 2026-06-29 { #v1-24-1 }
+
+- Fix (core) : le Web Push fonctionne désormais sur iOS et Safari. La passerelle push d'Apple rejetait chaque notification (HTTP 403) car le sujet VAPID par défaut utilisait un domaine `.local`, refusé par Apple (Chrome et Android n'étaient pas affectés). Le défaut est maintenant un contact valide, et les instances existantes corrigent automatiquement la valeur stockée à la mise à jour, sans régénérer les clés, donc les appareils déjà abonnés continuent de fonctionner. (#287)
+
 ### v1.24.0 — 2026-06-29 { #v1-24-0 }
 
 Web Push comme canal de notification pour la PWA installée, plus deux correctifs d'affichage mobile :

@@ -38,14 +38,22 @@ describe("ensureVapidKeys", () => {
 
   afterEach(() => db.close());
 
+  const DEFAULT_SUBJECT = "mailto:admin@sowel.org";
+
   it("generates and persists a key pair on first call", () => {
     const keys = ensureVapidKeys(settings, logger);
     expect(keys.publicKey).toBe("pub-1");
     expect(keys.privateKey).toBe("priv-1");
-    expect(keys.subject).toBe("mailto:admin@sowel.local");
+    expect(keys.subject).toBe(DEFAULT_SUBJECT);
     expect(settings.get("push.vapidPublicKey")).toBe("pub-1");
     expect(settings.get("push.vapidPrivateKey")).toBe("priv-1");
-    expect(settings.get("push.vapidSubject")).toBe("mailto:admin@sowel.local");
+    expect(settings.get("push.vapidSubject")).toBe(DEFAULT_SUBJECT);
+  });
+
+  it("uses a valid (non-.local) default subject Apple accepts", () => {
+    const keys = ensureVapidKeys(settings, logger);
+    expect(keys.subject).not.toContain(".local");
+    expect(keys.subject).toMatch(/^(mailto:|https:)/);
   });
 
   it("is idempotent: a second call reuses the stored keys", () => {
@@ -61,11 +69,23 @@ describe("ensureVapidKeys", () => {
     const keys = ensureVapidKeys(settings, logger);
     expect(generateCalls).toBe(0);
     expect(keys.publicKey).toBe("existing-pub");
-    expect(keys.subject).toBe("mailto:admin@sowel.local");
-    expect(settings.get("push.vapidSubject")).toBe("mailto:admin@sowel.local");
+    expect(keys.subject).toBe(DEFAULT_SUBJECT);
+    expect(settings.get("push.vapidSubject")).toBe(DEFAULT_SUBJECT);
   });
 
-  it("preserves a custom stored subject", () => {
+  it("heals a legacy .local subject on boot without touching the keys", () => {
+    settings.set("push.vapidPublicKey", "existing-pub");
+    settings.set("push.vapidPrivateKey", "existing-priv");
+    settings.set("push.vapidSubject", "mailto:admin@sowel.local");
+    const keys = ensureVapidKeys(settings, logger);
+    expect(generateCalls).toBe(0); // key pair untouched
+    expect(keys.publicKey).toBe("existing-pub");
+    expect(keys.privateKey).toBe("existing-priv");
+    expect(keys.subject).toBe(DEFAULT_SUBJECT);
+    expect(settings.get("push.vapidSubject")).toBe(DEFAULT_SUBJECT); // persisted
+  });
+
+  it("preserves a custom valid stored subject", () => {
     settings.set("push.vapidSubject", "mailto:owner@example.com");
     const keys = ensureVapidKeys(settings, logger);
     expect(keys.subject).toBe("mailto:owner@example.com");

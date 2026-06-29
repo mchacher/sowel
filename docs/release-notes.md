@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.24.x: Web Push notifications
 
+### v1.24.1 — 2026-06-29 { #v1-24-1 }
+
+- Fix (core): Web Push now works on iOS and Safari. Apple's push gateway rejected every notification (HTTP 403) because the default VAPID subject used a `.local` domain, which Apple refuses (Chrome and Android were unaffected). The default is now a valid contact, and existing instances self-heal the stored value on update without regenerating keys, so previously registered devices keep working. (#287)
+
 ### v1.24.0 — 2026-06-29 { #v1-24-0 }
 
 Web Push as a notification channel for the installed PWA, plus two mobile layout fixes:
