@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.24.x: Notifications Web Push
+
+### v1.24.0 — 2026-06-29 { #v1-24-0 }
+
+Web Push comme canal de notification pour la PWA installée, plus deux correctifs d'affichage mobile :
+
+- Feat (core) : nouveau canal de notification **Web Push** en complément de Telegram. La PWA installée (en HTTPS) peut recevoir des notifications natives. Les clés VAPID sont générées au premier démarrage, les abonnements sont par utilisateur, et les abonnements expirés sont purgés automatiquement. À configurer dans Réglages > Notifications : activez le push sur un appareil, puis mappez un publisher « Web Push » sur une valeur d'équipement, de zone ou de recette. (#284)
+- Fix (ui) : sur mobile, l'heure et le lever/coucher du soleil s'affichent désormais dans la barre du haut (auparavant réservés au bureau). (#285)
+- Fix (ui) : sur mobile, le sélecteur Wh / € de Énergie > Consommation est de nouveau accessible ; il ne déborde plus hors de l'écran à côté du sélecteur de période. (#285)
+
+---
+
 ## 1.23.x: Briques pour recettes solaires
 
 ### v1.23.0 — 2026-06-24 { #v1-23-0 }

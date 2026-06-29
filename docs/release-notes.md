@@ -11,6 +11,18 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.24.x: Web Push notifications
+
+### v1.24.0 — 2026-06-29 { #v1-24-0 }
+
+Web Push as a notification channel for the installed PWA, plus two mobile layout fixes:
+
+- Feat (core): new **Web Push** notification channel alongside Telegram. The installed PWA (over HTTPS) can receive native push notifications. VAPID keys are generated and stored on first boot, subscriptions are per user, and expired endpoints are pruned automatically. Configure it from Settings > Notifications: enable push on a device, then map a "Web Push" publisher to any equipment, zone or recipe value. (#284)
+- Fix (ui): on mobile, the current time and sunrise/sunset are now shown in the top bar (they were desktop-only). (#285)
+- Fix (ui): on mobile, the Wh / € toggle on Energy > Consumption is now reachable; it no longer overflows off-screen next to the period selector. (#285)
+
+---
+
 ## 1.23.x: Sun-aware recipe building blocks
 
 ### v1.23.0 — 2026-06-24 { #v1-23-0 }
