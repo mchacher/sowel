@@ -160,7 +160,7 @@ export function NotificationPublishersPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <div className="flex items-center gap-2.5 mb-1">
           <Bell size={22} strokeWidth={1.5} className="text-text-secondary" />
@@ -479,18 +479,29 @@ function PublisherCard({
 
   return (
     <div className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <Bell size={18} strokeWidth={1.5} className="text-text-secondary" />
-          <div>
-            <h3 className="text-[14px] font-medium text-text">{publisher.name}</h3>
+      {/* Header — stacks on mobile so the name stays readable and the
+          actions sit on their own row instead of crushing into the title. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Bell size={18} strokeWidth={1.5} className="text-text-secondary shrink-0" />
+          <div className="min-w-0">
+            <h3 className="text-[14px] font-medium text-text truncate">{publisher.name}</h3>
             <span className="text-[12px] text-text-tertiary">
-              Telegram
+              {publisher.channelType === "web-push" ? "Web Push" : "Telegram"}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 flex-wrap justify-end self-end sm:self-auto">
+          {testChannelOk && (
+            <span className="text-[11px] text-green-500">
+              {t("notifPublishers.testChannelOk")}
+            </span>
+          )}
+          {testResult !== null && (
+            <span className="text-[11px] text-green-500">
+              {t("notifPublishers.testResult", { count: testResult })}
+            </span>
+          )}
           <button
             onClick={handleTestChannel}
             disabled={testingChannel}
@@ -502,7 +513,7 @@ function PublisherCard({
             ) : (
               <MessageSquare size={13} />
             )}
-            {t("notifPublishers.testChannel")}
+            <span className="hidden sm:inline">{t("notifPublishers.testChannel")}</span>
           </button>
           <button
             onClick={handleTestPublisher}
@@ -515,18 +526,8 @@ function PublisherCard({
             ) : (
               <Zap size={13} />
             )}
-            {t("notifPublishers.test")}
+            <span className="hidden sm:inline">{t("notifPublishers.test")}</span>
           </button>
-          {testChannelOk && (
-            <span className="text-[11px] text-green-500">
-              {t("notifPublishers.testChannelOk")}
-            </span>
-          )}
-          {testResult !== null && (
-            <span className="text-[11px] text-green-500">
-              {t("notifPublishers.testResult", { count: testResult })}
-            </span>
-          )}
           <button
             onClick={() => setEditing(true)}
             className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
@@ -882,18 +883,20 @@ function MappingRow({
   }
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 bg-bg rounded-[4px]">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="text-[12px] text-text font-medium shrink-0 max-w-[200px] truncate">
+    <div className="flex items-start justify-between gap-2 px-3 py-2 bg-bg rounded-[4px]">
+      <div className="flex flex-col gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-3">
+        <span className="text-[12px] text-text font-medium truncate sm:max-w-[200px] sm:shrink-0">
           {mapping.message}
         </span>
-        <span className="text-[11px] text-text-tertiary">←</span>
-        <span className="text-[11px] text-text-secondary truncate">
-          [{mapping.sourceType}] {label}
-        </span>
-        <span className="text-[10px] text-text-tertiary shrink-0">
-          {t("notifPublishers.throttleMinutes", { minutes: Math.round(mapping.throttleMs / 60000) })}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[11px] text-text-tertiary shrink-0">←</span>
+          <span className="text-[11px] text-text-secondary truncate">
+            [{mapping.sourceType}] {label}
+          </span>
+          <span className="text-[10px] text-text-tertiary shrink-0">
+            {t("notifPublishers.throttleMinutes", { minutes: Math.round(mapping.throttleMs / 60000) })}
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button

@@ -887,7 +887,7 @@
   "nav.notificationPublishers": "Notifications",
 
   "notifPublishers.title": "Notification Publishers",
-  "notifPublishers.subtitle": "Send notifications via Telegram when equipment, zone or recipe values change",
+  "notifPublishers.subtitle": "Send a notification (Telegram or Web Push) when an equipment, zone or recipe value changes",
   "notifPublishers.newPublisher": "New Publisher",
   "notifPublishers.channelType": "Channel",
   "notifPublishers.webPush": "Web Push (this app)",
