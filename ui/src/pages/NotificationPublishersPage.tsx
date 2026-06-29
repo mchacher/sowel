@@ -236,7 +236,7 @@ function PublisherForm({
   const { t } = useTranslation();
   const [name, setName] = useState(publisher?.name ?? "");
   const [channelType, setChannelType] = useState<NotificationChannelType>(
-    publisher?.channelType ?? "telegram",
+    publisher?.channelType ?? "web-push",
   );
   const tg =
     publisher?.channelType === "telegram"
@@ -288,7 +288,7 @@ function PublisherForm({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Telegram Home"
+            placeholder={t("notifPublishers.namePlaceholder")}
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
             autoFocus
           />
@@ -302,8 +302,8 @@ function PublisherForm({
             onChange={(e) => setChannelType(e.target.value as NotificationChannelType)}
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
           >
-            <option value="telegram">Telegram</option>
             <option value="web-push">{t("notifPublishers.webPush")}</option>
+            <option value="telegram">Telegram</option>
           </select>
         </div>
         {channelType === "telegram" ? (
