@@ -33,7 +33,11 @@ export class WebPushChannel implements NotificationChannel {
       return;
     }
 
-    const payload = JSON.stringify({ title: "Sowel", body: text });
+    // The message is the notification heading. We deliberately do NOT set a
+    // "Sowel" title: the installed PWA (and the browser/site chrome) already
+    // labels the notification with the app name, so a "Sowel" title would just
+    // be shown twice.
+    const payload = JSON.stringify({ title: text });
     const vapidDetails = {
       subject: this.vapid.subject,
       publicKey: this.vapid.publicKey,
@@ -79,6 +83,6 @@ export class WebPushChannel implements NotificationChannel {
     if (this.subscriptions.listAll().length === 0) {
       throw new Error("No push subscriptions yet — enable push on a device first");
     }
-    await this.send(config, "Test notification from Sowel");
+    await this.send(config, "Test notification");
   }
 }

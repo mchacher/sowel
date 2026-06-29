@@ -55,7 +55,7 @@ describe("WebPushChannel", () => {
       endpoint: "https://push/1",
       keys: { p256dh: "p", auth: "a" },
     });
-    expect(JSON.parse(payload as string)).toEqual({ title: "Sowel", body: "Hello world" });
+    expect(JSON.parse(payload as string)).toEqual({ title: "Hello world" });
     expect((options as { vapidDetails: VapidKeys }).vapidDetails).toEqual({
       subject: vapid.subject,
       publicKey: vapid.publicKey,
@@ -112,7 +112,7 @@ describe("WebPushChannel", () => {
 
     expect(sendNotification).toHaveBeenCalledTimes(2);
     const [, payload] = sendNotification.mock.calls[0];
-    expect(JSON.parse(payload as string).body).toMatch(/test/i);
+    expect(JSON.parse(payload as string).title).toMatch(/test/i);
   });
 
   it("testConnection rejects when no device is subscribed", async () => {
