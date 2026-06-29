@@ -10,17 +10,23 @@ import { useTimezone } from "../../store/useTimezone";
  * Refreshes every 30 seconds. Falls back to browser local time if the home TZ
  * is not yet loaded or invalid.
  */
-export function CurrentTimePill({ compact = false }: { compact?: boolean }) {
+export function CurrentTimePill({
+  compact = false,
+  withSeconds = true,
+}: {
+  compact?: boolean;
+  withSeconds?: boolean;
+}) {
   const tz = useTimezone((s) => s.tz);
   const loaded = useTimezone((s) => s.loaded);
-  const [now, setNow] = useState<string>(() => formatHomeTime(tz));
+  const [now, setNow] = useState<string>(() => formatHomeTime(tz, withSeconds));
 
   useEffect(() => {
-    const tick = () => setNow(formatHomeTime(tz));
+    const tick = () => setNow(formatHomeTime(tz, withSeconds));
     tick();
     const id = setInterval(tick, 1_000);
     return () => clearInterval(id);
-  }, [tz]);
+  }, [tz, withSeconds]);
 
   if (!loaded) return null;
 
@@ -39,22 +45,17 @@ export function CurrentTimePill({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function formatHomeTime(tz: string): string {
+function formatHomeTime(tz: string, withSeconds = true): string {
+  const opts: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(withSeconds ? { second: "2-digit" } : {}),
+    hour12: false,
+  };
   try {
-    return new Intl.DateTimeFormat(undefined, {
-      timeZone: tz,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).format(new Date());
+    return new Intl.DateTimeFormat(undefined, { timeZone: tz, ...opts }).format(new Date());
   } catch {
     // Invalid TZ — fall back to browser local
-    return new Intl.DateTimeFormat(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).format(new Date());
+    return new Intl.DateTimeFormat(undefined, opts).format(new Date());
   }
 }

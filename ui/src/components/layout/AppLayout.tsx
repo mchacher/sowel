@@ -142,10 +142,15 @@ export function AppLayout() {
 
           {/* Right: pills (mock order: time → sun → conn → alarm → updates → avatar). */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Time + sun hidden on mobile per mockup */}
+            {/* Time + sun — full pills on desktop */}
             <div className="hidden sm:flex items-center gap-2">
               <CurrentTimePill />
               <SunlightBanner data={rootAgg} />
+            </div>
+            {/* Time + sun — compact, space-saving variant on mobile (no seconds) */}
+            <div className="flex sm:hidden items-center gap-2">
+              <SunlightBanner data={rootAgg} compact />
+              <CurrentTimePill compact withSeconds={false} />
             </div>
             <ConnectionStatus />
             {issues.length > 0 && (

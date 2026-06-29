@@ -25,7 +25,7 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
           ? <Sunrise size={12} strokeWidth={1.5} />
           : <Moon size={12} strokeWidth={1.5} />
         }
-        <span>{data.sunrise} — {data.sunset}</span>
+        <span>{data.sunrise} - {data.sunset}</span>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
         ? <Sunrise size={13} strokeWidth={1.5} />
         : <Moon size={13} strokeWidth={1.5} />
       }
-      <span>{data.sunrise} — {data.sunset}</span>
+      <span>{data.sunrise} - {data.sunset}</span>
       <span className="text-[11px] opacity-70 lowercase">{isDay ? t("aggregation.daylight") : t("aggregation.night")}</span>
     </div>
   );
