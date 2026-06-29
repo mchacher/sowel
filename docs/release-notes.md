@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.24.x: Web Push notifications
 
+### v1.24.3 — 2026-06-29 { #v1-24-3 }
+
+- Fix (notifications): Web Push notifications are split into a title (the message) and a body (the value). A longer notification such as "Garage door open since" followed by a timestamp now reads on two lines instead of being truncated onto one. Telegram keeps its single-line format. Note: the "from Sowel" line on the notification is added by the browser/phone itself (it always shows which app sent the push) and cannot be removed.
+
 ### v1.24.2 — 2026-06-29 { #v1-24-2 }
 
 - Fix (notifications): the "Test channel" button now delivers a real notification for the Web Push channel. It previously only validated the VAPID keys without sending anything, so it looked like nothing happened. It also returns a clear error when no device has enabled push yet. (#288)

@@ -47,7 +47,7 @@ describe("WebPushChannel", () => {
     sendNotification.mockResolvedValue({ statusCode: 201 });
 
     const channel = new WebPushChannel(mgr, vapid, logger);
-    await channel.send({}, "Hello world");
+    await channel.send({}, { title: "Garage door open", body: "29/06/2026 18:30" });
 
     expect(sendNotification).toHaveBeenCalledTimes(2);
     const [pushSub, payload, options] = sendNotification.mock.calls[0];
@@ -55,7 +55,10 @@ describe("WebPushChannel", () => {
       endpoint: "https://push/1",
       keys: { p256dh: "p", auth: "a" },
     });
-    expect(JSON.parse(payload as string)).toEqual({ title: "Hello world" });
+    expect(JSON.parse(payload as string)).toEqual({
+      title: "Garage door open",
+      body: "29/06/2026 18:30",
+    });
     expect((options as { vapidDetails: VapidKeys }).vapidDetails).toEqual({
       subject: vapid.subject,
       publicKey: vapid.publicKey,
@@ -66,7 +69,7 @@ describe("WebPushChannel", () => {
   it("does nothing when there are no subscriptions", async () => {
     const mgr = createMockManager([]);
     const channel = new WebPushChannel(mgr, vapid, logger);
-    await channel.send({}, "Hi");
+    await channel.send({}, { title: "Hi" });
     expect(sendNotification).not.toHaveBeenCalled();
   });
 
@@ -75,7 +78,7 @@ describe("WebPushChannel", () => {
     sendNotification.mockRejectedValue({ statusCode: 410 });
 
     const channel = new WebPushChannel(mgr, vapid, logger);
-    await channel.send({}, "Hi");
+    await channel.send({}, { title: "Hi" });
 
     expect(mgr.deleteByEndpoint).toHaveBeenCalledWith("https://push/dead");
   });
@@ -85,7 +88,7 @@ describe("WebPushChannel", () => {
     sendNotification.mockRejectedValue({ statusCode: 404 });
 
     const channel = new WebPushChannel(mgr, vapid, logger);
-    await channel.send({}, "Hi");
+    await channel.send({}, { title: "Hi" });
 
     expect(mgr.deleteByEndpoint).toHaveBeenCalledWith("https://push/gone");
   });
@@ -97,7 +100,7 @@ describe("WebPushChannel", () => {
       .mockResolvedValueOnce({ statusCode: 201 });
 
     const channel = new WebPushChannel(mgr, vapid, logger);
-    await channel.send({}, "Hi");
+    await channel.send({}, { title: "Hi" });
 
     expect(mgr.deleteByEndpoint).not.toHaveBeenCalled();
     expect(sendNotification).toHaveBeenCalledTimes(2);

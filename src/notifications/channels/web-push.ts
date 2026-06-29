@@ -1,6 +1,6 @@
 import webpush from "web-push";
 import type { Logger } from "../../core/logger.js";
-import type { NotificationChannel } from "./channel.js";
+import type { NotificationChannel, NotificationContent } from "./channel.js";
 import type { PushSubscriptionManager } from "../push-subscription-manager.js";
 import type { VapidKeys } from "../vapid.js";
 
@@ -26,18 +26,18 @@ export class WebPushChannel implements NotificationChannel {
     this.logger = logger.child({ module: "web-push-channel" });
   }
 
-  async send(_config: unknown, text: string): Promise<void> {
+  async send(_config: unknown, content: NotificationContent): Promise<void> {
     const subs = this.subscriptions.listAll();
     if (subs.length === 0) {
       this.logger.debug("No push subscriptions; nothing to send");
       return;
     }
 
-    // The message is the notification heading. We deliberately do NOT set a
-    // "Sowel" title: the installed PWA (and the browser/site chrome) already
-    // labels the notification with the app name, so a "Sowel" title would just
-    // be shown twice.
-    const payload = JSON.stringify({ title: text });
+    // title = message, body = value detail. The service worker renders them on
+    // separate lines so the text stays readable instead of being crammed onto
+    // one truncated line. We deliberately do NOT set a "Sowel" title: the
+    // installed PWA already labels the notification with the app name.
+    const payload = JSON.stringify({ title: content.title, body: content.body ?? "" });
     const vapidDetails = {
       subject: this.vapid.subject,
       publicKey: this.vapid.publicKey,
@@ -83,6 +83,6 @@ export class WebPushChannel implements NotificationChannel {
     if (this.subscriptions.listAll().length === 0) {
       throw new Error("No push subscriptions yet — enable push on a device first");
     }
-    await this.send(config, "Test notification");
+    await this.send(config, { title: "Test notification" });
   }
 }

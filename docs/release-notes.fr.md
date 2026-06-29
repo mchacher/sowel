@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.24.x: Notifications Web Push
 
+### v1.24.3 — 2026-06-29 { #v1-24-3 }
+
+- Fix (notifications) : les notifications Web Push sont séparées en un titre (le message) et un corps (la valeur). Une notification plus longue comme « Porte de garage ouverte depuis » suivie d'un horodatage se lit désormais sur deux lignes au lieu d'être tronquée sur une seule. Telegram conserve son format sur une ligne. À noter : la mention « from Sowel » sur la notification est ajoutée par le navigateur / le téléphone lui-même (il affiche toujours quelle app a envoyé le push) et ne peut pas être retirée.
+
 ### v1.24.2 — 2026-06-29 { #v1-24-2 }
 
 - Fix (notifications) : le bouton « Tester le canal » envoie désormais une vraie notification pour le canal Web Push. Auparavant il ne faisait que valider les clés VAPID sans rien envoyer, donc il semblait ne rien faire. Il renvoie aussi une erreur claire si aucun appareil n'a encore activé le push. (#288)

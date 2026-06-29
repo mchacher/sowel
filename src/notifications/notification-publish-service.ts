@@ -5,7 +5,7 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../zones/zone-aggregator.js";
 import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { ZoneAggregatedData } from "../shared/types.js";
-import type { NotificationChannel } from "./channels/channel.js";
+import type { NotificationChannel, NotificationContent } from "./channels/channel.js";
 import { TelegramChannel } from "./channels/telegram.js";
 import { WebPushChannel } from "./channels/web-push.js";
 import type { PushSubscriptionManager } from "./push-subscription-manager.js";
@@ -207,8 +207,8 @@ export class NotificationPublishService {
         previous !== undefined ? previous : this.lastValue.get(ref.mappingId);
       if (!this.shouldNotify(ref, value, effectivePrevious)) continue;
 
-      const text = formatNotificationText(ref.message, value);
-      this.sendNotification(ref, text);
+      const content = formatNotificationContent(ref.message, value);
+      this.sendNotification(ref, content);
       this.lastSent.set(ref.mappingId, Date.now());
       this.lastValue.set(ref.mappingId, value);
       sent++;
@@ -243,14 +243,14 @@ export class NotificationPublishService {
 
   // ── Send notification ───────────────────────────────────────
 
-  private sendNotification(ref: MappingRef, text: string): void {
+  private sendNotification(ref: MappingRef, content: NotificationContent): void {
     const channel = this.channels[ref.channelType];
     if (!channel) {
       this.logger.warn({ channelType: ref.channelType }, "Unknown notification channel type");
       return;
     }
 
-    channel.send(ref.channelConfig, text).catch((err) => {
+    channel.send(ref.channelConfig, content).catch((err) => {
       this.logger.error(
         { err, publisherId: ref.publisherId, channelType: ref.channelType },
         "Notification send failed",
@@ -269,7 +269,7 @@ export class NotificationPublishService {
     const channel = this.channels.telegram;
     if (!channel) return;
 
-    channel.send(telegramPub.channelConfig, text).catch((err) => {
+    channel.send(telegramPub.channelConfig, { title: text }).catch((err) => {
       this.logger.error({ err }, "System alarm notification send failed");
     });
   }
@@ -303,8 +303,8 @@ export class NotificationPublishService {
       );
       if (value === undefined) continue;
 
-      const text = formatNotificationText(mapping.message, value);
-      await channel.send(publisher.channelConfig, text);
+      const content = formatNotificationContent(mapping.message, value);
+      await channel.send(publisher.channelConfig, content);
       sent++;
     }
 
@@ -347,12 +347,11 @@ export class NotificationPublishService {
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 
-function formatNotificationText(message: string, value: unknown): string {
-  // Booleans: just send the message, no value suffix
-  if (typeof value === "boolean") return message;
-  // null: just send the message
-  if (value === null) return message;
-  return `${message} : ${formatDisplayValue(value)}`;
+function formatNotificationContent(message: string, value: unknown): NotificationContent {
+  // Booleans / null carry no extra detail: the message stands alone.
+  if (typeof value === "boolean" || value === null) return { title: message };
+  // Otherwise the message is the heading and the value is the detail line.
+  return { title: message, body: formatDisplayValue(value) };
 }
 
 function formatDisplayValue(value: unknown): string {
