@@ -68,9 +68,17 @@ export class WebPushChannel implements NotificationChannel {
     );
   }
 
-  async testConnection(_config: unknown): Promise<void> {
+  async testConnection(config: unknown): Promise<void> {
     if (!this.vapid.publicKey || !this.vapid.privateKey) {
       throw new Error("VAPID keys are not configured");
     }
+    // Unlike a connect-and-check channel, the only meaningful "test" for Web
+    // Push is to deliver an actual notification to the registered devices
+    // (mirrors how the Telegram channel sends a test message). Validating the
+    // VAPID keys alone delivered nothing, so the test button looked broken.
+    if (this.subscriptions.listAll().length === 0) {
+      throw new Error("No push subscriptions yet — enable push on a device first");
+    }
+    await this.send(config, "Test notification from Sowel");
   }
 }

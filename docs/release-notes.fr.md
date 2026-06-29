@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.24.x: Notifications Web Push
 
+### v1.24.2 — 2026-06-29 { #v1-24-2 }
+
+- Fix (notifications) : le bouton « Tester le canal » envoie désormais une vraie notification pour le canal Web Push. Auparavant il ne faisait que valider les clés VAPID sans rien envoyer, donc il semblait ne rien faire. Il renvoie aussi une erreur claire si aucun appareil n'a encore activé le push. (#288)
+
 ### v1.24.1 — 2026-06-29 { #v1-24-1 }
 
 - Fix (core) : le Web Push fonctionne désormais sur iOS et Safari. La passerelle push d'Apple rejetait chaque notification (HTTP 403) car le sujet VAPID par défaut utilisait un domaine `.local`, refusé par Apple (Chrome et Android n'étaient pas affectés). Le défaut est maintenant un contact valide, et les instances existantes corrigent automatiquement la valeur stockée à la mise à jour, sans régénérer les clés, donc les appareils déjà abonnés continuent de fonctionner. (#287)
