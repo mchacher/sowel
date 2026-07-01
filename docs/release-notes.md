@@ -11,6 +11,15 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.25.x: Notification mapping editor
+
+### v1.25.0 — 2026-07-01 { #v1-25-0 }
+
+- Fix (ui): the notification mapping editor restores the zone filter when you re-edit a mapping. A recipe or equipment picked in a specific zone (e.g. a State Watch in the cave) no longer shows "all zones" with an unfiltered source list. (#291)
+- Feat (ui): the recipe source dropdown now shows the equipment(s) each recipe instance applies to, e.g. "State Watch (Machine à laver)", so several instances of the same recipe are distinguishable. (#291)
+
+---
+
 ## 1.24.x: Web Push notifications
 
 ### v1.24.3 — 2026-06-29 { #v1-24-3 }

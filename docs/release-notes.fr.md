@@ -11,6 +11,15 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.25.x: Éditeur de mappings de notification
+
+### v1.25.0 — 2026-07-01 { #v1-25-0 }
+
+- Fix (ui) : l'éditeur de mappings de notification restaure le filtre de zone à la ré-édition. Une recette ou un équipement choisi dans une zone précise (ex. un State Watch dans la cave) n'affiche plus « toutes les zones » avec une liste de sources non filtrée. (#291)
+- Feat (ui) : la liste déroulante des recettes affiche désormais le(s) équipement(s) ciblé(s) par chaque instance, ex. « State Watch (Machine à laver) », pour distinguer plusieurs instances d'une même recette. (#291)
+
+---
+
 ## 1.24.x: Notifications Web Push
 
 ### v1.24.3 — 2026-06-29 { #v1-24-3 }
