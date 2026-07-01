@@ -40,7 +40,7 @@ import type {
   RecipeInfo,
 } from "../types";
 import { usePushSubscription } from "../hooks/usePushSubscription";
-import { deriveSourceZoneFilter } from "../lib/notif-mapping";
+import { deriveSourceZoneFilter, recipeInstanceLabel } from "../lib/notif-mapping";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -826,14 +826,11 @@ function MappingRow({
                 className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
               >
                 <option value="">{t("notifPublishers.selectSource")}</option>
-                {filteredRecipeInstances.map((inst) => {
-                  const recipe = recipes.find((r) => r.id === inst.recipeId);
-                  return (
-                    <option key={inst.id} value={inst.id}>
-                      {recipe?.name ?? inst.recipeId}
-                    </option>
-                  );
-                })}
+                {filteredRecipeInstances.map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {recipeInstanceLabel(inst, recipes, equipments)}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -1131,14 +1128,11 @@ function AddMappingForm({
               className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
             >
               <option value="">{t("notifPublishers.selectSource")}</option>
-              {filteredRecipeInstances.map((inst) => {
-                const recipe = recipes.find((r) => r.id === inst.recipeId);
-                return (
-                  <option key={inst.id} value={inst.id}>
-                    {recipe?.name ?? inst.recipeId}
-                  </option>
-                );
-              })}
+              {filteredRecipeInstances.map((inst) => (
+                <option key={inst.id} value={inst.id}>
+                  {recipeInstanceLabel(inst, recipes, equipments)}
+                </option>
+              ))}
             </select>
           </div>
         )}
