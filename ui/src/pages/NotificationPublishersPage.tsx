@@ -40,6 +40,7 @@ import type {
   RecipeInfo,
 } from "../types";
 import { usePushSubscription } from "../hooks/usePushSubscription";
+import { deriveSourceZoneFilter } from "../lib/notif-mapping";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -71,11 +72,17 @@ function PushEnableCard() {
 
   let action: React.ReactNode;
   if (!supported) {
-    action = <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushUnsupported")}</span>;
+    action = (
+      <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushUnsupported")}</span>
+    );
   } else if (status === "insecure") {
-    action = <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushInsecure")}</span>;
+    action = (
+      <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushInsecure")}</span>
+    );
   } else if (status === "denied") {
-    action = <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushDenied")}</span>;
+    action = (
+      <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushDenied")}</span>
+    );
   } else if (status === "subscribed") {
     action = (
       <button
@@ -164,13 +171,9 @@ export function NotificationPublishersPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2.5 mb-1">
           <Bell size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("notifPublishers.title")}
-          </h1>
+          <h1>{t("notifPublishers.title")}</h1>
         </div>
-        <p className="text-[13px] text-text-secondary mt-1">
-          {t("notifPublishers.subtitle")}
-        </p>
+        <p className="text-[13px] text-text-secondary mt-1">{t("notifPublishers.subtitle")}</p>
       </div>
 
       {/* Web Push — enable on this device (spec 127) */}
@@ -278,7 +281,10 @@ function PublisherForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+    <form
+      onSubmit={handleSubmit}
+      className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+    >
       <div className="space-y-3">
         <div>
           <label className="block text-[12px] text-text-secondary mb-1">
@@ -343,7 +349,13 @@ function PublisherForm({
             disabled={saving || !canSubmit}
             className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : publisher ? t("common.save") : t("common.create")}
+            {saving ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : publisher ? (
+              t("common.save")
+            ) : (
+              t("common.create")
+            )}
           </button>
           <button
             type="button"
@@ -478,7 +490,9 @@ function PublisherCard({
   };
 
   return (
-    <div className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}>
+    <div
+      className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}
+    >
       {/* Header — stacks on mobile so the name stays readable and the
           actions sit on their own row instead of crushing into the title. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
@@ -493,9 +507,7 @@ function PublisherCard({
         </div>
         <div className="flex items-center gap-1 flex-wrap justify-end self-end sm:self-auto">
           {testChannelOk && (
-            <span className="text-[11px] text-green-500">
-              {t("notifPublishers.testChannelOk")}
-            </span>
+            <span className="text-[11px] text-green-500">{t("notifPublishers.testChannelOk")}</span>
           )}
           {testResult !== null && (
             <span className="text-[11px] text-green-500">
@@ -521,11 +533,7 @@ function PublisherCard({
             className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
             title={t("notifPublishers.testPublisherHint")}
           >
-            {testingPub ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <Zap size={13} />
-            )}
+            {testingPub ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
             <span className="hidden sm:inline">{t("notifPublishers.test")}</span>
           </button>
           <button
@@ -638,7 +646,9 @@ function MappingRow({
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState(mapping.message);
   const [sourceType, setSourceType] = useState<"equipment" | "zone" | "recipe">(mapping.sourceType);
-  const [filterZoneId, setFilterZoneId] = useState("");
+  const [filterZoneId, setFilterZoneId] = useState(() =>
+    deriveSourceZoneFilter(mapping, equipments, recipeInstances),
+  );
   const [sourceId, setSourceId] = useState(mapping.sourceId);
   const [sourceKey, setSourceKey] = useState(mapping.sourceKey);
   const [throttleMs, setThrottleMs] = useState(mapping.throttleMs);
@@ -737,7 +747,9 @@ function MappingRow({
             </label>
             <select
               value={sourceType}
-              onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")}
+              onChange={(e) =>
+                handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")
+              }
               className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
             >
               <option value="equipment">{t("notifPublishers.equipment")}</option>
@@ -859,9 +871,7 @@ function MappingRow({
             />
           </div>
         </div>
-        {error && (
-          <div className="mt-2 text-[11px] text-red-500">{error}</div>
-        )}
+        {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
         <div className="flex items-center gap-2 mt-3">
           <button
             type="submit"
@@ -894,13 +904,20 @@ function MappingRow({
             [{mapping.sourceType}] {label}
           </span>
           <span className="text-[10px] text-text-tertiary shrink-0">
-            {t("notifPublishers.throttleMinutes", { minutes: Math.round(mapping.throttleMs / 60000) })}
+            {t("notifPublishers.throttleMinutes", {
+              minutes: Math.round(mapping.throttleMs / 60000),
+            })}
           </span>
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            // Re-derive the zone filter from the source in case the equipment/
+            // recipe lists loaded after this row first mounted.
+            setFilterZoneId(deriveSourceZoneFilter(mapping, equipments, recipeInstances));
+            setEditing(true);
+          }}
           className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
         >
           <Pencil size={12} />
@@ -1034,7 +1051,9 @@ function AddMappingForm({
           </label>
           <select
             value={sourceType}
-            onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")}
+            onChange={(e) =>
+              handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")
+            }
             className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
           >
             <option value="equipment">{t("notifPublishers.equipment")}</option>
@@ -1157,9 +1176,7 @@ function AddMappingForm({
           />
         </div>
       </div>
-      {error && (
-        <div className="mt-2 text-[11px] text-red-500">{error}</div>
-      )}
+      {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
       <div className="flex items-center gap-2 mt-3">
         <button
           type="submit"
