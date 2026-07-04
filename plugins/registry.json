@@ -195,7 +195,7 @@
     "icon": "Eye",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-state-watch",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "tags": ["automation", "monitoring", "alarm", "state"],
     "i18n": {
       "fr": {
@@ -205,7 +205,7 @@
     },
     "sowelVersion": ">=0.10.0",
     "owner": "mchacher",
-    "sha256": "2681cb43b3f591beb764eeb26696f9ef022691896ed0456795142c8f279650ec"
+    "sha256": "bda33aa647c4a4cbe75bcee8d7f733c4af3096afa0234e73157c509c48a81924"
   },
   {
     "id": "presence-heater",
