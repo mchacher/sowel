@@ -255,7 +255,7 @@
     "icon": "Lightbulb",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-motion-light",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "tags": ["automation", "motion", "light"],
     "i18n": {
       "fr": {
@@ -265,7 +265,7 @@
     },
     "sowelVersion": ">=0.10.0",
     "owner": "mchacher",
-    "sha256": "e8cd555c15e2a521cc6deb07b1d634e9518dcf20827c8de779f376bc3501cf00"
+    "sha256": "0ce330f29b2bd70c4f59980fea6765e99a404c7cd037e08469e1d1053cdf7c92"
   },
   {
     "id": "state-trigger-light",
@@ -275,7 +275,7 @@
     "icon": "Bell",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-state-trigger-light",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "tags": ["automation", "state", "trigger", "light"],
     "i18n": {
       "fr": {
@@ -285,7 +285,7 @@
     },
     "sowelVersion": ">=1.5.8",
     "owner": "mchacher",
-    "sha256": "326e59e51c20f28599fbf92d122917d155501c897148312d19adab3e64b6b100"
+    "sha256": "39d3a07fcf188ccb79aa9fa58813ad98787fa64183d33c4ed29f6cc16b1b7a6e"
   },
   {
     "id": "motion-light-dimmable",
@@ -295,7 +295,7 @@
     "icon": "SunDim",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-motion-light-dimmable",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "tags": ["automation", "motion", "light", "dimmable", "brightness"],
     "i18n": {
       "fr": {
@@ -305,7 +305,7 @@
     },
     "sowelVersion": ">=0.10.0",
     "owner": "mchacher",
-    "sha256": "94f16f99fdb2260de9eaf969d5699a49d345aeec67d15dc1ccfffd809b55ac79"
+    "sha256": "2638d2ba0a4764aeccf55203eee640ce0461e02bd3edb9478d3bc35a7589e26f"
   },
   {
     "id": "auto-watering",
