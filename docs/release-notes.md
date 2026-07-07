@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.26.x: Notification re-notify
+
+### v1.26.0 — 2026-07-07 { #v1-26-0 }
+
+- Feat (notifications): notification mappings gain an explicit re-notify option. While a mapped value stays "active" (e.g. a State Watch alarm), the notification is re-sent on a fixed cadence and stops silently once it clears. Pick "None", "Indefinitely" or "Limited to N reminders" per mapping — distinct from the anti-spam throttle. (#294)
+
+---
+
 ## 1.25.x: Notification mapping editor
 
 ### v1.25.0 — 2026-07-01 { #v1-25-0 }

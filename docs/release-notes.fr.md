@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.26.x: Re-notification
+
+### v1.26.0 — 2026-07-07 { #v1-26-0 }
+
+- Feat (notifications) : les mappings de notification gagnent une option de re-notification explicite. Tant qu'une valeur mappée reste « active » (ex. l'alarme d'une surveillance d'état), la notification est renvoyée à intervalle régulier et s'arrête en silence une fois résolue. Choix par mapping : « Aucune », « Indéfiniment » ou « Limité à N rappels » — distinct de l'anti-spam. (#294)
+
+---
+
 ## 1.25.x: Éditeur de mappings de notification
 
 ### v1.25.0 — 2026-07-01 { #v1-25-0 }
