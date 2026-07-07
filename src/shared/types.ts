@@ -1043,6 +1043,12 @@ export interface NotificationPublisherMapping {
   sourceId: string;
   sourceKey: string;
   throttleMs: number;
+  /** Spec 128 — re-notify every `repeatMs` while the value stays active.
+   *  null = no re-notification. */
+  repeatMs?: number | null;
+  /** Spec 128 — max reminders after the initial notification (excludes it).
+   *  null = unlimited (only meaningful when `repeatMs` is set). */
+  repeatMax?: number | null;
   createdAt: string;
 }
 

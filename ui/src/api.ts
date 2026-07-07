@@ -1,23 +1,53 @@
 import type {
-  Device, DeviceData, DeviceOrder, DeviceWithDetails,
-  ZoneWithChildren, Zone, ZoneAggregatedData,
-  Equipment, EquipmentType, EquipmentWithDetails,
-  DataBinding, OrderBinding,
-  RecipeInfo, RecipeInstance, RecipeLogEntry,
-  User, UserPreferences, ApiToken, AuthTokens,
-  Mode, ModeWithDetails,
-  ZoneModeImpact, ZoneModeImpactAction,
-  ButtonActionBinding, ButtonEffectType,
-  CalendarProfile, CalendarSlot, CalendarModeAction,
+  Device,
+  DeviceData,
+  DeviceOrder,
+  DeviceWithDetails,
+  ZoneWithChildren,
+  Zone,
+  ZoneAggregatedData,
+  Equipment,
+  EquipmentType,
+  EquipmentWithDetails,
+  DataBinding,
+  OrderBinding,
+  RecipeInfo,
+  RecipeInstance,
+  RecipeLogEntry,
+  User,
+  UserPreferences,
+  ApiToken,
+  AuthTokens,
+  Mode,
+  ModeWithDetails,
+  ZoneModeImpact,
+  ZoneModeImpactAction,
+  ButtonActionBinding,
+  ButtonEffectType,
+  CalendarProfile,
+  CalendarSlot,
+  CalendarModeAction,
   IntegrationInfo,
-  PluginInfo, PluginManifest,
-  LogsResponse, LogLevel,
-  HistoryStatus, HistoryBindingState, HistoryQueryResult,
-  SavedChart, SavedChartConfig,
+  PluginInfo,
+  PluginManifest,
+  LogsResponse,
+  LogLevel,
+  HistoryStatus,
+  HistoryBindingState,
+  HistoryQueryResult,
+  SavedChart,
+  SavedChartConfig,
   MqttBroker,
-  MqttPublisher, MqttPublisherMapping, MqttPublisherWithMappings,
-  DashboardWidget, WidgetConfig, WidgetFamily,
-  EnergyHistoryResponse, EnergyStatus, TariffConfig, EnergyByUsageResponse,
+  MqttPublisher,
+  MqttPublisherMapping,
+  MqttPublisherWithMappings,
+  DashboardWidget,
+  WidgetConfig,
+  WidgetFamily,
+  EnergyHistoryResponse,
+  EnergyStatus,
+  TariffConfig,
+  EnergyByUsageResponse,
   ActivityItem,
 } from "./types";
 
@@ -53,7 +83,9 @@ async function fetchJSON<T>(url: string, options?: RequestInit, isRetry = false)
   if (response.status === 401 && _onUnauthorized && !isRetry) {
     // Deduplicate concurrent refresh attempts
     if (!_refreshing) {
-      _refreshing = _onUnauthorized().finally(() => { _refreshing = null; });
+      _refreshing = _onUnauthorized().finally(() => {
+        _refreshing = null;
+      });
     }
     const success = await _refreshing;
     if (success) {
@@ -66,8 +98,7 @@ async function fetchJSON<T>(url: string, options?: RequestInit, isRetry = false)
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(
-      (body as { error?: string }).error ??
-        `HTTP ${response.status}: ${response.statusText}`
+      (body as { error?: string }).error ?? `HTTP ${response.status}: ${response.statusText}`,
     );
   }
 
@@ -86,8 +117,7 @@ async function fetchPublic<T>(url: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(
-      (body as { error?: string }).error ??
-        `HTTP ${response.status}: ${response.statusText}`
+      (body as { error?: string }).error ?? `HTTP ${response.status}: ${response.statusText}`,
     );
   }
   if (response.status === 204) return undefined as T;
@@ -228,7 +258,10 @@ export async function updateMyPreferences(preferences: UserPreferences): Promise
   });
 }
 
-export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+export async function changeMyPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/me/password`, {
     method: "PUT",
     body: JSON.stringify({ currentPassword, newPassword }),
@@ -239,7 +272,10 @@ export async function getMyTokens(): Promise<ApiToken[]> {
   return fetchJSON<ApiToken[]>(`${API_BASE}/me/tokens`);
 }
 
-export async function createMyToken(name: string, expiresAt?: string): Promise<{ token: string; id: string }> {
+export async function createMyToken(
+  name: string,
+  expiresAt?: string,
+): Promise<{ token: string; id: string }> {
   return fetchJSON(`${API_BASE}/me/tokens`, {
     method: "POST",
     body: JSON.stringify({ name, expiresAt }),
@@ -270,11 +306,14 @@ export async function createUser(data: {
   });
 }
 
-export async function updateUser(id: string, data: {
-  displayName?: string;
-  role?: string;
-  enabled?: boolean;
-}): Promise<User> {
+export async function updateUser(
+  id: string,
+  data: {
+    displayName?: string;
+    role?: string;
+    enabled?: boolean;
+  },
+): Promise<User> {
   return fetchJSON<User>(`${API_BASE}/users/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -302,7 +341,7 @@ export async function getDevice(id: string): Promise<DeviceWithDetails> {
 
 export async function updateDevice(
   id: string,
-  updates: { name?: string; zoneId?: string | null }
+  updates: { name?: string; zoneId?: string | null },
 ): Promise<Device> {
   return fetchJSON<Device>(`${API_BASE}/devices/${id}`, {
     method: "PUT",
@@ -315,7 +354,7 @@ export async function deleteDevice(id: string): Promise<void> {
 }
 
 export async function getDeviceRawExpose(
-  id: string
+  id: string,
 ): Promise<{ deviceId: string; name: string; sourceDeviceId: string; expose: unknown }> {
   return fetchJSON(`${API_BASE}/devices/${id}/raw`);
 }
@@ -350,7 +389,13 @@ export async function createZone(data: {
 
 export async function updateZone(
   id: string,
-  updates: { name?: string; parentId?: string | null; icon?: string | null; description?: string | null; displayOrder?: number }
+  updates: {
+    name?: string;
+    parentId?: string | null;
+    icon?: string | null;
+    description?: string | null;
+    displayOrder?: number;
+  },
 ): Promise<Zone> {
   return fetchJSON<Zone>(`${API_BASE}/zones/${id}`, {
     method: "PUT",
@@ -419,7 +464,7 @@ export async function updateEquipment(
     icon?: string | null;
     description?: string | null;
     enabled?: boolean;
-  }
+  },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {
     method: "PUT",
@@ -434,7 +479,7 @@ export async function deleteEquipment(id: string): Promise<void> {
 export async function executeEquipmentOrder(
   equipmentId: string,
   alias: string,
-  value: unknown
+  value: unknown,
 ): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/orders/${alias}`, {
     method: "POST",
@@ -448,7 +493,7 @@ export async function executeEquipmentOrder(
 
 export async function addDataBinding(
   equipmentId: string,
-  data: { deviceDataId: string; alias: string }
+  data: { deviceDataId: string; alias: string },
 ): Promise<DataBinding> {
   return fetchJSON<DataBinding>(`${API_BASE}/equipments/${equipmentId}/data-bindings`, {
     method: "POST",
@@ -468,7 +513,7 @@ export async function removeDataBinding(equipmentId: string, bindingId: string):
 
 export async function addOrderBinding(
   equipmentId: string,
-  data: { deviceOrderId: string; alias: string }
+  data: { deviceOrderId: string; alias: string },
 ): Promise<OrderBinding> {
   return fetchJSON<OrderBinding>(`${API_BASE}/equipments/${equipmentId}/order-bindings`, {
     method: "POST",
@@ -532,7 +577,9 @@ export async function getRecipeInstanceLog(
   instanceId: string,
   limit = 50,
 ): Promise<RecipeLogEntry[]> {
-  return fetchJSON<RecipeLogEntry[]>(`${API_BASE}/recipe-instances/${instanceId}/log?limit=${limit}`);
+  return fetchJSON<RecipeLogEntry[]>(
+    `${API_BASE}/recipe-instances/${instanceId}/log?limit=${limit}`,
+  );
 }
 
 export async function sendRecipeInstanceAction(
@@ -554,7 +601,9 @@ export async function getSettings(): Promise<Record<string, string>> {
   return fetchJSON<Record<string, string>>(`${API_BASE}/settings`);
 }
 
-export async function updateSettings(entries: Record<string, string>): Promise<{ success: boolean }> {
+export async function updateSettings(
+  entries: Record<string, string>,
+): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/settings`, {
     method: "PUT",
     body: JSON.stringify(entries),
@@ -667,7 +716,9 @@ export async function disablePlugin(id: string): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/plugins/${id}/disable`, { method: "POST" });
 }
 
-export async function updatePlugin(id: string): Promise<{ success: boolean; manifest: PluginManifest }> {
+export async function updatePlugin(
+  id: string,
+): Promise<{ success: boolean; manifest: PluginManifest }> {
   return fetchJSON(`${API_BASE}/plugins/${id}/update`, { method: "POST" });
 }
 
@@ -785,11 +836,16 @@ export async function getCalendarProfiles(): Promise<CalendarProfile[]> {
   return fetchJSON<CalendarProfile[]>(`${API_BASE}/calendar/profiles`);
 }
 
-export async function getActiveCalendar(): Promise<{ profile: CalendarProfile; slots: CalendarSlot[] }> {
+export async function getActiveCalendar(): Promise<{
+  profile: CalendarProfile;
+  slots: CalendarSlot[];
+}> {
   return fetchJSON(`${API_BASE}/calendar/active`);
 }
 
-export async function setActiveProfile(profileId: string): Promise<{ profile: CalendarProfile; slots: CalendarSlot[] }> {
+export async function setActiveProfile(
+  profileId: string,
+): Promise<{ profile: CalendarProfile; slots: CalendarSlot[] }> {
   return fetchJSON(`${API_BASE}/calendar/active`, {
     method: "PUT",
     body: JSON.stringify({ profileId }),
@@ -847,13 +903,19 @@ export async function updateButtonActionBinding(
   bindingId: string,
   data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> },
 ): Promise<ButtonActionBinding> {
-  return fetchJSON<ButtonActionBinding>(`${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  return fetchJSON<ButtonActionBinding>(
+    `${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    },
+  );
 }
 
-export async function removeButtonActionBinding(equipmentId: string, bindingId: string): Promise<void> {
+export async function removeButtonActionBinding(
+  equipmentId: string,
+  bindingId: string,
+): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/action-bindings/${bindingId}`, {
     method: "DELETE",
   });
@@ -922,9 +984,7 @@ export async function getSparklineData(
   equipmentId: string,
   alias: string,
 ): Promise<{ values: number[] }> {
-  return fetchJSON<{ values: number[] }>(
-    `${API_BASE}/history/sparkline/${equipmentId}/${alias}`,
-  );
+  return fetchJSON<{ values: number[] }>(`${API_BASE}/history/sparkline/${equipmentId}/${alias}`);
 }
 
 export async function getZoneSparklineData(
@@ -963,7 +1023,10 @@ export async function getChart(id: string): Promise<SavedChart> {
   return fetchJSON<SavedChart>(`${API_BASE}/charts/${id}`);
 }
 
-export async function createChart(data: { name: string; config: SavedChartConfig }): Promise<SavedChart> {
+export async function createChart(data: {
+  name: string;
+  config: SavedChartConfig;
+}): Promise<SavedChart> {
   return fetchJSON<SavedChart>(`${API_BASE}/charts`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -1045,7 +1108,13 @@ export async function createMqttPublisher(data: {
 
 export async function updateMqttPublisher(
   id: string,
-  data: { name?: string; brokerId?: string; topic?: string; enabled?: boolean; onChangeOnly?: boolean },
+  data: {
+    name?: string;
+    brokerId?: string;
+    topic?: string;
+    enabled?: boolean;
+    onChangeOnly?: boolean;
+  },
 ): Promise<MqttPublisher> {
   return fetchJSON<MqttPublisher>(`${API_BASE}/mqtt-publishers/${id}`, {
     method: "PUT",
@@ -1153,9 +1222,7 @@ export async function testNotificationChannel(publisherId: string): Promise<{ su
   });
 }
 
-export async function testNotificationPublisher(
-  publisherId: string,
-): Promise<{ sent: number }> {
+export async function testNotificationPublisher(publisherId: string): Promise<{ sent: number }> {
   return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/test`, {
     method: "POST",
   });
@@ -1169,6 +1236,8 @@ export async function addNotificationPublisherMapping(
     sourceId: string;
     sourceKey: string;
     throttleMs?: number;
+    repeatMs?: number | null;
+    repeatMax?: number | null;
   },
 ): Promise<import("./types").NotificationPublisherMapping> {
   return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/mappings`, {
@@ -1186,6 +1255,8 @@ export async function updateNotificationPublisherMapping(
     sourceId?: string;
     sourceKey?: string;
     throttleMs?: number;
+    repeatMs?: number | null;
+    repeatMax?: number | null;
   },
 ): Promise<import("./types").NotificationPublisherMapping> {
   return fetchJSON(`${API_BASE}/notification-publishers/${publisherId}/mappings/${mappingId}`, {

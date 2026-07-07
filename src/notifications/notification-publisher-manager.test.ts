@@ -103,3 +103,51 @@ describe("NotificationPublisherManager — channel validation (spec 127)", () =>
     expect(updated.channelType).toBe("web-push");
   });
 });
+
+describe("NotificationPublisherManager — mapping re-notify (spec 128)", () => {
+  let db: Database.Database;
+  let manager: NotificationPublisherManager;
+  let pubId: string;
+
+  beforeEach(() => {
+    db = createTestDb();
+    manager = new NotificationPublisherManager(db, new EventBus(logger), logger);
+    pubId = manager.create({ name: "P", channelType: "web-push", channelConfig: {} }).id;
+  });
+  afterEach(() => db.close());
+
+  const base = { message: "m", sourceType: "recipe" as const, sourceId: "i1", sourceKey: "alarm" };
+
+  it("persists repeatMs + repeatMax", () => {
+    const m = manager.addMapping(pubId, { ...base, repeatMs: 60_000, repeatMax: 3 });
+    expect(m.repeatMs).toBe(60_000);
+    expect(m.repeatMax).toBe(3);
+    expect(manager.getMappings(pubId)[0].repeatMs).toBe(60_000);
+  });
+
+  it("defaults to null repeat when omitted", () => {
+    const m = manager.addMapping(pubId, { ...base });
+    expect(m.repeatMs).toBeNull();
+    expect(m.repeatMax).toBeNull();
+  });
+
+  it("rejects repeatMax without repeatMs", () => {
+    expect(() => manager.addMapping(pubId, { ...base, repeatMax: 3 })).toThrow(
+      /repeatMax requires/i,
+    );
+  });
+
+  it("rejects a non-positive repeatMs", () => {
+    expect(() => manager.addMapping(pubId, { ...base, repeatMs: 0 })).toThrow(/repeatMs/i);
+    expect(() => manager.addMapping(pubId, { ...base, sourceKey: "x", repeatMs: -5 })).toThrow(
+      /repeatMs/i,
+    );
+  });
+
+  it("update can set then clear the repeat config", () => {
+    const m = manager.addMapping(pubId, { ...base, repeatMs: 60_000, repeatMax: 3 });
+    const cleared = manager.updateMapping(pubId, m.id, { repeatMs: null, repeatMax: null });
+    expect(cleared.repeatMs).toBeNull();
+    expect(cleared.repeatMax).toBeNull();
+  });
+});

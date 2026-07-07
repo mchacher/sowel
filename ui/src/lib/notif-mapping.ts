@@ -68,3 +68,34 @@ export function recipeInstanceLabel(
   const eqNames = recipeInstanceEquipmentNames(inst, recipes, equipments);
   return eqNames.length > 0 ? `${base} (${eqNames.join(", ")})` : base;
 }
+
+// ── Re-notify (repeat) config — spec 128 ─────────────────────
+
+/** Explicit re-notification mode shown in the mapping form. */
+export type RepeatMode = "none" | "forever" | "limited";
+
+/** Derive the explicit mode from a mapping's stored `repeatMs`/`repeatMax`. */
+export function repeatModeOf(
+  m: Pick<NotificationPublisherMapping, "repeatMs" | "repeatMax">,
+): RepeatMode {
+  if (!m.repeatMs) return "none";
+  return m.repeatMax != null ? "limited" : "forever";
+}
+
+/**
+ * Convert the explicit form controls (mode + interval in minutes + max count)
+ * into the stored `repeatMs`/`repeatMax`. No "empty means infinite": the mode
+ * is chosen explicitly.
+ */
+export function repeatFieldsFor(
+  mode: RepeatMode,
+  intervalMinutes: number,
+  maxCount: number,
+): { repeatMs: number | null; repeatMax: number | null } {
+  if (mode === "none") return { repeatMs: null, repeatMax: null };
+  const repeatMs = Math.max(1, Math.round(intervalMinutes || 0)) * 60_000;
+  return {
+    repeatMs,
+    repeatMax: mode === "limited" ? Math.max(1, Math.round(maxCount || 0)) : null,
+  };
+}

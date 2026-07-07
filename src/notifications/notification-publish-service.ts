@@ -23,6 +23,28 @@ interface MappingRef {
   channelConfig: unknown;
   enabled: boolean;
   throttleMs: number;
+  // Source triple — needed to re-read the live value on each repeat tick.
+  sourceType: "equipment" | "zone" | "recipe";
+  sourceId: string;
+  sourceKey: string;
+  // Spec 128 — re-notify config. repeatMs null = no repeat.
+  repeatMs: number | null;
+  repeatMax: number | null;
+}
+
+/**
+ * A value that keeps a repeat "episode" alive (spec 128). Inactive values
+ * (false / 0 / null / undefined / "" / "false" / "0") stop the reminders.
+ */
+export function isActiveValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const s = value.trim().toLowerCase();
+    return s !== "" && s !== "false" && s !== "0";
+  }
+  return true;
 }
 
 // ============================================================
@@ -44,6 +66,15 @@ export class NotificationPublishService {
 
   /** Dedup: last processed timestamp per recipe/zone instance — prevents burst duplicates */
   private lastEventTs: Map<string, number> = new Map();
+
+  /** Spec 128 — running re-notify timer per mapping */
+  private repeatTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
+  /** Spec 128 — reminders already sent in the current episode (excludes initial) */
+  private repeatCount: Map<string, number> = new Map();
+
+  /** Spec 128 — mappings currently in an active re-notify episode */
+  private activeMappings: Set<string> = new Set();
 
   /** Channel providers by type */
   private readonly channels: Record<string, NotificationChannel>;
@@ -76,11 +107,14 @@ export class NotificationPublishService {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.cancelAllRepeats();
   }
 
   // ── Index management ─────────────────────────────────────────
 
   private rebuildIndex(): void {
+    // Cancel running repeat episodes — resumed below from live values (spec 128).
+    this.cancelAllRepeats();
     this.index.clear();
 
     const publishers = this.publisherManager.getAllWithMappings();
@@ -96,11 +130,17 @@ export class NotificationPublishService {
           channelConfig: pub.channelConfig,
           enabled: pub.enabled,
           throttleMs: mapping.throttleMs,
+          sourceType: mapping.sourceType,
+          sourceId: mapping.sourceId,
+          sourceKey: mapping.sourceKey,
+          repeatMs: mapping.repeatMs ?? null,
+          repeatMax: mapping.repeatMax ?? null,
         });
         this.index.set(key, refs);
       }
     }
 
+    this.resumeRepeats();
     this.logger.debug({ indexKeys: this.index.size }, "Notification publisher index rebuilt");
   }
 
@@ -205,13 +245,38 @@ export class NotificationPublishService {
       // When previous is unknown (recipe events), fall back to last notified value
       const effectivePrevious =
         previous !== undefined ? previous : this.lastValue.get(ref.mappingId);
-      if (!this.shouldNotify(ref, value, effectivePrevious)) continue;
 
-      const content = formatNotificationContent(ref.message, value);
-      this.sendNotification(ref, content);
-      this.lastSent.set(ref.mappingId, Date.now());
-      this.lastValue.set(ref.mappingId, value);
-      sent++;
+      if (ref.repeatMs === null) {
+        // No re-notify — existing change-based behaviour.
+        if (!this.shouldNotify(ref, value, effectivePrevious)) continue;
+        this.sendNotification(ref, formatNotificationContent(ref.message, value));
+        this.lastSent.set(ref.mappingId, Date.now());
+        this.lastValue.set(ref.mappingId, value);
+        sent++;
+        continue;
+      }
+
+      // Re-notify mapping (spec 128) — drive activation / deactivation.
+      const active = isActiveValue(value);
+      const wasActive = this.activeMappings.has(ref.mappingId);
+      if (active && !wasActive) {
+        this.activateRepeat(ref, value);
+        this.lastSent.set(ref.mappingId, Date.now());
+        this.lastValue.set(ref.mappingId, value);
+        sent++;
+      } else if (active && value !== effectivePrevious) {
+        // Value changed but stays active — restart the episode.
+        this.sendNotification(ref, formatNotificationContent(ref.message, value));
+        this.repeatCount.set(ref.mappingId, 0);
+        this.startRepeatTimer(ref);
+        this.lastSent.set(ref.mappingId, Date.now());
+        this.lastValue.set(ref.mappingId, value);
+        sent++;
+      } else if (!active && wasActive) {
+        // Deactivation — stop reminders, send nothing (silent).
+        this.stopRepeat(ref.mappingId);
+        this.lastValue.set(ref.mappingId, value);
+      }
     }
 
     if (sent > 0) {
@@ -219,6 +284,82 @@ export class NotificationPublishService {
         { sourceType, sourceId, sourceKey, value, refsCount: refs.length, sent },
         "Notifications dispatched",
       );
+    }
+  }
+
+  // ── Re-notify / repeat (spec 128) ────────────────────────────
+
+  private activateRepeat(ref: MappingRef, value: unknown): void {
+    this.sendNotification(ref, formatNotificationContent(ref.message, value));
+    this.activeMappings.add(ref.mappingId);
+    this.repeatCount.set(ref.mappingId, 0);
+    this.startRepeatTimer(ref);
+  }
+
+  private startRepeatTimer(ref: MappingRef): void {
+    if (ref.repeatMs === null) return;
+    this.clearRepeatTimer(ref.mappingId);
+    const timer = setTimeout(() => {
+      this.repeatTimers.delete(ref.mappingId);
+      this.onRepeatTick(ref);
+    }, ref.repeatMs);
+    this.repeatTimers.set(ref.mappingId, timer);
+  }
+
+  private onRepeatTick(ref: MappingRef): void {
+    // Re-read the live value — robust against deactivations that never reached
+    // the change dispatch (e.g. a value cleared to null).
+    const value = this.resolveCurrentValue(ref.sourceType, ref.sourceId, ref.sourceKey);
+    if (!isActiveValue(value)) {
+      this.stopRepeat(ref.mappingId);
+      return;
+    }
+    const count = this.repeatCount.get(ref.mappingId) ?? 0;
+    if (ref.repeatMax !== null && count >= ref.repeatMax) {
+      // Cap reached — stop reminding but stay active until deactivation.
+      this.clearRepeatTimer(ref.mappingId);
+      return;
+    }
+    this.sendNotification(ref, formatNotificationContent(ref.message, value));
+    this.lastSent.set(ref.mappingId, Date.now());
+    this.repeatCount.set(ref.mappingId, count + 1);
+    this.startRepeatTimer(ref);
+  }
+
+  private clearRepeatTimer(mappingId: string): void {
+    const t = this.repeatTimers.get(mappingId);
+    if (t) {
+      clearTimeout(t);
+      this.repeatTimers.delete(mappingId);
+    }
+  }
+
+  private stopRepeat(mappingId: string): void {
+    this.clearRepeatTimer(mappingId);
+    this.activeMappings.delete(mappingId);
+    this.repeatCount.delete(mappingId);
+  }
+
+  private cancelAllRepeats(): void {
+    for (const t of this.repeatTimers.values()) clearTimeout(t);
+    this.repeatTimers.clear();
+    this.activeMappings.clear();
+    this.repeatCount.clear();
+  }
+
+  /** After a (re)build, resume reminders for repeat mappings whose live value is
+   *  already active — without an immediate duplicate send. */
+  private resumeRepeats(): void {
+    for (const refs of this.index.values()) {
+      for (const ref of refs) {
+        if (ref.repeatMs === null || !ref.enabled) continue;
+        const value = this.resolveCurrentValue(ref.sourceType, ref.sourceId, ref.sourceKey);
+        if (isActiveValue(value)) {
+          this.activeMappings.add(ref.mappingId);
+          this.repeatCount.set(ref.mappingId, 0);
+          this.startRepeatTimer(ref);
+        }
+      }
     }
   }
 

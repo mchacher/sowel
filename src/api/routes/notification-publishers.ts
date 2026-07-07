@@ -131,9 +131,12 @@ export function registerNotificationPublisherRoutes(
       sourceId: string;
       sourceKey: string;
       throttleMs?: number;
+      repeatMs?: number | null;
+      repeatMax?: number | null;
     };
   }>("/api/v1/notification-publishers/:id/mappings", async (request, reply) => {
-    const { message, sourceType, sourceId, sourceKey, throttleMs } = request.body ?? {};
+    const { message, sourceType, sourceId, sourceKey, throttleMs, repeatMs, repeatMax } =
+      request.body ?? {};
     if (!message) return reply.code(400).send({ error: "message is required" });
     if (!sourceType) return reply.code(400).send({ error: "sourceType is required" });
     if (!sourceId) return reply.code(400).send({ error: "sourceId is required" });
@@ -146,6 +149,8 @@ export function registerNotificationPublisherRoutes(
         sourceId,
         sourceKey,
         throttleMs,
+        repeatMs,
+        repeatMax,
       });
       return reply.code(201).send(mapping);
     } catch (err) {
@@ -164,6 +169,8 @@ export function registerNotificationPublisherRoutes(
       sourceId?: string;
       sourceKey?: string;
       throttleMs?: number;
+      repeatMs?: number | null;
+      repeatMax?: number | null;
     };
   }>("/api/v1/notification-publishers/:id/mappings/:mappingId", async (request, reply) => {
     try {

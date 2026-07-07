@@ -3,8 +3,37 @@ import {
   deriveSourceZoneFilter,
   recipeInstanceEquipmentNames,
   recipeInstanceLabel,
+  repeatModeOf,
+  repeatFieldsFor,
 } from "./notif-mapping";
 import type { EquipmentWithDetails, RecipeInstance, RecipeInfo } from "../types";
+
+describe("repeat mode ⇄ fields (spec 128)", () => {
+  it("derives the mode from stored fields", () => {
+    expect(repeatModeOf({ repeatMs: null, repeatMax: null })).toBe("none");
+    expect(repeatModeOf({ repeatMs: 60_000, repeatMax: null })).toBe("forever");
+    expect(repeatModeOf({ repeatMs: 60_000, repeatMax: 3 })).toBe("limited");
+    expect(repeatModeOf({})).toBe("none");
+  });
+
+  it("converts controls to stored fields (no empty-means-infinite)", () => {
+    expect(repeatFieldsFor("none", 5, 3)).toEqual({ repeatMs: null, repeatMax: null });
+    expect(repeatFieldsFor("forever", 5, 3)).toEqual({ repeatMs: 300_000, repeatMax: null });
+    expect(repeatFieldsFor("limited", 60, 3)).toEqual({ repeatMs: 3_600_000, repeatMax: 3 });
+  });
+
+  it("clamps interval and count to at least 1", () => {
+    expect(repeatFieldsFor("forever", 0, 0)).toEqual({ repeatMs: 60_000, repeatMax: null });
+    expect(repeatFieldsFor("limited", 1, 0)).toEqual({ repeatMs: 60_000, repeatMax: 1 });
+  });
+
+  it("round-trips mode through fields", () => {
+    const f = repeatFieldsFor("limited", 10, 2);
+    expect(repeatModeOf(f)).toBe("limited");
+    expect(repeatModeOf(repeatFieldsFor("forever", 10, 2))).toBe("forever");
+    expect(repeatModeOf(repeatFieldsFor("none", 10, 2))).toBe("none");
+  });
+});
 
 const equipments = [
   { id: "eq-washer", zoneId: "zone-cave" },

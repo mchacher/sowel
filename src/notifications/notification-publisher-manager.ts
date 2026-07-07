@@ -45,6 +45,8 @@ interface MappingRow {
   source_id: string;
   source_key: string;
   throttle_ms: number;
+  repeat_ms: number | null;
+  repeat_max: number | null;
   created_at: string;
 }
 
@@ -71,8 +73,31 @@ function rowToMapping(row: MappingRow): NotificationPublisherMapping {
     sourceId: row.source_id,
     sourceKey: row.source_key,
     throttleMs: row.throttle_ms,
+    repeatMs: row.repeat_ms,
+    repeatMax: row.repeat_max,
     createdAt: toISOUtc(row.created_at),
   };
+}
+
+/** Validate + normalize the re-notify config (spec 128). */
+function normalizeRepeat(
+  repeatMs: number | null | undefined,
+  repeatMax: number | null | undefined,
+): { repeatMs: number | null; repeatMax: number | null } {
+  const ms = repeatMs ?? null;
+  const max = repeatMax ?? null;
+  if (ms !== null && (!Number.isInteger(ms) || ms <= 0)) {
+    throw new NotificationPublisherError("repeatMs must be a positive integer", 400);
+  }
+  if (max !== null) {
+    if (!Number.isInteger(max) || max <= 0) {
+      throw new NotificationPublisherError("repeatMax must be a positive integer", 400);
+    }
+    if (ms === null) {
+      throw new NotificationPublisherError("repeatMax requires repeatMs", 400);
+    }
+  }
+  return { repeatMs: ms, repeatMax: max };
 }
 
 // ── Manager ──────────────────────────────────────────────────
@@ -107,12 +132,12 @@ export class NotificationPublisherManager {
         `SELECT * FROM notification_publisher_mappings WHERE publisher_id = ? ORDER BY message`,
       ),
       insertMapping: this.db.prepare(
-        `INSERT INTO notification_publisher_mappings (id, publisher_id, message, source_type, source_id, source_key, throttle_ms, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        `INSERT INTO notification_publisher_mappings (id, publisher_id, message, source_type, source_id, source_key, throttle_ms, repeat_ms, repeat_max, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       ),
       getMapping: this.db.prepare(`SELECT * FROM notification_publisher_mappings WHERE id = ?`),
       updateMapping: this.db.prepare(
-        `UPDATE notification_publisher_mappings SET message = ?, source_type = ?, source_id = ?, source_key = ?, throttle_ms = ?
+        `UPDATE notification_publisher_mappings SET message = ?, source_type = ?, source_id = ?, source_key = ?, throttle_ms = ?, repeat_ms = ?, repeat_max = ?
          WHERE id = ? AND publisher_id = ?`,
       ),
       deleteMapping: this.db.prepare(
@@ -226,6 +251,8 @@ export class NotificationPublisherManager {
       sourceId: string;
       sourceKey: string;
       throttleMs?: number;
+      repeatMs?: number | null;
+      repeatMax?: number | null;
     },
   ): NotificationPublisherMapping {
     const publisher = this.getById(publisherId);
@@ -248,6 +275,7 @@ export class NotificationPublisherManager {
 
     const id = randomUUID();
     const throttleMs = input.throttleMs ?? 300_000;
+    const { repeatMs, repeatMax } = normalizeRepeat(input.repeatMs, input.repeatMax);
     try {
       this.stmts.insertMapping.run(
         id,
@@ -257,6 +285,8 @@ export class NotificationPublisherManager {
         input.sourceId.trim(),
         input.sourceKey.trim(),
         throttleMs,
+        repeatMs,
+        repeatMax,
       );
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
@@ -291,6 +321,8 @@ export class NotificationPublisherManager {
       sourceId?: string;
       sourceKey?: string;
       throttleMs?: number;
+      repeatMs?: number | null;
+      repeatMax?: number | null;
     },
   ): NotificationPublisherMapping {
     const publisher = this.getById(publisherId);
@@ -308,6 +340,11 @@ export class NotificationPublisherManager {
     const sourceId = input.sourceId?.trim() ?? existingRow.source_id;
     const sourceKey = input.sourceKey?.trim() ?? existingRow.source_key;
     const throttleMs = input.throttleMs ?? existingRow.throttle_ms;
+    // undefined = keep existing; explicit null = clear.
+    const { repeatMs, repeatMax } = normalizeRepeat(
+      input.repeatMs !== undefined ? input.repeatMs : existingRow.repeat_ms,
+      input.repeatMax !== undefined ? input.repeatMax : existingRow.repeat_max,
+    );
 
     try {
       this.stmts.updateMapping.run(
@@ -316,6 +353,8 @@ export class NotificationPublisherManager {
         sourceId,
         sourceKey,
         throttleMs,
+        repeatMs,
+        repeatMax,
         mappingId,
         publisherId,
       );

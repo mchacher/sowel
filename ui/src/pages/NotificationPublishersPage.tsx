@@ -40,7 +40,13 @@ import type {
   RecipeInfo,
 } from "../types";
 import { usePushSubscription } from "../hooks/usePushSubscription";
-import { deriveSourceZoneFilter, recipeInstanceLabel } from "../lib/notif-mapping";
+import {
+  deriveSourceZoneFilter,
+  recipeInstanceLabel,
+  repeatModeOf,
+  repeatFieldsFor,
+  type RepeatMode,
+} from "../lib/notif-mapping";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -623,6 +629,65 @@ function PublisherCard({
 
 // ── Mapping row (display + inline edit) ──────────────────────
 
+/** Spec 128 — explicit re-notify control (mode + interval + optional max). */
+function RepeatControl({
+  mode,
+  intervalMin,
+  maxCount,
+  onChange,
+}: {
+  mode: RepeatMode;
+  intervalMin: number;
+  maxCount: number;
+  onChange: (next: { mode: RepeatMode; intervalMin: number; maxCount: number }) => void;
+}) {
+  const { t } = useTranslation();
+  const inputCls =
+    "w-16 px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text";
+  return (
+    <div>
+      <label className="block text-[11px] text-text-secondary mb-1">
+        {t("notifPublishers.repeat")}
+      </label>
+      <select
+        value={mode}
+        onChange={(e) => onChange({ mode: e.target.value as RepeatMode, intervalMin, maxCount })}
+        className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+      >
+        <option value="none">{t("notifPublishers.repeatNone")}</option>
+        <option value="forever">{t("notifPublishers.repeatForever")}</option>
+        <option value="limited">{t("notifPublishers.repeatLimited")}</option>
+      </select>
+      {mode !== "none" && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] text-text-secondary">
+          <span>{t("notifPublishers.repeatEvery")}</span>
+          <input
+            type="number"
+            min={1}
+            value={intervalMin}
+            onChange={(e) => onChange({ mode, intervalMin: Number(e.target.value), maxCount })}
+            className={inputCls}
+          />
+          <span>{t("notifPublishers.repeatMinutes")}</span>
+          {mode === "limited" && (
+            <>
+              <span className="ml-1">{t("notifPublishers.repeatMaxLabel")}</span>
+              <input
+                type="number"
+                min={1}
+                value={maxCount}
+                onChange={(e) => onChange({ mode, intervalMin, maxCount: Number(e.target.value) })}
+                className={inputCls}
+              />
+              <span>{t("notifPublishers.repeatTimes")}</span>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MappingRow({
   publisherId,
   mapping,
@@ -652,6 +717,11 @@ function MappingRow({
   const [sourceId, setSourceId] = useState(mapping.sourceId);
   const [sourceKey, setSourceKey] = useState(mapping.sourceKey);
   const [throttleMs, setThrottleMs] = useState(mapping.throttleMs);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(repeatModeOf(mapping));
+  const [repeatInterval, setRepeatInterval] = useState(
+    mapping.repeatMs ? Math.round(mapping.repeatMs / 60_000) : 60,
+  );
+  const [repeatMaxCount, setRepeatMaxCount] = useState(mapping.repeatMax ?? 3);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -689,12 +759,15 @@ function MappingRow({
     setSaving(true);
     setError("");
     try {
+      const { repeatMs, repeatMax } = repeatFieldsFor(repeatMode, repeatInterval, repeatMaxCount);
       await updateNotificationPublisherMapping(publisherId, mapping.id, {
         message: message.trim(),
         sourceType,
         sourceId,
         sourceKey,
         throttleMs,
+        repeatMs,
+        repeatMax,
       });
       setEditing(false);
       onRefresh();
@@ -721,6 +794,9 @@ function MappingRow({
     setSourceId(mapping.sourceId);
     setSourceKey(mapping.sourceKey);
     setThrottleMs(mapping.throttleMs);
+    setRepeatMode(repeatModeOf(mapping));
+    setRepeatInterval(mapping.repeatMs ? Math.round(mapping.repeatMs / 60_000) : 60);
+    setRepeatMaxCount(mapping.repeatMax ?? 3);
     setFilterZoneId("");
     setError("");
   };
@@ -868,6 +944,18 @@ function MappingRow({
             />
           </div>
         </div>
+        <div className="mt-3">
+          <RepeatControl
+            mode={repeatMode}
+            intervalMin={repeatInterval}
+            maxCount={repeatMaxCount}
+            onChange={(n) => {
+              setRepeatMode(n.mode);
+              setRepeatInterval(n.intervalMin);
+              setRepeatMaxCount(n.maxCount);
+            }}
+          />
+        </div>
         {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
         <div className="flex items-center gap-2 mt-3">
           <button
@@ -974,6 +1062,9 @@ function AddMappingForm({
   const [sourceId, setSourceId] = useState("");
   const [sourceKey, setSourceKey] = useState("");
   const [throttleMs, setThrottleMs] = useState(DEFAULT_THROTTLE_MS);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("none");
+  const [repeatInterval, setRepeatInterval] = useState(60);
+  const [repeatMaxCount, setRepeatMaxCount] = useState(3);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1011,12 +1102,15 @@ function AddMappingForm({
     setSaving(true);
     setError("");
     try {
+      const { repeatMs, repeatMax } = repeatFieldsFor(repeatMode, repeatInterval, repeatMaxCount);
       await addNotificationPublisherMapping(publisherId, {
         message: message.trim(),
         sourceType,
         sourceId,
         sourceKey,
         throttleMs,
+        repeatMs,
+        repeatMax,
       });
       onAdded();
     } catch (err: unknown) {
@@ -1169,6 +1263,18 @@ function AddMappingForm({
             className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text font-mono"
           />
         </div>
+      </div>
+      <div className="mt-3">
+        <RepeatControl
+          mode={repeatMode}
+          intervalMin={repeatInterval}
+          maxCount={repeatMaxCount}
+          onChange={(n) => {
+            setRepeatMode(n.mode);
+            setRepeatInterval(n.intervalMin);
+            setRepeatMaxCount(n.maxCount);
+          }}
+        />
       </div>
       {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
       <div className="flex items-center gap-2 mt-3">

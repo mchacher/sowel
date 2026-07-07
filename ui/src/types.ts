@@ -375,13 +375,7 @@ export type OrderSource =
 // Activity feed (spec 101)
 // ============================================================
 
-export type ActivityCategory =
-  | "recipe"
-  | "mode"
-  | "motion"
-  | "order"
-  | "sunlight"
-  | "alarm";
+export type ActivityCategory = "recipe" | "mode" | "motion" | "order" | "sunlight" | "alarm";
 
 export type ActivityMessage =
   | { template: "order.executed"; params: { equipmentName: string; alias: string; value: string } }
@@ -480,13 +474,26 @@ export type EngineEvent =
   | { type: "system.integration.connected"; integrationId: string }
   | { type: "system.integration.disconnected"; integrationId: string }
   | { type: "system.error"; error: string }
-  | { type: "system.alarm.raised"; alarmId: string; level: "warning" | "error"; source: string; message: string }
+  | {
+      type: "system.alarm.raised";
+      alarmId: string;
+      level: "warning" | "error";
+      source: string;
+      message: string;
+    }
   | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
   | { type: "system.update.error"; error: string }
   | { type: "system.restart_required"; reason: string }
-  | { type: "equipment.order.failed"; equipmentId: string; orderAlias: string; value: unknown; error: string; source?: OrderSource }
+  | {
+      type: "equipment.order.failed";
+      equipmentId: string;
+      orderAlias: string;
+      value: unknown;
+      error: string;
+      source?: OrderSource;
+    }
   | { type: "activity.added"; item: ActivityItem }
   | { type: "connected"; message: string; version: string };
 
@@ -498,7 +505,16 @@ export interface RecipeSlotDef {
   id: string;
   name: string;
   description: string;
-  type: "zone" | "equipment" | "number" | "duration" | "time" | "boolean" | "text" | "data-key" | "select";
+  type:
+    | "zone"
+    | "equipment"
+    | "number"
+    | "duration"
+    | "time"
+    | "boolean"
+    | "text"
+    | "data-key"
+    | "select";
   required: boolean;
   list?: boolean;
   defaultValue?: unknown;
@@ -820,6 +836,10 @@ export interface NotificationPublisherMapping {
   sourceId: string;
   sourceKey: string;
   throttleMs: number;
+  /** Spec 128 — re-notify every `repeatMs` while the value stays active (null = off). */
+  repeatMs?: number | null;
+  /** Spec 128 — max reminders (null = unlimited; only with `repeatMs`). */
+  repeatMax?: number | null;
   createdAt: string;
 }
 
