@@ -191,21 +191,21 @@
     "id": "state-watch",
     "type": "recipe",
     "name": "State Watch",
-    "description": "Monitor an equipment data key and raise an alarm when the value stays in a watched state",
+    "description": "Monitor an equipment data key and raise an alarm while the value stays in a watched state. Permanent by default, with an optional delay and time window. Re-notification is configured on the notification itself.",
     "icon": "Eye",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-state-watch",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "tags": ["automation", "monitoring", "alarm", "state"],
     "i18n": {
       "fr": {
         "name": "Surveillance d'état",
-        "description": "Surveille une donnée d'équipement et déclenche une alarme si la valeur reste dans un état donné."
+        "description": "Surveille une donnée d'équipement et déclenche une alarme tant que la valeur reste dans l'état surveillé. Permanent par défaut, avec un délai et un créneau horaire optionnels. La renotification se configure sur la notification."
       }
     },
     "sowelVersion": ">=0.10.0",
     "owner": "mchacher",
-    "sha256": "bda33aa647c4a4cbe75bcee8d7f733c4af3096afa0234e73157c509c48a81924"
+    "sha256": "5d02abbd451b98d61fcb4b404ceecd0cfc7fbafd5f89eaa27264a01ed8de6127"
   },
   {
     "id": "presence-heater",
