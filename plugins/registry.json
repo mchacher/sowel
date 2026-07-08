@@ -315,7 +315,7 @@
     "icon": "Droplets",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-auto-watering",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "tags": ["watering", "irrigation", "garden", "rain", "automation"],
     "i18n": {
       "fr": {
@@ -325,7 +325,7 @@
     },
     "sowelVersion": ">=1.1.0",
     "owner": "mchacher",
-    "sha256": "d69958de468f76302da71987cbab371bdf1d07fa35feb03719dabdbfe61df295"
+    "sha256": "710e62e009ae3462ef1dbaa43609a50620fe550afa1368fd826288cbb849da60"
   },
   {
     "id": "pool-pump-schedule",
