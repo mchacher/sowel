@@ -36,10 +36,7 @@ export function hasMeteringBinding(bindings: readonly BindingLike[]): boolean {
 }
 
 /** A `switch` that also reports power/energy — a metering smart plug. */
-export function isMeteringSwitch(
-  type: EquipmentType,
-  bindings: readonly BindingLike[],
-): boolean {
+export function isMeteringSwitch(type: EquipmentType, bindings: readonly BindingLike[]): boolean {
   return type === "switch" && hasMeteringBinding(bindings);
 }
 

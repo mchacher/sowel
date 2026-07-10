@@ -168,7 +168,9 @@ describe("PowerSubmeterIntegrator", () => {
       getAll: vi.fn(() => [
         { id: "eq-relay", name: "Relais", zoneId: "zone-1", type: "switch", enabled: true },
       ]),
-      getDataBindingsWithValues: vi.fn(() => [{ alias: "state", category: "light_state", value: "ON" }]),
+      getDataBindingsWithValues: vi.fn(() => [
+        { alias: "state", category: "light_state", value: "ON" },
+      ]),
     } as unknown as EquipmentManager;
     const writePoint = vi.fn();
     const influxClient = { isConnected: vi.fn(() => true), writePoint } as unknown as InfluxClient;
