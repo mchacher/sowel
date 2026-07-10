@@ -157,15 +157,15 @@
     "id": "somfy-rts",
     "type": "integration",
     "name": "Somfy RTS Bridge",
-    "description": "Somfy RTS shutters and awnings via a somfyrts2mqtt bridge (ESP32 + CC1101)",
+    "description": "Somfy RTS shutters, awnings and gates via a somfyrts2mqtt bridge (ESP32 + CC1101)",
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-somfy-rts",
-    "version": "1.0.3",
-    "tags": ["somfy", "rts", "mqtt", "shutter", "awning"],
+    "version": "1.1.0",
+    "tags": ["somfy", "rts", "mqtt", "shutter", "awning", "gate"],
     "sowelVersion": ">=1.12.0",
     "owner": "mchacher",
-    "sha256": "a3ffd69ff697a69aa82b737fc968666a6cc7e04661a60128f33f01167073b081"
+    "sha256": "a46f24efa46f080ba1944ad4f444863309705758cc6158e450b022fb8be10798"
   },
   {
     "id": "switch-light",
