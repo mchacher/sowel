@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.27.x: Prise avec métrologie
 
+### v1.27.1 — 2026-07-10 { #v1-27-1 }
+
+- Fix (équipements) : créer un Interrupteur / Prise sur un appareil à métrologie (ex. SONOFF S60ZBTPF) binde désormais sa puissance/énergie, pas seulement le canal on/off. La v1.27.0 apportait l'affichage mais l'étape de binding oubliait la métrologie. Note : les prises bindées avant ce correctif gardent leur binding on/off seul ; recréez-les ou re-bindez-les pour récupérer puissance/énergie. (#302)
+
 ### v1.27.0 — 2026-07-10 { #v1-27-0 }
 
 - Feat (équipements) : un Interrupteur / Prise remonte désormais la puissance et l'énergie quand l'appareil les fournit. Une prise connectée à métrologie (ex. SONOFF S60ZBTPF en Zigbee2MQTT) modélisée en Interrupteur affiche sa puissance instantanée à côté du bouton on/off, alimente le tableau de bord énergie (historique et HP/HC) et apparaît dans la répartition live par équipement, tout en gardant sa commande marche/arrêt. Un relais basique sans métrologie ne change pas. (#300)
