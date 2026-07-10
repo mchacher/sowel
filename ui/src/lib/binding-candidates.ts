@@ -10,6 +10,7 @@
  */
 
 import type { DeviceData, DeviceOrder, EquipmentType } from "../types";
+import { METERING_CATEGORIES } from "./metering";
 
 export interface BindingCandidate {
   id: string;
@@ -23,9 +24,7 @@ const ONOFF_TOKENS = new Set(["ON", "OFF", "TOGGLE"]);
 function isOnOffEnum(order: DeviceOrder): boolean {
   if (order.type !== "enum") return false;
   if (!order.enumValues || order.enumValues.length === 0) return false;
-  return order.enumValues.every(
-    (v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()),
-  );
+  return order.enumValues.every((v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()));
 }
 
 /** Order categories that denote a binary power/on-off command channel. */
@@ -38,7 +37,9 @@ const POWER_TOGGLE_CATEGORIES = new Set<string>(["light_toggle", "toggle_power"]
  */
 function isOnOffOrder(order: DeviceOrder): boolean {
   if (isOnOffEnum(order)) return true;
-  return order.type === "boolean" && !!order.category && POWER_TOGGLE_CATEGORIES.has(order.category);
+  return (
+    order.type === "boolean" && !!order.category && POWER_TOGGLE_CATEGORIES.has(order.category)
+  );
 }
 
 function extractShutterGroupKey(key: string): string | null {
@@ -67,6 +68,16 @@ export function computeBindingCandidates(
           dataKeys: matchingData ? [matchingData.key] : [],
           orderKeys: [o.key],
         });
+      }
+      // Metering plug (spec 129): a single-channel switch also binds
+      // power/energy/voltage/current so it surfaces live power + energy. Bare
+      // relay unchanged; multi-gang plugs keep basic per-channel switches.
+      if (candidates.length === 1) {
+        const meteringKeys = deviceData
+          .filter((d) => METERING_CATEGORIES.has(d.category))
+          .map((d) => d.key)
+          .filter((k) => !candidates[0].dataKeys.includes(k));
+        candidates[0].dataKeys.push(...meteringKeys);
       }
       return candidates;
     }

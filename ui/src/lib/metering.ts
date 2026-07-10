@@ -4,6 +4,14 @@
 // as a consumption submeter, while a bare relay stays a plain on/off switch.
 import type { EquipmentWithDetails } from "../types";
 
+/** Device-data categories bound on a switch in addition to on/off (spec 129). */
+export const METERING_CATEGORIES: ReadonlySet<string> = new Set([
+  "power",
+  "energy",
+  "voltage",
+  "current",
+]);
+
 export function isMeteringSwitch(eq: EquipmentWithDetails): boolean {
   return (
     eq.type === "switch" &&
