@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.27.x: Metering-aware switch
+
+### v1.27.0 — 2026-07-10 { #v1-27-0 }
+
+- Feat (equipments): a Switch / Plug now surfaces power and energy when the device reports them. A metering smart plug (e.g. SONOFF S60ZBTPF over Zigbee2MQTT) modelled as a Switch shows its live power next to the on/off toggle, feeds the energy dashboard (history and HP/HC), and appears in the live submeter breakdown, while keeping its ON/OFF control. A basic relay with no metering behaves exactly as before. (#300)
+
+---
+
 ## 1.26.x: Notification re-notify
 
 ### v1.26.0 — 2026-07-07 { #v1-26-0 }
