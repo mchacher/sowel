@@ -4,6 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { Logger } from "../core/logger.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { InfluxClient } from "../core/influx-client.js";
+import { isSubmeterEquipment } from "../equipments/metering.js";
 
 /**
  * Power-only submeter integration.
@@ -139,7 +140,11 @@ export class PowerSubmeterIntegrator {
    * the energy counter moving when the device only reports on change.
    */
   private catchUpFromBindings(): void {
-    const equipments = this.equipmentManager.getAll().filter((e) => e.type === "energy_meter");
+    // energy_meter submeters + metering switches (spec 129). Bare switches are
+    // filtered out by isPowerOnlySubmeter (no power binding).
+    const equipments = this.equipmentManager
+      .getAll()
+      .filter((e) => e.type === "energy_meter" || e.type === "switch");
     for (const eq of equipments) {
       if (!this.isPowerOnlySubmeter(eq.id)) continue;
       const bindings = this.equipmentManager.getDataBindingsWithValues(eq.id);
@@ -193,8 +198,11 @@ export class PowerSubmeterIntegrator {
    */
   private isPowerOnlySubmeter(equipmentId: string): boolean {
     const eq = this.equipmentManager.getById(equipmentId);
-    if (!eq || eq.type !== "energy_meter" || !eq.enabled) return false;
+    if (!eq || !eq.enabled) return false;
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
+    // A dedicated energy_meter or a metering switch (spec 129) that reports
+    // power but not energy — derive its energy from power.
+    if (!isSubmeterEquipment(eq.type, bindings)) return false;
     const hasPower = bindings.some((b) => b.alias === "power" || b.category === "power");
     const hasEnergy = bindings.some((b) => b.alias === "energy" || b.category === "energy");
     return hasPower && !hasEnergy;

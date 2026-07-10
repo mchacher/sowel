@@ -137,9 +137,16 @@ Pool equipments work with the **Pool Pump Schedule** recipe (daily runtime tied 
 
 ### Other
 
-| Type              | Controls                    | Expected data  |
-| ----------------- | --------------------------- | -------------- |
-| **Switch / Plug** | Toggle ON/OFF + state badge | state (on/off) |
+| Type              | Controls                    | Expected data                         |
+| ----------------- | --------------------------- | ------------------------------------- |
+| **Switch / Plug** | Toggle ON/OFF + state badge | state (on/off); optional power/energy |
+
+A **metering plug** (e.g. SONOFF S60ZBTPF) is a `Switch / Plug` that also
+reports `power`/`energy`. Bind it as a switch and Sowel automatically captures
+the metering: the card shows live power next to the toggle, the consumption
+feeds the energy dashboard (history, HP/HC), and the plug appears in the live
+submeter breakdown — while keeping its ON/OFF control. A basic relay with no
+metering data behaves as a plain switch.
 
 ---
 

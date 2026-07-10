@@ -97,6 +97,16 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         return typeof p?.value === "number" ? p.value : null;
       })()
     : null;
+
+  // Metering switch (spec 129): a smart plug that reports power shows it live
+  // next to the on/off toggle. A bare relay has no power binding → null.
+  const switchPowerW =
+    isSwitch
+      ? (() => {
+          const p = equipment.dataBindings.find((b) => b.category === "power");
+          return typeof p?.value === "number" ? p.value : null;
+        })()
+      : null;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -200,13 +210,23 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         </span>
       )}
 
-      {/* Light / switch controls (smart plug = ON/OFF relay, same surface) */}
+      {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
+       * Metering plug (spec 129): show live power (amber) next to the toggle. */}
       {(isLight || isSwitch) && equipment.enabled && (
-        <LightControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {switchPowerW !== null && (
+            <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
+              {switchPowerW >= 1000
+                ? `${(switchPowerW / 1000).toFixed(2)} kW`
+                : `${Math.round(switchPowerW)} W`}
+            </span>
+          )}
+          <LightControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        </div>
       )}
 
       {/* Shutter / Awning controls (shared compact control with awning vocabulary swap) */}

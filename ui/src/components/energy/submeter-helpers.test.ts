@@ -108,13 +108,23 @@ describe("readSubmeterPower", () => {
 });
 
 describe("buildSubmeterRows", () => {
-  it("filters non-energy_meter equipments out", () => {
+  it("filters main/production meters out", () => {
     const rows = buildSubmeterRows([
       makeEquipment("a", "PAC", { power: 100 }),
       makeEquipment("b", "Shelly Grid", { type: "main_energy_meter", power: 200 }),
       makeEquipment("c", "Shelly Solar", { type: "energy_production_meter", power: 300 }),
     ]);
     expect(rows.map((r) => r.name)).toEqual(["PAC"]);
+  });
+
+  it("includes metering switches, excludes bare relays (spec 129)", () => {
+    const rows = buildSubmeterRows([
+      makeEquipment("a", "PAC", { power: 100 }),
+      makeEquipment("b", "Prise Bureau", { type: "switch", power: 40 }),
+      makeEquipment("c", "Relais nu", { type: "switch", power: null }),
+    ]);
+    // PAC (100) + metering switch (40), sorted by power desc; bare relay excluded.
+    expect(rows.map((r) => r.name)).toEqual(["PAC", "Prise Bureau"]);
   });
 
   it("assigns colors by sorted-id index (stable across power reorders)", () => {

@@ -122,6 +122,72 @@ describe("PowerSubmeterIntegrator", () => {
     integ.stop();
   });
 
+  it("integrates a metering switch reporting power but not energy (spec 129)", () => {
+    db.prepare(
+      `INSERT INTO equipments (id, name, zone_id, type, enabled) VALUES (?, ?, ?, ?, 1)`,
+    ).run("eq-plug", "Prise", "zone-1", "switch");
+    const equipmentManager = {
+      getById: vi.fn((id: string) =>
+        id === "eq-plug"
+          ? { id, name: "Prise", zoneId: "zone-1", type: "switch", enabled: true }
+          : null,
+      ),
+      getAll: vi.fn(() => [
+        { id: "eq-plug", name: "Prise", zoneId: "zone-1", type: "switch", enabled: true },
+      ]),
+      getDataBindingsWithValues: vi.fn(() => [{ alias: "power", category: "power", value: 1000 }]),
+    } as unknown as EquipmentManager;
+    const writePoint = vi.fn();
+    const influxClient = { isConnected: vi.fn(() => true), writePoint } as unknown as InfluxClient;
+
+    let now = 1_700_000_000_000;
+    const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+      now: () => now,
+      flushIntervalMs: 60_000,
+    });
+    integ.init();
+    integ.start();
+    emitPower(bus, "eq-plug", 1000);
+    now += 60_000;
+    emitPower(bus, "eq-plug", 1000);
+    integ.flushAll();
+    expect(writePoint).toHaveBeenCalledOnce();
+    integ.stop();
+  });
+
+  it("ignores a bare switch with no power binding (spec 129)", () => {
+    db.prepare(
+      `INSERT INTO equipments (id, name, zone_id, type, enabled) VALUES (?, ?, ?, ?, 1)`,
+    ).run("eq-relay", "Relais", "zone-1", "switch");
+    const equipmentManager = {
+      getById: vi.fn((id: string) =>
+        id === "eq-relay"
+          ? { id, name: "Relais", zoneId: "zone-1", type: "switch", enabled: true }
+          : null,
+      ),
+      getAll: vi.fn(() => [
+        { id: "eq-relay", name: "Relais", zoneId: "zone-1", type: "switch", enabled: true },
+      ]),
+      getDataBindingsWithValues: vi.fn(() => [{ alias: "state", category: "light_state", value: "ON" }]),
+    } as unknown as EquipmentManager;
+    const writePoint = vi.fn();
+    const influxClient = { isConnected: vi.fn(() => true), writePoint } as unknown as InfluxClient;
+
+    let now = 1_700_000_000_000;
+    const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+      now: () => now,
+      flushIntervalMs: 60_000,
+    });
+    integ.init();
+    integ.start();
+    emitPower(bus, "eq-relay", 1000);
+    now += 60_000;
+    emitPower(bus, "eq-relay", 1000);
+    integ.flushAll();
+    expect(writePoint).not.toHaveBeenCalled();
+    integ.stop();
+  });
+
   it("trapezoidal integration with rising power: prev=500, curr=1500, dt=60s → ~16.67 Wh", () => {
     const { equipmentManager, influxClient, writePoint } = makeStubs();
     let now = 1_700_000_000_000;

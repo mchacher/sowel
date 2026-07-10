@@ -16,6 +16,7 @@
  */
 
 import type { DeviceData, DeviceOrder, EquipmentType, OrderCategory } from "../shared/types.js";
+import { METERING_CATEGORIES } from "./metering.js";
 
 export interface BindingCandidate {
   /** Stable id used by the UI picker (e.g. "power1", "shutter1", "all"). */
@@ -93,6 +94,18 @@ export function computeBindingCandidates(
           dataKeys: matchingData ? [matchingData.key] : [],
           orderKeys: [o.key],
         });
+      }
+      // Metering plug (spec 129): a single-channel switch also captures its
+      // power/energy/voltage/current so it can surface live power + feed the
+      // energy history. A bare relay (no metering data) is unchanged. Multi-gang
+      // plugs (>1 on/off channel) are left as basic switches — per-channel
+      // metering attribution is out of scope.
+      if (candidates.length === 1) {
+        const meteringKeys = deviceData
+          .filter((d) => METERING_CATEGORIES.has(d.category))
+          .map((d) => d.key)
+          .filter((k) => !candidates[0].dataKeys.includes(k));
+        candidates[0].dataKeys.push(...meteringKeys);
       }
       return candidates;
     }

@@ -6,6 +6,7 @@
 
 import type { EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor } from "./submeterPalette";
+import { isSubmeterEquipment } from "../../lib/metering";
 
 export interface SubmeterRow {
   id: string;
@@ -35,7 +36,7 @@ export function readSubmeterPower(eq: EquipmentWithDetails): number | null {
 /**
  * Build the legend rows for the donut.
  * Steps:
- *   1. Filter to `energy_meter` equipments only.
+ *   1. Filter to submeters: `energy_meter`s + metering switches (spec 129).
  *   2. Sort by `id` ascending and assign a palette color by index — this is
  *      the SAME indexing rule the backend uses for the historical By-usage
  *      chart, so a given equipment gets the same color in both views.
@@ -46,7 +47,7 @@ export function buildSubmeterRows(
   equipments: EquipmentWithDetails[],
 ): SubmeterRow[] {
   const byId = [...equipments]
-    .filter((eq) => eq.type === "energy_meter")
+    .filter((eq) => isSubmeterEquipment(eq))
     .sort((a, b) => a.id.localeCompare(b.id));
 
   const rows: SubmeterRow[] = byId.map((eq, idx) => ({

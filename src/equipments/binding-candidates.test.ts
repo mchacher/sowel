@@ -109,6 +109,66 @@ describe("computeBindingCandidates", () => {
     expect(result).toHaveLength(0);
   });
 
+  // Spec 129 — metering-aware switch (SONOFF S60ZBTPF etc.)
+  it("metering plug (state + power/energy/voltage/current) → binds on/off + metering", () => {
+    const orders = [order("state", "boolean", { category: "light_toggle" })];
+    const datas = [
+      data("state", "boolean", { category: "light_state", value: "ON" }),
+      data("power", "number", { category: "power", value: 42 }),
+      data("energy", "number", { category: "energy", value: 1.5 }),
+      data("voltage", "number", { category: "voltage", value: 230 }),
+      data("current", "number", { category: "current", value: 0.2 }),
+      data("linkquality", "number", { category: "generic", value: 100 }),
+    ];
+    const result = computeBindingCandidates("switch", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["state"]);
+    expect(result[0].dataKeys.sort()).toEqual(["current", "energy", "power", "state", "voltage"]);
+  });
+
+  it("metering plug reporting power but not energy → binds power", () => {
+    const orders = [order("state", "boolean", { category: "light_toggle" })];
+    const datas = [
+      data("state", "boolean", { category: "light_state", value: "ON" }),
+      data("power", "number", { category: "power", value: 42 }),
+    ];
+    const result = computeBindingCandidates("switch", datas, orders);
+    expect(result[0].dataKeys.sort()).toEqual(["power", "state"]);
+  });
+
+  it("bare relay (state only) → no metering attached (unchanged)", () => {
+    const orders = [order("state", "boolean", { category: "light_toggle" })];
+    const datas = [data("state", "boolean", { category: "light_state", value: "OFF" })];
+    const result = computeBindingCandidates("switch", datas, orders);
+    expect(result[0].dataKeys).toEqual(["state"]);
+  });
+
+  it("multi-gang switch (2 channels) → metering NOT auto-attached", () => {
+    const orders = [
+      order("state_left", "boolean", { category: "light_toggle" }),
+      order("state_right", "boolean", { category: "light_toggle" }),
+    ];
+    const datas = [
+      data("state_left", "boolean", { category: "light_state" }),
+      data("state_right", "boolean", { category: "light_state" }),
+      data("power", "number", { category: "power", value: 10 }),
+    ];
+    const result = computeBindingCandidates("switch", datas, orders);
+    expect(result).toHaveLength(2);
+    expect(result.flatMap((c) => c.dataKeys)).not.toContain("power");
+  });
+
+  it("light_onoff with power data → metering NOT attached (switch-only feature)", () => {
+    const orders = [order("state", "enum", { enumValues: ["ON", "OFF"] })];
+    const datas = [
+      data("state", "enum", { category: "light_state" }),
+      data("power", "number", { category: "power", value: 5 }),
+    ];
+    const result = computeBindingCandidates("light_onoff", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys).toEqual(["state"]);
+  });
+
   it("sensor on a multi-data device → one all-data candidate", () => {
     const datas = [
       data("temperature", "number", { category: "temperature" }),
