@@ -155,7 +155,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
   weather: [],
   weather_forecast: [],
-  gate: ["R1", "R2", "R3", "R4", "command"],
+  gate: ["R1", "R2", "R3", "R4", "command", "gate_trigger"],
   heater: ["state", "on", "R1", "R2", "R3", "R4"],
   energy_meter: [],
   main_energy_meter: [],
@@ -217,6 +217,11 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
     insideTemperature: "temperature",
   },
   gate: {
+    // A blind single-button gate (e.g. Somfy RTS via somfyrts2mqtt) exposes a
+    // `gate_trigger` order. GateControl only reacts to the `command` alias, so
+    // both the manual AddBindingModal (no category → STANDARD_ALIASES) and any
+    // R1..R4 relay gate resolve to `command`.
+    gate_trigger: "command",
     R1: "command",
     R2: "command",
     R3: "command",

@@ -5,6 +5,7 @@ import type { DataCategory, EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
 import { computeBindingCandidates, type BindingCandidate } from "../../lib/binding-candidates";
 import { freeCandidates } from "../../lib/binding-utils";
+import { isRelevantOrder } from "./bindingUtils";
 
 /** Maps EquipmentType to required DataCategories for filtering. */
 const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> = {
@@ -176,6 +177,17 @@ export function DeviceSelector({
             device.data.some((d) => categories.includes(d.category)),
           )
         : availableDevices;
+
+  // A blind single-button gate (RTS via somfyrts2mqtt) has no contact-sensor
+  // data — only a trigger order. The data-category filter above would hide it
+  // behind "show all", so also propose any device exposing a gate command order.
+  if (equipmentType === "gate") {
+    compatible = availableDevices.filter(
+      (device) =>
+        device.data.some((d) => (categories ?? []).includes(d.category)) ||
+        (device.orders ?? []).some((o) => isRelevantOrder(o.key, "gate")),
+    );
+  }
 
   // Exclude smart water valves from light/switch creation flows so they don't
   // pollute the list (their `state` is misclassified as `light_state`).

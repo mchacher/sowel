@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isRelevantData, isRelevantOrder } from "./bindingUtils";
+import { isRelevantData, isRelevantOrder, resolveAlias } from "./bindingUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 
 describe("findOrderByCategory", () => {
@@ -205,5 +205,35 @@ describe("water_valve equipment type relevance", () => {
   it("ignores unrelated categories/orders", () => {
     expect(isRelevantData("shutter_position", "water_valve")).toBe(false);
     expect(isRelevantOrder("color", "water_valve")).toBe(false);
+  });
+});
+
+describe("gate equipment type relevance (blind single-button RTS gate)", () => {
+  // A Somfy RTS gate (via somfyrts2mqtt) is blind: no contact-sensor data, only
+  // a `gate_trigger` order. GateControl drives the equipment through the
+  // `command` alias, so every path must land on that alias for such a gate.
+  it("auto-binds the gate_trigger order (legacy whitelist path)", () => {
+    expect(isRelevantOrder("gate_trigger", "gate")).toBe(true);
+    // R1..R4 relay gates and an already-standard `command` order still bind.
+    expect(isRelevantOrder("command", "gate")).toBe(true);
+    expect(isRelevantOrder("R1", "gate")).toBe(true);
+  });
+
+  it("manual binding (no category) resolves gate_trigger to the command alias", () => {
+    // AddBindingModal calls resolveAlias(key, type) without a category, so the
+    // fallback STANDARD_ALIASES must map gate_trigger → command.
+    expect(resolveAlias("gate_trigger", "gate")).toBe("command");
+    expect(resolveAlias("R1", "gate")).toBe("command");
+  });
+
+  it("auto binding (with category) also resolves to the command alias", () => {
+    expect(
+      resolveAlias("gate_trigger", "gate", { gate_trigger: "command" }, "gate_trigger"),
+    ).toBe("command");
+  });
+
+  it("ignores unrelated orders", () => {
+    expect(isRelevantOrder("position", "gate")).toBe(false);
+    expect(isRelevantOrder("color", "gate")).toBe(false);
   });
 });
