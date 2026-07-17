@@ -13,6 +13,54 @@ import { isSlotHidden } from "../../lib/recipe-slots";
 import type { RecipeSlotDef } from "../../types";
 
 
+/** Multi-select renderer for a `select` slot with `list: true`: one toggle chip
+ *  per option. Stores the selected option values as a comma-joined string, the
+ *  same convention used by equipment-list slots (e.g. "mon,tue,thu,fri"). An
+ *  empty value means "nothing selected" — recipes read that as their default. */
+function MultiSelectChips({
+  slot,
+  value,
+  onChange,
+  recipe,
+  lang,
+}: {
+  slot: RecipeSlotDef;
+  value: string;
+  onChange: (value: string) => void;
+  recipe: RecipeInfo;
+  lang: string;
+}) {
+  const selected = value.split(",").filter(Boolean);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {(slot.options ?? []).map((o) => {
+        const on = selected.includes(o.value);
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={on}
+            onClick={() => {
+              const next = on
+                ? selected.filter((v) => v !== o.value)
+                : [...selected, o.value];
+              onChange(next.join(","));
+            }}
+            className={`px-3 py-1.5 text-[12px] font-medium rounded-[6px] border transition-colors duration-150 ${
+              on
+                ? "bg-primary border-primary text-white"
+                : "bg-surface border-border text-text-secondary hover:border-primary"
+            }`}
+          >
+            {recipeSlotOptionLabel(recipe, slot, o.value, lang)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+
 function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
   const types = Array.isArray(constraint) ? constraint : [constraint];
   return types.some((t) => t === eqType);
@@ -781,7 +829,7 @@ function RecipeInstanceRow({
                           ))}
                           {/* Compact grid for non-list slots */}
                           {(() => {
-                            const compactSlots = chunk.slots.filter((s) => !(s.type === "equipment" && s.list) && !isSlotHidden(s, editParams, recipe.slots));
+                            const compactSlots = chunk.slots.filter((s) => !((s.type === "equipment" || s.type === "select") && s.list) && !isSlotHidden(s, editParams, recipe.slots));
                             if (compactSlots.length === 0) return null;
                             const cols = compactSlots.length <= 3 ? compactSlots.length : 2;
                             return (
@@ -855,6 +903,22 @@ function RecipeInstanceRow({
                               </div>
                             );
                           })()}
+                          {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
+                          {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, editParams, recipe.slots)).map((slot) => (
+                            <div key={slot.id} className="mt-1.5">
+                              <label className={`block text-[10px] tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                                {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
+                              </label>
+                              <MultiSelectChips
+                                slot={slot}
+                                value={editParams[slot.id] ?? ""}
+                                onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                recipe={recipe}
+                                lang={lang}
+                              />
+                              <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                            </div>
+                          ))}
                         </div>
                       );
                     }
@@ -947,6 +1011,15 @@ function RecipeInstanceRow({
                             placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
                           />
                         ) : slot.type === "select" ? (
+                          slot.list ? (
+                            <MultiSelectChips
+                              slot={slot}
+                              value={editParams[slot.id] ?? ""}
+                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                              recipe={recipe}
+                              lang={lang}
+                            />
+                          ) : (
                           <select
                             value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
@@ -958,6 +1031,7 @@ function RecipeInstanceRow({
                               </option>
                             ))}
                           </select>
+                          )
                         ) : slot.type === "time" ? (
                           <TimeInput
                             value={editParams[slot.id] ?? ""}
@@ -1814,7 +1888,7 @@ function AddRecipeForm({
                         ))}
                         {/* Compact grid for non-list slots */}
                         {(() => {
-                          const compactSlots = chunk.slots.filter((s) => !(s.type === "equipment" && s.list) && !isSlotHidden(s, params, selectedRecipe.slots));
+                          const compactSlots = chunk.slots.filter((s) => !((s.type === "equipment" || s.type === "select") && s.list) && !isSlotHidden(s, params, selectedRecipe.slots));
                           if (compactSlots.length === 0) return null;
                           const n = compactSlots.length;
                           const cols = n <= 3 ? n : n % 3 === 0 ? 3 : 2;
@@ -1891,6 +1965,22 @@ function AddRecipeForm({
                             </div>
                           );
                         })()}
+                        {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
+                        {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, params, selectedRecipe.slots)).map((slot) => (
+                          <div key={slot.id} className="mt-1.5">
+                            <label className="block text-[10px] tracking-wider mb-1 text-text-tertiary">
+                              {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
+                            </label>
+                            <MultiSelectChips
+                              slot={slot}
+                              value={params[slot.id] ?? ""}
+                              onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                              recipe={selectedRecipe}
+                              lang={lang}
+                            />
+                            <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                          </div>
+                        ))}
                       </div>
                     );
                   }
@@ -1983,6 +2073,15 @@ function AddRecipeForm({
                           placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
                         />
                       ) : slot.type === "select" ? (
+                        slot.list ? (
+                          <MultiSelectChips
+                            slot={slot}
+                            value={params[slot.id] ?? ""}
+                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                            recipe={selectedRecipe}
+                            lang={lang}
+                          />
+                        ) : (
                         <select
                           value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
@@ -1994,6 +2093,7 @@ function AddRecipeForm({
                             </option>
                           ))}
                         </select>
+                        )
                       ) : slot.type === "time" ? (
                         <TimeInput
                           value={params[slot.id] ?? ""}
