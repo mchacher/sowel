@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.28.x: Arrosage par jour
+
+### v1.28.0 — 2026-07-17 { #v1-28-0 }
+
+- Feat (recettes) : les formulaires de recette gèrent désormais les champs à choix multiple, affichés en pastilles plutôt qu'en simple liste déroulante. Cela apporte un nouveau sélecteur de **jours de la semaine** par créneau dans la recette Arrosage Auto (mettez la recette à jour en v1.2.0) : chaque créneau d'arrosage peut être limité à certains jours, et le laisser vide continue d'arroser tous les jours. Exemple : arroser à 07h30 les jours d'école et à 09h00 le mercredi et le week-end. Les planifications d'arrosage existantes ne changent pas. (#310, auto-watering #2)
+
+---
+
 ## 1.27.x: Prise avec métrologie
 
 ### v1.27.1 — 2026-07-10 { #v1-27-1 }

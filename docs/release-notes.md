@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.28.x: Watering weekdays
+
+### v1.28.0 — 2026-07-17 { #v1-28-0 }
+
+- Feat (recipes): recipe forms now support multi-select option fields, shown as toggle chips instead of a single dropdown. This powers a new per-slot **day of week** selector in the Auto Watering recipe (update the recipe to v1.2.0): each watering slot can be limited to chosen weekdays, and leaving it empty keeps watering every day. Example: water at 07:30 on school days and at 09:00 on Wednesday and the weekend. Existing watering schedules are unchanged. (#310, auto-watering #2)
+
+---
+
 ## 1.27.x: Metering-aware switch
 
 ### v1.27.1 — 2026-07-10 { #v1-27-1 }
