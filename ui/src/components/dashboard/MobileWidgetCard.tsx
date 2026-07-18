@@ -1,8 +1,9 @@
 import { createElement } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { DashboardWidget, EquipmentWithDetails } from "../../types";
 import { useEquipmentState } from "../equipments/useEquipmentState";
-import { getSensorBindings, formatSensorValue } from "../equipments/sensorUtils";
+import { getSensorBindings, formatSensorValue, formatBooleanSensor } from "../equipments/sensorUtils";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -69,7 +70,7 @@ export function MobileWidgetCard({ widget, equipment, onClick, editMode }: Mobil
 function useMobileState(
   widget: DashboardWidget,
   equipment: EquipmentWithDetails,
-  t: (key: string) => string,
+  t: TFunction,
 ): { icon: React.ReactNode; stateLines: string[] } {
   const {
     isLight,
@@ -266,7 +267,14 @@ function useMobileState(
     const lines: string[] = [];
     for (const b of sensorBindings.slice(0, 2)) {
       if (b.value !== null && b.value !== undefined) {
-        lines.push(formatSensorValue(b.value, b.unit ?? undefined));
+        // Category-aware for booleans (contact_door -> Ouvert/Fermé, motion ->
+        // Détecté/…) like the desktop card; the generic formatter would render
+        // any boolean as a bare Oui/Non.
+        lines.push(
+          typeof b.value === "boolean"
+            ? formatBooleanSensor(b.category, b.value, t)
+            : formatSensorValue(b.value, b.unit ?? undefined, t),
+        );
       }
     }
     return { icon: sensorIcon, stateLines: lines };
