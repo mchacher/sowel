@@ -255,7 +255,7 @@
     "icon": "Lightbulb",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-motion-light",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "tags": ["automation", "motion", "light"],
     "i18n": {
       "fr": {
@@ -265,7 +265,7 @@
     },
     "sowelVersion": ">=0.10.0",
     "owner": "mchacher",
-    "sha256": "0ce330f29b2bd70c4f59980fea6765e99a404c7cd037e08469e1d1053cdf7c92"
+    "sha256": "d245941408843214e69f28f132383f56b0aaea42795616368408ee5dc07896d7"
   },
   {
     "id": "state-trigger-light",
@@ -295,7 +295,7 @@
     "icon": "SunDim",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-motion-light-dimmable",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "tags": ["automation", "motion", "light", "dimmable", "brightness"],
     "i18n": {
       "fr": {
@@ -305,7 +305,7 @@
     },
     "sowelVersion": ">=0.10.0",
     "owner": "mchacher",
-    "sha256": "2638d2ba0a4764aeccf55203eee640ce0461e02bd3edb9478d3bc35a7589e26f"
+    "sha256": "59f578bee5ad87c26d819eb36c8856a93b7d02a7d797bf58619f9959d57fd822"
   },
   {
     "id": "auto-watering",
