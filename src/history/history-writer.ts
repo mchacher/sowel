@@ -43,11 +43,20 @@ const ALIAS_DEFAULTS_ON: ReadonlySet<string> = new Set(["setpoint", "power"]);
  * terms. They are needed as latest values (Live page) but writing them
  * as time-series points would pollute every category=energy aggregation
  * with the cumul (sum-of-cumuls), since the EnergyAggregator and the
- * downsampling tasks group on category, not alias. */
+ * downsampling tasks group on category, not alias.
+ *
+ * `sum_rain_1` / `sum_rain_24` are the same class of bug for rain: Netatmo's
+ * ROLLING 1h / 24h totals, re-reported at every poll. Historizing them makes
+ * the rain chart plot a flat rolling total ("11.9 mm every hour") and makes
+ * any `category == "rain"` |> sum() (WeatherAggregator) a sum-of-cumuls. The
+ * incremental `rain` alias stays historized; the live rolling totals are read
+ * from the equipment binding, not InfluxDB. */
 const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set([
   "demand_30min",
   "energy_forward",
   "energy_reverse",
+  "sum_rain_1",
+  "sum_rain_24",
   "wind_angle",
   "gust_strength",
   "gust_angle",

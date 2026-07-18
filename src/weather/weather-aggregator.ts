@@ -2,11 +2,17 @@
  * WeatherAggregator — Computes rain cumuls at equipment level.
  *
  * Listens to equipment.data.changed events for rain bindings as a trigger.
- * On trigger, queries InfluxDB (single source of truth) to compute:
- *   - rain_1h: sum of rain over the last 1 hour (mm)
- *   - rain_24h: sum of rain over the last 24 hours (mm)
+ * On trigger, computes:
+ *   - rain_1h: rain total over the last 1 hour (mm)
+ *   - rain_24h: rain total over the last 24 hours (mm)
  *
- * Follows the same pattern as EnergyAggregator.
+ * Prefers the station's NATIVE rolling cumulatives (Netatmo `sum_rain_1` /
+ * `sum_rain_24`) read from the live binding — those already ARE the 1h / 24h
+ * totals. Summing their historized samples would multiply them by the poll
+ * count (sum-of-cumuls; see the `sum_rain_*` note in history-writer). Only a
+ * station without a native cumulative falls back to summing the incremental
+ * `rain` series from InfluxDB.
+ *
  * Generic: works for any integration that writes rain data (Netatmo, z2m, etc.)
  */
 
@@ -26,6 +32,48 @@ interface RainCumuls {
   rain1h: number | null;
   rain24h: number | null;
   lastUpdated: string;
+}
+
+/** Rain aliases whose change should trigger a cumul refresh. */
+const RAIN_TRIGGER_ALIASES: ReadonlySet<string> = new Set(["rain", "sum_rain_1", "sum_rain_24"]);
+
+interface RainBinding {
+  alias: string;
+  value: unknown;
+}
+
+function roundTenth(v: number | null): number | null {
+  return v === null ? null : Math.round(v * 10) / 10;
+}
+
+/**
+ * Compute rain_1h / rain_24h for a weather equipment.
+ *
+ * Prefers the native rolling cumulatives (`sum_rain_1` / `sum_rain_24`): when a
+ * binding is present its live value IS the total, so it is used as-is (never
+ * summed). Only when a native cumulative is absent does it fall back to
+ * `sumIncrementalRain`, which sums the incremental `rain` series over the window.
+ */
+export async function computeRainCumuls(
+  bindings: RainBinding[],
+  sumIncrementalRain: (window: "-1h" | "-24h") => Promise<number | null>,
+): Promise<{ rain1h: number | null; rain24h: number | null }> {
+  // undefined → binding absent (fall back); null → present but no numeric value.
+  const nativeValue = (alias: string): number | null | undefined => {
+    const b = bindings.find((x) => x.alias === alias);
+    if (!b) return undefined;
+    if (b.value === null || b.value === undefined || b.value === "") return null;
+    const n = typeof b.value === "number" ? b.value : Number(b.value);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const native1h = nativeValue("sum_rain_1");
+  const native24h = nativeValue("sum_rain_24");
+
+  const rain1h = native1h !== undefined ? native1h : await sumIncrementalRain("-1h");
+  const rain24h = native24h !== undefined ? native24h : await sumIncrementalRain("-24h");
+
+  return { rain1h: roundTenth(rain1h), rain24h: roundTenth(rain24h) };
 }
 
 export class WeatherAggregator {
@@ -64,7 +112,7 @@ export class WeatherAggregator {
 
     // Initial load from InfluxDB
     for (const equipmentId of this.rainEquipmentIds) {
-      await this.refreshFromInfluxDB(equipmentId);
+      await this.refreshCumuls(equipmentId);
     }
 
     // Subscribe to equipment data changes — rain alias as trigger
@@ -82,8 +130,8 @@ export class WeatherAggregator {
         this.rainEquipmentIds.add(event.equipmentId);
       }
 
-      // Only trigger on rain-related alias changes
-      if (event.alias !== "rain") return;
+      // Only trigger on rain-related alias changes (incremental or rolling cumulative)
+      if (!RAIN_TRIGGER_ALIASES.has(event.alias)) return;
 
       this.scheduleRefresh(event.equipmentId);
     });
@@ -130,7 +178,7 @@ export class WeatherAggregator {
 
     const timer = setTimeout(() => {
       this.pendingRefresh.delete(equipmentId);
-      this.refreshFromInfluxDB(equipmentId).catch((err) =>
+      this.refreshCumuls(equipmentId).catch((err) =>
         this.logger.warn({ err, equipmentId }, "Failed to refresh rain cumuls from InfluxDB"),
       );
     }, DEBOUNCE_MS);
@@ -138,63 +186,53 @@ export class WeatherAggregator {
     this.pendingRefresh.set(equipmentId, timer);
   }
 
-  /** Query InfluxDB to compute rain_1h and rain_24h for an equipment. */
-  private async refreshFromInfluxDB(equipmentId: string): Promise<void> {
-    const client = this.influxClient.getClient();
-    const config = this.influxClient.getConfig();
-    if (!client || !config) return;
+  /** Compute rain_1h and rain_24h for an equipment and cache them. */
+  private async refreshCumuls(equipmentId: string): Promise<void> {
+    const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
+    const { rain1h, rain24h } = await computeRainCumuls(bindings, (window) =>
+      this.sumIncrementalRain(equipmentId, window),
+    );
 
-    const queryApi = client.getQueryApi(config.org);
-    const bucket = config.bucket;
-
-    // rain_1h: sum of rain values over last 1 hour
-    let rain1h: number | null = null;
-    const flux1h = `from(bucket: "${bucket}")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.category == "rain")
-  |> filter(fn: (r) => r._field == "value_number")
-  |> sum()`;
-
-    try {
-      for await (const { values, tableMeta } of queryApi.iterateRows(flux1h)) {
-        const row = tableMeta.toObject(values) as { _value: number };
-        rain1h = row._value;
-      }
-    } catch (err) {
-      this.logger.warn({ err, equipmentId }, "Failed to query rain_1h");
-    }
-
-    // rain_24h: sum of rain values over last 24 hours
-    let rain24h: number | null = null;
-    const flux24h = `from(bucket: "${bucket}")
-  |> range(start: -24h)
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.category == "rain")
-  |> filter(fn: (r) => r._field == "value_number")
-  |> sum()`;
-
-    try {
-      for await (const { values, tableMeta } of queryApi.iterateRows(flux24h)) {
-        const row = tableMeta.toObject(values) as { _value: number };
-        rain24h = row._value;
-      }
-    } catch (err) {
-      this.logger.warn({ err, equipmentId }, "Failed to query rain_24h");
-    }
-
-    // Round to 1 decimal
     const cumul: RainCumuls = {
-      rain1h: rain1h !== null ? Math.round(rain1h * 10) / 10 : null,
-      rain24h: rain24h !== null ? Math.round(rain24h * 10) / 10 : null,
+      rain1h,
+      rain24h,
       lastUpdated: new Date().toISOString(),
     };
-
     this.cumuls.set(equipmentId, cumul);
+    this.logger.debug({ equipmentId, ...cumul }, "Rain cumuls refreshed");
+  }
 
-    this.logger.debug({ equipmentId, ...cumul }, "Rain cumuls refreshed from InfluxDB");
+  /**
+   * Fallback for stations without a native rolling cumulative: sum the
+   * incremental `rain` alias over the window. Alias-scoped, so it never sums a
+   * cumulative series (`sum_rain_*`).
+   */
+  private async sumIncrementalRain(
+    equipmentId: string,
+    window: "-1h" | "-24h",
+  ): Promise<number | null> {
+    const client = this.influxClient.getClient();
+    const config = this.influxClient.getConfig();
+    if (!client || !config) return null;
+
+    const queryApi = client.getQueryApi(config.org);
+    const flux = `from(bucket: "${config.bucket}")
+  |> range(start: ${window})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "rain")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> sum()`;
+
+    let total: number | null = null;
+    try {
+      for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
+        total = (tableMeta.toObject(values) as { _value: number })._value;
+      }
+    } catch (err) {
+      this.logger.warn({ err, equipmentId, window }, "Failed to sum incremental rain");
+    }
+    return total;
   }
 
   /** Return computed data entries for a given equipment. */

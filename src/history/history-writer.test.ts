@@ -63,6 +63,15 @@ describe("HistoryWriter.resolveHistorize", () => {
     expect(HistoryWriter.resolveHistorize(null, "energy_reverse", "energy")).toBe(false);
   });
 
+  it("excludes rolling rain cumulatives (sum_rain_1 / sum_rain_24) but keeps incremental rain", () => {
+    // Netatmo's rolling 1h/24h totals — historizing them makes the rain chart
+    // plot a flat cumulative and sum-of-cumuls the WeatherAggregator.
+    expect(HistoryWriter.resolveHistorize(null, "sum_rain_1", "rain")).toBe(false);
+    expect(HistoryWriter.resolveHistorize(null, "sum_rain_24", "rain")).toBe(false);
+    // The incremental per-period rain stays historized.
+    expect(HistoryWriter.resolveHistorize(null, "rain", "rain")).toBe(true);
+  });
+
   // ============================================================
   // Default OFF for unrelated categories
   // ============================================================
