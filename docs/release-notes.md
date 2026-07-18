@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.28.x: Watering weekdays
 
+### v1.28.2 — 2026-07-18 { #v1-28-2 }
+
+- Fix (ui): on the mobile dashboard, a contact sensor (door/window) modelled as a **Capteur** now shows "Ouvert / Fermé" instead of a bare "Oui / Non". The mobile widget card was formatting boolean sensor values generically; it now uses the same category-aware labels as the desktop card and the zone view (also fixes motion / water-leak / smoke labels on mobile). Note: a motorised door/gate is best modelled as an **Ouvrant**, which already derives open/closed from a contact and displays correctly everywhere. (#316)
+
 ### v1.28.1 — 2026-07-18 { #v1-28-1 }
 
 - Fix (weather): rain totals could balloon to absurd values (e.g. 1392 mm over 24h from an actual 11.9 mm), which permanently blocked the Auto Watering rain-skip and plotted a flat "11.9 mm every hour" on rain charts. Netatmo's rolling 1h / 24h totals (`sum_rain_1` / `sum_rain_24`) were summed at every poll. Sowel now reads them as the totals they already are, and no longer stores them as time series. Live weather values are unchanged; existing rain charts self-correct within ~24h. (#312)

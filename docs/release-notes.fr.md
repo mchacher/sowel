@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.28.x: Arrosage par jour
 
+### v1.28.2 — 2026-07-18 { #v1-28-2 }
+
+- Fix (ui) : sur le dashboard mobile, un capteur de contact (porte/fenêtre) modélisé en **Capteur** affiche désormais « Ouvert / Fermé » au lieu d'un simple « Oui / Non ». La carte widget mobile formatait les booléens de façon générique ; elle utilise maintenant les mêmes libellés selon la catégorie que la carte desktop et la vue zone (corrige aussi mouvement / fuite d'eau / fumée sur mobile). À noter : une porte/portail motorisé se modélise plutôt en **Ouvrant**, qui dérive déjà ouvert/fermé depuis un contact et s'affiche correctement partout. (#316)
+
 ### v1.28.1 — 2026-07-18 { #v1-28-1 }
 
 - Fix (météo) : les cumuls de pluie pouvaient exploser (ex. 1392 mm sur 24h pour 11,9 mm réels), ce qui bloquait en permanence le saut de pluie de l'Arrosage Auto et affichait un plateau « 11,9 mm chaque heure » sur les graphes. Les cumuls roulants 1h / 24h de Netatmo (`sum_rain_1` / `sum_rain_24`) étaient sommés à chaque interrogation. Sowel les lit désormais comme les totaux qu'ils sont déjà, et ne les stocke plus comme séries temporelles. Les valeurs live ne changent pas ; les graphes de pluie existants se corrigent d'eux-mêmes sous ~24h. (#312)
