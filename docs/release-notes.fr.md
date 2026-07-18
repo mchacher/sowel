@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.28.x: Arrosage par jour
 
+### v1.28.1 — 2026-07-18 { #v1-28-1 }
+
+- Fix (météo) : les cumuls de pluie pouvaient exploser (ex. 1392 mm sur 24h pour 11,9 mm réels), ce qui bloquait en permanence le saut de pluie de l'Arrosage Auto et affichait un plateau « 11,9 mm chaque heure » sur les graphes. Les cumuls roulants 1h / 24h de Netatmo (`sum_rain_1` / `sum_rain_24`) étaient sommés à chaque interrogation. Sowel les lit désormais comme les totaux qu'ils sont déjà, et ne les stocke plus comme séries temporelles. Les valeurs live ne changent pas ; les graphes de pluie existants se corrigent d'eux-mêmes sous ~24h. (#312)
+
 ### v1.28.0 — 2026-07-17 { #v1-28-0 }
 
 - Feat (recettes) : les formulaires de recette gèrent désormais les champs à choix multiple, affichés en pastilles plutôt qu'en simple liste déroulante. Cela apporte un nouveau sélecteur de **jours de la semaine** par créneau dans la recette Arrosage Auto (mettez la recette à jour en v1.2.0) : chaque créneau d'arrosage peut être limité à certains jours, et le laisser vide continue d'arroser tous les jours. Exemple : arroser à 07h30 les jours d'école et à 09h00 le mercredi et le week-end. Les planifications d'arrosage existantes ne changent pas. (#310, auto-watering #2)

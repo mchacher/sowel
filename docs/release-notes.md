@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.28.x: Watering weekdays
 
+### v1.28.1 — 2026-07-18 { #v1-28-1 }
+
+- Fix (weather): rain totals could balloon to absurd values (e.g. 1392 mm over 24h from an actual 11.9 mm), which permanently blocked the Auto Watering rain-skip and plotted a flat "11.9 mm every hour" on rain charts. Netatmo's rolling 1h / 24h totals (`sum_rain_1` / `sum_rain_24`) were summed at every poll. Sowel now reads them as the totals they already are, and no longer stores them as time series. Live weather values are unchanged; existing rain charts self-correct within ~24h. (#312)
+
 ### v1.28.0 — 2026-07-17 { #v1-28-0 }
 
 - Feat (recipes): recipe forms now support multi-select option fields, shown as toggle chips instead of a single dropdown. This powers a new per-slot **day of week** selector in the Auto Watering recipe (update the recipe to v1.2.0): each watering slot can be limited to chosen weekdays, and leaving it empty keeps watering every day. Example: water at 07:30 on school days and at 09:00 on Wednesday and the weekend. Existing watering schedules are unchanged. (#310, auto-watering #2)
