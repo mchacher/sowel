@@ -24,7 +24,7 @@ import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
-import { createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import {
   LightBulbIcon,
   PlugWidgetIcon,
@@ -45,6 +45,14 @@ import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 
+
+/** Render the widget's custom icon (widget.icon -> CUSTOM_ICON_REGISTRY) when set,
+ *  otherwise the equipment-type default. Mirrors the mobile card so a custom icon
+ *  shows the same on phone and desktop (issue #318). */
+function resolveWidgetIcon(iconKey: string | undefined, fallback: ReactNode): ReactNode {
+  const custom = iconKey ? CUSTOM_ICON_REGISTRY[iconKey] : undefined;
+  return custom ? createElement(custom.component, custom.previewProps) : fallback;
+}
 
 interface EquipmentWidgetProps {
   widget: DashboardWidget;
@@ -74,23 +82,23 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetai
   const label = widget.label || equipment.name;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
-  if (isLight) return <LightEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isLight) return <LightEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   // Awnings share the shutter widget shape (icon + position + 3-button row).
   // ShutterEquipmentWidget swaps the icon (AwningWidgetIcon) and the vocabulary
   // (deployed/retracted, extend/retract) when type === "awning".
-  if (isShutterFamily) return <ShutterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
-  if (isThermostat || isPoolHeatPump) return <ThermostatEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isShutterFamily) return <ShutterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (isThermostat || isPoolHeatPump) return <ThermostatEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isGate) return <GateEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
   if (equipment.type === "solar_panel") return <SolarPanelEquipmentWidget label={label} equipment={equipment} />;
-  if (equipment.type === "switch") return <SwitchEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (equipment.type === "switch") return <SwitchEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
   if (equipment.type === "weather") return <WeatherStationWidget label={label} equipment={equipment} onOpenDetail={onOpenDetail} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
-  if (isWaterValve) return <WaterValveEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
-  if (isPoolPump) return <PoolPumpEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
-  if (isPoolCover) return <PoolCoverEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} />;
+  if (isWaterValve) return <WaterValveEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (isPoolPump) return <PoolPumpEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (isPoolCover) return <PoolCoverEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isSensor) return <SensorEquipmentWidget label={label} equipment={equipment} iconKey={widget.icon} visibleBindings={widget.config?.visibleBindings} />;
 
   return <GenericEquipmentWidget label={label} equipment={equipment} />;
@@ -106,10 +114,12 @@ function LightEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -162,7 +172,7 @@ function LightEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <LightBulbIcon on={isOn} />
+        {resolveWidgetIcon(iconKey, <LightBulbIcon on={isOn} />)}
         <div className="flex items-center gap-2 pl-2">
           {isDimmable && brightness !== null ? (
             <>
@@ -227,10 +237,12 @@ function SwitchEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -267,7 +279,7 @@ function SwitchEquipmentWidget({
       {/* Zone 2: Picto + état */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <PlugWidgetIcon on={isOn} />
+        {resolveWidgetIcon(iconKey, <PlugWidgetIcon on={isOn} />)}
         <div className="flex items-center gap-2 pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -306,10 +318,12 @@ function ShutterEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -361,10 +375,13 @@ function ShutterEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {isAwning ? (
-          <AwningWidgetIcon deployed={position !== null && position > 0} />
-        ) : (
-          <ShutterWidgetIcon level={level} />
+        {resolveWidgetIcon(
+          iconKey,
+          isAwning ? (
+            <AwningWidgetIcon deployed={position !== null && position > 0} />
+          ) : (
+            <ShutterWidgetIcon level={level} />
+          ),
         )}
         <div className="pl-2">
           {position === null ? (
@@ -423,10 +440,12 @@ function ThermostatEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
@@ -486,7 +505,7 @@ function ThermostatEquipmentWidget({
       {/* Zone 2: Picto + temp + power */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <ThermometerIcon warm={isOn} level={thermometerLevel} />
+        {resolveWidgetIcon(iconKey, <ThermometerIcon warm={isOn} level={thermometerLevel} />)}
         <div className="flex flex-col items-start gap-2 pl-2">
           {insideTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
@@ -635,10 +654,12 @@ function HeaterEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -674,7 +695,7 @@ function HeaterEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <HeaterWidgetIcon comfort={isComfort} />
+        {resolveWidgetIcon(iconKey, <HeaterWidgetIcon comfort={isComfort} />)}
         <div className="pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -1017,10 +1038,12 @@ function WaterValveEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -1056,7 +1079,7 @@ function WaterValveEquipmentWidget({
     <WidgetCard label={label}>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <WaterValveWidgetIcon open={isOpen} />
+        {resolveWidgetIcon(iconKey, <WaterValveWidgetIcon open={isOpen} />)}
         <div className="flex items-center gap-2 pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -1102,10 +1125,12 @@ function PoolPumpEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -1153,7 +1178,7 @@ function PoolPumpEquipmentWidget({
     <WidgetCard label={label}>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        <PoolPumpIcon on={isOn} />
+        {resolveWidgetIcon(iconKey, <PoolPumpIcon on={isOn} />)}
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -1194,10 +1219,12 @@ function PoolCoverEquipmentWidget({
   label,
   equipment,
   onExecuteOrder,
+  iconKey,
 }: {
   label: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -1259,7 +1286,7 @@ function PoolCoverEquipmentWidget({
          * viewBox and the dashboard slot reads it slightly low. Mobile
          * containers center it correctly without this offset. */}
         <div className="-mt-3">
-          <PoolCoverIcon position={position} />
+          {resolveWidgetIcon(iconKey, <PoolCoverIcon position={position} />)}
         </div>
         <div className="pl-2">
           {position === null ? (

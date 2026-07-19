@@ -367,14 +367,18 @@ function useMobileState(
 
   if (isWaterValve) {
     return {
-      icon: <WaterValveWidgetIcon open={isOn} />,
+      icon: customEntry
+        ? createElement(customEntry.component, customEntry.previewProps)
+        : <WaterValveWidgetIcon open={isOn} />,
       stateLines: [isOn ? t("water.open") : t("water.closed")],
     };
   }
 
   if (isPoolPump) {
     return {
-      icon: <PoolPumpIcon on={isOn} />,
+      icon: customEntry
+        ? createElement(customEntry.component, customEntry.previewProps)
+        : <PoolPumpIcon on={isOn} />,
       stateLines: [isOn ? "ON" : "OFF"],
     };
   }
@@ -392,7 +396,9 @@ function useMobileState(
           ? `${position}%`
           : null;
     return {
-      icon: <PoolCoverIcon position={position} />,
+      icon: customEntry
+        ? createElement(customEntry.component, customEntry.previewProps)
+        : <PoolCoverIcon position={position} />,
       stateLines: text ? [text] : [],
     };
   }
