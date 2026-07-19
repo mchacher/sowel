@@ -11,6 +11,15 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.29.x: Rôle Standard et parité du dashboard
+
+### v1.29.0 — 2026-07-19 { #v1-29-0 }
+
+- Feat (auth) : le rôle **Standard** est désormais limité à la consultation et au pilotage. Un utilisateur Standard peut parcourir le dashboard et les zones, voir l'état des équipements et actionner les équipements (ouvrir un portail ou une porte, allumer une lumière), mais ne peut plus créer, renommer ou supprimer d'équipements, de recettes, de zones ou de modes, ni modifier la moindre configuration. Toute la configuration est maintenant réservée aux administrateurs, masquée dans l'UI et bloquée côté serveur (une action interdite renvoie 403, donc impossible à contourner). Cela répond à la surprise qu'un compte Standard puisse modifier des équipements et des recettes par accident. Aucune migration nécessaire : les comptes Standard existants perdent simplement les actions de configuration qu'ils n'auraient pas dû avoir. (#319)
+- Fix (ui) : l'icône personnalisée d'un widget s'affiche désormais à l'identique sur navigateur PC et sur mobile. Le dashboard desktop ignorait l'icône personnalisée pour la plupart des types de widgets (une icône de pompe de piscine choisie pour une prise s'affichait sous Android mais repassait à l'icône de prise sur PC) ; il respecte maintenant l'icône choisie pour les lumières, prises, volets, stores, thermostats, chauffages, vannes d'eau et équipements de piscine, comme sur mobile. (#318)
+
+---
+
 ## 1.28.x: Arrosage par jour
 
 ### v1.28.2 — 2026-07-18 { #v1-28-2 }

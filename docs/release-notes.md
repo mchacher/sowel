@@ -11,6 +11,15 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.29.x: Standard role and dashboard parity
+
+### v1.29.0 — 2026-07-19 { #v1-29-0 }
+
+- Feat (auth): the **Standard** role is now scoped to viewing and operating. A Standard user can browse the dashboard and zones, see equipment states, and actuate equipments (open a gate or a door, toggle a light), but can no longer create, rename or delete equipments, recipes, zones or modes, nor change any configuration. All configuration is now admin-only, hidden in the UI and enforced server-side (a blocked action returns 403, so it cannot be worked around). This answers the surprise that a Standard account could alter equipments and recipes by accident. No migration needed: existing Standard accounts simply lose the config actions they should not have had. (#319)
+- Fix (ui): a custom widget icon is now shown identically on a PC browser and on mobile. The desktop dashboard ignored the custom icon for most widget types (a pool-pump icon chosen for a plug showed on Android but reverted to the plug icon on desktop); it now honors the chosen icon for lights, switches, shutters, awnings, thermostats, heaters, water valves and pool equipment, matching mobile. (#318)
+
+---
+
 ## 1.28.x: Watering weekdays
 
 ### v1.28.2 — 2026-07-18 { #v1-28-2 }
