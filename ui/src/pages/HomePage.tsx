@@ -201,7 +201,10 @@ export function HomePage() {
         <div className="space-y-6 min-w-0">
           {zoneId && (
             <Panel title={t("behaviors.title")}>
-              <ZoneModesSection zoneId={zoneId} />
+              {/* Modes are admin-only (activation and config both require admin);
+                  hide the whole management block from standard users. Recipes
+                  stay visible read-only, gated per-button inside the section. */}
+              {isAdmin && <ZoneModesSection zoneId={zoneId} />}
               <ZoneRecipesSection zoneId={zoneId} zoneName={currentZone.name} />
             </Panel>
           )}

@@ -106,7 +106,7 @@ export function ModesPage() {
       ) : (
         <div className="space-y-2 max-w-[720px]">
           {modes.map((mode) => (
-            <ModeCard key={mode.id} mode={mode} calendarSlots={calendarSlots} onClick={() => navigate(`/modes/${mode.id}`)} />
+            <ModeCard key={mode.id} mode={mode} calendarSlots={calendarSlots} canToggle={isAdmin} onClick={() => navigate(`/modes/${mode.id}`)} />
           ))}
         </div>
       )}
@@ -123,7 +123,7 @@ export function ModesPage() {
   );
 }
 
-function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; calendarSlots: CalendarSlot[]; onClick: () => void }) {
+function ModeCard({ mode, calendarSlots, canToggle, onClick }: { mode: ModeWithDetails; calendarSlots: CalendarSlot[]; canToggle: boolean; onClick: () => void }) {
   const { t } = useTranslation();
   const activateMode = useModes((s) => s.activateMode);
   const deactivateMode = useModes((s) => s.deactivateMode);
@@ -186,6 +186,7 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
           )}
         </div>
       </div>
+      {canToggle && (
       <button
         onClick={handleToggle}
         disabled={toggling}
@@ -200,6 +201,7 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
           style={{ transform: mode.active ? "translateX(16px)" : "translateX(0)" }}
         />
       </button>
+      )}
     </div>
   );
 }

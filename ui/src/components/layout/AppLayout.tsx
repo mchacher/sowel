@@ -83,7 +83,11 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Updates pill: combines Sowel core + plugin updates into a single counter.
-  const totalUpdates = pluginUpdateCount + (sowelUpdateAvailable ? 1 : 0);
+  // Applying core/plugin updates is admin-only; hide the update pill (and its
+  // sheet trigger) from standard users. pluginUpdateCount is already 0 for
+  // non-admins, but the core update flag is not role-scoped, so gate here.
+  const totalUpdates =
+    user?.role === "admin" ? pluginUpdateCount + (sowelUpdateAvailable ? 1 : 0) : 0;
   // Alarms pill: red when at least one error, amber otherwise.
   const alarmTone = issues.some((i) => i.level === "error") ? "error" : "warning";
 

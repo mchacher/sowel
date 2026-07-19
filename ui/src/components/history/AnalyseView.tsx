@@ -29,6 +29,7 @@ import {
 } from "recharts";
 import { getEquipments, getZones, getHistoryBindings, getHistoryData, getChart } from "../../api";
 import { useCharts } from "../../store/useCharts";
+import { useAuth } from "../../store/useAuth";
 import type {
   EquipmentWithDetails,
   ZoneWithChildren,
@@ -162,6 +163,10 @@ export function AnalyseView() {
   const updateChartStore = useCharts((s) => s.updateChart);
   const deleteChartStore = useCharts((s) => s.deleteChart);
   const fetchCharts = useCharts((s) => s.fetchCharts);
+  // Saving/deleting charts is a config mutation (rejected server-side for
+  // standard users); hide those controls. Building and viewing a chart stays
+  // available to everyone (series add/remove are local until saved).
+  const canManageCharts = useAuth((s) => s.user?.role === "admin");
 
   // --- Data sources ---
   const [zones, setZones] = useState<ZoneWithChildren[]>([]);
@@ -684,6 +689,8 @@ export function AnalyseView() {
             >
               <Eraser size={14} strokeWidth={1.5} />
             </button>
+            {canManageCharts && (
+            <>
             <button
               type="button"
               onClick={handleSave}
@@ -716,6 +723,8 @@ export function AnalyseView() {
               >
                 <Trash2 size={14} strokeWidth={1.5} />
               </button>
+            )}
+            </>
             )}
           </div>
         )}
