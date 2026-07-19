@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Loader2, AlertCircle, ToggleRight, ToggleLeft, Clock } from "lucide-react";
 import { useModes } from "../store/useModes";
+import { useAuth } from "../store/useAuth";
 import { getActiveCalendar } from "../api";
 import { ModeForm } from "../components/modes/ModeForm";
 import type { ModeWithDetails, CalendarSlot } from "../types";
@@ -16,6 +17,7 @@ export function ModesPage() {
   const loading = useModes((s) => s.loading);
   const fetchModes = useModes((s) => s.fetchModes);
   const createMode = useModes((s) => s.createMode);
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [calendarSlots, setCalendarSlots] = useState<CalendarSlot[]>([]);
@@ -75,6 +77,7 @@ export function ModesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
+          {isAdmin && (
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
@@ -82,6 +85,7 @@ export function ModesPage() {
             <Plus size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">{t("modes.addMode")}</span>
           </button>
+          )}
           <span className="text-[13px] font-medium text-primary bg-primary-light px-3 py-1.5 rounded-[6px] tabular-nums">
             {modes.length}
           </span>

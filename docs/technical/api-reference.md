@@ -52,6 +52,29 @@ Public endpoints -- no auth required for `status` and `setup`.
 
 ---
 
+## Roles & authorization
+
+Two roles exist: `admin` and `standard`. Reads (`GET`) are available to any
+authenticated user. **All configuration mutations are admin-only** (spec 131): a
+`standard` user gets `403 { "error": "Admin access required" }` on any
+`POST/PUT/PATCH/DELETE` except the usage/personal allowlist below. Sections tagged
+**(Admin)** require the admin role; the gate is fail-closed, so any mutating
+endpoint not in the allowlist is admin-only.
+
+**Standard write allowlist** (the only mutations a `standard` may perform):
+
+| Method        | Path                                                          | Purpose                |
+| ------------- | ------------------------------------------------------------- | ---------------------- |
+| POST          | `/api/v1/equipments/:id/orders/:alias`                        | Actuate an equipment   |
+| POST          | `/api/v1/zones/:id/orders/:orderKey`                          | Zone command           |
+| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password` | Own account            |
+| POST / DELETE | `/api/v1/me/tokens[/:id]`                                     | Own API tokens         |
+| POST / DELETE | `/api/v1/push/subscriptions`                                  | Own push subscription  |
+| POST          | `/api/v1/auth/logout`                                         | End own session        |
+
+An API token inherits its creator's role, so a standard-scoped token is subject to
+the same gate (no privilege escalation).
+
 ## Current User (Me)
 
 Authenticated user's own profile and tokens.

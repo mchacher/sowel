@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Fastify from "fastify";
 import { createLogger } from "../core/logger.js";
-import { PUBLIC_ROUTES, isPublicRoute, registerAuthMiddleware } from "./auth-middleware.js";
+import {
+  PUBLIC_ROUTES,
+  isPublicRoute,
+  registerAuthMiddleware,
+  isStandardWriteAllowed,
+  isMutationDeniedForStandard,
+} from "./auth-middleware.js";
 import type { AuthService, JwtPayload } from "./auth-service.js";
 import type { UserManager } from "./user-manager.js";
 
@@ -190,6 +196,109 @@ describe("auth-middleware", () => {
         payload: {},
       });
       expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe("isStandardWriteAllowed / isMutationDeniedForStandard (spec 131)", () => {
+    it("allows the usage + personal write allowlist", () => {
+      expect(isStandardWriteAllowed("POST", "/api/v1/equipments/abc/orders/state")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/zones/z1/orders/allLightsOff")).toBe(true);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/me")).toBe(true);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/me/preferences")).toBe(true);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/me/password")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/me/tokens")).toBe(true);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/me/tokens/tok-1")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/push/subscriptions")).toBe(true);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/push/subscriptions")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/auth/logout")).toBe(true);
+    });
+
+    it("denies config mutations, including near-misses of the orders rule", () => {
+      expect(isStandardWriteAllowed("POST", "/api/v1/equipments")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/equipments/abc")).toBe(false);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/equipments/abc")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/equipments/abc/order-bindings")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/activate")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/recipe-instances/r1/enable")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/dashboard/widgets")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/settings")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/devices/d1")).toBe(false);
+    });
+
+    it("a wrong method on an allowed path is not allowed", () => {
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/equipments/abc/orders/state")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/me")).toBe(false);
+    });
+
+    it("isMutationDeniedForStandard: admin and GET are never denied", () => {
+      expect(isMutationDeniedForStandard("POST", "/api/v1/equipments", "admin")).toBe(false);
+      expect(isMutationDeniedForStandard("DELETE", "/api/v1/zones/z1", "admin")).toBe(false);
+      expect(isMutationDeniedForStandard("GET", "/api/v1/equipments", "standard")).toBe(false);
+    });
+
+    it("isMutationDeniedForStandard: standard denied on config, allowed on usage", () => {
+      expect(isMutationDeniedForStandard("POST", "/api/v1/equipments", "standard")).toBe(true);
+      expect(isMutationDeniedForStandard("POST", "/api/v1/modes/m/activate", "standard")).toBe(true);
+      expect(isMutationDeniedForStandard("POST", "/api/v1/equipments/x/orders/state", "standard")).toBe(false);
+      expect(isMutationDeniedForStandard("PUT", "/api/v1/me/password", "standard")).toBe(false);
+    });
+  });
+
+  describe("role gate — request enforcement (spec 131)", () => {
+    let app: ReturnType<typeof Fastify>;
+    let role: "admin" | "standard";
+
+    beforeEach(async () => {
+      role = "standard";
+      const userManager = { hasUsers: () => true } as unknown as UserManager;
+      const authService = {
+        verifyAccessToken: () => ({ userId: "u1", role }),
+        verifyApiToken: () => ({ userId: "u1", role }),
+      } as unknown as AuthService;
+      app = Fastify({ logger: false });
+      registerAuthMiddleware(app, { authService, userManager, logger });
+      app.get("/api/v1/equipments", async () => ({ ok: true }));
+      app.post("/api/v1/equipments", async () => ({ ok: true }));
+      app.post("/api/v1/equipments/:id/orders/:alias", async () => ({ ok: true }));
+      app.delete("/api/v1/zones/:id", async () => ({ ok: true }));
+      app.post("/api/v1/modes/:id/activate", async () => ({ ok: true }));
+      app.put("/api/v1/me/password", async () => ({ ok: true }));
+      await app.ready();
+    });
+
+    afterEach(async () => {
+      await app.close();
+    });
+
+    const auth = { authorization: "Bearer header.payload.sig" };
+
+    it("standard: reads pass", async () => {
+      const res = await app.inject({ method: "GET", url: "/api/v1/equipments", headers: auth });
+      expect(res.statusCode).toBe(200);
+    });
+
+    it("standard: config mutations are 403", async () => {
+      expect((await app.inject({ method: "POST", url: "/api/v1/equipments", headers: auth })).statusCode).toBe(403);
+      expect((await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode).toBe(403);
+      expect((await app.inject({ method: "POST", url: "/api/v1/modes/m/activate", headers: auth })).statusCode).toBe(403);
+    });
+
+    it("standard: allowlisted usage mutations pass, even with a query string", async () => {
+      expect((await app.inject({ method: "POST", url: "/api/v1/equipments/e1/orders/state", headers: auth })).statusCode).toBe(200);
+      expect((await app.inject({ method: "POST", url: "/api/v1/equipments/e1/orders/state?foo=1", headers: auth })).statusCode).toBe(200);
+      expect((await app.inject({ method: "PUT", url: "/api/v1/me/password", headers: auth })).statusCode).toBe(200);
+    });
+
+    it("admin: every mutation passes", async () => {
+      role = "admin";
+      expect((await app.inject({ method: "POST", url: "/api/v1/equipments", headers: auth })).statusCode).toBe(200);
+      expect((await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode).toBe(200);
+    });
+
+    it("standard-scoped API token: config 403, usage 200 (no escalation)", async () => {
+      const tok = { authorization: "Bearer swl_standardtoken" };
+      expect((await app.inject({ method: "POST", url: "/api/v1/equipments", headers: tok })).statusCode).toBe(403);
+      expect((await app.inject({ method: "POST", url: "/api/v1/equipments/e1/orders/state", headers: tok })).statusCode).toBe(200);
     });
   });
 });

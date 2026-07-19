@@ -5,6 +5,7 @@ import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
+import { useAuth } from "../../store/useAuth";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
@@ -115,6 +116,7 @@ interface ZoneRecipesSectionProps {
 
 export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps) {
   const { t } = useTranslation();
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const recipes = useRecipes((s) => s.recipes);
   const instances = useRecipes((s) => s.instances);
   const fetchRecipes = useRecipes((s) => s.fetchRecipes);
@@ -164,6 +166,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         <span className="text-[10.9px] text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
           {zoneInstances.length}
         </span>
+        {isAdmin && (
         <div ref={pickerWrapRef} className="relative ml-2">
           <button
             onClick={() => setShowPicker((v) => !v)}
@@ -181,6 +184,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
             />
           )}
         </div>
+        )}
       </div>
 
       {zoneInstances.length > 0 && (
@@ -194,12 +198,14 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
       {zoneInstances.length === 0 && !pickedRecipeId && (
         <div className="flex items-center justify-center gap-2 px-4 py-3 text-[12px] text-text-tertiary">
           <span>{t("recipes.noActiveRecipes", { name: zoneName })}</span>
-          <button
-            onClick={() => setShowPicker(true)}
-            className="text-primary hover:text-primary-hover transition-colors duration-150"
-          >
-            {t("recipes.addRecipe")}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowPicker(true)}
+              className="text-primary hover:text-primary-hover transition-colors duration-150"
+            >
+              {t("recipes.addRecipe")}
+            </button>
+          )}
         </div>
       )}
 
@@ -444,6 +450,7 @@ function RecipeInstanceRow({
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const deleteInstance = useRecipes((s) => s.deleteInstance);
   const updateInstance = useRecipes((s) => s.updateInstance);
   const enableInstance = useRecipes((s) => s.enableInstance);
@@ -695,9 +702,9 @@ function RecipeInstanceRow({
         {/* Row 1 col 2: name + inline pills */}
         <div className="col-start-2 row-start-1 flex items-center gap-2 min-w-0">
           <button
-            onClick={handleStartEdit}
-            className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity duration-150"
-            title="Edit"
+            onClick={isAdmin ? handleStartEdit : undefined}
+            className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
+            title={isAdmin ? "Edit" : undefined}
           >
             <div className="text-[14px] font-medium text-text truncate">
               {displayName}
@@ -727,7 +734,8 @@ function RecipeInstanceRow({
             />
           ))}
         </div>
-        {/* Row 1 col 3: toggle */}
+        {/* Row 1 col 3: toggle (admin only — enable/disable is config) */}
+        {isAdmin && (
         <button
           onClick={handleToggleEnabled}
           disabled={toggling}
@@ -742,7 +750,9 @@ function RecipeInstanceRow({
             style={{ transform: instance.enabled ? "translateX(14px)" : "translateX(0)" }}
           />
         </button>
-        {/* Row 2: compact action buttons (col 2-3 span, mock .recipe__action: 22x20, svg 12px) */}
+        )}
+        {/* Row 2: compact action buttons — admin only (log / duplicate / delete are config) */}
+        {isAdmin && (
         <div className="col-start-2 col-span-2 row-start-2 hidden sm:flex items-center gap-[2px]">
           <button
             onClick={handleShowLog}
@@ -767,6 +777,7 @@ function RecipeInstanceRow({
             <Trash2 size={12} strokeWidth={1.5} />
           </button>
         </div>
+        )}
       </div>
 
       {/* Duplicate modal */}

@@ -12,6 +12,7 @@ import { useModes } from "../store/useModes";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
+import { useAuth } from "../store/useAuth";
 import { ModeForm } from "../components/modes/ModeForm";
 import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
@@ -19,6 +20,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 export function ModeDetailPage() {
   useWsSubscription(["modes"]);
   const { t } = useTranslation();
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const { id } = useParams();
   const navigate = useNavigate();
   const updateMode = useModes((s) => s.updateMode);
@@ -159,6 +161,7 @@ export function ModeDetailPage() {
             )}
           </div>
         </div>
+        {isAdmin && (
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={handleToggle}
@@ -188,6 +191,7 @@ export function ModeDetailPage() {
             <Trash2 size={14} strokeWidth={1.5} />
           </button>
         </div>
+        )}
       </div>
 
       <div className="space-y-6 max-w-[720px]">
