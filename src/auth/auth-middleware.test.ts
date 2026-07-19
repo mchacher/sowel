@@ -238,8 +238,12 @@ describe("auth-middleware", () => {
 
     it("isMutationDeniedForStandard: standard denied on config, allowed on usage", () => {
       expect(isMutationDeniedForStandard("POST", "/api/v1/equipments", "standard")).toBe(true);
-      expect(isMutationDeniedForStandard("POST", "/api/v1/modes/m/activate", "standard")).toBe(true);
-      expect(isMutationDeniedForStandard("POST", "/api/v1/equipments/x/orders/state", "standard")).toBe(false);
+      expect(isMutationDeniedForStandard("POST", "/api/v1/modes/m/activate", "standard")).toBe(
+        true,
+      );
+      expect(
+        isMutationDeniedForStandard("POST", "/api/v1/equipments/x/orders/state", "standard"),
+      ).toBe(false);
       expect(isMutationDeniedForStandard("PUT", "/api/v1/me/password", "standard")).toBe(false);
     });
   });
@@ -278,27 +282,66 @@ describe("auth-middleware", () => {
     });
 
     it("standard: config mutations are 403", async () => {
-      expect((await app.inject({ method: "POST", url: "/api/v1/equipments", headers: auth })).statusCode).toBe(403);
-      expect((await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode).toBe(403);
-      expect((await app.inject({ method: "POST", url: "/api/v1/modes/m/activate", headers: auth })).statusCode).toBe(403);
+      expect(
+        (await app.inject({ method: "POST", url: "/api/v1/equipments", headers: auth })).statusCode,
+      ).toBe(403);
+      expect(
+        (await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode,
+      ).toBe(403);
+      expect(
+        (await app.inject({ method: "POST", url: "/api/v1/modes/m/activate", headers: auth }))
+          .statusCode,
+      ).toBe(403);
     });
 
     it("standard: allowlisted usage mutations pass, even with a query string", async () => {
-      expect((await app.inject({ method: "POST", url: "/api/v1/equipments/e1/orders/state", headers: auth })).statusCode).toBe(200);
-      expect((await app.inject({ method: "POST", url: "/api/v1/equipments/e1/orders/state?foo=1", headers: auth })).statusCode).toBe(200);
-      expect((await app.inject({ method: "PUT", url: "/api/v1/me/password", headers: auth })).statusCode).toBe(200);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/v1/equipments/e1/orders/state",
+            headers: auth,
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/v1/equipments/e1/orders/state?foo=1",
+            headers: auth,
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(
+        (await app.inject({ method: "PUT", url: "/api/v1/me/password", headers: auth })).statusCode,
+      ).toBe(200);
     });
 
     it("admin: every mutation passes", async () => {
       role = "admin";
-      expect((await app.inject({ method: "POST", url: "/api/v1/equipments", headers: auth })).statusCode).toBe(200);
-      expect((await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode).toBe(200);
+      expect(
+        (await app.inject({ method: "POST", url: "/api/v1/equipments", headers: auth })).statusCode,
+      ).toBe(200);
+      expect(
+        (await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode,
+      ).toBe(200);
     });
 
     it("standard-scoped API token: config 403, usage 200 (no escalation)", async () => {
       const tok = { authorization: "Bearer swl_standardtoken" };
-      expect((await app.inject({ method: "POST", url: "/api/v1/equipments", headers: tok })).statusCode).toBe(403);
-      expect((await app.inject({ method: "POST", url: "/api/v1/equipments/e1/orders/state", headers: tok })).statusCode).toBe(200);
+      expect(
+        (await app.inject({ method: "POST", url: "/api/v1/equipments", headers: tok })).statusCode,
+      ).toBe(403);
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/v1/equipments/e1/orders/state",
+            headers: tok,
+          })
+        ).statusCode,
+      ).toBe(200);
     });
   });
 });

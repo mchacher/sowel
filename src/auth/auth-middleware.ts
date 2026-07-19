@@ -139,7 +139,9 @@ export function registerAuthMiddleware(
 
     // Role gate (spec 131): a non-admin may only run the allowlisted usage
     // mutations (actuate + own account); every other write is admin-only.
-    if (isMutationDeniedForStandard(request.method, request.url.split("?")[0], request.auth?.role)) {
+    if (
+      isMutationDeniedForStandard(request.method, request.url.split("?")[0], request.auth?.role)
+    ) {
       return reply.code(403).send({ error: "Admin access required" });
     }
   });
