@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { MqttPublisherManager } from "../../mqtt-publishers/mqtt-publisher-manager.js";
 import type { MqttPublishService } from "../../mqtt-publishers/mqtt-publish-service.js";
 import { MqttPublisherError } from "../../mqtt-publishers/mqtt-publisher-manager.js";
+import { requireAdmin } from "../../auth/auth-middleware.js";
 
 interface MqttPublishersDeps {
   mqttPublisherManager: MqttPublisherManager;
@@ -10,6 +11,11 @@ interface MqttPublishersDeps {
 
 export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPublishersDeps): void {
   const { mqttPublisherManager, mqttPublishService } = deps;
+
+  // Admin only: publisher/mapping config is infrastructure — gate reads too.
+  app.addHook("onRequest", async (request, reply) => {
+    if (request.url.startsWith("/api/v1/mqtt-publishers")) requireAdmin(request, reply);
+  });
 
   // GET /api/v1/mqtt-publishers
   app.get("/api/v1/mqtt-publishers", async () => {

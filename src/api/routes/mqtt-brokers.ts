@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { MqttBrokerManager } from "../../mqtt-publishers/mqtt-broker-manager.js";
 import { MqttBrokerError } from "../../mqtt-publishers/mqtt-broker-manager.js";
+import { requireAdmin } from "../../auth/auth-middleware.js";
 
 interface MqttBrokersDeps {
   mqttBrokerManager: MqttBrokerManager;
@@ -8,6 +9,12 @@ interface MqttBrokersDeps {
 
 export function registerMqttBrokerRoutes(app: FastifyInstance, deps: MqttBrokersDeps): void {
   const { mqttBrokerManager } = deps;
+
+  // Admin only: broker config carries plaintext passwords, so even the GET
+  // reads must be gated (spec 131 — the mutation gate does not cover reads).
+  app.addHook("onRequest", async (request, reply) => {
+    if (request.url.startsWith("/api/v1/mqtt-brokers")) requireAdmin(request, reply);
+  });
 
   // GET /api/v1/mqtt-brokers
   app.get("/api/v1/mqtt-brokers", async () => {

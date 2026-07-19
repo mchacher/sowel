@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useZones } from "../store/useZones";
+import { useAuth } from "../store/useAuth";
 import { ZoneTree } from "../components/zones/ZoneTree";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
 import { Home, Loader2, Plus } from "lucide-react";
@@ -9,6 +10,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 export function ZonesPage() {
   useWsSubscription(["zones"]);
   const { t } = useTranslation();
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const tree = useZones((s) => s.tree);
   const loading = useZones((s) => s.loading);
   const error = useZones((s) => s.error);
@@ -39,6 +41,7 @@ export function ZonesPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {isAdmin && (
           <button
             onClick={() => { setDefaultParentId(null); setShowForm(true); }}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
@@ -46,6 +49,7 @@ export function ZonesPage() {
             <Plus size={16} strokeWidth={1.5} />
             {t("zones.addZone")}
           </button>
+          )}
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
             <Home size={16} strokeWidth={1.5} />

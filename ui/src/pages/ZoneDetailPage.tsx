@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useZones } from "../store/useZones";
+import { useAuth } from "../store/useAuth";
 import { useRecipes } from "../store/useRecipes";
 import { getZone } from "../api";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
@@ -103,6 +104,7 @@ export function ZoneDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const tree = useZones((s) => s.tree);
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const updateZone = useZones((s) => s.updateZone);
   const deleteZone = useZones((s) => s.deleteZone);
   const recipes = useRecipes((s) => s.recipes);
@@ -233,6 +235,7 @@ export function ZoneDetailPage() {
             <p className="text-[14px] text-text-secondary mt-1">{zone.description}</p>
           )}
         </div>
+        {isAdmin && (
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
@@ -254,6 +257,7 @@ export function ZoneDetailPage() {
             </button>
           )}
         </div>
+        )}
       </div>
 
       {/* Child zones section */}

@@ -55,6 +55,21 @@ if (MUTATING.has(method) && request.auth?.role !== "admin") {
 already denies non-admins there). **Keep them** as defense-in-depth and explicit
 intent — they are harmless (the hook 403s first for standard; for admin both pass).
 
+### Secret-bearing reads must also be admin-gated (added after review)
+
+The mutation gate deliberately does not touch `GET`. But a few config `GET`
+reads return **secrets** (MQTT broker plaintext passwords, notification channel
+config with the Telegram `botToken` / webhook URLs). Leaving them open to a
+`standard` user is an out-of-band escalation (read the broker password, then
+drive the broker directly). These whole prefixes are admin-only config areas, so
+they get a per-prefix `onRequest` `requireAdmin` hook (same pattern as
+`users.ts`), gating their reads and writes:
+
+- `src/api/routes/mqtt-brokers.ts`, `src/api/routes/mqtt-publishers.ts`,
+  `src/api/routes/notification-publishers.ts`.
+
+(`GET /settings` and `GET /integrations` already redact/gate their secrets.)
+
 ### Why a central hook, not per-route `requireAdmin`
 The standard-permitted set is tiny (10 templates) and the config set is large and
 grows over time. A per-route opt-in would eventually forget a new mutating endpoint,

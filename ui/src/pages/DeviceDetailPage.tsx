@@ -13,6 +13,7 @@ import {
 import type { DeviceOrder, DeviceWithDetails } from "../types";
 import { getDevice, getDeviceRawExpose, deleteDevice } from "../api";
 import { useDevices } from "../store/useDevices";
+import { useAuth } from "../store/useAuth";
 import { DeviceNameEditor } from "../components/devices/DeviceNameEditor";
 import { DeviceDataTable } from "../components/devices/DeviceDataTable";
 import { sourceLabel } from "../lib/format";
@@ -24,6 +25,7 @@ export function DeviceDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const updateDeviceName = useDevices((s) => s.updateDeviceName);
 
   // Device from store (real-time updates)
@@ -122,10 +124,14 @@ export function DeviceDetailPage() {
             <Radio size={24} strokeWidth={1.5} className="text-primary" />
           </div>
           <div>
-            <DeviceNameEditor
-              name={device.name}
-              onSave={(name) => updateDeviceName(device.id, name)}
-            />
+            {isAdmin ? (
+              <DeviceNameEditor
+                name={device.name}
+                onSave={(name) => updateDeviceName(device.id, name)}
+              />
+            ) : (
+              <div className="text-[18px] font-semibold text-text">{device.name}</div>
+            )}
             <div className="flex items-center gap-3 mt-1.5">
               <StatusBadge status={device.status} />
               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-border-light text-[11px] font-medium text-text-secondary">
@@ -139,6 +145,7 @@ export function DeviceDetailPage() {
             </div>
           </div>
         </div>
+        {isAdmin && (
         <button
           onClick={handleDelete}
           disabled={deleting}
@@ -147,6 +154,7 @@ export function DeviceDetailPage() {
           <Trash2 size={14} strokeWidth={1.5} />
           {deleting ? t("common.deleting") : t("common.delete")}
         </button>
+        )}
       </div>
 
       {/* Info bar */}
