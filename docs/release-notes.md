@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.29.x: Standard role and dashboard parity
 
+### v1.29.1 — 2026-07-19 { #v1-29-1 }
+
+- Fix (auth): follow-up to the v1.29.0 Standard role. A Standard user could still see config controls that the server rejects with a 403 (Edit / Delete on an equipment, the equipment Configuration panel, mode activation, chart save / delete, the update pill). These are now hidden, and the config-only pages (devices, calendar, integrations, plugins, MQTT / notification publishers, logs, backup) redirect a Standard user to the dashboard. Actuation (lights, gates, shutters, zone commands) and personal settings (profile, password, API tokens) are unchanged. (#319)
+
 ### v1.29.0 — 2026-07-19 { #v1-29-0 }
 
 - Feat (auth): the **Standard** role is now scoped to viewing and operating. A Standard user can browse the dashboard and zones, see equipment states, and actuate equipments (open a gate or a door, toggle a light), but can no longer create, rename or delete equipments, recipes, zones or modes, nor change any configuration. All configuration is now admin-only, hidden in the UI and enforced server-side (a blocked action returns 403, so it cannot be worked around). This answers the surprise that a Standard account could alter equipments and recipes by accident. No migration needed: existing Standard accounts simply lose the config actions they should not have had. (#319)

@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.29.x: Rôle Standard et parité du dashboard
 
+### v1.29.1 — 2026-07-19 { #v1-29-1 }
+
+- Fix (auth) : suite du rôle Standard de la v1.29.0. Un compte Standard pouvait encore voir des contrôles de configuration que le serveur refuse avec un 403 (Modifier / Supprimer sur un équipement, le panneau Configuration d'un équipement, l'activation d'un mode, la sauvegarde / suppression de graphe, la pastille de mise à jour). Ils sont désormais masqués, et les pages purement de configuration (appareils, calendrier, intégrations, plugins, publishers MQTT / notifications, logs, sauvegarde) redirigent un compte Standard vers le tableau de bord. Le pilotage (lumières, portails, volets, commandes de zone) et les réglages personnels (profil, mot de passe, jetons API) ne changent pas. (#319)
+
 ### v1.29.0 — 2026-07-19 { #v1-29-0 }
 
 - Feat (auth) : le rôle **Standard** est désormais limité à la consultation et au pilotage. Un utilisateur Standard peut parcourir le dashboard et les zones, voir l'état des équipements et actionner les équipements (ouvrir un portail ou une porte, allumer une lumière), mais ne peut plus créer, renommer ou supprimer d'équipements, de recettes, de zones ou de modes, ni modifier la moindre configuration. Toute la configuration est maintenant réservée aux administrateurs, masquée dans l'UI et bloquée côté serveur (une action interdite renvoie 403, donc impossible à contourner). Cela répond à la surprise qu'un compte Standard puisse modifier des équipements et des recettes par accident. Aucune migration nécessaire : les comptes Standard existants perdent simplement les actions de configuration qu'ils n'auraient pas dû avoir. (#319)
