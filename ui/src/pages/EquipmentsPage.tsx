@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
+import { useAuth } from "../store/useAuth";
 import { EquipmentCard } from "../components/equipments/EquipmentCard";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
@@ -21,6 +22,7 @@ export function EquipmentsPage() {
   const executeOrder = useEquipments((s) => s.executeOrder);
   const tree = useZones((s) => s.tree);
   const fetchZones = useZones((s) => s.fetchZones);
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
 
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("");
@@ -67,6 +69,7 @@ export function EquipmentsPage() {
             </div>
           )}
 
+          {isAdmin && (
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
@@ -74,6 +77,7 @@ export function EquipmentsPage() {
             <Plus size={16} strokeWidth={1.5} />
             {t("equipments.addEquipment")}
           </button>
+          )}
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
             <Box size={16} strokeWidth={1.5} />
@@ -92,7 +96,7 @@ export function EquipmentsPage() {
       ) : error ? (
         <ErrorState error={error} />
       ) : equipments.length === 0 ? (
-        <EmptyState onAdd={() => setShowForm(true)} />
+        <EmptyState onAdd={() => setShowForm(true)} canCreate={isAdmin} />
       ) : (
         <div className="space-y-6">
           {byZone.map(({ zoneName, equipments: zoneEquipments }) => (
@@ -185,7 +189,7 @@ function groupByZone(
     .map(([zoneName, eqs]) => ({ zoneName, equipments: eqs }));
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd, canCreate }: { onAdd: () => void; canCreate: boolean }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -196,12 +200,14 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
         {t("equipments.empty.message")}
       </p>
-      <button
-        onClick={onAdd}
-        className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
-      >
-        {t("equipments.createEquipment")}
-      </button>
+      {canCreate && (
+        <button
+          onClick={onAdd}
+          className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+        >
+          {t("equipments.createEquipment")}
+        </button>
+      )}
     </div>
   );
 }

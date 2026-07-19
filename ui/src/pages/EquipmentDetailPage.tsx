@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
+import { useAuth } from "../store/useAuth";
 import { getEquipment, getHistoryBindings, setHistorize } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
@@ -71,6 +72,7 @@ export function EquipmentDetailPage() {
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
   const tree = useZones((s) => s.tree);
   const fetchZones = useZones((s) => s.fetchZones);
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
 
   const [equipment, setEquipment] = useState<EquipmentWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -233,6 +235,7 @@ export function EquipmentDetailPage() {
             )}
           </div>
         </div>
+        {isAdmin && (
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
@@ -252,6 +255,7 @@ export function EquipmentDetailPage() {
             <span className="hidden sm:inline">{deleting ? t("common.deleting") : t("common.delete")}</span>
           </button>
         </div>
+        )}
       </div>
 
       {/* Controls — light and switch (smart plug) share the ON/OFF toggle surface */}
@@ -394,15 +398,16 @@ export function EquipmentDetailPage() {
         />
       )}
 
-      {/* Button actions */}
-      {equipment.type === "button" && (
+      {/* Button actions — config, admin only */}
+      {equipment.type === "button" && isAdmin && (
         <ButtonActionsSection equipmentId={equipment.id} />
       )}
 
       {/* History charts */}
       <HistoryPanel equipmentId={equipment.id} bindings={historyBindings} />
 
-      {/* Configuration */}
+      {/* Configuration — admin only (bindings, devices, history config) */}
+      {isAdmin && (
       <div className="bg-surface rounded-[10px] border border-border mb-6 divide-y divide-border-light">
         <div className="flex items-center gap-2 p-4">
           <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
@@ -540,6 +545,7 @@ export function EquipmentDetailPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Edit equipment modal */}
       {showEditForm && (
