@@ -87,15 +87,15 @@
     "id": "legrand_control",
     "type": "integration",
     "name": "Legrand Control",
-    "description": "Legrand Home+Control — lights, shutters, plugs, contactors",
+    "description": "Legrand & Bubendorff/iDiamant Home+Control — lights, shutters, plugs, contactors",
     "icon": "PlugZap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-control",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "tags": ["legrand", "netatmo", "light", "shutter", "plug"],
     "sowelVersion": ">=1.2.12",
     "owner": "mchacher",
-    "sha256": "e4a2a65750dc5d6d5be5dfe01814b1bc52809091846b391583253095ddf6a3c6"
+    "sha256": "7dfd93114b00a4f7d8116143d79945c5fcc540855d2d7bee8acd89cb9bccaefe"
   },
   {
     "id": "netatmo_weather",
