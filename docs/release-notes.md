@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.29.x: Standard role and dashboard parity
 
+### v1.29.2 — 2026-07-20 { #v1-29-2 }
+
+- Fix (ui): the shutter Stop button is now hidden when the bridge cannot actually stop the motor mid-travel. Some bridges (confirmed on Bubendorff shutters via an iDiamant with Netatmo bridge) only pause briefly before continuing to the original target, so a Stop button there was misleading. An integration signals this by omitting "STOP" from the move order; every shutter that keeps a real Stop is unaffected. (#327)
+- Fix (equipments): shutter auto-binding now works for integrations that do not use Tasmota-style key names. Adding a shutter whose device exposes current_position / target_position / state (e.g. Legrand / Bubendorff Home+Control) produced an equipment with no bindings, shown as offline; a category-based fallback now binds it correctly. (#327)
+
 ### v1.29.1 — 2026-07-19 { #v1-29-1 }
 
 - Fix (auth): follow-up to the v1.29.0 Standard role. A Standard user could still see config controls that the server rejects with a 403 (Edit / Delete on an equipment, the equipment Configuration panel, mode activation, chart save / delete, the update pill). These are now hidden, and the config-only pages (devices, calendar, integrations, plugins, MQTT / notification publishers, logs, backup) redirect a Standard user to the dashboard. Actuation (lights, gates, shutters, zone commands) and personal settings (profile, password, API tokens) are unchanged. (#319)

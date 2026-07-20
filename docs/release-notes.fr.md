@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.29.x: Rôle Standard et parité du dashboard
 
+### v1.29.2 — 2026-07-20 { #v1-29-2 }
+
+- Fix (ui) : le bouton Stop d'un volet est désormais masqué quand le pont ne peut pas réellement arrêter le moteur en cours de course. Certains ponts (confirmé sur des volets Bubendorff via un pont iDiamant with Netatmo) ne font qu'une brève pause avant de repartir vers la cible initiale ; un bouton Stop y était donc trompeur. Une intégration le signale en omettant « STOP » de l'ordre de mouvement ; les volets qui gardent un vrai Stop ne changent pas. (#327)
+- Fix (equipments) : l'auto-liaison d'un volet fonctionne maintenant pour les intégrations qui n'utilisent pas les noms de clés à la Tasmota. Ajouter un volet dont l'appareil expose current_position / target_position / state (ex. Legrand / Bubendorff Home+Control) créait un équipement sans aucune liaison, affiché hors ligne ; une bascule basée sur la catégorie le lie désormais correctement. (#327)
+
 ### v1.29.1 — 2026-07-19 { #v1-29-1 }
 
 - Fix (auth) : suite du rôle Standard de la v1.29.0. Un compte Standard pouvait encore voir des contrôles de configuration que le serveur refuse avec un 403 (Modifier / Supprimer sur un équipement, le panneau Configuration d'un équipement, l'activation d'un mode, la sauvegarde / suppression de graphe, la pastille de mise à jour). Ils sont désormais masqués, et les pages purement de configuration (appareils, calendrier, intégrations, plugins, publishers MQTT / notifications, logs, sauvegarde) redirigent un compte Standard vers le tableau de bord. Le pilotage (lumières, portails, volets, commandes de zone) et les réglages personnels (profil, mot de passe, jetons API) ne changent pas. (#319)
