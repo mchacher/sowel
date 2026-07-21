@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.29.x: Standard role and dashboard parity
 
+### v1.29.3 — 2026-07-21 { #v1-29-3 }
+
+- Fix (ui): the bulk "Stop all shutters" / "Stop all awnings" commands (zone toolbar, whole house, dashboard zone widget and its detail sheet, and the physical button-action picker) are now hidden when any shutter in scope cannot actually stop mid-travel (e.g. Bubendorff via iDiamant). This extends the single-shutter fix from v1.29.2 to grouped commands, which act on the whole zone subtree. Groups where every shutter supports Stop are unaffected. (#332)
+
 ### v1.29.2 — 2026-07-20 { #v1-29-2 }
 
 - Fix (ui): the shutter Stop button is now hidden when the bridge cannot actually stop the motor mid-travel. Some bridges (confirmed on Bubendorff shutters via an iDiamant with Netatmo bridge) only pause briefly before continuing to the original target, so a Stop button there was misleading. An integration signals this by omitting "STOP" from the move order; every shutter that keeps a real Stop is unaffected. (#327)

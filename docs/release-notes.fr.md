@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.29.x: Rôle Standard et parité du dashboard
 
+### v1.29.3 — 2026-07-21 { #v1-29-3 }
+
+- Fix (ui) : les commandes groupées « Arrêter tous les volets » / « Arrêter tous les stores » (barre de zone, maison entière, widget de zone du tableau de bord et sa feuille de détail, et le sélecteur d'action bouton) sont désormais masquées quand un volet du périmètre ne peut pas réellement s'arrêter en cours de course (ex. Bubendorff via iDiamant). Cela étend le correctif volet unique de la v1.29.2 aux commandes de groupe, qui agissent sur tout le sous-arbre de la zone. Les groupes dont tous les volets gèrent le Stop ne changent pas. (#332)
+
 ### v1.29.2 — 2026-07-20 { #v1-29-2 }
 
 - Fix (ui) : le bouton Stop d'un volet est désormais masqué quand le pont ne peut pas réellement arrêter le moteur en cours de course. Certains ponts (confirmé sur des volets Bubendorff via un pont iDiamant with Netatmo) ne font qu'une brève pause avant de repartir vers la cible initiale ; un bouton Stop y était donc trompeur. Une intégration le signale en omettant « STOP » de l'ordre de mouvement ; les volets qui gardent un vrai Stop ne changent pas. (#327)
