@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.29.x: Rôle Standard et parité du dashboard
 
+### v1.29.4 — 2026-07-26 { #v1-29-4 }
+
+- Fix (ui) : le tooltip du graphe de pluie affichait la mauvaise barre en vue 7 jours. Une fenêtre de 7 jours affiche 8 barres quotidiennes, donc le jour de semaine servant de clé se répétait et survoler une barre pouvait montrer la valeur d'un autre jour (ex. survoler la barre ~1 mm d'aujourd'hui affichait « dimanche 19 / 0 mm »). Les barres sont désormais indexées sur leur horodatage. (#334)
+- Fix (history) : les totaux de pluie tombaient à ~0 mm en vue 30 jours. La pluie est un cumul, mais l'historique journalier ne stockait que la moyenne (environ le total divisé par 24). Le total journalier est maintenant sommé à partir des données horaires, donc la vue 30 jours affiche les vrais totaux, cohérents avec les vues 24h et 7 jours (déjà correctes). (#334)
+
 ### v1.29.3 — 2026-07-21 { #v1-29-3 }
 
 - Fix (ui) : les commandes groupées « Arrêter tous les volets » / « Arrêter tous les stores » (barre de zone, maison entière, widget de zone du tableau de bord et sa feuille de détail, et le sélecteur d'action bouton) sont désormais masquées quand un volet du périmètre ne peut pas réellement s'arrêter en cours de course (ex. Bubendorff via iDiamant). Cela étend le correctif volet unique de la v1.29.2 aux commandes de groupe, qui agissent sur tout le sous-arbre de la zone. Les groupes dont tous les volets gèrent le Stop ne changent pas. (#332)

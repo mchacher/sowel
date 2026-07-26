@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.29.x: Standard role and dashboard parity
 
+### v1.29.4 — 2026-07-26 { #v1-29-4 }
+
+- Fix (ui): the rain barchart tooltip showed the wrong bar on the 7-day view. A 7-day window renders 8 daily bars, so the weekday used as the chart key repeated and hovering one bar could show another day's value (e.g. hovering today's ~1 mm bar showed "Sunday 19 / 0 mm"). Bars are now keyed on their timestamp. (#334)
+- Fix (history): rain totals collapsed to ~0 mm on the 30-day view. Rain is a cumulative total but the daily history stored only the average (about the total divided by 24). Daily rain is now summed from the hourly data, so the 30-day view shows real totals, matching the 24h and 7-day views (which were already correct). (#334)
+
 ### v1.29.3 — 2026-07-21 { #v1-29-3 }
 
 - Fix (ui): the bulk "Stop all shutters" / "Stop all awnings" commands (zone toolbar, whole house, dashboard zone widget and its detail sheet, and the physical button-action picker) are now hidden when any shutter in scope cannot actually stop mid-travel (e.g. Bubendorff via iDiamant). This extends the single-shutter fix from v1.29.2 to grouped commands, which act on the whole zone subtree. Groups where every shutter supports Stop are unaffected. (#332)
