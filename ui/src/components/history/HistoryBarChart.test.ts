@@ -161,4 +161,25 @@ describe("formatLabel", () => {
     const r = formatLabel("2026-01-05T12:00:00.000Z", "30d");
     expect(r.line1).toBe("05/01");
   });
+
+  it("produces a duplicate weekday across an 8-day span — why the chart keys on time, not label", () => {
+    // A 7-day window renders 8 daily bars, so the weekday (`line1`) repeats
+    // (two Sundays here). Recharts previously keyed the bars on this label and
+    // resolved a hovered bar to the FIRST one sharing the weekday, so hovering
+    // "Sun 26" showed "Sun 19 / 0 mm". HistoryBarChart now keys the axis on the
+    // unique `time`; this guards the invariant that `label` alone is not unique.
+    const days = [
+      "2026-07-19T12:00:00.000Z", // Sunday
+      "2026-07-20T12:00:00.000Z",
+      "2026-07-21T12:00:00.000Z",
+      "2026-07-22T12:00:00.000Z",
+      "2026-07-23T12:00:00.000Z",
+      "2026-07-24T12:00:00.000Z",
+      "2026-07-25T12:00:00.000Z",
+      "2026-07-26T12:00:00.000Z", // Sunday again — duplicate weekday label
+    ];
+    const labels = days.map((d) => formatLabel(d, "7d").line1);
+    expect(new Set(labels).size).toBeLessThan(labels.length);
+    expect(new Set(days).size).toBe(days.length);
+  });
 });

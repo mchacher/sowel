@@ -57,6 +57,13 @@ function resolveBucket(baseBucket: string, resolution: Resolution, category?: st
     if (resolution === "1d") return `${baseBucket}-energy-daily`;
     return baseBucket;
   }
+  // Non-energy cumulative categories (rain) always read the hourly-mean bucket
+  // and re-sum in the query. The daily bucket only stores the *mean*, which
+  // collapses a day's rain total to ~total/24 (0mm on the 30d view). The
+  // hourly bucket's 90-day retention covers the 30d window.
+  if (CUMULATIVE_CATEGORIES.has(category ?? "")) {
+    return resolution === "raw" ? baseBucket : `${baseBucket}-hourly`;
+  }
   if (resolution === "1h") return `${baseBucket}-hourly`;
   if (resolution === "1d") return `${baseBucket}-daily`;
   return baseBucket;
@@ -90,6 +97,22 @@ export function buildFluxQuery(params: {
   // there. Read the mean field directly — no aggregateWindow needed since the bucket
   // already matches the resolution.
   if (isDownsampled && resolution !== "raw") {
+    // Non-energy cumulative categories (rain): the resolved bucket is the
+    // hourly-mean bucket (see resolveBucket). Sum the hourly means into the
+    // target window so a day's total is the *sum*, not the mean (~total/24).
+    // Energy uses its own pre-summed buckets and keeps the direct mean read.
+    if (CUMULATIVE_CATEGORIES.has(category ?? "") && category !== "energy") {
+      const every = resolution === "1h" ? "1h" : "1d";
+      return `from(bucket: "${bucket}")
+  |> range(start: ${fromStr}, stop: ${toStr})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "mean")
+  |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start")
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
+    }
     return `from(bucket: "${bucket}")
   |> range(start: ${fromStr}, stop: ${toStr})
   |> filter(fn: (r) => r._measurement == "equipment_data")

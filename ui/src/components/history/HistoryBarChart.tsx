@@ -210,7 +210,13 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
       <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
         <XAxis
-          dataKey="label"
+          // Use the unique timestamp as the category key. `label` (the weekday
+          // on 7d) is NOT unique — a 7-day window spans 8 daily bars, so the
+          // repeated weekday made Recharts resolve a hovered bar to the first
+          // bar sharing that label (e.g. hovering "Sun 26" showed "Sun 19").
+          // Tick labels are drawn by CustomTick via the row index, so switching
+          // the key does not change what the axis displays.
+          dataKey="time"
           interval={tickInterval}
           tickLine={false}
           axisLine={{ stroke: "var(--color-border)" }}
