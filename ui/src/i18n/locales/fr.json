@@ -1016,6 +1016,8 @@
   "energy.live.breakdown.noData": "pas de mesure",
   "energy.live.breakdown.houseIdle": "Maison à l'arrêt",
   "energy.live.breakdown.overshoot": "Σ sous-compteurs ≥ total maison",
+  "energy.live.phases.title": "Répartition par phase",
+  "energy.live.phases.phase": "Phase {{n}}",
   "energy.consumption": "Consommation",
   "energy.today": "Aujourd'hui",
   "energy.hour": "1h",

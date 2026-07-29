@@ -1016,6 +1016,8 @@
   "energy.live.breakdown.noData": "no measurement",
   "energy.live.breakdown.houseIdle": "House idle",
   "energy.live.breakdown.overshoot": "Σ submeters ≥ house total",
+  "energy.live.phases.title": "Phase breakdown",
+  "energy.live.phases.phase": "Phase {{n}}",
   "energy.consumption": "Consumption",
   "energy.today": "Today",
   "energy.hour": "1h",

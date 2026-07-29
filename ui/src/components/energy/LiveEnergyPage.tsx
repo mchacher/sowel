@@ -21,6 +21,7 @@ import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { LiveSubmeterBreakdown } from "./LiveSubmeterBreakdown";
+import { PhaseBreakdown } from "./PhaseBreakdown";
 import { useWsSubscription } from "../../hooks/useWsSubscription";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
@@ -192,6 +193,7 @@ export function LiveEnergyPage() {
       ) : (
         <>
           <LiveDiagram gridPower={gridPower} solarPower={solarPower} />
+          <PhaseBreakdown gridEquipments={gridEqs} />
           <LiveSubmeterBreakdown
             house={
               gridPower !== null || solarPower !== null
