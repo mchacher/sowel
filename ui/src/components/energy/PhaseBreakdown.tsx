@@ -11,34 +11,9 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentWithDetails } from "../../types";
+import { extractPhases, formatPhasePower } from "./phase-helpers";
 
 const PHASE_COLORS = ["#4F7BE8", "#6BCB77", "#F2A93B", "#E8677D"];
-
-interface PhaseValue {
-  n: number;
-  power: number;
-}
-
-function extractPhases(equipments: EquipmentWithDetails[]): PhaseValue[] {
-  const byPhase = new Map<number, number>();
-  for (const eq of equipments) {
-    for (const b of eq.dataBindings) {
-      const m = /^power_l(\d+)$/.exec(b.alias);
-      if (!m || typeof b.value !== "number") continue;
-      const n = Number(m[1]);
-      byPhase.set(n, (byPhase.get(n) ?? 0) + b.value);
-    }
-  }
-  return [...byPhase.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([n, power]) => ({ n, power }));
-}
-
-function formatPower(value: number): { num: string; unit: "W" | "kW" } {
-  const a = Math.abs(value);
-  if (a < 1000) return { num: String(Math.round(a / 5) * 5), unit: "W" };
-  return { num: (a / 1000).toFixed(1), unit: "kW" };
-}
 
 interface Props {
   gridEquipments: EquipmentWithDetails[];
@@ -59,7 +34,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
       </h2>
       <div className="flex flex-col gap-3 max-w-[600px]">
         {phases.map((p, i) => {
-          const f = formatPower(p.power);
+          const f = formatPhasePower(p.power);
           const pct = Math.round((Math.abs(p.power) / maxPower) * 100);
           const color = PHASE_COLORS[i % PHASE_COLORS.length];
           return (
