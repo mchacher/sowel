@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.30.x: Three-phase metering
+
+### v1.30.0 — 2026-07-31 { #v1-30-0 }
+
+- Feat (energy): the Energy → Live page can now show a per-phase power breakdown for three-phase installations. A main energy meter equipment may carry `power_l1` / `power_l2` / `power_l3` data bindings (a convention any integration exposing per-phase power can adopt), and when at least two phases are bound, a "Phase breakdown" panel renders one bar per phase under the live flow diagram, making an unbalanced phase visible at a glance. Single-phase installations are unaffected: without those bindings the panel does not exist. Pairs with the Legrand Energy plugin v2.1.0, which now discovers Legrand Drivia with Netatmo three-phase meters (NLY modules, ref. 412175) as a "Total" device plus one device per phase. Contributed by Romain (alpitux). (#336, legrand-energy #1)
+
+---
+
 ## 1.29.x: Standard role and dashboard parity
 
 ### v1.29.4 — 2026-07-26 { #v1-29-4 }

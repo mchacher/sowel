@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.30.x: Comptage triphasé
+
+### v1.30.0 — 2026-07-31 { #v1-30-0 }
+
+- Feat (energy) : la page Énergie → Live peut désormais afficher la répartition de puissance par phase pour les installations triphasées. Un équipement compteur principal peut porter des liaisons de données `power_l1` / `power_l2` / `power_l3` (une convention que toute intégration exposant la puissance par phase peut adopter), et dès que deux phases au moins sont liées, un panneau « Répartition par phase » affiche une barre par phase sous le diagramme de flux, ce qui rend visible d'un coup d'œil une phase déséquilibrée. Les installations monophasées ne sont pas concernées : sans ces liaisons, le panneau n'existe pas. Fonctionne avec le plugin Legrand Energy v2.1.0, qui découvre maintenant les compteurs triphasés Legrand Drivia with Netatmo (modules NLY, réf. 412175) sous forme d'un appareil « Total » plus un appareil par phase. Contribution de Romain (alpitux). (#336, legrand-energy #1)
+
+---
+
 ## 1.29.x: Rôle Standard et parité du dashboard
 
 ### v1.29.4 — 2026-07-26 { #v1-29-4 }
