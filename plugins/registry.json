@@ -73,15 +73,15 @@
     "id": "legrand_energy",
     "type": "integration",
     "name": "Legrand Energy",
-    "description": "Legrand energy monitoring — NLPC meters, consumption + solar production",
+    "description": "Legrand energy monitoring — NLPC/NLY meters (incl. three-phase), consumption + solar production",
     "icon": "Zap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-legrand-energy",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["legrand", "energy", "consumption", "solar", "production"],
     "sowelVersion": ">=1.2.9",
     "owner": "mchacher",
-    "sha256": "5b3fec1e08ab0477d7b0c41f8a56d095d42268057d9c8d75ec1cad49dde3de91"
+    "sha256": "7751b012796e3fb8c65b1a9d002f29163afada561615baaa990721d93ea30656"
   },
   {
     "id": "legrand_control",
