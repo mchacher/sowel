@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.31.x: Camera equipment
 
+### v1.31.1 — 2026-08-05 { #v1-31-1 }
+
+- Fix (notifications): a notification mapped to an on/off source (typically a recipe alarm) fired its message on both transitions, so a fixed text like "washing machine done" was also sent the moment the alarm cleared — for a state-watch on the idle state, that is exactly when the machine starts a cycle. Such notifications now fire only when the source activates; notifications mapped to state texts (e.g. a mode name) or numeric values are unchanged. (#342)
+
 ### v1.31.0 — 2026-08-05 { #v1-31-0 }
 
 - Feat (equipments): new vendor-agnostic **camera** equipment type (spec 133). A camera equipment shows a periodically refreshed snapshot (equipment detail page and dashboard widget) and an on-demand live view (HLS), plus optional monitoring on/off, light mode and siren controls when the integration exposes them. Media is proxied through the Sowel backend, so the browser never talks to the camera or vendor relay directly and the camera's real URL is never exposed. Each feature is enabled by simply binding its data/order category, enforced server-side. No camera integration ships in core: vendor plugins provide the devices (a Netatmo camera community plugin is on its way). Known limitation: live view is not yet available on iOS Safari (snapshots work everywhere). Contributed by Romain (alpitux). (#339)
