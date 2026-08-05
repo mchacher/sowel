@@ -11,6 +11,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.31.x: Équipement caméra
+
+### v1.31.0 — 2026-08-05 { #v1-31-0 }
+
+- Feat (equipments) : nouveau type d'équipement **caméra**, indépendant du fabricant (spec 133). Un équipement caméra affiche un instantané rafraîchi périodiquement (page de détail et widget dashboard) et une vue en direct à la demande (HLS), plus, quand l'intégration les expose, des commandes de surveillance on/off, de mode d'éclairage et de sirène. Les médias transitent par le backend Sowel : le navigateur ne parle jamais directement à la caméra ou au relais du fabricant, et l'URL réelle de la caméra n'est jamais exposée. Chaque fonction s'active simplement en liant sa catégorie de donnée ou d'ordre, avec contrôle côté serveur. Aucune intégration caméra n'est incluse dans le cœur : ce sont les plugins qui fournissent les appareils (un plugin communautaire pour les caméras Netatmo est en préparation). Limitation connue : la vue en direct n'est pas encore disponible sur Safari iOS (l'instantané fonctionne partout). Contribution de Romain (alpitux). (#339)
+- Fix (ui) : la règle du service worker censée garder les appels API en réseau seul ne s'appliquait en réalité jamais, le motif étant testé contre l'URL complète au lieu du chemin. Aucun impact utilisateur connu, corrigé par rigueur. (#339)
+- Chore (plugins) : l'ancien plugin Netatmo Security (surveillance on/off uniquement) est retiré du store, remplacé par le type d'équipement caméra et le futur plugin caméra Netatmo. Les instances qui l'ont déjà installé continuent de l'utiliser ; il n'est simplement plus listé ni mis à jour. (#340)
+
+---
+
 ## 1.30.x: Comptage triphasé
 
 ### v1.30.0 — 2026-07-31 { #v1-30-0 }

@@ -11,6 +11,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.31.x: Camera equipment
+
+### v1.31.0 — 2026-08-05 { #v1-31-0 }
+
+- Feat (equipments): new vendor-agnostic **camera** equipment type (spec 133). A camera equipment shows a periodically refreshed snapshot (equipment detail page and dashboard widget) and an on-demand live view (HLS), plus optional monitoring on/off, light mode and siren controls when the integration exposes them. Media is proxied through the Sowel backend, so the browser never talks to the camera or vendor relay directly and the camera's real URL is never exposed. Each feature is enabled by simply binding its data/order category, enforced server-side. No camera integration ships in core: vendor plugins provide the devices (a Netatmo camera community plugin is on its way). Known limitation: live view is not yet available on iOS Safari (snapshots work everywhere). Contributed by Romain (alpitux). (#339)
+- Fix (ui): the service worker rule that keeps API calls network-only never actually matched, because the pattern was tested against the full URL instead of the path. No known user-facing impact, fixed for correctness. (#339)
+- Chore (plugins): the legacy Netatmo Security plugin (monitoring on/off only) is removed from the plugin store, superseded by the camera equipment type and the upcoming Netatmo camera plugin. Instances that already installed it keep running it; it is simply no longer listed or updated. (#340)
+
+---
+
 ## 1.30.x: Three-phase metering
 
 ### v1.30.0 — 2026-07-31 { #v1-30-0 }
