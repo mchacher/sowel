@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.32.x: Weather daily min/max
+
+### v1.32.0 — 2026-08-05 { #v1-32-0 }
+
+- Feat (equipments): weather station equipments now show **today's measured minimum and maximum temperature** in small under each temperature reading — on the desktop dashboard widget, the mobile dashboard widget, and the equipment detail page (outdoor and indoor modules). Sowel tracks the envelope itself from the temperature samples it already receives, so it works with any station that reports a temperature, without configuration and regardless of vendor. The envelope resets at local midnight and survives restarts. Note for the first day after updating: the min/max starts counting from the update, so it becomes fully accurate the next day. (#344)
+
+---
+
 ## 1.31.x: Camera equipment
 
 ### v1.31.1 — 2026-08-05 { #v1-31-1 }

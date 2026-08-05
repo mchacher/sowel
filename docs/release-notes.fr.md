@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.32.x: Min/max météo du jour
+
+### v1.32.0 — 2026-08-05 { #v1-32-0 }
+
+- Feat (equipments) : les équipements station météo affichent désormais **les températures minimale et maximale mesurées aujourd'hui**, en petit sous chaque température — sur le widget du dashboard (PC et mobile) et sur la page de détail de l'équipement (modules extérieur et intérieur). Sowel calcule lui-même cette enveloppe à partir des mesures qu'il reçoit déjà : cela fonctionne avec toute station qui remonte une température, sans configuration et quel que soit le fabricant. L'enveloppe se remet à zéro à minuit local et survit aux redémarrages. À noter le premier jour après la mise à jour : le min/max démarre au moment de la mise à jour, il devient exact dès le lendemain. (#344)
+
+---
+
 ## 1.31.x: Équipement caméra
 
 ### v1.31.1 — 2026-08-05 { #v1-31-1 }
