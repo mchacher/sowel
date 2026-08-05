@@ -3,6 +3,7 @@ import { Wind, CloudRain, Thermometer } from "lucide-react";
 import type { ComputedDataEntry, DataBindingWithValue } from "../../types";
 import { getBatteryIcon, getBatteryColor, formatSensorValue } from "./sensorUtils";
 import { angleToCompass, syntheticBindingFromComputed } from "./weather-utils";
+import { TempExtremes } from "../TempExtremes";
 
 interface WeatherPanelProps {
   bindings: DataBindingWithValue[];
@@ -167,6 +168,7 @@ export function WeatherPanel({ bindings, equipmentId, computedData }: WeatherPan
           kind={dev.kind}
           sensorBindings={dev.sensorBindings}
           batteryBinding={dev.batteryBinding ?? null}
+          computedData={computedData}
         />
       ))}
     </div>
@@ -178,11 +180,13 @@ function WeatherDeviceCard({
   kind,
   sensorBindings,
   batteryBinding,
+  computedData,
 }: {
   deviceName: string;
   kind: DeviceKind;
   sensorBindings: DataBindingWithValue[];
   batteryBinding: DataBindingWithValue | null;
+  computedData?: ComputedDataEntry[];
 }) {
   const { t } = useTranslation();
   const batteryLevel =
@@ -193,6 +197,21 @@ function WeatherDeviceCard({
   // Find the primary (hero) binding
   const primaryKey = PRIMARY_KEY[kind] ?? PRIMARY_KEY.default;
   const primaryBinding = sensorBindings.find((b) => b.key === primaryKey);
+
+  // Today's min/max envelope (spec 134) — only meaningful when the hero is a
+  // temperature; the tracker's computed aliases derive from the binding alias.
+  const heroExtremes = (() => {
+    if (
+      !primaryBinding ||
+      (primaryBinding.category !== "temperature" &&
+        primaryBinding.category !== "temperature_outdoor")
+    ) {
+      return null;
+    }
+    const min = computedData?.find((c) => c.alias === `${primaryBinding.alias}_min_today`)?.value;
+    const max = computedData?.find((c) => c.alias === `${primaryBinding.alias}_max_today`)?.value;
+    return typeof min === "number" && typeof max === "number" ? { min, max } : null;
+  })();
 
   // For the wind module, surface direction next to the hero (arrow + compass label).
   const windAngleBinding =
@@ -261,6 +280,11 @@ function WeatherDeviceCard({
               </span>
             )}
           </div>
+          {heroExtremes && (
+            <div className="mt-1.5 flex justify-center">
+              <TempExtremes min={heroExtremes.min} max={heroExtremes.max} />
+            </div>
+          )}
           <div className="text-[12px] text-text-tertiary mt-1">
             {KEY_LABELS[primaryBinding.key]
               ? t(KEY_LABELS[primaryBinding.key])

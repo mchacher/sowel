@@ -1,4 +1,4 @@
-import type { ComputedDataEntry, DataBindingWithValue } from "../../types";
+import type { ComputedDataEntry, DataBindingWithValue, EquipmentWithDetails } from "../../types";
 
 /**
  * Build a synthetic DataBindingWithValue from a ComputedDataEntry so the
@@ -70,4 +70,26 @@ export function findHumidityOutdoor(bindings: DataBindingWithValue[]): DataBindi
 }
 export function findHumidityIndoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
   return bindings.find((b) => b.category === "humidity");
+}
+
+/**
+ * Today's measured min/max for the indoor or outdoor temperature (spec 134).
+ *
+ * The backend tracker exposes `<alias>_min_today` / `<alias>_max_today`
+ * computed entries per temperature binding. The alias is derived from the
+ * source binding (which varies: `temperature`, `temperature_2`, ...), so we
+ * resolve the source binding by category first, then look its computed
+ * extremes up by alias. Returns null unless both bounds are numbers.
+ */
+export function findTempExtremes(
+  equipment: EquipmentWithDetails,
+  category: "temperature" | "temperature_outdoor",
+): { min: number; max: number } | null {
+  const source = equipment.dataBindings.find((b) => b.category === category);
+  if (!source) return null;
+  const computed = equipment.computedData ?? [];
+  const min = computed.find((c) => c.alias === `${source.alias}_min_today`)?.value;
+  const max = computed.find((c) => c.alias === `${source.alias}_max_today`)?.value;
+  if (typeof min !== "number" || typeof max !== "number") return null;
+  return { min, max };
 }

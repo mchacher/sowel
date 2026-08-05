@@ -23,7 +23,8 @@ import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
-import { findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { TempExtremes } from "../TempExtremes";
 import { Cloud, WashingMachine, Tv, Camera } from "lucide-react";
 
 interface MobileWidgetCardProps {
@@ -203,6 +204,8 @@ function useMobileState(
   if (equipment.type === "weather") {
     const outdoor = findTempOutdoor(equipment.dataBindings);
     const indoor = findTempIndoor(equipment.dataBindings);
+    const outdoorExtremes = findTempExtremes(equipment, "temperature_outdoor");
+    const indoorExtremes = findTempExtremes(equipment, "temperature");
     const fmt = (b: typeof outdoor) =>
       b && typeof b.value === "number" ? `${b.value.toFixed(1)}°` : "—";
     const both = !!outdoor && !!indoor;
@@ -211,7 +214,11 @@ function useMobileState(
     // captions. Single: one temperature with its explicit scope label —
     // never implicit, since reading just "20.5°" leaves the user wondering
     // which one this is.
-    const singleColumn = (b: typeof outdoor, captionKey: string) => (
+    const singleColumn = (
+      b: typeof outdoor,
+      captionKey: string,
+      extremes: { min: number; max: number } | null,
+    ) => (
       <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
         <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
           {t(captionKey)}
@@ -219,6 +226,7 @@ function useMobileState(
         <span className="font-mono font-bold text-[56px] text-text tabular-nums leading-none">
           {fmt(b)}
         </span>
+        {extremes && <TempExtremes min={extremes.min} max={extremes.max} large />}
       </div>
     );
     return {
@@ -231,6 +239,9 @@ function useMobileState(
             <span className="font-mono font-bold text-[48px] text-text tabular-nums leading-none">
               {fmt(outdoor)}
             </span>
+            {outdoorExtremes && (
+              <TempExtremes min={outdoorExtremes.min} max={outdoorExtremes.max} large />
+            )}
           </div>
           <div className="w-px self-stretch bg-border" />
           <div className="flex flex-col items-center gap-1">
@@ -240,12 +251,15 @@ function useMobileState(
             <span className="font-mono font-bold text-[48px] text-text tabular-nums leading-none">
               {fmt(indoor)}
             </span>
+            {indoorExtremes && (
+              <TempExtremes min={indoorExtremes.min} max={indoorExtremes.max} large />
+            )}
           </div>
         </div>
       ) : outdoor ? (
-        singleColumn(outdoor, "weather.outdoorShort")
+        singleColumn(outdoor, "weather.outdoorShort", outdoorExtremes)
       ) : indoor ? (
-        singleColumn(indoor, "weather.indoorShort")
+        singleColumn(indoor, "weather.indoorShort", indoorExtremes)
       ) : (
         <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
           <span className="font-mono font-bold text-[56px] text-text tabular-nums">—</span>

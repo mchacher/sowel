@@ -15,6 +15,7 @@ import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { EquipmentStatusTracker } from "./equipments/equipment-status-tracker.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
+import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-tracker.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
@@ -204,6 +205,18 @@ async function main() {
   const poolWaterTempTracker = new PoolWaterTempTracker(db, eventBus, equipmentManager, logger);
   equipmentManager.registerComputedDataProvider((eqId) =>
     poolWaterTempTracker.getComputedDataForEquipment(eqId),
+  );
+
+  // 9d. Weather temp extremes tracker (spec 134) — daily min/max per temperature
+  // binding on weather equipments, exposed as computed data.
+  const weatherTempExtremesTracker = new WeatherTempExtremesTracker(
+    db,
+    eventBus,
+    equipmentManager,
+    logger,
+  );
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    weatherTempExtremesTracker.getComputedDataForEquipment(eqId),
   );
 
   // 10. Create Zone Aggregator + Sunlight Manager
@@ -447,6 +460,9 @@ async function main() {
   // 17c. Start pool water temp tracker (gates water temp by filtration/mode)
   poolWaterTempTracker.start();
 
+  // 17d. Start weather temp extremes tracker (spec 134)
+  weatherTempExtremesTracker.start();
+
   // 18. Initialize history writer (connects to InfluxDB if configured, subscribes to events)
   historyWriter.init();
 
@@ -557,6 +573,11 @@ async function main() {
       poolWaterTempTracker.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping pool water temp tracker");
+    }
+    try {
+      weatherTempExtremesTracker.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping weather temp extremes tracker");
     }
     try {
       notificationPublishService.destroy();
