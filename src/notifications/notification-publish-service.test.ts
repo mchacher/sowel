@@ -164,3 +164,55 @@ describe("re-notify lifecycle (spec 128)", () => {
     h.svc.destroy();
   });
 });
+
+describe("boolean simple mappings notify on activation only", () => {
+  beforeEach(() => {
+    telegramSend.mockClear();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-05T10:00:00.000Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("does not notify when a boolean clears (washing-machine start regression)", () => {
+    const h = makeService({ sourceKey: "alarm" });
+
+    // End of cycle: alarm raises → one notification.
+    h.setState("alarm", true);
+    h.fire();
+    expect(telegramSend).toHaveBeenCalledTimes(1);
+
+    // Start of next cycle: alarm clears → must stay silent (this used to
+    // re-send the same "done" message on the falling edge).
+    vi.advanceTimersByTime(2000); // past the 1s recipe-event burst dedup
+    h.setState("alarm", false);
+    h.fire();
+    expect(telegramSend).toHaveBeenCalledTimes(1);
+
+    // Next end of cycle: raises again → notifies again.
+    vi.advanceTimersByTime(2000);
+    h.setState("alarm", true);
+    h.fire();
+    expect(telegramSend).toHaveBeenCalledTimes(2);
+    h.svc.destroy();
+  });
+
+  it("stays silent when the first observed boolean value is false", () => {
+    const h = makeService({ sourceKey: "alarm" });
+    h.setState("alarm", false);
+    h.fire();
+    expect(telegramSend).not.toHaveBeenCalled();
+    h.svc.destroy();
+  });
+
+  it("string transitions still notify on every change", () => {
+    const h = makeService({ sourceKey: "status" });
+    h.setState("status", "running");
+    h.fire();
+    expect(telegramSend).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(2000); // past the 1s recipe-event burst dedup
+    h.setState("status", "done");
+    h.fire();
+    expect(telegramSend).toHaveBeenCalledTimes(2);
+    h.svc.destroy();
+  });
+});

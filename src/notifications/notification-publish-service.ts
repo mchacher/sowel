@@ -248,7 +248,13 @@ export class NotificationPublishService {
 
       if (ref.repeatMs === null) {
         // No re-notify — existing change-based behaviour.
-        if (!this.shouldNotify(ref, value, effectivePrevious)) continue;
+        if (!this.shouldNotify(ref, value, effectivePrevious)) {
+          // A boolean falling edge is silent but must still be tracked:
+          // the next rising edge has to compare against `false`, not the
+          // stale `true` from the last notification.
+          if (typeof value === "boolean") this.lastValue.set(ref.mappingId, value);
+          continue;
+        }
         this.sendNotification(ref, formatNotificationContent(ref.message, value));
         this.lastSent.set(ref.mappingId, Date.now());
         this.lastValue.set(ref.mappingId, value);
@@ -369,8 +375,20 @@ export class NotificationPublishService {
     // Never notify if value hasn't changed
     if (value === previous) return false;
 
-    // Discrete state transitions (boolean, string enums): notify immediately on change
-    if (typeof value === "boolean" || typeof value === "string") {
+    // Booleans: notify on activation only. A mapping carries one fixed
+    // message, so firing it again on the falling edge sends the same text
+    // for the opposite condition (e.g. a recipe alarm bound to "washing
+    // machine done" also fired when the alarm cleared at cycle start).
+    // Matches the repeat path below, which is already silent on
+    // deactivation.
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    // Discrete string transitions (state enums): notify immediately on
+    // change — every transition is meaningful and the message can
+    // interpolate the new value.
+    if (typeof value === "string") {
       return true;
     }
 
