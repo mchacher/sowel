@@ -21,7 +21,8 @@ import type { DashboardWidget } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
 import { findOrderByCategory } from "../equipments/bindingUtils";
-import { findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { TempExtremes } from "../TempExtremes";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
@@ -804,6 +805,8 @@ function WeatherStationWidget({
 
   const outdoor = findTempOutdoor(equipment.dataBindings);
   const indoor = findTempIndoor(equipment.dataBindings);
+  const outdoorExtremes = findTempExtremes(equipment, "temperature_outdoor");
+  const indoorExtremes = findTempExtremes(equipment, "temperature");
 
   const fmt = (b: typeof outdoor) =>
     b && typeof b.value === "number" ? b.value.toFixed(1) : "—";
@@ -822,14 +825,14 @@ function WeatherStationWidget({
       <div className="flex items-stretch justify-center flex-1 min-h-0">
         {both ? (
           <div className="flex items-stretch gap-4 sm:gap-6">
-            <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} />
+            <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} extremes={outdoorExtremes} />
             <div className="w-px bg-border self-stretch" />
-            <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} />
+            <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} extremes={indoorExtremes} />
           </div>
         ) : outdoor ? (
-          <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} />
+          <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} extremes={outdoorExtremes} />
         ) : indoor ? (
-          <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} />
+          <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} extremes={indoorExtremes} />
         ) : (
           <WeatherTempColumn label={null} value="—" />
         )}
@@ -838,7 +841,15 @@ function WeatherStationWidget({
   );
 }
 
-function WeatherTempColumn({ label, value }: { label: string | null; value: string }) {
+function WeatherTempColumn({
+  label,
+  value,
+  extremes,
+}: {
+  label: string | null;
+  value: string;
+  extremes?: { min: number; max: number } | null;
+}) {
   return (
     <div className="flex flex-col items-center justify-center gap-1">
       {label && (
@@ -852,6 +863,7 @@ function WeatherTempColumn({ label, value }: { label: string | null; value: stri
         </span>
         <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">°C</span>
       </div>
+      {extremes && <TempExtremes min={extremes.min} max={extremes.max} />}
     </div>
   );
 }

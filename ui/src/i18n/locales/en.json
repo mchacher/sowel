@@ -393,6 +393,8 @@
   "weather.indoor": "Indoor",
   "weather.outdoorShort": "Out.",
   "weather.indoorShort": "In.",
+  "weather.minToday": "Today's minimum",
+  "weather.maxToday": "Today's maximum",
   "weather.windSpeed": "Speed",
   "weather.windDirection": "Direction",
   "weather.gustSpeed": "Gusts",

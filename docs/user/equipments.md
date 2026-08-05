@@ -83,12 +83,12 @@ You can choose a specific icon for gates on the dashboard: standard gate, slidin
 
 ### Sensors
 
-| Type                 | Controls / Display                          | Expected data                                                                                             |
-| -------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **Sensor**           | Read-only multi-value display, auto-adapted | temperature, humidity, pressure, CO2, VOC, luminosity, noise, battery, motion, contact, water leak, smoke |
-| **Weather Station**  | Multi-value display                         | temperature, humidity, pressure, rain, wind, noise, battery                                               |
-| **Weather Forecast** | Day-by-day forecast cards (J+1 to J+5)      | weather condition, temperature min/max, rain probability, wind gusts                                      |
-| **Button / Remote**  | Not directly controlled (used as trigger)   | action events (single press, double press, long press)                                                    |
+| Type                 | Controls / Display                          | Expected data                                                                                                |
+| -------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Sensor**           | Read-only multi-value display, auto-adapted | temperature, humidity, pressure, CO2, VOC, luminosity, noise, battery, motion, contact, water leak, smoke    |
+| **Weather Station**  | Multi-value display                         | temperature (with today's measured min/max shown underneath), humidity, pressure, rain, wind, noise, battery |
+| **Weather Forecast** | Day-by-day forecast cards (J+1 to J+5)      | weather condition, temperature min/max, rain probability, wind gusts                                         |
+| **Button / Remote**  | Not directly controlled (used as trigger)   | action events (single press, double press, long press)                                                       |
 
 The generic **Sensor** type adapts its display automatically. Boolean sensors (motion, contact, water leak, smoke) get appropriate badges; numeric sensors get values with the right unit and icon.
 

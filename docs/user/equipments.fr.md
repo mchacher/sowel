@@ -138,6 +138,7 @@ Capteur météo extérieur qui fournit les conditions actuelles.
 
 - **Contrôles :** Affichage multi-valeurs
 - **Données typiques :** température, humidité, pression, pluie, vent, bruit, batterie
+- Les températures (extérieure et intérieure) affichent en dessous le minimum et le maximum mesurés depuis minuit, sur le widget du dashboard comme sur la page de détail. Fonctionne avec toute station qui remonte une température, sans configuration.
 
 #### Prévision météo
 
