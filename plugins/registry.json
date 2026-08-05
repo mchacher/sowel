@@ -112,20 +112,6 @@
     "sha256": "cd3904440ca875dd75fdfaea9aa2d74175c9a855c325eaf3c8e40ced91fb0552"
   },
   {
-    "id": "netatmo-security",
-    "type": "integration",
-    "name": "Netatmo Security",
-    "description": "Netatmo cameras (Welcome, Presence, Doorbell) — monitoring on/off",
-    "icon": "Camera",
-    "author": "mchacher",
-    "repo": "mchacher/sowel-plugin-netatmo-security",
-    "version": "0.5.0",
-    "tags": ["camera", "netatmo", "security"],
-    "sowelVersion": ">=0.10.0",
-    "owner": "mchacher",
-    "sha256": "37d550273e72e2a1414cc5c299e0510d5f9c44fcd1321af361494345defd9042"
-  },
-  {
     "id": "weather-forecast",
     "type": "integration",
     "name": "Weather Forecast",
