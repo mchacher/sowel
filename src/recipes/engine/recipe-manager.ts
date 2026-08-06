@@ -146,6 +146,47 @@ export class RecipeManager {
     this.logger.info({ recipeId: definition.id }, "External recipe registered");
   }
 
+  /**
+   * Restart every enabled instance of a recipe with the currently registered
+   * definition (issue #349). Called by the RecipeLoader after a package
+   * update re-registers the definition: without this, running instances keep
+   * executing the previous version's closure until manually toggled, while
+   * the UI already shows the new version. Instance state (ctx.state) is
+   * persisted and survives, exactly as with enable/disable.
+   */
+  restartInstancesOfRecipe(recipeId: string): number {
+    const registered = this.registry.get(recipeId);
+    if (!registered) return 0;
+
+    const rows = this.stmts.getAllInstances.all() as InstanceRow[];
+    let restarted = 0;
+    for (const row of rows) {
+      if (row.recipe_id !== recipeId || row.enabled !== 1) continue;
+      this.stopInstance(row.id);
+      const instance = rowToInstance(row);
+      try {
+        const recipe = registered.create();
+        this.startInstance(recipe, instance);
+        restarted++;
+        this.writeLog(row.id, "Restarted with updated recipe package", "info");
+      } catch (err) {
+        this.logger.error(
+          { err, instanceId: row.id, recipeId },
+          "Failed to restart instance after recipe update",
+        );
+        this.writeLog(
+          row.id,
+          `Failed to restart after update: ${err instanceof Error ? err.message : String(err)}`,
+          "error",
+        );
+      }
+    }
+    if (restarted > 0) {
+      this.logger.info({ recipeId, restarted }, "Recipe instances restarted after package update");
+    }
+    return restarted;
+  }
+
   // ============================================================
   // Init — restore instances from DB
   // ============================================================

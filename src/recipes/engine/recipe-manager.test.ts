@@ -305,3 +305,125 @@ describe("RecipeManager", () => {
     expect(logs.some((l) => l.message === "Instance created")).toBe(true);
   });
 });
+
+// ============================================================
+// restartInstancesOfRecipe (issue #349)
+// ============================================================
+
+describe("restartInstancesOfRecipe", () => {
+  let db: Database.Database;
+  let eventBus: EventBus;
+  let manager: RecipeManager;
+
+  beforeEach(() => {
+    db = createTestDb();
+    eventBus = new EventBus(logger);
+    const zoneManager = new ZoneManager(db, eventBus, logger);
+    const mockIntegrationRegistry = { getById: () => undefined };
+    const deviceManager = new DeviceManager(db, eventBus, logger);
+    const equipmentManager = new EquipmentManager(
+      db,
+      eventBus,
+      mockIntegrationRegistry as any,
+      deviceManager,
+      logger,
+    );
+    const aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
+    const sunlightManager = {
+      getSunlightData: () => ({ sunrise: "07:30", sunset: "21:00", isDaylight: true }),
+    } as unknown as SunlightManager;
+    manager = new RecipeManager(
+      db,
+      eventBus,
+      equipmentManager,
+      zoneManager,
+      aggregator,
+      sunlightManager,
+      logger,
+    );
+  });
+
+  afterEach(() => {
+    manager.stopAll();
+    db.close();
+  });
+
+  function externalDef(marker: { started: number; stopped: number }): RecipeDefinition {
+    return {
+      id: "ext-recipe",
+      name: "Ext",
+      description: "external",
+      slots: [],
+      validate: () => {},
+      createInstance: () => {
+        marker.started++;
+        return {
+          stop: () => {
+            marker.stopped++;
+          },
+        };
+      },
+    };
+  }
+
+  it("restarts enabled instances with the newly registered definition", () => {
+    const v1 = { started: 0, stopped: 0 };
+    manager.registerExternal(externalDef(v1));
+    const inst = manager.createInstance("ext-recipe", {});
+    expect(v1.started).toBe(1);
+
+    // Package update: new definition registered under the same id.
+    const v2 = { started: 0, stopped: 0 };
+    manager.registerExternal(externalDef(v2));
+    const restarted = manager.restartInstancesOfRecipe("ext-recipe");
+
+    expect(restarted).toBe(1);
+    expect(v1.stopped).toBe(1); // old closure stopped
+    expect(v2.started).toBe(1); // new closure started
+    expect(manager.getInstances().find((i) => i.id === inst.id)?.enabled).toBe(true);
+  });
+
+  it("leaves disabled instances alone", () => {
+    const v1 = { started: 0, stopped: 0 };
+    manager.registerExternal(externalDef(v1));
+    const inst = manager.createInstance("ext-recipe", {});
+    manager.disableInstance(inst.id);
+    expect(v1.stopped).toBe(1);
+
+    const v2 = { started: 0, stopped: 0 };
+    manager.registerExternal(externalDef(v2));
+    const restarted = manager.restartInstancesOfRecipe("ext-recipe");
+
+    expect(restarted).toBe(0);
+    expect(v2.started).toBe(0);
+  });
+
+  it("returns 0 for an unknown recipe id", () => {
+    expect(manager.restartInstancesOfRecipe("nope")).toBe(0);
+  });
+
+  it("a failing new definition is logged, not thrown, and other instances still restart", () => {
+    const v1 = { started: 0, stopped: 0 };
+    manager.registerExternal(externalDef(v1));
+    manager.createInstance("ext-recipe", {});
+    manager.createInstance("ext-recipe", {});
+    expect(v1.started).toBe(2);
+
+    let calls = 0;
+    manager.registerExternal({
+      id: "ext-recipe",
+      name: "Ext",
+      description: "external",
+      slots: [],
+      validate: () => {},
+      createInstance: () => {
+        calls++;
+        if (calls === 1) throw new Error("boom");
+        return { stop: () => {} };
+      },
+    });
+
+    const restarted = manager.restartInstancesOfRecipe("ext-recipe");
+    expect(restarted).toBe(1); // second instance restarted despite first failing
+  });
+});

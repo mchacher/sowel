@@ -45,7 +45,13 @@ export class RecipeLoader {
     const newManifest = await this.packageManager.updateFiles(recipeId);
     try {
       await this.loadRecipe(recipeId);
-      this.logger.info({ recipeId, version: newManifest.version }, "Recipe updated and reloaded");
+      // Issue #349: running instances would otherwise keep executing the
+      // previous version's closure while the UI already shows the update.
+      const restarted = this.recipeManager.restartInstancesOfRecipe(recipeId);
+      this.logger.info(
+        { recipeId, version: newManifest.version, restartedInstances: restarted },
+        "Recipe updated and reloaded",
+      );
     } catch (err) {
       this.logger.error({ err, recipeId }, "Recipe updated but failed to reload");
     }
