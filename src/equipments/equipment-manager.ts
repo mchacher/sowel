@@ -374,7 +374,12 @@ export class EquipmentManager {
 
     // Spec 116: derive equipment status from bindings + backing devices.
     const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
-    const { status, reason } = deriveEquipmentStatus(dataBindings, devicesByBindingId);
+    const { status, reason } = deriveEquipmentStatus(
+      dataBindings,
+      devicesByBindingId,
+      Date.now(),
+      equipment.type,
+    );
 
     return {
       ...equipment,
@@ -393,7 +398,12 @@ export class EquipmentManager {
       const orderBindings = this.getOrderBindingsWithDetails(eq.id);
       const computedData = this.getComputedData(eq.id);
       const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
-      const { status, reason } = deriveEquipmentStatus(dataBindings, devicesByBindingId);
+      const { status, reason } = deriveEquipmentStatus(
+        dataBindings,
+        devicesByBindingId,
+        Date.now(),
+        eq.type,
+      );
       return {
         ...eq,
         dataBindings,

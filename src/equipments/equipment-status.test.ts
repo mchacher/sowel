@@ -214,3 +214,46 @@ describe("deriveEquipmentStatus", () => {
     expect(result.status).toBe("online");
   });
 });
+
+describe("deriveEquipmentStatus — button silence exemption (issue #348)", () => {
+  const NOW = Date.parse("2026-05-26T10:00:00Z");
+
+  it("button: all devices offline still derives 'online' (silence is normal)", () => {
+    const binding = makeBinding({ category: "action" });
+    const device = makeDevice({ status: "offline", name: "remote_elodie" });
+    const map = new Map([[binding.id, device]]);
+    const result = deriveEquipmentStatus([binding], map, NOW, "button");
+    expect(result.status).toBe("online");
+    expect(result.reason).toBeNull();
+  });
+
+  it("button: stale battery binding does not degrade", () => {
+    const action = makeBinding({ id: "b1", category: "action" });
+    const battery = makeBinding({
+      id: "b2",
+      alias: "battery",
+      category: "battery",
+      lastUpdated: "2026-05-25 08:00:00Z", // > 2h old
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([
+      [action.id, device],
+      [battery.id, device],
+    ]);
+    const result = deriveEquipmentStatus([action, battery], map, NOW, "button");
+    expect(result.status).toBe("online");
+  });
+
+  it("button: zero bindings still derives 'offline'", () => {
+    const result = deriveEquipmentStatus([], new Map(), NOW, "button");
+    expect(result.status).toBe("offline");
+  });
+
+  it("non-exempt type: all devices offline still derives 'offline' (regression)", () => {
+    const binding = makeBinding({});
+    const device = makeDevice({ status: "offline", name: "Capteur" });
+    const map = new Map([[binding.id, device]]);
+    const result = deriveEquipmentStatus([binding], map, NOW, "sensor");
+    expect(result.status).toBe("offline");
+  });
+});

@@ -67,16 +67,38 @@ export function isStaleBinding(
  * @param devicesByBindingId Map from binding id to the Device behind it.
  * @param now                Injection point for tests; defaults to Date.now().
  */
+/**
+ * Equipment types whose devices are event-driven battery hardware (remotes,
+ * wireless buttons): they only transmit when actuated, so radio silence is
+ * their NORMAL operating mode. Deriving "offline" (integration availability
+ * timeouts fire on silence) or "degraded" (their sparse battery reports miss
+ * every streaming window) from that silence produces permanent false alarms
+ * — see issue #348, observed with both lora2mqtt (5 min timeout) and
+ * Zigbee2MQTT (25 h passive timeout). For these types the only honest
+ * derivation from silence is "online"; real health comes out of band
+ * (battery_low / vcc values).
+ *
+ * Trade-off, documented: a genuinely dead remote also shows online. With
+ * timeout-based availability the two cases are indistinguishable anyway —
+ * the previous behavior just labeled BOTH as broken instead of neither.
+ */
+const SILENCE_EXEMPT_EQUIPMENT_TYPES: ReadonlySet<string> = new Set(["button"]);
+
 export function deriveEquipmentStatus(
   bindings: DataBindingWithValue[],
   devicesByBindingId: Map<string, Device>,
   now: number = Date.now(),
+  equipmentType?: string,
 ): { status: EquipmentStatus; reason: EquipmentStatusReason | null } {
   if (bindings.length === 0) {
     return {
       status: "offline",
       reason: { offlineDevices: [], staleBindings: [], offlineSince: null },
     };
+  }
+
+  if (equipmentType && SILENCE_EXEMPT_EQUIPMENT_TYPES.has(equipmentType)) {
+    return { status: "online", reason: null };
   }
 
   // Collect unique devices behind the bindings (an equipment can bind to
