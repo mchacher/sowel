@@ -11,6 +11,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.33.x: Corrections de fiabilité
+
+### v1.33.0 — 2026-08-07 { #v1-33-0 }
+
+- Fix (equipments) : les télécommandes et boutons sans fil à pile ne sont plus affichés « **Déconnecté** » simplement parce qu'ils sont restés silencieux. Ces appareils n'émettent qu'à l'appui : le silence est normal, le badge rouge était un faux positif (et il apprenait à ignorer les badges rouges, masquant les vraies déconnexions). Ils restent désormais en ligne ; une pile réellement faible reste signalée par la donnée de batterie. Valable pour toutes les intégrations (Zigbee, LoRa, ...). (#348)
+- Fix (recipes) : mettre à jour une recette depuis le store redémarre désormais immédiatement ses automatisations en cours. Avant, la nouvelle version était chargée et visible dans le formulaire, mais les instances actives continuaient d'exécuter l'ancienne logique jusqu'à un désactiver/réactiver manuel — un piège silencieux. (#349)
+- Fix (plugins) : le bouton **Rafraîchir** de la page Plugins affiche désormais un changement de catalogue tout juste publié en quelques secondes au lieu d'attendre plusieurs minutes. Il interrogeait une copie en cache qu'il ne pouvait pas contourner ; il lit maintenant la source à jour directement. (#353)
+
+---
+
 ## 1.32.x: Min/max météo du jour
 
 ### v1.32.0 — 2026-08-05 { #v1-32-0 }

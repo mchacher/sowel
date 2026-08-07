@@ -11,6 +11,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.33.x: Reliability fixes
+
+### v1.33.0 — 2026-08-07 { #v1-33-0 }
+
+- Fix (equipments): battery-powered remotes and wireless buttons are no longer shown as **"Disconnected"** just because they have been silent. These devices only transmit when pressed, so silence is normal — the red badge was a false alarm (and it trained users to ignore red badges, hiding real disconnections). They now stay online; genuine low battery still shows through the battery signal. Applies to every integration (Zigbee, LoRa, ...). (#348)
+- Fix (recipes): updating a recipe from the store now restarts its running automations immediately. Before, the new version was loaded and shown in the form, but running instances kept executing the previous version's logic until manually toggled off and on — a silent trap. (#349)
+- Fix (plugins): the **Refresh** button on the Plugins page now shows a just-published catalog change within seconds instead of waiting several minutes. It was hitting a cached copy that the refresh could not bypass; it now reads the up-to-date source directly. (#353)
+
+---
+
 ## 1.32.x: Weather daily min/max
 
 ### v1.32.0 — 2026-08-05 { #v1-32-0 }
