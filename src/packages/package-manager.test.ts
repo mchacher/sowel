@@ -382,3 +382,92 @@ describe("registry-types.isOfficial", () => {
     ).toBe(true);
   });
 });
+
+describe("PackageManager — forced registry refresh (issue #353)", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+  let manager: PackageManager;
+  let originalCwd: string;
+
+  const REGISTRY = [
+    {
+      id: "smart-cooling",
+      type: "recipe",
+      name: "Smart Cooling",
+      description: "x",
+      icon: "Snowflake",
+      author: "mchacher",
+      repo: "mchacher/sowel-recipe-smart-cooling",
+      version: "1.2.0",
+      owner: "mchacher",
+      sha256: "d".repeat(64),
+      tags: [],
+    },
+  ];
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-pkg-refresh-"));
+    mkdirSync(resolve(tmpDir, "plugins"), { recursive: true });
+    process.chdir(tmpDir);
+    db = createTestDb();
+    manager = new PackageManager(db, logger);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    db.close();
+    try {
+      process.chdir(originalCwd);
+    } catch {
+      /* best effort */
+    }
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("forced refresh fetches the Contents API, not the raw CDN", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: URL | RequestInfo) => {
+        const url = typeof input === "string" ? input : input.toString();
+        urls.push(url);
+        return new Response(JSON.stringify(REGISTRY), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+
+    const result = await manager.refreshRegistryNow();
+    expect(result.source).toBe("remote");
+    expect(result.count).toBe(1);
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toContain("api.github.com/repos/mchacher/sowel/contents/");
+    expect(urls[0]).not.toContain("raw.githubusercontent.com");
+  });
+
+  it("falls back to raw when the Contents API fails on a forced refresh", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: URL | RequestInfo) => {
+        const url = typeof input === "string" ? input : input.toString();
+        urls.push(url);
+        if (url.includes("api.github.com")) {
+          return new Response("rate limited", { status: 403 });
+        }
+        return new Response(JSON.stringify(REGISTRY), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+
+    const result = await manager.refreshRegistryNow();
+    expect(result.source).toBe("remote");
+    expect(result.count).toBe(1);
+    expect(urls.some((u) => u.includes("api.github.com"))).toBe(true);
+    expect(urls.some((u) => u.includes("raw.githubusercontent.com"))).toBe(true);
+  });
+});

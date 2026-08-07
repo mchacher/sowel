@@ -29,6 +29,13 @@ import {
 const execFile = promisify(execFileCb);
 
 const REGISTRY_URL = "https://raw.githubusercontent.com/mchacher/sowel/main/plugins/registry.json";
+// GitHub Contents API — reflects `main` immediately, with none of the ~5 min
+// Fastly CDN that raw.githubusercontent.com serves (and that a `?t=` query
+// string does NOT bypass). Used only by the manual "Refresh" button so a
+// registry merge is visible within seconds; the passive/background path stays
+// on raw to avoid the API's 60/h unauthenticated rate limit (issue #353).
+const REGISTRY_API_URL =
+  "https://api.github.com/repos/mchacher/sowel/contents/plugins/registry.json";
 const REGISTRY_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const SHA256_HEX = /^[a-f0-9]{64}$/i;
 
@@ -439,12 +446,14 @@ export class PackageManager {
    * a cache-busting query string so we bypass the raw CDN's 5-min cache.
    */
   private async fetchRemoteRegistry(force: boolean): Promise<boolean> {
-    const url = force ? `${REGISTRY_URL}?t=${Date.now()}` : REGISTRY_URL;
+    // Force (manual Refresh) → Contents API, which is not behind raw's 5 min
+    // CDN. Passive → raw (cached, no API rate-limit exposure). See issue #353.
+    const url = force ? REGISTRY_API_URL : REGISTRY_URL;
+    const headers: Record<string, string> = force
+      ? { Accept: "application/vnd.github.raw" }
+      : { Accept: "application/json" };
     try {
-      const res = await fetch(url, {
-        headers: { Accept: "application/json", ...(force ? { "Cache-Control": "no-cache" } : {}) },
-        signal: AbortSignal.timeout(10_000),
-      });
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
       if (res.ok) {
         const entries = (await res.json()) as RegistryEntry[];
         if (Array.isArray(entries) && entries.length > 0) {
@@ -452,6 +461,27 @@ export class PackageManager {
           this.registryCacheTime = Date.now();
           this.logger.info({ count: entries.length, force }, "Remote registry loaded");
           return true;
+        }
+      }
+      // On a forced refresh, if the API path fails (rate limit, outage), retry
+      // once via raw before falling back to local — raw is usually only a few
+      // minutes stale, still better than the on-disk snapshot.
+      if (force) {
+        const rawRes = await fetch(REGISTRY_URL, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (rawRes.ok) {
+          const entries = (await rawRes.json()) as RegistryEntry[];
+          if (Array.isArray(entries) && entries.length > 0) {
+            this.registryCache = entries;
+            this.registryCacheTime = Date.now();
+            this.logger.info(
+              { count: entries.length, force, via: "raw-fallback" },
+              "Remote registry loaded",
+            );
+            return true;
+          }
         }
       }
     } catch {
