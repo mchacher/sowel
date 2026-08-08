@@ -165,7 +165,7 @@ worth sharing.
 
 - [x] Admin can add and remove a personal source from the UI; non-admin cannot (403).
 - [x] Adding a repo present in the central registry is refused with a clear message.
-- [ ] A personal plugin (recipe **and** integration) installs end-to-end from a real GitHub repo with the TOFU modal showing version + SHA256. _(pending manual verification on a real repo; flow fully covered by unit tests with mocked GitHub)_
+- [x] A personal plugin (recipe **and** integration) installs end-to-end from a real GitHub repo with the TOFU modal showing version + SHA256. _(verified 2026-08-08 on a local dev instance against `mchacher/sowel-plugin-netatmo-security` v0.5.0: source added, modal fingerprint matched the real asset SHA256, install pinned the hash with source='personal', the plugin loaded from the tarball, uninstall and source removal left a clean state)_
 - [x] The unconfirmed install/update API call never writes anything under `plugins/` nor in the DB.
 - [x] A tampered tarball (hash ≠ expected) is refused on install, update, and missing-file re-download.
 - [x] A new release on the source repo surfaces as an update badge within the cache TTL, and updating re-prompts with the new hash.
