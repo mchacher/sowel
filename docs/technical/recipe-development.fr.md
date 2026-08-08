@@ -4,68 +4,79 @@ Comment créer une nouvelle recette pour Sowel.
 
 ## Architecture
 
-Une recette est un modèle d'automatisation réutilisable. Les utilisateurs instancient les recettes avec des paramètres (slots) pour créer des instances d'automatisation en cours d'exécution. Les recettes sont enregistrées au démarrage du moteur et exposées via l'API REST.
+Une recette est un modèle d'automatisation réutilisable. Les utilisateurs instancient les recettes avec des paramètres (slots) pour créer des instances d'automatisation en cours d'exécution.
+
+Depuis les specs 053/054, **les recettes sont des packages externes dans leurs propres dépôts GitHub** (par ex. `mchacher/sowel-recipe-schedule-on-off`) ; rien de spécifique à une recette ne vit dans le repo Sowel. Un package de recette embarque un `manifest.json` (`type: "recipe"`) et un `dist/index.js` compilé exportant une factory `createRecipe()`. Le `RecipeLoader` l'importe au démarrage et enregistre la définition retournée.
 
 ```
-Recipe class (definition)
-  -> RecipeManager.register()
-    -> GET /api/v1/recipes -> UI shows available recipes
-      -> User creates instance with params
-        -> RecipeManager.createInstance() -> validate() -> start()
-          -> Recipe subscribes to EventBus events and reacts
+Package de recette (repo GitHub, release sowel-recipe-<id>-<version>.tar.gz)
+  -> PackageManager installe -> RecipeLoader importe dist/index.js
+    -> createRecipe(): RecipeDefinition -> RecipeManager.registerExternal()
+      -> GET /api/v1/recipes -> l'UI liste les recettes disponibles
+        -> L'utilisateur crée une instance avec des params
+          -> validate() -> createInstance() retourne { stop }
+            -> La recette s'abonne aux événements de l'EventBus et réagit
 ```
+
+La distribution suit les mêmes conventions que les plugins d'intégration (tarball de release, entrée de registre ou source personnelle) ; voir [plugin-development.md](plugin-development.fr.md). Pour votre propre instance, la boucle la plus rapide est une **source personnelle** (spec 136) : ajoutez votre dépôt sur la page Plugins, installez via la confirmation TOFU, publiez une release par itération. Le repo Sowel fournit aussi un skill Claude Code, `sowel-recipe-dev`, qui déroule tout ce guide.
 
 ## Créer une recette
 
-### 1. Créer le fichier
+### 1. Créer le dépôt du package
 
-Créez `src/recipes/<recipe-name>.ts` qui étend la classe de base `Recipe` :
+Nommage : `sowel-recipe-<id>`. Structure :
+
+```
+sowel-recipe-<id>/
+  manifest.json        # id, type: "recipe", name, version, icon, repo, i18n, sowelVersion
+  package.json         # "type": "module", scripts build / test
+  tsconfig.json        # module + moduleResolution: "NodeNext", outDir dist
+  src/index.ts         # exporte createRecipe()
+  src/index.test.ts    # vitest
+```
+
+Le champ `repo` du manifest doit être égal au dépôt GitHub qui sert le package, et l'`id` ne doit pas entrer en collision avec une entrée du registre (les deux sont vérifiés à l'installation depuis la spec 136).
+
+### 2. Exporter la factory
+
+Les packages de recettes n'importent jamais le cœur de Sowel : ils recopient les quelques types nécessaires (depuis `src/shared/types.ts` : `RecipeDefinition`, `RecipeSlotDef`, `RecipeInstanceHandle`) et exportent une factory :
 
 ```typescript
-import type { RecipeSlotDef, RecipeLangPack } from "../shared/types.js";
-import { Recipe, type RecipeContext } from "./engine/recipe.js";
-
-export class MyRecipe extends Recipe {
-  readonly id = "my-recipe";
-  readonly name = "My Recipe"; // English (fallback)
-  readonly description = "What it does"; // English (fallback)
-  readonly slots: RecipeSlotDef[] = [
-    // ...see Slots section below
-  ];
-  override readonly i18n: Record<string, RecipeLangPack> = {
-    // ...see Translations section below
+export function createRecipe(): RecipeDefinition {
+  return {
+    id: "my-recipe",
+    name: "My Recipe", // anglais (fallback)
+    description: "What it does",
+    slots: [
+      // ...voir la section Slots
+    ],
+    i18n: {
+      // ...voir la section Traductions
+    },
+    validate(params, ctx) {
+      // Throw avec un message clair si les params sont invalides
+    },
+    createInstance(params, ctx) {
+      // S'abonner aux événements, armer les timers...
+      return {
+        stop() {
+          // Annuler chaque timer, tout désabonner (doit être idempotent)
+        },
+      };
+    },
   };
-
-  validate(params: Record<string, unknown>, ctx: RecipeContext): void {
-    // Throw if params are invalid
-  }
-
-  start(params: Record<string, unknown>, ctx: RecipeContext): void {
-    // Subscribe to events, start timers
-  }
-
-  stop(): void {
-    // Unsubscribe events, clear timers (must be idempotent)
-  }
 }
 ```
 
-### 2. Enregistrer dans index.ts
-
-```typescript
-import { MyRecipe } from "./recipes/my-recipe.js";
-// ...
-recipeManager.register(MyRecipe);
-```
+`RecipeManager` appelle `createInstance()` par instance en cours ; le `stop()` du handle retourné est invoqué à la désactivation, à la modification des params (stop -> validate -> createInstance), à la mise à jour de la recette, et à l'arrêt du moteur.
 
 ### 3. Écrire des tests
 
-Créez `src/recipes/<recipe-name>.test.ts`. Suivez le pattern de `motion-light.test.ts` :
+Créez `src/index.test.ts` dans le dépôt de la recette (vitest). Suivez le pattern de `sowel-recipe-schedule-on-off` :
 
-- SQLite en mémoire avec migrations
+- Un faux `ctx` (log, state, eventBus avec capture, accès aux équipements)
 - Faux timers (`vi.useFakeTimers()`)
-- Mock du registry d'intégrations capturant les publications MQTT
-- Test de la validation, du traitement des événements, du comportement des timers, du nettoyage
+- Test de la validation, du traitement des événements, du comportement des timers, et du nettoyage complet par `stop()`
 
 ## Slots
 
@@ -194,7 +205,7 @@ Ajoutez une nouvelle clé au record `i18n` dans la classe de votre recette. Aucu
 
 ## RecipeContext
 
-L'objet `ctx` injecté dans `validate()` et `start()` fournit :
+L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
 
 | Propriété          | Type               | Usage                                                                                 |
 | ------------------ | ------------------ | ------------------------------------------------------------------------------------- |
@@ -207,44 +218,52 @@ L'objet `ctx` injecté dans `validate()` et `start()` fournit :
 
 ## Helpers partagés
 
-Utilitaires réutilisables dans `src/recipes/engine/` :
+Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (interface `RecipeHelpers` dans `src/shared/types.ts`) :
 
-| Module             | Exporte                                                                        |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `duration.ts`      | `parseDuration(value)`, `formatDuration(ms)`                                   |
-| `light-helpers.ts` | `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` |
+| Helper                                                                         | Rôle                                              |
+| ------------------------------------------------------------------------------ | ------------------------------------------------- |
+| `parseDuration(value)`, `formatDuration(ms)`                                   | Durées au format `"10m"` / `"30s"`                |
+| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Orchestration de lumières par ids d'équipements   |
+| `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous |
+
+`getSunlight(): { sunrise, sunset, isDaylight }` retourne les heures de soleil courantes (`"HH:MM"`, offsets spec 023 appliqués). À coupler avec l'événement `sunlight.changed` pour se resynchroniser d'un jour à l'autre ; les champs sont `null` tant que les heures ne sont pas calculées ou sans coordonnées maison.
 
 ## Événements de l'Event Bus
 
 Événements clés auxquels les recettes s'abonnent typiquement :
 
-| Event                    | Payload                                                   |
-| ------------------------ | --------------------------------------------------------- |
-| `zone.data.changed`      | `{ zoneId, aggregatedData: { motion, luminosity, ... } }` |
-| `equipment.data.changed` | `{ equipmentId, alias, value, category }`                 |
+| Event                    | Payload                                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `zone.data.changed`      | `{ zoneId, aggregatedData: { motion, luminosity, ... } }`                                                        |
+| `equipment.data.changed` | `{ equipmentId, alias, value, category }`                                                                        |
+| `sunlight.changed`       | (sans payload) : heures de soleil recalculées (nouveau jour / transition) ; lire via `ctx.helpers.getSunlight()` |
 
 ## Cycle de vie
 
-1. **Enregistrement** : `recipeManager.register(MyRecipe)`, crée une instance d'exemple pour extraire les métadonnées
-2. **Instanciation** : l'utilisateur crée via l'API → `validate()` → persisté en SQLite → `start()`
-3. **Restauration** : au redémarrage moteur, les instances activées sont chargées depuis la DB et `start()` est appelé
-4. **Mise à jour** : `stop()` → mise à jour des params en DB → `validate()` → `start()` avec les nouveaux params
-5. **Suppression** : `stop()` → retiré de la DB (cascade sur state + logs)
+1. **Chargement** : `RecipeLoader.loadAll()` importe chaque package installé et activé (`dist/index.js`) et enregistre la définition de `createRecipe()` via `RecipeManager.registerExternal()`
+2. **Instanciation** : l'utilisateur crée via l'API → `validate()` → persisté en SQLite → `createInstance()`
+3. **Restauration** : au redémarrage moteur, les instances activées sont chargées depuis la DB et `createInstance()` est appelé
+4. **Mise à jour des params** : `stop()` → mise à jour des params en DB → `validate()` → `createInstance()` avec les nouveaux params
+5. **Mise à jour de la recette** : nouvelle version du package installée → définition ré-enregistrée → les instances en cours sont redémarrées pour exécuter la nouvelle version (issue #349)
+6. **Suppression** : `stop()` → retiré de la DB (cascade sur state + logs)
 
 ## Recettes existantes
 
-| ID             | Description                                                            |
-| -------------- | ---------------------------------------------------------------------- |
-| `motion-light` | Allume les lumières au mouvement, les éteint après un délai            |
-| `switch-light` | Bascule les lumières à l'appui sur bouton, timer de sécurité optionnel |
+Le catalogue vivant est `plugins/registry.json` dans le repo Sowel (chaque entrée `"type": "recipe"`, un dépôt GitHub par recette). Bons exemples à copier :
+
+| Dépôt                          | Illustre                                                           |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `sowel-recipe-schedule-on-off` | Timers, bornes solaires (`getSunlight`), slots select, i18n, tests |
+| `sowel-recipe-state-watch`     | Surveillance générique d'une clé de donnée avec alarme             |
+| `sowel-recipe-motion-light`    | Pattern classique capteur vers actionneur avec délai               |
 
 ## Checklist
 
-- [ ] La classe Recipe étend `Recipe` avec id, name, description, slots, i18n
+- [ ] Dépôt externe `sowel-recipe-<id>` avec `manifest.json` (`type: "recipe"`, `repo` égal au dépôt GitHub) et `dist/index.js` exportant `createRecipe()`
+- [ ] La définition porte id, name, description, slots, i18n (FR + EN)
 - [ ] `validate()` vérifie tous les params, lève une erreur si invalide
-- [ ] `start()` s'abonne aux événements, stocke les unsubs
+- [ ] `createInstance()` s'abonne aux événements, stocke les unsubs ; déclencheurs protégés contre les re-déclenchements (`equipment.data.changed` peut re-émettre une valeur inchangée : mémoriser la dernière valeur vue et ne réagir qu'aux vraies transitions)
 - [ ] `stop()` annule tous les timers et désabonne (idempotent)
-- [ ] Enregistré dans `src/index.ts`
-- [ ] Tests écrits et passants
-- [ ] `npx tsc --noEmit` passe
-- [ ] Traductions françaises dans le record `i18n`
+- [ ] Tests écrits et passants dans le dépôt de la recette (`npm test`), `npm run build` propre
+- [ ] Tarball `sowel-recipe-<id>-<version>.tar.gz` attaché à la release GitHub `v<version>`, version du manifest égale au tag
+- [ ] Installée et testée sur une instance réelle via une source personnelle (spec 136) ou une entrée de registre
