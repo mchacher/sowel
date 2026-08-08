@@ -19,6 +19,7 @@ function createTestDb(): Database.Database {
     "004_drop_dispatch_config.sql",
     "005_device_data_enum_values.sql",
     "006_pool_runtime_and_category_override.sql",
+    "014_device_orders_value_on_off.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }

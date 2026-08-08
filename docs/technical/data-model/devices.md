@@ -72,8 +72,12 @@ interface DeviceOrder {
   max?: number;
   enumValues?: string[];
   unit?: string;
+  valueOn?: string | number | boolean; // Boolean orders: wire value for true (e.g. "ON")
+  valueOff?: string | number | boolean; // Boolean orders: wire value for false (e.g. "OFF")
 }
 ```
+
+For boolean orders, `valueOn` / `valueOff` carry the wire representation the device actually accepts (e.g. Zigbee2MQTT binary exposes expect `"ON"`/`"OFF"`). When declared by the integration at discovery time, `EquipmentManager.executeOrder` maps boolean-ish values onto them before dispatching to the plugin; orders without them are dispatched untouched (migration `014_device_orders_value_on_off.sql`).
 
 > **Note**: earlier versions exposed MQTT-specific fields (`mqttSetTopic`, `payloadKey`, `dispatch_config`) on `DeviceOrder`. These are no longer part of the runtime API. Migration `004_drop_dispatch_config.sql` deprecated them; the underlying SQLite columns remain (SQLite cannot drop columns without rebuilding the table) but are ignored. Order delivery is now fully delegated to the integration plugin via `IntegrationPlugin.executeOrder()`.
 
