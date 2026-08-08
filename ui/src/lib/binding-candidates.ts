@@ -85,9 +85,16 @@ export function computeBindingCandidates(
     case "pool_pump":
     case "light_onoff":
     case "water_valve": {
+      // Accept BOTH an ON/OFF enum order (Tasmota `power1`) and a boolean
+      // power-toggle order (Zigbee2MQTT relay/light `state`, category
+      // light_toggle/toggle_power) — same rule as the `switch` case above.
+      // Using isOnOffEnum alone here silently excluded every Zigbee relay
+      // (e.g. Tuya WHD02) from light_onoff/pool_pump: its `state` is a
+      // boolean, not an enum, so it produced zero candidates and could not
+      // be bound to a light, while it bound fine to a `switch`.
       const candidates: BindingCandidate[] = [];
       for (const o of deviceOrders) {
-        if (!isOnOffEnum(o)) continue;
+        if (!isOnOffOrder(o)) continue;
         const matchingData = deviceData.find((d) => d.key === o.key);
         candidates.push({
           id: o.key,

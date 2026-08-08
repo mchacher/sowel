@@ -113,10 +113,16 @@ export function computeBindingCandidates(
     case "pool_pump":
     case "light_onoff":
     case "water_valve": {
-      // One candidate per ON/OFF enum order; attach matching data if same key.
+      // One candidate per on/off command: an ON/OFF enum order (Tasmota
+      // `power1`) OR a boolean power-toggle order (Zigbee2MQTT relay/light
+      // `state`, category light_toggle/toggle_power) — same rule as `switch`.
+      // isOnOffEnum alone silently excluded every Zigbee relay (e.g. Tuya
+      // WHD02) from light_onoff/pool_pump (boolean `state`, not enum),
+      // though it bound fine to a `switch`. Kept in sync with
+      // ui/src/lib/binding-candidates.ts.
       const candidates: BindingCandidate[] = [];
       for (const o of deviceOrders) {
-        if (!isOnOffEnum(o)) continue;
+        if (!isOnOffOrder(o)) continue;
         const matchingData = deviceData.find((d) => d.key === o.key);
         candidates.push({
           id: o.key,
