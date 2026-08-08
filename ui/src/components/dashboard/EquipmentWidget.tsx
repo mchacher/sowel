@@ -37,6 +37,7 @@ import {
   MultiSensorIcon,
   GateWidgetIcon,
   HeaterWidgetIcon,
+  WaterHeaterIcon,
   SlidingGateIcon,
   GarageDoorIcon,
   EnergyMeterIcon,
@@ -96,6 +97,7 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetai
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
   if (equipment.type === "solar_panel") return <SolarPanelEquipmentWidget label={label} equipment={equipment} />;
   if (equipment.type === "switch") return <SwitchEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (equipment.type === "water_heater") return <WaterHeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
   if (equipment.type === "weather") return <WeatherStationWidget label={label} equipment={equipment} onOpenDetail={onOpenDetail} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
@@ -296,6 +298,104 @@ function SwitchEquipmentWidget({
       </div>
 
       {/* Zone 3: Bouton — toggle */}
+      {hasToggle && equipment.enabled && (
+        <div className="flex justify-center gap-3 mt-auto pt-1">
+          <button
+            onClick={handleToggle}
+            disabled={executing}
+            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
+            }`}
+            title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
+          >
+            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+          </button>
+        </div>
+      )}
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Water heater equipment widget (spec 135)
+// ============================================================
+
+function WaterHeaterEquipmentWidget({
+  label,
+  equipment,
+  onExecuteOrder,
+  iconKey,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
+}) {
+  const { t } = useTranslation();
+  const [executing, setExecuting] = useState(false);
+
+  const stateBinding = equipment.dataBindings.find(
+    (db) => db.alias === "state" || db.category === "light_state",
+  );
+  const isOn = stateBinding
+    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
+    : false;
+
+  const toggleBinding = equipment.orderBindings.find(
+    (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum"),
+  );
+  const hasToggle = !!toggleBinding;
+
+  // Optional water temperature (aliased water_temperature so it is kept out of
+  // the zone room average) and optional power draw (metering relay).
+  const waterTemp = equipment.dataBindings.find((db) => db.alias === "water_temperature");
+  const tempValue = typeof waterTemp?.value === "number" ? waterTemp.value : null;
+  const powerBinding = equipment.dataBindings.find((db) => db.category === "power");
+  const powerValue = typeof powerBinding?.value === "number" ? powerBinding.value : null;
+
+  const handleToggle = async () => {
+    if (executing || !toggleBinding) return;
+    setExecuting(true);
+    try {
+      const alias = toggleBinding.alias;
+      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+      const value =
+        toggleBinding.type === "boolean" && alias !== "state" ? !isOn : isOn ? offVal : onVal;
+      await onExecuteOrder(alias, value);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <WidgetCard label={label}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        {resolveWidgetIcon(iconKey, <WaterHeaterIcon on={isOn} />)}
+        <div className="flex flex-col items-start gap-1 pl-2">
+          <span
+            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            }`}
+          >
+            {isOn ? "ON" : "OFF"}
+          </span>
+          {tempValue !== null && (
+            <span className="font-mono text-[13px] font-semibold text-text tabular-nums">
+              {tempValue.toFixed(1)}
+              <span className="text-[11px] text-text-tertiary font-normal ml-0.5">°C</span>
+            </span>
+          )}
+          {powerValue !== null && (
+            <span className="font-mono text-[12px] text-text-secondary tabular-nums">
+              {Math.round(powerValue)}
+              <span className="text-[10px] text-text-tertiary font-normal ml-0.5">W</span>
+            </span>
+          )}
+        </div>
+      </div>
+
       {hasToggle && equipment.enabled && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button

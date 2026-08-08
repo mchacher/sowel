@@ -75,6 +75,63 @@ export function LightBulbIcon({ on }: { on: boolean }) {
 // Shutter icon — 5 levels (0%, 25%, 50%, 75%, 100%)
 // ============================================================
 
+/**
+ * Spec 135 — water heater (chauffe-eau / cumulus). A wall tank with cold-in /
+ * hot-out pipes and a water gauge. `on` (heating): amber (`text-active`) with a
+ * warm glow and rising heat waves; off: neutral primary stroke.
+ */
+export function WaterHeaterIcon({ on }: { on: boolean }) {
+  const id = useId();
+  const bodyGrad = `wh-body-${id}`;
+  const waterGrad = `wh-water-${id}`;
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+      <defs>
+        <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity={on ? 0.22 : 0.1} />
+          <stop offset="100%" stopColor="currentColor" stopOpacity={on ? 0.12 : 0.05} />
+        </linearGradient>
+        <linearGradient id={waterGrad} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity={on ? 0.45 : 0.22} />
+          <stop offset="100%" stopColor="currentColor" stopOpacity={on ? 0.28 : 0.12} />
+        </linearGradient>
+      </defs>
+
+      {on && <ellipse cx="28" cy="29" rx="20" ry="22" fill="currentColor" opacity="0.07" />}
+
+      {/* Cold-in / hot-out pipes */}
+      <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeOpacity="0.55">
+        <path d="M22 9V5.5a2 2 0 012-2h1" fill="none" />
+        <path d="M34 9V5.5a2 2 0 00-2-2h-1" fill="none" />
+      </g>
+
+      {/* Tank body */}
+      <rect x="16" y="9" width="24" height="39" rx="10" fill={`url(#${bodyGrad})`} stroke="currentColor" strokeWidth="1.4" strokeOpacity={on ? 0.65 : 0.4} />
+
+      {/* Water fill (lower ~55%) */}
+      <path d="M16 27v11a10 10 0 0010 10h4a10 10 0 0010-10V27z" fill={`url(#${waterGrad})`} />
+
+      {/* Heat waves (on) or gauge marks (off) */}
+      {on ? (
+        <g stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.6" fill="none">
+          <path d="M24 36c0-2 2-2 2-4s-2-2-2-4" />
+          <path d="M28 37c0-2 2-2 2-4s-2-2-2-4" />
+          <path d="M32 36c0-2 2-2 2-4s-2-2-2-4" />
+        </g>
+      ) : (
+        <g stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeOpacity="0.3">
+          <line x1="34.5" y1="16" x2="34.5" y2="18" />
+          <line x1="34.5" y1="21" x2="34.5" y2="23" />
+        </g>
+      )}
+
+      {/* Thermostat / status dot */}
+      <circle cx="28" cy="20" r="2" fill="currentColor" opacity={on ? 0.8 : 0.4} />
+    </svg>
+  );
+}
+
 export function ShutterWidgetIcon({ level }: { level: number | null }) {
   const id = useId();
   const slatGradId = `shutter-slat-${id}`;

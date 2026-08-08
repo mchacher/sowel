@@ -235,6 +235,7 @@
   "equipments.type.weather_forecast": "Weather Forecast",
   "equipments.type.gate": "Gate",
   "equipments.type.heater": "Electric Heater",
+  "equipments.type.water_heater": "Water Heater",
   "equipments.type.energy_meter": "Energy Meter (sub-meter)",
   "equipments.type.main_energy_meter": "Energy Meter (main)",
   "equipments.type.energy_production_meter": "Energy Meter (production)",

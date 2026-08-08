@@ -64,6 +64,7 @@ import {
   PressureSensorIcon,
   GateWidgetIcon,
   HeaterWidgetIcon,
+  WaterHeaterIcon,
   SlidingGateIcon,
   GarageDoorIcon,
   PlugWidgetIcon,
@@ -191,6 +192,12 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
     previewProps: { comfort: true },
     types: ["heater", "heating"],
   },
+  water_heater: {
+    label: "Chauffe-eau",
+    component: WaterHeaterIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { on: true },
+    types: ["water_heater"],
+  },
   plug: {
     label: "Prise",
     component: PlugWidgetIcon as ComponentType<Record<string, unknown>>,
@@ -303,6 +310,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   solar_panel: "Sun",
   thermostat: "Thermometer",
   heater: "Flame",
+  water_heater: "Droplets",
   gate: "DoorOpen",
   switch: "ToggleLeft",
   button: "CircleDot",

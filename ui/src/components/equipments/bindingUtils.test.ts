@@ -238,6 +238,34 @@ describe("gate equipment type relevance (blind single-button RTS gate)", () => {
   });
 });
 
+describe("water_heater equipment type (spec 135)", () => {
+  it("on/off relay state is relevant, so is optional temperature/power/energy", () => {
+    expect(isRelevantData("light_state", "water_heater")).toBe(true);
+    expect(isRelevantData("temperature", "water_heater")).toBe(true);
+    expect(isRelevantData("power", "water_heater")).toBe(true);
+    expect(isRelevantData("energy", "water_heater")).toBe(true);
+    expect(isRelevantOrder("state", "water_heater")).toBe(true);
+  });
+
+  it("aliases a temperature reading to water_temperature (kept out of zone avg)", () => {
+    // The zone aggregator only folds category=temperature bindings with alias
+    // exactly "temperature" into the room average — a water heater's water
+    // temperature must land on `water_temperature` instead. The per-type rule
+    // applies whether or not a category map is passed (manual add path).
+    expect(resolveAlias("temperature", "water_heater", undefined, "temperature")).toBe(
+      "water_temperature",
+    );
+    // A different probe key resolves the same, driven by the category.
+    expect(resolveAlias("temperature_2", "water_heater", undefined, "temperature")).toBe(
+      "water_temperature",
+    );
+  });
+
+  it("does not touch a temperature on other types", () => {
+    expect(resolveAlias("temperature", "sensor", undefined, "temperature")).toBe("temperature");
+  });
+});
+
 // Spec 133 — camera equipment. Auto-binding is a deliberate SUBSET of what
 // the device may expose: snapshot/stream/monitoring auto-bind, light_mode/
 // siren/detection are opt-in only (privacy/bandwidth). Order relevance is

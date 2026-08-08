@@ -106,6 +106,14 @@ Radiateur électrique individuel piloté par relais fil pilote.
 - **Contrôles :** Bascule Confort / Éco
 - **Données attendues :** état du relais (ON = éco, OFF = confort)
 
+#### Chauffe-eau
+
+Chauffe-eau / cumulus piloté par un relais on/off. Le canal on/off est lié automatiquement (ainsi que sa puissance/énergie si le relais les mesure).
+
+- **Contrôles :** Bascule Marche / Arrêt
+- **Données attendues :** état du relais on/off, température d'eau optionnelle (affichage seul, exclue de la moyenne de température ambiante de la zone), puissance/énergie optionnelles
+- La consigne réglable est volontairement hors périmètre (ce serait un thermostat). La planification ou le pilotage sur surplus solaire relèvent d'une recette, pas de l'équipement.
+
 ---
 
 ### Accès

@@ -12,6 +12,7 @@ import {
   MultiSensorIcon,
   GateWidgetIcon,
   HeaterWidgetIcon,
+  WaterHeaterIcon,
   SlidingGateIcon,
   GarageDoorIcon,
   PlugWidgetIcon,
@@ -376,6 +377,20 @@ function useMobileState(
         ? createElement(customEntry.component, customEntry.previewProps)
         : <PlugWidgetIcon on={isOn} />,
       stateLines: [isOn ? "ON" : "OFF"],
+    };
+  }
+
+  if (equipment.type === "water_heater") {
+    const waterTemp = equipment.dataBindings.find((db) => db.alias === "water_temperature");
+    const tempValue = typeof waterTemp?.value === "number" ? waterTemp.value : null;
+    return {
+      icon: customEntry
+        ? createElement(customEntry.component, customEntry.previewProps)
+        : <WaterHeaterIcon on={isOn} />,
+      stateLines: [
+        isOn ? "ON" : "OFF",
+        ...(tempValue !== null ? [`${tempValue.toFixed(1)}°C`] : []),
+      ],
     };
   }
 

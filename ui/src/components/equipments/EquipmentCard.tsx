@@ -16,6 +16,7 @@ import {
   Monitor,
   WashingMachine,
   Waves,
+  Droplets,
   Camera,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
@@ -45,6 +46,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   weather_forecast: <CloudSun size={18} strokeWidth={1.5} />,
   gate: <DoorOpen size={18} strokeWidth={1.5} />,
   heater: <Heater size={18} strokeWidth={1.5} />,
+  water_heater: <Droplets size={18} strokeWidth={1.5} />,
   energy_meter: <Zap size={18} strokeWidth={1.5} />,
   main_energy_meter: <Zap size={18} strokeWidth={1.5} />,
   energy_production_meter: <Zap size={18} strokeWidth={1.5} />,
@@ -73,6 +75,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   weather_forecast: "equipments.type.weather_forecast",
   gate: "equipments.type.gate",
   heater: "equipments.type.heater",
+  water_heater: "equipments.type.water_heater",
   energy_meter: "equipments.type.energy_meter",
   main_energy_meter: "equipments.type.main_energy_meter",
   energy_production_meter: "equipments.type.energy_production_meter",

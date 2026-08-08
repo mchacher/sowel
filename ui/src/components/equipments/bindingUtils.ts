@@ -111,6 +111,10 @@ const RELEVANT_DATA: Record<string, string[]> = {
   weather_forecast: ["weather_condition", "temperature_outdoor", "rain", "wind"],
   gate: ["generic", "contact_door"],
   heater: ["generic", "light_state"],
+  // Spec 135 — water heater: on/off relay (light_state) + optional water
+  // temperature (aliased water_temperature so it stays out of the zone room
+  // average) + optional power/energy when the relay meters consumption.
+  water_heater: ["light_state", "temperature", "power", "energy"],
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy", "power"],
   energy_production_meter: ["energy", "power"],
@@ -163,6 +167,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   weather_forecast: [],
   gate: ["R1", "R2", "R3", "R4", "command", "gate_trigger"],
   heater: ["state", "on", "R1", "R2", "R3", "R4"],
+  water_heater: ["state", "on", "R1", "R2", "R3", "R4"],
   energy_meter: [],
   main_energy_meter: [],
   energy_production_meter: [],
@@ -298,6 +303,17 @@ const DATA_CATEGORY_ALIASES: Record<string, string> = {
 };
 
 /**
+ * Per-equipment-type category → alias overrides, applied before the global
+ * DATA_CATEGORY_ALIASES. Spec 135: on a water heater, a `temperature` reading
+ * is the WATER temperature, aliased `water_temperature` so the zone aggregator
+ * (which only folds category=temperature bindings with alias exactly
+ * "temperature" into the room average) leaves it out.
+ */
+const TYPE_DATA_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string>>> = {
+  water_heater: { temperature: "water_temperature" },
+};
+
+/**
  * Resolve a device key to the standardized equipment alias for the given type.
  * Priority:
  *   1. Order / data category (plugin-agnostic)
@@ -310,7 +326,11 @@ export function resolveAlias(
   categoryMap?: Record<string, string>,
   category?: string,
 ): string {
-  if (category && categoryMap && categoryMap[category]) return categoryMap[category];
+  if (category) {
+    const perType = TYPE_DATA_CATEGORY_ALIASES[equipmentType as EquipmentType]?.[category];
+    if (perType) return perType;
+    if (categoryMap && categoryMap[category]) return categoryMap[category];
+  }
   return STANDARD_ALIASES[equipmentType]?.[key] ?? key;
 }
 
@@ -338,6 +358,9 @@ const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>
   "light_dimmable",
   "light_color",
   "switch",
+  // Spec 135 — water heater: on/off relay candidate (+ metering attach),
+  // like switch. Water temperature is a manual extra binding.
+  "water_heater",
   "shutter",
   "awning",
   // NOTE: water_valve is intentionally key-driven (RELEVANT_DATA/RELEVANT_ORDERS),

@@ -235,6 +235,7 @@
   "equipments.type.weather_forecast": "Prévisions Météo",
   "equipments.type.gate": "Ouvrant",
   "equipments.type.heater": "Radiateur électrique",
+  "equipments.type.water_heater": "Chauffe-eau",
   "equipments.type.energy_meter": "Compteur d'Énergie (sous-compteur)",
   "equipments.type.main_energy_meter": "Compteur d'Énergie (principal)",
   "equipments.type.energy_production_meter": "Compteur d'Énergie (production)",

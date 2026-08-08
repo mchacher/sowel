@@ -562,10 +562,11 @@ function getMobileClickAction(
     return onOpenDetail;
   }
 
-  // Simple on/off (light_onoff, switch, pool_pump, water_valve) → direct toggle
+  // Simple on/off (light_onoff, switch, water_heater, pool_pump, water_valve) → direct toggle
   if (
     type === "light_onoff" ||
     type === "switch" ||
+    type === "water_heater" ||
     type === "pool_pump" ||
     type === "water_valve"
   ) {

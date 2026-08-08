@@ -254,6 +254,44 @@ describe("computeBindingCandidates", () => {
     expect(result).toHaveLength(0);
   });
 
+  // Spec 135 — water heater: same candidate shape as a switch.
+  it("water_heater on a Zigbee relay (boolean light_toggle `state`) → one candidate", () => {
+    const orders = [
+      order("state", "boolean", { category: "light_toggle" }),
+      order("power_on_behavior", "enum", { enumValues: ["off", "previous", "on"] }),
+    ];
+    const datas = [data("state", "boolean", { category: "light_state", value: "OFF" })];
+    const result = computeBindingCandidates("water_heater", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["state"]);
+    expect(result[0].dataKeys).toEqual(["state"]);
+  });
+
+  it("water_heater on a metering relay → attaches power/energy to the candidate", () => {
+    const orders = [order("state", "boolean", { category: "light_toggle" })];
+    const datas = [
+      data("state", "boolean", { category: "light_state", value: "ON" }),
+      data("power", "number", { category: "power", value: 1800 }),
+      data("energy", "number", { category: "energy", value: 12.4 }),
+    ];
+    const result = computeBindingCandidates("water_heater", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys.sort()).toEqual(["energy", "power", "state"]);
+  });
+
+  it("water_heater with an ON/OFF enum `state` (Tasmota relay) → one candidate", () => {
+    const orders = [order("state", "enum", { enumValues: ["ON", "OFF"] })];
+    const datas = [data("state", "enum", { category: "light_state" })];
+    const result = computeBindingCandidates("water_heater", datas, orders);
+    expect(result).toHaveLength(1);
+  });
+
+  it("water_heater ignores a device with no on/off channel", () => {
+    const orders = [order("child_lock", "boolean", { category: "toggle_lock" })];
+    const result = computeBindingCandidates("water_heater", [], orders);
+    expect(result).toHaveLength(0);
+  });
+
   it("sensor on a multi-data device → one all-data candidate", () => {
     const datas = [
       data("temperature", "number", { category: "temperature" }),
