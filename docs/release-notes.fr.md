@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.34.x: Équipement chauffe-eau
+
+### v1.34.0 — 2026-08-08 { #v1-34-0 }
+
+- Feat (equipments) : nouveau type d'équipement **chauffe-eau** (spec 135). Commande ON/OFF via le canal on/off standard (les relais Zigbee comme le Tuya WHD02 fonctionnent directement), affichage optionnel de la **température de l'eau** liée sous son propre alias pour ne jamais fausser la moyenne de température de la zone, et affichage automatique puissance/énergie quand le relais mesure la consommation (comme les prises avec mesure). Créer un chauffe-eau depuis un relais lie tout automatiquement, et une icône dédiée indique quand il chauffe. Support complet du dashboard PC et mobile. (#359)
+- Fix (equipments) : les commandes on/off booléennes envoyées aux relais Zigbee via l'API REST ou par les automatisations étaient **silencieusement ignorées** : l'appel répondait succès, mais Zigbee2MQTT rejetait le message car les interrupteurs binaires attendent leur forme déclarée (`"ON"`/`"OFF"`), pas un booléen JSON. Les intégrations peuvent désormais déclarer la représentation « fil » d'un ordre booléen à la découverte, et Sowel traduit la valeur à l'envoi : `true` devient `"ON"`, ou `"LOCK"`, ou ce que l'appareil déclare. Fonctionne avec le plugin Zigbee2MQTT v2.3.0, qui déclare ces valeurs ; les ordres qui ne les déclarent pas sont envoyés exactement comme avant. (#360, #362)
+- Fix (equipments) : les modules relais exposant le on/off comme ordre booléen (Tuya WHD02 et similaires) ne pouvaient pas être associés à un équipement **lumière ou pompe de piscine** : la règle de candidats n'acceptait que les enums ON/OFF pour ces types, alors que le même relais se liait sans problème à un interrupteur. Les deux acceptent désormais les ordres on/off booléens, alignés sur la règle des interrupteurs. (#358)
+- Chore (registry) : ajout du plugin communautaire **caméra Netatmo** 1.0.0 (Netatmo Presence : instantané, vue en direct, surveillance on/off, projecteur, détections de mouvement), qui se lie au type d'équipement caméra introduit en v1.31.0. Par Romain (alpitux). (#356)
+- Chore (registry) : **plugin Zigbee2MQTT 2.3.0** : le compteur d'énergie bidirectionnel double pince Tuya PJ-1203A arrive désormais comme un appareil par voie alimentant la chaîne énergie (deltas d'énergie signés, même forme que le Shelly Pro 3EM), contribution d'Adrien Jouve (computingify) ; plus le correctif de liaison des relais Tuya et les déclarations de valeurs « fil » utilisées par le correctif d'ordres ci-dessus. (#357, #363)
+
+---
+
 ## 1.33.x: Corrections de fiabilité
 
 ### v1.33.0 — 2026-08-07 { #v1-33-0 }
