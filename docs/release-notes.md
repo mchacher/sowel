@@ -11,6 +11,18 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.34.x: Water heater equipment
+
+### v1.34.0 — 2026-08-08 { #v1-34-0 }
+
+- Feat (equipments): new **water heater** equipment type (spec 135). ON/OFF control through the standard on/off relay channel (Zigbee relays such as the Tuya WHD02 work out of the box), an optional **water temperature** display bound under its own alias so it never skews the zone's room-temperature average, and automatic power/energy display when the relay meters consumption (like metering switches). Creating one from a relay device binds everything automatically, and a custom state-aware icon shows when it is heating. Full desktop and mobile dashboard support. (#359)
+- Fix (equipments): boolean on/off commands sent to Zigbee relays through the REST API or by automations were **silently ignored**: the call returned success, but Zigbee2MQTT dropped the payload because binary switches expect their declared wire form (`"ON"`/`"OFF"`), not a JSON boolean. Integrations can now declare the wire representation of a boolean order at discovery time, and Sowel translates the value at dispatch: `true` becomes `"ON"`, or `"LOCK"`, or whatever the device declares. Pairs with the Zigbee2MQTT plugin v2.3.0, which declares those values; orders that do not declare them are dispatched exactly as before. (#360, #362)
+- Fix (equipments): relay modules exposing on/off as a boolean order (Tuya WHD02 and similar) could not be associated with a **light or pool pump** equipment: the binding candidate rule only accepted ON/OFF enums for those types, although the same relay bound fine as a switch. Both now accept boolean on/off orders, aligned with the switch rule. (#358)
+- Chore (registry): **Netatmo camera** community plugin 1.0.0 added (Netatmo Presence: snapshot, live view, monitoring toggle, spot light, motion detections), binding into the camera equipment type introduced in v1.31.0. By Romain (alpitux). (#356)
+- Chore (registry): **Zigbee2MQTT plugin 2.3.0**: the Tuya PJ-1203A bidirectional dual-channel energy meter now lands as one device per channel feeding the energy pipeline (signed energy deltas, same shape as the Shelly Pro 3EM), contributed by Adrien Jouve (computingify); plus the Tuya relay binding fix and the binary wire-value declarations used by the order fix above. (#357, #363)
+
+---
+
 ## 1.33.x: Reliability fixes
 
 ### v1.33.0 — 2026-08-07 { #v1-33-0 }
