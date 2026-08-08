@@ -271,13 +271,14 @@ See [docs/technical/deployment.md](docs/technical/deployment.md) for the full op
 
 The repo ships Claude Code skills under `.claude/skills/`:
 
-| Skill                | When to use                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `sowel-feature`      | Implementing a new feature (Phase 1-6 workflow with gates). Drafts spec, creates branch, implements, tests, PRs. |
-| `debug-bug`          | Investigating a bug. Gathers symptoms, pulls logs, traces the pipeline, presents diagnosis before fix.           |
-| `sowel-release`      | Bumping version, tagging, pushing — triggers GitHub Actions build.                                               |
-| `plugin-integration` | Creating a new plugin integration (plugin code, UI touchpoints, manifest).                                       |
-| `update-docs`        | Updating MkDocs pages when features change.                                                                      |
+| Skill                | When to use                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `sowel-feature`      | Implementing a new feature (Phase 1-6 workflow with gates). Drafts spec, creates branch, implements, tests, PRs.                       |
+| `debug-bug`          | Investigating a bug. Gathers symptoms, pulls logs, traces the pipeline, presents diagnosis before fix.                                 |
+| `sowel-release`      | Bumping version, tagging, pushing — triggers GitHub Actions build.                                                                     |
+| `plugin-integration` | Creating a new plugin integration (plugin code, UI touchpoints, manifest).                                                             |
+| `sowel-recipe-dev`   | Developing a personal recipe as an external package: scaffold, createRecipe factory, release, personal-source install loop (spec 136). |
+| `update-docs`        | Updating MkDocs pages when features change.                                                                                            |
 
 ## Energy monitoring notes
 
