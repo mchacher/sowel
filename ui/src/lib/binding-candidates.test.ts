@@ -62,3 +62,33 @@ describe("computeBindingCandidates — metering switch (spec 129)", () => {
     expect(result.flatMap((c) => c.dataKeys)).not.toContain("power");
   });
 });
+
+describe("computeBindingCandidates — light_onoff accepts boolean relays", () => {
+  // A Zigbee relay (Tuya WHD02) drives a light via a boolean `state`
+  // (category light_toggle), not an ON/OFF enum. It must yield a candidate
+  // for light_onoff (it already did for `switch`).
+  it("boolean light_toggle `state` → one light_onoff candidate", () => {
+    const orders = [
+      order("state", { type: "boolean", category: "light_toggle" }),
+      order("power_on_behavior", { type: "enum", enumValues: ["off", "previous", "on"] }),
+    ];
+    const datas = [data("state", { type: "boolean", category: "light_state", value: "OFF" })];
+    const result = computeBindingCandidates("light_onoff", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["state"]);
+    expect(result[0].dataKeys).toEqual(["state"]);
+  });
+
+  it("ON/OFF enum `state` still yields a candidate (Tasmota)", () => {
+    const orders = [order("state", { type: "enum", enumValues: ["ON", "OFF"] })];
+    const datas = [data("state", { type: "enum", category: "light_state" })];
+    const result = computeBindingCandidates("light_onoff", datas, orders);
+    expect(result).toHaveLength(1);
+  });
+
+  it("a non-power boolean toggle is not a light candidate", () => {
+    const orders = [order("child_lock", { type: "boolean", category: "toggle_lock" })];
+    const result = computeBindingCandidates("light_onoff", [], orders);
+    expect(result).toHaveLength(0);
+  });
+});

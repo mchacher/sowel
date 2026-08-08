@@ -224,6 +224,36 @@ describe("computeBindingCandidates", () => {
     expect(result[0].dataKeys).toEqual(["state"]);
   });
 
+  // A Zigbee relay (Tuya WHD02) exposes on/off as a boolean `state` order
+  // (category light_toggle), not an ON/OFF enum. It bound to `switch` but was
+  // silently excluded from `light_onoff` (isOnOffEnum-only) → could not drive
+  // a light. Now accepted, same rule as `switch`.
+  it("light_onoff on a Zigbee relay (boolean light_toggle `state`) → one candidate", () => {
+    const orders = [
+      order("state", "boolean", { category: "light_toggle" }),
+      order("power_on_behavior", "enum", { enumValues: ["off", "previous", "on"] }),
+    ];
+    const datas = [data("state", "boolean", { category: "light_state", value: "OFF" })];
+    const result = computeBindingCandidates("light_onoff", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["state"]);
+    expect(result[0].dataKeys).toEqual(["state"]);
+  });
+
+  it("pool_pump on a Zigbee relay (boolean light_toggle `state`) → one candidate", () => {
+    const orders = [order("state", "boolean", { category: "light_toggle" })];
+    const datas = [data("state", "boolean", { category: "light_state", value: "OFF" })];
+    const result = computeBindingCandidates("pool_pump", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["state"]);
+  });
+
+  it("light_onoff ignores a non-power boolean toggle (config switch)", () => {
+    const orders = [order("child_lock", "boolean", { category: "toggle_lock" })];
+    const result = computeBindingCandidates("light_onoff", [], orders);
+    expect(result).toHaveLength(0);
+  });
+
   it("sensor on a multi-data device → one all-data candidate", () => {
     const datas = [
       data("temperature", "number", { category: "temperature" }),
