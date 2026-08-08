@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import type { Logger } from "../core/logger.js";
-import type { PackageManager } from "../packages/package-manager.js";
+import type { PackageManager, InstallOptions } from "../packages/package-manager.js";
 import type { RecipeManager } from "./engine/recipe-manager.js";
 import type { RecipeDefinition } from "../shared/types.js";
 
@@ -25,24 +25,35 @@ export class RecipeLoader {
   /**
    * Install a recipe from GitHub — download, register, and load immediately.
    */
-  async install(repo: string, opts: { confirmed?: boolean } = {}): Promise<void> {
+  async install(repo: string, opts: InstallOptions = {}): Promise<void> {
     const manifest = await this.packageManager.installFromGitHub(repo, opts);
     if (manifest.type !== "recipe") {
       throw new Error(`Package "${manifest.id}" is not a recipe (type: ${manifest.type})`);
     }
+    await this.loadNewlyInstalled(manifest.id);
+  }
+
+  /**
+   * Load a recipe package that was just installed through PackageManager
+   * directly (spec 136 personal installs). Errors are confined — the
+   * package stays installed, load is retried at next boot.
+   */
+  async loadNewlyInstalled(recipeId: string): Promise<void> {
     try {
-      await this.loadRecipe(manifest.id);
-      this.logger.info({ recipeId: manifest.id }, "Recipe installed and loaded");
+      await this.loadRecipe(recipeId);
+      this.logger.info({ recipeId }, "Recipe installed and loaded");
     } catch (err) {
-      this.logger.error({ err, recipeId: manifest.id }, "Recipe installed but failed to load");
+      this.logger.error({ err, recipeId }, "Recipe installed but failed to load");
     }
   }
 
   /**
    * Update a recipe — download new version and reload.
    */
-  async update(recipeId: string): Promise<void> {
-    const newManifest = await this.packageManager.updateFiles(recipeId);
+  async update(recipeId: string, opts: InstallOptions = {}): Promise<void> {
+    // Spec 136: unconfirmed personal update probes before touching files.
+    await this.packageManager.probePersonalUpdate(recipeId, opts);
+    const newManifest = await this.packageManager.updateFiles(recipeId, opts);
     try {
       await this.loadRecipe(recipeId);
       // Issue #349: running instances would otherwise keep executing the

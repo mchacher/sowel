@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import type { PackageManager } from "../../packages/package-manager.js";
+import { PersonalPluginConfirmationRequiredError } from "../../packages/registry-types.js";
+import { PersonalSourceManager } from "../../packages/personal-sources.js";
 import type { PluginLoader } from "../../plugins/plugin-loader.js";
 import type { RecipeLoader } from "../../recipes/recipe-loader.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
@@ -41,9 +43,9 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
       const integrations = pluginLoader.getInstalled();
 
       // Recipe packages (no runtime status — just manifest + enabled + latest version)
-      const latestVersions = packageManager.getLatestVersions();
       const recipes = packageManager.getInstalledByType("recipe").map((pkg) => {
-        const latest = latestVersions.get(pkg.manifest.id);
+        // Spec 136: source-aware — personal packages check their source repo.
+        const latest = packageManager.getLatestVersionFor(pkg);
         const hasUpdate = latest && latest !== pkg.manifest.version;
         return {
           manifest: pkg.manifest,
@@ -52,6 +54,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
           status: "connected" as const,
           deviceCount: 0,
           offlineDeviceCount: 0,
+          source: pkg.source,
           ...(hasUpdate ? { latestVersion: latest } : {}),
         };
       });
@@ -97,18 +100,101 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
     }
   });
 
+  // GET /api/v1/plugins/sources — list personal sources (spec 136)
+  app.get("/api/v1/plugins/sources", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+    try {
+      return packageManager.listPersonalSources();
+    } catch (err) {
+      logger.error({ err }, "Failed to list personal sources");
+      return reply.code(500).send({
+        error: err instanceof Error ? err.message : "Failed to list personal sources",
+      });
+    }
+  });
+
+  // POST /api/v1/plugins/sources — add a personal source (spec 136)
+  // Body: { repo: string } ("owner/repo", public GitHub repo)
+  app.post<{ Body: { repo: string } }>("/api/v1/plugins/sources", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+
+    const repo = (request.body?.repo ?? "").trim();
+    if (!repo || !PersonalSourceManager.isValidRepo(repo)) {
+      return reply.code(400).send({ error: "Invalid 'repo' field (expected owner/repo)" });
+    }
+
+    try {
+      const source = await packageManager.addPersonalSource(repo);
+      logger.info({ repo }, "Personal source added via API");
+      auditLogger.log({
+        ...buildActor(request, userManager),
+        action: "plugin.source.add",
+        targetType: "plugin",
+        targetId: repo,
+        ip: request.ip,
+        meta: { repo, latestVersion: source.latestVersion ?? null },
+      });
+      return reply.code(201).send(source);
+    } catch (err) {
+      logger.warn({ err, repo }, "Failed to add personal source");
+      return reply.code(400).send({
+        error: err instanceof Error ? err.message : "Failed to add personal source",
+      });
+    }
+  });
+
+  // POST /api/v1/plugins/sources/remove — remove a personal source (spec 136)
+  // Body: { repo: string }. POST rather than DELETE because the repo id
+  // contains a slash and DELETE bodies are unreliable through proxies.
+  // Installed packages from the source are left untouched.
+  app.post<{ Body: { repo: string } }>("/api/v1/plugins/sources/remove", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+
+    const repo = (request.body?.repo ?? "").trim();
+    if (!repo) {
+      return reply.code(400).send({ error: "Missing 'repo' field" });
+    }
+
+    try {
+      packageManager.removePersonalSource(repo);
+      logger.info({ repo }, "Personal source removed via API");
+      auditLogger.log({
+        ...buildActor(request, userManager),
+        action: "plugin.source.remove",
+        targetType: "plugin",
+        targetId: repo,
+        ip: request.ip,
+        meta: { repo },
+      });
+      return { success: true };
+    } catch (err) {
+      logger.warn({ err, repo }, "Failed to remove personal source");
+      return reply.code(400).send({
+        error: err instanceof Error ? err.message : "Failed to remove personal source",
+      });
+    }
+  });
+
   // POST /api/v1/plugins/install — install from GitHub
-  // Body: { repo: string, confirmed?: boolean }
+  // Body: { repo: string, confirmed?: boolean, expectedSha256?: string }
   // Returns 409 CommunityPluginConfirmationRequired when owner is not in
   // OFFICIAL_OWNERS and `confirmed` is not true (spec 089 C1).
-  app.post<{ Body: { repo: string; confirmed?: boolean } }>(
+  // Returns 409 PersonalPluginConfirmationRequired (with version + sha256)
+  // for the TOFU confirmation step of personal sources (spec 136).
+  app.post<{ Body: { repo: string; confirmed?: boolean; expectedSha256?: string } }>(
     "/api/v1/plugins/install",
     async (request, reply) => {
       if (!request.auth || request.auth.role !== "admin") {
         return reply.code(403).send({ error: "Admin access required" });
       }
 
-      const { repo, confirmed } = request.body ?? {};
+      const { repo, confirmed, expectedSha256 } = request.body ?? {};
       if (!repo || typeof repo !== "string") {
         return reply.code(400).send({ error: "Missing 'repo' field (e.g. owner/repo)" });
       }
@@ -124,6 +210,38 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
               entry.compatReason ??
               `Incompatible with current Sowel version (${packageManager.getCurrentVersion()})`,
           });
+        }
+
+        // Spec 136: personal source — the real type is only known after
+        // extraction, so install through PackageManager first and dispatch
+        // to the matching loader afterwards. The sources.has() fallback
+        // covers a store entry not yet synthesized (release cache cold).
+        if (entry?.tier === "personal" || (!entry && packageManager.sources.has(repo))) {
+          const manifest = await packageManager.installFromGitHub(repo, {
+            confirmed,
+            expectedSha256,
+          });
+          if ((manifest.type ?? "integration") === "recipe") {
+            await recipeLoader.loadNewlyInstalled(manifest.id);
+          } else {
+            await pluginLoader.loadNewlyInstalled(manifest.id);
+          }
+          logger.info({ pluginId: manifest.id, repo }, "Personal plugin installed via API");
+          auditLogger.log({
+            ...buildActor(request, userManager),
+            action: "plugin.install",
+            targetType: "plugin",
+            targetId: manifest.id,
+            ip: request.ip,
+            meta: {
+              repo,
+              type: manifest.type ?? "integration",
+              version: manifest.version,
+              tier: "personal",
+              sha256: expectedSha256 ?? null,
+            },
+          });
+          return { success: true, manifest };
         }
 
         if (registryType === "recipe") {
@@ -164,6 +282,21 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
           return reply.code(409).send({
             error: "CommunityPluginConfirmationRequired",
             owner,
+            message: err.message,
+          });
+        }
+        // Spec 136: personal plugin TOFU confirmation step.
+        if (err instanceof PersonalPluginConfirmationRequiredError) {
+          logger.info(
+            { repo, owner: err.owner, version: err.version },
+            "Personal plugin install requires confirmation",
+          );
+          return reply.code(409).send({
+            error: "PersonalPluginConfirmationRequired",
+            repo: err.repo,
+            owner: err.owner,
+            version: err.version,
+            sha256: err.sha256,
             message: err.message,
           });
         }
@@ -209,53 +342,93 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
   });
 
   // POST /api/v1/plugins/:id/update
-  app.post<{ Params: { id: string } }>("/api/v1/plugins/:id/update", async (request, reply) => {
-    if (!request.auth || request.auth.role !== "admin") {
-      return reply.code(403).send({ error: "Admin access required" });
-    }
-
-    try {
-      const pkg = packageManager.getById(request.params.id);
-      const pkgType = pkg?.type ?? "integration";
-
-      const fromVersion = pkg?.manifest.version;
-
-      if (pkgType === "recipe") {
-        await recipeLoader.update(request.params.id);
-        logger.info({ pluginId: request.params.id, type: "recipe" }, "Recipe updated via API");
-        const after = packageManager.getById(request.params.id);
-        auditLogger.log({
-          ...buildActor(request, userManager),
-          action: "plugin.update",
-          targetType: "plugin",
-          targetId: request.params.id,
-          ip: request.ip,
-          meta: { type: "recipe", from: fromVersion ?? null, to: after?.manifest.version ?? null },
-        });
-        return { success: true };
-      } else {
-        const manifest = await pluginLoader.update(request.params.id);
-        logger.info(
-          { pluginId: request.params.id, version: manifest.version },
-          "Plugin updated via API",
-        );
-        auditLogger.log({
-          ...buildActor(request, userManager),
-          action: "plugin.update",
-          targetType: "plugin",
-          targetId: request.params.id,
-          ip: request.ip,
-          meta: { type: "integration", from: fromVersion ?? null, to: manifest.version },
-        });
-        return { success: true, manifest };
+  // Body (optional): { confirmed?: boolean, expectedSha256?: string } —
+  // TOFU re-confirmation for personal packages (spec 136).
+  app.post<{ Params: { id: string }; Body?: { confirmed?: boolean; expectedSha256?: string } }>(
+    "/api/v1/plugins/:id/update",
+    async (request, reply) => {
+      if (!request.auth || request.auth.role !== "admin") {
+        return reply.code(403).send({ error: "Admin access required" });
       }
-    } catch (err) {
-      logger.error({ err, pluginId: request.params.id }, "Failed to update package");
-      return reply.code(500).send({
-        error: err instanceof Error ? err.message : "Update failed",
-      });
-    }
-  });
+
+      const { confirmed, expectedSha256 } = request.body ?? {};
+      const opts = { confirmed, expectedSha256 };
+
+      try {
+        const pkg = packageManager.getById(request.params.id);
+        const pkgType = pkg?.type ?? "integration";
+
+        const fromVersion = pkg?.manifest.version;
+
+        if (pkgType === "recipe") {
+          await recipeLoader.update(request.params.id, opts);
+          logger.info({ pluginId: request.params.id, type: "recipe" }, "Recipe updated via API");
+          const after = packageManager.getById(request.params.id);
+          auditLogger.log({
+            ...buildActor(request, userManager),
+            action: "plugin.update",
+            targetType: "plugin",
+            targetId: request.params.id,
+            ip: request.ip,
+            meta: {
+              type: "recipe",
+              from: fromVersion ?? null,
+              to: after?.manifest.version ?? null,
+              ...(pkg?.source === "personal" ? { tier: "personal" } : {}),
+            },
+          });
+          return { success: true };
+        } else {
+          const manifest = await pluginLoader.update(request.params.id, opts);
+          logger.info(
+            { pluginId: request.params.id, version: manifest.version },
+            "Plugin updated via API",
+          );
+          auditLogger.log({
+            ...buildActor(request, userManager),
+            action: "plugin.update",
+            targetType: "plugin",
+            targetId: request.params.id,
+            ip: request.ip,
+            meta: {
+              type: "integration",
+              from: fromVersion ?? null,
+              to: manifest.version,
+              ...(pkg?.source === "personal" ? { tier: "personal" } : {}),
+            },
+          });
+          return { success: true, manifest };
+        }
+      } catch (err) {
+        // Spec 136: personal plugin TOFU re-confirmation step.
+        if (err instanceof PersonalPluginConfirmationRequiredError) {
+          logger.info(
+            { pluginId: request.params.id, version: err.version },
+            "Personal plugin update requires confirmation",
+          );
+          return reply.code(409).send({
+            error: "PersonalPluginConfirmationRequired",
+            repo: err.repo,
+            owner: err.owner,
+            version: err.version,
+            sha256: err.sha256,
+            message: err.message,
+          });
+        }
+        if (err instanceof Error && err.name === "ChecksumMismatchError") {
+          logger.warn({ pluginId: request.params.id, err }, "Tarball SHA256 mismatch on update");
+          return reply.code(400).send({
+            error: "ChecksumMismatch",
+            message: err.message,
+          });
+        }
+        logger.error({ err, pluginId: request.params.id }, "Failed to update package");
+        return reply.code(500).send({
+          error: err instanceof Error ? err.message : "Update failed",
+        });
+      }
+    },
+  );
 
   // POST /api/v1/plugins/:id/enable
   app.post<{ Params: { id: string } }>("/api/v1/plugins/:id/enable", async (request, reply) => {

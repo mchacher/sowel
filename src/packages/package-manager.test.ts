@@ -11,7 +11,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { mkdirSync, mkdtempSync, rmSync, readFileSync, writeFileSync, symlinkSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  symlinkSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
@@ -21,6 +29,7 @@ import { PackageManager } from "./package-manager.js";
 import {
   ChecksumMismatchError,
   CommunityPluginConfirmationRequiredError,
+  PersonalPluginConfirmationRequiredError,
   RegistryEntryInvalidError,
   SymlinkInTarballError,
   isOfficial,
@@ -36,6 +45,13 @@ function createTestDb(): Database.Database {
   db.pragma("foreign_keys = ON");
   db.exec(
     readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
+  );
+  // Spec 136 — plugin_sources table + plugins.source/pinned_sha256 columns.
+  db.exec(
+    readFileSync(
+      resolve(import.meta.dirname ?? ".", "../../migrations/015_plugin_sources.sql"),
+      "utf-8",
+    ),
   );
   return db;
 }
@@ -469,5 +485,476 @@ describe("PackageManager — forced registry refresh (issue #353)", () => {
     expect(result.count).toBe(1);
     expect(urls.some((u) => u.includes("api.github.com"))).toBe(true);
     expect(urls.some((u) => u.includes("raw.githubusercontent.com"))).toBe(true);
+  });
+});
+
+// ─── Spec 136 — Personal plugin sources (TOFU trust model) ────────────────
+
+describe("PackageManager — spec 136 personal plugin sources", () => {
+  const PERSONAL_REPO = "jdupont/sowel-plugin-mytest";
+
+  let tmpDir: string;
+  let pluginsDir: string;
+  let db: Database.Database;
+  let manager: PackageManager;
+  let pkgSrcDir: string;
+  let tarballPath: string;
+  let realSha256: string;
+  let originalCwd: string;
+
+  beforeEach(async () => {
+    originalCwd = process.cwd();
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-pkg-personal-"));
+    pluginsDir = resolve(tmpDir, "plugins");
+    mkdirSync(pluginsDir, { recursive: true });
+    process.chdir(tmpDir);
+
+    db = createTestDb();
+    manager = new PackageManager(db, logger);
+    setRegistry([]);
+
+    pkgSrcDir = resolve(tmpDir, "src-pkg");
+    mkdirSync(pkgSrcDir, { recursive: true });
+    writePersonalManifest({});
+    tarballPath = resolve(tmpDir, "personal.tar.gz");
+    await buildTarball(pkgSrcDir, tarballPath);
+    realSha256 = sha256OfFile(tarballPath);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    db.close();
+    try {
+      process.chdir(originalCwd);
+    } catch {
+      /* best effort */
+    }
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function setRegistry(entries: RegistryEntry[]): void {
+    (
+      manager as unknown as { registryCache: RegistryEntry[]; registryCacheTime: number }
+    ).registryCache = entries;
+    (manager as unknown as { registryCacheTime: number }).registryCacheTime = Date.now();
+  }
+
+  function writePersonalManifest(overrides: Record<string, unknown>): void {
+    writeFileSync(
+      resolve(pkgSrcDir, "manifest.json"),
+      JSON.stringify({
+        id: "mytest",
+        name: "My Test Plugin",
+        version: "1.0.0",
+        description: "personal test plugin",
+        icon: "Puzzle",
+        repo: PERSONAL_REPO,
+        ...overrides,
+      }),
+    );
+  }
+
+  /** Mock GitHub API + asset download for the personal repo. */
+  function mockPersonalFetch(assetPath: string, tag = "v1.0.0"): void {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: URL | RequestInfo) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url.startsWith("https://api.github.com/repos/")) {
+          return new Response(
+            JSON.stringify({
+              tag_name: tag,
+              assets: [
+                {
+                  name: `sowel-plugin-mytest-${tag.replace(/^v/, "")}.tar.gz`,
+                  browser_download_url: "https://example.invalid/personal.tar.gz",
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        if (url.startsWith("https://example.invalid/")) {
+          return new Response(readFileSync(assetPath), {
+            status: 200,
+            headers: { "content-type": "application/gzip" },
+          });
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+  }
+
+  function getRow(
+    id: string,
+  ): { source: string; pinned_sha256: string | null; version: string } | undefined {
+    return db.prepare("SELECT source, pinned_sha256, version FROM plugins WHERE id = ?").get(id) as
+      | { source: string; pinned_sha256: string | null; version: string }
+      | undefined;
+  }
+
+  async function addSourceAndInstall(): Promise<void> {
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await manager.installFromGitHub(PERSONAL_REPO, {
+      confirmed: true,
+      expectedSha256: realSha256,
+    });
+  }
+
+  // ── Source management ─────────────────────────────────────────
+
+  it("refuses adding a source with an invalid repo format", async () => {
+    mockPersonalFetch(tarballPath);
+    await expect(manager.addPersonalSource("not-a-repo")).rejects.toThrow(/Invalid repository/);
+    await expect(manager.addPersonalSource("owner/repo/extra")).rejects.toThrow(
+      /Invalid repository/,
+    );
+    expect(manager.listPersonalSources()).toHaveLength(0);
+  });
+
+  it("refuses adding a duplicate source", async () => {
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(manager.addPersonalSource(PERSONAL_REPO)).rejects.toThrow(/already added/);
+    expect(manager.listPersonalSources()).toHaveLength(1);
+  });
+
+  it("refuses adding a repo that is already in the plugin registry", async () => {
+    setRegistry([
+      {
+        id: "mytest",
+        name: "x",
+        description: "x",
+        icon: "x",
+        author: "jdupont",
+        repo: PERSONAL_REPO,
+        owner: "jdupont",
+        sha256: "a".repeat(64),
+        tags: [],
+      },
+    ]);
+    mockPersonalFetch(tarballPath);
+    await expect(manager.addPersonalSource(PERSONAL_REPO)).rejects.toThrow(
+      /already in the plugin registry/,
+    );
+  });
+
+  it("removes a source and refuses removing an unknown one", async () => {
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    manager.removePersonalSource(PERSONAL_REPO);
+    expect(manager.listPersonalSources()).toHaveLength(0);
+    expect(() => manager.removePersonalSource(PERSONAL_REPO)).toThrow(/not in the list/);
+  });
+
+  // ── TOFU install ──────────────────────────────────────────────
+
+  it("unconfirmed personal install throws with version + sha256 and writes nothing", async () => {
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+
+    let thrown: unknown;
+    try {
+      await manager.installFromGitHub(PERSONAL_REPO);
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(PersonalPluginConfirmationRequiredError);
+    const e = thrown as PersonalPluginConfirmationRequiredError;
+    expect(e.repo).toBe(PERSONAL_REPO);
+    expect(e.owner).toBe("jdupont");
+    expect(e.version).toBe("1.0.0");
+    expect(e.sha256).toBe(realSha256);
+
+    expect(getRow("mytest")).toBeUndefined();
+    expect(existsSync(resolve(pluginsDir, "mytest"))).toBe(false);
+    expect(existsSync(resolve(pluginsDir, ".tmp"))).toBe(false);
+  });
+
+  it("confirmed personal install without expectedSha256 is refused", async () => {
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(manager.installFromGitHub(PERSONAL_REPO, { confirmed: true })).rejects.toThrow(
+      /expectedSha256/,
+    );
+    expect(getRow("mytest")).toBeUndefined();
+  });
+
+  it("confirmed personal install with a drifted tarball hash is refused", async () => {
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(
+      manager.installFromGitHub(PERSONAL_REPO, { confirmed: true, expectedSha256: "0".repeat(64) }),
+    ).rejects.toBeInstanceOf(ChecksumMismatchError);
+    expect(getRow("mytest")).toBeUndefined();
+    expect(existsSync(resolve(pluginsDir, "mytest"))).toBe(false);
+  });
+
+  it("confirmed personal install pins the hash and marks source=personal", async () => {
+    await addSourceAndInstall();
+
+    const row = getRow("mytest");
+    expect(row).toBeDefined();
+    expect(row!.source).toBe("personal");
+    expect(row!.pinned_sha256).toBe(realSha256);
+    expect(row!.version).toBe("1.0.0");
+    expect(existsSync(resolve(pluginsDir, "mytest", "manifest.json"))).toBe(true);
+  });
+
+  it("refuses a personal package whose id shadows a registry entry", async () => {
+    setRegistry([
+      {
+        id: "mytest",
+        name: "Official mytest",
+        description: "x",
+        icon: "x",
+        author: "mchacher",
+        repo: "mchacher/sowel-plugin-mytest",
+        owner: "mchacher",
+        sha256: "a".repeat(64),
+        tags: [],
+      },
+    ]);
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(
+      manager.installFromGitHub(PERSONAL_REPO, { confirmed: true, expectedSha256: realSha256 }),
+    ).rejects.toThrow(/shadows a plugin registry entry/);
+    expect(getRow("mytest")).toBeUndefined();
+  });
+
+  it("refuses a personal package whose manifest declares a different repo", async () => {
+    writePersonalManifest({ repo: "mchacher/sowel-plugin-zigbee2mqtt" });
+    await buildTarball(pkgSrcDir, tarballPath);
+    const sha = sha256OfFile(tarballPath);
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(
+      manager.installFromGitHub(PERSONAL_REPO, { confirmed: true, expectedSha256: sha }),
+    ).rejects.toThrow(/declares repo/);
+    expect(getRow("mytest")).toBeUndefined();
+  });
+
+  it("refuses a personal package with an incompatible sowelVersion", async () => {
+    // Test cwd has no package.json → current version resolves to 0.0.0.
+    writePersonalManifest({ sowelVersion: ">=99.0.0" });
+    await buildTarball(pkgSrcDir, tarballPath);
+    const sha = sha256OfFile(tarballPath);
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(
+      manager.installFromGitHub(PERSONAL_REPO, { confirmed: true, expectedSha256: sha }),
+    ).rejects.toThrow(/requires Sowel/);
+    expect(getRow("mytest")).toBeUndefined();
+  });
+
+  it("refuses a personal tarball containing an escaping symlink", async () => {
+    symlinkSync("/etc/passwd", resolve(pkgSrcDir, "evil-link"));
+    await buildTarball(pkgSrcDir, tarballPath);
+    const sha = sha256OfFile(tarballPath);
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    await expect(
+      manager.installFromGitHub(PERSONAL_REPO, { confirmed: true, expectedSha256: sha }),
+    ).rejects.toBeInstanceOf(SymlinkInTarballError);
+  });
+
+  it("still refuses a repo that is neither in registry nor in sources (spec 089 regression)", async () => {
+    mockPersonalFetch(tarballPath);
+    await expect(manager.installFromGitHub("attacker/foreign-repo")).rejects.toThrow(
+      /not found in registry/,
+    );
+  });
+
+  it("registry install keeps source=registry and no pinned hash (regression)", async () => {
+    setRegistry([
+      {
+        id: "mytest",
+        name: "Test",
+        description: "x",
+        icon: "Puzzle",
+        author: "mchacher",
+        repo: PERSONAL_REPO,
+        owner: "mchacher",
+        sha256: realSha256,
+        tags: [],
+      },
+    ]);
+    mockPersonalFetch(tarballPath);
+    await manager.installFromGitHub(PERSONAL_REPO);
+    const row = getRow("mytest");
+    expect(row!.source).toBe("registry");
+    expect(row!.pinned_sha256).toBeNull();
+  });
+
+  // ── TOFU update ───────────────────────────────────────────────
+
+  async function publishV2(): Promise<{ tarball: string; sha: string }> {
+    writePersonalManifest({ version: "2.0.0" });
+    const v2Tarball = resolve(tmpDir, "personal-v2.tar.gz");
+    await buildTarball(pkgSrcDir, v2Tarball);
+    mockPersonalFetch(v2Tarball, "v2.0.0");
+    return { tarball: v2Tarball, sha: sha256OfFile(v2Tarball) };
+  }
+
+  it("unconfirmed personal update with new content throws with the new hash, files untouched", async () => {
+    await addSourceAndInstall();
+    const v2 = await publishV2();
+
+    let thrown: unknown;
+    try {
+      await manager.updateFiles("mytest");
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(PersonalPluginConfirmationRequiredError);
+    const e = thrown as PersonalPluginConfirmationRequiredError;
+    expect(e.version).toBe("2.0.0");
+    expect(e.sha256).toBe(v2.sha);
+
+    const row = getRow("mytest");
+    expect(row!.version).toBe("1.0.0");
+    expect(row!.pinned_sha256).toBe(realSha256);
+  });
+
+  it("confirmed personal update replaces files and re-pins the hash", async () => {
+    await addSourceAndInstall();
+    const v2 = await publishV2();
+
+    const manifest = await manager.updateFiles("mytest", {
+      confirmed: true,
+      expectedSha256: v2.sha,
+    });
+    expect(manifest.version).toBe("2.0.0");
+
+    const row = getRow("mytest");
+    expect(row!.version).toBe("2.0.0");
+    expect(row!.pinned_sha256).toBe(v2.sha);
+  });
+
+  it("unconfirmed personal update with unchanged content proceeds without confirmation", async () => {
+    await addSourceAndInstall();
+    // Same tarball still served — content identical to the pinned hash.
+    const manifest = await manager.updateFiles("mytest");
+    expect(manifest.version).toBe("1.0.0");
+    expect(getRow("mytest")!.pinned_sha256).toBe(realSha256);
+  });
+
+  it("refuses a personal update after the source has been removed", async () => {
+    await addSourceAndInstall();
+    manager.removePersonalSource(PERSONAL_REPO);
+    await expect(manager.updateFiles("mytest")).rejects.toThrow(/has been removed/);
+    await expect(manager.probePersonalUpdate("mytest")).rejects.toThrow(/has been removed/);
+  });
+
+  it("probePersonalUpdate is a no-op for registry packages and confirmed calls", async () => {
+    await addSourceAndInstall();
+    await publishV2();
+    // Confirmed → no probe, no throw.
+    await expect(
+      manager.probePersonalUpdate("mytest", { confirmed: true }),
+    ).resolves.toBeUndefined();
+    // Unconfirmed with new content → throws.
+    await expect(manager.probePersonalUpdate("mytest")).rejects.toBeInstanceOf(
+      PersonalPluginConfirmationRequiredError,
+    );
+    // Unknown package → no-op.
+    await expect(manager.probePersonalUpdate("nope")).resolves.toBeUndefined();
+  });
+
+  // ── Backup restore path ───────────────────────────────────────
+
+  it("downloadMissing restores a personal package against the pinned hash", async () => {
+    await addSourceAndInstall();
+    rmSync(resolve(pluginsDir, "mytest"), { recursive: true });
+
+    await manager.downloadMissing(PERSONAL_REPO);
+    expect(existsSync(resolve(pluginsDir, "mytest", "manifest.json"))).toBe(true);
+  });
+
+  it("downloadMissing refuses a personal package when the tarball drifted from the pinned hash", async () => {
+    await addSourceAndInstall();
+    rmSync(resolve(pluginsDir, "mytest"), { recursive: true });
+
+    // Republished tarball under the same tag — content no longer matches.
+    writePersonalManifest({ description: "tampered" });
+    const tampered = resolve(tmpDir, "tampered.tar.gz");
+    await buildTarball(pkgSrcDir, tampered);
+    mockPersonalFetch(tampered);
+
+    await expect(manager.downloadMissing(PERSONAL_REPO)).rejects.toBeInstanceOf(
+      ChecksumMismatchError,
+    );
+    expect(existsSync(resolve(pluginsDir, "mytest"))).toBe(false);
+  });
+
+  it("downloadMissing still refuses an unknown repo (spec 089 regression)", async () => {
+    mockPersonalFetch(tarballPath);
+    await expect(manager.downloadMissing("attacker/foreign-repo")).rejects.toThrow(
+      /not found in registry/,
+    );
+  });
+
+  // ── Store merge ───────────────────────────────────────────────
+
+  it("getStore merges personal entries with tier=personal and excludes installed repos", async () => {
+    setRegistry([
+      {
+        id: "official-one",
+        name: "Official",
+        description: "x",
+        icon: "x",
+        author: "mchacher",
+        repo: "mchacher/sowel-plugin-official-one",
+        owner: "mchacher",
+        sha256: "a".repeat(64),
+        tags: [],
+      },
+      {
+        id: "community-one",
+        name: "Community",
+        description: "x",
+        icon: "x",
+        author: "third",
+        repo: "third/sowel-plugin-community-one",
+        owner: "third",
+        sha256: "b".repeat(64),
+        tags: [],
+      },
+    ]);
+    mockPersonalFetch(tarballPath);
+    await manager.addPersonalSource(PERSONAL_REPO);
+    // Warm the release cache so the sync store synthesis sees the release.
+    await manager.sources.fetchLatestRelease(PERSONAL_REPO);
+
+    const store = manager.getStore();
+    const tiers = new Map(store.map((e) => [e.id, e.tier]));
+    expect(tiers.get("official-one")).toBe("official");
+    expect(tiers.get("community-one")).toBe("community");
+    expect(tiers.get(PERSONAL_REPO)).toBe("personal");
+
+    const personal = store.find((e) => e.id === PERSONAL_REPO)!;
+    expect(personal.name).toBe("mytest");
+    expect(personal.version).toBe("1.0.0");
+    expect(personal.author).toBe("jdupont");
+    expect(personal.type).toBe("integration");
+
+    // Install it — the personal store entry must disappear.
+    await manager.installFromGitHub(PERSONAL_REPO, {
+      confirmed: true,
+      expectedSha256: realSha256,
+    });
+    expect(manager.getStore().find((e) => e.id === PERSONAL_REPO)).toBeUndefined();
+  });
+
+  it("getLatestVersionFor reads the source release for personal packages, registry for others", async () => {
+    await addSourceAndInstall();
+    await publishV2();
+    await manager.sources.fetchLatestRelease(PERSONAL_REPO);
+
+    const pkg = manager.getById("mytest")!;
+    expect(pkg.source).toBe("personal");
+    expect(manager.getLatestVersionFor(pkg)).toBe("2.0.0");
   });
 });

@@ -272,14 +272,25 @@ Routes admin uniquement pour gérer les plugins d'intégration de devices.
 
 Routes admin uniquement pour la gestion des plugins tiers.
 
-| Method | Path                            | Description                                                         |
-| ------ | ------------------------------- | ------------------------------------------------------------------- |
-| `GET`  | `/api/v1/plugins`               | Liste les plugins installés.                                        |
-| `GET`  | `/api/v1/plugins/store`         | Liste les plugins disponibles depuis le registre.                   |
-| `POST` | `/api/v1/plugins/install`       | Installe depuis GitHub. Body : `{ repo }` (par ex. `"owner/repo"`). |
-| `POST` | `/api/v1/plugins/:id/uninstall` | Désinstalle un plugin.                                              |
-| `POST` | `/api/v1/plugins/:id/enable`    | Active un plugin (le charge et le démarre).                         |
-| `POST` | `/api/v1/plugins/:id/disable`   | Désactive un plugin (le stoppe et le décharge).                     |
+| Method | Path                             | Description                                                                               |
+| ------ | -------------------------------- | ----------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/plugins`                | Liste les plugins installés.                                                              |
+| `GET`  | `/api/v1/plugins/store`          | Liste les plugins disponibles (registre + sources personnelles, chacun avec un `tier`).   |
+| `POST` | `/api/v1/plugins/store/refresh`  | Force le rafraîchissement du registre et des caches de releases des sources perso.        |
+| `GET`  | `/api/v1/plugins/sources`        | Liste les sources personnelles de plugins (spec 136).                                     |
+| `POST` | `/api/v1/plugins/sources`        | Ajoute une source personnelle. Body : `{ repo }` (`owner/repo` GitHub public).            |
+| `POST` | `/api/v1/plugins/sources/remove` | Retire une source personnelle. Body : `{ repo }`. Les plugins installés sont conservés.   |
+| `POST` | `/api/v1/plugins/install`        | Installe depuis GitHub. Body : `{ repo, confirmed?, expectedSha256? }`.                   |
+| `POST` | `/api/v1/plugins/:id/update`     | Met à jour un plugin. Body : `{ confirmed?, expectedSha256? }` (paquets perso seulement). |
+| `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                    |
+| `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                               |
+| `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                           |
+
+!!! note "Poignées de confirmation (409)"
+`install` et `update` répondent `409` quand une confirmation explicite est requise :
+
+    - `CommunityPluginConfirmationRequired` (spec 089) : plugin du registre publié par un owner non officiel. Réessayer avec `confirmed: true`.
+    - `PersonalPluginConfirmationRequired` (spec 136) : plugin issu d'une source personnelle. La réponse contient `{ repo, owner, version, sha256 }` calculés depuis le tarball réel. Réessayer avec `confirmed: true` et `expectedSha256` égal au hash approuvé ; le tarball retéléchargé doit correspondre, et le hash est ensuite épinglé pour les vérifications d'intégrité futures.
 
 ---
 

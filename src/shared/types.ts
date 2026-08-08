@@ -901,6 +901,20 @@ export interface IntegrationInfo {
 
 export type PackageType = "integration" | "recipe";
 
+/** Trust tier of a store entry (spec 089 official/community, spec 136 personal). */
+export type PackageTier = "official" | "community" | "personal";
+
+/** Which distribution path installed a package (spec 136). */
+export type PackageSource = "registry" | "personal";
+
+/** A user-added GitHub repo serving as a personal plugin source (spec 136). */
+export interface PluginSource {
+  repo: string; // "owner/repo"
+  addedAt: string;
+  /** Latest release version from GitHub, undefined if none or unreachable. */
+  latestVersion?: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -920,6 +934,7 @@ export interface InstalledPackage {
   enabled: boolean;
   installedAt: string;
   type: PackageType;
+  source: PackageSource; // spec 136 — which path installed it
 }
 
 /** Enriched with runtime integration info (status, device counts) */
@@ -931,6 +946,7 @@ export interface PluginInfo {
   deviceCount: number;
   offlineDeviceCount: number;
   latestVersion?: string; // set when a newer version is available in registry
+  source: PackageSource; // spec 136 — which path installed it
 }
 
 // ============================================================

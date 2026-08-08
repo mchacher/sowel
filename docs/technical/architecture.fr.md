@@ -181,6 +181,18 @@ Flux d'installation :
 
 Le `plugins/registry.json` sur `main` est la source de vérité pour la liste officielle. N'importe quel utilisateur peut pointer vers son propre fork.
 
+### Niveaux de confiance (specs 089 + 136)
+
+Trois niveaux de confiance déterminent d'où un package peut provenir et quelle ancre d'intégrité le protège :
+
+| Niveau            | Source de vérité                      | Ancre d'intégrité                     | Friction à l'installation                     |
+| ----------------- | ------------------------------------- | ------------------------------------- | --------------------------------------------- |
+| **Officiel**      | Registre central, owner whitelisté    | SHA256 du registre + revue mainteneur | Aucune                                        |
+| **Communautaire** | Registre central, owner tiers         | SHA256 du registre + revue de la PR   | Modal de confirmation unique                  |
+| **Personnel**     | Dépôt GitHub ajouté par l'admin (136) | SHA256 épinglé (TOFU)                 | Confirmation à l'installation et à chaque MAJ |
+
+Les **sources personnelles** (spec 136) permettent à un admin d'enregistrer ses propres dépôts GitHub publics comme sources de plugins, sans passer par le registre central. `PersonalSourceManager` (`src/packages/personal-sources.ts`) possède la table `plugin_sources` et une vue en cache de la dernière release de chaque dépôt. La confiance est au premier usage : l'installation télécharge le tarball, affiche son SHA256 dans un modal de confirmation, puis épingle le hash dans `plugins.pinned_sha256`. Les mises à jour dont le tarball diffère du hash épinglé exigent une nouvelle confirmation ; les restaurations de backup revérifient les téléchargements contre le hash épinglé. Tout le durcissement de la spec 089 (vérification du hash, flags tar, refus des symlinks sortants) s'applique à l'identique, plus des contrôles propres au niveau personnel : le `repo` du manifest doit correspondre à la source, l'id du plugin ne doit pas masquer un id du registre, et la compatibilité `sowelVersion` est vérifiée. Les packages installés portent `plugins.source` (`registry` ou `personal`) ; la détection de version des packages personnels lit les releases du dépôt source, jamais le registre.
+
 ### Format du manifest plugin
 
 Chaque plugin embarque un `manifest.json` avec `id`, `type` (`integration` ou `recipe`), `name`, `description`, `icon` (nom Lucide), `author`, `repo`, `version`, `tags`. Voir [plugin-development.md](plugin-development.md) pour la spec complète.

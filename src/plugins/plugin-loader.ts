@@ -8,7 +8,7 @@ import type {
 } from "../integrations/integration-registry.js";
 import type { PluginManifest, PluginInfo } from "../shared/types.js";
 import type { PluginDeps, PluginFactory } from "../shared/plugin-api.js";
-import type { PackageManager } from "../packages/package-manager.js";
+import type { PackageManager, InstallOptions } from "../packages/package-manager.js";
 import {
   makeDeviceManagerProxy,
   makeEventBusProxy,
@@ -118,7 +118,7 @@ export class PluginLoader {
    * unload → fetch fresh files → reload, avoiding the "already installed" error and
    * stale in-memory module state.
    */
-  async install(repo: string, opts: { confirmed?: boolean } = {}): Promise<PluginManifest> {
+  async install(repo: string, opts: InstallOptions = {}): Promise<PluginManifest> {
     // Peek the plugin id from the repo name (convention: sowel-plugin-<id>) to detect reinstall.
     const repoName = repo.split("/").pop() ?? "";
     const candidateId = repoName.replace(/^sowel-plugin-/, "");
@@ -127,7 +127,7 @@ export class PluginLoader {
         { pluginId: candidateId },
         "Plugin already installed, redirecting to update",
       );
-      return this.update(candidateId);
+      return this.update(candidateId, opts);
     }
 
     const manifest = await this.packageManager.installFromGitHub(repo, opts);
@@ -142,9 +142,23 @@ export class PluginLoader {
   }
 
   /**
+   * Load a package that was just installed through PackageManager directly
+   * (spec 136 personal installs, where the type is only known post-install).
+   * Errors are confined — the package stays installed, load is retried at
+   * next boot.
+   */
+  async loadNewlyInstalled(pluginId: string): Promise<void> {
+    try {
+      await this.loadPlugin(pluginId);
+    } catch (err) {
+      this.logger.error({ err, pluginId }, "Failed to start plugin after install");
+    }
+  }
+
+  /**
    * Update — stop plugin, update files via PackageManager, reload.
    */
-  async update(pluginId: string): Promise<PluginManifest> {
+  async update(pluginId: string, opts: InstallOptions = {}): Promise<PluginManifest> {
     const pkg = this.packageManager.getById(pluginId);
     if (!pkg) {
       throw new Error(`Plugin "${pluginId}" is not installed`);
@@ -152,11 +166,16 @@ export class PluginLoader {
 
     this.logger.info({ pluginId, from: pkg.manifest.version }, "Updating plugin");
 
+    // Spec 136: for an unconfirmed personal update, probe BEFORE stopping
+    // the plugin — a confirmation-required outcome must leave the running
+    // instance untouched while the user decides in the UI.
+    await this.packageManager.probePersonalUpdate(pluginId, opts);
+
     // Stop plugin
     await this.unloadPlugin(pluginId);
 
     // Update files + DB
-    const newManifest = await this.packageManager.updateFiles(pluginId);
+    const newManifest = await this.packageManager.updateFiles(pluginId, opts);
 
     // Reload if was enabled
     if (pkg.enabled) {
@@ -214,7 +233,6 @@ export class PluginLoader {
   getInstalled(): PluginInfo[] {
     const packages = this.packageManager.getInstalledByType("integration");
     const allDevices = this.coreDeps.deviceManager.getAll();
-    const latestVersions = this.packageManager.getLatestVersions();
 
     return packages.map((pkg) => {
       const plugin = this.integrationRegistry.getById(pkg.manifest.id);
@@ -223,7 +241,8 @@ export class PluginLoader {
       const pluginDevices = allDevices.filter((d) => d.integrationId === pkg.manifest.id);
       const offlineDevices = pluginDevices.filter((d) => d.status === "offline");
 
-      const latest = latestVersions.get(pkg.manifest.id);
+      // Spec 136: source-aware — personal packages check their source repo.
+      const latest = this.packageManager.getLatestVersionFor(pkg);
 
       return {
         manifest: pkg.manifest,
@@ -232,6 +251,7 @@ export class PluginLoader {
         status,
         deviceCount: pluginDevices.length,
         offlineDeviceCount: offlineDevices.length,
+        source: pkg.source,
         ...(latest && isNewerVersion(latest, pkg.manifest.version)
           ? { latestVersion: latest }
           : {}),

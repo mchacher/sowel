@@ -64,6 +64,25 @@ export class RegistryEntryInvalidError extends Error {
   }
 }
 
+/**
+ * Thrown when a personal-source plugin install or update needs the TOFU
+ * confirmation step (spec 136). Carries the identity of what would be
+ * installed so the UI can display version + SHA256 fingerprint.
+ */
+export class PersonalPluginConfirmationRequiredError extends Error {
+  constructor(
+    public readonly repo: string,
+    public readonly owner: string,
+    public readonly version: string,
+    public readonly sha256: string,
+  ) {
+    super(
+      `Plugin from personal source ${repo} (v${version}, sha256 ${sha256.slice(0, 12)}…) requires explicit confirmation.`,
+    );
+    this.name = "PersonalPluginConfirmationRequiredError";
+  }
+}
+
 /** Thrown when a community plugin install is attempted without explicit user confirmation. */
 export class CommunityPluginConfirmationRequiredError extends Error {
   constructor(

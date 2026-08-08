@@ -332,14 +332,25 @@ Admin-only routes for managing device integration plugins.
 
 Admin-only routes for third-party plugin management.
 
-| Method | Path                            | Description                                                  |
-| ------ | ------------------------------- | ------------------------------------------------------------ |
-| `GET`  | `/api/v1/plugins`               | List installed plugins.                                      |
-| `GET`  | `/api/v1/plugins/store`         | List available plugins from the registry.                    |
-| `POST` | `/api/v1/plugins/install`       | Install from GitHub. Body: `{ repo }` (e.g. `"owner/repo"`). |
-| `POST` | `/api/v1/plugins/:id/uninstall` | Uninstall a plugin.                                          |
-| `POST` | `/api/v1/plugins/:id/enable`    | Enable a plugin (loads and starts it).                       |
-| `POST` | `/api/v1/plugins/:id/disable`   | Disable a plugin (stops and unloads it).                     |
+| Method | Path                             | Description                                                                        |
+| ------ | -------------------------------- | ---------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/plugins`                | List installed plugins.                                                            |
+| `GET`  | `/api/v1/plugins/store`          | List available plugins (registry entries + personal sources, each with a `tier`).  |
+| `POST` | `/api/v1/plugins/store/refresh`  | Force-refresh the registry and the personal source release caches.                 |
+| `GET`  | `/api/v1/plugins/sources`        | List personal plugin sources (spec 136).                                           |
+| `POST` | `/api/v1/plugins/sources`        | Add a personal source. Body: `{ repo }` (public GitHub `owner/repo`).              |
+| `POST` | `/api/v1/plugins/sources/remove` | Remove a personal source. Body: `{ repo }`. Installed plugins are kept.            |
+| `POST` | `/api/v1/plugins/install`        | Install from GitHub. Body: `{ repo, confirmed?, expectedSha256? }`.                |
+| `POST` | `/api/v1/plugins/:id/update`     | Update a plugin. Body: `{ confirmed?, expectedSha256? }` (personal packages only). |
+| `POST` | `/api/v1/plugins/:id/uninstall`  | Uninstall a plugin.                                                                |
+| `POST` | `/api/v1/plugins/:id/enable`     | Enable a plugin (loads and starts it).                                             |
+| `POST` | `/api/v1/plugins/:id/disable`    | Disable a plugin (stops and unloads it).                                           |
+
+!!! note "Confirmation handshakes (409)"
+`install` and `update` answer `409` when an explicit confirmation is required:
+
+    - `CommunityPluginConfirmationRequired` (spec 089): registry plugin from a non-official owner. Retry with `confirmed: true`.
+    - `PersonalPluginConfirmationRequired` (spec 136): plugin from a personal source. The response carries `{ repo, owner, version, sha256 }` computed from the actual tarball. Retry with `confirmed: true` and `expectedSha256` set to the approved hash — the re-downloaded tarball must match it, and the hash is then pinned for future integrity checks.
 
 ---
 

@@ -16,15 +16,24 @@ import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
-import type { PluginManifest, InstalledPackage, PackageType } from "../shared/types.js";
+import type {
+  PluginManifest,
+  InstalledPackage,
+  PackageType,
+  PackageTier,
+  PackageSource,
+  PluginSource,
+} from "../shared/types.js";
 import {
   type RegistryEntry,
   ChecksumMismatchError,
   CommunityPluginConfirmationRequiredError,
+  PersonalPluginConfirmationRequiredError,
   RegistryEntryInvalidError,
   SymlinkInTarballError,
   isOfficial,
 } from "./registry-types.js";
+import { PersonalSourceManager } from "./personal-sources.js";
 
 const execFile = promisify(execFileCb);
 
@@ -46,13 +55,29 @@ interface PackageRow {
   installed_at: string;
   manifest: string;
   type: string;
+  source: string;
+  pinned_sha256: string | null;
 }
 
 /** Options passed to install() and installFromGitHub(). */
 export interface InstallOptions {
   /** Explicit confirmation that a community plugin can be installed (spec 089 C1). */
   confirmed?: boolean;
+  /**
+   * TOFU hash for personal-source installs and updates (spec 136): the
+   * SHA256 the user confirmed in the UI. The downloaded tarball must
+   * match it. Required on the personal path when `confirmed` is true.
+   */
+  expectedSha256?: string;
 }
+
+/** Store entry shape returned by getStore() (registry + personal sources). */
+export type StoreEntry = PluginManifest & {
+  compatible: boolean;
+  compatReason?: string;
+  isOfficial: boolean;
+  tier: PackageTier;
+};
 
 /** Simple semver ">=" check: returns true if current >= required. */
 function semverSatisfiesGte(current: string, required: string): boolean {
@@ -83,12 +108,15 @@ export class PackageManager {
   private registryCache: RegistryEntry[] | null = null;
   private registryCacheTime = 0;
   private sowelVersionCache: string | null = null;
+  /** Personal plugin sources (spec 136). */
+  readonly sources: PersonalSourceManager;
 
   constructor(db: Database.Database, logger: Logger) {
     this.db = db;
     this.logger = logger.child({ module: "package-manager" });
     this.pluginsDir = resolve(process.cwd(), "plugins");
     this.stmts = this.prepareStatements();
+    this.sources = new PersonalSourceManager(db, logger);
   }
 
   private prepareStatements() {
@@ -97,11 +125,14 @@ export class PackageManager {
       getAllByType: this.db.prepare<[string]>("SELECT * FROM plugins WHERE type = ?"),
       getById: this.db.prepare<[string]>("SELECT * FROM plugins WHERE id = ?"),
       insert: this.db.prepare(
-        `INSERT INTO plugins (id, version, enabled, installed_at, manifest, type)
-         VALUES (@id, @version, @enabled, @installedAt, @manifest, @type)`,
+        `INSERT INTO plugins (id, version, enabled, installed_at, manifest, type, source, pinned_sha256)
+         VALUES (@id, @version, @enabled, @installedAt, @manifest, @type, @source, @pinnedSha256)`,
       ),
       updateEnabled: this.db.prepare("UPDATE plugins SET enabled = ? WHERE id = ?"),
       updateManifest: this.db.prepare("UPDATE plugins SET version = ?, manifest = ? WHERE id = ?"),
+      updateManifestAndPin: this.db.prepare(
+        "UPDATE plugins SET version = ?, manifest = ?, pinned_sha256 = ? WHERE id = ?",
+      ),
       remove: this.db.prepare<[string]>("DELETE FROM plugins WHERE id = ?"),
     };
   }
@@ -161,22 +192,21 @@ export class PackageManager {
   }
 
   /**
-   * Get available packages from registry (not yet installed).
-   * Each entry is enriched with `compatible` + `isOfficial` (spec 089 C1)
-   * so the UI can render a community badge.
+   * Get available packages (not yet installed): registry entries plus
+   * personal-source entries (spec 136). Each entry is enriched with
+   * `compatible`, `isOfficial` (spec 089 C1) and `tier` so the UI can
+   * render the trust badge.
    */
-  getStore(): (PluginManifest & {
-    compatible: boolean;
-    compatReason?: string;
-    isOfficial: boolean;
-  })[] {
+  getStore(): StoreEntry[] {
     const entries = this.getRegistryEntries();
-    const installedIds = new Set((this.stmts.getAll.all() as PackageRow[]).map((r) => r.id));
+    const rows = this.stmts.getAll.all() as PackageRow[];
+    const installedIds = new Set(rows.map((r) => r.id));
 
-    return entries
+    const registryEntries = entries
       .filter((e) => !installedIds.has(e.id))
       .map((e) => {
         const compatible = this.isCompatible(e.sowelVersion);
+        const official = isOfficial(e);
         return {
           id: e.id,
           name: e.name,
@@ -188,15 +218,88 @@ export class PackageManager {
           type: (e.type as PackageType) ?? "integration",
           sowelVersion: e.sowelVersion,
           compatible,
-          isOfficial: isOfficial(e),
+          isOfficial: official,
+          tier: (official ? "official" : "community") as PackageTier,
           ...(!compatible ? { compatReason: `Requires Sowel >= ${e.sowelVersion}` } : {}),
         };
       });
+
+    return [...registryEntries, ...this.getPersonalStoreEntries(rows)];
   }
 
   /** Get available packages from registry filtered by type */
   getStoreByType(type: PackageType): PluginManifest[] {
     return this.getStore().filter((m) => (m.type ?? "integration") === type);
+  }
+
+  /**
+   * Synthesize store entries for personal sources (spec 136). Only
+   * sources with a published release and no installed package from that
+   * repo are listed. Rich metadata (real name, icon, type) lives in the
+   * tarball's manifest and is unknown pre-install; the type is guessed
+   * from the repo naming convention (sowel-recipe-* / sowel-plugin-*).
+   */
+  private getPersonalStoreEntries(rows: PackageRow[]): StoreEntry[] {
+    const installedRepos = new Set(
+      rows
+        .map((r) => {
+          try {
+            return (JSON.parse(r.manifest) as PluginManifest).repo;
+          } catch {
+            return undefined;
+          }
+        })
+        .filter(Boolean),
+    );
+
+    const out: StoreEntry[] = [];
+    for (const source of this.sources.list()) {
+      if (installedRepos.has(source.repo)) continue;
+      const release = this.sources.getCachedRelease(source.repo);
+      if (!release) continue;
+      const [owner, repoName = ""] = source.repo.split("/");
+      out.push({
+        // The real plugin id is inside the tarball; use the repo path as a
+        // unique store id. Install is keyed by repo, so this is display-only.
+        id: source.repo,
+        name: repoName.replace(/^sowel-(plugin|recipe)-/, ""),
+        version: release.version,
+        description: source.repo,
+        icon: "Package",
+        author: owner,
+        repo: source.repo,
+        type: repoName.startsWith("sowel-recipe-") ? "recipe" : "integration",
+        compatible: true,
+        isOfficial: false,
+        tier: "personal",
+      });
+    }
+    return out;
+  }
+
+  // ============================================================
+  // Personal sources (spec 136)
+  // ============================================================
+
+  /** List personal sources with cached latest release info. */
+  listPersonalSources(): PluginSource[] {
+    return this.sources.list();
+  }
+
+  /**
+   * Add a personal source. Refuses repos already present in the central
+   * registry — those install from the store with registry-pinned hashes.
+   */
+  async addPersonalSource(repo: string): Promise<PluginSource> {
+    if (this.getRegistryEntries().some((e) => e.repo === repo)) {
+      throw new Error(`Repository "${repo}" is already in the plugin registry`);
+    }
+    return this.sources.add(repo);
+  }
+
+  /** Remove a personal source. Installed packages are left untouched. */
+  removePersonalSource(repo: string): void {
+    this.sources.remove(repo);
   }
 
   /**
@@ -209,9 +312,13 @@ export class PackageManager {
     this.logger.info({ repo }, "Installing package from GitHub");
 
     // Spec 089 C1: resolve registry entry up front. An install of a repo
-    // absent from the registry is refused outright.
+    // absent from the registry is refused outright — unless the repo is a
+    // personal source explicitly added by an admin (spec 136).
     const entry = this.getRegistryEntries().find((e) => e.repo === repo);
     if (!entry) {
+      if (this.sources.has(repo)) {
+        return this.installFromPersonalSource(repo, opts);
+      }
       throw new Error(`Package not found in registry: ${repo}`);
     }
     if (!entry.sha256 || !SHA256_HEX.test(entry.sha256)) {
@@ -224,7 +331,7 @@ export class PackageManager {
 
     const tmpDir = resolve(this.pluginsDir, ".tmp");
     try {
-      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, entry);
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, entry.sha256, entry.id);
 
       // Read and validate manifest
       const manifestPath = resolve(extractDir, "manifest.json");
@@ -257,11 +364,109 @@ export class PackageManager {
         installedAt: new Date().toISOString(),
         manifest: JSON.stringify(manifest),
         type,
+        source: "registry",
+        pinnedSha256: null,
       });
 
       this.logger.info(
         { packageId: manifest.id, version: manifest.version, type },
         "Package installed",
+      );
+      return manifest;
+    } finally {
+      try {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  /**
+   * Personal-source install (spec 136) — TOFU flow.
+   *
+   * Unconfirmed call: download the tarball, compute its SHA256, throw
+   * PersonalPluginConfirmationRequiredError carrying {version, sha256}
+   * for the UI modal. Nothing is extracted, nothing touches the DB.
+   *
+   * Confirmed call: re-download, require the tarball to match the
+   * user-confirmed `expectedSha256` (closes the window between what was
+   * shown and what is installed), run the personal-only manifest checks,
+   * install, and pin the hash.
+   */
+  private async installFromPersonalSource(
+    repo: string,
+    opts: InstallOptions,
+  ): Promise<PluginManifest> {
+    const owner = repo.split("/")[0] ?? "unknown";
+    const tmpDir = resolve(this.pluginsDir, ".tmp");
+    try {
+      if (!opts.confirmed) {
+        const probe = await this.downloadAndHash(repo, tmpDir);
+        this.logger.info(
+          { repo, version: probe.version, sha256: probe.sha256.slice(0, 12) },
+          "Personal plugin install requires confirmation",
+        );
+        throw new PersonalPluginConfirmationRequiredError(repo, owner, probe.version, probe.sha256);
+      }
+      if (!opts.expectedSha256 || !SHA256_HEX.test(opts.expectedSha256)) {
+        throw new Error(
+          "Personal plugin install requires the expectedSha256 from the confirmation step",
+        );
+      }
+
+      const expected = opts.expectedSha256.toLowerCase();
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, expected, repo);
+
+      const manifestPath = resolve(extractDir, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        throw new Error("Package archive does not contain manifest.json");
+      }
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
+      this.validateManifest(manifest);
+
+      // Personal-only checks (registry entries are reviewed; these are not).
+      if (manifest.repo !== repo) {
+        throw new Error(
+          `Package manifest declares repo "${manifest.repo}" but was installed from "${repo}"`,
+        );
+      }
+      if (this.getRegistryEntries().some((e) => e.id === manifest.id)) {
+        throw new Error(
+          `Package id "${manifest.id}" shadows a plugin registry entry; rename the plugin id`,
+        );
+      }
+      if (!this.isCompatible(manifest.sowelVersion)) {
+        throw new Error(
+          `Package "${manifest.id}" requires Sowel >= ${manifest.sowelVersion} (current: ${this.getCurrentVersion()})`,
+        );
+      }
+      const existing = this.stmts.getById.get(manifest.id) as PackageRow | undefined;
+      if (existing) {
+        throw new Error(`Package "${manifest.id}" is already installed`);
+      }
+
+      const pkgDir = resolve(this.pluginsDir, manifest.id);
+      if (existsSync(pkgDir)) {
+        rmSync(pkgDir, { recursive: true });
+      }
+      await rename(extractDir, pkgDir);
+
+      const type = manifest.type ?? "integration";
+      this.stmts.insert.run({
+        id: manifest.id,
+        version: manifest.version,
+        enabled: 1,
+        installedAt: new Date().toISOString(),
+        manifest: JSON.stringify(manifest),
+        type,
+        source: "personal",
+        pinnedSha256: expected,
+      });
+
+      this.logger.info(
+        { packageId: manifest.id, version: manifest.version, type, repo, tier: "personal" },
+        "Personal package installed",
       );
       return manifest;
     } finally {
@@ -281,16 +486,40 @@ export class PackageManager {
    */
   async downloadMissing(repo: string): Promise<void> {
     const entry = this.getRegistryEntries().find((e) => e.repo === repo);
-    if (!entry) {
-      throw new Error(`Package not found in registry: ${repo}`);
-    }
-    if (!entry.sha256 || !SHA256_HEX.test(entry.sha256)) {
-      throw new RegistryEntryInvalidError(entry.id, "sha256");
+    let expectedSha256: string;
+    let logId: string;
+    if (entry) {
+      if (!entry.sha256 || !SHA256_HEX.test(entry.sha256)) {
+        throw new RegistryEntryInvalidError(entry.id, "sha256");
+      }
+      expectedSha256 = entry.sha256;
+      logId = entry.id;
+    } else {
+      // Spec 136: personal package restored from backup — verify against
+      // the TOFU-pinned hash instead of a registry hash. Works even if
+      // the source itself was not (yet) re-added.
+      const row = (this.stmts.getAll.all() as PackageRow[]).find((r) => {
+        try {
+          return (JSON.parse(r.manifest) as PluginManifest).repo === repo;
+        } catch {
+          return false;
+        }
+      });
+      if (!row || row.source !== "personal") {
+        throw new Error(`Package not found in registry: ${repo}`);
+      }
+      if (!row.pinned_sha256 || !SHA256_HEX.test(row.pinned_sha256)) {
+        throw new Error(
+          `Personal package "${row.id}" has no pinned SHA256; reinstall it explicitly`,
+        );
+      }
+      expectedSha256 = row.pinned_sha256;
+      logId = row.id;
     }
 
     const tmpDir = resolve(this.pluginsDir, ".tmp");
     try {
-      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, entry);
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, expectedSha256, logId);
 
       const manifestPath = resolve(extractDir, "manifest.json");
       if (!existsSync(manifestPath)) {
@@ -321,8 +550,11 @@ export class PackageManager {
   /**
    * Update — download new version, replace files, update DB.
    * Caller must stop/unload before calling and reload after.
+   * Personal packages (spec 136) follow the TOFU re-confirmation flow;
+   * callers should run probePersonalUpdate() BEFORE unloading so an
+   * unconfirmed update never leaves the plugin stopped.
    */
-  async updateFiles(packageId: string): Promise<PluginManifest> {
+  async updateFiles(packageId: string, opts: InstallOptions = {}): Promise<PluginManifest> {
     const row = this.stmts.getById.get(packageId) as PackageRow | undefined;
     if (!row) {
       throw new Error(`Package "${packageId}" is not installed`);
@@ -336,6 +568,10 @@ export class PackageManager {
 
     this.logger.info({ packageId, from: row.version, repo }, "Updating package");
 
+    if (row.source === "personal") {
+      return this.updatePersonalFiles(row, repo, opts);
+    }
+
     // Spec 089 C1: re-resolve registry entry for the SHA256 (may have changed
     // since last install if the registry advances).
     const entry = this.getRegistryEntries().find((e) => e.repo === repo);
@@ -348,7 +584,7 @@ export class PackageManager {
 
     const tmpDir = resolve(this.pluginsDir, ".tmp");
     try {
-      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, entry);
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, entry.sha256, entry.id);
 
       const manifestPath = resolve(extractDir, "manifest.json");
       if (!existsSync(manifestPath)) {
@@ -372,6 +608,139 @@ export class PackageManager {
         "Package updated",
       );
       return newManifest;
+    } finally {
+      try {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  /**
+   * Personal-source update (spec 136). Unconfirmed: download + hash; if
+   * the tarball differs from the pinned hash (any real update does),
+   * throw PersonalPluginConfirmationRequiredError with the new identity.
+   * Confirmed: verify against the user-approved expectedSha256, replace
+   * files, re-pin.
+   */
+  private async updatePersonalFiles(
+    row: PackageRow,
+    repo: string,
+    opts: InstallOptions,
+  ): Promise<PluginManifest> {
+    if (!this.sources.has(repo)) {
+      throw new Error(
+        `Personal source "${repo}" has been removed; re-add it to update this package`,
+      );
+    }
+    const owner = repo.split("/")[0] ?? "unknown";
+    const tmpDir = resolve(this.pluginsDir, ".tmp");
+    try {
+      let expected: string;
+      if (opts.confirmed) {
+        if (!opts.expectedSha256 || !SHA256_HEX.test(opts.expectedSha256)) {
+          throw new Error(
+            "Personal plugin update requires the expectedSha256 from the confirmation step",
+          );
+        }
+        expected = opts.expectedSha256.toLowerCase();
+      } else {
+        const probe = await this.downloadAndHash(repo, tmpDir);
+        if (probe.sha256 !== (row.pinned_sha256 ?? "").toLowerCase()) {
+          this.logger.info(
+            { packageId: row.id, repo, version: probe.version, sha256: probe.sha256.slice(0, 12) },
+            "Personal plugin update requires confirmation",
+          );
+          throw new PersonalPluginConfirmationRequiredError(
+            repo,
+            owner,
+            probe.version,
+            probe.sha256,
+          );
+        }
+        // Content identical to what was already accepted — reinstalling the
+        // same tarball needs no new consent.
+        expected = probe.sha256;
+      }
+
+      const extractDir = await this.downloadPrebuiltAsset(repo, tmpDir, expected, row.id);
+
+      const manifestPath = resolve(extractDir, "manifest.json");
+      if (!existsSync(manifestPath)) {
+        throw new Error("New package version does not contain manifest.json");
+      }
+      const newManifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
+      this.validateManifest(newManifest);
+      if (newManifest.repo !== repo) {
+        throw new Error(
+          `Package manifest declares repo "${newManifest.repo}" but was updated from "${repo}"`,
+        );
+      }
+      if (!this.isCompatible(newManifest.sowelVersion)) {
+        throw new Error(
+          `Package "${newManifest.id}" requires Sowel >= ${newManifest.sowelVersion} (current: ${this.getCurrentVersion()})`,
+        );
+      }
+
+      const pkgDir = resolve(this.pluginsDir, row.id);
+      if (existsSync(pkgDir)) {
+        rmSync(pkgDir, { recursive: true });
+      }
+      await rename(extractDir, pkgDir);
+
+      this.stmts.updateManifestAndPin.run(
+        newManifest.version,
+        JSON.stringify(newManifest),
+        expected,
+        row.id,
+      );
+
+      this.logger.info(
+        { packageId: row.id, from: row.version, to: newManifest.version, tier: "personal" },
+        "Personal package updated",
+      );
+      return newManifest;
+    } finally {
+      try {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  /**
+   * Preflight for personal-package updates (spec 136). No-op for
+   * registry packages or when `confirmed` is set. For an unconfirmed
+   * personal update whose latest tarball differs from the pinned hash,
+   * throws PersonalPluginConfirmationRequiredError — callers run this
+   * BEFORE stopping the plugin so the running instance is untouched
+   * while the user decides.
+   */
+  async probePersonalUpdate(packageId: string, opts: InstallOptions = {}): Promise<void> {
+    if (opts.confirmed) return;
+    const row = this.stmts.getById.get(packageId) as PackageRow | undefined;
+    if (!row || row.source !== "personal") return;
+
+    const manifest = JSON.parse(row.manifest) as PluginManifest;
+    const repo = manifest.repo;
+    if (!repo) {
+      throw new Error(`Package "${packageId}" has no repo in manifest — cannot update`);
+    }
+    if (!this.sources.has(repo)) {
+      throw new Error(
+        `Personal source "${repo}" has been removed; re-add it to update this package`,
+      );
+    }
+
+    const tmpDir = resolve(this.pluginsDir, ".tmp");
+    try {
+      const probe = await this.downloadAndHash(repo, tmpDir);
+      if (probe.sha256 !== (row.pinned_sha256 ?? "").toLowerCase()) {
+        const owner = repo.split("/")[0] ?? "unknown";
+        throw new PersonalPluginConfirmationRequiredError(repo, owner, probe.version, probe.sha256);
+      }
     } finally {
       try {
         if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true });
@@ -415,6 +784,20 @@ export class PackageManager {
     return versions;
   }
 
+  /**
+   * Latest available version for an installed package, source-aware
+   * (spec 136): registry packages read the registry, personal packages
+   * read the source repo's cached latest release. Personal packages are
+   * never version-checked against the registry (and vice versa).
+   */
+  getLatestVersionFor(pkg: InstalledPackage): string | undefined {
+    if (pkg.source === "personal") {
+      if (!pkg.manifest.repo) return undefined;
+      return this.sources.getCachedRelease(pkg.manifest.repo)?.version;
+    }
+    return this.getLatestVersions().get(pkg.manifest.id);
+  }
+
   /** Lookup repo URL from registry */
   getRepoFromRegistry(packageId: string): string | undefined {
     return this.getRegistryEntries().find((e) => e.id === packageId)?.repo;
@@ -427,14 +810,26 @@ export class PackageManager {
    */
   async warmRegistryCache(): Promise<void> {
     await this.fetchRemoteRegistry(false);
+    // Spec 136: warm the personal-source release cache too (best effort).
+    try {
+      await this.sources.refreshAll();
+    } catch (err) {
+      this.logger.warn({ err }, "Failed to warm personal source cache");
+    }
   }
 
   /**
    * Force refresh the remote registry, bypassing the CDN cache. Used by the
-   * "Refresh" button on the Plugins page.
+   * "Refresh" button on the Plugins page. Also force-refreshes the
+   * personal-source release cache (spec 136).
    */
   async refreshRegistryNow(): Promise<{ count: number; source: "remote" | "local" }> {
     const fetched = await this.fetchRemoteRegistry(true);
+    try {
+      await this.sources.refreshAll(true);
+    } catch (err) {
+      this.logger.warn({ err }, "Failed to refresh personal source cache");
+    }
     return {
       count: this.registryCache?.length ?? 0,
       source: fetched ? "remote" : "local",
@@ -542,11 +937,15 @@ export class PackageManager {
   // Internal helpers
   // ============================================================
 
-  private async downloadPrebuiltAsset(
+  /**
+   * Fetch the latest release of `repo` and download its sowel-*.tar.gz
+   * asset to `<tmpDir>/package.tar.gz`. Returns the tarball path, its
+   * SHA256 and the release version (tag with leading "v" stripped).
+   */
+  private async downloadTarball(
     repo: string,
     tmpDir: string,
-    entry: RegistryEntry,
-  ): Promise<string> {
+  ): Promise<{ tarballPath: string; sha256: string; version: string }> {
     const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
     const releaseRes = await fetch(apiUrl, {
       headers: { Accept: "application/vnd.github+json" },
@@ -586,9 +985,37 @@ export class PackageManager {
     const fileStream = createWriteStream(tarballPath);
     await pipeline(tarballRes.body as unknown as NodeJS.ReadableStream, fileStream);
 
-    // ── SHA256 integrity check (spec 089 C1) ──────────────────
-    const expected = entry.sha256!.toLowerCase();
-    const actual = createHash("sha256").update(readFileSync(tarballPath)).digest("hex");
+    const sha256 = createHash("sha256").update(readFileSync(tarballPath)).digest("hex");
+    return { tarballPath, sha256, version: release.tag_name.replace(/^v/, "") };
+  }
+
+  /**
+   * TOFU probe (spec 136): download the latest tarball, return its
+   * identity, delete the file. Nothing is extracted.
+   */
+  private async downloadAndHash(
+    repo: string,
+    tmpDir: string,
+  ): Promise<{ version: string; sha256: string }> {
+    const { tarballPath, sha256, version } = await this.downloadTarball(repo, tmpDir);
+    try {
+      rmSync(tarballPath);
+    } catch {
+      /* ignore */
+    }
+    return { version, sha256 };
+  }
+
+  private async downloadPrebuiltAsset(
+    repo: string,
+    tmpDir: string,
+    expectedSha256: string,
+    logId: string,
+  ): Promise<string> {
+    const { tarballPath, sha256: actual } = await this.downloadTarball(repo, tmpDir);
+
+    // ── SHA256 integrity check (spec 089 C1, spec 136 TOFU) ───
+    const expected = expectedSha256.toLowerCase();
     if (actual !== expected) {
       try {
         rmSync(tarballPath);
@@ -596,15 +1023,12 @@ export class PackageManager {
         /* ignore */
       }
       this.logger.warn(
-        { pluginId: entry.id, expected: expected.slice(0, 12), actual: actual.slice(0, 12) },
+        { pluginId: logId, expected: expected.slice(0, 12), actual: actual.slice(0, 12) },
         "Plugin tarball SHA256 mismatch — refusing install",
       );
-      throw new ChecksumMismatchError(entry.id, expected, actual);
+      throw new ChecksumMismatchError(logId, expected, actual);
     }
-    this.logger.debug(
-      { pluginId: entry.id, sha256: actual.slice(0, 12) },
-      "Tarball SHA256 verified",
-    );
+    this.logger.debug({ pluginId: logId, sha256: actual.slice(0, 12) }, "Tarball SHA256 verified");
 
     const extractDir = resolve(tmpDir, "extract");
     mkdirSync(extractDir, { recursive: true });
@@ -634,7 +1058,7 @@ export class PackageManager {
     // vector — e.g. link → /etc/passwd or ../../sensitive). Internal
     // symlinks that point within the extracted tree are legitimate and
     // common (e.g. node_modules/.bin/* shipped by every npm package).
-    this.assertNoEscapingSymlinks(extractDir, extractDir, entry.id);
+    this.assertNoEscapingSymlinks(extractDir, extractDir, logId);
 
     return extractDir;
   }
@@ -692,6 +1116,7 @@ export class PackageManager {
       enabled: row.enabled === 1,
       installedAt: row.installed_at,
       type: (row.type as PackageType) ?? "integration",
+      source: (row.source as PackageSource) ?? "registry",
     };
   }
 

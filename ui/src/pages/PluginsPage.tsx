@@ -1,6 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Package, Loader2, Download, Trash2, Cpu, ArrowUpCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import {
+  Package,
+  Loader2,
+  Download,
+  Trash2,
+  Cpu,
+  ArrowUpCircle,
+  RefreshCw,
+  AlertTriangle,
+  ShieldAlert,
+  UserRound,
+  FolderGit2,
+  Plus,
+  X,
+} from "lucide-react";
 import { refreshPluginUpdateCount } from "../components/layout/usePluginUpdates";
 import * as LucideIcons from "lucide-react";
 import {
@@ -12,9 +26,28 @@ import {
   enablePlugin,
   disablePlugin,
   updatePlugin,
+  getPluginSources,
+  addPluginSource,
+  removePluginSource,
   CommunityPluginConfirmationRequiredError,
+  PersonalPluginConfirmationRequiredError,
 } from "../api";
-import type { PluginInfo, PluginManifest, IntegrationStatus, PackageType } from "../types";
+import type {
+  PluginInfo,
+  PluginManifest,
+  PluginSource,
+  IntegrationStatus,
+  PackageType,
+  PackageTier,
+} from "../types";
+
+/** Identity of a personal plugin pending TOFU confirmation (spec 136). */
+interface PersonalConfirmInfo {
+  repo: string;
+  owner: string;
+  version: string;
+  sha256: string;
+}
 
 type Tab = "installed" | "store";
 type CategoryFilter = "integration" | "recipe";
@@ -38,6 +71,7 @@ export function PluginsPage() {
   const lang = i18n.language?.split("-")[0] ?? "en";
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [store, setStore] = useState<PluginManifest[]>([]);
+  const [sources, setSources] = useState<PluginSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("installed");
@@ -45,12 +79,14 @@ export function PluginsPage() {
 
   const load = useCallback(async () => {
     try {
-      const [installedData, storeData] = await Promise.all([
+      const [installedData, storeData, sourcesData] = await Promise.all([
         getPlugins(),
         getPluginStore(),
+        getPluginSources(),
       ]);
       setPlugins(installedData);
       setStore(storeData);
+      setSources(sourcesData);
       refreshPluginUpdateCount();
     } catch {
       // ignore
@@ -172,7 +208,13 @@ export function PluginsPage() {
         {activeTab === "installed" ? (
           <InstalledTab plugins={filteredPlugins} lang={lang} onRefresh={load} />
         ) : (
-          <StoreTab store={filteredStore} installedIds={installedIds} lang={lang} onRefresh={load} />
+          <StoreTab
+            store={filteredStore}
+            installedIds={installedIds}
+            sources={sources}
+            lang={lang}
+            onRefresh={load}
+          />
         )}
       </div>
     </div>
@@ -294,26 +336,44 @@ function PluginRow({
   const { t } = useTranslation();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmUninstall, setConfirmUninstall] = useState(false);
+  const [confirmPersonalUpdate, setConfirmPersonalUpdate] = useState<PersonalConfirmInfo | null>(
+    null,
+  );
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[plugin.manifest.icon] ?? Cpu;
 
   const hasUpdate = !!plugin.latestVersion;
   const isRecipe = getManifestType(plugin.manifest) === "recipe";
+  const isPersonal = plugin.source === "personal";
 
-  const handleUpdate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const doUpdate = async (opts: { confirmed?: boolean; expectedSha256?: string } = {}) => {
     setActionLoading("update");
     try {
-      await updatePlugin(plugin.manifest.id);
+      await updatePlugin(plugin.manifest.id, opts);
+      setConfirmPersonalUpdate(null);
       // Small delay to let the plugin restart before refreshing
       await new Promise((r) => setTimeout(r, 1500));
       onRefresh();
-    } catch {
-      // ignore
+    } catch (err) {
+      // Spec 136: personal package — the server asks for TOFU re-confirmation.
+      if (err instanceof PersonalPluginConfirmationRequiredError) {
+        setConfirmPersonalUpdate({
+          repo: err.repo,
+          owner: err.owner,
+          version: err.version,
+          sha256: err.sha256,
+        });
+      }
+      // other errors are surfaced through default fetch error handling
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleUpdate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void doUpdate();
   };
 
   const handleToggle = async (e: React.MouseEvent) => {
@@ -368,6 +428,7 @@ function PluginRow({
           <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
             {plugin.manifest.version}
           </span>
+          {isPersonal && <PersonalBadge />}
           {hasUpdate && (
             <span className="text-[10px] px-1.5 py-0.5 bg-error/10 rounded-[4px] text-error font-mono shrink-0 flex items-center gap-0.5">
               <ArrowUpCircle size={10} />
@@ -458,6 +519,19 @@ function PluginRow({
           )}
         </button>
       </div>
+
+      {/* Personal plugin TOFU re-confirmation modal (spec 136) */}
+      {confirmPersonalUpdate && (
+        <PersonalConfirmModal
+          info={confirmPersonalUpdate}
+          mode="update"
+          busy={actionLoading === "update"}
+          onCancel={() => setConfirmPersonalUpdate(null)}
+          onConfirm={() =>
+            doUpdate({ confirmed: true, expectedSha256: confirmPersonalUpdate.sha256 })
+          }
+        />
+      )}
     </div>
   );
 }
@@ -467,36 +541,41 @@ function PluginRow({
 function StoreTab({
   store,
   installedIds,
+  sources,
   lang,
   onRefresh,
 }: {
   store: PluginManifest[];
   installedIds: Set<string>;
+  sources: PluginSource[];
   lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
 
-  if (store.length === 0) {
-    return (
-      <div className="text-center py-16 text-text-tertiary text-[14px]">
-        <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
-        {t("plugins.noPlugins")}
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      {store.map((manifest) => (
-        <StoreRow
-          key={manifest.id}
-          manifest={manifest}
-          installed={installedIds.has(manifest.id)}
-          lang={lang}
-          onRefresh={onRefresh}
-        />
-      ))}
+    <div className="space-y-6">
+      {store.length === 0 ? (
+        <div className="text-center py-10 text-text-tertiary text-[14px]">
+          <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
+          {t("plugins.noPlugins")}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {store.map((manifest) => (
+            <StoreRow
+              key={manifest.id}
+              manifest={manifest}
+              installed={installedIds.has(manifest.id)}
+              lang={lang}
+              onRefresh={onRefresh}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Personal sources management (spec 136) */}
+      <PersonalSourcesSection sources={sources} onRefresh={onRefresh} />
     </div>
   );
 }
@@ -509,7 +588,12 @@ function StoreRow({
   lang,
   onRefresh,
 }: {
-  manifest: PluginManifest & { compatible?: boolean; compatReason?: string; isOfficial?: boolean };
+  manifest: PluginManifest & {
+    compatible?: boolean;
+    compatReason?: string;
+    isOfficial?: boolean;
+    tier?: PackageTier;
+  };
   installed: boolean;
   lang: string;
   onRefresh: () => void;
@@ -517,21 +601,32 @@ function StoreRow({
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
   const [confirmCommunity, setConfirmCommunity] = useState<{ owner: string } | null>(null);
+  const [confirmPersonal, setConfirmPersonal] = useState<PersonalConfirmInfo | null>(null);
   const compatible = manifest.compatible !== false;
   const isOfficial = manifest.isOfficial !== false;
+  const tier: PackageTier = manifest.tier ?? (isOfficial ? "official" : "community");
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[manifest.icon] ?? Cpu;
 
-  const doInstall = async (confirmed: boolean) => {
+  const doInstall = async (confirmed: boolean, expectedSha256?: string) => {
     setInstalling(true);
     try {
-      await installPlugin(manifest.repo ?? manifest.id, confirmed);
+      await installPlugin(manifest.repo ?? manifest.id, confirmed, expectedSha256);
       setConfirmCommunity(null);
+      setConfirmPersonal(null);
       onRefresh();
     } catch (err) {
       if (err instanceof CommunityPluginConfirmationRequiredError) {
         setConfirmCommunity({ owner: err.owner });
+      } else if (err instanceof PersonalPluginConfirmationRequiredError) {
+        // Spec 136: the server computed the tarball identity — show it.
+        setConfirmPersonal({
+          repo: err.repo,
+          owner: err.owner,
+          version: err.version,
+          sha256: err.sha256,
+        });
       }
       // other errors are surfaced through default fetch error handling
     } finally {
@@ -560,7 +655,7 @@ function StoreRow({
             </span>
           )}
           {/* Community badge — owner is not in OFFICIAL_OWNERS (spec 089 C1) */}
-          {!isOfficial && (
+          {tier === "community" && (
             <span
               className="text-[10px] px-1.5 py-0.5 bg-warning/10 text-warning rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
               title={t("plugins.community.badge.tooltip")}
@@ -569,6 +664,8 @@ function StoreRow({
               {t("plugins.community.badge")}
             </span>
           )}
+          {/* Personal badge — user-added source (spec 136) */}
+          {tier === "personal" && <PersonalBadge />}
         </div>
         <p className="text-[12px] text-text-secondary mt-0.5 line-clamp-1">
           {getLocalizedDescription(manifest, lang)}
@@ -611,6 +708,17 @@ function StoreRow({
         )}
       </div>
 
+      {/* Personal plugin TOFU confirm modal (spec 136) */}
+      {confirmPersonal && (
+        <PersonalConfirmModal
+          info={confirmPersonal}
+          mode="install"
+          busy={installing}
+          onCancel={() => setConfirmPersonal(null)}
+          onConfirm={() => doInstall(true, confirmPersonal.sha256)}
+        />
+      )}
+
       {/* Community plugin confirm modal (spec 089 C1) */}
       {confirmCommunity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -649,6 +757,253 @@ function StoreRow({
         </div>
       )}
     </div>
+  );
+}
+
+// ── Personal Badge (spec 136) ────────────────────────────────
+
+function PersonalBadge() {
+  const { t } = useTranslation();
+  return (
+    <span
+      className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
+      title={t("plugins.personal.badge.tooltip")}
+    >
+      <UserRound size={10} strokeWidth={2} />
+      {t("plugins.personal.badge")}
+    </span>
+  );
+}
+
+// ── Personal TOFU Confirm Modal (spec 136) ───────────────────
+
+function IdentityRow({ label, value, title }: { label: string; value: string; title?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-[12px] text-text-tertiary shrink-0">{label}</span>
+      <span className="text-[12px] font-mono text-text truncate" title={title ?? value}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function PersonalConfirmModal({
+  info,
+  mode,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  info: PersonalConfirmInfo;
+  mode: "install" | "update";
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  const isInstall = mode === "install";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-surface rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-lg">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <ShieldAlert size={20} className="text-primary" strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-[16px] font-semibold text-text">
+              {t("plugins.personal.modal.title")}
+            </h3>
+            <p className="text-[13px] text-text-secondary mt-1">
+              {t(
+                isInstall ? "plugins.personal.modal.body" : "plugins.personal.modal.updateBody",
+                { repo: info.repo },
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Identity of what will be installed — version + pinned fingerprint */}
+        <div className="bg-background border border-border rounded-[10px] px-4 py-3 space-y-2">
+          <IdentityRow label={t("plugins.personal.modal.repository")} value={info.repo} />
+          <IdentityRow label={t("plugins.personal.modal.version")} value={info.version} />
+          <IdentityRow
+            label={t("plugins.personal.modal.fingerprint")}
+            value={`${info.sha256.slice(0, 12)}…`}
+            title={info.sha256}
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-border-light rounded-[6px] transition-colors disabled:opacity-50"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy}
+            className="px-4 py-2 text-[13px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {busy ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : isInstall ? (
+              <Download size={14} />
+            ) : (
+              <ArrowUpCircle size={14} />
+            )}
+            {t(isInstall ? "plugins.personal.modal.confirm" : "plugins.personal.modal.confirmUpdate")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Personal Sources Section (spec 136) ──────────────────────
+
+function PersonalSourcesSection({
+  sources,
+  onRefresh,
+}: {
+  sources: PluginSource[];
+  onRefresh: () => void;
+}) {
+  const { t } = useTranslation();
+  const [repoInput, setRepoInput] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const repo = repoInput.trim();
+    if (!repo || adding) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await addPluginSource(repo);
+      setRepoInput("");
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <section className="bg-surface border border-border rounded-[10px]">
+      {/* Header */}
+      <div className="flex items-start gap-2.5 px-4 py-3">
+        <FolderGit2 size={16} strokeWidth={1.5} className="text-text-secondary mt-0.5 shrink-0" />
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold text-text">{t("plugins.sources.title")}</h2>
+          <p className="text-[12px] text-text-secondary mt-0.5">{t("plugins.sources.subtitle")}</p>
+        </div>
+      </div>
+
+      {/* Source list */}
+      {sources.length > 0 && (
+        <ul className="border-t border-border-light divide-y divide-border-light">
+          {sources.map((source) => (
+            <SourceRow key={source.repo} source={source} onRefresh={onRefresh} />
+          ))}
+        </ul>
+      )}
+
+      {/* Add form */}
+      <form
+        onSubmit={handleAdd}
+        className="flex items-center gap-2 px-4 py-3 border-t border-border-light"
+      >
+        <input
+          value={repoInput}
+          onChange={(e) => {
+            setRepoInput(e.target.value);
+            setError(null);
+          }}
+          placeholder={t("plugins.sources.placeholder")}
+          spellCheck={false}
+          autoCapitalize="none"
+          className="flex-1 min-w-0 px-3 py-1.5 text-[13px] font-mono text-text bg-background border border-border rounded-[6px] placeholder:text-text-tertiary placeholder:font-mono focus:outline-none focus:border-primary transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={adding || !repoInput.trim()}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+        >
+          {adding ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Plus size={14} strokeWidth={2} />
+          )}
+          {t("plugins.sources.add")}
+        </button>
+      </form>
+      {error && <p className="px-4 pb-3 -mt-1 text-[12px] text-error">{error}</p>}
+    </section>
+  );
+}
+
+function SourceRow({ source, onRefresh }: { source: PluginSource; onRefresh: () => void }) {
+  const { t } = useTranslation();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemove = async () => {
+    if (!confirmRemove) {
+      setConfirmRemove(true);
+      return;
+    }
+    setRemoving(true);
+    try {
+      await removePluginSource(source.repo);
+      onRefresh();
+    } catch {
+      // ignore
+    } finally {
+      setRemoving(false);
+      setConfirmRemove(false);
+    }
+  };
+
+  return (
+    <li className="flex items-center gap-3 px-4 py-2.5">
+      <span className="flex-1 min-w-0 text-[13px] font-mono text-text truncate">{source.repo}</span>
+      {source.latestVersion ? (
+        <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+          {source.latestVersion}
+        </span>
+      ) : (
+        <span className="text-[11px] text-text-tertiary shrink-0">
+          {t("plugins.sources.noRelease")}
+        </span>
+      )}
+      <button
+        onClick={handleRemove}
+        onBlur={() => setConfirmRemove(false)}
+        disabled={removing}
+        title={t("plugins.sources.removeHint")}
+        className={`
+          flex items-center gap-1 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 shrink-0
+          ${confirmRemove
+            ? "text-error bg-error/10 px-2 py-1 text-xs font-medium"
+            : "p-1.5 text-text-tertiary hover:bg-border-light hover:text-error"
+          }
+        `}
+      >
+        {removing ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : confirmRemove ? (
+          t("plugins.sources.removeConfirm")
+        ) : (
+          <X size={14} />
+        )}
+      </button>
+    </li>
   );
 }
 
