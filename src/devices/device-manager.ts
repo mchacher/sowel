@@ -23,6 +23,7 @@ import type {
   OrderCategory,
 } from "../shared/types.js";
 import { PROPERTY_TO_CATEGORY } from "../shared/constants.js";
+import { parseWireValue } from "../shared/order-wire-value.js";
 
 export interface DiscoveredDevice {
   ieeeAddress?: string;
@@ -44,6 +45,8 @@ export interface DiscoveredDevice {
     max?: number;
     enumValues?: string[];
     unit?: string;
+    valueOn?: string | number | boolean;
+    valueOff?: string | number | boolean;
   }[];
   rawExpose?: unknown;
 }
@@ -121,11 +124,11 @@ export class DeviceManager {
         "SELECT * FROM device_orders WHERE device_id = ? AND key = ?",
       ),
       insertDeviceOrder: this.db.prepare(
-        `INSERT INTO device_orders (id, device_id, key, type, category, min_value, max_value, enum_values, unit)
-         VALUES (@id, @deviceId, @key, @type, @category, @min, @max, @enumValues, @unit)`,
+        `INSERT INTO device_orders (id, device_id, key, type, category, min_value, max_value, enum_values, unit, value_on, value_off)
+         VALUES (@id, @deviceId, @key, @type, @category, @min, @max, @enumValues, @unit, @valueOn, @valueOff)`,
       ),
       updateDeviceOrderDef: this.db.prepare(
-        "UPDATE device_orders SET type = ?, category = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ? WHERE id = ?",
+        "UPDATE device_orders SET type = ?, category = ?, min_value = ?, max_value = ?, enum_values = ?, unit = ?, value_on = ?, value_off = ? WHERE id = ?",
       ),
       deleteDeviceOrderById: this.db.prepare("DELETE FROM device_orders WHERE id = ?"),
       getDeviceOrderIds: this.db.prepare("SELECT id, key FROM device_orders WHERE device_id = ?"),
@@ -246,6 +249,8 @@ export class DeviceManager {
             o.max ?? null,
             o.enumValues ? JSON.stringify(o.enumValues) : null,
             o.unit ?? null,
+            o.valueOn !== undefined ? JSON.stringify(o.valueOn) : null,
+            o.valueOff !== undefined ? JSON.stringify(o.valueOff) : null,
             existingOrder.id,
           );
         } else {
@@ -259,6 +264,8 @@ export class DeviceManager {
             max: o.max ?? null,
             enumValues: o.enumValues ? JSON.stringify(o.enumValues) : null,
             unit: o.unit ?? null,
+            valueOn: o.valueOn !== undefined ? JSON.stringify(o.valueOn) : null,
+            valueOff: o.valueOff !== undefined ? JSON.stringify(o.valueOff) : null,
           });
         }
       }
@@ -738,6 +745,8 @@ interface DeviceOrderRow {
   max_value: number | null;
   enum_values: string | null;
   unit: string | null;
+  value_on: string | null;
+  value_off: string | null;
 }
 
 function rowToDevice(row: DeviceRow): Device {
@@ -798,5 +807,7 @@ function rowToDeviceOrder(row: DeviceOrderRow): DeviceOrder {
     max: row.max_value ?? undefined,
     enumValues,
     unit: row.unit ?? undefined,
+    valueOn: parseWireValue(row.value_on),
+    valueOff: parseWireValue(row.value_off),
   };
 }

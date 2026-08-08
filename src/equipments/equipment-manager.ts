@@ -20,6 +20,7 @@ import type {
   OrderSource,
 } from "../shared/types.js";
 import { inferBindingCategory } from "./binding-candidates.js";
+import { parseWireValue, resolveWireValue } from "../shared/order-wire-value.js";
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import type { Device } from "../shared/types.js";
 
@@ -238,7 +239,7 @@ export class EquipmentManager {
                 do2.device_id, d.name as device_name, do2.key, do2.type,
                 COALESCE(ob.category_override, do2.category) as category,
                 do2.min_value, do2.max_value,
-                do2.enum_values, do2.unit
+                do2.enum_values, do2.unit, do2.value_on, do2.value_off
          FROM order_bindings ob
          JOIN device_orders do2 ON ob.device_order_id = do2.id
          JOIN devices d ON do2.device_id = d.id
@@ -742,6 +743,15 @@ export class EquipmentManager {
 
       const orderKey = binding.key;
 
+      // Map boolean-ish values onto the wire representation the device
+      // declared at discovery (value_on/value_off), e.g. true -> "ON" for
+      // Z2M binary exposes. Orders without wire values dispatch untouched.
+      const dispatchValue = resolveWireValue(
+        resolvedValue,
+        parseWireValue(binding.value_on),
+        parseWireValue(binding.value_off),
+      );
+
       // Dispatch with 1 retry (2s delay) for transient failures
       let dispatched = false;
       for (let attempt = 1; attempt <= 2; attempt++) {
@@ -750,7 +760,7 @@ export class EquipmentManager {
             device.integrationId,
             device,
             orderKey,
-            resolvedValue,
+            dispatchValue,
           );
           dispatched = true;
           break;
@@ -1255,6 +1265,9 @@ interface OrderBindingJoinRow {
   max_value: number | null;
   enum_values: string | null;
   unit: string | null;
+  // Selected by getOrderBindingsByAlias only (order dispatch path).
+  value_on?: string | null;
+  value_off?: string | null;
 }
 
 interface DeviceOrderRow {

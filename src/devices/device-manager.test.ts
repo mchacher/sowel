@@ -17,6 +17,7 @@ function createTestDb(): Database.Database {
     "004_drop_dispatch_config.sql",
     "005_device_data_enum_values.sql",
     "006_pool_runtime_and_category_override.sql",
+    "014_device_orders_value_on_off.sql",
   ]) {
     const sql = readFileSync(
       resolve(import.meta.dirname ?? ".", "../../migrations", file),
@@ -120,6 +121,47 @@ describe("DeviceManager", () => {
       expect(orders.find((o) => o.key === "brightness")?.min).toBe(0);
       expect(orders.find((o) => o.key === "brightness")?.max).toBe(254);
       expect(orders.find((o) => o.key === "state")?.enumValues).toEqual(["ON", "OFF", "TOGGLE"]);
+    });
+
+    it("persists and re-syncs order wire values (value_on/value_off)", () => {
+      const relay = {
+        friendlyName: "whd02_relay",
+        data: [{ key: "state", type: "boolean" as const, category: "light_state" as const }],
+        orders: [
+          {
+            key: "state",
+            type: "boolean" as const,
+            category: "light_toggle" as const,
+            valueOn: "ON",
+            valueOff: "OFF",
+          },
+        ],
+        rawExpose: [],
+      };
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", relay);
+
+      const device = manager.getAll()[0];
+      let order = manager.getDeviceOrders(device.id).find((o) => o.key === "state");
+      expect(order?.valueOn).toBe("ON");
+      expect(order?.valueOff).toBe("OFF");
+
+      // Re-discovery updates wire values in place (stable order id)
+      const updated = {
+        ...relay,
+        orders: [{ ...relay.orders[0], valueOn: true as const, valueOff: false as const }],
+      };
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", updated);
+      order = manager.getDeviceOrders(device.id).find((o) => o.key === "state");
+      expect(order?.valueOn).toBe(true);
+      expect(order?.valueOff).toBe(false);
+    });
+
+    it("leaves wire values undefined when not declared", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
+      const device = manager.getAll()[0];
+      const order = manager.getDeviceOrders(device.id).find((o) => o.key === "state");
+      expect(order?.valueOn).toBeUndefined();
+      expect(order?.valueOff).toBeUndefined();
     });
 
     it("emits device.discovered event", () => {

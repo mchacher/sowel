@@ -458,6 +458,8 @@ interface DiscoveredDevice {
     max?: number;
     enumValues?: string[];
     unit?: string;
+    valueOn?: string | number | boolean;
+    valueOff?: string | number | boolean;
   }[];
 }
 
@@ -783,9 +785,13 @@ interface DiscoveredDevice {
     max?: number; // For numeric orders: maximum value
     enumValues?: string[]; // For enum orders: allowed values
     unit?: string; // Unit (e.g. "C")
+    valueOn?: string | number | boolean; // For boolean orders: wire value for true (e.g. "ON")
+    valueOff?: string | number | boolean; // For boolean orders: wire value for false (e.g. "OFF")
   }[];
 }
 ```
+
+**Boolean orders and wire values.** If the device does not accept JSON booleans on the wire (Zigbee2MQTT `binary` exposes expect `"ON"`/`"OFF"`, some locks expect `"LOCK"`/`"UNLOCK"`), declare `valueOn`/`valueOff` at discovery time. The core order dispatcher then maps boolean-ish values (`true`/`false`, `"on"`/`"off"`, `"true"`/`"false"`, `1`/`0`, and the wire values themselves case-insensitively) onto the declared wire representation before calling your `executeOrder()`, which can stay a pass-through. Orders without `valueOn`/`valueOff` receive the caller's value untouched.
 
 ### Example (from weather-forecast)
 

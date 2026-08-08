@@ -19,6 +19,7 @@ function createTestDb(): Database.Database {
     "004_drop_dispatch_config.sql",
     "005_device_data_enum_values.sql",
     "006_pool_runtime_and_category_override.sql",
+    "014_device_orders_value_on_off.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -47,6 +48,8 @@ function seedDevice(
       type?: string;
       category?: string;
       enumValues?: string[];
+      valueOn?: string | number | boolean;
+      valueOff?: string | number | boolean;
     }[];
   } = {},
 ) {
@@ -79,8 +82,8 @@ function seedDevice(
   for (const o of opts.orderKeys ?? []) {
     const id = o.id ?? crypto.randomUUID();
     db.prepare(
-      `INSERT INTO device_orders (id, device_id, key, type, category, enum_values)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO device_orders (id, device_id, key, type, category, enum_values, value_on, value_off)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       deviceId,
@@ -88,6 +91,8 @@ function seedDevice(
       o.type ?? "boolean",
       o.category ?? null,
       o.enumValues ? JSON.stringify(o.enumValues) : null,
+      o.valueOn !== undefined ? JSON.stringify(o.valueOn) : null,
+      o.valueOff !== undefined ? JSON.stringify(o.valueOff) : null,
     );
     orderIds.push(id);
   }
@@ -660,6 +665,82 @@ describe("EquipmentManager", () => {
 
       expect(mockPublished).toHaveLength(1);
       expect(JSON.parse(mockPublished[0].payload)).toEqual({ R1: "latch" });
+    });
+
+    it("maps boolean values onto declared wire values (issue #360)", async () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Relay", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "WHD02",
+        orderKeys: [{ key: "state", type: "boolean", valueOn: "ON", valueOff: "OFF" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      await manager.executeOrder(eq.id, "state", true);
+      await manager.executeOrder(eq.id, "state", false);
+
+      expect(mockPublished).toHaveLength(2);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "ON" });
+      expect(JSON.parse(mockPublished[1].payload)).toEqual({ state: "OFF" });
+    });
+
+    it("keeps accepting on/off strings when wire values are declared", async () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Relay", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "WHD02",
+        orderKeys: [{ key: "state", type: "boolean", valueOn: "ON", valueOff: "OFF" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      await manager.executeOrder(eq.id, "state", "ON");
+      await manager.executeOrder(eq.id, "state", "off");
+
+      expect(mockPublished).toHaveLength(2);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "ON" });
+      expect(JSON.parse(mockPublished[1].payload)).toEqual({ state: "OFF" });
+    });
+
+    it("maps booleans onto non-standard wire values (LOCK/UNLOCK)", async () => {
+      const zone = zoneManager.create({ name: "Entrée" });
+      const eq = manager.create({ name: "Serrure", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "Lock",
+        orderKeys: [{ key: "state", type: "boolean", valueOn: "LOCK", valueOff: "UNLOCK" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      await manager.executeOrder(eq.id, "state", true);
+
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "LOCK" });
+    });
+
+    it("dispatches booleans untouched when no wire values are declared", async () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Cloud Switch", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "CloudPlug",
+        orderKeys: [{ key: "power", type: "boolean" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "power");
+
+      await manager.executeOrder(eq.id, "power", true);
+
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ power: true });
+    });
+
+    it("leaves non-boolean-ish values untouched even with wire values declared", async () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Relay", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "WHD02",
+        orderKeys: [{ key: "state", type: "boolean", valueOn: "ON", valueOff: "OFF" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      await manager.executeOrder(eq.id, "state", "TOGGLE");
+
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "TOGGLE" });
     });
 
     it("resolves enum value case-insensitively", async () => {

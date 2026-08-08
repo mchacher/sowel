@@ -151,7 +151,13 @@ export interface DeviceOrder {
   max?: number;
   enumValues?: string[];
   unit?: string;
+  // Wire representations for boolean orders (e.g. Z2M binary "ON"/"OFF").
+  // When declared, the order dispatcher maps boolean-ish values onto them.
+  valueOn?: OrderWireValue;
+  valueOff?: OrderWireValue;
 }
+
+export type OrderWireValue = string | number | boolean;
 
 // ============================================================
 // Device with relations (API response)
