@@ -11,6 +11,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.35.x: Personal plugin sources
+
+### v1.35.0 — 2026-08-08 { #v1-35-0 }
+
+- Feat (plugins): **personal plugin sources** (spec 136). Add your own public GitHub repositories as plugin sources and install your own integrations and recipes without going through the central registry, neither for the first publication nor for version bumps. A third trust tier appears next to official and community: personal entries carry a blue **Personal** badge, and trust follows a trust-on-first-use model. Sowel downloads the release tarball, shows its version and SHA256 fingerprint in a confirmation dialog, then pins the hash; any later content change (updates included) asks again with the new fingerprint, and backup restores verify re-downloads against the pinned hash. The registry install path is unchanged, and personal packages get extra guards: the manifest repository must match the source, and a plugin id cannot shadow a registry entry. Everything is managed from the new "Personal sources" section of the Plugins page. (#367)
+- Chore (registry): **Zigbee2MQTT plugin 2.3.1**: per-device availability topics are now ignored when Z2M's availability feature is disabled, so stale retained availability messages left on the broker no longer mark working devices offline at every boot or reconnect. (#365)
+- Chore (registry): **Schedule On/Off recipe 2.0.1**: water heater equipments (introduced in v1.34.0) can now be picked in the recipe's equipment slot. (#366)
+
+---
+
 ## 1.34.x: Water heater equipment
 
 ### v1.34.0 — 2026-08-08 { #v1-34-0 }

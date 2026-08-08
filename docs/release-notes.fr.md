@@ -11,6 +11,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.35.x: Sources personnelles de plugins
+
+### v1.35.0 — 2026-08-08 { #v1-35-0 }
+
+- Feat (plugins) : **sources personnelles de plugins** (spec 136). Ajoutez vos propres dépôts GitHub publics comme sources de plugins et installez vos propres intégrations et recettes sans passer par le registre central, ni pour la première publication ni pour les montées de version. Un troisième niveau de confiance apparaît à côté d'officiel et communautaire : les entrées personnelles portent un badge bleu **Perso**, et la confiance suit un modèle « au premier usage ». Sowel télécharge le tarball de la release, affiche sa version et son empreinte SHA256 dans une boîte de confirmation, puis épingle le hash ; tout changement de contenu ultérieur (mises à jour comprises) redemande confirmation avec la nouvelle empreinte, et les restaurations de sauvegarde vérifient les retéléchargements contre le hash épinglé. Le chemin d'installation du registre est inchangé, et les paquets personnels ont des gardes supplémentaires : le dépôt du manifest doit correspondre à la source, et un id de plugin ne peut pas masquer une entrée du registre. Tout se gère depuis la nouvelle section « Sources personnelles » de la page Plugins. (#367)
+- Chore (registry) : **plugin Zigbee2MQTT 2.3.1** : les topics de disponibilité par appareil sont désormais ignorés quand la fonction availability de Z2M est désactivée ; les messages retained périmés laissés sur le broker ne marquent plus des appareils fonctionnels hors ligne à chaque démarrage ou reconnexion. (#365)
+- Chore (registry) : **recette Schedule On/Off 2.0.1** : les équipements chauffe-eau (introduits en v1.34.0) sont désormais sélectionnables dans le slot équipements de la recette. (#366)
+
+---
+
 ## 1.34.x: Équipement chauffe-eau
 
 ### v1.34.0 — 2026-08-08 { #v1-34-0 }
