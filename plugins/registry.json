@@ -461,7 +461,7 @@
     "icon": "CalendarClock",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-schedule-on-off",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "tags": ["schedule", "timer", "on-off", "sunrise", "sunset", "automation"],
     "i18n": {
       "fr": {
@@ -471,7 +471,7 @@
     },
     "sowelVersion": ">=1.23.0",
     "owner": "mchacher",
-    "sha256": "0a3789ce25a0ca3758631bd54976bdfd4999268e7ae660ddf6b73dc33f72857f"
+    "sha256": "086862005bcf1555bbd284ddf8cfeab90acd31a9dc4802b8cb6cbca4c7491ffc"
   },
   {
     "id": "runtime-guard",
