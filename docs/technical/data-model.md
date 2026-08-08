@@ -126,7 +126,15 @@ CREATE TABLE plugins (
   enabled INTEGER NOT NULL DEFAULT 1,
   installed_at TEXT NOT NULL DEFAULT (datetime('now')),
   manifest TEXT NOT NULL,                 -- JSON: full PluginManifest
-  type TEXT NOT NULL DEFAULT 'integration'
+  type TEXT NOT NULL DEFAULT 'integration',
+  source TEXT NOT NULL DEFAULT 'registry',-- spec 136: 'registry' | 'personal'
+  pinned_sha256 TEXT                      -- spec 136: TOFU hash (personal only)
+);
+
+-- Spec 136: admin-added GitHub repos serving as personal plugin sources
+CREATE TABLE plugin_sources (
+  repo TEXT PRIMARY KEY,                  -- "owner/repo"
+  added_at TEXT NOT NULL
 );
 ```
 

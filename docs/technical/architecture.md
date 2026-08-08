@@ -181,6 +181,18 @@ Installation flow:
 
 The `plugins/registry.json` on `main` is the source of truth for the official plugin list. Any user can point to their own fork.
 
+### Trust tiers (specs 089 + 136)
+
+Three trust tiers govern where a package may come from and what integrity anchor protects it:
+
+| Tier          | Source of truth                     | Integrity anchor                     | Install friction                            |
+| ------------- | ----------------------------------- | ------------------------------------ | ------------------------------------------- |
+| **Official**  | Central registry, whitelisted owner | Registry SHA256 + maintainer review  | None                                        |
+| **Community** | Central registry, third-party owner | Registry SHA256 + registry PR review | One-time confirmation modal                 |
+| **Personal**  | Admin-added GitHub repo (spec 136)  | TOFU-pinned SHA256                   | Confirmation at install and at every update |
+
+**Personal sources** (spec 136) let an admin register their own public GitHub repos as plugin sources, bypassing the central registry entirely. `PersonalSourceManager` (`src/packages/personal-sources.ts`) owns the `plugin_sources` table and a cached view of each repo's latest release. Trust is on-first-use: the install downloads the tarball, shows its SHA256 in a confirmation modal, then pins the hash in `plugins.pinned_sha256`. Updates whose tarball differs from the pinned hash require a fresh confirmation; backup restores re-verify downloads against the pinned hash. All spec 089 tarball hardening (hash verification, tar flags, escaping-symlink refusal) applies identically, plus personal-only checks: the manifest `repo` must match the source, the plugin id must not shadow a registry id, and `sowelVersion` compatibility is enforced. Installed packages carry `plugins.source` (`registry` or `personal`); version checks for personal packages read the source repo's releases, never the registry.
+
 ### Plugin manifest format
 
 Each plugin ships a `manifest.json` with `id`, `type` (`integration` or `recipe`), `name`, `description`, `icon` (Lucide name), `author`, `repo`, `version`, `tags`. See [plugin-development.md](plugin-development.md) for the full spec.

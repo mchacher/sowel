@@ -1059,6 +1059,30 @@ Depuis la spec 059, Sowel récupère `plugins/registry.json` depuis `https://raw
 - Les **forks privés** peuvent pointer Sowel vers leur propre registre en changeant `REGISTRY_URL` dans `package-manager.ts`
 - Les **plugins sont re-téléchargés automatiquement** au démarrage du conteneur si leur répertoire est manquant (par ex. après une restauration de backup, spec 058)
 
+### Sources personnelles (spec 136)
+
+Depuis la spec 136, un troisième niveau de confiance existe à côté d'officiel et communautaire : les **sources personnelles**. Un admin peut enregistrer son propre dépôt GitHub comme source de plugins directement depuis l'UI (page Plugins, onglet Store, section "Sources personnelles"), sans aucune PR sur le registre, ni pour la première publication ni pour les montées de version. C'est la boucle recommandée pendant le développement d'un plugin pour sa propre instance.
+
+| Niveau        | Listé dans                | Ancre d'intégrité                     | Friction à l'installation                     |
+| ------------- | ------------------------- | ------------------------------------- | --------------------------------------------- |
+| Officiel      | `registry.json` central   | SHA256 du registre + revue mainteneur | Aucune                                        |
+| Communautaire | `registry.json` central   | SHA256 du registre + revue de la PR   | Modal de confirmation unique                  |
+| Personnel     | Votre propre dépôt GitHub | SHA256 épinglé (TOFU)                 | Confirmation à l'installation et à chaque MAJ |
+
+**Prérequis pour qu'un dépôt fonctionne comme source personnelle :**
+
+- Dépôt GitHub public (pas encore de support de token).
+- Une release GitHub dont les assets incluent un tarball `sowel-plugin-<id>-<version>.tar.gz` (ou `sowel-recipe-...`), le même artefact que pour le registre.
+- Le `manifest.json` du tarball doit déclarer un `repo` égal au dépôt source (un écart refuse l'installation).
+- L'`id` du plugin ne doit entrer en collision avec aucun id du registre central (masquer un plugin officiel est refusé).
+
+**Modèle de confiance (TOFU, Trust On First Use) :** il n'existe pas de hash central pour une source personnelle, donc Sowel télécharge le tarball, calcule son SHA256 et l'affiche dans un modal de confirmation avec la version de la release. Une fois confirmé, le hash est épinglé en base. Tout changement de contenu, y compris une nouvelle release, déclenche une nouvelle confirmation montrant la nouvelle empreinte ; les restaurations de backup revérifient les téléchargements contre le hash épinglé. Retirer une source laisse les plugins installés en fonctionnement mais bloque installations et mises à jour futures depuis cette source.
+
+!!! warning "Les plugins personnels exécutent du code non revu"
+Personne n'a relu le code d'un plugin personnel. Il s'exécute avec tous les privilèges du processus serveur Sowel (le scoping de la spec 111 est une frontière souple, pas un bac à sable). N'ajoutez que des dépôts que vous possédez ou en qui vous avez pleinement confiance.
+
+Quand votre plugin est prêt à être partagé, le niveau communautaire est la voie de promotion : ouvrez une PR sur le registre comme décrit ci-dessus.
+
 ### Versioning
 
 Il y a **deux endroits** où la version compte, et ils ont des objectifs différents :

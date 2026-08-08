@@ -30,6 +30,7 @@ import type {
   IntegrationInfo,
   PluginInfo,
   PluginManifest,
+  PluginSource,
   LogsResponse,
   LogLevel,
   HistoryStatus,
@@ -707,28 +708,73 @@ export class CommunityPluginConfirmationRequiredError extends Error {
 }
 
 /**
+ * Thrown by installPlugin/updatePlugin when the server requires the TOFU
+ * confirmation step for a personal-source plugin (spec 136). Carries the
+ * identity of what would be installed so the UI can display it.
+ */
+export class PersonalPluginConfirmationRequiredError extends Error {
+  readonly repo: string;
+  readonly owner: string;
+  readonly version: string;
+  readonly sha256: string;
+  constructor(repo: string, owner: string, version: string, sha256: string) {
+    super("PersonalPluginConfirmationRequired");
+    this.name = "PersonalPluginConfirmationRequiredError";
+    this.repo = repo;
+    this.owner = owner;
+    this.version = version;
+    this.sha256 = sha256;
+  }
+}
+
+function throwOnConfirmationRequired(status: number, body: unknown): void {
+  if (status !== 409) return;
+  const b = body as {
+    error?: string;
+    owner?: string;
+    repo?: string;
+    version?: string;
+    sha256?: string;
+  };
+  if (b.error === "CommunityPluginConfirmationRequired") {
+    throw new CommunityPluginConfirmationRequiredError(b.owner ?? "unknown");
+  }
+  if (b.error === "PersonalPluginConfirmationRequired") {
+    throw new PersonalPluginConfirmationRequiredError(
+      b.repo ?? "unknown",
+      b.owner ?? "unknown",
+      b.version ?? "?",
+      b.sha256 ?? "",
+    );
+  }
+}
+
+/**
  * Install a plugin. `confirmed` must be `true` for community plugins
  * (those whose registry `owner` is not in the OFFICIAL_OWNERS list). The
  * server returns 409 `CommunityPluginConfirmationRequired` when this is
  * needed — this function throws `CommunityPluginConfirmationRequiredError`
  * in that case so the caller can surface a confirm dialog and retry with
  * `confirmed: true`. See spec 089.
+ * Personal-source plugins (spec 136) additionally require the
+ * `expectedSha256` shown by the 409 `PersonalPluginConfirmationRequired`
+ * response, surfaced here as `PersonalPluginConfirmationRequiredError`.
  */
-export async function installPlugin(repo: string, confirmed = false): Promise<PluginManifest> {
+export async function installPlugin(
+  repo: string,
+  confirmed = false,
+  expectedSha256?: string,
+): Promise<PluginManifest> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (_accessToken) headers["Authorization"] = `Bearer ${_accessToken}`;
   const response = await fetch(`${API_BASE}/plugins/install`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ repo, confirmed }),
+    body: JSON.stringify({ repo, confirmed, ...(expectedSha256 ? { expectedSha256 } : {}) }),
   });
   if (response.status === 409) {
     const body = await response.json().catch(() => ({}));
-    if ((body as { error?: string }).error === "CommunityPluginConfirmationRequired") {
-      throw new CommunityPluginConfirmationRequiredError(
-        (body as { owner?: string }).owner ?? "unknown",
-      );
-    }
+    throwOnConfirmationRequired(response.status, body);
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -753,10 +799,57 @@ export async function disablePlugin(id: string): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/plugins/${id}/disable`, { method: "POST" });
 }
 
+/**
+ * Update a plugin. Personal-source packages (spec 136) answer 409
+ * `PersonalPluginConfirmationRequired` on the first call — retry with
+ * `{ confirmed: true, expectedSha256 }` after the user approves.
+ */
 export async function updatePlugin(
   id: string,
-): Promise<{ success: boolean; manifest: PluginManifest }> {
-  return fetchJSON(`${API_BASE}/plugins/${id}/update`, { method: "POST" });
+  opts: { confirmed?: boolean; expectedSha256?: string } = {},
+): Promise<{ success: boolean; manifest?: PluginManifest }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (_accessToken) headers["Authorization"] = `Bearer ${_accessToken}`;
+  const response = await fetch(`${API_BASE}/plugins/${id}/update`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(opts),
+  });
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({}));
+    throwOnConfirmationRequired(response.status, body);
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(
+      (body as { error?: string; message?: string }).message ??
+        (body as { error?: string }).error ??
+        `HTTP ${response.status}: ${response.statusText}`,
+    );
+  }
+  return (await response.json()) as { success: boolean; manifest?: PluginManifest };
+}
+
+// ============================================================
+// Personal plugin sources (spec 136, admin)
+// ============================================================
+
+export async function getPluginSources(): Promise<PluginSource[]> {
+  return fetchJSON<PluginSource[]>(`${API_BASE}/plugins/sources`);
+}
+
+export async function addPluginSource(repo: string): Promise<PluginSource> {
+  return fetchJSON<PluginSource>(`${API_BASE}/plugins/sources`, {
+    method: "POST",
+    body: JSON.stringify({ repo }),
+  });
+}
+
+export async function removePluginSource(repo: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${API_BASE}/plugins/sources/remove`, {
+    method: "POST",
+    body: JSON.stringify({ repo }),
+  });
 }
 
 // ============================================================

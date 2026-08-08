@@ -1125,6 +1125,30 @@ The Sowel code hard-codes a small `OFFICIAL_OWNERS` whitelist (currently `["mcha
 
 To become an official owner today, ping the Sowel maintainer — the whitelist is intentionally short and grows by review.
 
+### Personal sources (spec 136)
+
+Since spec 136 there is a third trust tier next to official and community: **personal sources**. An admin can register their own GitHub repository as a plugin source directly from the UI (Plugins page, Store tab, "Personal sources" section) — no registry PR needed, neither for the first publication nor for version bumps. This is the recommended loop while developing a plugin for your own instance.
+
+| Tier      | Listed in               | Integrity anchor                     | Install friction                         |
+| --------- | ----------------------- | ------------------------------------ | ---------------------------------------- |
+| Official  | Central `registry.json` | Registry SHA256 + maintainer review  | None                                     |
+| Community | Central `registry.json` | Registry SHA256 + registry PR review | One-time confirmation modal              |
+| Personal  | Your own GitHub repo    | TOFU-pinned SHA256                   | Confirmation at install and every update |
+
+**Requirements for a repo to work as a personal source:**
+
+- Public GitHub repository (no token support yet).
+- A GitHub release whose assets include a `sowel-plugin-<id>-<version>.tar.gz` (or `sowel-recipe-...`) tarball — the exact same artifact you would publish for the registry.
+- The tarball's `manifest.json` must declare `repo` equal to the source repository (a mismatch refuses the install).
+- The plugin `id` must not collide with any id in the central registry (shadowing an official plugin is refused).
+
+**Trust model (TOFU — Trust On First Use):** there is no central hash for a personal source, so Sowel downloads the tarball, computes its SHA256, and shows it in a confirmation modal together with the release version. Once you confirm, the hash is pinned in the database. Any content change — including a new release — triggers a new confirmation showing the new fingerprint; backup restores re-verify downloads against the pinned hash. Removing a source keeps installed plugins running but blocks further installs and updates from it.
+
+!!! warning "Personal plugins run unreviewed code"
+Nobody has reviewed the code of a personal plugin. It runs with the full privileges of the Sowel server process (spec 111 scoping is a soft boundary, not a sandbox). Only add repositories you own or fully trust.
+
+When your plugin is ready to share with others, the community tier is the promotion path: open a registry PR as described above.
+
 ---
 
 #### Author release workflow (TL;DR)
