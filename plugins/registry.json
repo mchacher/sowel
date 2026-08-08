@@ -512,5 +512,19 @@
     "sowelVersion": ">=1.31.1",
     "owner": "mchacher",
     "sha256": "d4b632af817acbfaefb7be0c4ea54666e8088e3d0013bc78c40de2fcd12c336c"
+  },
+  {
+    "id": "netatmo_camera",
+    "type": "integration",
+    "name": "Netatmo Camera",
+    "description": "Netatmo Security cameras (Presence) — snapshot, live view, monitoring, spot light, detections",
+    "icon": "Camera",
+    "author": "alpitux",
+    "repo": "alpitux/sowel-plugin-netatmo-camera",
+    "version": "1.0.0",
+    "tags": ["netatmo", "camera", "security", "snapshot", "live-view", "motion-detection"],
+    "sowelVersion": ">=1.31.0",
+    "owner": "alpitux",
+    "sha256": "b26b62f2bc0c6ce2e4bf65c8b87148f9e0e98659b0547bc400030076a3a5c4d5"
   }
 ]
