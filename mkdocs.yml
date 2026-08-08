@@ -99,6 +99,7 @@ plugins:
             Zones & Rooms: Zones et pièces
             Modes & Calendar: Modes et calendrier
             Recipes: Recettes
+            Plugins: Plugins
             Energy Monitoring: Suivi énergétique
             Remote Access: Accès distant
             Release Notes: Notes de version
@@ -131,6 +132,7 @@ nav:
     - Zones & Rooms: user/zones.md
     - Modes & Calendar: user/modes.md
     - Recipes: user/recipes.md
+    - Plugins: user/plugins.md
     - Energy Monitoring: user/energy.md
     - Remote Access: user/remote-access.md
     - Release Notes: release-notes.md
