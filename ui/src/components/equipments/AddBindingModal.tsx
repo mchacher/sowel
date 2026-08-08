@@ -63,7 +63,11 @@ export function AddBindingModal({
 
   const handleSelectItem = (item: DeviceData | DeviceOrder) => {
     setSelectedItemId(item.id);
-    setAlias(equipmentType ? resolveAlias(item.key, equipmentType) : item.key);
+    setAlias(
+      equipmentType
+        ? resolveAlias(item.key, equipmentType, undefined, (item as { category?: string }).category)
+        : item.key,
+    );
     setError(null);
   };
 

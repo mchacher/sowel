@@ -38,6 +38,10 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   // (toggle + light_state indicator), but kept as its own flag so it isn't
   // styled with the light "glow" tint.
   const isSwitch = equipment.type === "switch";
+  // Spec 135 — water heater: an on/off relay, driven exactly like a switch
+  // (light_state indicator + boolean/enum toggle), plus an optional water
+  // temperature. Kept as its own flag for icon/label/temperature handling.
+  const isWaterHeater = equipment.type === "water_heater";
 
   // State binding — `light_state` is the canonical ON/OFF data category
   // used by lights, heaters, switches, valves and pool pumps (plugins emit
@@ -169,6 +173,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isPoolCover,
     isPoolHeatPump,
     isSwitch,
+    isWaterHeater,
     stateBinding,
     isOn,
     shutterPosition,

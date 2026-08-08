@@ -65,12 +65,13 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 
 ### Climate
 
-| Type           | Controls                                        | Expected data                                                            |
-| -------------- | ----------------------------------------------- | ------------------------------------------------------------------------ |
-| **Thermostat** | Temperature display, setpoint +/-, power on/off | current temperature, target setpoint, power state, optional mode/fan/eco |
-| **Heater**     | Comfort / Eco toggle                            | relay state (fil pilote: ON = eco, OFF = comfort)                        |
+| Type             | Controls                                        | Expected data                                                                        |
+| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Thermostat**   | Temperature display, setpoint +/-, power on/off | current temperature, target setpoint, power state, optional mode/fan/eco             |
+| **Heater**       | Comfort / Eco toggle                            | relay state (fil pilote: ON = eco, OFF = comfort)                                    |
+| **Water Heater** | On/Off toggle                                   | on/off relay state, optional water temperature (display only), optional power/energy |
 
-Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay.
+Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat). Scheduling / solar-surplus heating is a recipe, not the equipment.
 
 ### Access
 

@@ -81,6 +81,11 @@ export function computeBindingCandidates(
   deviceOrders: readonly DeviceOrder[],
 ): BindingCandidate[] {
   switch (equipmentType) {
+    // Spec 135 — a water heater is an on/off relay with the same candidate
+    // shape as a switch (on/off channel + metering attach). Its water
+    // temperature is an optional extra binding (often on another device),
+    // not a candidate discriminator, so it is not required for compatibility.
+    case "water_heater":
     case "switch": {
       // One candidate per on/off command channel: ON/OFF enum (Tasmota `power1`)
       // OR a boolean power-toggle order (Zigbee2MQTT plug/relay `state`).

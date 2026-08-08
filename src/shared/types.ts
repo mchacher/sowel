@@ -237,6 +237,8 @@ export type EquipmentType =
   | "weather_forecast"
   | "gate"
   | "heater"
+  // Spec 135 — water heater (chauffe-eau): on/off + optional water temp.
+  | "water_heater"
   | "energy_meter"
   | "main_energy_meter"
   | "energy_production_meter"

@@ -383,7 +383,7 @@ const WIDGET_FAMILY_TYPES: Record<string, string[]> = {
   awnings: ["awning"],
   heating: ["thermostat", "heater"],
   sensors: ["sensor"],
-  water: ["water_valve"],
+  water: ["water_valve", "water_heater"],
   pool: ["pool_pump", "pool_cover", "pool_heat_pump"],
 };
 

@@ -56,6 +56,10 @@ export function computeBindingCandidates(
   deviceOrders: readonly DeviceOrder[],
 ): BindingCandidate[] {
   switch (equipmentType) {
+    // Spec 135 — water heater shares the switch candidate shape (on/off +
+    // metering attach). Its water temperature is an optional extra binding,
+    // not a candidate discriminator.
+    case "water_heater":
     case "switch": {
       // On/off channel: ON/OFF enum OR boolean power-toggle (Zigbee `state`).
       const candidates: BindingCandidate[] = [];

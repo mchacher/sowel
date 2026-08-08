@@ -50,6 +50,7 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   energy_production_meter: { bg: "bg-success/10",   text: "text-success" },
   solar_panel:             { bg: "bg-primary-light",  text: "text-primary" },
   heater:                  { bg: "bg-error/10",     text: "text-error" },
+  water_heater:            { bg: "bg-accent-light",  text: "text-accent" },
   pool_heat_pump:          { bg: "bg-error/10",     text: "text-error" },
   energy_meter:            { bg: "bg-accent-light", text: "text-accent" },
   main_energy_meter:       { bg: "bg-accent-light", text: "text-accent" },
@@ -66,6 +67,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const {
     isLight,
     isSwitch,
+    isWaterHeater,
     isShutterFamily,
     isSensor,
     isEnergyMeter,
@@ -91,7 +93,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
   // Find primary data value for generic equipments
   const isKnownType =
-    isLight || isSwitch || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
+    isLight || isSwitch || isWaterHeater || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
     isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
     isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera;
 
@@ -109,12 +111,19 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   // Metering switch (spec 129): a smart plug that reports power shows it live
   // next to the on/off toggle. A bare relay has no power binding → null.
   const switchPowerW =
-    isSwitch
+    isSwitch || isWaterHeater
       ? (() => {
           const p = equipment.dataBindings.find((b) => b.category === "power");
           return typeof p?.value === "number" ? p.value : null;
         })()
       : null;
+  // Water heater (spec 135): optional water temperature next to the toggle.
+  const waterHeaterTempC = isWaterHeater
+    ? (() => {
+        const p = equipment.dataBindings.find((b) => b.alias === "water_temperature");
+        return typeof p?.value === "number" ? p.value : null;
+      })()
+    : null;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -224,8 +233,13 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
       {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
        * Metering plug (spec 129): show live power (amber) next to the toggle. */}
-      {(isLight || isSwitch) && equipment.enabled && (
+      {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
         <div className="flex items-center gap-2 flex-shrink-0">
+          {waterHeaterTempC !== null && (
+            <span className="text-[13px] font-semibold text-text-secondary tabular-nums font-mono">
+              {waterHeaterTempC.toFixed(1)}°C
+            </span>
+          )}
           {switchPowerW !== null && (
             <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
               {switchPowerW >= 1000

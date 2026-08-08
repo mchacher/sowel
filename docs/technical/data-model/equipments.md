@@ -25,6 +25,7 @@ type EquipmentType =
   | "weather_forecast"
   | "gate"
   | "heater"
+  | "water_heater"
   | "energy_meter"
   | "main_energy_meter"
   | "energy_production_meter"

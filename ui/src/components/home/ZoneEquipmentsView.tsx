@@ -39,7 +39,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.weather", types: ["weather", "weather_forecast"], icon: <CloudSun size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.media", types: ["media_player"], icon: <Tv size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.appliances", types: ["appliance"], icon: <WashingMachine size={14} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.water", types: ["water_valve"], icon: <WaterValveIcon size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.water", types: ["water_valve", "water_heater"], icon: <WaterValveIcon size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.pool", types: ["pool_pump", "pool_cover", "pool_heat_pump"], icon: <Waves size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.displays", types: ["display"], icon: <Monitor size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.cameras", types: ["camera"], icon: <Camera size={14} strokeWidth={1.5} /> },
