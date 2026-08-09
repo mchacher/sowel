@@ -16,6 +16,7 @@ import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
+import { pickLivePowerW, formatWatts } from "../../lib/energy-meter-display";
 import type { DataBindingWithValue } from "../../types";
 
 interface CompactEquipmentCardProps {
@@ -410,19 +411,23 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
   const { t } = useTranslation();
   const computed = equipment.computedData ?? [];
   const energyDay = computed.find((c) => c.alias === "energy_day");
-  const demandBinding = equipment.dataBindings.find((b) => b.alias === "demand_5min");
-  const demandW = typeof demandBinding?.value === "number" ? demandBinding.value : null;
+  // Live instantaneous power (issue #376): generic power binding first,
+  // Legrand NLPC demand_5min as fallback. Updated live via the WS store.
+  const liveW = pickLivePowerW(equipment.dataBindings);
 
   const dayWh = typeof energyDay?.value === "number" ? energyDay.value : null;
   const isProduction = equipment.type === "energy_production_meter";
   const valueColor = isProduction ? "text-success" : "text-accent";
+  const powerColor = isProduction ? "text-success" : "text-text-secondary";
 
   return (
     <div className="flex items-center gap-3 flex-shrink-0">
-      {demandW !== null && (
-        <span className="text-[13px] text-text-secondary tabular-nums font-mono">
-          {demandW >= 1000 ? (demandW / 1000).toFixed(1) : Math.round(demandW)}
-          <span className="text-[11px] text-text-tertiary ml-0.5">{demandW >= 1000 ? "kW" : "W"}</span>
+      {liveW !== null && (
+        <span className={`text-[13px] font-semibold ${powerColor} tabular-nums font-mono`}>
+          {formatWatts(liveW).value}
+          <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
+            {formatWatts(liveW).unit}
+          </span>
         </span>
       )}
       {dayWh !== null && (
