@@ -923,6 +923,8 @@ export interface PluginManifest {
   icon: string; // Lucide icon name
   repo: string; // GitHub owner/repo — required for backup/restore reinstall
   type?: PackageType; // defaults to "integration" for backward compat
+  /** Curated recipe category (spec 137) — one of RECIPE_CATEGORIES; invalid values ignored. */
+  category?: string;
   author?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];

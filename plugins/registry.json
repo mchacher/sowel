@@ -156,6 +156,7 @@
   {
     "id": "switch-light",
     "type": "recipe",
+    "category": "lighting",
     "name": "Switch Light",
     "description": "Lights follow manual commands — any button press toggles lights on/off",
     "icon": "ToggleRight",
@@ -176,6 +177,7 @@
   {
     "id": "state-watch",
     "type": "recipe",
+    "category": "safety",
     "name": "State Watch",
     "description": "Monitor an equipment data key and raise an alarm while the value stays in a watched state. Permanent by default, with an optional delay and time window. Re-notification is configured on the notification itself.",
     "icon": "Eye",
@@ -196,6 +198,7 @@
   {
     "id": "presence-heater",
     "type": "recipe",
+    "category": "climate",
     "name": "Presence Heater",
     "description": "Switches electric heaters to comfort on motion, eco after absence timeout",
     "icon": "Heater",
@@ -216,6 +219,7 @@
   {
     "id": "presence-thermostat",
     "type": "recipe",
+    "category": "climate",
     "name": "Presence Thermostat",
     "description": "Adjusts thermostat setpoint based on zone presence with night mode, preheat windows, and cocoon boost",
     "icon": "Thermometer",
@@ -236,6 +240,7 @@
   {
     "id": "motion-light",
     "type": "recipe",
+    "category": "lighting",
     "name": "Motion Light",
     "description": "Turns on lights when motion is detected, turns off after a timeout with no motion",
     "icon": "Lightbulb",
@@ -256,6 +261,7 @@
   {
     "id": "state-trigger-light",
     "type": "recipe",
+    "category": "lighting",
     "name": "State-Triggered Light",
     "description": "Turn lights on for a fixed duration when an equipment's state changes to a target value (e.g. gate → open at night)",
     "icon": "Bell",
@@ -276,6 +282,7 @@
   {
     "id": "motion-light-dimmable",
     "type": "recipe",
+    "category": "lighting",
     "name": "Motion Light (Dimmable)",
     "description": "Turns on dimmable lights when motion is detected with brightness control and time slots",
     "icon": "SunDim",
@@ -296,6 +303,7 @@
   {
     "id": "auto-watering",
     "type": "recipe",
+    "category": "water",
     "name": "Auto Watering",
     "description": "Scheduled irrigation with configurable time slots, per-valve durations, and rain-aware skip logic",
     "icon": "Droplets",
@@ -316,6 +324,7 @@
   {
     "id": "pool-pump-schedule",
     "type": "recipe",
+    "category": "water",
     "name": "Pool Pump Schedule",
     "description": "Scheduled on/off for a pool pump — up to 3 daily time windows",
     "icon": "Waves",
@@ -336,6 +345,7 @@
   {
     "id": "freecooling",
     "type": "recipe",
+    "category": "climate",
     "name": "Freecooling",
     "description": "Close all shutters before sunrise — sleep with fresh air without being woken by daylight",
     "icon": "Moon",
@@ -416,6 +426,7 @@
   {
     "id": "presence-display",
     "type": "recipe",
+    "category": "energy",
     "name": "Presence-driven display sleep",
     "description": "Turns Sowel-supervised displays off after a configurable absence in a zone, wakes them at the user's last-chosen brightness on the next motion event.",
     "icon": "Monitor",
@@ -456,6 +467,7 @@
   {
     "id": "schedule-on-off",
     "type": "recipe",
+    "category": "schedule",
     "name": "Schedule On/Off",
     "description": "Scheduled on/off for any on/off equipment: fixed time, sunrise or sunset, up to 3 daily windows",
     "icon": "CalendarClock",
@@ -476,6 +488,7 @@
   {
     "id": "runtime-guard",
     "type": "recipe",
+    "category": "safety",
     "name": "Runtime Guard",
     "description": "Cuts power to a motor/pump if it runs continuously past a safe duration, with optional legitimate-use overrides (e.g. an open watering valve)",
     "icon": "ShieldAlert",
@@ -496,6 +509,7 @@
   {
     "id": "smart-cooling",
     "type": "recipe",
+    "category": "climate",
     "name": "Smart Cooling",
     "description": "Solar-aware AC optimizer: morning airing notifications, pre-cooling on solar surplus, comfort setpoint, fixed-time night cut",
     "icon": "Snowflake",

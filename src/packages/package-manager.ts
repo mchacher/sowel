@@ -26,12 +26,14 @@ import type {
 } from "../shared/types.js";
 import {
   type RegistryEntry,
+  type RecipeCategory,
   ChecksumMismatchError,
   CommunityPluginConfirmationRequiredError,
   PersonalPluginConfirmationRequiredError,
   RegistryEntryInvalidError,
   SymlinkInTarballError,
   isOfficial,
+  isRecipeCategory,
 } from "./registry-types.js";
 import { PersonalSourceManager } from "./personal-sources.js";
 
@@ -77,6 +79,10 @@ export type StoreEntry = PluginManifest & {
   compatReason?: string;
   isOfficial: boolean;
   tier: PackageTier;
+  /** Localized name/description from the registry (spec 137 passthrough). */
+  i18n?: RegistryEntry["i18n"];
+  /** Free-form registry tags — feed the UI search index (spec 137). */
+  tags?: string[];
 };
 
 /** Simple semver ">=" check: returns true if current >= required. */
@@ -220,6 +226,9 @@ export class PackageManager {
           compatible,
           isOfficial: official,
           tier: (official ? "official" : "community") as PackageTier,
+          ...(isRecipeCategory(e.category) ? { category: e.category } : {}),
+          ...(e.i18n ? { i18n: e.i18n } : {}),
+          ...(e.tags?.length ? { tags: e.tags } : {}),
           ...(!compatible ? { compatReason: `Requires Sowel >= ${e.sowelVersion}` } : {}),
         };
       });
@@ -230,6 +239,19 @@ export class PackageManager {
   /** Get available packages from registry filtered by type */
   getStoreByType(type: PackageType): PluginManifest[] {
     return this.getStore().filter((m) => (m.type ?? "integration") === type);
+  }
+
+  /**
+   * Resolve the display category of an installed package (spec 137).
+   * Recipes only: the manifest's own category wins (personal-source recipes
+   * self-declare), else the registry entry joined by id, else "other".
+   * Integrations return undefined — they are not categorized.
+   */
+  resolvePackageCategory(manifest: PluginManifest): RecipeCategory | "other" | undefined {
+    if ((manifest.type ?? "integration") !== "recipe") return undefined;
+    if (isRecipeCategory(manifest.category)) return manifest.category;
+    const registryCategory = this.getRegistryEntries().find((e) => e.id === manifest.id)?.category;
+    return isRecipeCategory(registryCategory) ? registryCategory : "other";
   }
 
   /**

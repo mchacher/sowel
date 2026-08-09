@@ -11,6 +11,27 @@
 /** Owners considered "official" — no UI friction at install time. */
 export const OFFICIAL_OWNERS = ["mchacher"] as const;
 
+/**
+ * Curated recipe categories (spec 137). Closed enum: registry entries and
+ * manifests may declare one of these; anything else is treated as absent
+ * and the recipe is displayed under the "other" fallback bucket.
+ */
+export const RECIPE_CATEGORIES = [
+  "lighting",
+  "climate",
+  "water",
+  "schedule",
+  "safety",
+  "energy",
+] as const;
+
+export type RecipeCategory = (typeof RECIPE_CATEGORIES)[number];
+
+/** Type guard validating a registry/manifest category value. */
+export function isRecipeCategory(value: unknown): value is RecipeCategory {
+  return typeof value === "string" && (RECIPE_CATEGORIES as readonly string[]).includes(value);
+}
+
 /** Schema of a single entry in `plugins/registry.json`. */
 export interface RegistryEntry {
   id: string;
@@ -28,6 +49,8 @@ export interface RegistryEntry {
   sha256?: string;
   version?: string;
   type?: string;
+  /** Curated recipe category (spec 137). Validated with isRecipeCategory at read time. */
+  category?: string;
   tags: string[];
   i18n?: Record<string, { name?: string; description?: string }>;
   sowelVersion?: string;

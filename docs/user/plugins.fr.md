@@ -19,6 +19,25 @@ Quand une version plus récente d'un plugin installé est disponible, un badge d
 
 ---
 
+## Trouver un plugin
+
+Le **champ de recherche** au-dessus de la liste filtre les deux onglets au fil de la saisie. Il cherche dans les noms, descriptions et mots-clés des plugins, dans la langue affichée, et ignore les accents -- taper `eclairage` trouve `Éclairage`. Les compteurs Intégrations / Recettes suivent la recherche, pour voir d'un coup d'œil où sont les résultats. Cliquez sur la croix dans le champ pour l'effacer.
+
+Les recettes sont regroupées par **catégorie**, dans les onglets Installés et Store, pour parcourir ce que vous voulez automatiser sans lire chaque carte :
+
+| Catégorie                      | Ce qu'on y trouve                                     |
+| ------------------------------ | ----------------------------------------------------- |
+| **Éclairage**                  | Lumières pilotées par interrupteur, mouvement ou état |
+| **Chauffage et climatisation** | Chauffages par présence, thermostats, smart cooling   |
+| **Arrosage et piscine**        | Arrosage du jardin, planification de pompe de piscine |
+| **Planification**              | Programmes on/off à heure fixe ou selon le soleil     |
+| **Sécurité et surveillance**   | Surveillance d'états, garde-fous de fonctionnement    |
+| **Énergie et affichage**       | Écrans pilotés par présence, aides à l'énergie        |
+
+Une recette sans catégorie -- par exemple installée depuis une source personnelle -- apparaît sous **Autres**. Les intégrations ne sont pas catégorisées : elles restent une liste unique, filtrée par le même champ de recherche.
+
+---
+
 ## Niveaux de confiance
 
 Chaque entrée du store appartient à l'un des trois niveaux de confiance, pour que vous sachiez toujours quel code vous vous apprêtez à exécuter :

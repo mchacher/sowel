@@ -886,11 +886,15 @@ export interface PluginManifest {
   description: string;
   icon: string;
   type?: PackageType;
+  /** Curated recipe category (spec 137) — one of RECIPE_CATEGORY_ORDER minus "other". */
+  category?: string;
   author?: string;
   repo?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
   i18n?: Record<string, { name: string; description: string }>;
+  /** Free-form registry tags — feed the search index (spec 137). */
+  tags?: string[];
 }
 
 export interface PluginInfo {

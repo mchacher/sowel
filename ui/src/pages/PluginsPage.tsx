@@ -13,6 +13,8 @@ import {
   UserRound,
   FolderGit2,
   Plus,
+  Search,
+  SearchX,
   X,
 } from "lucide-react";
 import { refreshPluginUpdateCount } from "../components/layout/usePluginUpdates";
@@ -40,6 +42,13 @@ import type {
   PackageType,
   PackageTier,
 } from "../types";
+import {
+  groupByCategory,
+  matchesQuery,
+  localizedName as getLocalizedName,
+  localizedDescription as getLocalizedDescription,
+  type RecipeCategoryId,
+} from "../lib/plugin-categories";
 
 /** Identity of a personal plugin pending TOFU confirmation (spec 136). */
 interface PersonalConfirmInfo {
@@ -56,16 +65,6 @@ function getManifestType(manifest: PluginManifest): PackageType {
   return manifest.type ?? "integration";
 }
 
-/** Get localized name from manifest i18n if available */
-function getLocalizedName(manifest: PluginManifest, lang: string): string {
-  return manifest.i18n?.[lang]?.name ?? manifest.name;
-}
-
-/** Get localized description from manifest i18n if available */
-function getLocalizedDescription(manifest: PluginManifest, lang: string): string {
-  return manifest.i18n?.[lang]?.description ?? manifest.description;
-}
-
 export function PluginsPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language?.split("-")[0] ?? "en";
@@ -76,6 +75,7 @@ export function PluginsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("installed");
   const [category, setCategory] = useState<CategoryFilter>("integration");
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -126,19 +126,24 @@ export function PluginsPage() {
     plugins.some((p) => getManifestType(p.manifest) === "recipe") ||
     store.some((m) => getManifestType(m) === "recipe");
 
-  // Filter by category
-  const filteredPlugins = plugins.filter((p) => getManifestType(p.manifest) === category);
-  const filteredStore = store.filter((m) => getManifestType(m) === category);
+  // Search filter (spec 137) — localized name + description + tags
+  const searching = query.trim().length > 0;
+  const searchedPlugins = plugins.filter((p) => matchesQuery(p.manifest, lang, query));
+  const searchedStore = store.filter((m) => matchesQuery(m, lang, query));
 
-  // Counts per category
+  // Filter by category
+  const filteredPlugins = searchedPlugins.filter((p) => getManifestType(p.manifest) === category);
+  const filteredStore = searchedStore.filter((m) => getManifestType(m) === category);
+
+  // Counts per category (reflect the active search)
   const integrationCount =
     activeTab === "installed"
-      ? plugins.filter((p) => getManifestType(p.manifest) === "integration").length
-      : store.filter((m) => getManifestType(m) === "integration").length;
+      ? searchedPlugins.filter((p) => getManifestType(p.manifest) === "integration").length
+      : searchedStore.filter((m) => getManifestType(m) === "integration").length;
   const recipeCount =
     activeTab === "installed"
-      ? plugins.filter((p) => getManifestType(p.manifest) === "recipe").length
-      : store.filter((m) => getManifestType(m) === "recipe").length;
+      ? searchedPlugins.filter((p) => getManifestType(p.manifest) === "recipe").length
+      : searchedStore.filter((m) => getManifestType(m) === "recipe").length;
 
   return (
     <div className="p-4 sm:p-6">
@@ -203,13 +208,49 @@ export function PluginsPage() {
         </div>
       )}
 
+      {/* Search (spec 137) — shared across tabs and types */}
+      <div className="relative mb-4 max-w-[720px]">
+        <Search
+          size={15}
+          strokeWidth={1.5}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+        />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("plugins.search.placeholder")}
+          spellCheck={false}
+          className="w-full pl-9 pr-9 py-2 text-[13px] text-text bg-surface border border-border rounded-[6px] placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
+        />
+        {searching && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            title={t("common.clear")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-[4px] transition-colors cursor-pointer"
+          >
+            <X size={14} strokeWidth={1.5} />
+          </button>
+        )}
+      </div>
+
       {/* Content */}
       <div className="max-w-[720px]">
         {activeTab === "installed" ? (
-          <InstalledTab plugins={filteredPlugins} lang={lang} onRefresh={load} />
+          <InstalledTab
+            plugins={filteredPlugins}
+            grouped={category === "recipe"}
+            searching={searching}
+            query={query}
+            lang={lang}
+            onRefresh={load}
+          />
         ) : (
           <StoreTab
             store={filteredStore}
+            grouped={category === "recipe"}
+            searching={searching}
+            query={query}
             installedIds={installedIds}
             sources={sources}
             lang={lang}
@@ -217,6 +258,43 @@ export function PluginsPage() {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Category Section (spec 137) ──────────────────────────────
+
+function CategorySection({
+  category,
+  count,
+  children,
+}: {
+  category: RecipeCategoryId;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section>
+      <h3 className="flex items-baseline gap-1.5 text-[12px] font-semibold text-text-secondary uppercase tracking-widest mb-2">
+        {t(`plugins.category.${category}`)}
+        <span className="font-normal text-text-tertiary tabular-nums normal-case tracking-normal">
+          {count}
+        </span>
+      </h3>
+      <div className="space-y-2">{children}</div>
+    </section>
+  );
+}
+
+// ── No Results (spec 137) ────────────────────────────────────
+
+function NoResults({ query }: { query: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="text-center py-16 text-text-tertiary text-[14px]">
+      <SearchX size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
+      {t("plugins.search.noResults", { query: query.trim() })}
     </div>
   );
 }
@@ -295,20 +373,46 @@ function CategoryTab({
 
 function InstalledTab({
   plugins,
+  grouped,
+  searching,
+  query,
   lang,
   onRefresh,
 }: {
   plugins: PluginInfo[];
+  grouped: boolean;
+  searching: boolean;
+  query: string;
   lang: string;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
 
   if (plugins.length === 0) {
+    if (searching) return <NoResults query={query} />;
     return (
       <div className="text-center py-16 text-text-tertiary text-[14px]">
         <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
         {t("plugins.noPlugins")}
+      </div>
+    );
+  }
+
+  if (grouped) {
+    return (
+      <div className="space-y-6">
+        {groupByCategory(plugins, (p) => p.manifest, lang).map(({ category, items }) => (
+          <CategorySection key={category} category={category} count={items.length}>
+            {items.map((plugin) => (
+              <PluginRow
+                key={plugin.manifest.id}
+                plugin={plugin}
+                lang={lang}
+                onRefresh={onRefresh}
+              />
+            ))}
+          </CategorySection>
+        ))}
       </div>
     );
   }
@@ -540,12 +644,18 @@ function PluginRow({
 
 function StoreTab({
   store,
+  grouped,
+  searching,
+  query,
   installedIds,
   sources,
   lang,
   onRefresh,
 }: {
   store: PluginManifest[];
+  grouped: boolean;
+  searching: boolean;
+  query: string;
   installedIds: Set<string>;
   sources: PluginSource[];
   lang: string;
@@ -553,25 +663,35 @@ function StoreTab({
 }) {
   const { t } = useTranslation();
 
+  const storeRow = (manifest: PluginManifest) => (
+    <StoreRow
+      key={manifest.id}
+      manifest={manifest}
+      installed={installedIds.has(manifest.id)}
+      lang={lang}
+      onRefresh={onRefresh}
+    />
+  );
+
   return (
     <div className="space-y-6">
       {store.length === 0 ? (
-        <div className="text-center py-10 text-text-tertiary text-[14px]">
-          <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
-          {t("plugins.noPlugins")}
-        </div>
+        searching ? (
+          <NoResults query={query} />
+        ) : (
+          <div className="text-center py-10 text-text-tertiary text-[14px]">
+            <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
+            {t("plugins.noPlugins")}
+          </div>
+        )
+      ) : grouped ? (
+        groupByCategory(store, (m) => m, lang).map(({ category, items }) => (
+          <CategorySection key={category} category={category} count={items.length}>
+            {items.map(storeRow)}
+          </CategorySection>
+        ))
       ) : (
-        <div className="space-y-2">
-          {store.map((manifest) => (
-            <StoreRow
-              key={manifest.id}
-              manifest={manifest}
-              installed={installedIds.has(manifest.id)}
-              lang={lang}
-              onRefresh={onRefresh}
-            />
-          ))}
-        </div>
+        <div className="space-y-2">{store.map(storeRow)}</div>
       )}
 
       {/* Personal sources management (spec 136) */}

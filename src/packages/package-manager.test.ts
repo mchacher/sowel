@@ -33,6 +33,7 @@ import {
   RegistryEntryInvalidError,
   SymlinkInTarballError,
   isOfficial,
+  isRecipeCategory,
   type RegistryEntry,
 } from "./registry-types.js";
 import { createLogger } from "../core/logger.js";
@@ -956,5 +957,206 @@ describe("PackageManager — spec 136 personal plugin sources", () => {
     const pkg = manager.getById("mytest")!;
     expect(pkg.source).toBe("personal");
     expect(manager.getLatestVersionFor(pkg)).toBe("2.0.0");
+  });
+});
+
+// ─── Spec 137 — Recipe categories + store passthrough ─────────────────────
+
+describe("PackageManager — spec 137 recipe categories", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+  let manager: PackageManager;
+  let originalCwd: string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd();
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-pkg-cat-"));
+    mkdirSync(resolve(tmpDir, "plugins"), { recursive: true });
+    process.chdir(tmpDir);
+    db = createTestDb();
+    manager = new PackageManager(db, logger);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    db.close();
+    try {
+      process.chdir(originalCwd);
+    } catch {
+      /* best effort */
+    }
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function setRegistry(entries: RegistryEntry[]): void {
+    (
+      manager as unknown as { registryCache: RegistryEntry[]; registryCacheTime: number }
+    ).registryCache = entries;
+    (manager as unknown as { registryCacheTime: number }).registryCacheTime = Date.now();
+  }
+
+  function recipeEntry(overrides: Partial<RegistryEntry>): RegistryEntry {
+    return {
+      id: "motion-light",
+      type: "recipe",
+      name: "Motion Light",
+      description: "Turn a light on when motion is detected",
+      icon: "Lightbulb",
+      author: "mchacher",
+      repo: "mchacher/sowel-recipe-motion-light",
+      owner: "mchacher",
+      sha256: "a".repeat(64),
+      tags: ["motion", "light"],
+      ...overrides,
+    };
+  }
+
+  // ── getStore passthrough ──────────────────────────────────────
+
+  it("getStore passes a valid registry category through", () => {
+    setRegistry([recipeEntry({ category: "lighting" })]);
+    const entry = manager.getStore().find((e) => e.id === "motion-light")!;
+    expect(entry.category).toBe("lighting");
+  });
+
+  it("getStore drops an invalid registry category value", () => {
+    setRegistry([recipeEntry({ category: "disco" })]);
+    const entry = manager.getStore().find((e) => e.id === "motion-light")!;
+    expect(entry.category).toBeUndefined();
+  });
+
+  it("getStore passes i18n and tags through", () => {
+    const i18n = { fr: { name: "Lumière mouvement", description: "Allume au mouvement" } };
+    setRegistry([recipeEntry({ category: "lighting", i18n })]);
+    const entry = manager.getStore().find((e) => e.id === "motion-light")!;
+    expect(entry.i18n).toEqual(i18n);
+    expect(entry.tags).toEqual(["motion", "light"]);
+  });
+
+  it("getStore keeps the pre-137 fields intact", () => {
+    setRegistry([recipeEntry({ category: "lighting", version: "1.2.0" })]);
+    const entry = manager.getStore().find((e) => e.id === "motion-light")!;
+    expect(entry).toMatchObject({
+      id: "motion-light",
+      name: "Motion Light",
+      version: "1.2.0",
+      icon: "Lightbulb",
+      author: "mchacher",
+      repo: "mchacher/sowel-recipe-motion-light",
+      type: "recipe",
+      compatible: true,
+      isOfficial: true,
+      tier: "official",
+    });
+  });
+
+  // ── resolvePackageCategory ────────────────────────────────────
+
+  it("resolvePackageCategory returns undefined for integrations", () => {
+    setRegistry([]);
+    expect(
+      manager.resolvePackageCategory({
+        id: "zigbee2mqtt",
+        name: "Zigbee2MQTT",
+        version: "1.0.0",
+        description: "x",
+        icon: "Radio",
+        repo: "mchacher/sowel-plugin-zigbee2mqtt",
+        category: "lighting", // even a declared category is ignored
+      }),
+    ).toBeUndefined();
+  });
+
+  it("resolvePackageCategory: manifest category wins over registry", () => {
+    setRegistry([recipeEntry({ category: "climate" })]);
+    expect(
+      manager.resolvePackageCategory({
+        id: "motion-light",
+        name: "Motion Light",
+        version: "1.0.0",
+        description: "x",
+        icon: "Lightbulb",
+        repo: "mchacher/sowel-recipe-motion-light",
+        type: "recipe",
+        category: "lighting",
+      }),
+    ).toBe("lighting");
+  });
+
+  it("resolvePackageCategory: falls back to the registry entry joined by id", () => {
+    setRegistry([recipeEntry({ category: "lighting" })]);
+    expect(
+      manager.resolvePackageCategory({
+        id: "motion-light",
+        name: "Motion Light",
+        version: "1.0.0",
+        description: "x",
+        icon: "Lightbulb",
+        repo: "mchacher/sowel-recipe-motion-light",
+        type: "recipe",
+      }),
+    ).toBe("lighting");
+  });
+
+  it("resolvePackageCategory: invalid manifest category falls through to registry", () => {
+    setRegistry([recipeEntry({ category: "lighting" })]);
+    expect(
+      manager.resolvePackageCategory({
+        id: "motion-light",
+        name: "Motion Light",
+        version: "1.0.0",
+        description: "x",
+        icon: "Lightbulb",
+        repo: "mchacher/sowel-recipe-motion-light",
+        type: "recipe",
+        category: "disco",
+      }),
+    ).toBe("lighting");
+  });
+
+  it("resolvePackageCategory: recipe absent from registry with no category is 'other'", () => {
+    setRegistry([]);
+    expect(
+      manager.resolvePackageCategory({
+        id: "my-personal-recipe",
+        name: "My Personal Recipe",
+        version: "1.0.0",
+        description: "x",
+        icon: "Puzzle",
+        repo: "jdupont/sowel-recipe-my-personal-recipe",
+        type: "recipe",
+      }),
+    ).toBe("other");
+  });
+
+  it("resolvePackageCategory: invalid registry category with no manifest category is 'other'", () => {
+    setRegistry([recipeEntry({ category: "disco" })]);
+    expect(
+      manager.resolvePackageCategory({
+        id: "motion-light",
+        name: "Motion Light",
+        version: "1.0.0",
+        description: "x",
+        icon: "Lightbulb",
+        repo: "mchacher/sowel-recipe-motion-light",
+        type: "recipe",
+      }),
+    ).toBe("other");
+  });
+});
+
+// ─── Spec 137 — Registry data guard: every recipe must be categorized ─────
+
+describe("plugins/registry.json — recipe category guard (spec 137)", () => {
+  it("every recipe entry carries a valid category", () => {
+    const registryPath = resolve(import.meta.dirname ?? ".", "../../plugins/registry.json");
+    const entries = JSON.parse(readFileSync(registryPath, "utf-8")) as RegistryEntry[];
+    const recipes = entries.filter((e) => e.type === "recipe");
+    expect(recipes.length).toBeGreaterThan(0);
+
+    const uncategorized = recipes
+      .filter((e) => !isRecipeCategory(e.category))
+      .map((e) => `${e.id} (category: ${String(e.category)})`);
+    expect(uncategorized, "recipe registry entries must declare a valid category").toEqual([]);
   });
 });

@@ -47,8 +47,11 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
         // Spec 136: source-aware — personal packages check their source repo.
         const latest = packageManager.getLatestVersionFor(pkg);
         const hasUpdate = latest && latest !== pkg.manifest.version;
+        // Spec 137: resolve the display category (manifest → registry → "other")
+        // at listing time — no re-release of recipe packages needed.
+        const category = packageManager.resolvePackageCategory(pkg.manifest);
         return {
-          manifest: pkg.manifest,
+          manifest: { ...pkg.manifest, ...(category ? { category } : {}) },
           enabled: pkg.enabled,
           installedAt: pkg.installedAt,
           status: "connected" as const,

@@ -19,6 +19,25 @@ When a newer version of an installed plugin is available, an update badge appear
 
 ---
 
+## Finding a plugin
+
+The **search field** above the list filters both tabs as you type. It matches plugin names, descriptions and keywords in the language you are using, and ignores accents -- typing `eclairage` finds `Éclairage`. The Integrations / Recipes counters follow the search, so you can see at a glance where the matches are. Click the cross in the field to clear it.
+
+Recipes are grouped by **category** in both the Installed and Store tabs, so you can scan for what you want to automate instead of reading every card:
+
+| Category                  | What you find there                          |
+| ------------------------- | -------------------------------------------- |
+| **Lighting**              | Switch, motion or state driven lights        |
+| **Heating and cooling**   | Presence heaters, thermostats, smart cooling |
+| **Watering and pool**     | Garden watering, pool pump scheduling        |
+| **Scheduling**            | Fixed-time or sun-based on/off programs      |
+| **Safety and monitoring** | State watchers, runtime guards               |
+| **Energy and display**    | Presence-driven displays, energy helpers     |
+
+A recipe without a category -- for example one installed from a personal source -- appears under **Other**. Integrations are not categorized: they stay a single list, filtered by the same search field.
+
+---
+
 ## Trust levels
 
 Every store entry belongs to one of three trust levels, so you always know whose code you are about to run:
