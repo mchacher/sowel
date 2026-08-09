@@ -288,6 +288,7 @@ The repo ships Claude Code skills under `.claude/skills/`:
 | `sowel-plugin-dev` | Creating a new plugin integration (plugin code, UI touchpoints, manifest).                                                             |
 | `sowel-recipe-dev` | Developing a personal recipe as an external package: scaffold, createRecipe factory, release, personal-source install loop (spec 136). |
 | `sowel-docs`       | Updating MkDocs pages when features change.                                                                                            |
+| `sowel-issue`      | Handling a GitHub issue end-to-end: qualify, rewrite, implement, PR, close on merge.                                                   |
 
 ## Energy monitoring notes
 
