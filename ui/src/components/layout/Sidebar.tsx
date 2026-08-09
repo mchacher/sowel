@@ -1,22 +1,12 @@
 import { useLocation } from "react-router-dom";
 import {
-  Radio,
-  Box,
-  Map,
-  Plug,
-  Package,
   Settings,
   Shield,
   Home,
   ChevronLeft,
   ChevronRight,
   Layers,
-  Calendar,
   BarChart3,
-  ScrollText,
-  DatabaseBackup,
-  Send,
-  Bell,
   LayoutDashboard,
   Zap,
   PlugZap,
@@ -36,21 +26,11 @@ import { useAuth } from "../../store/useAuth";
 import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { useEnergy } from "../../store/useEnergy";
 import { usePluginUpdates } from "./usePluginUpdates";
+import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
 
 type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
 
-const ADMIN_ROUTES = [
-  "/devices",
-  "/equipments",
-  "/zones",
-  "/calendar",
-  "/integrations",
-  "/plugins",
-  "/mqtt-publishers",
-  "/notification-publishers",
-  "/logs",
-  "/backup",
-];
+const ADMIN_ROUTES = ADMIN_NAV_ITEMS.map((item) => item.to);
 
 function getSectionForPath(pathname: string): SidebarSection | null {
   if (pathname.startsWith("/home")) return "maison";
@@ -62,25 +42,6 @@ function getSectionForPath(pathname: string): SidebarSection | null {
 }
 
 const ICON_SIZE = 16;
-
-interface AdminItem {
-  to: string;
-  labelKey: string;
-  icon: React.ReactNode;
-}
-
-const ADMIN_ITEMS: AdminItem[] = [
-  { to: "/devices", labelKey: "nav.devices", icon: <Radio size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/equipments", labelKey: "nav.equipments", icon: <Box size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/zones", labelKey: "nav.zones", icon: <Map size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/calendar", labelKey: "nav.calendar", icon: <Calendar size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/integrations", labelKey: "nav.integrations", icon: <Plug size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/plugins", labelKey: "nav.plugins", icon: <Package size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/mqtt-publishers", labelKey: "nav.mqttPublishers", icon: <Send size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/notification-publishers", labelKey: "nav.notificationPublishers", icon: <Bell size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/logs", labelKey: "nav.logs", icon: <ScrollText size={ICON_SIZE} strokeWidth={1.5} /> },
-  { to: "/backup", labelKey: "nav.backup", icon: <DatabaseBackup size={ICON_SIZE} strokeWidth={1.5} /> },
-];
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -292,8 +253,9 @@ export function Sidebar() {
               />
               {expandedSection === "admin" && (
                 <nav className="space-y-0.5 pl-2 mt-1">
-                  {ADMIN_ITEMS.map((item) => {
+                  {ADMIN_NAV_ITEMS.map((item) => {
                     const showBadge = item.to === "/plugins" && pluginUpdateCount > 0;
+                    const Icon = item.icon;
                     return (
                       <SidebarItem
                         key={item.to}
@@ -301,7 +263,7 @@ export function Sidebar() {
                         label={t(item.labelKey)}
                         icon={
                           <span className="relative">
-                            {item.icon}
+                            <Icon size={ICON_SIZE} strokeWidth={1.5} />
                             {showBadge && (
                               <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full" />
                             )}

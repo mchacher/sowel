@@ -25,10 +25,6 @@ import {
   User,
   Zap,
   X,
-  Calendar,
-  Plug,
-  Send,
-  Bell,
   BarChart3,
   ChevronRight,
   AlertTriangle,
@@ -51,6 +47,7 @@ import { UpdatesSheet } from "./UpdatesSheet";
 import { useAggregatedIssues } from "./useAggregatedIssues";
 import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { usePluginUpdates } from "./usePluginUpdates";
+import { ADMIN_NAV_ITEMS, visibleAdminNavItems } from "./admin-nav-items";
 import { InstallPrompt } from "./InstallPrompt";
 import { UpdateOverlay } from "../system/UpdateOverlay";
 import { HomeSetupWizard } from "../setup/HomeSetupWizard";
@@ -495,6 +492,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
   const logout = useAuth((s) => s.logout);
+  const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
 
   const go = (to: string) => {
     navigate(to);
@@ -539,7 +537,22 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
             onClick={() => go("/analyse")}
           />
 
-          {/* Admin section */}
+          {/* Consultation pages — visible to non-admins here since the
+              Administration section below is hidden for them */}
+          {!isAdmin &&
+            visibleAdminNavItems(false).map((item) => {
+              const Icon = item.icon;
+              return (
+                <DrawerLink
+                  key={item.to}
+                  icon={<Icon size={18} strokeWidth={1.5} />}
+                  label={t(item.labelKey)}
+                  onClick={() => go(item.to)}
+                />
+              );
+            })}
+
+          {/* Admin section — same items as the desktop sidebar */}
           {isAdmin && (
             <>
               <div className="pt-3 pb-1 px-2">
@@ -547,26 +560,25 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                   {t("nav.administration")}
                 </span>
               </div>
-              <DrawerLink
-                icon={<Calendar size={18} strokeWidth={1.5} />}
-                label={t("nav.calendar")}
-                onClick={() => go("/calendar")}
-              />
-              <DrawerLink
-                icon={<Plug size={18} strokeWidth={1.5} />}
-                label={t("nav.integrations")}
-                onClick={() => go("/integrations")}
-              />
-              <DrawerLink
-                icon={<Send size={18} strokeWidth={1.5} />}
-                label={t("nav.mqttPublishers")}
-                onClick={() => go("/mqtt-publishers")}
-              />
-              <DrawerLink
-                icon={<Bell size={18} strokeWidth={1.5} />}
-                label={t("nav.notificationPublishers")}
-                onClick={() => go("/notification-publishers")}
-              />
+              {ADMIN_NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const showBadge = item.to === "/plugins" && pluginUpdateCount > 0;
+                return (
+                  <DrawerLink
+                    key={item.to}
+                    icon={<Icon size={18} strokeWidth={1.5} />}
+                    label={t(item.labelKey)}
+                    badge={
+                      showBadge ? (
+                        <span className="text-[10px] font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
+                          {pluginUpdateCount}
+                        </span>
+                      ) : undefined
+                    }
+                    onClick={() => go(item.to)}
+                  />
+                );
+              })}
             </>
           )}
 
@@ -611,10 +623,12 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
 function DrawerLink({
   icon,
   label,
+  badge,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  badge?: React.ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -624,6 +638,7 @@ function DrawerLink({
     >
       <span className="text-text-secondary">{icon}</span>
       <span className="text-[14px] font-medium flex-1">{label}</span>
+      {badge}
       <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
     </button>
   );
