@@ -1049,7 +1049,7 @@
   "solar.title": "Panneau photovoltaïque",
   "energy.month": "Mois",
   "energy.cumuls": "Consommation énergie",
-  "energy.measurements": "Mesures",
+  "energy.powerFactor": "Facteur de puissance",
   "energy.cumul.hour": "Heure en cours",
   "energy.cumul.day": "Aujourd'hui",
   "energy.cumul.month": "Ce mois",

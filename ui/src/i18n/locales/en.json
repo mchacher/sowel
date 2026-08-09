@@ -1049,7 +1049,7 @@
   "solar.title": "Solar panel",
   "energy.month": "Month",
   "energy.cumuls": "Energy consumption",
-  "energy.measurements": "Measurements",
+  "energy.powerFactor": "Power factor",
   "energy.cumul.hour": "Current hour",
   "energy.cumul.day": "Today",
   "energy.cumul.month": "This month",

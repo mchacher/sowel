@@ -1,10 +1,33 @@
 import { useTranslation } from "react-i18next";
-import { Zap, Clock, Calendar, CalendarDays, CalendarRange } from "lucide-react";
-import type { ComputedDataEntry, EquipmentStatus, EquipmentStatusReason } from "../../types";
+import {
+  Zap,
+  Clock,
+  Calendar,
+  CalendarDays,
+  CalendarRange,
+  Activity,
+  PlugZap,
+  Percent,
+} from "lucide-react";
+import type {
+  ComputedDataEntry,
+  DataBindingWithValue,
+  EquipmentStatus,
+  EquipmentStatusReason,
+} from "../../types";
 import { EquipmentStatusBadge } from "./EquipmentStatusBadge";
+import {
+  pickLivePowerW,
+  pickVoltageV,
+  pickCurrentA,
+  pickPowerFactor,
+  formatWatts,
+} from "../../lib/energy-meter-display";
 
 interface EnergyDataPanelProps {
   computedData: ComputedDataEntry[];
+  /** Bound data of the meter — feeds the live P/U/I/PF tiles (issue #376). */
+  bindings?: DataBindingWithValue[];
   /** Spec 116: render a badge + last-update caption when degraded/offline. */
   status?: EquipmentStatus;
   statusReason?: EquipmentStatusReason;
@@ -36,8 +59,54 @@ function formatRelative(iso: string | null): string {
   return `${Math.floor(hours / 24)} j`;
 }
 
-export function EnergyDataPanel({ computedData, status, statusReason }: EnergyDataPanelProps) {
+interface LiveMeasure {
+  key: string;
+  labelKey: string;
+  icon: React.ReactNode;
+  value: string | null;
+  unit: string;
+}
+
+export function EnergyDataPanel({ computedData, bindings, status, statusReason }: EnergyDataPanelProps) {
   const { t } = useTranslation();
+
+  // Live electrical measures (issue #376) — shown only when bound.
+  const liveW = pickLivePowerW(bindings ?? []);
+  const voltageV = pickVoltageV(bindings ?? []);
+  const currentA = pickCurrentA(bindings ?? []);
+  const powerFactor = pickPowerFactor(bindings ?? []);
+  const power = liveW !== null ? formatWatts(liveW) : null;
+
+  const liveMeasures: LiveMeasure[] = [
+    {
+      key: "power",
+      labelKey: "category.power",
+      icon: <Zap size={16} strokeWidth={1.5} />,
+      value: power?.value ?? null,
+      unit: power?.unit ?? "W",
+    },
+    {
+      key: "voltage",
+      labelKey: "category.voltage",
+      icon: <PlugZap size={16} strokeWidth={1.5} />,
+      value: voltageV !== null ? voltageV.toFixed(1) : null,
+      unit: "V",
+    },
+    {
+      key: "current",
+      labelKey: "category.current",
+      icon: <Activity size={16} strokeWidth={1.5} />,
+      value: currentA !== null ? currentA.toFixed(2) : null,
+      unit: "A",
+    },
+    {
+      key: "powerFactor",
+      labelKey: "energy.powerFactor",
+      icon: <Percent size={16} strokeWidth={1.5} />,
+      value: powerFactor !== null ? powerFactor.toFixed(2) : null,
+      unit: "",
+    },
+  ];
 
   const cumuls: EnergyCumul[] = [
     {
@@ -66,8 +135,10 @@ export function EnergyDataPanel({ computedData, status, statusReason }: EnergyDa
     },
   ];
 
-  // Only render if at least one energy cumul exists
-  if (cumuls.every((c) => c.value === null)) return null;
+  // Only render if at least one energy cumul or live measure exists
+  if (cumuls.every((c) => c.value === null) && liveMeasures.every((m) => m.value === null)) {
+    return null;
+  }
 
   const isDegraded = status === "degraded" || status === "offline";
 
@@ -81,6 +152,28 @@ export function EnergyDataPanel({ computedData, status, statusReason }: EnergyDa
         {status && <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />}
       </div>
       <div className="grid grid-cols-2 gap-3">
+        {liveMeasures.map((m) => {
+          if (m.value === null) return null;
+          return (
+            <div
+              key={m.key}
+              className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50"
+            >
+              <div className="flex-shrink-0 w-10 h-10 rounded-[6px] flex items-center justify-center bg-accent/10 text-accent">
+                {m.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-text-tertiary">{t(m.labelKey)}</div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[20px] font-semibold text-text font-mono leading-none">
+                    {m.value}
+                  </span>
+                  {m.unit && <span className="text-[12px] text-text-tertiary">{m.unit}</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
         {cumuls.map((c) => {
           if (c.value === null) return null;
           const formatted = formatEnergy(c.value);

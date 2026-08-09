@@ -28,7 +28,6 @@ import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
-import { EnergyMeasurementsPanel } from "../components/equipments/EnergyMeasurementsPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
@@ -396,19 +395,13 @@ export function EquipmentDetailPage() {
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
-      {/* Energy meter measurements — all bound data (issue #376) */}
+      {/* Energy cumuls + live electrical measures (issue #376) */}
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
         equipment.type === "energy_meter") && (
-        <EnergyMeasurementsPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
-      )}
-
-      {/* Energy cumuls */}
-      {(equipment.type === "main_energy_meter" ||
-        equipment.type === "energy_production_meter" ||
-        equipment.type === "energy_meter") && equipment.computedData && (
         <EnergyDataPanel
-          computedData={equipment.computedData}
+          computedData={equipment.computedData ?? []}
+          bindings={equipment.dataBindings}
           status={equipment.status}
           statusReason={equipment.statusReason}
         />
