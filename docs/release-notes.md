@@ -11,6 +11,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.37.x: Recipe tariff helper
+
+### v1.37.0 — 2026-08-09 { #v1-37-0 }
+
+- Feat (recipes): **recipes can read the configured HP/HC tariff schedule** (spec 138). A load-shifting recipe (water heater, pool pump, EV charger) no longer has to re-ask for off-peak hours the instance already knows: `ctx.helpers.getTariff()` returns today's off-peak slots and whether the current time is off-peak, straight from the schedule configured under Settings. Read-only by construction, and tariff **prices are deliberately not exposed** to recipe packages — knowing when energy is cheap is enough to schedule a load. Recipes should keep their own time slots as a fallback for instances with no tariff configured. Contributed by Adrien Jouve (computingify). (#379)
+- Fix (api): reading the tariff configuration over the API (`GET /api/v1/settings/energy/tariff`) now requires the **admin role**, like the rest of the settings. Any authenticated user could previously read the schedule and the prices; writing was already admin-only, and recipes are unaffected since they read through the new helper. Found during review of #379. (#382)
+- Docs: specs index catch-up (specs 137/138) and French translation of the new recipe tariff documentation. (#380)
+
+---
+
 ## 1.36.x: Plugin categories, search, energy live metering
 
 ### v1.36.0 — 2026-08-09 { #v1-36-0 }

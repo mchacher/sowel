@@ -11,6 +11,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.37.x: Tarif HP/HC pour les recettes
+
+### v1.37.0 — 2026-08-09 { #v1-37-0 }
+
+- Feat (recipes) : **les recettes peuvent lire le planning tarifaire HP/HC configuré** (spec 138). Une recette de délestage (chauffe-eau, pompe de piscine, recharge VE) n'a plus à redemander des heures creuses que l'instance connaît déjà : `ctx.helpers.getTariff()` retourne les créneaux heures creuses du jour et si l'heure courante est en heures creuses, directement depuis le planning configuré dans les Réglages. Lecture seule par construction, et les **prix ne sont volontairement pas exposés** aux packages de recettes — savoir quand l'énergie est bon marché suffit pour placer une charge. Les recettes gardent leurs propres créneaux en repli pour les instances sans tarif configuré. Contribution d'Adrien Jouve (computingify). (#379)
+- Fix (api) : la lecture de la configuration tarifaire via l'API (`GET /api/v1/settings/energy/tariff`) exige désormais le **rôle admin**, comme le reste des réglages. Tout utilisateur authentifié pouvait auparavant lire le planning et les prix ; l'écriture était déjà réservée aux admins, et les recettes ne sont pas concernées puisqu'elles lisent via le nouveau helper. Découvert pendant la revue de la #379. (#382)
+- Docs : rattrapage de l'index des specs (specs 137/138) et traduction française de la nouvelle documentation tarifaire des recettes. (#380)
+
+---
+
 ## 1.36.x: Catégories de plugins, recherche, mesures électriques live
 
 ### v1.36.0 — 2026-08-09 { #v1-36-0 }
