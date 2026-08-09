@@ -392,9 +392,16 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   });
 
   // ============================================================
-  // GET /api/v1/settings/energy/tariff
+  // GET /api/v1/settings/energy/tariff (admin only — carries prices)
   // ============================================================
-  app.get("/api/v1/settings/energy/tariff", async () => {
+  app.get("/api/v1/settings/energy/tariff", async (request, reply) => {
+    // Issue #381: the spec 131 role gate only covers mutating methods, so this
+    // GET needs its own check — same as GET /api/v1/settings. Recipes read the
+    // schedule (without prices) through ctx.helpers.getTariff() instead.
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+
     const config = tariffClassifier.getConfig();
     return config ?? { schedules: [], prices: { hp: 0, hc: 0 } };
   });

@@ -44,6 +44,9 @@ interface BuildOpts {
   envTz?: string | undefined;
   /** Spec 123 — inject a tariff config for cost-wiring tests. */
   tariff?: TariffConfig | null;
+  /** Issue #381 — role decorated on request.auth. Defaults to admin;
+   *  null leaves request.auth undefined (unauthenticated). */
+  authRole?: "admin" | "standard" | null;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -101,6 +104,15 @@ async function buildApp(opts: BuildOpts = {}) {
   const settingsManager = {} as never;
 
   const app = Fastify({ logger: false });
+
+  // Stub auth: pre-decorate request.auth based on the test scenario (#381).
+  const authRole = opts.authRole === undefined ? "admin" : opts.authRole;
+  if (authRole !== null) {
+    app.addHook("preHandler", async (request) => {
+      request.auth = { userId: "u1", role: authRole };
+    });
+  }
+
   registerEnergyRoutes(app, {
     equipmentManager,
     influxClient: influxClient as never,
@@ -640,5 +652,44 @@ describe("Spec 123 — /api/v1/energy/status tariffConfigured", () => {
     });
     const r = await app.inject({ method: "GET", url: "/api/v1/energy/status" });
     expect(r.json().tariffConfigured).toBe(true);
+  });
+});
+
+// Issue #381 — the tariff GET carries prices and must be admin-only, like
+// GET /api/v1/settings. The spec 131 gate only covers mutating methods.
+describe("Issue #381 — GET /api/v1/settings/energy/tariff admin gate", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  const TARIFF: TariffConfig = {
+    schedules: [
+      { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] },
+    ],
+    prices: { hp: 0.2516, hc: 0.2068 },
+  };
+
+  it("returns 403 to a standard user, without leaking prices", async () => {
+    app = await buildApp({ tariff: TARIFF, authRole: "standard" });
+    const r = await app.inject({ method: "GET", url: "/api/v1/settings/energy/tariff" });
+    expect(r.statusCode).toBe(403);
+    expect(r.body).not.toContain("0.2516");
+    expect(r.body).not.toContain("0.2068");
+  });
+
+  it("returns 403 when request.auth is absent", async () => {
+    app = await buildApp({ tariff: TARIFF, authRole: null });
+    const r = await app.inject({ method: "GET", url: "/api/v1/settings/energy/tariff" });
+    expect(r.statusCode).toBe(403);
+  });
+
+  it("still returns the full config, prices included, to an admin", async () => {
+    app = await buildApp({ tariff: TARIFF, authRole: "admin" });
+    const r = await app.inject({ method: "GET", url: "/api/v1/settings/energy/tariff" });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual(TARIFF);
   });
 });
