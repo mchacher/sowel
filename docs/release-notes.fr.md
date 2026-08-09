@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.36.x: Catégories de plugins, recherche, mesures électriques live
+
+### v1.36.0 — 2026-08-09 { #v1-36-0 }
+
+- Feat (plugins) : la page Plugins **regroupe désormais les recettes par catégorie** (spec 137) — Éclairage, Chauffage et climatisation, Arrosage et piscine, Planification, Sécurité et surveillance, Énergie et affichage — dans les onglets Installés et Store, avec un **champ de recherche** qui filtre intégrations et recettes au fil de la saisie, en cherchant dans les noms, descriptions et mots-clés dans la langue affichée, accents ignorés. L'onglet Store affiche aussi enfin les noms et descriptions en français déjà écrits dans le catalogue (ils étaient perdus en route jusqu'ici). Les catégories viennent du catalogue de plugins : les installations existantes les récupèrent automatiquement, aucune mise à jour de recette nécessaire. (#375)
+- Feat (equipments) : **données électriques live sur les compteurs d'énergie** — la carte en vue zone de chaque type de compteur (consommation, principal, production) affiche désormais la puissance instantanée en direct à côté de la consommation du jour, que le compteur remonte une puissance directe ou une demande 5 minutes Legrand NLPC. La page de détail gagne un panneau **Mesures électriques** avec des tuiles live puissance, tension, courant et facteur de puissance, chacune affichée quand la donnée correspondante est associée ; le panneau « Consommation énergie » est inchangé. (#377)
+- Feat (ui) : le tiroir **« Plus » sur mobile** expose désormais la navigation Administration complète (Appareils, Équipements, Zones, Plugins, Logs, Sauvegarde, ...) depuis une source unique partagée avec la barre latérale desktop, badge de mise à jour des plugins compris. Les utilisateurs non admin retrouvent les pages de consultation (Équipements, Zones) dans la section principale. Auparavant, seuls Réglages, Analyse et quatre entrées admin étaient accessibles sur mobile. (#374)
+- Docs : nouvelle page **guide utilisateur Plugins** sur docs.sowel.org — les deux onglets, trouver un plugin, les niveaux de confiance, les sources personnelles et la confirmation par empreinte. (#371)
+- Chore (core) : le contexte d'exploitation propre à une installation quitte le dépôt public pour un dépôt compagnon privé ; nouveau skill agent pour le développement de recettes personnelles ; index des specs mis à jour. (#368, #370, #372)
+
+---
+
 ## 1.35.x: Sources personnelles de plugins
 
 ### v1.35.0 — 2026-08-08 { #v1-35-0 }

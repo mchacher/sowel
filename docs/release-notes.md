@@ -11,6 +11,18 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.36.x: Plugin categories, search, energy live metering
+
+### v1.36.0 — 2026-08-09 { #v1-36-0 }
+
+- Feat (plugins): the Plugins page now **groups recipes by category** (spec 137) — Lighting, Heating and cooling, Watering and pool, Scheduling, Safety and monitoring, Energy and display — in both the Installed and Store tabs, with a **search field** that filters integrations and recipes as you type, matching names, descriptions and keywords in the displayed language and ignoring accents. The Store tab also finally displays the French names and descriptions already authored in the catalog (they were silently dropped before). Categories come from the plugin catalog: existing installations pick them up automatically, no recipe update needed. (#375)
+- Feat (equipments): **live electrical data on energy meters** — the zone-view card of every meter type (consumption, main, production) now shows the live instantaneous power next to the daily consumption, whether the meter reports a direct power reading or a Legrand NLPC 5-minute demand. The equipment detail page gains an **Electrical metering** panel with live power, voltage, current and power factor tiles, each shown when the corresponding data is bound; the "Energy consumption" cumuls panel is unchanged. (#377)
+- Feat (ui): the mobile **"More" drawer** now exposes the full Administration navigation (Devices, Equipments, Zones, Plugins, Logs, Backup, ...) from a single source of truth shared with the desktop sidebar, including the plugin-update badge. Non-admin users get the consultation pages (Equipments, Zones) in the main section. Previously only Settings, Analyse and four admin entries were reachable on mobile. (#374)
+- Docs: new **Plugins user guide** page on docs.sowel.org — the two tabs, finding a plugin, trust levels, personal sources, and the fingerprint confirmation flow. (#371)
+- Chore (core): installation-specific operations context moved out of the public repository into a private companion repo; new agent skill for personal recipe development; specs index updated. (#368, #370, #372)
+
+---
+
 ## 1.35.x: Personal plugin sources
 
 ### v1.35.0 — 2026-08-08 { #v1-35-0 }
