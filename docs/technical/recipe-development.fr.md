@@ -220,13 +220,37 @@ L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
 
 Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (interface `RecipeHelpers` dans `src/shared/types.ts`) :
 
-| Helper                                                                         | Rôle                                              |
-| ------------------------------------------------------------------------------ | ------------------------------------------------- |
-| `parseDuration(value)`, `formatDuration(ms)`                                   | Durées au format `"10m"` / `"30s"`                |
-| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Orchestration de lumières par ids d'équipements   |
-| `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous |
+| Helper                                                                         | Rôle                                                |
+| ------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `parseDuration(value)`, `formatDuration(ms)`                                   | Durées au format `"10m"` / `"30s"`                  |
+| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Orchestration de lumières par ids d'équipements     |
+| `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous   |
+| `getTariff()`                                                                  | Programmation tarifaire (spec 138), voir ci-dessous |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` retourne les heures de soleil courantes (`"HH:MM"`, offsets spec 023 appliqués). À coupler avec l'événement `sunlight.changed` pour se resynchroniser d'un jour à l'autre ; les champs sont `null` tant que les heures ne sont pas calculées ou sans coordonnées maison.
+
+### `getTariff()` — heures creuses, lecture seule
+
+`getTariff(): { configured, offPeakToday, isOffPeakNow }` retourne le planning HP/HC configuré dans **Réglages → Administration → Tarif énergie**, pour qu'une recette de délestage (chauffe-eau, pompe de piscine, recharge VE) n'ait pas à redemander des heures que l'instance connaît déjà.
+
+```typescript
+const tariff = ctx.helpers.getTariff();
+if (tariff.configured && tariff.offPeakToday.length > 0) {
+  // [{ start: "22:00", end: "06:00", tariff: "hc" }, ...] — un créneau dont
+  // `end` n'est pas après `start` passe minuit.
+  const { start, end } = tariff.offPeakToday[0];
+} else {
+  // Rien de configuré — repli sur les créneaux propres à la recette.
+}
+```
+
+Trois propriétés sur lesquelles s'appuyer :
+
+- **Lecture seule par construction.** Chaque appel construit un objet neuf copié depuis le cache du `TariffClassifier`. Une recette ne peut ni atteindre ni muter le planning sur lequel tourne la facturation d'énergie, et il n'existe aucun setter.
+- **Les prix ne sont pas exposés.** Savoir _quand_ l'énergie est bon marché suffit pour placer une charge ; le prix est une donnée commerciale, et un package de recette est du code tiers qui peut republier ce qu'on lui confie. `offPeakToday` porte le planning et rien d'autre.
+- **Toujours une réponse pour le cas non configuré.** `configured` vaut `false` sur une instance neuve ou dont le propriétaire n'a jamais rempli la page tarif. Prévoir le repli sur les créneaux propres à la recette plutôt que de refuser de fonctionner.
+
+`offPeakToday` reflète le jour de semaine local courant : un planning qui ne couvre que les jours ouvrés donne une liste vide le dimanche. Relire la valeur plutôt que la mettre en cache au démarrage.
 
 ## Événements de l'Event Bus
 
