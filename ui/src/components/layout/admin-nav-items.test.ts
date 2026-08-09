@@ -1,4 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// The backend CI job runs the root vitest suite without installing ui/
+// dependencies, so lucide-react is not resolvable there. Mock it: this test
+// only needs the icon fields to be defined, not real components.
+vi.mock("lucide-react", () => new Proxy({}, { get: () => () => null }));
+
 import { ADMIN_NAV_ITEMS, visibleAdminNavItems } from "./admin-nav-items";
 
 // Regression for issue #373: the mobile drawer used to hand-write a subset of
