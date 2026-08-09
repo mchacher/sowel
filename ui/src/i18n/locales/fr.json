@@ -1050,6 +1050,7 @@
   "energy.month": "Mois",
   "energy.cumuls": "Consommation énergie",
   "energy.powerFactor": "Facteur de puissance",
+  "energy.electricalMetering": "Mesures électriques",
   "energy.cumul.hour": "Heure en cours",
   "energy.cumul.day": "Aujourd'hui",
   "energy.cumul.month": "Ce mois",

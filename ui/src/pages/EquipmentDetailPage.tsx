@@ -28,6 +28,7 @@ import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
+import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
@@ -395,16 +396,22 @@ export function EquipmentDetailPage() {
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
-      {/* Energy cumuls + live electrical measures (issue #376) */}
+      {/* Energy cumuls */}
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
-        equipment.type === "energy_meter") && (
+        equipment.type === "energy_meter") && equipment.computedData && (
         <EnergyDataPanel
-          computedData={equipment.computedData ?? []}
-          bindings={equipment.dataBindings}
+          computedData={equipment.computedData}
           status={equipment.status}
           statusReason={equipment.statusReason}
         />
+      )}
+
+      {/* Live electrical measures — P/U/I/PF when bound (issue #376) */}
+      {(equipment.type === "main_energy_meter" ||
+        equipment.type === "energy_production_meter" ||
+        equipment.type === "energy_meter") && (
+        <ElectricalMeteringPanel bindings={equipment.dataBindings} />
       )}
 
       {/* Button actions — config, admin only */}
