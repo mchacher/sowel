@@ -268,6 +268,7 @@ async function main() {
     zoneManager,
     zoneAggregator,
     sunlightManager, // spec 126 — exposes ctx.helpers.getSunlight() to recipes
+    historyWriter.getTariffClassifier(), // spec 138 — read-only ctx.helpers.getTariff()
     logger,
     config.shadowMode, // spec 124 — runtime gate on startInstance
   );

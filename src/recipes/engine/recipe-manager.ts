@@ -6,6 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { SunlightManager } from "../../zones/sunlight-manager.js";
+import { isWithinSlot, type TariffClassifier } from "../../energy/tariff-classifier.js";
 import type {
   RecipeInfo,
   RecipeInstance,
@@ -16,6 +17,9 @@ import type {
   RecipeSlotDef,
   RecipeActionDef,
   RecipeLangPack,
+  RecipeTariff,
+  TariffConfig,
+  TariffSlot,
   OrderSource,
 } from "../../shared/types.js";
 import { Recipe, type RecipeContext } from "./recipe.js";
@@ -53,6 +57,9 @@ export class RecipeManager {
   private zoneManager: ZoneManager;
   private zoneAggregator: ZoneAggregator;
   private sunlightManager: SunlightManager;
+  /** Spec 138 — read-only source for `ctx.helpers.getTariff()`. Null when the
+   *  energy stack is unavailable; recipes then see `configured: false`. */
+  private tariffClassifier: TariffClassifier | null;
   private logger: Logger;
   private stmts: ReturnType<typeof this.prepareStatements>;
   /** Spec 124 — when true, `startInstance` is a no-op so no recipe
@@ -66,6 +73,7 @@ export class RecipeManager {
     zoneManager: ZoneManager,
     zoneAggregator: ZoneAggregator,
     sunlightManager: SunlightManager,
+    tariffClassifier: TariffClassifier | null,
     logger: Logger,
     shadowMode = false,
   ) {
@@ -75,6 +83,7 @@ export class RecipeManager {
     this.zoneManager = zoneManager;
     this.zoneAggregator = zoneAggregator;
     this.sunlightManager = sunlightManager;
+    this.tariffClassifier = tariffClassifier;
     this.logger = logger.child({ module: "recipe-manager" });
     this.stmts = this.prepareStatements();
     this.shadowMode = shadowMode;
@@ -564,7 +573,48 @@ export class RecipeManager {
     // Arrow keeps the read lazy: `sunlightManager` is assigned in the
     // constructor body, but getSunlight is only ever called at recipe runtime.
     getSunlight: () => this.sunlightManager.getSunlightData(),
+    getTariff: () => this.buildTariffSnapshot(),
   };
+
+  /**
+   * Build the recipe-facing tariff snapshot (spec 138).
+   *
+   * `TariffClassifier.getConfig()` returns its *cached* object by reference, so
+   * handing it straight to a recipe package would let third-party code mutate
+   * the schedule that energy billing runs on. Everything below is copied out by
+   * value; there is no path from a recipe back into that cache, and no setter.
+   *
+   * `config.prices` is read but never copied out — see RecipeTariff.
+   */
+  private buildTariffSnapshot(): RecipeTariff {
+    const empty: RecipeTariff = {
+      configured: false,
+      offPeakToday: [],
+      isOffPeakNow: null,
+    };
+
+    let config: TariffConfig | null;
+    try {
+      config = this.tariffClassifier?.getConfig() ?? null;
+    } catch (err) {
+      this.logger.warn({ err }, "Failed to read tariff config for recipes");
+      return empty;
+    }
+    if (!config) return empty;
+
+    const now = new Date();
+    const schedule = config.schedules.find((s) => s.days.includes(now.getDay()));
+    const offPeakToday: TariffSlot[] = (schedule?.slots ?? [])
+      .filter((s) => s.tariff === "hc")
+      .map((s) => ({ start: s.start, end: s.end, tariff: s.tariff }));
+
+    const minuteOfDay = now.getHours() * 60 + now.getMinutes();
+    return {
+      configured: true,
+      offPeakToday,
+      isOffPeakNow: offPeakToday.some((s) => isWithinSlot(minuteOfDay, s)),
+    };
+  }
 
   private buildContext(instanceId: string, recipeId: string): RecipeContext {
     const onChanged = () => {

@@ -225,13 +225,37 @@ The `ctx` object injected into `validate()` and `createInstance()` provides:
 
 Recipe packages reach shared utilities through `ctx.helpers` (the `RecipeHelpers` interface in `src/shared/types.ts`):
 
-| Helper                                                                         | Purpose                                     |
-| ------------------------------------------------------------------------------ | ------------------------------------------- |
-| `parseDuration(value)`, `formatDuration(ms)`                                   | `"10m"` / `"30s"` style duration handling   |
-| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Light orchestration over equipment ids      |
-| `getSunlight()`                                                                | Sun-aware scheduling (spec 126) — see below |
+| Helper                                                                         | Purpose                                        |
+| ------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `parseDuration(value)`, `formatDuration(ms)`                                   | `"10m"` / `"30s"` style duration handling      |
+| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Light orchestration over equipment ids         |
+| `getSunlight()`                                                                | Sun-aware scheduling (spec 126) — see below    |
+| `getTariff()`                                                                  | Tariff-aware scheduling (spec 138) — see below |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` returns the current sun times (`"HH:MM"`, spec 023 offsets applied). Pair it with the `sunlight.changed` event to re-sync across days; fields are `null` when sun times are not yet computed or no home coordinates are configured.
+
+### `getTariff()` — off-peak hours, read-only
+
+`getTariff(): { configured, offPeakToday, isOffPeakNow }` returns the HP/HC schedule the user configured under **Settings → Administration → Energy tariff**, so a load-shifting recipe (water heater, pool pump, EV charger) does not have to ask for hours the instance already knows.
+
+```typescript
+const tariff = ctx.helpers.getTariff();
+if (tariff.configured && tariff.offPeakToday.length > 0) {
+  // [{ start: "22:00", end: "06:00", tariff: "hc" }, ...] — slots whose `end`
+  // is not after their `start` wrap past midnight.
+  const { start, end } = tariff.offPeakToday[0];
+} else {
+  // Nothing configured — fall back to the recipe's own time slots.
+}
+```
+
+Three properties are worth relying on:
+
+- **Read-only by construction.** Each call builds a fresh object copied out of the `TariffClassifier` cache. A recipe cannot reach, alias, or mutate the schedule that energy billing runs on, and there is no setter.
+- **Prices are not exposed.** Knowing _when_ energy is cheap is enough to schedule a load; what it costs is commercial data, and a recipe package is third-party code that can republish whatever it is handed. `offPeakToday` carries the schedule and nothing else.
+- **Always answer for the unconfigured case.** `configured` is `false` on a fresh instance and on any instance whose owner never filled the tariff page. Treat the recipe's own slots as the fallback rather than refusing to run.
+
+`offPeakToday` reflects the current local day-of-week: a schedule that only covers weekdays yields an empty list on Sunday. Re-read it rather than caching it at start.
 
 ## Event Bus Events
 

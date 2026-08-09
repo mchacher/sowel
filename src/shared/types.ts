@@ -511,6 +511,35 @@ export interface RecipeDefinition {
   createInstance(params: Record<string, unknown>, ctx: RecipeCtx): RecipeInstanceHandle;
 }
 
+/**
+ * Read-only snapshot of the HP/HC tariff schedule (spec 138), handed to
+ * recipes by `ctx.helpers.getTariff()`.
+ *
+ * Every call builds a fresh object: recipes get the schedule without any
+ * handle on the TariffClassifier's cached configuration, so nothing a recipe
+ * package does can corrupt energy billing. There is deliberately no setter —
+ * the tariff is owned by Settings → Administration → Energy tariff.
+ *
+ * **Prices are deliberately absent.** Knowing *when* energy is cheap is all a
+ * recipe needs to schedule a load; what it costs is commercial data, and a
+ * recipe package is third-party code that can republish anything it is handed
+ * (instance state goes out over the WebSocket, and MQTT/notification
+ * publishers reach further still). Withholding the tariff prices removes that
+ * path rather than relying on packages to behave.
+ */
+export interface RecipeTariff {
+  /** False when no schedule is configured; the other fields are then empty. */
+  configured: boolean;
+  /**
+   * Off-peak (heures creuses) slots in effect for the current local
+   * day-of-week. A slot whose `end` is not after its `start` wraps past
+   * midnight — e.g. `{ start: "22:00", end: "06:00" }`.
+   */
+  offPeakToday: TariffSlot[];
+  /** Whether the current local time falls in an off-peak slot; null when unconfigured. */
+  isOffPeakNow: boolean | null;
+}
+
 /** Helpers exposed to recipe packages via ctx.helpers */
 export interface RecipeHelpers {
   isAnyLightOn(lightIds: string[], ctx: RecipeCtx): boolean;
@@ -524,6 +553,10 @@ export interface RecipeHelpers {
    *  re-sync across days. Fields are null when not yet computed or no home
    *  coordinates are configured. Spec 126. */
   getSunlight(): { sunrise: string | null; sunset: string | null; isDaylight: boolean | null };
+  /** Current HP/HC tariff schedule, read-only (spec 138). `configured` is
+   *  false when the user has not filled Settings → Administration → Energy
+   *  tariff, in which case a recipe should fall back to its own parameters. */
+  getTariff(): RecipeTariff;
 }
 
 // ============================================================

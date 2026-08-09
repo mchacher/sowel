@@ -11,10 +11,40 @@
 
 import type { Logger } from "../core/logger.js";
 import type { SettingsManager } from "../core/settings-manager.js";
-import type { TariffConfig, TariffSplit } from "../shared/types.js";
+import type { TariffConfig, TariffSlot, TariffSplit } from "../shared/types.js";
 
 const SETTINGS_KEY = "energy.tariff";
 const HALF_HOUR_S = 1800;
+
+/**
+ * Expand a tariff slot into concrete `[startMinute, endMinute)` ranges within a
+ * day, applying the two schedule conventions:
+ *
+ *  - an end of `"00:00"` means midnight *at the end* of the day (24:00), not
+ *    the start of it;
+ *  - a slot whose end is not after its start wraps past midnight and therefore
+ *    yields two ranges.
+ *
+ * Exported so that everything reasoning about the schedule — energy
+ * classification, and the recipe-facing snapshot — shares one interpretation
+ * rather than each re-deriving it. Spec 138.
+ */
+export function slotRanges(slot: TariffSlot): Array<[number, number]> {
+  const start = parseTimeToMinutes(slot.start);
+  let end = parseTimeToMinutes(slot.end);
+  if (end === 0) end = 1440;
+  return end <= start
+    ? [
+        [start, 1440],
+        [0, end],
+      ]
+    : [[start, end]];
+}
+
+/** Whether a minute-of-day falls inside a slot (start inclusive, end exclusive). */
+export function isWithinSlot(minuteOfDay: number, slot: TariffSlot): boolean {
+  return slotRanges(slot).some(([from, to]) => minuteOfDay >= from && minuteOfDay < to);
+}
 
 export class TariffClassifier {
   private logger: Logger;
@@ -60,23 +90,7 @@ export class TariffClassifier {
     let hcMinutes = 0;
 
     for (const slot of daySchedule.slots) {
-      const slotStart = parseTimeToMinutes(slot.start);
-      let slotEnd = parseTimeToMinutes(slot.end);
-
-      // Handle midnight wrap: "00:00" means 24:00 (end of day)
-      if (slotEnd === 0) slotEnd = 1440;
-
-      // Build slot ranges — if end < start, the slot wraps around midnight
-      // e.g. 17:04 → 00:04 becomes [17:04, 24:00) + [00:00, 00:04)
-      const ranges: Array<[number, number]> =
-        slotEnd <= slotStart
-          ? [
-              [slotStart, 1440],
-              [0, slotEnd],
-            ]
-          : [[slotStart, slotEnd]];
-
-      for (const [rangeStart, rangeEnd] of ranges) {
+      for (const [rangeStart, rangeEnd] of slotRanges(slot)) {
         const overlapStart = Math.max(windowStartMinutes, rangeStart);
         const overlapEnd = Math.min(windowEndMinutes, rangeEnd);
         const overlap = Math.max(0, overlapEnd - overlapStart);

@@ -11,7 +11,14 @@ import { createLogger } from "../../core/logger.js";
 import { RecipeManager, RecipeError } from "./recipe-manager.js";
 import { Recipe } from "./recipe.js";
 import type { SunlightManager } from "../../zones/sunlight-manager.js";
-import type { RecipeSlotDef, EngineEvent, RecipeDefinition } from "../../shared/types.js";
+import type { TariffClassifier } from "../../energy/tariff-classifier.js";
+import type {
+  RecipeSlotDef,
+  EngineEvent,
+  RecipeDefinition,
+  RecipeTariff,
+  TariffConfig,
+} from "../../shared/types.js";
 
 /** Captures `ctx.helpers.getSunlight()` from a running instance (spec 126). */
 let capturedSun: {
@@ -19,6 +26,19 @@ let capturedSun: {
   sunset: string | null;
   isDaylight: boolean | null;
 } | null = null;
+
+/** Captures `ctx.helpers.getTariff()` from a running instance (spec 138). */
+let capturedTariff: RecipeTariff | null = null;
+
+/**
+ * Backing config for the mock classifier. Handed out by reference on purpose —
+ * that is what the real TariffClassifier does, and it is what lets the tests
+ * prove the snapshot is copied out rather than aliased.
+ */
+let tariffConfig: TariffConfig | null = null;
+const tariffClassifier = {
+  getConfig: () => tariffConfig,
+} as unknown as TariffClassifier;
 
 // ============================================================
 // Test helpers
@@ -120,6 +140,7 @@ describe("RecipeManager", () => {
       zoneManager,
       aggregator,
       sunlightManager,
+      tariffClassifier,
       logger,
     );
     events = [];
@@ -190,6 +211,116 @@ describe("RecipeManager", () => {
     expect(slot?.type).toBe("select");
     expect(slot?.options).toHaveLength(2);
     expect(slot?.options?.[1]).toEqual({ value: "sunset", label: "Sunset" });
+  });
+
+  // ============================================================
+  // Spec 138 — read-only getTariff helper
+  // ============================================================
+
+  /** Registers a recipe that captures the tariff snapshot at start. */
+  function registerTariffProbe(id: string): void {
+    manager.registerExternal({
+      id,
+      name: id,
+      description: "reads the tariff",
+      slots: [],
+      validate: () => {},
+      createInstance: (_params, ctx) => {
+        capturedTariff = ctx.helpers.getTariff();
+        return { stop: () => {} };
+      },
+    } satisfies RecipeDefinition);
+  }
+
+  it("reports the tariff as unconfigured when no schedule is set", () => {
+    tariffConfig = null;
+    registerTariffProbe("tariff-none");
+    capturedTariff = null;
+    manager.createInstance("tariff-none", {});
+
+    expect(capturedTariff).toEqual({
+      configured: false,
+      offPeakToday: [],
+      isOffPeakNow: null,
+    });
+  });
+
+  it("exposes today's off-peak slots and prices", () => {
+    const today = new Date().getDay();
+    tariffConfig = {
+      schedules: [
+        {
+          days: [0, 1, 2, 3, 4, 5, 6],
+          slots: [
+            { start: "22:00", end: "06:00", tariff: "hc" },
+            { start: "06:00", end: "22:00", tariff: "hp" },
+          ],
+        },
+        // A schedule for no day at all must not leak into the snapshot.
+        { days: [(today + 3) % 7], slots: [{ start: "01:00", end: "02:00", tariff: "hc" }] },
+      ],
+      prices: { hp: 0.2516, hc: 0.2068 },
+    };
+    registerTariffProbe("tariff-set");
+    capturedTariff = null;
+    manager.createInstance("tariff-set", {});
+
+    expect(capturedTariff?.configured).toBe(true);
+    // Only HC slots, and only the schedule covering today.
+    expect(capturedTariff?.offPeakToday).toEqual([{ start: "22:00", end: "06:00", tariff: "hc" }]);
+    // Prices are commercial data and must never reach a recipe package.
+    expect(capturedTariff).not.toHaveProperty("prices");
+    expect(JSON.stringify(capturedTariff)).not.toContain("0.2516");
+    expect(JSON.stringify(capturedTariff)).not.toContain("0.2068");
+  });
+
+  it("resolves whether the current time is off-peak across a midnight wrap", () => {
+    const now = new Date();
+    const minute = now.getHours() * 60 + now.getMinutes();
+    // Build a window that certainly contains "now" and certainly wraps midnight,
+    // whatever time the suite happens to run at.
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const hm = (m: number) =>
+      `${pad(Math.floor((((m % 1440) + 1440) % 1440) / 60))}:${pad((((m % 1440) + 1440) % 1440) % 60)}`;
+    tariffConfig = {
+      schedules: [
+        {
+          days: [now.getDay()],
+          slots: [{ start: hm(minute - 60), end: hm(minute - 120), tariff: "hc" }],
+        },
+      ],
+      prices: { hp: 0.25, hc: 0.2 },
+    };
+    registerTariffProbe("tariff-wrap");
+    capturedTariff = null;
+    manager.createInstance("tariff-wrap", {});
+
+    expect(capturedTariff?.isOffPeakNow).toBe(true);
+  });
+
+  it("hands recipes a copy — mutating the snapshot cannot corrupt the config", () => {
+    tariffConfig = {
+      schedules: [
+        { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] },
+      ],
+      prices: { hp: 0.25, hc: 0.2 },
+    };
+    registerTariffProbe("tariff-copy");
+    capturedTariff = null;
+    manager.createInstance("tariff-copy", {});
+
+    // A hostile (or careless) recipe package rewrites everything it was given.
+    capturedTariff!.offPeakToday[0].start = "00:00";
+    capturedTariff!.offPeakToday.push({ start: "12:00", end: "13:00", tariff: "hc" });
+
+    expect(tariffConfig.schedules[0].slots[0].start).toBe("22:00");
+    expect(tariffConfig.schedules[0].slots).toHaveLength(1);
+    expect(tariffConfig.prices.hc).toBe(0.2);
+
+    // And the next reader still sees the real schedule.
+    capturedTariff = null;
+    manager.createInstance("tariff-copy", {});
+    expect(capturedTariff?.offPeakToday).toEqual([{ start: "22:00", end: "06:00", tariff: "hc" }]);
   });
 
   it("exposes ctx.helpers.getSunlight() to a running instance", () => {
@@ -281,6 +412,7 @@ describe("RecipeManager", () => {
       zoneManager,
       aggregator,
       sunlightManager,
+      tariffClassifier,
       logger,
     );
     newManager.register(TestRecipe);
@@ -340,6 +472,7 @@ describe("restartInstancesOfRecipe", () => {
       zoneManager,
       aggregator,
       sunlightManager,
+      tariffClassifier,
       logger,
     );
   });
