@@ -379,34 +379,32 @@ Le conteneur démarre par défaut en UTC. Définissez `TZ=Europe/Paris` (ou votr
 
 ---
 
-## Référence production : déploiement actuel
+## Exemple de déploiement de référence
 
-Le déploiement production du mainteneur (au 2026-04-11) :
+Un déploiement domestique typique sur un seul hôte ressemble à ceci :
 
-- **Hôte** : VM Proxmox `sowelox` (Linux, x86_64, 8 Go RAM)
+- **Hôte** : n'importe quelle VM Linux ou SBC (x86_64 ou ARM64, 4+ Go RAM recommandés)
 - **Chemin** : `/opt/sowel/`
-- **Accès** : LAN `http://192.168.0.230:3000`
+- **Accès** : LAN `http://<votre-hote>:3000`
 - **Conteneurs** : `sowel` + `sowel-influxdb`
-- **Fuseau** : `TZ=Europe/Paris` explicitement défini dans le compose (workaround en attendant la spec 061)
-- **Version actuelle** : suivie via `git log specs/060-self-update-helper-and-detection/` et `docker logs sowel | grep "Sowel engine started"`
-- **Backups** : locaux dans `data/backups/` (auto), téléchargements manuels sur le Mac du mainteneur
-- **MQTT** : `mosquitto` externe tournant sur la même VM (pas dans le compose), utilisé par les plugins `zigbee2mqtt` et `lora2mqtt`
-- **Zigbee2MQTT** : daemon externe sur sowelox, pas géré par Sowel lui-même
+- **Fuseau** : `TZ=<votre-fuseau>` explicitement défini dans le compose (workaround en attendant la spec 061)
+- **Version actuelle** : `docker logs sowel | grep "Sowel engine started"`
+- **Backups** : locaux dans `data/backups/` (auto), plus des téléchargements manuels conservés hors de l'hôte
+- **MQTT** : `mosquitto` externe tournant sur le même hôte (pas dans le compose), utilisé par les plugins `zigbee2mqtt` et `lora2mqtt`
+- **Zigbee2MQTT** : daemon externe sur le même hôte, pas géré par Sowel lui-même
 
 Le graphe de connectivité :
 
 ```
          Internet
             |
-     Cloudflare Tunnel
+     Cloudflare Tunnel (optionnel, voir le guide d'accès distant)
             |
-     sowelox (Linux VM)
+     votre-hote (VM Linux)
      +-- docker: sowel           (port 3000)
      +-- docker: sowel-influxdb
      +-- docker: mosquitto       (MQTT broker, 1883)
-     +-- systemd: zigbee2mqtt   (reads Zigbee coordinator USB)
-     +-- systemd: lora2mqtt     (reads LoRa dongle USB)
+     +-- systemd: zigbee2mqtt   (lit le coordinateur Zigbee USB)
+     +-- systemd: lora2mqtt     (lit le dongle LoRa USB)
      +-- systemd: cloudflared   (tunnel)
 ```
-
-Voir le fichier de mémoire `reference_sowel_access.md` pour les identifiants SSH / API.

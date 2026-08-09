@@ -22,7 +22,7 @@
  *
  * Usage (run inside the Sowel container so it shares Influx + SQLite):
  *   docker exec -w /app sowel npx -y tsx scripts/energy/backfill-shelly-archive.ts \
- *     --shelly-host 192.168.0.69 \
+ *     --shelly-host <shelly-ip> \
  *     [--since 2026-05-03T00:00:00Z] \
  *     [--until 2026-05-03T07:00:00Z] \
  *     [--apply]
@@ -48,7 +48,11 @@ function getArg(name: string): string | undefined {
 }
 
 const APPLY = process.argv.includes("--apply");
-const SHELLY_HOST = getArg("--shelly-host") ?? "192.168.0.69";
+const SHELLY_HOST = getArg("--shelly-host") ?? "";
+if (!SHELLY_HOST) {
+  console.error("Missing required --shelly-host <ip-or-hostname>");
+  process.exit(1);
+}
 
 function defaultSince(): string {
   // Local midnight, expressed in UTC. With TZ=Europe/Paris in CEST that's

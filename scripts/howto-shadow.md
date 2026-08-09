@@ -25,14 +25,14 @@ When done:
 
 ## What lives where
 
-| Concern        | Local target (default)        | Sowelox target              |
-| -------------- | ----------------------------- | --------------------------- |
-| URL            | `http://localhost:3001`       | `http://192.168.0.230:3001` |
-| Data dir       | `$HOME/sowel-shadow/`         | `/opt/sowel-shadow/`        |
-| InfluxDB       | dedicated `shadow-influx`     | dedicated `shadow-influx`   |
-| Docker network | `sowel-shadow-net`            | `sowel-shadow-net`          |
-| Image tag      | `sowel:shadow-<branch>-<sha>` | same (transferred via ssh)  |
-| State pointer  | `data/.shadow-target`         | `data/.shadow-target`       |
+| Concern        | Local target (default)        | Prod target                |
+| -------------- | ----------------------------- | -------------------------- |
+| URL            | `http://localhost:3001`       | `http://<prod-host>:3001`  |
+| Data dir       | `$HOME/sowel-shadow/`         | `/opt/sowel-shadow/`       |
+| InfluxDB       | dedicated `shadow-influx`     | dedicated `shadow-influx`  |
+| Docker network | `sowel-shadow-net`            | `sowel-shadow-net`         |
+| Image tag      | `sowel:shadow-<branch>-<sha>` | same (transferred via ssh) |
+| State pointer  | `data/.shadow-target`         | `data/.shadow-target`      |
 
 Local is the default and recommended path — no SSH transfer, faster iteration, isolated from prod.
 
@@ -41,10 +41,10 @@ Local is the default and recommended path — no SSH transfer, faster iteration,
 ### `scripts/shadow-deploy.sh` — lifecycle
 
 ```
-up [--target=local|sowelox]   Build current branch, create containers, start. Default local.
+up [--target=local|prod]   Build current branch, create containers, start. Default local.
 update                         Alias for `up` (rebuild + recreate sowel-shadow with the new image).
 seed                           Login on prod, download backup, restore on shadow, restart container.
-                               Env: SOWEL_PROD_HOST (default 192.168.0.230:3000),
+                               Env: SOWEL_PROD_HOST (from ../sowel-ops/ops.env),
                                     SOWEL_PROD_USER (default admin),
                                     SOWEL_PROD_PASSWORD (prompted if unset).
 down                           Stop and remove containers + network. Keep data dir.
@@ -54,7 +54,7 @@ status                         Containers + network + data dir state on the chos
 
 Guards on `up`:
 
-- Refuses with `--target=sowelox` if prod is not running on sowelox (fix prod first).
+- Refuses with `--target=prod` if prod is not running on the prod host (fix prod first).
 - Warns + prompts if the working tree is dirty (the image tag carries the SHA but not your uncommitted diff).
 - Refuses to switch target while a shadow exists on the other target — run `down` first.
 
@@ -68,7 +68,7 @@ stop             Global stop (local dev + remote prod + shadow).
 status           Global state (local dev + remote prod + shadow).
 ```
 
-The shadow target is auto-detected from `data/.shadow-target` written by `shadow-deploy.sh`. Local vs sowelox is transparent to `run-swap.sh`.
+The shadow target is auto-detected from `data/.shadow-target` written by `shadow-deploy.sh`. Local vs prod is transparent to `run-swap.sh`.
 
 ## Verifying inert state
 
@@ -110,7 +110,7 @@ You realised the shadow boot lacked `SOWEL_SHADOW_MODE=1` — typically because 
 3. Check prod logs for stray orders or notifications fired by the shadow:
 
    ```bash
-   ssh mchacher@192.168.0.230 'docker exec sowel grep -E "order|notif" /app/data/logs/sowel.0.log | tail -50'
+   ssh "$SOWEL_PROD_SSH" 'docker exec sowel grep -E "order|notif" /app/data/logs/sowel.0.log | tail -50'
    ```
 
 4. Record the incident below so the procedure can be tightened.

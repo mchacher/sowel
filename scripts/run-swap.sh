@@ -7,12 +7,12 @@ set -euo pipefail
 #
 # Swaps between:
 #   - Local dev mode:   npm run dev on the Mac (backend + UI)
-#                       + prod sowel container stopped on sowelox
-#   - Remote prod mode: sowel container running on sowelox
+#                       + prod sowel container stopped on the prod host
+#   - Remote prod mode: sowel container running on the prod host
 #                       + local npm dev processes stopped
 #   - Shadow mode:      candidate Docker image (pre-built and deployed
 #                       via scripts/shadow-deploy.sh) running
-#                       side-by-side with prod on sowelox port 3001,
+#                       side-by-side with prod on the prod host port 3001,
 #                       SOWEL_SHADOW_MODE=1, own data dir, own InfluxDB.
 #                       Prod stays running.
 #
@@ -25,7 +25,7 @@ set -euo pipefail
 #   ./scripts/run-swap.sh stop            # stop everything (local + remote + shadow)
 #   ./scripts/run-swap.sh status          # show current state (all 3 modes)
 #
-# The shadow LIFECYCLE (build candidate image, transfer to sowelox,
+# The shadow LIFECYCLE (build candidate image, transfer to the prod host,
 # create containers, update on branch change, destroy) lives in
 # scripts/shadow-deploy.sh — this script is only the on/off toggle.
 #
@@ -34,11 +34,23 @@ set -euo pipefail
 # - Backend runs on :3000, Vite UI dev server on :5173
 # - Logs go to /tmp/sowel-dev-{backend,ui}.log
 # - PIDs tracked in /tmp/sowel-dev-{backend,ui}.pid
-# - Shadow runs on sowelox at /opt/sowel-shadow/{data,influx}, port 3001
+# - Shadow runs on the prod host at /opt/sowel-shadow/{data,influx}, port 3001
 # ============================================================
 
-SOWELOX_HOST="mchacher@192.168.0.230"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Installation-specific hosts come from the private ops companion repo
+# (see CLAUDE.md, section "Installation-specific context"). Default location
+# is ../sowel-ops/ops.env next to this checkout; override with SOWEL_OPS_ENV.
+# Template: scripts/ops.env.example
+OPS_ENV="${SOWEL_OPS_ENV:-$REPO_ROOT/../sowel-ops/ops.env}"
+if [[ -f "$OPS_ENV" ]]; then
+  # shellcheck disable=SC1090
+  source "$OPS_ENV"
+fi
+SOWEL_PROD_SSH="${SOWEL_PROD_SSH:-}"   # e.g. user@prod-host
+SOWEL_PROD_HOST="${SOWEL_PROD_HOST:-}" # e.g. prod-host:3000
+
 BACKEND_PID_FILE="/tmp/sowel-dev-backend.pid"
 UI_PID_FILE="/tmp/sowel-dev-ui.pid"
 BACKEND_LOG="/tmp/sowel-dev-backend.log"
@@ -91,14 +103,19 @@ kill_pidfile() {
   rm -f "$pidfile"
 }
 
-sowelox_sowel_running() {
-  ssh -o ConnectTimeout=5 "$SOWELOX_HOST" \
-    "docker ps --format '{{.Names}}' | grep -q '^sowel$'" 2>/dev/null
+require_prod_config() {
+  if [[ -z "$SOWEL_PROD_SSH" || -z "$SOWEL_PROD_HOST" ]]; then
+    err "SOWEL_PROD_SSH / SOWEL_PROD_HOST are not set."
+    err "Create ../sowel-ops/ops.env from scripts/ops.env.example (see CLAUDE.md,"
+    err "section \"Installation-specific context\"), or export both variables."
+    exit 1
+  fi
 }
 
-sowelox_shadow_running() {
-  ssh -o ConnectTimeout=5 "$SOWELOX_HOST" \
-    "docker ps --format '{{.Names}}' | grep -q '^sowel-shadow$'" 2>/dev/null
+prod_sowel_running() {
+  [[ -n "$SOWEL_PROD_SSH" ]] || return 1
+  ssh -o ConnectTimeout=5 "$SOWEL_PROD_SSH" \
+    "docker ps --format '{{.Names}}' | grep -q '^sowel$'" 2>/dev/null
 }
 
 # ------------------------------------------------------------
@@ -106,14 +123,15 @@ sowelox_shadow_running() {
 # ------------------------------------------------------------
 
 cmd_local() {
+  require_prod_config
   echo
   log "Swapping to local dev mode"
   echo
 
   # 1. Stop remote sowel
-  if sowelox_sowel_running; then
-    log "Stopping sowel container on sowelox..."
-    ssh "$SOWELOX_HOST" "docker stop sowel" > /dev/null
+  if prod_sowel_running; then
+    log "Stopping sowel container on the prod host..."
+    ssh "$SOWEL_PROD_SSH" "docker stop sowel" > /dev/null
     ok "Remote sowel stopped"
   else
     warn "Remote sowel already stopped"
@@ -164,6 +182,7 @@ cmd_local() {
 }
 
 cmd_remote() {
+  require_prod_config
   echo
   log "Swapping to remote prod mode"
   echo
@@ -173,17 +192,17 @@ cmd_remote() {
   kill_pidfile "$UI_PID_FILE" "UI"
 
   # 2. Start remote sowel
-  if sowelox_sowel_running; then
+  if prod_sowel_running; then
     warn "Remote sowel already running"
   else
-    log "Starting sowel container on sowelox..."
-    ssh "$SOWELOX_HOST" "docker start sowel" > /dev/null
+    log "Starting sowel container on the prod host..."
+    ssh "$SOWEL_PROD_SSH" "docker start sowel" > /dev/null
     # Give it a moment to come up
     sleep 3
-    if sowelox_sowel_running; then
+    if prod_sowel_running; then
       ok "Remote sowel started"
     else
-      err "Remote sowel did not start — check 'docker logs sowel' on sowelox"
+      err "Remote sowel did not start — check 'docker logs sowel' on the prod host"
       exit 1
     fi
   fi
@@ -192,7 +211,7 @@ cmd_remote() {
   echo -e "${GREEN}════════════════════════════════════════════${NC}"
   echo -e "${GREEN} ✓ Remote prod mode active${NC}"
   echo -e "${GREEN}════════════════════════════════════════════${NC}"
-  echo "  Sowel: http://192.168.0.230:3000"
+  echo "  Sowel: http://$SOWEL_PROD_HOST"
   echo
 }
 
@@ -206,9 +225,11 @@ cmd_stop() {
   kill_pidfile "$UI_PID_FILE" "UI"
 
   # 2. Stop remote sowel
-  if sowelox_sowel_running; then
-    log "Stopping sowel container on sowelox..."
-    ssh "$SOWELOX_HOST" "docker stop sowel" > /dev/null
+  if [[ -z "$SOWEL_PROD_SSH" ]]; then
+    warn "Prod host not configured (no ops.env) — skipping remote stop"
+  elif prod_sowel_running; then
+    log "Stopping sowel container on the prod host..."
+    ssh "$SOWEL_PROD_SSH" "docker stop sowel" > /dev/null
     ok "Remote sowel stopped"
   else
     warn "Remote sowel already stopped"
@@ -235,8 +256,10 @@ cmd_status() {
   log "Current state"
   echo
 
-  if sowelox_sowel_running; then
-    ok "Remote sowel: running on sowelox"
+  if [[ -z "$SOWEL_PROD_SSH" ]]; then
+    warn "Remote sowel: unknown (prod host not configured — see scripts/ops.env.example)"
+  elif prod_sowel_running; then
+    ok "Remote sowel: running on the prod host"
   else
     warn "Remote sowel: stopped"
   fi
@@ -270,10 +293,10 @@ cmd_status() {
 }
 
 # ------------------------------------------------------------
-# Shadow — start/stop/status of the shadow container on sowelox
+# Shadow — start/stop/status of the shadow container on the prod host
 # ------------------------------------------------------------
 #
-# The shadow LIFECYCLE (build candidate image, transfer to sowelox,
+# The shadow LIFECYCLE (build candidate image, transfer to the prod host,
 # create containers, update on branch change, destroy) lives in
 # scripts/shadow-deploy.sh. This block only toggles the existing
 # containers on and off, mirroring the local/remote pattern.
@@ -281,11 +304,15 @@ cmd_status() {
 SHADOW_TARGET_FILE="$REPO_ROOT/data/.shadow-target"
 
 # Resolves where the shadow was deployed by reading the state file
-# written by shadow-deploy.sh. Echoes "local" or "sowelox", or
+# written by shadow-deploy.sh. Echoes "local" or "prod", or
 # returns 1 when no shadow has been deployed.
 shadow_target() {
   if [[ -f "$SHADOW_TARGET_FILE" ]]; then
-    cat "$SHADOW_TARGET_FILE"
+    local t
+    t=$(cat "$SHADOW_TARGET_FILE")
+    # Legacy state files may contain the old target name for the prod host.
+    [[ "$t" == "sowelox" ]] && t="prod"
+    echo "$t"
     return 0
   fi
   return 1
@@ -294,7 +321,7 @@ shadow_target() {
 shadow_url() {
   case "$(shadow_target 2>/dev/null)" in
     local)   echo "http://localhost:3001" ;;
-    sowelox) echo "http://192.168.0.230:3001" ;;
+    prod)    echo "http://${SOWEL_PROD_HOST%%:*}:3001" ;;
     *)       echo "(unknown)" ;;
   esac
 }
@@ -303,7 +330,7 @@ shadow_url() {
 shadow_docker() {
   case "$(shadow_target 2>/dev/null)" in
     local)   docker "$@" ;;
-    sowelox) ssh -o ConnectTimeout=5 "$SOWELOX_HOST" "docker $*" ;;
+    prod)    ssh -o ConnectTimeout=5 "$SOWEL_PROD_SSH" "docker $*" ;;
     *)       return 1 ;;
   esac
 }
@@ -335,7 +362,7 @@ shadow_start() {
   echo
   if ! shadow_target >/dev/null 2>&1; then
     err "No shadow deployed."
-    echo "  Create it with: scripts/shadow-deploy.sh up [--target=local|sowelox]"
+    echo "  Create it with: scripts/shadow-deploy.sh up [--target=local|prod]"
     exit 1
   fi
   local target
@@ -424,12 +451,12 @@ case "${1:-}" in
   *)
     echo "Usage: $0 {local|remote|shadow|stop|status}"
     echo
-    echo "  local              Swap to local dev mode (stop sowelox, start npm run dev on Mac)"
-    echo "  remote             Swap to remote prod mode (stop local dev, start sowelox)"
+    echo "  local              Swap to local dev mode (stop prod over SSH, start npm run dev locally)"
+    echo "  remote             Swap to remote prod mode (stop local dev, start prod over SSH)"
     echo "  shadow [start]     Start the deployed shadow container (port 3001)"
     echo "  shadow stop        Stop the shadow container (containers preserved)"
-    echo "  shadow status      Check shadow state on sowelox"
-    echo "  stop               Stop everything (local dev processes + sowelox container)"
+    echo "  shadow status      Check shadow state"
+    echo "  stop               Stop everything (local dev processes + prod container)"
     echo "  status             Show current state (local, prod, shadow)"
     echo
     echo "Shadow lifecycle (create / update / destroy): scripts/shadow-deploy.sh"

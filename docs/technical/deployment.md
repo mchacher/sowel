@@ -385,28 +385,28 @@ The container defaults to UTC. Set `TZ=Europe/Paris` (or your timezone) in `dock
 
 ---
 
-## Production reference — current deployment
+## Reference deployment example
 
-The maintainer's production deployment (as of 2026-04-11):
+A typical single-host home deployment looks like this:
 
-- **Host**: Proxmox VM `sowelox` (Linux, x86_64, 8 GB RAM)
+- **Host**: any Linux VM or SBC (x86_64 or ARM64, 4+ GB RAM recommended)
 - **Path**: `/opt/sowel/`
-- **Access**: LAN `http://192.168.0.230:3000`
+- **Access**: LAN `http://<your-host>:3000`
 - **Containers**: `sowel` + `sowel-influxdb`
-- **Timezone**: `TZ=Europe/Paris` explicitly set in compose (workaround pending spec 061)
-- **Current version**: tracked via `git log specs/060-self-update-helper-and-detection/` and `docker logs sowel | grep "Sowel engine started"`
-- **Backups**: local in `data/backups/` (auto), manual downloads on maintainer's Mac
-- **MQTT**: external `mosquitto` running on the same VM (not in compose), used by `zigbee2mqtt` and `lora2mqtt` plugins
-- **Zigbee2MQTT**: external daemon on sowelox, not managed by Sowel itself
+- **Timezone**: `TZ=<your-timezone>` explicitly set in compose (workaround pending spec 061)
+- **Current version**: `docker logs sowel | grep "Sowel engine started"`
+- **Backups**: local in `data/backups/` (auto), plus manual downloads kept off-host
+- **MQTT**: external `mosquitto` running on the same host (not in compose), used by the `zigbee2mqtt` and `lora2mqtt` plugins
+- **Zigbee2MQTT**: external daemon on the same host, not managed by Sowel itself
 
 The connectivity graph:
 
 ```
          Internet
             |
-     Cloudflare Tunnel
+     Cloudflare Tunnel (optional, see remote access guide)
             |
-     sowelox (Linux VM)
+     your-host (Linux VM)
      +-- docker: sowel           (port 3000)
      +-- docker: sowel-influxdb
      +-- docker: mosquitto       (MQTT broker, 1883)
@@ -414,5 +414,3 @@ The connectivity graph:
      +-- systemd: lora2mqtt     (reads LoRa dongle USB)
      +-- systemd: cloudflared   (tunnel)
 ```
-
-See the memory file `reference_sowel_access.md` for SSH / API credentials.

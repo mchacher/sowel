@@ -102,7 +102,7 @@ describe("humanBindingLabel — Netatmo weather station full set", () => {
 });
 
 describe("humanBindingLabel — same-category disambiguation", () => {
-  // Real-world case on sowelox: a Netatmo NAMain `temperature` binding and a
+  // Real-world case on the maintainer instance: a Netatmo NAMain `temperature` binding and a
   // polytropic PAC `temperature` binding share category=temperature on the
   // same Station Météo equipment. Without disambiguation both labels read
   // "Température intérieure" and the user picks the wrong one in the chart

@@ -255,30 +255,39 @@ Production logs go to both stdout (captured by Docker) and `data/logs/sowel-N.lo
 - **Spacing**: 4px base, 6px radius (buttons), 10px (cards), 14px (modals)
 - **Font sizes**: 14px body, 28px data values
 
-## Production context (important for session recovery)
+## Installation-specific context (private companion repo)
 
-- **Production runs on**: Linux VM `sowelox` (Proxmox), x86_64, 8 GB RAM
-- **Path**: `/opt/sowel/`
-- **Access**: LAN `http://192.168.0.230:3000`
-- **Related services on the same VM**: mosquitto (MQTT broker), zigbee2mqtt, lora2mqtt, cloudflared — **not** managed by Sowel itself
-- **Log files** accessible via `ssh mchacher@192.168.0.230 'docker exec sowel cat /app/data/logs/sowel.N.log'`
-- **SSH / API credentials**: in memory file `reference_sowel_access.md`
-- **Timezone**: `TZ=Europe/Paris` explicitly set in compose (workaround pending spec 061 auto-derivation)
+This public repo contains **nothing specific to a given installation** (no hosts, no IPs, no SSH targets, no credentials). That context lives in a private companion repo cloned as a sibling directory, by convention named `sowel-ops`:
 
-See [docs/technical/deployment.md](docs/technical/deployment.md) for the full operations guide.
+```
+<parent-dir>/
+├── sowel/          # this repo (any clone name works)
+└── sowel-ops/      # private: your hosts, SSH targets, agent context
+```
+
+Two integration points:
+
+1. `CLAUDE.md` imports the private agent context below. If the file is absent, the import is skipped and everything else works.
+2. `scripts/run-swap.sh` and `scripts/shadow-deploy.sh` source `../sowel-ops/ops.env` (see `scripts/ops.env.example`) for remote hosts. Without it, remote operations refuse with a clear error; local-only usage needs nothing.
+
+**Contributors**: to use the ops scripts or give AI agents context about your own deployment, create your own private `sowel-ops` repo with a `CLAUDE.ops.md` and an `ops.env` (start from `scripts/ops.env.example`). Never put installation details in this repo.
+
+@../sowel-ops/CLAUDE.ops.md
+
+See [docs/technical/deployment.md](docs/technical/deployment.md) for the generic operations guide.
 
 ## Skills available
 
 The repo ships Claude Code skills under `.claude/skills/`:
 
-| Skill                | When to use                                                                                                                            |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `sowel-feature`      | Implementing a new feature (Phase 1-6 workflow with gates). Drafts spec, creates branch, implements, tests, PRs.                       |
-| `debug-bug`          | Investigating a bug. Gathers symptoms, pulls logs, traces the pipeline, presents diagnosis before fix.                                 |
-| `sowel-release`      | Bumping version, tagging, pushing — triggers GitHub Actions build.                                                                     |
-| `plugin-integration` | Creating a new plugin integration (plugin code, UI touchpoints, manifest).                                                             |
-| `sowel-recipe-dev`   | Developing a personal recipe as an external package: scaffold, createRecipe factory, release, personal-source install loop (spec 136). |
-| `update-docs`        | Updating MkDocs pages when features change.                                                                                            |
+| Skill              | When to use                                                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `sowel-feature`    | Implementing a new feature (Phase 1-6 workflow with gates). Drafts spec, creates branch, implements, tests, PRs.                       |
+| `sowel-debug`      | Investigating a bug. Gathers symptoms, pulls logs, traces the pipeline, presents diagnosis before fix.                                 |
+| `sowel-release`    | Bumping version, tagging, pushing — triggers GitHub Actions build.                                                                     |
+| `sowel-plugin-dev` | Creating a new plugin integration (plugin code, UI touchpoints, manifest).                                                             |
+| `sowel-recipe-dev` | Developing a personal recipe as an external package: scaffold, createRecipe factory, release, personal-source install loop (spec 136). |
+| `sowel-docs`       | Updating MkDocs pages when features change.                                                                                            |
 
 ## Energy monitoring notes
 

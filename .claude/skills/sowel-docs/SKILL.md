@@ -1,5 +1,5 @@
 ---
-name: update-docs
+name: sowel-docs
 description: Update Sowel documentation site (MkDocs Material). Use when implementing features, fixing bugs, or when user asks to update/add documentation.
 user-invocable: true
 argument-hint: "[page-or-topic]"
@@ -54,26 +54,27 @@ Screenshots live under `docs/screenshots/` and are referenced from `.md` files v
 2. **Show the surrounding context.** A reader landing on the page should understand where the feature lives in the UI. Capture the full zone view, not just one panel.
 3. **For mobile**, use a 390×844 viewport (iPhone 13) with `fullPage: true`. The page is allowed to be tall (a scrollshot is fine).
 4. **Hide live noise** before shooting: pause polling tasks, dismiss toasts, ensure the WS connection pill reads `● live` (not `○ offline`).
-5. **Never shoot on prod** (`sowelox` / `192.168.0.230:3000`) and **never use `./scripts/run-swap.sh local`** for screenshots:
-   - Prod data leaks family names (PIR Marc, Chambre Victor, etc.) and the actual home topology into public docs.
-   - `run-swap.sh local` does `ssh sowelox 'docker stop sowel'` over SSH, which crashes the user's real home automation.
+5. **Never shoot on a real production instance** and **never use `./scripts/run-swap.sh local`** for screenshots:
+   - Real instance data leaks personal names and the actual home topology into public docs.
+   - `run-swap.sh local` stops the prod container over SSH, which crashes the real home automation.
    - Use the demo instance and the anonymized showroom fixture instead — see "Screenshot pipeline" below.
 
 ### Screenshot pipeline (anonymized via demo instance)
 
-The demo instance lives on `domopi.local:3001` (Raspberry Pi). Two stages:
+The demo instance hosts and the prod backup source are defined in the private ops repo (`../sowel-ops/ops.env`: `SOWEL_PROD_HOST`, `SOWEL_DEMO_SSH`, `SOWEL_DEMO_URL`, `SOWEL_DEMO_COMPOSE_DIR` — see `CLAUDE.md` section "Installation-specific context"). Source it first: `source ../sowel-ops/ops.env`. Two stages:
 
 **1. Build anonymized fixtures from a fresh prod backup**
 
 ```bash
-# (a) Download a prod backup
+# (a) Download a prod backup (credentials: see the private ops context)
 python3 -c "
-import urllib.request, json
-req = urllib.request.Request('http://192.168.0.230:3000/api/v1/auth/login',
-  data=json.dumps({'username':'admin','password':'<see reference_sowel_access memory>'}).encode(),
+import os, urllib.request, json
+prod = 'http://' + os.environ['SOWEL_PROD_HOST']
+req = urllib.request.Request(prod + '/api/v1/auth/login',
+  data=json.dumps({'username':'admin','password':'<prod-admin-password>'}).encode(),
   headers={'Content-Type':'application/json'}, method='POST')
 tok = json.loads(urllib.request.urlopen(req).read())['accessToken']
-req = urllib.request.Request('http://192.168.0.230:3000/api/v1/backup',
+req = urllib.request.Request(prod + '/api/v1/backup',
   headers={'Authorization':'Bearer '+tok})
 open('/tmp/prod-backup.zip','wb').write(urllib.request.urlopen(req).read())
 "
@@ -89,16 +90,16 @@ The script uses `ZONE_RENAME_FR`, `EQUIPMENT_RENAME_FR`, and the FR→EN `ZONE_T
 
 ```bash
 # Full reset of demo
-ssh mchacher@domopi.local 'cd /home/mchacher/sowel-demo && docker compose down -v && docker compose pull && docker compose up -d'
+ssh "$SOWEL_DEMO_SSH" "cd $SOWEL_DEMO_COMPOSE_DIR && docker compose down -v && docker compose pull && docker compose up -d"
 # Wait for /api/v1/auth/status to respond
 # Setup first admin via POST /api/v1/auth/setup
 # Restore showroom-fr.zip via POST /api/v1/backup (multipart) — for FR shoot
-# Take FR screenshots on http://domopi.local:3001 (set localStorage sowel_language=fr, reload)
+# Take FR screenshots on $SOWEL_DEMO_URL (set localStorage sowel_language=fr, reload)
 # Restore showroom-en.zip via POST /api/v1/backup — for EN shoot
 # Take EN screenshots
 ```
 
-Demo compose file: `/home/mchacher/sowel-demo/docker-compose.yml`. Keep `image: ghcr.io/mchacher/sowel:<version>` aligned with the prod release. Demo port 3001 maps to container 3000.
+Demo compose file: `$SOWEL_DEMO_COMPOSE_DIR/docker-compose.yml`. Keep `image: ghcr.io/mchacher/sowel:<version>` aligned with the prod release. Demo port 3001 maps to container 3000.
 
 ### Playwright MCP recipe (preferred)
 

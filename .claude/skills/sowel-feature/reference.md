@@ -202,8 +202,6 @@ Description.
 
 ## Production deployment
 
-Sowel production runs on Linux VM `sowelox` at `192.168.0.230:3000`. See [docs/technical/deployment.md](../../../docs/technical/deployment.md) for full operations guide.
+Installation-specific facts (host, SSH target, credentials pointer) live in the private companion repo `../sowel-ops/` (see `CLAUDE.md`, section "Installation-specific context"). See [docs/technical/deployment.md](../../../docs/technical/deployment.md) for the generic operations guide.
 
-- SSH access: `ssh mchacher@192.168.0.230` (key-based, no password)
-- Log files: `docker exec sowel cat /app/data/logs/sowel.N.log`
-- Credentials: memory file `reference_sowel_access.md`
+- Log files on the host: `docker exec sowel cat /app/data/logs/sowel.N.log`

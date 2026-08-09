@@ -1,5 +1,5 @@
 ---
-name: debug-bug
+name: sowel-debug
 description: |
   Identifies and fixes bugs in Sowel — a home automation engine. Use when:
   - User reports a bug, error, or unexpected behavior
@@ -185,7 +185,7 @@ git checkout -b fix/<short-description>
 ```bash
 npx tsc --noEmit                                              # Backend
 cd ui && npx tsc --noEmit                                     # Frontend (if UI changes)
-cd /Users/mchacher/Documents/01_Geekerie/Sowel && npx vitest run  # Tests
+cd "$(git rev-parse --show-toplevel)" && npx vitest run          # Tests (from repo root)
 npx eslint src/ --ext .ts                                     # Lint
 ```
 

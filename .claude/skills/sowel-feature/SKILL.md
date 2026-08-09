@@ -2,10 +2,9 @@
 name: sowel-feature
 description: |
   Creates features for Sowel — a home automation engine. Use when:
-  - User asks to "create a feature", "implement X", "add VX.Y" for Sowel
-  - Working on a roadmap version (V0.1, V0.2, etc.)
+  - User asks to "create a feature", "implement X" for Sowel
   - User says "créer une feature", "ajouter une fonctionnalité", "implémenter"
-  Specific to Sowel project: MQTT, devices, equipments, zones, scenarios, recipes, AI assistant.
+  Specific to Sowel project: MQTT, devices, equipments, zones, recipes, modes, plugins.
 disable-model-invocation: true
 argument-hint: "[description de la feature]"
 ---
@@ -235,7 +234,7 @@ cd ui && npx tsc --noEmit           # Frontend (if UI changes)
 ### 4.2 Run Tests
 
 ```bash
-cd /Users/mchacher/Documents/01_Geekerie/Sowel && npx vitest run
+cd "$(git rev-parse --show-toplevel)" && npx vitest run
 ```
 
 **ALL tests must pass.** If tests fail, fix them before proceeding.
@@ -263,7 +262,7 @@ npx eslint src/ --ext .ts
 
 ### 5.1 Update Documentation (if applicable)
 
-If the feature adds or changes user-facing behavior, API endpoints, or architecture, update the documentation using `/update-docs`. Common triggers:
+If the feature adds or changes user-facing behavior, API endpoints, or architecture, update the documentation using `/sowel-docs`. Common triggers:
 
 - New API endpoint → `docs/technical/api-reference.md`
 - New equipment type → `docs/user/equipments.md` + `docs/technical/data-model.md`
@@ -287,7 +286,7 @@ git commit -m "feat(scope): description
 Explanation of what and why."
 ```
 
-Scopes: `mqtt`, `devices`, `equipments`, `zones`, `scenarios`, `recipes`, `ai`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `backup`
+Scopes: `mqtt`, `devices`, `equipments`, `zones`, `recipes`, `modes`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `packages`, `backup`, `self-update`, `energy`, `logging`
 
 ### 5.3 Push & Create PR
 

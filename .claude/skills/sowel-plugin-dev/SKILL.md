@@ -1,5 +1,5 @@
 ---
-name: plugin-integration
+name: sowel-plugin-dev
 description: |
   Create a new plugin integration for Sowel — covers plugin code, new equipment types, UI bindings, zone cards, dashboard widgets, and all required touchpoints. Use when creating a new plugin, adding a new device source, or adding new equipment types.
 disable-model-invocation: true
@@ -200,7 +200,7 @@ If `owner` is outside `OFFICIAL_OWNERS` (currently `["mchacher"]`, hard-coded in
 ```bash
 npx tsc --noEmit                                              # Backend
 cd ui && npx tsc --noEmit                                     # Frontend
-cd /Users/mchacher/Documents/01_Geekerie/Sowel && npx vitest run  # Tests
+cd "$(git rev-parse --show-toplevel)" && npx vitest run          # Tests (from repo root)
 npx eslint src/ --ext .ts                                     # Lint
 ```
 
@@ -241,7 +241,7 @@ gh release create v0.1.0 sowel-plugin-<name>-0.1.0.tar.gz --title "v0.1.0" --not
 Once the GitHub release exists, **come back to the sowel repo** and fill in the `sha256`:
 
 ```bash
-cd /Users/mchacher/Documents/01_Geekerie/Sowel    # back to the sowel repo, on feat/plugin-<name>
+cd <sowel-repo-root>    # back to the sowel repo, on feat/plugin-<name>
 node scripts/backfill-registry-sha256.mjs
 ```
 

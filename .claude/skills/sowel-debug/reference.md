@@ -111,8 +111,9 @@ sqlite3 data/sowel.db "SELECT key, substr(value, 1, 80) FROM settings;"
 The ring buffer is in-memory only and lost on restart. **For post-incident investigation after a container recreation (e.g. after self-update)**, use the persistent log files on the `sowel-data` volume:
 
 ```bash
-# SSH to sowelox
-ssh mchacher@192.168.0.230
+# SSH to the production host (SOWEL_PROD_SSH is defined in ../sowel-ops/ops.env,
+# see CLAUDE.md section "Installation-specific context")
+ssh "$SOWEL_PROD_SSH"
 
 # List log files (14 days daily rotation)
 docker exec sowel ls -la /app/data/logs/

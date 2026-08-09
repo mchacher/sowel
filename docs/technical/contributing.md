@@ -243,6 +243,31 @@ Integration settings (MQTT, cloud credentials, polling intervals) are configured
 
 ---
 
+## Private ops companion repo
+
+The public `sowel` repository contains nothing specific to a given installation: no hosts, no IPs, no SSH targets, no credentials. Keep it that way in your contributions.
+
+If you run your own Sowel deployment and want the developer tooling wired to it (dev/prod swap, shadow instance, docs screenshots, AI agent context), create your own **private** companion repository, by convention named `sowel-ops`, and clone it as a sibling of your `sowel` checkout:
+
+```
+workspace/
+├── sowel/          # public repo (any clone name works)
+└── sowel-ops/      # your private repo: hosts, SSH targets, agent context
+```
+
+It needs at most two files:
+
+| File            | Purpose                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ops.env`       | Your hosts and SSH targets. Start from [`scripts/ops.env.example`](https://github.com/mchacher/sowel/blob/main/scripts/ops.env.example). Sourced automatically by `scripts/run-swap.sh` and `scripts/shadow-deploy.sh`. |
+| `CLAUDE.ops.md` | Optional. Private context for AI coding agents (production topology, log access, safety rules). Imported by `CLAUDE.md` via `@../sowel-ops/CLAUDE.ops.md`.                                                              |
+
+Both integration points degrade gracefully: without `sowel-ops`, the ops scripts refuse remote operations with a clear error and the `CLAUDE.md` import is simply skipped. Local development needs none of it.
+
+Benefits: your installation details are versioned and backed up on GitHub (privately), while the public repository stays reusable by everyone.
+
+---
+
 ## Project Structure
 
 For a complete project structure diagram and architecture details, see [Architecture Overview](architecture.md).

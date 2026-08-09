@@ -6,14 +6,14 @@ set -euo pipefail
 # ============================================================
 #
 # Manages the candidate-image shadow stack — by default on the local
-# Mac (Docker Desktop), or optionally on sowelox side-by-side with prod.
+# Mac (Docker Desktop), or optionally on the prod host side-by-side with prod.
 #
 # Commands:
 #   - up:      build current branch into a Docker image, create the
 #              shadow-influx + sowel-shadow containers, start them with
 #              SOWEL_SHADOW_MODE=1. Idempotent on network and Influx;
 #              always recreates sowel-shadow so it picks up the latest
-#              image. On --target=sowelox, also transfers the image
+#              image. On --target=prod, also transfers the image
 #              via docker save | ssh | docker load.
 #   - update:  alias for `up`.
 #   - down:    stop and remove the shadow containers + Docker network,
@@ -24,13 +24,13 @@ set -euo pipefail
 # Targets:
 #   --target=local     Mac, http://localhost:3001 (default — per
 #                      scripts/howto-shadow.md, shadow should
-#                      run on a machine that is NOT sowelox).
-#   --target=sowelox   side-by-side with prod, http://192.168.0.230:3001
+#                      run on a machine that is NOT the prod host).
+#   --target=prod      side-by-side with prod on the prod host, port 3001
 #
 # Usage:
 #   ./scripts/shadow-deploy.sh up                       # local (default)
 #   ./scripts/shadow-deploy.sh up --target=local
-#   ./scripts/shadow-deploy.sh up --target=sowelox
+#   ./scripts/shadow-deploy.sh up --target=prod
 #   ./scripts/shadow-deploy.sh down
 #   ./scripts/shadow-deploy.sh destroy
 #   ./scripts/shadow-deploy.sh status
@@ -40,18 +40,38 @@ set -euo pipefail
 # script knows which docker daemon to talk to.
 #
 # Safety:
-# - Refuses to deploy with --target=sowelox if prod is not running.
+# - Refuses to deploy with --target=prod if prod is not running.
 # - Refuses to switch target while a shadow already exists (run `down`
 #   or `destroy` first).
 # - Refuses if the working tree is dirty (interactive bypass).
 # - Image tag is local-only (sowel:shadow-<branch>-<sha>); never pushed.
-# - On --target=sowelox, prod container is untouched (port 3000 stays).
+# - On --target=prod, prod container is untouched (port 3000 stays).
 #
 # See scripts/howto-shadow.md for the playbook.
 # ============================================================
 
-SOWELOX_HOST="mchacher@192.168.0.230"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Installation-specific hosts come from the private ops companion repo
+# (see CLAUDE.md, section "Installation-specific context"). Default location
+# is ../sowel-ops/ops.env next to this checkout; override with SOWEL_OPS_ENV.
+# Template: scripts/ops.env.example
+OPS_ENV="${SOWEL_OPS_ENV:-$REPO_ROOT/../sowel-ops/ops.env}"
+if [[ -f "$OPS_ENV" ]]; then
+  # shellcheck disable=SC1090
+  source "$OPS_ENV"
+fi
+SOWEL_PROD_SSH="${SOWEL_PROD_SSH:-}"   # e.g. user@prod-host
+SOWEL_PROD_HOST="${SOWEL_PROD_HOST:-}" # e.g. prod-host:3000
+
+require_prod_config() {
+  if [[ -z "$SOWEL_PROD_SSH" || -z "$SOWEL_PROD_HOST" ]]; then
+    echo "✗ SOWEL_PROD_SSH / SOWEL_PROD_HOST are not set." >&2
+    echo "✗ Create ../sowel-ops/ops.env from scripts/ops.env.example (see CLAUDE.md," >&2
+    echo "✗ section \"Installation-specific context\"), or export both variables." >&2
+    exit 1
+  fi
+}
 TARGET_STATE_FILE="$REPO_ROOT/data/.shadow-target"
 SHADOW_NETWORK="sowel-shadow-net"
 SHADOW_INFLUX_CONTAINER="shadow-influx"
@@ -82,7 +102,7 @@ confirm() {
 #
 # All docker operations route through `run_on_target`. Two backends:
 #   - local:   exec the heredoc directly via `bash`
-#   - sowelox: pipe the heredoc through `ssh $SOWELOX_HOST bash`
+#   - prod:    pipe the heredoc through `ssh $SOWEL_PROD_SSH bash`
 #
 # Path of the host data dir, label, URL, and whether to require sudo
 # for mkdir are all driven by $TARGET.
@@ -90,22 +110,22 @@ confirm() {
 target_data_dir() {
   case "$TARGET" in
     local)   echo "$HOME/sowel-shadow" ;;
-    sowelox) echo "/opt/sowel-shadow" ;;
+    prod) echo "/opt/sowel-shadow" ;;
   esac
 }
 
 target_url() {
   case "$TARGET" in
     local)   echo "http://localhost:$SHADOW_PORT" ;;
-    sowelox) echo "http://192.168.0.230:$SHADOW_PORT" ;;
+    prod)    echo "http://${SOWEL_PROD_HOST%%:*}:$SHADOW_PORT" ;;
   esac
 }
 
 target_mkdir_prefix() {
-  # `/opt/...` requires sudo on sowelox; $HOME/... does not on the Mac.
+  # `/opt/...` requires sudo on the prod host; $HOME/... does not on the Mac.
   case "$TARGET" in
     local)   echo "" ;;
-    sowelox) echo "sudo " ;;
+    prod) echo "sudo " ;;
   esac
 }
 
@@ -117,7 +137,7 @@ target_mkdir_prefix() {
 run_on_target() {
   case "$TARGET" in
     local)   bash ;;
-    sowelox) ssh "$SOWELOX_HOST" bash ;;
+    prod) ssh "$SOWEL_PROD_SSH" bash ;;
   esac
 }
 
@@ -134,10 +154,10 @@ assert_clean_repo() {
 
 assert_prod_running() {
   # Only meaningful when shadow runs on the same host as prod.
-  [[ "$TARGET" == "sowelox" ]] || return 0
-  if ! ssh -o ConnectTimeout=5 "$SOWELOX_HOST" \
+  [[ "$TARGET" == "prod" ]] || return 0
+  if ! ssh -o ConnectTimeout=5 "$SOWEL_PROD_SSH" \
     "docker ps --format '{{.Names}}' | grep -q '^sowel\$'" 2>/dev/null; then
-    err "Prod sowel container is not running on sowelox."
+    err "Prod sowel container is not running on the prod host."
     err "Refusing to deploy shadow on a degraded host — fix prod first."
     exit 1
   fi
@@ -178,12 +198,16 @@ resolved_target_or_die() {
   if [[ -z "${TARGET:-}" ]]; then
     if [[ -f "$TARGET_STATE_FILE" ]]; then
       TARGET=$(cat "$TARGET_STATE_FILE")
+      # Legacy state files may contain the old target name for the prod host.
+      [[ "$TARGET" == "sowelox" ]] && TARGET="prod"
     else
       err "No shadow target known (state file $TARGET_STATE_FILE missing)."
-      err "Pass --target=local|sowelox explicitly."
+      err "Pass --target=local|prod explicitly."
       exit 1
     fi
   fi
+  [[ "$TARGET" == "prod" ]] && require_prod_config
+  return 0
 }
 
 # ------------------------------------------------------------
@@ -197,12 +221,12 @@ build_image() {
   ok "Image built"
 }
 
-transfer_image_to_sowelox() {
+transfer_image_to_prod() {
   local tag="$1"
-  [[ "$TARGET" == "sowelox" ]] || return 0
-  log "Transferring image to sowelox (docker save | gzip | ssh | gunzip | docker load)..."
-  docker save "$tag" | gzip | ssh "$SOWELOX_HOST" "gunzip | docker load"
-  ok "Image loaded on sowelox"
+  [[ "$TARGET" == "prod" ]] || return 0
+  log "Transferring image to the prod host (docker save | gzip | ssh | gunzip | docker load)..."
+  docker save "$tag" | gzip | ssh "$SOWEL_PROD_SSH" "gunzip | docker load"
+  ok "Image loaded on the prod host"
 }
 
 # ------------------------------------------------------------
@@ -301,6 +325,7 @@ EOF
 
 cmd_up() {
   : "${TARGET:=local}"
+  [[ "$TARGET" == "prod" ]] && require_prod_config
   assert_clean_repo
   assert_prod_running
   assert_no_target_conflict
@@ -317,7 +342,7 @@ cmd_up() {
   echo
 
   build_image "$tag"
-  transfer_image_to_sowelox "$tag"   # no-op when target=local
+  transfer_image_to_prod "$tag"   # no-op when target=local
   target_ensure_network
   target_ensure_dirs
   target_ensure_influx
@@ -329,8 +354,8 @@ cmd_up() {
   echo -e "${GREEN}════════════════════════════════════════════${NC}"
   echo -e "${GREEN} ✓ Shadow deployed (target=$TARGET)${NC}"
   echo -e "${GREEN}════════════════════════════════════════════${NC}"
-  if [[ "$TARGET" == "sowelox" ]]; then
-    echo "  Prod    : http://192.168.0.230:3000 (untouched)"
+  if [[ "$TARGET" == "prod" ]]; then
+    echo "  Prod    : http://$SOWEL_PROD_HOST (untouched)"
   fi
   echo "  Shadow  : $(target_url) (SOWEL_SHADOW_MODE=1)"
   echo "  Image   : $tag"
@@ -386,8 +411,9 @@ EOF
 
 cmd_seed() {
   resolved_target_or_die
+  require_prod_config   # seed always pulls the backup from prod
 
-  local prod_host="${SOWEL_PROD_HOST:-192.168.0.230:3000}"
+  local prod_host="$SOWEL_PROD_HOST"
   local prod_user="${SOWEL_PROD_USER:-admin}"
   local prod_password="${SOWEL_PROD_PASSWORD:-}"
   local prod_url="http://$prod_host"
@@ -563,8 +589,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -n "$TARGET" && "$TARGET" != "local" && "$TARGET" != "sowelox" ]]; then
-  err "Invalid --target: $TARGET (expected: local | sowelox)"
+# Legacy alias for the prod target (old state files / muscle memory).
+[[ "$TARGET" == "sowelox" ]] && TARGET="prod"
+
+if [[ -n "$TARGET" && "$TARGET" != "local" && "$TARGET" != "prod" ]]; then
+  err "Invalid --target: $TARGET (expected: local | prod)"
   exit 1
 fi
 
@@ -575,7 +604,7 @@ case "$CMD" in
   status)    cmd_status ;;
   seed)      cmd_seed ;;
   help|"")
-    echo "Usage: $0 {up|update|down|destroy|status|seed} [--target=local|sowelox]"
+    echo "Usage: $0 {up|update|down|destroy|status|seed} [--target=local|prod]"
     echo
     echo "  up       Build current branch, create+start the shadow stack (default --target=local)"
     echo "  update   Alias for up (rebuild + recreate sowel-shadow with the new image)"
@@ -583,13 +612,13 @@ case "$CMD" in
     echo "  destroy  down + delete the data dir. IRREVERSIBLE."
     echo "  status   Print containers + network + data dir state"
     echo "  seed     Login on prod, download backup, restore on shadow, restart container."
-    echo "           Reads SOWEL_PROD_HOST (default 192.168.0.230:3000),"
+    echo "           Reads SOWEL_PROD_HOST (from ../sowel-ops/ops.env),"
     echo "                 SOWEL_PROD_USER (default admin),"
     echo "                 SOWEL_PROD_PASSWORD (prompted if unset)."
     echo
     echo "Targets:"
     echo "  --target=local     Mac (Docker Desktop), http://localhost:3001 (default)"
-    echo "  --target=sowelox   side-by-side with prod, http://192.168.0.230:3001"
+    echo "  --target=prod      side-by-side with prod on the prod host, port 3001"
     echo
     echo "Typical flow: up → seed → open the URL → test"
     echo "Daily start/stop after deployment: ./scripts/run-swap.sh shadow {start|stop}"

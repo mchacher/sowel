@@ -243,6 +243,31 @@ Les réglages d'intégration (MQTT, identifiants cloud, intervalles de polling) 
 
 ---
 
+## Repo privé compagnon d'exploitation
+
+Le dépôt public `sowel` ne contient rien de spécifique à une installation donnée : pas d'hôtes, pas d'IP, pas de cibles SSH, pas d'identifiants. Gardez cette règle dans vos contributions.
+
+Si vous exploitez votre propre déploiement Sowel et voulez y brancher l'outillage développeur (swap dev/prod, instance shadow, screenshots de docs, contexte pour agents IA), créez votre propre dépôt compagnon **privé**, nommé par convention `sowel-ops`, et clonez-le à côté de votre checkout `sowel` :
+
+```
+workspace/
+├── sowel/          # dépôt public (le nom du clone importe peu)
+└── sowel-ops/      # votre dépôt privé : hôtes, cibles SSH, contexte agent
+```
+
+Il suffit d'au plus deux fichiers :
+
+| Fichier         | Rôle                                                                                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ops.env`       | Vos hôtes et cibles SSH. Partez de [`scripts/ops.env.example`](https://github.com/mchacher/sowel/blob/main/scripts/ops.env.example). Sourcé automatiquement par `scripts/run-swap.sh` et `scripts/shadow-deploy.sh`. |
+| `CLAUDE.ops.md` | Optionnel. Contexte privé pour les agents IA (topologie de production, accès aux logs, règles de sécurité). Importé par `CLAUDE.md` via `@../sowel-ops/CLAUDE.ops.md`.                                               |
+
+Les deux points d'intégration se dégradent proprement : sans `sowel-ops`, les scripts d'exploitation refusent les opérations distantes avec une erreur claire et l'import de `CLAUDE.md` est simplement ignoré. Le développement local n'a besoin de rien de tout cela.
+
+Bénéfices : les détails de votre installation sont versionnés et sauvegardés sur GitHub (en privé), tandis que le dépôt public reste réutilisable par tous.
+
+---
+
 ## Structure du projet
 
 Pour un schéma complet de la structure du projet et des détails d'architecture, voir [Vue d'ensemble de l'architecture](architecture.md).

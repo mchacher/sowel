@@ -1,6 +1,6 @@
 # Documentation fixtures
 
-This folder holds reusable Sowel backup archives used to drive **documentation screenshots**. The goal is to make screenshot regeneration repeatable: any contributor can restore a fixture onto a clean Sowel instance (for example `domopi.local`) and capture the same UI states as the ones embedded in `docs/`.
+This folder holds reusable Sowel backup archives used to drive **documentation screenshots**. The goal is to make screenshot regeneration repeatable: any contributor can restore a fixture onto a clean Sowel instance (for example a Raspberry Pi on your LAN) and capture the same UI states as the ones embedded in `docs/`.
 
 ## Files
 
@@ -42,15 +42,15 @@ Edit `scripts/doc/build-fixtures.py` to tweak the anonymization or translation m
 
 ```bash
 # Reset the demo instance to zero
-ssh mchacher@domopi.local 'cd /home/mchacher/sowel-demo && docker compose down -v && docker compose up -d'
+ssh <demo-host> 'cd <demo-compose-dir> && docker compose down -v && docker compose up -d'
 
 # Wait for the wizard to come up, create an admin via the UI, then:
-TOKEN=$(curl -s -X POST http://domopi.local:3001/api/v1/auth/login \
+TOKEN=$(curl -s -X POST http://<demo-host>:3001/api/v1/auth/login \
   -H "Content-Type: application/json" \
   --data-raw '{"username":"admin","password":"<your-admin-pw>"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
 
-curl -X POST http://domopi.local:3001/api/v1/backup \
+curl -X POST http://<demo-host>:3001/api/v1/backup \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@docs/fixtures/showroom-fr.zip"
 ```
