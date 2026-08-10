@@ -1,0 +1,94 @@
+# Spec 140 — Implementation Plan
+
+> **Status: NOT STARTED.** This spec is submitted for contributor review
+> before any implementation. The plan below is the proposed sequencing.
+
+## Steps
+
+1. **Types & constants** — `EnergyLoadClass`, `EnergyLoadProfile`,
+   `CapacityRevokeReason`, `CapacityDenyReason`, claim handle types, the five
+   `energy.*` engine events, `Equipment.energyProfile`. (~0.5 d)
+2. **Migration 016** — `equipments.energy_profile` column + parse/serialize in
+   the equipment manager + surface in `EquipmentWithDetails`. (~0.5 d)
+3. **Capacity arbiter core** — `src/energy/capacity-arbiter.ts`: EMA,
+   reservation accounting, grant/release passes, min-on/min-off, override
+   suspension, staleness, decision journal, events. Pure logic separated from
+   wiring for testability (same style as `tariff-classifier`). (~2 d, tests
+   included — the largest block, driven by the test plan below)
+4. **Recipe helper** — `ctx.helpers.energy` in `recipe-manager.ts`,
+   per-instance ownership, auto-release on stop, callback guards. (~1 d)
+5. **API route + WS** — `GET /api/v1/energy/arbiter`, event broadcast,
+   settings keys. (~0.5 d)
+6. **UI** — equipment "Energy management" panel, settings card with priority
+   list, Live page status strip + journal. (~1.5 d)
+7. **Docs** — `recipe-development.md` (author rules from spec.md §"Rules for
+   recipe authors"), `api-reference.md`, `data-model.md`,
+   `architecture.md` energy section, specs-index row. (~0.5 d)
+
+Total: ~6.5 days. Steps 1-4 are mergeable without any UI (arbiter observable
+through logs + API); 5-6 can follow in the same PR or a second one.
+
+### Suggested validation on the reference installation
+
+Before writing the UI, replay the recorded July-August meter series (energy
+history API, 1 h resolution is enough for shape; 30 s synthetic
+interpolation for hold timings) against the arbiter with two simulated
+claims (AC 2000 W, pump 600 W) and assert the acceptance criteria of
+spec.md — the same series that exposed the problem should demonstrate the
+fix.
+
+## Test plan
+
+### Modules to test
+
+- `capacity-arbiter` (new) — all arbitration logic
+- `recipe-manager` (extended) — helper lifecycle
+- `equipment-manager` (extended) — profile column round-trip
+
+### Scenarios
+
+| Module            | Scenario                                                         | Expected                                                                                  |
+| ----------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| capacity-arbiter  | Single claim, surplus above watts+margin for engageHoldS         | granted, `energy.capacity.granted`, journal entry                                         |
+| capacity-arbiter  | Surplus present but < watts+margin                               | stays pending, no grant                                                                   |
+| capacity-arbiter  | Grant then own-consumption export collapse                       | **no revoke** — reservation accounting keeps availableW stable                            |
+| capacity-arbiter  | Background surge (hob): deficit sustained releaseHoldS           | bottom-up revoke `surplus-deficit`, deficit resolved, journal                             |
+| capacity-arbiter  | Deficit but all grants younger than minOnS                       | no revoke until minOnS elapses (no short-cycle)                                           |
+| capacity-arbiter  | Revoked equipment re-claimable only after minOffS                | pending until minOffS, then grantable                                                     |
+| capacity-arbiter  | Two claims, surplus fits only one                                | higher-priority granted, lower stays pending                                              |
+| capacity-arbiter  | Higher-priority claim arrives, no headroom                       | lower-priority revoked `priority-preempted`, higher granted                               |
+| capacity-arbiter  | Cloud pass shorter than releaseHoldS                             | no revocation (hysteresis)                                                                |
+| capacity-arbiter  | Manual order (`source.kind: "manual"`) on granted equipment      | immediate revoke `manual-override`, suspension, claims denied `override-active` until TTL |
+| capacity-arbiter  | Recipe/mode order (`source.kind: "recipe"`) on granted equipment | **no** override (the claiming recipe acting is normal)                                    |
+| capacity-arbiter  | Meter silent > staleAfterS                                       | revoke all `meter-stale`, status `degraded`, event                                        |
+| capacity-arbiter  | Fresh meter data after degraded                                  | status `active`, pending claims grantable again                                           |
+| capacity-arbiter  | Disable via settings                                             | revoke all `disabled`; enable restores arbitration                                        |
+| capacity-arbiter  | Claim on non-profiled equipment                                  | denied `not-profiled`                                                                     |
+| capacity-arbiter  | Second claim on claimed equipment                                | denied `equipment-already-claimed`                                                        |
+| capacity-arbiter  | Claim watts omitted                                              | reservation = profile nominalPowerW                                                       |
+| capacity-arbiter  | Equipment removed while granted                                  | revoke `disabled`, claim dropped                                                          |
+| capacity-arbiter  | Callback throws in onGranted/onRevoked                           | caught, logged, arbiter continues                                                         |
+| capacity-arbiter  | Journal bound                                                    | oldest entries evicted at capacity                                                        |
+| capacity-arbiter  | Replay: two-consumer July series                                 | zero synchronized engage/release pairs; grants strictly follow priority                   |
+| recipe-manager    | Instance stop with active claim                                  | claim auto-released, reservation freed                                                    |
+| recipe-manager    | Helper on disabled arbiter                                       | claim denied `arbiter-disabled` (helper present)                                          |
+| recipe-manager    | Two instances claim two different equipments                     | independent grants, independent revocations                                               |
+| equipment-manager | Profile write/read round-trip                                    | JSON column parsed into `energyProfile`, absent → undefined                               |
+| equipment-manager | Invalid profile JSON in DB                                       | logged warn, treated as unprofiled (no crash)                                             |
+
+### Retro-compat
+
+| Scenario                                       | Expected                                                                                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Arbiter disabled + no profiles (default state) | zero behavior change: no events, no journal, no meter subscription work beyond a cheap guard |
+| Existing recipes (no claims)                   | unaffected; `ctx.helpers.energy` presence is additive                                        |
+| Older recipe on newer core                     | never sees a callback it did not register; nothing to migrate                                |
+
+## Rollout
+
+1. Merge behind the default-off setting (`energy.arbiter.enabled = false`).
+2. Enable on the reference installation; profile the pool pump (deferrable,
+   600 W) and the AC (comfort, 2000 W); watch the journal for a week.
+3. Ship `smart-cooling` v1.4 (claim-based boost, current logic as fallback).
+4. Then only: documentation pass for community recipe authors and the store
+   template update.
