@@ -45,8 +45,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
       // Recipe packages (no runtime status — just manifest + enabled + latest version)
       const recipes = packageManager.getInstalledByType("recipe").map((pkg) => {
         // Spec 136: source-aware — personal packages check their source repo.
-        const latest = packageManager.getLatestVersionFor(pkg);
-        const hasUpdate = latest && latest !== pkg.manifest.version;
+        const update = packageManager.getAvailableUpdateFor(pkg);
         // Spec 137: resolve the display category (manifest → registry → "other")
         // at listing time — no re-release of recipe packages needed.
         const category = packageManager.resolvePackageCategory(pkg.manifest);
@@ -58,7 +57,7 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
           deviceCount: 0,
           offlineDeviceCount: 0,
           source: pkg.source,
-          ...(hasUpdate ? { latestVersion: latest } : {}),
+          ...(update ? { latestVersion: update } : {}),
         };
       });
 

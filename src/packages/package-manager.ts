@@ -24,6 +24,7 @@ import type {
   PackageSource,
   PluginSource,
 } from "../shared/types.js";
+import { isNewerVersion } from "../shared/version.js";
 import {
   type RegistryEntry,
   type RecipeCategory,
@@ -486,6 +487,7 @@ export class PackageManager {
         pinnedSha256: expected,
       });
 
+      this.sources.invalidate(repo);
       this.logger.info(
         { packageId: manifest.id, version: manifest.version, type, repo, tier: "personal" },
         "Personal package installed",
@@ -718,6 +720,7 @@ export class PackageManager {
         row.id,
       );
 
+      this.sources.invalidate(repo);
       this.logger.info(
         { packageId: row.id, from: row.version, to: newManifest.version, tier: "personal" },
         "Personal package updated",
@@ -818,6 +821,20 @@ export class PackageManager {
       return this.sources.getCachedRelease(pkg.manifest.repo)?.version;
     }
     return this.getLatestVersions().get(pkg.manifest.id);
+  }
+
+  /**
+   * The version to offer as an update for an installed package, or
+   * undefined when it is already up to date. Unlike
+   * `getLatestVersionFor`, this compares semver instead of testing for
+   * inequality: a cached "latest" that is older than what is installed
+   * (a stale release cache, a rolled-back registry entry) is not an
+   * update and must never be offered — otherwise the UI proposes a
+   * downgrade to a version the user already skipped.
+   */
+  getAvailableUpdateFor(pkg: InstalledPackage): string | undefined {
+    const latest = this.getLatestVersionFor(pkg);
+    return latest && isNewerVersion(latest, pkg.manifest.version) ? latest : undefined;
   }
 
   /** Lookup repo URL from registry */

@@ -125,6 +125,19 @@ export class PersonalSourceManager {
   }
 
   /**
+   * Drop the cached release for a repo and re-probe it in the
+   * background. Called after an install or update: those paths download
+   * `releases/latest` live, so once they succeed the cache — which may
+   * still hold whatever release was current up to an hour ago — is known
+   * to be behind reality. Leaving it in place makes the UI offer an
+   * "update" to the older release the user just leapfrogged.
+   */
+  invalidate(repo: string): void {
+    this.releaseCache.delete(repo);
+    this.refreshInBackground(repo);
+  }
+
+  /**
    * Fetch the latest release of a repo from the GitHub API and update
    * the cache. Returns undefined (and keeps any previous cache entry
    * usable) on any failure — a missing release is a normal state for a

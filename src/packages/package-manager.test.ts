@@ -958,6 +958,52 @@ describe("PackageManager — spec 136 personal plugin sources", () => {
     expect(pkg.source).toBe("personal");
     expect(manager.getLatestVersionFor(pkg)).toBe("2.0.0");
   });
+
+  // ── Update badge (stale release cache regression) ─────────────
+
+  it("stops offering a skipped release once a newer one has been installed", async () => {
+    await addSourceAndInstall();
+
+    // v1.1.0 ships and lands in the release cache — the user ignores the badge.
+    writePersonalManifest({ version: "1.1.0" });
+    const v11Tarball = resolve(tmpDir, "personal-v1.1.0.tar.gz");
+    await buildTarball(pkgSrcDir, v11Tarball);
+    mockPersonalFetch(v11Tarball, "v1.1.0");
+    await manager.sources.fetchLatestRelease(PERSONAL_REPO);
+    expect(manager.getAvailableUpdateFor(manager.getById("mytest")!)).toBe("1.1.0");
+
+    // v2.0.0 ships before the 1h cache TTL expires. The update path reads
+    // releases/latest live, so it installs 2.0.0 while the cache still
+    // holds 1.1.0 — which used to be re-offered as an update forever.
+    const v2 = await publishV2();
+    await manager.updateFiles("mytest", { confirmed: true, expectedSha256: v2.sha });
+
+    expect(getRow("mytest")!.version).toBe("2.0.0");
+    expect(manager.getAvailableUpdateFor(manager.getById("mytest")!)).toBeUndefined();
+  });
+
+  it("never offers a cached release older than the installed version", async () => {
+    await addSourceAndInstall();
+
+    // Cache pinned to an older release with a fresh timestamp (no background
+    // refresh): the raw lookup still reports it, the update check must not.
+    const cache = (
+      manager.sources as unknown as {
+        releaseCache: Map<
+          string,
+          { release: { version: string; assetName: string }; time: number }
+        >;
+      }
+    ).releaseCache;
+    cache.set(PERSONAL_REPO, {
+      release: { version: "0.9.0", assetName: "sowel-plugin-mytest-0.9.0.tar.gz" },
+      time: Date.now(),
+    });
+
+    const pkg = manager.getById("mytest")!;
+    expect(manager.getLatestVersionFor(pkg)).toBe("0.9.0");
+    expect(manager.getAvailableUpdateFor(pkg)).toBeUndefined();
+  });
 });
 
 // ─── Spec 137 — Recipe categories + store passthrough ─────────────────────

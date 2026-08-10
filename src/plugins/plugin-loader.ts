@@ -16,17 +16,6 @@ import {
   wrapPluginMethods,
 } from "./scoped-deps.js";
 
-/** Simple semver comparison: returns true if a > b */
-function isNewerVersion(a: string, b: string): boolean {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true;
-    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false;
-  }
-  return false;
-}
-
 /**
  * Integration-specific plugin loader.
  * Uses PackageManager for distribution, handles integration lifecycle
@@ -242,7 +231,7 @@ export class PluginLoader {
       const offlineDevices = pluginDevices.filter((d) => d.status === "offline");
 
       // Spec 136: source-aware — personal packages check their source repo.
-      const latest = this.packageManager.getLatestVersionFor(pkg);
+      const update = this.packageManager.getAvailableUpdateFor(pkg);
 
       return {
         manifest: pkg.manifest,
@@ -252,9 +241,7 @@ export class PluginLoader {
         deviceCount: pluginDevices.length,
         offlineDeviceCount: offlineDevices.length,
         source: pkg.source,
-        ...(latest && isNewerVersion(latest, pkg.manifest.version)
-          ? { latestVersion: latest }
-          : {}),
+        ...(update ? { latestVersion: update } : {}),
       };
     });
   }
