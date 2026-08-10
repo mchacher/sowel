@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import mqtt, { type MqttClient } from "mqtt";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
@@ -28,6 +29,9 @@ interface MappingRef {
 const TRUTHY = new Set<unknown>([true, "ON", "open"]);
 const FALSY = new Set<unknown>([false, "OFF", "closed"]);
 
+/** Minimum interval between two "reconnecting" warn lines per broker. */
+const RECONNECT_LOG_WINDOW_MS = 60_000;
+
 function toMqttValue(value: unknown): unknown {
   if (TRUTHY.has(value)) return 1;
   if (FALSY.has(value)) return 0;
@@ -52,6 +56,9 @@ export class MqttPublishService {
 
   /** Cache of last published values — key = "brokerId:topic:publishKey" */
   private lastPublished: Map<string, unknown> = new Map();
+
+  /** Reconnect warn throttling per broker — a connection flap must not flood the logs. */
+  private reconnectLog: Map<string, { lastWarn: number; suppressed: number }> = new Map();
 
   constructor(
     private readonly eventBus: EventBus,
@@ -106,7 +113,11 @@ export class MqttPublishService {
     this.disconnectBroker(brokerId);
 
     const client = mqtt.connect(broker.url, {
-      clientId: `sowel-publisher-${brokerId.slice(0, 8)}`,
+      // Unique per process: a deterministic id collides with any other instance
+      // running on a copy of the same DB (same broker row), and the broker then
+      // kicks the two clients in a takeover loop (#399). clean:true means no
+      // session state depends on a stable id.
+      clientId: `sowel-publisher-${brokerId.slice(0, 8)}-${randomUUID().slice(0, 8)}`,
       username: broker.username,
       password: broker.password,
       clean: true,
@@ -115,16 +126,29 @@ export class MqttPublishService {
 
     let firstConnect = true;
     client.on("connect", () => {
-      this.logger.info({ brokerId, brokerUrl: broker.url }, "MQTT publish broker connected");
       // Only publish snapshot on first connect, not on every reconnect
       if (firstConnect) {
+        this.logger.info({ brokerId, brokerUrl: broker.url }, "MQTT publish broker connected");
         this.publishInitialSnapshotForBroker(brokerId);
         firstConnect = false;
+      } else {
+        this.logger.debug({ brokerId, brokerUrl: broker.url }, "MQTT publish broker reconnected");
       }
     });
 
     client.on("reconnect", () => {
-      this.logger.warn({ brokerId }, "MQTT publish broker reconnecting...");
+      const state = this.reconnectLog.get(brokerId) ?? { lastWarn: 0, suppressed: 0 };
+      const now = Date.now();
+      if (now - state.lastWarn >= RECONNECT_LOG_WINDOW_MS) {
+        this.logger.warn(
+          { brokerId, suppressedSinceLastLog: state.suppressed },
+          "MQTT publish broker reconnecting...",
+        );
+        this.reconnectLog.set(brokerId, { lastWarn: now, suppressed: 0 });
+      } else {
+        state.suppressed += 1;
+        this.reconnectLog.set(brokerId, state);
+      }
     });
 
     client.on("error", (err) => {
