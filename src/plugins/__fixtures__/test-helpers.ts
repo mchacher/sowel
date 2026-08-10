@@ -72,9 +72,14 @@ export function makeMockSettings(initial: Record<string, string> = {}): Settings
       password: store.get("integration.zigbee2mqtt.mqtt_password"),
       clientId: store.get("integration.zigbee2mqtt.mqtt_client_id") ?? "sowel",
     })),
-    getZ2mConfig: vi.fn(() => ({
-      baseTopic: store.get("integration.zigbee2mqtt.base_topic") ?? "zigbee2mqtt",
-    })),
+    getZ2mConfig: vi.fn(() => {
+      const raw = store.get("integration.zigbee2mqtt.base_topic") ?? "zigbee2mqtt";
+      const baseTopics = raw
+        .split(",")
+        .map((entry) => entry.split(":")[0]!.trim())
+        .filter(Boolean);
+      return { baseTopic: baseTopics[0] ?? "zigbee2mqtt", baseTopics };
+    }),
   } as unknown as SettingsManager;
 }
 

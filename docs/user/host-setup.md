@@ -116,6 +116,82 @@ mosquitto_pub -h <host-ip> -p 1883 -t test/hello -m "ok"
 
 If the message arrives, the broker is reachable. You can now point the Sowel Zigbee2MQTT plugin (and Z2M itself) to `mqtt://<host-ip>:1883`.
 
+## Several Zigbee coordinators
+
+A single Zigbee coordinator covers most homes. You need a second one when the house is too large for one mesh, when an outbuilding is out of range, or when you hit the coordinator's device limit.
+
+Zigbee2MQTT drives **one coordinator per instance**. Two coordinators therefore means two Z2M instances — but still **one MQTT broker**, and **one** Zigbee2MQTT plugin in Sowel.
+
+!!! warning "Each instance needs its own base topic"
+Do not give two instances the same `base_topic`. `bridge/devices`, `bridge/info` and `bridge/state` are retained topics: the instances would overwrite each other's device list, and Sowel would see the networks appear and disappear in turn.
+
+### Run one container per coordinator
+
+Each instance needs its own data volume, base topic, frontend port and Zigbee channel:
+
+```yaml
+services:
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./z2m-data:/app/data
+    ports:
+      - 8080:8080
+
+  zigbee2mqtt-annex:
+    image: koenkk/zigbee2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./z2m-annex-data:/app/data # separate volume — never share it
+    ports:
+      - 8081:8080
+```
+
+Then, in each instance's `data/configuration.yaml`:
+
+```yaml
+# instance 1                     # instance 2
+mqtt:                            mqtt:
+  base_topic: zigbee2mqtt          base_topic: zigbee2mqtt_annex
+  server: mqtt://<host-ip>:1883    server: mqtt://<host-ip>:1883
+serial:                          serial:
+  port: tcp://<coord1-ip>:6638     port: tcp://<coord2-ip>:6638
+  adapter: zstack                  adapter: zstack
+advanced:                        advanced:
+  channel: 11                      channel: 25
+frontend:                        frontend:
+  port: 8080                       port: 8080
+```
+
+The same settings are reachable from the Z2M web interface under **Settings → MQTT**, **Advanced** and **Serial port**, which avoids editing the file by hand.
+
+!!! tip "Use different Zigbee channels"
+Two networks on the same channel within radio range of each other share airtime and both degrade. Pick channels far apart — 11, 15, 20 and 25 are the usual choices. Set the channel **before pairing devices**: changing it later may force you to re-pair part of the network.
+
+### Declare the networks in Sowel
+
+In **Administration → Integrations → Zigbee2MQTT**, list the base topics in **Zigbee2MQTT Base Topic(s)**, separated by commas:
+
+```
+zigbee2mqtt, zigbee2mqtt_annex
+```
+
+The first network keeps its device names as-is. Devices of the following networks are prefixed with their base topic — `zigbee2mqtt_annex/kitchen_lamp` — so that two networks can host the same friendly name without their devices merging in Sowel.
+
+!!! warning "The order of the list is part of the device identity"
+Device identifiers derive from this list. Reordering it, or renaming a base topic, orphans the affected devices and drops their equipment bindings. Append new networks at the end.
+
+If friendly names are known to be unique across all your networks, you can drop the prefix for a given network by suffixing its entry with a colon:
+
+```
+zigbee2mqtt, zigbee2mqtt_annex:
+```
+
+Two devices sharing a name then silently become a single Sowel device, so only do this if you control the naming.
+
+Adding a third coordinator later is the same three steps: a new container with its own volume, port, base topic and channel, then that base topic appended to the list.
+
 ## Troubleshooting
 
 ### `Error: cannot reach the Docker daemon`

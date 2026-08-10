@@ -116,6 +116,82 @@ mosquitto_pub -h <ip-de-l'hôte> -p 1883 -t test/hello -m "ok"
 
 Si le message arrive, le broker est joignable. Vous pouvez maintenant pointer le plugin Zigbee2MQTT de Sowel (et Z2M lui-même) vers `mqtt://<ip-de-l'hôte>:1883`.
 
+## Plusieurs coordinateurs Zigbee
+
+Un seul coordinateur Zigbee suffit à la plupart des maisons. Un deuxième devient nécessaire quand le bâtiment est trop grand pour un seul maillage, quand une dépendance est hors de portée, ou quand vous atteignez la limite d'appareils du coordinateur.
+
+Zigbee2MQTT pilote **un coordinateur par instance**. Deux coordinateurs, c'est donc deux instances Z2M — mais toujours **un seul broker MQTT**, et **un seul** plugin Zigbee2MQTT dans Sowel.
+
+!!! warning "Chaque instance a besoin de son propre base topic"
+Ne donnez jamais le même `base_topic` à deux instances. `bridge/devices`, `bridge/info` et `bridge/state` sont des topics retenus : les instances écraseraient mutuellement leur liste d'appareils, et Sowel verrait les réseaux apparaître et disparaître à tour de rôle.
+
+### Un conteneur par coordinateur
+
+Chaque instance a besoin de son propre volume de données, base topic, port de frontend et canal Zigbee :
+
+```yaml
+services:
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./z2m-data:/app/data
+    ports:
+      - 8080:8080
+
+  zigbee2mqtt-annexe:
+    image: koenkk/zigbee2mqtt
+    restart: unless-stopped
+    volumes:
+      - ./z2m-annexe-data:/app/data # volume séparé — ne jamais le partager
+    ports:
+      - 8081:8080
+```
+
+Puis, dans le `data/configuration.yaml` de chaque instance :
+
+```yaml
+# instance 1                     # instance 2
+mqtt:                            mqtt:
+  base_topic: zigbee2mqtt          base_topic: zigbee2mqtt_annexe
+  server: mqtt://<ip-hôte>:1883    server: mqtt://<ip-hôte>:1883
+serial:                          serial:
+  port: tcp://<ip-coord1>:6638     port: tcp://<ip-coord2>:6638
+  adapter: zstack                  adapter: zstack
+advanced:                        advanced:
+  channel: 11                      channel: 25
+frontend:                        frontend:
+  port: 8080                       port: 8080
+```
+
+Ces mêmes réglages sont accessibles depuis l'interface web de Z2M, sous **Paramètres → MQTT**, **Avancé** et **Port série**, ce qui évite d'éditer le fichier à la main.
+
+!!! tip "Utilisez des canaux Zigbee différents"
+Deux réseaux sur le même canal et à portée radio l'un de l'autre se partagent le temps d'antenne et se dégradent mutuellement. Choisissez des canaux éloignés — 11, 15, 20 et 25 sont les valeurs habituelles. Réglez le canal **avant d'appairer les appareils** : le changer ensuite peut vous obliger à ré-appairer une partie du réseau.
+
+### Déclarer les réseaux dans Sowel
+
+Dans **Administration → Intégrations → Zigbee2MQTT**, listez les base topics dans le champ **Zigbee2MQTT Base Topic(s)**, séparés par des virgules :
+
+```
+zigbee2mqtt, zigbee2mqtt_annexe
+```
+
+Le premier réseau conserve les noms d'appareils tels quels. Les appareils des réseaux suivants sont préfixés par leur base topic — `zigbee2mqtt_annexe/lampe_cuisine` — afin que deux réseaux puissent héberger le même nom sans que leurs appareils ne fusionnent dans Sowel.
+
+!!! warning "L'ordre de la liste fait partie de l'identité des appareils"
+Les identifiants d'appareils dérivent de cette liste. La réordonner, ou renommer un base topic, orpheline les appareils concernés et supprime leurs liaisons d'équipement. Ajoutez les nouveaux réseaux à la fin.
+
+Si vous savez que les noms sont uniques sur l'ensemble de vos réseaux, vous pouvez supprimer le préfixe d'un réseau donné en terminant son entrée par deux-points :
+
+```
+zigbee2mqtt, zigbee2mqtt_annexe:
+```
+
+Deux appareils portant le même nom deviennent alors silencieusement un seul appareil Sowel : ne le faites que si vous maîtrisez le nommage.
+
+Ajouter un troisième coordinateur plus tard, ce sont les mêmes trois étapes : un nouveau conteneur avec son volume, son port, son base topic et son canal, puis ce base topic ajouté à la fin de la liste.
+
 ## Dépannage
 
 ### `Error: cannot reach the Docker daemon`

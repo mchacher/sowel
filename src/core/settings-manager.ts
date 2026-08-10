@@ -94,10 +94,29 @@ export class SettingsManager {
     };
   }
 
-  /** Get Zigbee2mqtt config from settings. */
-  getZ2mConfig(): { baseTopic: string } {
-    return {
-      baseTopic: this.get("integration.zigbee2mqtt.base_topic") ?? "zigbee2mqtt",
-    };
+  /**
+   * Get Zigbee2mqtt config from settings.
+   *
+   * Zigbee2MQTT drives one coordinator per instance, so a home with several
+   * coordinators runs several instances on one broker and the setting holds a
+   * comma-separated list of their base topics. `baseTopics` is that list;
+   * `baseTopic` is its first entry, i.e. the primary network, kept so callers
+   * written for a single network keep working.
+   */
+  getZ2mConfig(): { baseTopic: string; baseTopics: string[] } {
+    const raw = this.get("integration.zigbee2mqtt.base_topic") ?? "zigbee2mqtt";
+    const baseTopics = [
+      ...new Set(
+        raw
+          // Each entry is `topic` or `topic:device-prefix` — only the topic part
+          // addresses MQTT.
+          .split(",")
+          .map((entry) => entry.split(":")[0]!.trim().replace(/\/+$/, ""))
+          .filter((topic) => topic !== ""),
+      ),
+    ];
+    if (baseTopics.length === 0) baseTopics.push("zigbee2mqtt");
+
+    return { baseTopic: baseTopics[0]!, baseTopics };
   }
 }
