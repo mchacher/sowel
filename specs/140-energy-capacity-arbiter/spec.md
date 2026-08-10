@@ -135,7 +135,9 @@ the hob on) → revoke bottom-up until the balance is restored.
   fallback (same contract as `getTariff()` absence).
 - **FR-6** A manual, button, or external order on a profiled equipment revokes
   its grant (`reason: "manual-override"`) and suspends arbitration of that
-  equipment for `overrideTtlS` (default 2 h).
+  equipment for `overrideTtlS` (default 2 h). The suspension is first-class in
+  the UI: the equipment card shows "Manual until HH:MM" and offers a "resume
+  control now" action that lifts it immediately.
 - **FR-7** No meter update for `staleAfterS` (default 300 s) → revoke all
   grants (`reason: "meter-stale"`), arbiter state `degraded`. Disabling the
   arbiter revokes all grants (`reason: "disabled"`). Both are ordinary,
@@ -144,9 +146,16 @@ the hob on) → revoke bottom-up until the balance is restored.
 - **FR-8** Every transition (grant, revoke, deny, release, degrade) is logged
   (pino, structured) and appended to a bounded in-memory decision journal
   exposed to the UI. Nothing ever happens without a visible reason.
-- **FR-9** A revoked grant whose measured effect does not materialize (export
-  does not recover within a watchdog window) is logged and journaled as
-  `revoke-not-honored` — audit only in phase 1, no enforcement.
+- **FR-9** Audit-only signals (no enforcement in phase 1), each logged and
+  journaled: `revoke-not-honored` (a revoked grant whose measured effect never
+  materializes within the watchdog window), `comfort-off-after-revoke` (an OFF
+  order from the claiming instance on a comfort-class equipment right after a
+  revocation — the recipe violates the degrade-never-off convention),
+  `watts-drift` (a power binding shows sustained draw deviating > 30 % from
+  the declared nominal — advisory only, the accounting stays on declared
+  watts), and `unclaimed-run` (a profiled equipment switched on by a recipe
+  holding no grant — legitimate for hard-quota fallbacks, and it explains a
+  shrunken surplus to whoever reads the journal).
 
 ## How recipes use it
 
@@ -248,6 +257,20 @@ claim = ctx.helpers.energy?.claimCapacity({
 The "it must really run today" guarantee is the recipe's quota fallback, not
 the claim — a deferrable load losing its grant loses nothing but time.
 
+**Hard quotas larger than the cheap windows** (a 12 h filtration against 8 h
+of HC) are the stress case, and the resolution rests on one principle: **a
+grant is never required to run**. The arbiter coordinates surplus; it does not
+gate operation. The recipe holds a time-budget invariant — when
+`remaining quota ≥ remaining usable time`, it enters must-run mode and simply
+switches the load on, grant or not, peak price or not. Deadline beats
+priority _by construction_, because priority only governs grants and grants
+are optional. While force-running, the recipe **keeps its claim open** (author
+rule 5): if the grant arrives, the arbiter's books become exact at once — the
+load's draw is already in the meter, so `export + granted` lands on the true
+surplus — and either way the journal shows an `unclaimed-run` entry instead of
+a mystery hole in the surplus. Core-side quota placement with deadline
+escalation is exactly the phase 2 follow-up this API keeps room for.
+
 ### Worked example 3 — the heat-wave dinner scenario
 
 16:30, heat wave. AC boost granted (2 000 W), pump granted (600 W), induction
@@ -272,6 +295,12 @@ switched the AC off, and every step is one line in the decision journal.
    the oscillation this spec removes.
 4. `release()` when the need disappears (evening, quota met) — do not hold
    grants you no longer use; the watts belong to the next load in the list.
+5. Hard-quota loads: when your deadline forces you to run without a grant,
+   run — but **keep the claim open while you do**. A grant landing on an
+   already-running load makes the arbiter's accounting exact (your draw is
+   already in the meter), and the `unclaimed-run` journal entry tells the
+   user why the surplus looks short. Never release a claim just because you
+   decided to run anyway.
 
 ## Acceptance criteria
 
@@ -295,22 +324,47 @@ switched the AC off, and every step is one line in the decision journal.
       watts, reason, and origin claim note.
 - [ ] All-off default: arbiter disabled and no profiles → strictly zero
       behavior change anywhere in the engine.
+- [ ] "Resume control now" lifts a manual suspension immediately.
+- [ ] Audit signals fire on their patterns: `watts-drift` (sustained
+      declared/measured gap > 30 %), `comfort-off-after-revoke`,
+      `unclaimed-run` (profiled equipment running grantless).
 
-## Open questions for review
+## Review log
 
-1. **API shape**: callbacks (`onGranted`/`onRevoked`) vs engine-bus
-   subscription vs both — is the callback contract right for recipe authors?
-   (Current draft: callbacks are the contract, events are observability.)
-2. **Namespace**: `ctx.helpers.energy.claimCapacity()` vs flat
-   `ctx.helpers.claimCapacity()` — spec 138 chose flat (`getTariff`), this
-   draft opens a namespace because a family is coming (state, later quota).
-3. **Watts trust**: the accounting trusts declared watts. Should a power data
-   binding on the equipment, when present, refine the reservation with the
-   measured draw (and how fast)?
-4. **Comfort semantics**: is "revoke = degrade, never off" better enforced by
-   convention (recipe-side, current draft) or should the arbiter refuse
-   `deferrable`-style claims on `comfort`-class equipments entirely?
-5. **Defaults**: engage 120 s hold / release 300 s hold / EMA 60 s /
-   override TTL 2 h / stale 300 s — sane for real PV installations?
-6. **Priority UI**: one global ordered list (current draft) vs per-class
-   lists. One list is simpler and matches "revoke bottom-up"; is it enough?
+### Resolved — maintainer review pass, 2026-08-11
+
+1. **API shape** (was open question 1): **callbacks are the contract**;
+   `energy.capacity.*` events are observability for the UI and bystanders.
+   Rationale: no global-stream filtering in recipes, edge-guarding is
+   structural, the arbiter knows exactly who to notify.
+2. **Watts trust** (was open question 3): reservation accounting runs on
+   **declared watts**. When a power binding exists, the arbiter emits an
+   advisory `watts-drift` journal entry on a sustained > 30 % gap so the user
+   corrects the profile. Live measured refinement is deferred to phase 2.
+3. **Comfort semantics** (was open question 4): convention **plus targeted
+   audit** — the arbiter journals `comfort-off-after-revoke` when the claiming
+   instance sends an OFF order to a comfort-class equipment right after a
+   revocation. No order-countermanding (phase 1 issues no orders).
+4. **Defaults** (was open question 5): `releaseHoldS` default raised
+   **300 → 600 s**, grounded in a 6-day raw-meter simulation on the reference
+   installation (dip-duration distribution below a 600 W load's need: 56 %
+   < 5 min, 72 % < 10 min; 600 s cuts pump revocations 5.8 → 3.7/day for
+   ~3 c/day of grid; gains flatten beyond 900 s). EMA 60 s, engage 120 s,
+   min-on 900 s, min-off 300 s unchanged; all tunable in advanced settings.
+5. **Priority** (was open question 6): **single global ordered list**
+   confirmed. Per-class rules are re-evaluated with the kVA phase.
+6. **Manual override**: TTL 2 h confirmed; the suspension chip and "resume
+   control now" action are explicitly in phase 1 UI scope (FR-6).
+7. **Claims persistence**: **runtime-only** confirmed; the 2-5 min post-restart
+   warm-up is accepted against the stale-state bug class.
+8. **Hard quotas above the cheap windows** (12 h filtration vs 8 h HC),
+   raised during review: resolved by the "a grant is never required to run"
+   principle, author rule 5 (keep the claim open while force-running — a
+   grant landing on a running load makes the books exact) and the
+   `unclaimed-run` audit signal. See Worked example 2.
+
+### Still open — for contributor review
+
+- **Namespace**: `ctx.helpers.energy.claimCapacity()` (namespaced family, this
+  draft) vs flat `ctx.helpers.claimCapacity()` — spec 138 chose flat
+  (`getTariff`); the namespace bets on a growing family (state, later quota).

@@ -47,34 +47,39 @@ fix.
 
 ### Scenarios
 
-| Module            | Scenario                                                         | Expected                                                                                  |
-| ----------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| capacity-arbiter  | Single claim, surplus above watts+margin for engageHoldS         | granted, `energy.capacity.granted`, journal entry                                         |
-| capacity-arbiter  | Surplus present but < watts+margin                               | stays pending, no grant                                                                   |
-| capacity-arbiter  | Grant then own-consumption export collapse                       | **no revoke** — reservation accounting keeps availableW stable                            |
-| capacity-arbiter  | Background surge (hob): deficit sustained releaseHoldS           | bottom-up revoke `surplus-deficit`, deficit resolved, journal                             |
-| capacity-arbiter  | Deficit but all grants younger than minOnS                       | no revoke until minOnS elapses (no short-cycle)                                           |
-| capacity-arbiter  | Revoked equipment re-claimable only after minOffS                | pending until minOffS, then grantable                                                     |
-| capacity-arbiter  | Two claims, surplus fits only one                                | higher-priority granted, lower stays pending                                              |
-| capacity-arbiter  | Higher-priority claim arrives, no headroom                       | lower-priority revoked `priority-preempted`, higher granted                               |
-| capacity-arbiter  | Cloud pass shorter than releaseHoldS                             | no revocation (hysteresis)                                                                |
-| capacity-arbiter  | Manual order (`source.kind: "manual"`) on granted equipment      | immediate revoke `manual-override`, suspension, claims denied `override-active` until TTL |
-| capacity-arbiter  | Recipe/mode order (`source.kind: "recipe"`) on granted equipment | **no** override (the claiming recipe acting is normal)                                    |
-| capacity-arbiter  | Meter silent > staleAfterS                                       | revoke all `meter-stale`, status `degraded`, event                                        |
-| capacity-arbiter  | Fresh meter data after degraded                                  | status `active`, pending claims grantable again                                           |
-| capacity-arbiter  | Disable via settings                                             | revoke all `disabled`; enable restores arbitration                                        |
-| capacity-arbiter  | Claim on non-profiled equipment                                  | denied `not-profiled`                                                                     |
-| capacity-arbiter  | Second claim on claimed equipment                                | denied `equipment-already-claimed`                                                        |
-| capacity-arbiter  | Claim watts omitted                                              | reservation = profile nominalPowerW                                                       |
-| capacity-arbiter  | Equipment removed while granted                                  | revoke `disabled`, claim dropped                                                          |
-| capacity-arbiter  | Callback throws in onGranted/onRevoked                           | caught, logged, arbiter continues                                                         |
-| capacity-arbiter  | Journal bound                                                    | oldest entries evicted at capacity                                                        |
-| capacity-arbiter  | Replay: two-consumer July series                                 | zero synchronized engage/release pairs; grants strictly follow priority                   |
-| recipe-manager    | Instance stop with active claim                                  | claim auto-released, reservation freed                                                    |
-| recipe-manager    | Helper on disabled arbiter                                       | claim denied `arbiter-disabled` (helper present)                                          |
-| recipe-manager    | Two instances claim two different equipments                     | independent grants, independent revocations                                               |
-| equipment-manager | Profile write/read round-trip                                    | JSON column parsed into `energyProfile`, absent → undefined                               |
-| equipment-manager | Invalid profile JSON in DB                                       | logged warn, treated as unprofiled (no crash)                                             |
+| Module            | Scenario                                                          | Expected                                                                                  |
+| ----------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| capacity-arbiter  | Single claim, surplus above watts+margin for engageHoldS          | granted, `energy.capacity.granted`, journal entry                                         |
+| capacity-arbiter  | Surplus present but < watts+margin                                | stays pending, no grant                                                                   |
+| capacity-arbiter  | Grant then own-consumption export collapse                        | **no revoke** — reservation accounting keeps availableW stable                            |
+| capacity-arbiter  | Background surge (hob): deficit sustained releaseHoldS            | bottom-up revoke `surplus-deficit`, deficit resolved, journal                             |
+| capacity-arbiter  | Deficit but all grants younger than minOnS                        | no revoke until minOnS elapses (no short-cycle)                                           |
+| capacity-arbiter  | Revoked equipment re-claimable only after minOffS                 | pending until minOffS, then grantable                                                     |
+| capacity-arbiter  | Two claims, surplus fits only one                                 | higher-priority granted, lower stays pending                                              |
+| capacity-arbiter  | Higher-priority claim arrives, no headroom                        | lower-priority revoked `priority-preempted`, higher granted                               |
+| capacity-arbiter  | Cloud pass shorter than releaseHoldS                              | no revocation (hysteresis)                                                                |
+| capacity-arbiter  | Manual order (`source.kind: "manual"`) on granted equipment       | immediate revoke `manual-override`, suspension, claims denied `override-active` until TTL |
+| capacity-arbiter  | Recipe/mode order (`source.kind: "recipe"`) on granted equipment  | **no** override (the claiming recipe acting is normal)                                    |
+| capacity-arbiter  | Meter silent > staleAfterS                                        | revoke all `meter-stale`, status `degraded`, event                                        |
+| capacity-arbiter  | Fresh meter data after degraded                                   | status `active`, pending claims grantable again                                           |
+| capacity-arbiter  | Disable via settings                                              | revoke all `disabled`; enable restores arbitration                                        |
+| capacity-arbiter  | Claim on non-profiled equipment                                   | denied `not-profiled`                                                                     |
+| capacity-arbiter  | Second claim on claimed equipment                                 | denied `equipment-already-claimed`                                                        |
+| capacity-arbiter  | Claim watts omitted                                               | reservation = profile nominalPowerW                                                       |
+| capacity-arbiter  | Equipment removed while granted                                   | revoke `disabled`, claim dropped                                                          |
+| capacity-arbiter  | Callback throws in onGranted/onRevoked                            | caught, logged, arbiter continues                                                         |
+| capacity-arbiter  | Journal bound                                                     | oldest entries evicted at capacity                                                        |
+| capacity-arbiter  | Sustained measured draw > 30 % off declared (power binding)       | advisory `watts-drift` journal entry; reservation math unchanged                          |
+| capacity-arbiter  | OFF order from claiming instance on comfort equipment post-revoke | `comfort-off-after-revoke` journal anomaly, no countermanding                             |
+| capacity-arbiter  | Recipe ON order on profiled equipment with no grant               | `unclaimed-run` info journal entry; accounting treats the draw as background              |
+| capacity-arbiter  | Grant lands on an already-running load (rule 5 must-run)          | no duplicate accounting: available stays on the true surplus                              |
+| capacity-arbiter  | POST resume/:equipmentId during suspension                        | suspension lifted immediately, pending claims grantable                                   |
+| capacity-arbiter  | Replay: two-consumer July series                                  | zero synchronized engage/release pairs; grants strictly follow priority                   |
+| recipe-manager    | Instance stop with active claim                                   | claim auto-released, reservation freed                                                    |
+| recipe-manager    | Helper on disabled arbiter                                        | claim denied `arbiter-disabled` (helper present)                                          |
+| recipe-manager    | Two instances claim two different equipments                      | independent grants, independent revocations                                               |
+| equipment-manager | Profile write/read round-trip                                     | JSON column parsed into `energyProfile`, absent → undefined                               |
+| equipment-manager | Invalid profile JSON in DB                                        | logged warn, treated as unprofiled (no crash)                                             |
 
 ### Retro-compat
 

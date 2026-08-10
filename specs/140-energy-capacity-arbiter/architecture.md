@@ -72,7 +72,7 @@ sustained draw), else left blank.
 | `energy.arbiter.priority`      | `[]`    | JSON array of equipment ids, ordered, grant top-down / revoke bottom-up |
 | `energy.arbiter.engageMarginW` | `100`   | headroom above claim watts before granting                              |
 | `energy.arbiter.engageHoldS`   | `120`   | sustained availability before a grant                                   |
-| `energy.arbiter.releaseHoldS`  | `300`   | sustained deficit before a revoke                                       |
+| `energy.arbiter.releaseHoldS`  | `600`   | sustained deficit before a revoke (measured: see review log, spec.md)   |
 | `energy.arbiter.smoothingS`    | `60`    | EMA time constant on signed grid power                                  |
 | `energy.arbiter.overrideTtlS`  | `7200`  | manual-override suspension                                              |
 | `energy.arbiter.staleAfterS`   | `300`   | meter silence before degraded mode                                      |
@@ -157,13 +157,29 @@ Priority preemption is the same machinery: a higher-priority pending claim
 that no longer fits creates a deficit against lower-priority grants →
 `priority-preempted` revocation bottom-up, then the grant pass serves it.
 
-### Watchdog (FR-9)
+### Audit signals (FR-9)
 
-After a revoke, expected export recovery ≈ revoked watts. If the smoothed
-export has not risen by ≥ 50 % of that within `2 × releaseHoldS`, journal
-`revoke-not-honored` (audit only). False positives are possible (a cloud can
-mask the recovery) — acceptable for an audit signal, stated in the journal
-entry copy.
+All audit-only, journal + structured log, zero enforcement in phase 1:
+
+- **`revoke-not-honored`** — after a revoke, expected export recovery ≈
+  revoked watts. If the smoothed export has not risen by ≥ 50 % of that
+  within `2 × releaseHoldS`, journal it. False positives are possible (a
+  cloud can mask the recovery) — acceptable for an audit signal, stated in
+  the journal entry copy.
+- **`comfort-off-after-revoke`** — an `equipment.order.executed` with
+  `source.kind: "recipe"` matching the claiming `instanceId`, an OFF-like
+  value, on a `comfort`-class equipment, within `releaseHoldS` of that
+  claim's revocation. Detects recipes violating the degrade-never-off
+  convention, without countermanding anything.
+- **`watts-drift`** — when the profiled equipment has a `power` data binding:
+  compare its smoothed draw while granted against the declared
+  `nominalPowerW`; journal an advisory on a sustained > 30 % gap, suggesting
+  a profile correction. The reservation math never switches to the measured
+  value in phase 1 (review decision 2).
+- **`unclaimed-run`** — an ON-like `equipment.order.executed` with
+  `source.kind: "recipe"` on a profiled equipment holding no grant.
+  Legitimate (hard-quota must-run fallbacks, author rule 5); journaled at
+  info level so a shrunken surplus is explainable.
 
 ## Recipe API wiring
 
@@ -200,10 +216,13 @@ per batch like other high-frequency events; `energy.arbiter.status` emitted on
 change only, not per tick). Emitted by core only — the spec 111 plugin emit
 allowlist is untouched.
 
-## API routes (read + settings only)
+## API routes
 
-- `GET /api/v1/energy/arbiter` → status, available watts, grants, journal
-  (auth: any authenticated user; journal carries no prices).
+- `GET /api/v1/energy/arbiter` → status, available watts, grants, active
+  suspensions, journal (auth: any authenticated user; journal carries no
+  prices).
+- `POST /api/v1/energy/arbiter/resume/:equipmentId` (admin) → lifts a manual
+  suspension immediately ("resume control now", FR-6).
 - Profile editing rides the existing `PUT /api/v1/equipments/:id`.
 - Arbiter settings ride the existing settings routes (admin-gated), priority
   list included.
@@ -213,14 +232,17 @@ No claim-related mutation endpoint: claims belong to recipes, not to HTTP.
 ## UI touchpoints (minimal, phase 1)
 
 1. **Equipment detail** (admin): "Energy management" panel on orderable
-   equipments — enable, class, nominal watts, min-on/min-off. Same panel
-   family as `ElectricalMeteringPanel`.
+   equipments — enable, class (pre-assigned from the type mapping), nominal
+   watts (pre-filled from measured power), min-on/min-off. When a manual
+   suspension is active, the panel shows "Manual until HH:MM" with a
+   "resume control now" button (FR-6). Same panel family as
+   `ElectricalMeteringPanel`.
 2. **Settings → Administration → Energy**: arbiter card — enable switch,
    priority list (up/down reorder, no drag dependency), thresholds under an
    "advanced" fold.
-3. **Energy → Live**: status strip (state, available surplus, active grants)
-   - decision journal list (time, equipment, action, reason, note). This is
-     the "why" surface; entries reuse `RelativeTime`.
+3. **Energy → Live**: status strip (state, available surplus, active grants
+   and suspensions) + decision journal list (time, equipment, action, reason,
+   note). This is the "why" surface; entries reuse `RelativeTime`.
 
 ## Failure modes
 
