@@ -46,8 +46,16 @@ recipe published before the primitive exists is one more migration later.
 | **Comfort** (pilotable in boost, never off) | AC, heaters                     | Baseline operation is NOT arbitrated — a hot house gets its AC, grid or not, exactly as today. Only the _bonus_ (pre-cool boost) goes through a claim, and revoking a bonus degrades to baseline, never to off. |
 | **Deferrable** (pilotable on/off)           | pool pump, water heater, EV     | Fully arbitrated and preemptible at any time — time-shifting is their nature. Their "must eventually run" guarantee is quota/deadline logic, which stays **in the recipe** in this phase (see Non-goals).       |
 
-The class is declared per equipment by the user (energy profile), not by
-recipes.
+The class is a property of the equipment (energy profile), never of a recipe —
+and Sowel already _knows_ its equipments: `EquipmentType` is a closed enum, so
+the class is **auto-assigned from the type and overridable by the user**. A
+`pool_pump` or `water_heater` defaults to `deferrable`, a `thermostat` or
+`heater` to `comfort`; types with no obvious energy semantics (`appliance`,
+`switch`, lights) get no default and require an explicit choice. Enabling the
+profile stays an explicit admin action — auto-assignment removes friction, it
+never enrolls a load under arbitration by itself. The nominal watts are
+pre-filled from the equipment's own measured power when a metering binding
+exists (e.g. a clamp submeter), editable as well.
 
 ### User-owned priority
 
@@ -105,8 +113,11 @@ the hob on) → revoke bottom-up until the balance is restored.
 ## Functional requirements
 
 - **FR-1** An admin can mark an _orderable_ equipment as a flexible load with
-  `{ class, nominalPowerW, minOnS, minOffS }`. Non-profiled equipments cannot
-  be claimed.
+  `{ class, nominalPowerW, minOnS, minOffS }`. The class is pre-assigned from
+  `EquipmentType` (see architecture.md mapping) and the nominal watts
+  pre-filled from measured power when available; both are overridable.
+  Enabling the profile remains an explicit action, and non-profiled
+  equipments cannot be claimed.
 - **FR-2** The arbiter is the only component reading the grid meter for
   arbitration purposes. It smooths the signed power (EMA, default 60 s) and
   maintains `availableSurplusW` by reservation accounting.

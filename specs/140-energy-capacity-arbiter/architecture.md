@@ -45,6 +45,25 @@ emit the existing `equipment.updated` event — the arbiter re-reads profiles on
 that event. No new table: the profile is an attribute of the equipment, and
 `EquipmentWithDetails` already reaches the UI everywhere it is needed.
 
+### Class auto-assignment (overridable)
+
+`defaultEnergyClassFor(type: EquipmentType): EnergyLoadClass | null` in
+`src/shared/constants.ts` — Sowel knows its equipments, so the class is
+derived and the user only corrects the exceptions:
+
+| EquipmentType                                                | Default class                     |
+| ------------------------------------------------------------ | --------------------------------- |
+| `pool_pump`, `pool_heat_pump`, `water_heater`, `water_valve` | `deferrable`                      |
+| `thermostat`, `heater`                                       | `comfort`                         |
+| `appliance`, `switch`, `light_*`, everything else orderable  | `null` — explicit choice required |
+
+The mapping feeds the UI pre-selection when the admin enables a profile; it
+never enrolls an equipment by itself (enabling stays explicit, and the stored
+profile always carries the resolved class — the mapping is a form default,
+not a runtime fallback). `nominalPowerW` is pre-filled from the equipment's
+own measured power when a `power` data binding or submeter exists (recent
+sustained draw), else left blank.
+
 ### Settings (existing `settings` table)
 
 | Key                            | Default | Meaning                                                                 |
