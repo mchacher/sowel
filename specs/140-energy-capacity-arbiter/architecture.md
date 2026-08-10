@@ -29,9 +29,13 @@ export type EnergyLoadClass = "comfort" | "deferrable";
 
 export interface EnergyLoadProfile {
   class: EnergyLoadClass;
-  nominalPowerW: number; // reservation size when a claim omits watts
+  nominalPowerW: number; // user-declared; engage sizing + last-resort reservation
   minOnS: number; // default 900
   minOffS: number; // default 300
+  /** Core-maintained rolling estimate from past runs (never edited by the
+   *  user form, shown read-only as "measured"). Middle tier of the
+   *  effective-watts rule (FR-2). */
+  learned?: { watts: number; atIso: string; runs: number };
 }
 
 export interface Equipment {
@@ -128,7 +132,12 @@ pattern as the activity buffer, spec 101).
 
 ```
 smoothedExportW  = max(0, -emaPowerW)
-reservedW        = Σ watts of granted claims
+
+# effective watts per granted claim (FR-2, three tiers):
+#   1. smoothed live draw from the load's own power binding, if fresh (<120 s)
+#   2. profile.learned.watts, if present
+#   3. claim watts (declared / recipe override)
+reservedW        = Σ effectiveWatts(granted claims)
 availableW       = smoothedExportW + reservedW    // reservation accounting
 
 # stale check
@@ -157,6 +166,16 @@ Priority preemption is the same machinery: a higher-priority pending claim
 that no longer fits creates a deficit against lower-priority grants →
 `priority-preempted` revocation bottom-up, then the grant pass serves it.
 
+**Effective watts details (FR-2).** Per-load live draws use a short EMA
+(30 s) on the load's own `power` binding; a binding going silent mid-grant
+silently falls back to the learned/declared tier — never a revocation by
+itself. After each run (grant → release/revoke, or an `unclaimed-run`
+episode), the core updates `profile.learned` with a trimmed median of the
+sustained draw, so the middle tier converges on reality within a few runs
+even for loads that only report occasionally. A modulating load therefore
+frees headroom as it ramps down, and the grant pass can serve the next
+pending claim without waiting for a release.
+
 ### Audit signals (FR-9)
 
 All audit-only, journal + structured log, zero enforcement in phase 1:
@@ -171,11 +190,11 @@ All audit-only, journal + structured log, zero enforcement in phase 1:
   value, on a `comfort`-class equipment, within `releaseHoldS` of that
   claim's revocation. Detects recipes violating the degrade-never-off
   convention, without countermanding anything.
-- **`watts-drift`** — when the profiled equipment has a `power` data binding:
-  compare its smoothed draw while granted against the declared
-  `nominalPowerW`; journal an advisory on a sustained > 30 % gap, suggesting
-  a profile correction. The reservation math never switches to the measured
-  value in phase 1 (review decision 2).
+- **`watts-divergence`** — the learned or measured draw deviates > 30 % from
+  the user-declared `nominalPowerW`. Pure transparency: the books already
+  follow the measurement (effective-watts rule, FR-2); this entry tells the
+  user their declared number is stale and what the system actually uses
+  (revised review decision 2).
 - **`unclaimed-run`** — an ON-like `equipment.order.executed` with
   `source.kind: "recipe"` on a profiled equipment holding no grant.
   Legitimate (hard-quota must-run fallbacks, author rule 5); journaled at

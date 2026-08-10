@@ -11,10 +11,12 @@
 2. **Migration 016** — `equipments.energy_profile` column + parse/serialize in
    the equipment manager + surface in `EquipmentWithDetails`. (~0.5 d)
 3. **Capacity arbiter core** — `src/energy/capacity-arbiter.ts`: EMA,
-   reservation accounting, grant/release passes, min-on/min-off, override
-   suspension, staleness, decision journal, events. Pure logic separated from
-   wiring for testability (same style as `tariff-classifier`). (~2 d, tests
-   included — the largest block, driven by the test plan below)
+   reservation accounting with the three-tier effective watts (live draw /
+   learned nominal / declared), learned-nominal updates after runs,
+   grant/release passes, min-on/min-off, override suspension, staleness,
+   decision journal, events. Pure logic separated from wiring for
+   testability (same style as `tariff-classifier`). (~2.5 d, tests included
+   — the largest block, driven by the test plan below)
 4. **Recipe helper** — `ctx.helpers.energy` in `recipe-manager.ts`,
    per-instance ownership, auto-release on stop, callback guards. (~1 d)
 5. **API route + WS** — `GET /api/v1/energy/arbiter`, event broadcast,
@@ -26,7 +28,7 @@
    recipe authors"), `api-reference.md`, `data-model.md`,
    `architecture.md` energy section, specs-index row. (~0.5 d)
 
-Total: ~7 days. Steps 1-4 are mergeable without any UI (arbiter observable
+Total: ~7.5 days. Steps 1-4 are mergeable without any UI (arbiter observable
 through logs + API); 5-6 can follow in the same PR or a second one.
 
 ### Suggested validation on the reference installation
@@ -70,7 +72,11 @@ fix.
 | capacity-arbiter  | Equipment removed while granted                                   | revoke `disabled`, claim dropped                                                          |
 | capacity-arbiter  | Callback throws in onGranted/onRevoked                            | caught, logged, arbiter continues                                                         |
 | capacity-arbiter  | Journal bound                                                     | oldest entries evicted at capacity                                                        |
-| capacity-arbiter  | Sustained measured draw > 30 % off declared (power binding)       | advisory `watts-drift` journal entry; reservation math unchanged                          |
+| capacity-arbiter  | Learned/measured draw > 30 % off declared nominal                 | `watts-divergence` transparency entry; books already on measurement                       |
+| capacity-arbiter  | Granted modulating load ramps down (power binding)                | reservation follows live draw; freed headroom grants the next pending claim               |
+| capacity-arbiter  | Load's power binding silent mid-grant                             | fallback to learned/declared tier, no revocation                                          |
+| capacity-arbiter  | Run completes on a metered load                                   | `profile.learned` updated (trimmed median), used by the next grant                        |
+| capacity-arbiter  | Unmetered load                                                    | reservation = claim/declared watts (tier 3), everything else unchanged                    |
 | capacity-arbiter  | OFF order from claiming instance on comfort equipment post-revoke | `comfort-off-after-revoke` journal anomaly, no countermanding                             |
 | capacity-arbiter  | Recipe ON order on profiled equipment with no grant               | `unclaimed-run` info journal entry; accounting treats the draw as background              |
 | capacity-arbiter  | Grant lands on an already-running load (rule 5 must-run)          | no duplicate accounting: available stays on the true surplus                              |

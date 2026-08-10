@@ -92,7 +92,12 @@ the hob on) → revoke bottom-up until the balance is restored.
 5. **Fail-safe**: stale meter data revokes everything and idles the arbiter;
    global kill-switch; every decision logged and visible (decision journal in
    the UI, "why" first-class).
-6. **Events + WebSocket** so the UI (and curious recipes) can observe
+6. **The arbitration surface** on Energy → Live — essential, not a nicety
+   (FR-10): the instant allocation bar with its waiting queue, the day
+   timeline, and the decision journal. `mockups/arbitration-live.html` is the
+   normative reference design. An invisible arbiter reads as magic or as a
+   bug; this surface is what makes it trustworthy.
+7. **Events + WebSocket** so the UI (and curious recipes) can observe
    decisions.
 
 ## Non-goals (phase 1)
@@ -120,7 +125,11 @@ the hob on) → revoke bottom-up until the balance is restored.
   equipments cannot be claimed.
 - **FR-2** The arbiter is the only component reading the grid meter for
   arbitration purposes. It smooths the signed power (EMA, default 60 s) and
-  maintains `availableSurplusW` by reservation accounting.
+  maintains `availableSurplusW` by reservation accounting. The reserved watts
+  of a granted load are its **effective watts**: smoothed live draw when a
+  fresh `power` binding exists, else the learned nominal from past runs, else
+  the declared profile watts. A claim's `watts` field sizes the engage
+  decision only.
 - **FR-3** Grants follow the user priority list: highest-priority pending
   claim is granted when `availableSurplusW ≥ claimW + engageMarginW` sustained
   for `engageHoldS`; on sustained deficit, grants are revoked bottom-up.
@@ -151,11 +160,21 @@ the hob on) → revoke bottom-up until the balance is restored.
   materializes within the watchdog window), `comfort-off-after-revoke` (an OFF
   order from the claiming instance on a comfort-class equipment right after a
   revocation — the recipe violates the degrade-never-off convention),
-  `watts-drift` (a power binding shows sustained draw deviating > 30 % from
-  the declared nominal — advisory only, the accounting stays on declared
-  watts), and `unclaimed-run` (a profiled equipment switched on by a recipe
+  `watts-divergence` (the learned or measured draw deviates > 30 % from the
+  user-declared nominal — transparency entry: the books already follow the
+  measurement, this tells the user their profile number is stale), and
+  `unclaimed-run` (a profiled equipment switched on by a recipe
   holding no grant — legitimate for hard-quota fallbacks, and it explains a
   shrunken surplus to whoever reads the journal).
+- **FR-10** Energy → Live ships the **arbitration surface**; phase 1 is not
+  complete without it: (a) the instant allocation bar — production split into
+  named segments (background, each granted load with its effective watts,
+  free surplus) plus the waiting queue stating why each pending claim waits;
+  (b) the day timeline — the available-surplus curve (the accounting value)
+  over one lane per profiled load, segment kinds granted / unclaimed-run /
+  manual / pending, revocation markers carrying the journal reason; (c) the
+  decision journal in human language. `mockups/arbitration-live.html` is the
+  normative reference design (light and dark).
 
 ## How recipes use it
 
@@ -168,9 +187,12 @@ should challenge first.
 // ctx.helpers.energy — all optional-chaining safe (absent on cores < this spec)
 interface EnergyHelpers {
   /**
-   * Claim surplus capacity for a profiled equipment. Resolves the declared
-   * profile; `watts` overrides the profile's nominalPowerW when the recipe
-   * knows better (e.g. AC boost differs from compressor nominal).
+   * Claim surplus capacity for a profiled equipment. `watts` sizes the
+   * ENGAGE decision only (how much headroom must be available before the
+   * grant); it overrides the profile's nominal when the recipe knows better
+   * (e.g. AC boost differs from compressor nominal). Once granted, the
+   * reservation follows the load's effective watts (measured live draw,
+   * else learned nominal, else declared — FR-2).
    * Exactly one active claim per equipment, system-wide.
    */
   claimCapacity(req: {
@@ -337,9 +359,13 @@ switched the AC off, and every step is one line in the decision journal.
 - [ ] All-off default: arbiter disabled and no profiles → strictly zero
       behavior change anywhere in the engine.
 - [ ] "Resume control now" lifts a manual suspension immediately.
-- [ ] Audit signals fire on their patterns: `watts-drift` (sustained
-      declared/measured gap > 30 %), `comfort-off-after-revoke`,
+- [ ] Audit signals fire on their patterns: `watts-divergence` (learned or
+      measured draw > 30 % off the declared nominal), `comfort-off-after-revoke`,
       `unclaimed-run` (profiled equipment running grantless).
+- [ ] Tiered effective watts: a granted modulating load with a power binding
+      frees headroom as its measured draw falls (the next pending claim can be
+      granted); a clamp going silent mid-grant falls back to the learned
+      nominal without a revocation.
 
 ## Review log
 
@@ -349,10 +375,18 @@ switched the AC off, and every step is one line in the decision journal.
    `energy.capacity.*` events are observability for the UI and bystanders.
    Rationale: no global-stream filtering in recipes, edge-guarding is
    structural, the arbiter knows exactly who to notify.
-2. **Watts trust** (was open question 3): reservation accounting runs on
-   **declared watts**. When a power binding exists, the arbiter emits an
-   advisory `watts-drift` journal entry on a sustained > 30 % gap so the user
-   corrects the profile. Live measured refinement is deferred to phase 2.
+2. **Watts trust** (was open question 3 — **revised in the second maintainer
+   pass, same day**): measured refinement is **in phase 1**, as a three-tier
+   effective-watts rule. The reservation of a granted load uses, in order of
+   preference: the load's **smoothed live draw** when it has a fresh `power`
+   binding; else a **learned nominal** (rolling estimate from its past runs,
+   maintained by the core in the profile); else the declared profile watts
+   (first runs, no metering). The claim's `watts` only sizes the _engage_
+   decision; once running, the books follow reality. A first pass had
+   deferred this to phase 2 on simplicity grounds; the maintainer overrode:
+   a modulating load (AC boost 0.8-2.4 kW) with a fixed 2 kW reservation
+   strands headroom the next load in the list could use, and both reference
+   loads carry dedicated clamps.
 3. **Comfort semantics** (was open question 4): convention **plus targeted
    audit** — the arbiter journals `comfort-off-after-revoke` when the claiming
    instance sends an OFF order to a comfort-class equipment right after a
