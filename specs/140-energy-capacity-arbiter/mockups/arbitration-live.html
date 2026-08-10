@@ -1,0 +1,300 @@
+<meta charset="utf-8" />
+<title>Sowel — Arbitrage énergie (maquette spec 140)</title>
+<style>
+  :root {
+    --bg: #f5f7f9; --surface: #ffffff; --surface-2: #fbfcfd;
+    --text: #333f49; --text-2: #5c6b77; --text-3: #93a1ac;
+    --border: #e3e8ec; --border-2: #eef1f4;
+    --primary: #1a4f6e; --accent: #d4963f;
+    --house: #4f7be8; --granted: #6bcb77; --granted-deep: #4faf5e;
+    --hc: #bb8232; --manual: #8a97a3; --revoke: #e5484d;
+    --curve-fill: rgba(107, 203, 119, 0.14); --curve-line: rgba(107, 203, 119, 0.55);
+    --free: #eaf6ec; --free-border: #b7e0bd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181c; --surface: #1e2328; --surface-2: #232930;
+      --text: #e7ecf0; --text-2: #a9b6c0; --text-3: #6c7a86;
+      --border: #2b333b; --border-2: #262d34;
+      --primary: #6fa8c9;
+      --granted: #2fa57d; --granted-deep: #2fa57d;
+      --curve-fill: rgba(47, 165, 125, 0.16); --curve-line: rgba(47, 165, 125, 0.6);
+      --free: #223028; --free-border: #35543f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181c; --surface: #1e2328; --surface-2: #232930;
+    --text: #e7ecf0; --text-2: #a9b6c0; --text-3: #6c7a86;
+    --border: #2b333b; --border-2: #262d34;
+    --primary: #6fa8c9;
+    --granted: #2fa57d; --granted-deep: #2fa57d;
+    --curve-fill: rgba(47, 165, 125, 0.16); --curve-line: rgba(47, 165, 125, 0.6);
+    --free: #223028; --free-border: #35543f;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f7f9; --surface: #ffffff; --surface-2: #fbfcfd;
+    --text: #333f49; --text-2: #5c6b77; --text-3: #93a1ac;
+    --border: #e3e8ec; --border-2: #eef1f4;
+    --primary: #1a4f6e;
+    --granted: #6bcb77; --granted-deep: #4faf5e;
+    --curve-fill: rgba(107, 203, 119, 0.14); --curve-line: rgba(107, 203, 119, 0.55);
+    --free: #eaf6ec; --free-border: #b7e0bd;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.45; margin: 0; padding: 24px 16px 48px;
+  }
+  .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .page { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .crumb { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .crumb h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .crumb .sep { color: var(--text-3); }
+  .tag {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 10px;
+    margin-left: auto;
+  }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .card h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .card .sub { font-size: 12px; color: var(--text-2); margin: 2px 0 0; }
+  .card-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .state-pill {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--granted-deep);
+    border: 1px solid var(--granted-deep); border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+  }
+  .state-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--granted-deep); }
+
+  /* ── Allocation bar ── */
+  .alloc-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+  .alloc-title .kw { font-size: 20px; color: var(--text); }
+  .alloc { display: flex; gap: 2px; height: 30px; border-radius: 6px; overflow: hidden; }
+  .alloc .seg { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: #fff; min-width: 0; }
+  .alloc .seg span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alloc .house { background: var(--house); }
+  .alloc .granted { background: var(--granted); color: #123f1c; }
+  :root[data-theme="dark"] .alloc .granted, :root:not([data-theme="light"]) .alloc .granted { color: #06281c; }
+  :root[data-theme="light"] .alloc .granted { color: #123f1c; }
+  .alloc .free { background: var(--free); border: 1px dashed var(--free-border); color: var(--text-2); font-weight: 500; }
+  .alloc-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-2); margin-top: 8px; }
+  .alloc-legend b { color: var(--text); font-weight: 600; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+  .queue {
+    margin-top: 14px; display: flex; align-items: center; gap: 8px;
+    background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 8px;
+    padding: 8px 12px; font-size: 12.5px; color: var(--text-2);
+  }
+  .queue .hour { color: var(--text-3); margin-left: auto; }
+
+  /* ── Timeline ── */
+  .tl-wrap { overflow-x: auto; }
+  .tl-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+  .tl-legend .k { display: inline-flex; align-items: center; gap: 6px; }
+  .chip { width: 18px; height: 10px; border-radius: 3px; }
+
+  /* ── Journal ── */
+  .journal { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .journal li { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border-2); font-size: 13px; }
+  .journal li:first-child { border-top: 0; }
+  .journal .t { color: var(--text-3); font-size: 12px; width: 44px; flex: none; }
+  .journal .who { font-weight: 600; }
+  .journal .why { color: var(--text-2); }
+  .journal .w { margin-left: auto; color: var(--text-3); font-size: 12px; white-space: nowrap; }
+  .jdot { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
+  .more { font-size: 12.5px; color: var(--primary); margin-top: 10px; display: inline-block; }
+  .foot { font-size: 11.5px; color: var(--text-3); text-align: center; }
+  a:focus-visible, .more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <h1>Énergie</h1><span class="sep">›</span><span style="color:var(--text-2)">En direct</span>
+    <span class="tag">Maquette · spec 140</span>
+  </div>
+
+  <!-- ═══ Card 1 : now ═══ -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Arbitrage du surplus</h2>
+        <p class="sub">Qui reçoit le solaire en ce moment, et qui attend.</p>
+      </div>
+      <div class="state-pill"><span class="dot"></span>Actif</div>
+    </div>
+
+    <div class="alloc-title">
+      <span>Production photovoltaïque</span>
+      <span class="mono kw">3,2&nbsp;kW</span>
+    </div>
+    <div class="alloc" role="img" aria-label="Répartition : maison 0,9 kW, boost PAC 2,0 kW accordé, 0,3 kW libre">
+      <div class="seg house" style="flex: 9" title="Consommation du foyer (fond) : 0,9 kW"><span>Maison</span><span class="mono">0,9</span></div>
+      <div class="seg granted" style="flex: 20" title="Boost PAC — accordé depuis 13:50 (2 000 W réservés)"><span>✓ Boost PAC</span><span class="mono">2,0</span></div>
+      <div class="seg free" style="flex: 3" title="Surplus libre : 0,3 kW (injecté)"><span class="mono">0,3</span></div>
+    </div>
+    <div class="alloc-legend">
+      <span><span class="sw" style="background:var(--house)"></span>Fond du foyer</span>
+      <span><span class="sw" style="background:var(--granted)"></span>Accordé par l'arbitre</span>
+      <span><span class="sw" style="background:var(--free); border:1px dashed var(--free-border)"></span>Libre (injecté)</span>
+    </div>
+
+    <div class="queue" title="La pompe demande 600 W + 100 W de marge ; 0,3 kW libre : elle attend son tour.">
+      <span>⏳</span>
+      <span><b>Pompe Piscine</b> en attente — besoin <span class="mono">600&nbsp;W</span>, surplus libre <span class="mono">0,3&nbsp;kW</span></span>
+      <span class="hour mono">15:20</span>
+    </div>
+  </section>
+
+  <!-- ═══ Card 2 : the day ═══ -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>La journée, décision par décision</h2>
+        <p class="sub">La courbe verte est le surplus disponible ; chaque barre dit qui l'a reçu, et chaque repère rouge pourquoi il l'a perdu.</p>
+      </div>
+    </div>
+    <div class="tl-wrap"><svg id="tl" width="840" height="240" role="img" aria-label="Frise des arbitrages du jour"></svg></div>
+    <div class="tl-legend">
+      <span class="k"><span class="chip" style="background:var(--granted)"></span>Accordé (surplus)</span>
+      <span class="k"><span class="chip" style="background:repeating-linear-gradient(135deg,var(--hc),var(--hc) 3px,transparent 3px,transparent 6px); border:1px solid var(--hc)"></span>HC · hors arbitrage</span>
+      <span class="k"><span class="chip" style="background:repeating-linear-gradient(135deg,var(--manual),var(--manual) 3px,transparent 3px,transparent 6px); border:1px solid var(--manual)"></span>Manuel</span>
+      <span class="k"><span class="chip" style="border:1.5px dashed var(--text-3)"></span>En attente</span>
+      <span class="k"><span style="color:var(--revoke); font-weight:700">▼</span>Révocation</span>
+    </div>
+  </section>
+
+  <!-- ═══ Card 3 : journal ═══ -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Journal des décisions</h2>
+        <p class="sub">Rien n'arrive sans raison visible.</p>
+      </div>
+    </div>
+    <ul class="journal">
+      <li><span class="t mono">14:50</span><span class="jdot" style="background:var(--revoke)"></span><span class="who">Pompe Piscine</span><span class="why">révoquée — production en baisse (0,3 kW manquants)</span><span class="w mono">600 W rendus</span></li>
+      <li><span class="t mono">13:55</span><span class="jdot" style="background:var(--granted-deep)"></span><span class="who">Pompe Piscine</span><span class="why">accordée — 0,9 kW de marge disponible</span><span class="w mono">600 W</span></li>
+      <li><span class="t mono">13:50</span><span class="jdot" style="background:var(--granted-deep)"></span><span class="who">Boost PAC</span><span class="why">accordé — surplus 2,9 kW soutenu 2 min</span><span class="w mono">2 000 W</span></li>
+      <li><span class="t mono">12:45</span><span class="jdot" style="background:var(--revoke)"></span><span class="who">Pompe Piscine</span><span class="why">révoquée — consommation du foyer +2,8 kW (déjeuner)</span><span class="w mono">600 W rendus</span></li>
+      <li><span class="t mono">10:10</span><span class="jdot" style="background:var(--granted-deep)"></span><span class="who">Pompe Piscine</span><span class="why">accordée — pilotage repris (fin du mode manuel)</span><span class="w mono">600 W</span></li>
+      <li><span class="t mono">08:40</span><span class="jdot" style="background:var(--manual)"></span><span class="who">Pompe Piscine</span><span class="why">suspension — ordre manuel de l'utilisateur</span><span class="w mono">2 h</span></li>
+      <li><span class="t mono">02:04</span><span class="jdot" style="background:var(--hc)"></span><span class="who">Pompe Piscine</span><span class="why">marche hors arbitrage — heures creuses (plan de la recette)</span><span class="w mono">—</span></li>
+    </ul>
+    <span class="more" tabindex="0">Voir tout le journal</span>
+  </section>
+
+  <p class="foot">Maquette statique pour la spec 140 — données réalistes de l'installation de référence, journée type avec repas de midi et passage nuageux.</p>
+</div>
+
+<script>
+(function () {
+  const svg = document.getElementById("tl");
+  const NS = "http://www.w3.org/2000/svg";
+  build();
+  new MutationObserver(build).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", build);
+
+  function build() {
+  svg.innerHTML = "";
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const W = 840, H = 240, LEFT = 96, RIGHT = 16, TOP = 14;
+  const plotW = W - LEFT - RIGHT;
+  const x = (h) => LEFT + (h / 24) * plotW;
+  const NOW = 15 + 20 / 60;
+
+  const el = (name, attrs, parent, text) => {
+    const n = document.createElementNS(NS, name);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (text) n.textContent = text;
+    (parent || svg).appendChild(n);
+    return n;
+  };
+
+  // hatch patterns
+  const defs = el("defs", {});
+  for (const [id, color] of [["hatchHc", css("--hc")], ["hatchMan", css("--manual")]]) {
+    const p = el("pattern", { id, width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(135)" }, defs);
+    el("rect", { width: 6, height: 6, fill: color, "fill-opacity": 0.16 }, p);
+    el("rect", { width: 2.5, height: 6, fill: color, "fill-opacity": 0.75 }, p);
+  }
+
+  // ── surplus curve (kW export, piecewise) ──
+  const CURVE_TOP = TOP, CURVE_H = 74, KW_MAX = 2.8;
+  // Available surplus per the arbiter's reservation accounting: grants do NOT
+  // dent this curve — only background (lunch hob 12:45-13:25) and weather do.
+  const pts = [[0,0],[7,0],[8,0.15],[9,0.8],[10,1.3],[11,2.0],[12,2.6],[12.7,2.7],[12.78,0.05],[13.35,0.1],[13.45,2.6],[13.9,2.9],[14.5,2.8],[14.85,2.35],[15.33,2.3]];
+  const yk = (kw) => CURVE_TOP + CURVE_H - (Math.min(kw, KW_MAX) / KW_MAX) * CURVE_H;
+  let d = `M ${x(0)} ${yk(0)}`;
+  for (const [h, kw] of pts) d += ` L ${x(h)} ${yk(kw)}`;
+  el("path", { d: d + ` L ${x(NOW)} ${yk(0)} Z`, fill: css("--curve-fill") });
+  el("path", { d, fill: "none", stroke: css("--curve-line"), "stroke-width": 1.5 });
+  el("text", { x: LEFT, y: CURVE_TOP + 9, "font-size": 10.5, fill: css("--text-3") }, null, "Surplus disponible (kW)");
+
+  // ── lanes ──
+  const LANES = [
+    { name: "Boost PAC", sub: "priorité 1", y: 116, segs: [
+        { a: 13.83, b: NOW, kind: "granted", label: "Surplus", open: true },
+      ], revokes: [] },
+    { name: "Pompe Piscine", sub: "priorité 2", y: 168, segs: [
+        { a: 2.07, b: 4.58, kind: "hc", label: "HC" },
+        { a: 8.67, b: 10.13, kind: "manual", label: "Manuel" },
+        { a: 10.17, b: 12.75, kind: "granted", label: "Surplus" },
+        { a: 13.92, b: 14.83, kind: "granted" },
+        { a: 14.83, b: NOW, kind: "pending" },
+      ], revokes: [
+        { t: 12.75, why: "Révoquée 12:45 — consommation du foyer +2,8 kW" },
+        { t: 14.83, why: "Révoquée 14:50 — production en baisse" },
+      ] },
+  ];
+  const SEG_H = 16;
+
+  // grid + axis
+  for (let h = 0; h <= 24; h += 6) {
+    el("line", { x1: x(h), y1: TOP, x2: x(h), y2: 208, stroke: css("--border-2"), "stroke-width": 1 });
+    el("text", { x: x(h), y: 224, "font-size": 10.5, "text-anchor": "middle", fill: css("--text-3"),
+                 "font-family": "JetBrains Mono, ui-monospace, monospace" }, null, String(h).padStart(2, "0") + "h");
+  }
+
+  for (const lane of LANES) {
+    el("text", { x: LEFT - 10, y: lane.y + SEG_H / 2 + 1, "font-size": 12, "font-weight": 600,
+                 "text-anchor": "end", fill: css("--text") }, null, lane.name);
+    el("text", { x: LEFT - 10, y: lane.y + SEG_H / 2 + 14, "font-size": 10, "text-anchor": "end",
+                 fill: css("--text-3") }, null, lane.sub);
+    el("line", { x1: LEFT, y1: lane.y + SEG_H / 2, x2: x(24), y2: lane.y + SEG_H / 2,
+                 stroke: css("--border-2"), "stroke-width": 1 });
+
+    for (const s of lane.segs) {
+      const rx = x(s.a), rw = Math.max(2, x(s.b) - x(s.a));
+      const common = { x: rx, y: lane.y, width: rw, height: SEG_H, rx: 4 };
+      let rect;
+      if (s.kind === "granted") rect = el("rect", { ...common, fill: css("--granted") });
+      else if (s.kind === "hc") rect = el("rect", { ...common, fill: "url(#hatchHc)", stroke: css("--hc"), "stroke-width": 1 });
+      else if (s.kind === "manual") rect = el("rect", { ...common, fill: "url(#hatchMan)", stroke: css("--manual"), "stroke-width": 1 });
+      else rect = el("rect", { ...common, fill: "none", stroke: css("--text-3"), "stroke-width": 1.2, "stroke-dasharray": "3 3" });
+      el("title", {}, rect, (s.kind === "pending" ? "En attente de surplus" : (s.label || "Accordé")) +
+        ` · ${fmt(s.a)} → ${s.open ? "en cours" : fmt(s.b)}`);
+      if (s.label && rw > 46) {
+        el("text", { x: rx + 7, y: lane.y + SEG_H / 2 + 3.5, "font-size": 10, "font-weight": 600,
+                     fill: s.kind === "granted" ? "#123f1c" : css("--text-2") }, null, s.label);
+      }
+    }
+    for (const r of lane.revokes) {
+      const t = el("path", { d: `M ${x(r.t) - 4.5} ${lane.y - 7} L ${x(r.t) + 4.5} ${lane.y - 7} L ${x(r.t)} ${lane.y - 1} Z`,
+                             fill: css("--revoke") });
+      el("title", {}, t, r.why);
+    }
+  }
+
+  // now marker
+  el("line", { x1: x(NOW), y1: TOP, x2: x(NOW), y2: 208, stroke: css("--text-2"), "stroke-width": 1.2, "stroke-dasharray": "4 3" });
+  el("text", { x: x(NOW) + 5, y: TOP + 9, "font-size": 10.5, fill: css("--text-2"),
+               "font-family": "JetBrains Mono, ui-monospace, monospace" }, null, "15:20");
+
+  }
+
+  function fmt(h) {
+    const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+  }
+})();
+</script>

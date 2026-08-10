@@ -240,9 +240,23 @@ No claim-related mutation endpoint: claims belong to recipes, not to HTTP.
 2. **Settings → Administration → Energy**: arbiter card — enable switch,
    priority list (up/down reorder, no drag dependency), thresholds under an
    "advanced" fold.
-3. **Energy → Live**: status strip (state, available surplus, active grants
-   and suspensions) + decision journal list (time, equipment, action, reason,
-   note). This is the "why" surface; entries reuse `RelativeTime`.
+3. **Energy → Live**: the arbitration surface, mocked up in
+   `mockups/arbitration-live.html` (self-contained HTML, light + dark). Three
+   stacked pieces:
+   - **Allocation bar (now)** — the instant PV production split into
+     labeled segments: household background, each granted load
+     (name + reserved watts), free surplus; a queue line below names who is
+     waiting and why ("Pompe Piscine — besoin 600 W, surplus libre 0,3 kW").
+   - **Day timeline** — the available-surplus curve (the _accounting_ value:
+     grants do not dent it, only background and weather do) over one lane per
+     profiled load in priority order. Segment kinds: granted (plain green),
+     HC/fallback `unclaimed-run` (amber hatch), manual suspension (gray
+     hatch), pending (dotted outline); revocations are red markers whose
+     tooltip carries the journal reason. Hatching doubles as the CVD-safe
+     secondary encoding.
+   - **Decision journal** — compact list, newest first (time, equipment,
+     action, reason, watts), entries reuse `RelativeTime`.
+     This is the "why" surface: nothing the arbiter does is invisible.
 
 ## Failure modes
 

@@ -20,12 +20,13 @@
 5. **API route + WS** — `GET /api/v1/energy/arbiter`, event broadcast,
    settings keys. (~0.5 d)
 6. **UI** — equipment "Energy management" panel, settings card with priority
-   list, Live page status strip + journal. (~1.5 d)
+   list, Live page arbitration surface (allocation bar + day timeline +
+   journal — design mocked in `mockups/arbitration-live.html`). (~2 d)
 7. **Docs** — `recipe-development.md` (author rules from spec.md §"Rules for
    recipe authors"), `api-reference.md`, `data-model.md`,
    `architecture.md` energy section, specs-index row. (~0.5 d)
 
-Total: ~6.5 days. Steps 1-4 are mergeable without any UI (arbiter observable
+Total: ~7 days. Steps 1-4 are mergeable without any UI (arbiter observable
 through logs + API); 5-6 can follow in the same PR or a second one.
 
 ### Suggested validation on the reference installation
