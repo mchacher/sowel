@@ -115,7 +115,7 @@ curl -s http://localhost:3000/api/v1/health | jq
 docker compose restart sowel
 ```
 
-Le ring buffer est en mémoire, le redémarrage le vide. Le log fichier (`data/logs/sowel-N.log`) survit.
+Le ring buffer est en mémoire, le redémarrage le vide. Le log fichier (`data/logs/sowel.<yyyy-MM-dd>.N.log`) survit.
 
 ### Stop / start
 

@@ -465,16 +465,22 @@ Logs JSON structurés pino avec sortie multistream (voir `src/core/logger.ts`) :
 
 - **Ring buffer** : buffer circulaire en mémoire pour le viewer de logs de l'UI (capture toujours au niveau debug)
 - **stdout** : JSON brut en production (capté par les Docker logs), pino-pretty en développement
-- **Transport fichier** : en production uniquement, via `pino-roll` vers `data/logs/sowel-N.log`, rotation journalière, conserve 14 fichiers
+- **Transport fichier** : en production uniquement, via `pino-roll` vers `data/logs/sowel.<yyyy-MM-dd>.N.log`, rotation journalière, conserve 14 fichiers (la rétention couvre aussi les fichiers laissés par les conteneurs précédents)
 
 ### Emplacement des fichiers de log
 
-`/app/data/logs/sowel-<N>.log` à l'intérieur du conteneur (sur le volume `sowel-data`). **Survit à la recréation du conteneur**, indispensable pour l'investigation post-incident après une auto-mise à jour.
+`/app/data/logs/sowel.<yyyy-MM-dd>.N.log` à l'intérieur du conteneur (sur le volume `sowel-data`). Un jour calendaire correspond à un fichier prévisible, même après redémarrages et auto-mises à jour. **Survit à la recréation du conteneur**, indispensable pour l'investigation post-incident après une auto-mise à jour.
 
 Exemple de récupération :
 
 ```bash
-docker exec sowel sh -c 'cat /app/data/logs/sowel.6.log | grep -E "2026-04-11T07:" | grep error'
+docker exec sowel sh -c 'cat /app/data/logs/sowel.2026-04-11.1.log | grep -E "2026-04-11T07:" | grep error'
+```
+
+Avant la v1.39, les fichiers étaient nommés `sowel.N.log` avec un numéro de rotation choisi par processus : plusieurs redémarrages dans la journée éclataient les plages horaires entre fichiers, et un même fichier pouvait couvrir plusieurs mois. Pour investiguer un incident antérieur au changement de format, grepper TOUS les fichiers `sowel.*.log` plutôt que de se fier à un seul. Les anciens fichiers numérotés ne sont pas couverts par la nouvelle rétention et peuvent être supprimés manuellement une fois devenus inutiles :
+
+```bash
+docker exec sowel sh -c 'rm /app/data/logs/sowel.[0-9]*.log'
 ```
 
 ### Conseils sur les niveaux de log
@@ -499,7 +505,7 @@ Conventions :
 
 - **Depuis l'UI** : page Admin → Logs (lit le ring buffer)
 - **Via API** : `GET /api/v1/logs?module=X&level=Y&limit=N` (ring buffer uniquement, perdu au redémarrage)
-- **Depuis le fichier** : `docker exec` dans `/app/data/logs/sowel-*.log` (persistant)
+- **Depuis le fichier** : `docker exec` dans `/app/data/logs/sowel.*.log` (persistant)
 - **Script helper** : `scripts/logs/fetch-logs.py <module> <level> <limit>` avec les variables d'env `SOWEL_URL` + `SOWEL_PASSWORD`
 
 ---

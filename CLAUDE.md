@@ -245,7 +245,7 @@ The Proxy does NOT protect against direct `require("better-sqlite3")`, `process.
 | `debug` | Developer troubleshooting detail                              |
 | `trace` | High-volume hot path (off in production)                      |
 
-Production logs go to both stdout (captured by Docker) and `data/logs/sowel-N.log` (daily rotation, 14 days kept). **File logs survive container recreation**, crucial for post-incident investigation.
+Production logs go to both stdout (captured by Docker) and `data/logs/sowel.<yyyy-MM-dd>.N.log` (daily rotation, 14 days kept, one predictable file per calendar day). **File logs survive container recreation**, crucial for post-incident investigation.
 
 ## Design system
 

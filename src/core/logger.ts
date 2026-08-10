@@ -28,6 +28,36 @@ export interface LoggerHandle {
 }
 
 /**
+ * pino-roll options for the production file transport (#400).
+ *
+ * Date-stamped names (`sowel.2026-08-11.1.log`) make one calendar day map to
+ * one predictable file across container restarts; bare rotation numbers used
+ * to interleave days between files, which produced apparent gaps during
+ * post-incident greps. `removeOtherLogFiles` makes the retention count apply
+ * to files left by previous containers too — pino-roll otherwise only counts
+ * files created by the current process, so old files were never cleaned.
+ * Cleanup only touches files matching the base name + date + number pattern;
+ * legacy `sowel.N.log` files and unrelated files in the folder are ignored.
+ *
+ * Exported for tests.
+ */
+export function fileTransportOptions(file = "data/logs/sowel"): {
+  file: string;
+  frequency: string;
+  dateFormat: string;
+  limit: { count: number; removeOtherLogFiles: boolean };
+  mkdir: boolean;
+} {
+  return {
+    file,
+    frequency: "daily",
+    dateFormat: "yyyy-MM-dd",
+    limit: { count: 14, removeOtherLogFiles: true },
+    mkdir: true,
+  };
+}
+
+/**
  * Creates the pino logger with multistream output:
  * - stdout (pino-pretty in dev, raw JSON in prod)
  * - ring buffer (in-memory, always at debug level)
@@ -82,12 +112,7 @@ export function createLogger(level: string, logBuffer?: LogRingBuffer): LoggerHa
     // 3. File transport via pino-roll (production only)
     const fileTransport = pino.transport({
       target: "pino-roll",
-      options: {
-        file: "data/logs/sowel",
-        frequency: "daily",
-        limit: { count: 14 },
-        mkdir: true,
-      },
+      options: fileTransportOptions(),
     });
     streams.push({
       stream: fileTransport,

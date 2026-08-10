@@ -477,16 +477,22 @@ Pino structured JSON logging with multistream output (see `src/core/logger.ts`):
 
 - **Ring buffer** — in-memory circular buffer for UI log viewer (always captures debug level)
 - **stdout** — raw JSON in production (captured by Docker logs), pino-pretty in development
-- **File transport** — in production only, via `pino-roll` to `data/logs/sowel-N.log`, daily rotation, keep 14 files
+- **File transport** — in production only, via `pino-roll` to `data/logs/sowel.<yyyy-MM-dd>.N.log`, daily rotation, keep 14 files (retention also applies to files left by previous containers)
 
 ### Log file location
 
-`/app/data/logs/sowel-<N>.log` inside the container (on the `sowel-data` volume). **Survives container recreation** — essential for post-incident investigation after a self-update.
+`/app/data/logs/sowel.<yyyy-MM-dd>.N.log` inside the container (on the `sowel-data` volume). One calendar day maps to one predictable file, even across container restarts and self-updates. **Survives container recreation** — essential for post-incident investigation after a self-update.
 
 Example retrieval:
 
 ```bash
-docker exec sowel sh -c 'cat /app/data/logs/sowel.6.log | grep -E "2026-04-11T07:" | grep error'
+docker exec sowel sh -c 'cat /app/data/logs/sowel.2026-04-11.1.log | grep -E "2026-04-11T07:" | grep error'
+```
+
+Before v1.39, files were named `sowel.N.log` with a rotation number picked per process: several restarts a day interleaved time ranges across files, and one file could span months. When investigating an incident older than the format switch, grep ALL `sowel.*.log` files rather than trusting one. Legacy numbered files are not covered by the new retention and can be removed manually once no longer needed:
+
+```bash
+docker exec sowel sh -c 'rm /app/data/logs/sowel.[0-9]*.log'
 ```
 
 ### Log level guidance
@@ -511,7 +517,7 @@ Conventions:
 
 - **From UI** — Admin → Logs page (reads the ring buffer)
 - **Via API** — `GET /api/v1/logs?module=X&level=Y&limit=N` (ring buffer only, lost on restart)
-- **From file** — `docker exec` into `/app/data/logs/sowel-*.log` (persistent)
+- **From file** — `docker exec` into `/app/data/logs/sowel.*.log` (persistent)
 - **Helper script** — `scripts/logs/fetch-logs.py <module> <level> <limit>` with `SOWEL_URL` + `SOWEL_PASSWORD` env vars
 
 ---
