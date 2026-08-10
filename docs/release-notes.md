@@ -11,6 +11,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.38.x: Several Zigbee coordinators
+
+### v1.38.0 — 2026-08-10 { #v1-38-0 }
+
+- Feat (settings): **one Sowel instance can now serve several Zigbee coordinators** (large houses, outbuildings out of radio range, coordinator device limits). Zigbee2MQTT drives one coordinator per instance, so the `base_topic` setting of the Zigbee2MQTT integration now accepts a comma-separated list, one entry per Z2M instance on the shared MQTT broker. The core exposes the parsed list to the plugin, and a new **"Several Zigbee coordinators"** section in the host setup guide walks through the whole setup: one container per coordinator, the configuration differences, and why base topics and Zigbee channels must differ. Pairs with the Zigbee2MQTT plugin **2.4.0**, which requires this version. Contributed by Adrien Jouve (computingify). (#395)
+- Fix (ui): recipe pickers now **auto-select a zone that holds exactly one candidate** instead of leaving a one-option dropdown, and the chips recapping a filled equipment-list slot read zone-then-equipment, matching the order of the controls that produced them. The candidate-filtering predicate, previously written four times inline, moves to a single tested helper. (#390, #393)
+- Fix (packages): the update badge **no longer offers a release you already leapfrogged**. Personal-source installs download the latest release live, but the badge read a 1-hour release cache that nothing invalidated after an install — skip a version, install the next one, and the UI kept proposing a downgrade. The cache is now invalidated after every personal install or update, and a cached version older than the installed one is never surfaced as an update. (#391)
+
+---
+
 ## 1.37.x: Recipe tariff helper
 
 ### v1.37.1 — 2026-08-10 { #v1-37-1 }

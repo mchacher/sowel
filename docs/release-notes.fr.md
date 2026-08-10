@@ -11,6 +11,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.38.x: Plusieurs coordinateurs Zigbee
+
+### v1.38.0 — 2026-08-10 { #v1-38-0 }
+
+- Feat (settings) : **une instance Sowel peut désormais servir plusieurs coordinateurs Zigbee** (grande maison, dépendance hors de portée radio, limite d'appareils du coordinateur). Zigbee2MQTT pilote un coordinateur par instance : le réglage `base_topic` de l'intégration Zigbee2MQTT accepte donc une liste séparée par des virgules, une entrée par instance Z2M sur le broker MQTT partagé. Le core expose la liste au plugin, et une nouvelle section **« Plusieurs coordinateurs Zigbee »** du guide de préparation de l'hôte détaille toute la mise en place : un conteneur par coordinateur, les différences de configuration, et pourquoi les base topics et les canaux Zigbee doivent différer. Fonctionne avec le plugin Zigbee2MQTT **2.4.0**, qui requiert cette version. Contribution d'Adrien Jouve (computingify). (#395)
+- Fix (ui) : les sélecteurs des recettes **choisissent automatiquement une zone qui ne contient qu'un seul candidat** au lieu de laisser un menu à option unique, et les puces récapitulant un slot de liste d'équipements affichent zone puis équipement, dans l'ordre des contrôles qui les ont produites. Le prédicat de filtrage des candidats, écrit quatre fois en ligne, devient un helper unique et testé. (#390, #393)
+- Fix (packages) : le badge de mise à jour **ne propose plus une version que vous avez déjà sautée**. Les installations par source personnelle téléchargent la dernière release en direct, mais le badge lisait un cache d'une heure que rien n'invalidait après une installation : sautez une version, installez la suivante, et l'interface continuait de proposer un retour en arrière. Le cache est désormais invalidé après chaque installation ou mise à jour personnelle, et une version en cache plus ancienne que celle installée n'est jamais présentée comme une mise à jour. (#391)
+
+---
+
 ## 1.37.x: Tarif HP/HC pour les recettes
 
 ### v1.37.1 — 2026-08-10 { #v1-37-1 }
