@@ -790,6 +790,15 @@ export type EngineEvent =
       error: string;
       source?: OrderSource;
     }
+  // Spec 141 — order dispatched but its effect not observed on the mirror binding
+  | {
+      type: "equipment.order.unconfirmed";
+      equipmentId: string;
+      orderAlias: string;
+      value: unknown;
+      reason: "timeout" | "device_offline";
+      source?: OrderSource;
+    }
   | {
       type: "equipment.status.changed";
       equipmentId: string;

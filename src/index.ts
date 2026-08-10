@@ -13,6 +13,7 @@ import { DeviceManager } from "./devices/device-manager.js";
 import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { EquipmentStatusTracker } from "./equipments/equipment-status-tracker.js";
+import { OrderConfirmationTracker } from "./equipments/order-confirmation-tracker.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
 import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-tracker.js";
@@ -229,6 +230,20 @@ async function main() {
   // the new state to UI clients without polling.
   const equipmentStatusTracker = new EquipmentStatusTracker(equipmentManager, eventBus, logger);
   equipmentStatusTracker.start();
+
+  // 10c. Order delivery confirmation (spec 141) — watches dispatched orders,
+  // raises an alarm when the mirror binding never reports the ordered value,
+  // and re-dispatches once when the target device comes back online. Inert in
+  // shadow mode along with everything else that dispatches orders.
+  const orderConfirmationTracker = new OrderConfirmationTracker(
+    eventBus,
+    equipmentManager,
+    deviceManager,
+    logger,
+  );
+  if (!config.shadowMode) {
+    orderConfirmationTracker.init();
+  }
 
   // 11. Create InfluxDB client and connect
   const influxClient = new InfluxClient(logger);
@@ -569,6 +584,11 @@ async function main() {
       poolRuntimeTracker.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping pool runtime tracker");
+    }
+    try {
+      orderConfirmationTracker.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping order confirmation tracker");
     }
     try {
       poolWaterTempTracker.stop();
