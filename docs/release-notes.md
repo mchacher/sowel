@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.37.x: Recipe tariff helper
 
+### v1.37.1 — 2026-08-10 { #v1-37-1 }
+
+- Fix (ui): **recipe equipment and zone pickers now spell out the zone**, so homonymous rooms and sensors can be told apart (spec 139). An installation with a bathroom per floor used to list "Salle de bain" several times with nothing to choose between, and equipment lists showed the bare name (integrations name every sensor "Température"). Each option now carries the shortest ancestor path that makes it unique, and the same helper tidies up the Analyse view labels. Contributed by Adrien Jouve (computingify). (#386)
+- Fix (ui): the **Energy tariff page no longer shows its default hours as if they were saved** (#384). On an instance that never saved a tariff, the standard 06:00-22:00 HP / 22:00-06:00 HC schedule looked configured while it was not, so energy cost attribution and load-shifting recipes appeared broken. The form still lands on those hours for convenience, but a banner now marks them as a suggestion until you click Save. Reported by Adrien Jouve (computingify). (#388)
+
 ### v1.37.0 — 2026-08-09 { #v1-37-0 }
 
 - Feat (recipes): **recipes can read the configured HP/HC tariff schedule** (spec 138). A load-shifting recipe (water heater, pool pump, EV charger) no longer has to re-ask for off-peak hours the instance already knows: `ctx.helpers.getTariff()` returns today's off-peak slots and whether the current time is off-peak, straight from the schedule configured under Settings. Read-only by construction, and tariff **prices are deliberately not exposed** to recipe packages — knowing when energy is cheap is enough to schedule a load. Recipes should keep their own time slots as a fallback for instances with no tariff configured. Contributed by Adrien Jouve (computingify). (#379)

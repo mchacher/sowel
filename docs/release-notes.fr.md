@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.37.x: Tarif HP/HC pour les recettes
 
+### v1.37.1 — 2026-08-10 { #v1-37-1 }
+
+- Fix (ui) : les **sélecteurs d'équipements et de zones des recettes précisent désormais la zone**, pour distinguer les pièces et capteurs homonymes (spec 139). Une installation avec une salle de bain par étage listait « Salle de bain » plusieurs fois sans rien pour choisir, et les listes d'équipements affichaient le nom nu (les intégrations nomment tous les capteurs « Température »). Chaque option porte maintenant le plus court chemin d'ancêtres qui la rend unique, et le même helper nettoie les libellés de la vue Analyse. Contribution d'Adrien Jouve (computingify). (#386)
+- Fix (ui) : la **page Tarifs énergie n'affiche plus ses horaires par défaut comme s'ils étaient enregistrés** (#384). Sur une instance qui n'a jamais enregistré de tarif, le planning standard 06:00-22:00 HP / 22:00-06:00 HC semblait configuré alors qu'il ne l'était pas, faisant paraître cassées l'attribution des coûts et les recettes de délestage. Le formulaire propose toujours ces horaires par commodité, mais une bannière les signale comme une suggestion tant que vous n'avez pas cliqué sur Enregistrer. Signalé par Adrien Jouve (computingify). (#388)
+
 ### v1.37.0 — 2026-08-09 { #v1-37-0 }
 
 - Feat (recipes) : **les recettes peuvent lire le planning tarifaire HP/HC configuré** (spec 138). Une recette de délestage (chauffe-eau, pompe de piscine, recharge VE) n'a plus à redemander des heures creuses que l'instance connaît déjà : `ctx.helpers.getTariff()` retourne les créneaux heures creuses du jour et si l'heure courante est en heures creuses, directement depuis le planning configuré dans les Réglages. Lecture seule par construction, et les **prix ne sont volontairement pas exposés** aux packages de recettes — savoir quand l'énergie est bon marché suffit pour placer une charge. Les recettes gardent leurs propres créneaux en repli pour les instances sans tarif configuré. Contribution d'Adrien Jouve (computingify). (#379)
