@@ -1231,6 +1231,14 @@ export interface AppConfig {
    * `SOWEL_SHADOW_MODE=1`.
    */
   shadowMode: boolean;
+  /** Directory holding the SQLite file, marker files, and logs. */
+  dataDir: string;
+  /**
+   * Issue #401 — pre-confirms adoption of a database restored from another
+   * deployment, skipping the inert takeover-pending boot. Set via
+   * `SOWEL_TAKEOVER=1`.
+   */
+  takeoverConfirmed: boolean;
 }
 
 // ============================================================

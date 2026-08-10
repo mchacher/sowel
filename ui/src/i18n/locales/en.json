@@ -1,6 +1,5 @@
 {
   "app.name": "Sowel",
-
   "nav.home": "Home",
   "nav.devices": "Devices",
   "nav.equipments": "Equipments",
@@ -12,7 +11,6 @@
   "nav.settings": "Settings",
   "nav.mqttPublishers": "MQTT Publishers",
   "nav.maison": "Home",
-
   "auth.login": "Log in",
   "auth.logout": "Log out",
   "auth.username": "Username",
@@ -26,7 +24,6 @@
   "auth.passwordMismatch": "Passwords do not match",
   "auth.passwordTooShort": "Password must be at least 6 characters",
   "auth.admin": "admin",
-
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.delete": "Delete",
@@ -66,7 +63,6 @@
   "common.select": "Select...",
   "common.disabled": "Disabled",
   "common.all": "All",
-
   "status.online": "Online",
   "status.offline": "Offline",
   "status.unknown": "Unknown",
@@ -77,7 +73,6 @@
   "status.integrationWarning": "Disconnected: {{names}}",
   "status.error": "Error",
   "status.not_configured": "Not configured",
-
   "alarms.title": "Active alarms",
   "alarms.empty": "No active alarms.",
   "alarms.pill.title_one": "{{count}} active issue",
@@ -98,7 +93,11 @@
   "updates.error.generic": "Update failed",
   "restart.pill.title": "Restart required",
   "shadow.banner": "SHADOW MODE — outbound integrations and publishers are disabled. This instance does not affect production.",
-
+  "takeover.banner": "RESTORED DATA: this database comes from another deployment. Outbound integrations, recipes, publishers, and notifications are disabled until an admin confirms the takeover.",
+  "takeover.confirm": "Confirm takeover",
+  "takeover.confirming": "Confirming...",
+  "takeover.restarting": "Takeover confirmed. Restarting the engine, this page will reload shortly...",
+  "takeover.error": "Confirmation failed, check the logs.",
   "devices.title": "Devices",
   "devices.subtitle_one": "{{count}} device · {{online}} online",
   "devices.subtitle_other": "{{count}} devices · {{online}} online",
@@ -136,7 +135,6 @@
   "devices.col.range": "Range / Values",
   "devices.col.topic": "Topic",
   "devices.deleteConfirm": "Delete this device from Sowel? It will be re-discovered automatically if still active on the bridge.",
-
   "zones.title": "Home Topology",
   "zones.subtitle": "Define the topology of your home",
   "zones.count_one": "{{count}} zone",
@@ -183,7 +181,6 @@
   "zone.lead.allShuttersClosed": "all shutters closed",
   "zone.lead.shutterClosed": "shutter closed",
   "modes.activeBadge": "Active",
-
   "equipments.title": "Equipments",
   "equipments.filterPlaceholder": "Filter...",
   "equipments.addEquipment": "Add equipment",
@@ -222,7 +219,6 @@
   "equipments.form.selectZone": "Select a zone...",
   "equipments.form.deviceInstruction": "Select the device(s) to bind to this equipment. Only compatible devices are shown.",
   "equipments.form.nextDevices": "Next: Select devices",
-
   "equipments.type.light_onoff": "Light (On/Off)",
   "equipments.type.light_dimmable": "Light (Dimmable)",
   "equipments.type.light_color": "Light (Color)",
@@ -249,7 +245,6 @@
   "equipments.type.pool_heat_pump": "Pool heat pump",
   "equipments.type.display": "Sowel display",
   "equipments.type.camera": "Camera",
-
   "cameras.panel.title": "Camera",
   "cameras.panel.noData": "No bindings on this camera yet.",
   "cameras.snapshot.refresh": "Refresh",
@@ -266,7 +261,6 @@
   "cameras.lightMode.off": "Off",
   "cameras.siren.trigger": "Trigger siren",
   "cameras.lastDetection": "Last detection",
-
   "displays.panel.title": "Display state",
   "displays.panel.noData": "No telemetry from this display yet.",
   "displays.fields.firmware_version": "Firmware version",
@@ -279,7 +273,6 @@
   "displays.widget.onlineCount": "{{online}}/{{total}} online",
   "displays.card.off": "Off",
   "displays.card.brightness": "{{pct}} %",
-
   "water.open": "Open",
   "water.closed": "Closed",
   "water.closeAll": "Close all",
@@ -293,7 +286,6 @@
   "water.status.water_shortage": "Water shortage",
   "water.status.leak": "Leak detected",
   "water.status.fault": "Fault",
-
   "equipments.group.lights": "Lights",
   "equipments.group.shutters": "Shutters",
   "equipments.group.awnings": "Awnings",
@@ -309,10 +301,8 @@
   "equipments.group.displays": "Displays",
   "equipments.group.cameras": "Cameras",
   "equipments.group.other": "Other",
-
   "equipments.noEquipments": "No equipments",
   "equipments.noEquipmentsMessage": "{{name}} has no equipments yet. Add equipments in Settings > Equipments.",
-
   "binding.addData": "Add data binding",
   "binding.addOrder": "Add order binding",
   "binding.selectDevice": "Select a device to bind {{type}} from.",
@@ -325,7 +315,6 @@
   "binding.loadError": "Failed to load device details",
   "binding.addError": "Failed to add binding",
   "binding.addBinding": "Add binding",
-
   "controls.turnOn": "Turn on",
   "controls.turnOff": "Turn off",
   "controls.brightness": "Brightness",
@@ -346,20 +335,17 @@
   "controls.gate.unknown": "Moving",
   "controls.gate.toggle": "Toggle",
   "controls.gate.command": "Command",
-
   "controls.heater.comfort": "Comfort",
   "controls.heater.eco": "Eco",
   "controls.heater.switchComfort": "Switch to comfort",
   "controls.heater.switchEco": "Switch to eco",
   "controls.heater.relayOn": "Relay on",
   "controls.heater.relayOff": "Relay off",
-
   "sensors.title": "Sensors",
   "sensors.noData": "No sensor data.",
   "sensors.sources_one": "{{count}} source",
   "sensors.sources_other": "{{count}} sources",
   "sensors.battery": "Battery",
-
   "category.motion": "Motion",
   "category.temperature": "Temperature",
   "category.temperature_device": "Inverter temperature",
@@ -381,7 +367,6 @@
   "category.noise": "Noise",
   "category.action": "Action",
   "category.battery": "Battery",
-
   "category.value.motion.detected": "Detected",
   "category.value.motion.clear": "Clear",
   "category.value.contact.open": "Open",
@@ -390,7 +375,6 @@
   "category.value.water_leak.ok": "OK",
   "category.value.smoke.alert": "Alert!",
   "category.value.smoke.ok": "OK",
-
   "weather.outdoor": "Outdoor",
   "weather.indoor": "Indoor",
   "weather.outdoorShort": "Out.",
@@ -404,7 +388,6 @@
   "weather.rainCurrent": "Current rain",
   "weather.rain1h": "Rain 1h",
   "weather.rain24h": "Rain 24h",
-
   "aggregation.motion": "Motion",
   "aggregation.calm": "Calm",
   "aggregation.status": "Status",
@@ -414,14 +397,11 @@
   "aggregation.open_other": "{{count}} open",
   "aggregation.daylight": "Day",
   "aggregation.night": "Night",
-
   "time.min": "min",
   "time.hour": "h",
   "time.day": "d",
   "time.second": "s",
-
   "behaviors.title": "Behaviors",
-
   "modes.title": "Modes",
   "modes.subtitle": "Define operating modes for your home",
   "modes.active": "Active",
@@ -476,7 +456,6 @@
   "modes.triggerActivate": "Activates this mode",
   "modes.triggerToggle": "Toggles this mode",
   "modes.triggerToggleWith": "Toggles with \"{{name}}\"",
-
   "recipes.title": "Recipes",
   "recipes.addRecipe": "Add a recipe",
   "recipes.chooseRecipe": "Choose a recipe",
@@ -500,7 +479,6 @@
   "recipes.actions.set_mode.comfort": "Comfort",
   "recipes.actions.set_mode.cocoon": "Cocoon",
   "recipes.actions.set_mode.night": "Night",
-
   "setup.home.title": "Welcome to Sowel",
   "setup.home.subtitle": "One more step before you start",
   "setup.home.body": "Tell Sowel where your home is. The name shows up across the app; latitude and longitude are used to compute sunrise/sunset and to derive your timezone.",
@@ -516,7 +494,6 @@
   "home.zoneNotFound": "Zone not found",
   "home.zoneDeleted": "This zone may have been deleted.",
   "home.backToHome": "Back to Home",
-
   "deviceSelector.pickChannel": "Pick the channel to bind",
   "deviceSelector.channel": "Channel {{n}}",
   "deviceSelector.loading": "Loading devices...",
@@ -526,7 +503,6 @@
   "deviceSelector.compatible_other": "{{count}} compatible devices / {{total}} available",
   "deviceSelector.showCompatible": "Show compatible only",
   "deviceSelector.showAll": "Show all devices",
-
   "settings.title": "Settings",
   "settings.profile": "Profile",
   "settings.preferences": "Preferences",
@@ -568,7 +544,6 @@
   "settings.sunsetOffset": "Sunset offset (min)",
   "settings.sunriseOffsetHelp": "Minutes after sunrise before considering it daylight",
   "settings.sunsetOffsetHelp": "Minutes before sunset to anticipate night",
-
   "backup.title": "Backup / Restore",
   "backup.description": "Export or import the full Sowel configuration (zones, devices, equipments, users, recipes, integrations).",
   "backup.export": "Export",
@@ -582,7 +557,6 @@
   "backup.restored": "Backup restored successfully. Reloading...",
   "backup.confirmRestoreTitle": "Restore this backup?",
   "backup.confirmRestoreMessage": "This will replace all current data with the contents of {{filename}}. Continue?",
-
   "update.checkNow": "Check for updates",
   "update.dockerUnavailable": "Self-update unavailable: Docker socket not mounted. To enable, copy docker-compose.override.example.yml to docker-compose.override.yml and run `docker compose up -d`.",
   "update.notComposeManaged": "Self-update only available with docker compose. Update manually with: docker compose pull && docker compose up -d",
@@ -597,17 +571,14 @@
   "update.restartRequiredMessage": "Home location changed. Sowel needs to restart to re-derive the timezone.",
   "update.restartNow": "Restart now",
   "update.later": "Later",
-
   "settings.timezone": "Timezone",
   "settings.timezoneSourceAuto": "detected from your coordinates",
   "settings.timezoneSourceEnv": "set via TZ environment variable",
   "settings.timezoneSourceFallback": "not configured, UTC by default",
-
   "nav.analyse": "Analyse",
   "nav.integrations": "Integrations",
   "nav.logs": "Logs",
   "nav.backup": "Backup",
-
   "integrations.title": "Integrations",
   "integrations.subtitle": "Configure connections with your home automation systems.",
   "integrations.z2mDescription": "Zigbee to MQTT gateway",
@@ -645,7 +616,6 @@
   "integrations.oauthFillFirst": "Fill in the credentials above before connecting.",
   "integrations.oauthSuccess": "Samsung account connected successfully.",
   "integrations.oauthError": "Authorization failed",
-
   "calendar.title": "Calendar",
   "calendar.subtitle": "Schedule automatic mode activation throughout the week",
   "calendar.profiles": "Week profiles",
@@ -674,7 +644,6 @@
   "calendar.days.fri": "Fri",
   "calendar.days.sat": "Sat",
   "calendar.modeActionHint": "Click to cycle: ignored → ON → OFF",
-
   "thermostat.outside": "Outside",
   "thermostat.target": "Target",
   "thermostat.mode": "Mode",
@@ -698,7 +667,6 @@
   "thermostat.ecoMode": "Eco",
   "thermostat.ecoModes.powerful": "Powerful",
   "thermostat.ecoModes.quiet": "Quiet",
-
   "buttonActions.title": "Actions",
   "buttonActions.addEffect": "Add effect",
   "buttonActions.noEffects": "No effects configured",
@@ -724,7 +692,6 @@
   "buttonActions.zoneOrder.allThermostatsPowerOn": "Turn thermostats on",
   "buttonActions.zoneOrder.allThermostatsPowerOff": "Turn thermostats off",
   "buttonActions.zoneOrder.allThermostatsSetpoint": "Set thermostats setpoint",
-
   "stove.state.off": "Off",
   "stove.state.checking": "Checking",
   "stove.state.ignition_phase_1": "Ignition 1",
@@ -762,7 +729,6 @@
   "stove.pellet.almost_empty": "Almost empty",
   "stove.sparkPlug.ok": "OK",
   "stove.sparkPlug.worn": "Worn",
-
   "logs.title": "Engine Logs",
   "logs.subtitle": "Real-time engine log viewer",
   "logs.live": "Live",
@@ -777,7 +743,6 @@
   "logs.entries": "{{count}} entries",
   "logs.engineLevel": "Engine level",
   "logs.levelChanged": "Log level changed to {{level}}",
-
   "history.influxdb": "InfluxDB",
   "history.influxdbDescription": "Time-series database for data historization",
   "history.url": "URL",
@@ -826,7 +791,6 @@
   "history.setupComplete": "Configured",
   "history.setupIncomplete": "Not configured",
   "history.never": "Never",
-
   "analyse.title": "Analyse",
   "analyse.addSeries": "Add",
   "analyse.zone": "Zone",
@@ -868,7 +832,6 @@
   "analyse.bool.smoke.detected": "Detected",
   "analyse.bool.generic.off": "Off",
   "analyse.bool.generic.on": "On",
-
   "mqttPublishers.title": "MQTT Publishers",
   "mqttPublishers.subtitle": "Publish equipment, zone and recipe data to MQTT topics",
   "mqttPublishers.newPublisher": "New Publisher",
@@ -908,9 +871,7 @@
   "mqttPublishers.testResult": "{{count}} message(s) published",
   "mqttPublishers.onChangeOnly": "Publish only on value change",
   "mqttPublishers.onChangeOnlyBadge": "on change",
-
   "nav.notificationPublishers": "Notifications",
-
   "notifPublishers.title": "Notification Publishers",
   "notifPublishers.subtitle": "Send a notification (Telegram or Web Push) when an equipment, zone or recipe value changes",
   "notifPublishers.newPublisher": "New Publisher",
@@ -962,7 +923,6 @@
   "notifPublishers.test": "Test",
   "notifPublishers.testChannelOk": "Test message sent!",
   "notifPublishers.testResult": "{{count}} notification(s) sent",
-
   "nav.dashboard": "Dashboard",
   "dashboard.title": "Dashboard",
   "dashboard.emptyTitle": "No widgets configured",
@@ -991,12 +951,10 @@
   "dashboard.family.awnings": "Awnings",
   "dashboard.family.heating": "Heating",
   "dashboard.family.sensors": "Sensors",
-
   "app.offline": "You are offline",
   "app.installBanner": "Install Sowel for a better experience",
   "app.install": "Install",
   "app.notNow": "Not now",
-
   "settings.mobile": "Mobile app",
   "settings.mobileDescription": "Scan the QR code from your phone to connect",
   "settings.generateQr": "Generate QR code",
@@ -1006,17 +964,14 @@
   "settings.qrExpiry30d": "30 days",
   "settings.qrExpiryNever": "No expiry",
   "settings.qrInstructions": "1. Scan the QR code with your phone\n2. Add to home screen\n3. You're all set!",
-
   "qrLogin.connecting": "Connecting...",
   "qrLogin.invalidToken": "Invalid or expired token",
   "qrLogin.goToLogin": "Go to login page",
   "qrLogin.error": "Connection failed",
-
   "nav.energy": "Energy",
   "nav.energy.live": "Live",
   "nav.energy.consumption": "Consumption",
   "nav.energy.production": "Production",
-
   "energy.live": "Live",
   "energy.live.autoconso": "autoconso",
   "energy.live.configure": "Configure sources",
@@ -1069,7 +1024,6 @@
   "energy.unit.wh": "Wh",
   "energy.unit.eur": "€",
   "energy.unit.tariffMissing": "Configure HP/HC prices in Settings > Tariff",
-
   "tariff.title": "Energy tariffs",
   "tariff.unsavedBanner": "No tariff saved yet. These are suggested hours; click Save to apply them.",
   "tariff.priceHp": "Peak price (€/kWh)",
@@ -1082,9 +1036,7 @@
   "tariff.save": "Save",
   "tariff.saved": "Tariffs saved",
   "tariff.saveError": "Error saving tariffs",
-
   "nav.plugins": "Plugins",
-
   "plugins.title": "Plugins",
   "plugins.subtitle": "Install and manage extensions for Sowel.",
   "plugins.refreshRegistry": "Refresh",
@@ -1146,7 +1098,6 @@
   "plugins.category.safety": "Safety and monitoring",
   "plugins.category.energy": "Energy and display",
   "plugins.category.other": "Other",
-
   "settings.tabs.general": "General",
   "settings.tabs.account": "Account",
   "settings.tabs.system": "System",
@@ -1160,7 +1111,6 @@
   "settings.version.updateStarted": "Update started — Sowel will restart...",
   "settings.version.upToDate": "Sowel is up to date",
   "settings.version.noDocker": "Docker not available. Update manually:",
-
   "activity.title": "Activity",
   "activity.subtitle": "last 24 h",
   "activity.live": "live",
@@ -1168,7 +1118,6 @@
   "activity.empty": "No activity in the last 24 h",
   "activity.loading": "Loading activity…",
   "activity.loadError": "Failed to load activity",
-
   "activity.templates.order.executed": "<b>{{equipmentName}}</b> → {{value}}",
   "activity.templates.order.executed.multi": "<b>{{firstName}}</b> ×{{count}} → {{value}}",
   "activity.templates.motion.detected": "Motion detected on <b>{{equipmentName}}</b>",
@@ -1180,18 +1129,14 @@
   "activity.templates.sunlight.sunrise": "<b>Sunrise</b>",
   "activity.templates.sunlight.sunset": "<b>Sunset</b>",
   "activity.templates.alarm.raised": "<b>{{source}}</b>: {{message}}",
-
   "activity.source.recipe": "by {{recipeName}}",
   "activity.source.mode": "by mode {{modeName}}",
   "activity.source.manual": "manual",
   "activity.source.button": "via {{buttonLabel}}",
   "activity.source.external": "via {{channel}}",
-
   "activity.toggleDescendants.on": "Hide sub-zone activity",
   "activity.toggleDescendants.off": "Include sub-zone activity",
-
   "activity.bucket.now": "now",
-
   "equipment.status.online": "Online",
   "equipment.status.degraded": "Degraded",
   "equipment.status.offline": "Disconnected",
@@ -1200,13 +1145,10 @@
   "equipment.status.tooltip.staleBindings_one": "1 stale value:",
   "equipment.status.tooltip.staleBindings_other": "{{count}} stale values:",
   "equipment.status.tooltip.since": "Since {{when}}",
-
   "energy.cumul.lastLive": "Last live datapoint {{when}} ago",
   "energy.cumul.offlineSince": "Meter offline for {{when}}",
-
   "energy.live.dataStale": "Live data stale, last update {{when}} ago",
   "energy.live.metersOffline": "Meters disconnected for {{when}}",
-
   "zones.aggregate.unavailable_one": "(1 unavailable)",
   "zones.aggregate.unavailable_other": "({{count}} unavailable)"
 }

@@ -17,6 +17,10 @@ interface SystemDeps {
   sunlightManager: SunlightManager;
   /** Spec 124 — surfaced via GET /api/v1/system/mode so the UI can render its banner. */
   shadowMode: boolean;
+  /** Issue #401 — true when the database was restored from another deployment. */
+  takeoverPending: boolean;
+  confirmTakeover: () => void;
+  requestRestart: () => void;
   logger: Logger;
 }
 
@@ -30,6 +34,9 @@ export function registerSystemRoutes(app: FastifyInstance, deps: SystemDeps): vo
     tzInfo,
     sunlightManager,
     shadowMode,
+    takeoverPending,
+    confirmTakeover,
+    requestRestart,
     logger: parentLogger,
   } = deps;
   const logger = parentLogger.child({ module: "system-routes" });
@@ -120,12 +127,29 @@ export function registerSystemRoutes(app: FastifyInstance, deps: SystemDeps): vo
 
   // GET /api/v1/system/mode — surfaces the shadow-mode flag so the UI
   // can render its sticky banner. Accessible to ANY authenticated user
-  // (read-only, no PII). Spec 124.
+  // (read-only, no PII). Spec 124. Issue #401 adds takeoverPending for
+  // the restored-data guardrail banner.
   app.get("/api/v1/system/mode", async (request, reply) => {
     if (!request.auth) {
       return reply.code(401).send({ error: "Authentication required" });
     }
-    return { shadowMode };
+    return { shadowMode, takeoverPending };
+  });
+
+  // POST /api/v1/system/takeover — adopt a database restored from another
+  // deployment (issue #401). Writes the local instance marker, then restarts
+  // the engine so every gated subsystem comes back armed. Admin only.
+  app.post("/api/v1/system/takeover", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+    if (!takeoverPending) {
+      return reply.code(409).send({ error: "No takeover is pending" });
+    }
+    logger.warn({ userId: request.auth.userId }, "Takeover confirmed via API");
+    confirmTakeover();
+    requestRestart();
+    return { ok: true, restarting: true };
   });
 
   // GET /api/v1/system/sunlight — current server time + daylight state

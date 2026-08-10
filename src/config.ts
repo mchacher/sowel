@@ -117,5 +117,7 @@ export function loadConfig(): AppConfig {
       bucket: env("INFLUX_BUCKET", "sowel"),
     },
     shadowMode: envBool("SOWEL_SHADOW_MODE"),
+    dataDir,
+    takeoverConfirmed: envBool("SOWEL_TAKEOVER"),
   };
 }

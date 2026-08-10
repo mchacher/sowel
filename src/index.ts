@@ -27,6 +27,7 @@ import { BackupManager } from "./backup/backup-manager.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
+import { resolveInstanceIdentity, confirmTakeover } from "./core/instance-identity.js";
 import { ModeManager } from "./modes/mode-manager.js";
 import { CalendarManager } from "./modes/calendar-manager.js";
 import { ButtonActionManager } from "./buttons/button-action-manager.js";
@@ -172,6 +173,26 @@ async function main() {
 
   // 4. Create Settings Manager
   const settingsManager = new SettingsManager(db);
+
+  // 4b. Issue #401 — restored-data guardrail. A database restored from
+  // another deployment (prod backup on a dev machine, hardware migration)
+  // must not dial out with the origin's brokers and OAuth grants. When the
+  // stored instance id disagrees with the local marker, force the spec 124
+  // shadow gates for this boot; the admin confirms the takeover in the UI
+  // (or via SOWEL_TAKEOVER=1) and restarts to arm the instance.
+  const identity = resolveInstanceIdentity({
+    settingsManager,
+    dataDir: config.dataDir,
+    takeoverConfirmed: config.takeoverConfirmed,
+    logger,
+  });
+  if (identity.takeoverPending && !config.shadowMode) {
+    config.shadowMode = true;
+    logger.warn(
+      { module: "instance-identity", hostname: hostname() },
+      "TAKEOVER PENDING — starting with shadow gates active: outbound integrations, recipes, publishers, notifications, and version checks are disabled until the takeover is confirmed.",
+    );
+  }
 
   // 5. Create Event Bus
   const eventBus = new EventBus(logger);
@@ -420,6 +441,17 @@ async function main() {
     logger,
     corsOrigins: config.cors.origins,
     shadowMode: config.shadowMode,
+    takeoverPending: identity.takeoverPending,
+    confirmTakeover: () => {
+      confirmTakeover({ settingsManager, dataDir: config.dataDir, logger });
+    },
+    requestRestart: () => {
+      logger.warn(
+        { module: "instance-identity" },
+        "Restarting to complete the takeover (docker restart policy will bring the engine back armed)",
+      );
+      setTimeout(() => process.exit(0), 500);
+    },
   });
 
   await server.listen({ port: config.api.port, host: config.api.host });

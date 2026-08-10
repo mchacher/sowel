@@ -113,6 +113,10 @@ interface ServerDeps {
   corsOrigins: string[];
   /** Spec 124 — exposed by GET /api/v1/system/mode for the UI banner. */
   shadowMode: boolean;
+  /** Issue #401 — restored-data guardrail state + takeover confirm hooks. */
+  takeoverPending: boolean;
+  confirmTakeover: () => void;
+  requestRestart: () => void;
 }
 
 export async function createServer(deps: ServerDeps) {
@@ -155,6 +159,9 @@ export async function createServer(deps: ServerDeps) {
     logger,
     corsOrigins,
     shadowMode,
+    takeoverPending,
+    confirmTakeover,
+    requestRestart,
   } = deps;
 
   const app = Fastify({
@@ -332,6 +339,9 @@ export async function createServer(deps: ServerDeps) {
     tzInfo,
     sunlightManager,
     shadowMode,
+    takeoverPending,
+    confirmTakeover,
+    requestRestart,
     logger,
   });
   registerLogRoutes(app, { logBuffer, logger });

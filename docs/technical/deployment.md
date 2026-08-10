@@ -229,6 +229,10 @@ After restore, Sowel reports `{ restartRequired: true }`. You must restart the c
 docker compose restart sowel
 ```
 
+### Restoring a backup from another deployment (issue #401)
+
+The instance id stored in the settings table travels inside backups. When a restored database carries another deployment's id (a prod backup opened on a dev machine, a migration to new hardware), the engine starts **inert**: outbound integrations, recipes, publishers, and notifications stay disabled, and a red banner appears in the UI. An admin confirms the takeover from that banner (the engine then restarts armed), or you can pre-confirm with `SOWEL_TAKEOVER=1` in the environment. This prevents a copy of production data from dialing out and fighting the original deployment (MQTT client id collisions, OAuth refresh-token races).
+
 ### Archive contents
 
 See the "Backup & Restore" section in [architecture.md](architecture.md) for the full format.

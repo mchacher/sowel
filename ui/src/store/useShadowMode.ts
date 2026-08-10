@@ -6,18 +6,21 @@ import { getSystemMode } from "../api";
 
 interface ShadowState {
   shadowMode: boolean;
-  /** Fetch the flag once on app mount. Network errors leave the
-   * banner hidden — preferable to a spurious banner on a normal
+  /** Issue #401 — database restored from another deployment, engine inert. */
+  takeoverPending: boolean;
+  /** Fetch the flags once on app mount. Network errors leave the
+   * banners hidden — preferable to a spurious banner on a normal
    * instance during a flaky boot. */
   fetch: () => Promise<void>;
 }
 
 export const useShadowMode = create<ShadowState>((set) => ({
   shadowMode: false,
+  takeoverPending: false,
   fetch: async () => {
     try {
-      const { shadowMode } = await getSystemMode();
-      set({ shadowMode });
+      const { shadowMode, takeoverPending } = await getSystemMode();
+      set({ shadowMode, takeoverPending: takeoverPending ?? false });
     } catch {
       // Intentional: stay silent on errors.
     }

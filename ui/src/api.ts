@@ -161,8 +161,18 @@ export async function getSystemTimezone(): Promise<SystemTimezoneInfo> {
 }
 
 // Spec 124 — surfaces the shadowMode flag for the ShadowBanner.
-export async function getSystemMode(): Promise<{ shadowMode: boolean }> {
+// Issue #401 — takeoverPending drives the TakeoverBanner.
+export async function getSystemMode(): Promise<{
+  shadowMode: boolean;
+  takeoverPending?: boolean;
+}> {
   return fetchJSON(`${API_BASE}/system/mode`);
+}
+
+// Issue #401 — adopt a database restored from another deployment. The
+// backend writes the local marker and restarts itself.
+export async function confirmTakeover(): Promise<{ ok: boolean; restarting: boolean }> {
+  return fetchJSON(`${API_BASE}/system/takeover`, { method: "POST" });
 }
 
 export async function triggerSystemRestart(): Promise<{ success: boolean; message: string }> {

@@ -9,6 +9,7 @@ import { useWebSocket } from "../../store/useWebSocket";
 import { useTimezone } from "../../store/useTimezone";
 import { useShadowMode } from "../../store/useShadowMode";
 import { ShadowBanner } from "./ShadowBanner";
+import { TakeoverBanner } from "./TakeoverBanner";
 import { useDevices } from "../../store/useDevices";
 import { useZones } from "../../store/useZones";
 import type { ZoneWithChildren } from "../../types";
@@ -115,6 +116,8 @@ export function AppLayout() {
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Spec 124 — full-width shadow-mode stripe above sidebar + content. */}
       <ShadowBanner />
+      {/* Issue #401 — restored-data takeover stripe (red, admin confirm). */}
+      <TakeoverBanner />
       <div className="flex flex-1 min-h-0 overflow-hidden">
       {/* Sidebar — desktop only (lg: 1024px+, unreachable on phones) */}
       <div className="hidden lg:flex">
