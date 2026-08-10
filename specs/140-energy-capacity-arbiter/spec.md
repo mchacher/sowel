@@ -71,7 +71,9 @@ maximum and the system would collapse by inflation. Recipes express _needs_
 availableSurplusW = smoothedGridExportW + Σ grantedW(active grants)
 ```
 
-The arbiter reserves the declared watts of every active grant. A drop in
+The arbiter reserves the **effective watts** of every active grant — the
+load's smoothed measured draw when it has a power binding, else a learned
+nominal from past runs, else the declared profile watts (FR-2). A drop in
 export caused by its own grants does not read as "surplus gone". A drop
 _beyond_ the reserved total means background consumption rose (someone turned
 the hob on) → revoke bottom-up until the balance is restored.
@@ -111,9 +113,10 @@ the hob on) → revoke bottom-up until the balance is restored.
   (arbiter-issued orders, comfort-class guards like temperature floors). In
   phase 1 the arbiter issues **no orders at all** — recipes act, the arbiter
   decides.
-- **No production forecast**, no modulating loads (on/off semantics only —
-  a comfort boost is "on" at the recipe's discretion), no multi-meter
-  topologies, no per-phase (three-phase) accounting.
+- **No production forecast**, no modulation _control_ (the arbiter never
+  commands a power level; loads that modulate on their own are handled by the
+  effective-watts accounting, FR-2), no multi-meter topologies, no per-phase
+  (three-phase) accounting.
 
 ## Functional requirements
 

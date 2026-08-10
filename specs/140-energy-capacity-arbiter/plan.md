@@ -68,7 +68,7 @@ fix.
 | capacity-arbiter  | Disable via settings                                              | revoke all `disabled`; enable restores arbitration                                        |
 | capacity-arbiter  | Claim on non-profiled equipment                                   | denied `not-profiled`                                                                     |
 | capacity-arbiter  | Second claim on claimed equipment                                 | denied `equipment-already-claimed`                                                        |
-| capacity-arbiter  | Claim watts omitted                                               | reservation = profile nominalPowerW                                                       |
+| capacity-arbiter  | Claim watts omitted                                               | engage sized on profile nominal; reservation follows effective watts                      |
 | capacity-arbiter  | Equipment removed while granted                                   | revoke `disabled`, claim dropped                                                          |
 | capacity-arbiter  | Callback throws in onGranted/onRevoked                            | caught, logged, arbiter continues                                                         |
 | capacity-arbiter  | Journal bound                                                     | oldest entries evicted at capacity                                                        |
