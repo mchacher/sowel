@@ -271,6 +271,18 @@ surplus — and either way the journal shows an `unclaimed-run` entry instead of
 a mystery hole in the surplus. Core-side quota placement with deadline
 escalation is exactly the phase 2 follow-up this API keeps room for.
 
+**Window preference is recipe policy too.** Pool care actually recommends
+_daytime_ filtration (algae are photosynthetic, UV eats chlorine while the
+water is unstirred; night running is a tariff habit, not a pool practice —
+frost protection excepted). A pool recipe therefore composes the three
+platform primitives into a preference order: surplus claims first (daytime
+and free), then the _daytime_ off-peak window when one exists
+(`getTariff()` × `getSunlight()` — the Enedis afternoon HC windows land
+exactly here), night HC as the fallback of last resort, and peak-price
+daytime only under must-run pressure. The arbiter stays deliberately
+time-agnostic; _when_ a load should prefer to run is domain knowledge, and
+domain knowledge lives in recipes.
+
 ### Worked example 3 — the heat-wave dinner scenario
 
 16:30, heat wave. AC boost granted (2 000 W), pump granted (600 W), induction
