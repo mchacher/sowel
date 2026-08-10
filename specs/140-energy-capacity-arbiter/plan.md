@@ -27,6 +27,17 @@
 7. **Docs** — `recipe-development.md` (author rules from spec.md §"Rules for
    recipe authors"), `api-reference.md`, `data-model.md`,
    `architecture.md` energy section, specs-index row. (~0.5 d)
+8. **Consumer recipes** (separate repos, after the core release):
+   - `sowel-recipe-smart-cooling` v1.4 — the boost engage/release moves to
+     `claimCapacity()`; the whole v1.3 logic (surplus thresholds + off-peak
+     window) is kept verbatim as the standalone fallback. On a no-PV home,
+     an older core, or a disabled arbiter, behavior is byte-for-byte
+     today's. `sowelVersion` stays `>=1.31.1` (optional chaining, the
+     spec 138 precedent).
+   - Tariff-scheduler recipe (core issue #392) — gains optional surplus
+     claims on top of its tariff placement; tariff-only remains its complete
+     mode, not a degraded one.
+     (~1 d across the two repos)
 
 Total: ~7.5 days. Steps 1-4 are mergeable without any UI (arbiter observable
 through logs + API); 5-6 can follow in the same PR or a second one.
@@ -101,6 +112,10 @@ fix.
 1. Merge behind the default-off setting (`energy.arbiter.enabled = false`).
 2. Enable on the reference installation; profile the pool pump (deferrable,
    600 W) and the AC (comfort, 2000 W); watch the journal for a week.
-3. Ship `smart-cooling` v1.4 (claim-based boost, current logic as fallback).
-4. Then only: documentation pass for community recipe authors and the store
+3. Ship the consumer recipe updates (step 8): `smart-cooling` v1.4, then the
+   tariff scheduler. Core first, recipes after — never the reverse.
+4. **Validate the no-production path** on the demo instance (no PV): the same
+   recipes run with their surplus features inert and their tariff/comfort
+   value intact, and the UI shows no dead arbitration surface.
+5. Then only: documentation pass for community recipe authors and the store
    template update.

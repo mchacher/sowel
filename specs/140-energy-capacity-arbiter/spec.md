@@ -144,7 +144,12 @@ the hob on) → revoke bottom-up until the balance is restored.
 - **FR-5** Recipes interact exclusively through `ctx.helpers.energy` —
   callbacks, not meter reads. A recipe whose instance stops has its claims
   auto-released. On cores without the helper, recipes degrade to their own
-  fallback (same contract as `getTariff()` absence).
+  fallback (same contract as `getTariff()` absence). The same contract covers
+  homes with **no solar production at all** — a first-class, permanent
+  configuration, not an edge case: every consumer recipe must deliver its
+  full non-surplus value (tariff windows, schedules, comfort logic) with its
+  surplus features simply inert, whether the arbiter is absent, disabled, or
+  present on an installation that never exports.
 - **FR-6** A manual, button, or external order on a profiled equipment revokes
   its grant (`reason: "manual-override"`) and suspends arbitration of that
   equipment for `overrideTtlS` (default 2 h). The suspension is first-class in
@@ -322,8 +327,10 @@ switched the AC off, and every step is one line in the decision journal.
 
 1. A claim is a _bonus_, never a plan. Always keep a standalone fallback
    (tariff windows, fixed schedule, thresholds) — it is also your behavior on
-   cores without the arbiter, when the arbiter is disabled, and after
-   `meter-stale`.
+   cores without the arbiter, when the arbiter is disabled, after
+   `meter-stale`, and on the many homes with **no solar production**, where
+   your non-surplus features are the entire product. Tariff-only is a
+   complete mode, never a degraded one.
 2. Act on callbacks immediately; the reservation is freed at revocation, and
    consumption is expected to follow. Not honoring a revoke is detected and
    journaled (FR-9).
@@ -411,6 +418,14 @@ switched the AC off, and every step is one line in the decision journal.
    principle, author rule 5 (keep the claim open while force-running — a
    grant landing on a running load makes the books exact) and the
    `unclaimed-run` audit signal. See Worked example 2.
+9. **Consumer updates and no-PV homes** (maintainer requirement, second
+   pass): the implementation plan carries an explicit consumer-recipes step
+   (smart-cooling v1.4 with the v1.3 logic as verbatim fallback, tariff
+   scheduler #392 with optional claims), released core-first and gated by
+   nothing (`sowelVersion` unchanged, optional chaining). Recipes must stay
+   fully functional on installations without any production — surplus
+   features inert, tariff/comfort value intact (FR-5, author rule 1) — and
+   the rollout validates that path on the no-PV demo instance.
 
 ### Still open — for contributor review
 

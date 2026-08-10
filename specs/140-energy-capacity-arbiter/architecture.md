@@ -277,6 +277,12 @@ No claim-related mutation endpoint: claims belong to recipes, not to HTTP.
      action, reason, watts), entries reuse `RelativeTime`.
      This is the "why" surface: nothing the arbiter does is invisible.
 
+The whole arbitration surface renders only when the arbiter is enabled. On
+installations without a production meter, the settings card states why
+arbitration has nothing to do ("no solar production detected") instead of
+offering a switch that would animate an empty timeline — a no-PV home never
+sees dead arbitration UI.
+
 ## Failure modes
 
 | Failure                       | Behavior                                                           |
