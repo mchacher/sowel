@@ -1071,6 +1071,7 @@
   "energy.unit.tariffMissing": "Configure HP/HC prices in Settings > Tariff",
 
   "tariff.title": "Energy tariffs",
+  "tariff.unsavedBanner": "No tariff saved yet. These are suggested hours; click Save to apply them.",
   "tariff.priceHp": "Peak price (€/kWh)",
   "tariff.priceHc": "Off-peak price (€/kWh)",
   "tariff.priceRetroactiveHint": "These prices value all past and future consumption. Update them to reflect your current bill.",

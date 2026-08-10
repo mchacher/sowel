@@ -1071,6 +1071,7 @@
   "energy.unit.tariffMissing": "Configurez les prix HP/HC dans Réglages > Tarif",
 
   "tariff.title": "Tarifs énergie",
+  "tariff.unsavedBanner": "Aucun tarif enregistré pour le moment. Ces horaires sont une suggestion ; cliquez sur Enregistrer pour les appliquer.",
   "tariff.priceHp": "Prix HP (€/kWh)",
   "tariff.priceHc": "Prix HC (€/kWh)",
   "tariff.priceRetroactiveHint": "Ces prix valorisent toute votre consommation passée et future. Modifiez-les pour refléter votre facture actuelle.",

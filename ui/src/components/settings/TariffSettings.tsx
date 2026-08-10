@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Zap, Plus, Trash2, Loader2 } from "lucide-react";
+import { Zap, Plus, Trash2, Loader2, Info } from "lucide-react";
 import { getTariffConfig, saveTariffConfig } from "../../api";
+import { isTariffSaved } from "../../lib/tariff";
 import type { TariffConfig, TariffSlot } from "../../types";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -16,7 +17,13 @@ function defaultSlots(): TariffSlot[] {
   ];
 }
 
-function emptyConfig(): TariffConfig {
+/**
+ * Standard HP/HC schedule shown as a *proposal* before anything is saved.
+ * Deliberately not empty: a fresh install lands on sensible, ready-to-save
+ * hours. The unsaved banner (issue #384) tells this apart from a persisted
+ * tariff so the two are never confused.
+ */
+function proposedConfig(): TariffConfig {
   return {
     schedules: [{ days: [...ALL_DAYS], slots: defaultSlots() }],
     prices: { hp: 0, hc: 0 },
@@ -158,16 +165,23 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
 
 export function TariffSettings() {
   const { t } = useTranslation();
-  const [config, setConfig] = useState<TariffConfig>(emptyConfig());
+  const [config, setConfig] = useState<TariffConfig>(proposedConfig());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether a tariff is actually persisted. Until it is, the form shows the
+  // proposal and warns that nothing is saved (issue #384). The server returns
+  // an empty `schedules` array when `energy.tariff` is absent.
+  const [configured, setConfigured] = useState(false);
 
   useEffect(() => {
     getTariffConfig()
       .then((c) => {
-        if (c.schedules.length > 0) setConfig(c);
+        if (isTariffSaved(c)) {
+          setConfig(c);
+          setConfigured(true);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -187,6 +201,7 @@ export function TariffSettings() {
         schedules: [{ days: [...ALL_DAYS], slots }],
       };
       await saveTariffConfig(toSave);
+      setConfigured(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -241,6 +256,19 @@ export function TariffSettings() {
         <Zap size={18} strokeWidth={1.5} className="text-text-secondary" />
         <h2 className="text-[15px] font-semibold text-text">{t("tariff.title")}</h2>
       </div>
+
+      {/* Issue #384 — the form is pre-filled with the standard schedule as a
+          proposal; without this banner an unsaved default looks identical to a
+          persisted tariff. Shown only until a tariff is actually saved. */}
+      {!configured && (
+        <div
+          role="status"
+          className="flex items-start gap-2 mb-4 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-[12px] text-text-secondary"
+        >
+          <Info size={14} strokeWidth={1.5} className="mt-0.5 flex-shrink-0 text-accent" />
+          <span>{t("tariff.unsavedBanner")}</span>
+        </div>
+      )}
 
       {/* Prices */}
       <div className="grid grid-cols-2 gap-4 mb-5">
