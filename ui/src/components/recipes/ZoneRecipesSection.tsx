@@ -7,10 +7,9 @@ import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
 import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, EquipmentWithDetails, ZoneWithChildren } from "../../types";
-import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
-import { isSlotHidden } from "../../lib/recipe-slots";
+import { isSlotHidden, matchesEquipmentType, equipmentCandidates } from "../../lib/recipe-slots";
 import { flattenZonesWithPath, zoneChainMap, equipmentLabelMap, type ZoneOption } from "../../lib/zone-path";
 import type { RecipeSlotDef } from "../../types";
 
@@ -87,11 +86,6 @@ function MultiSelectChips({
   );
 }
 
-
-function matchesEquipmentType(eqType: string, constraint: EquipmentType | EquipmentType[]): boolean {
-  const types = Array.isArray(constraint) ? constraint : [constraint];
-  return types.some((t) => t === eqType);
-}
 
 /** A chunk is either a single ungrouped slot or a group of slots sharing the same group key. */
 interface SlotChunk {
@@ -984,7 +978,6 @@ function RecipeInstanceRow({
                               onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
                               equipments={getEquipmentOptions(slot.id)}
                               zones={allZones}
-                              matchesConstraint={() => true /* already filtered upstream */}
                             />
                           ) : (
                             <select
@@ -1475,42 +1468,40 @@ function TimeInput({
 // with constraints.crossZone or includeDescendants
 // ============================================================
 
+/**
+ * Zone dropdown then equipment dropdown, for a single-equipment slot whose scope
+ * is wider than the recipe's own zone (`crossZone` / `includeDescendants`).
+ *
+ * `equipments` arrives already filtered against the slot's constraints by the
+ * caller's `getEquipmentOptions`, so this picker only ever splits that list by
+ * zone.
+ */
 function SingleEquipmentZonePicker({
   value,
   onChange,
   equipments,
   zones,
-  matchesConstraint,
-  zoneIdsAllowed,
 }: {
   value: string;
   onChange: (value: string) => void;
   equipments: EquipmentWithDetails[];
   zones: ZoneOption[];
-  matchesConstraint: (eq: EquipmentWithDetails) => boolean;
-  /** When set, only zones in this set are listed. */
-  zoneIdsAllowed?: Set<string>;
 }) {
   const { t } = useTranslation();
 
   const selectedEq = value ? equipments.find((e) => e.id === value) : undefined;
   const [pickerZoneId, setPickerZoneId] = useState<string>(selectedEq?.zoneId ?? "");
 
-  // Zones that have at least one matching equipment (and are within
-  // the allowed scope when one is provided).
-  const zonesWithOptions = useMemo(() => {
-    return zones.filter((z) => {
-      if (zoneIdsAllowed && !zoneIdsAllowed.has(z.id)) return false;
-      return equipments.some((eq) => eq.zoneId === z.id && matchesConstraint(eq));
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zones, equipments, zoneIdsAllowed]);
+  // Zones that have at least one equipment to offer.
+  const zonesWithOptions = useMemo(
+    () => zones.filter((z) => equipmentCandidates(equipments, z.id).length > 0),
+    [zones, equipments],
+  );
 
-  const pickerOptions = useMemo(() => {
-    if (!pickerZoneId) return [];
-    return equipments.filter((eq) => eq.zoneId === pickerZoneId && matchesConstraint(eq));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickerZoneId, equipments]);
+  const pickerOptions = useMemo(
+    () => equipmentCandidates(equipments, pickerZoneId),
+    [pickerZoneId, equipments],
+  );
 
   return (
     <div className="flex items-center gap-1.5">
@@ -1519,8 +1510,12 @@ function SingleEquipmentZonePicker({
         onChange={(e) => {
           const zid = e.target.value;
           setPickerZoneId(zid);
-          // Clear the equipment if it no longer belongs to the chosen zone
-          if (selectedEq && selectedEq.zoneId !== zid) onChange("");
+          const candidates = equipmentCandidates(equipments, zid);
+          // A zone holding a single candidate has already made the choice —
+          // opening a one-entry dropdown would only confirm it.
+          if (candidates.length === 1) onChange(candidates[0].id);
+          // Otherwise clear the equipment if it no longer belongs to the zone.
+          else if (selectedEq && selectedEq.zoneId !== zid) onChange("");
         }}
         className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
       >
@@ -1574,29 +1569,22 @@ function EquipmentListPicker({
   const { t } = useTranslation();
   const [pickerZoneId, setPickerZoneId] = useState("");
 
-  const selectedIds = value.split(",").filter(Boolean);
+  const selectedIds = useMemo(() => value.split(",").filter(Boolean), [value]);
+  const constraint = slot.constraints?.equipmentType;
 
-  const matchesConstraint = (eq: EquipmentWithDetails) => {
-    if (!slot.constraints?.equipmentType) return true;
-    return matchesEquipmentType(eq.type, slot.constraints.equipmentType);
-  };
+  // Zones that still have something to offer: matching and not already picked.
+  const zonesWithOptions = useMemo(
+    () =>
+      zones.filter(
+        (z) => equipmentCandidates(equipments, z.id, { constraint, excludeIds: selectedIds }).length > 0,
+      ),
+    [zones, equipments, selectedIds, constraint],
+  );
 
-  // Zones that have matching, non-selected equipments
-  const zonesWithOptions = useMemo(() => {
-    return zones.filter((z) =>
-      equipments.some((eq) => eq.zoneId === z.id && !selectedIds.includes(eq.id) && matchesConstraint(eq))
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zones, equipments, selectedIds, slot.constraints?.equipmentType]);
-
-  // Equipments in picked zone matching constraints
-  const pickerOptions = useMemo(() => {
-    if (!pickerZoneId) return [];
-    return equipments.filter((eq) =>
-      eq.zoneId === pickerZoneId && !selectedIds.includes(eq.id) && matchesConstraint(eq)
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickerZoneId, equipments, selectedIds, slot.constraints?.equipmentType]);
+  const pickerOptions = useMemo(
+    () => equipmentCandidates(equipments, pickerZoneId, { constraint, excludeIds: selectedIds }),
+    [pickerZoneId, equipments, selectedIds, constraint],
+  );
 
   const handleRemove = (eqId: string) => {
     const next = selectedIds.filter((id) => id !== eqId);
@@ -1609,14 +1597,15 @@ function EquipmentListPicker({
         {recipeSlotName(recipe, slot, lang)}
       </label>
 
-      {/* Selected items */}
+      {/* Selected items — zone then equipment, the reading order of the two
+          dropdowns underneath, so a chip lines up with the row that made it. */}
       {selectedIds.map((id) => {
         const eq = equipments.find((e) => e.id === id);
         const zone = eq ? zones.find((z) => z.id === eq.zoneId) : null;
         return (
           <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-[13px] bg-surface border border-border rounded-[6px]">
-            <span className="flex-1 text-text truncate">{eq?.name ?? id}</span>
-            {zone && <span className="text-[11px] text-text-tertiary truncate">{zone.label}</span>}
+            {zone && <span className="min-w-0 text-[11px] text-text-tertiary truncate">{zone.label}</span>}
+            <span className="flex-1 min-w-0 text-text truncate">{eq?.name ?? id}</span>
             <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
               <X size={12} strokeWidth={1.5} />
             </button>
@@ -1629,7 +1618,18 @@ function EquipmentListPicker({
         <div className="flex items-center gap-1.5">
           <select
             value={pickerZoneId}
-            onChange={(e) => setPickerZoneId(e.target.value)}
+            onChange={(e) => {
+              const zid = e.target.value;
+              const candidates = equipmentCandidates(equipments, zid, { constraint, excludeIds: selectedIds });
+              // One candidate left in that zone: add it and drop back to the
+              // zone dropdown, exactly where picking it by hand would land.
+              if (candidates.length === 1) {
+                onChange([...selectedIds, candidates[0].id].join(","));
+                setPickerZoneId("");
+              } else {
+                setPickerZoneId(zid);
+              }
+            }}
             className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
           >
             <option value="">Zone…</option>
@@ -2061,7 +2061,6 @@ function AddRecipeForm({
                             onChange={(v) => setParams({ ...params, [slot.id]: v })}
                             equipments={getEquipmentOptions(slot.id)}
                             zones={allZones}
-                            matchesConstraint={() => true}
                           />
                         ) : (
                           <select
