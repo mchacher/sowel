@@ -6,12 +6,38 @@ import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, EquipmentWithDetails, Zone, ZoneWithChildren } from "../../types";
+import type { RecipeInfo, RecipeInstance, RecipeLogEntry, RecipeActionDef, EquipmentWithDetails, ZoneWithChildren } from "../../types";
 import type { EquipmentType } from "../../types";
 import { formatTime } from "../../lib/format";
 import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
 import { isSlotHidden } from "../../lib/recipe-slots";
+import { flattenZonesWithPath, zoneChainMap, equipmentLabelMap, type ZoneOption } from "../../lib/zone-path";
 import type { RecipeSlotDef } from "../../types";
+
+/**
+ * `<option>` list of an equipment dropdown (spec 139). Integrations name every
+ * sensor alike ("Température"), so a bare name does not say which room it is
+ * in; the zone is appended only to the names that actually repeat in this
+ * list, since a compact dropdown truncates whatever it cannot fit.
+ */
+function EquipmentOptions({
+  equipments,
+  zoneChains,
+}: {
+  equipments: EquipmentWithDetails[];
+  zoneChains: Map<string, string[]>;
+}) {
+  const labels = equipmentLabelMap(equipments, zoneChains);
+  return (
+    <>
+      {equipments.map((eq) => (
+        <option key={eq.id} value={eq.id}>
+          {labels.get(eq.id) ?? eq.name}
+        </option>
+      ))}
+    </>
+  );
+}
 
 
 /** Multi-select renderer for a `select` slot with `list: true`: one toggle chip
@@ -461,14 +487,8 @@ function RecipeInstanceRow({
   const equipments = useEquipments((s) => s.equipments);
   const zoneAggregation = useZoneAggregation((s) => s.data);
   const zoneTree = useZones((s) => s.tree);
-  const allZones = useMemo(() => {
-    const flat: { id: string; name: string }[] = [];
-    const walk = (nodes: ZoneWithChildren[]) => {
-      for (const n of nodes) { flat.push({ id: n.id, name: n.name }); if (n.children.length > 0) walk(n.children); }
-    };
-    walk(zoneTree);
-    return flat;
-  }, [zoneTree]);
+  const allZones = useMemo(() => flattenZonesWithPath(zoneTree), [zoneTree]);
+  const zoneChains = useMemo(() => zoneChainMap(allZones), [allZones]);
   const zoneAndDescendantIds = useMemo(() => {
     const ids = new Set<string>();
     const collect = (nodes: ZoneWithChildren[], inside: boolean): void => {
@@ -857,9 +877,7 @@ function RecipeInstanceRow({
                                         className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                                       >
                                         <option value="">{t("common.select")}</option>
-                                        {getEquipmentOptions(slot.id).map((eq) => (
-                                          <option key={eq.id} value={eq.id}>{eq.name}</option>
-                                        ))}
+                                        <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
                                       </select>
                                     ) : slot.type === "data-key" ? (
                                       (() => {
@@ -952,28 +970,12 @@ function RecipeInstanceRow({
                           {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                         </label>
                         {slot.type === "equipment" && slot.list ? (
-                          <div className="space-y-1">
-                            {getEquipmentOptions(slot.id).map((eq) => {
-                              const selected = (editParams[slot.id] ?? "").split(",").filter(Boolean);
-                              const checked = selected.includes(eq.id);
-                              return (
-                                <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => {
-                                      const next = checked
-                                        ? selected.filter((id) => id !== eq.id)
-                                        : [...selected, eq.id];
-                                      setEditParams({ ...editParams, [slot.id]: next.join(",") });
-                                    }}
-                                    className="accent-primary"
-                                  />
-                                  {eq.name}
-                                </label>
-                              );
-                            })}
-                          </div>
+                          <EquipmentCheckboxList
+                            equipments={getEquipmentOptions(slot.id)}
+                            zoneChains={zoneChains}
+                            value={editParams[slot.id] ?? ""}
+                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                          />
                         ) : slot.type === "equipment" ? (
                           slot.constraints?.crossZone === true ||
                           slot.constraints?.includeDescendants === true ? (
@@ -991,9 +993,7 @@ function RecipeInstanceRow({
                               className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                             >
                               <option value="">{t("common.select")}</option>
-                              {getEquipmentOptions(slot.id).map((eq) => (
-                                <option key={eq.id} value={eq.id}>{eq.name}</option>
-                              ))}
+                              <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
                             </select>
                           )
                         ) : slot.type === "data-key" ? (
@@ -1172,18 +1172,9 @@ function DuplicateRecipeModal({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Flatten zone tree to a flat list
-  const allZones = useMemo(() => {
-    const flat: Zone[] = [];
-    const walk = (nodes: ZoneWithChildren[]) => {
-      for (const n of nodes) {
-        flat.push(n);
-        if (n.children.length > 0) walk(n.children);
-      }
-    };
-    walk(zoneTree);
-    return flat;
-  }, [zoneTree]);
+  // Flatten zone tree to a flat list, each zone qualified by its ancestors
+  const allZones = useMemo(() => flattenZonesWithPath(zoneTree), [zoneTree]);
+  const zoneChains = useMemo(() => zoneChainMap(allZones), [allZones]);
 
   // Equipment slots that need remapping
   const equipmentSlots = useMemo(() => {
@@ -1194,7 +1185,7 @@ function DuplicateRecipeModal({
 
   // Other zones (exclude current)
   const otherZones = useMemo(() => {
-    return allZones.filter((z: Zone) => z.id !== sourceZoneId);
+    return allZones.filter((z) => z.id !== sourceZoneId);
   }, [allZones, sourceZoneId]);
 
   // Reset equipment map when target zone changes
@@ -1310,7 +1301,7 @@ function DuplicateRecipeModal({
             >
               <option value="">{t("common.select")}</option>
               {otherZones.map((z) => (
-                <option key={z.id} value={z.id}>{z.name}</option>
+                <option key={z.id} value={z.id}>{z.label}</option>
               ))}
             </select>
           </div>
@@ -1332,9 +1323,7 @@ function DuplicateRecipeModal({
                     className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                   >
                     {compatible.length > 1 && <option value="">{t("common.select")}</option>}
-                    {compatible.map((eq) => (
-                      <option key={eq.id} value={eq.id}>{eq.name}</option>
-                    ))}
+                    <EquipmentOptions equipments={compatible} zoneChains={zoneChains} />
                   </select>
                 )}
               </div>
@@ -1497,7 +1486,7 @@ function SingleEquipmentZonePicker({
   value: string;
   onChange: (value: string) => void;
   equipments: EquipmentWithDetails[];
-  zones: { id: string; name: string }[];
+  zones: ZoneOption[];
   matchesConstraint: (eq: EquipmentWithDetails) => boolean;
   /** When set, only zones in this set are listed. */
   zoneIdsAllowed?: Set<string>;
@@ -1538,7 +1527,7 @@ function SingleEquipmentZonePicker({
         <option value="">Zone…</option>
         {zonesWithOptions.map((z) => (
           <option key={z.id} value={z.id}>
-            {z.name}
+            {z.label}
           </option>
         ))}
       </select>
@@ -1577,7 +1566,7 @@ function EquipmentListPicker({
   value: string;
   onChange: (value: string) => void;
   equipments: EquipmentWithDetails[];
-  zones: { id: string; name: string }[];
+  zones: ZoneOption[];
   recipe: RecipeInfo;
   lang: string;
   labelClassName?: string;
@@ -1627,7 +1616,7 @@ function EquipmentListPicker({
         return (
           <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-[13px] bg-surface border border-border rounded-[6px]">
             <span className="flex-1 text-text truncate">{eq?.name ?? id}</span>
-            {zone && <span className="text-[11px] text-text-tertiary shrink-0">{zone.name}</span>}
+            {zone && <span className="text-[11px] text-text-tertiary truncate">{zone.label}</span>}
             <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
               <X size={12} strokeWidth={1.5} />
             </button>
@@ -1645,7 +1634,7 @@ function EquipmentListPicker({
           >
             <option value="">Zone…</option>
             {zonesWithOptions.map((z) => (
-              <option key={z.id} value={z.id}>{z.name}</option>
+              <option key={z.id} value={z.id}>{z.label}</option>
             ))}
           </select>
           <select
@@ -1669,6 +1658,58 @@ function EquipmentListPicker({
           </select>
         </div>
       )}
+    </div>
+  );
+}
+
+
+/**
+ * Checkbox list of an equipment-list slot (spec 139). Real markup here, so the
+ * zone rides as secondary text instead of being glued into the name — and only
+ * for the names that repeat in this list.
+ */
+function EquipmentCheckboxList({
+  equipments,
+  zoneChains,
+  value,
+  onChange,
+}: {
+  equipments: EquipmentWithDetails[];
+  zoneChains: Map<string, string[]>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const labels = equipmentLabelMap(equipments, zoneChains);
+  const selected = value.split(",").filter(Boolean);
+
+  return (
+    <div className="space-y-1">
+      {equipments.map((eq) => {
+        const checked = selected.includes(eq.id);
+        const label = labels.get(eq.id) ?? eq.name;
+        const zone = label === eq.name ? null : label.slice(eq.name.length + 3);
+        return (
+          <label
+            key={eq.id}
+            className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150"
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() =>
+                onChange(
+                  (checked ? selected.filter((id) => id !== eq.id) : [...selected, eq.id]).join(","),
+                )
+              }
+              className="accent-primary"
+            />
+            <span className="truncate">{eq.name}</span>
+            {zone && (
+              <span className="ml-auto text-[11px] text-text-tertiary truncate">{zone}</span>
+            )}
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -1704,14 +1745,8 @@ function AddRecipeForm({
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId);
 
   // Flatten zone tree for equipment list picker
-  const allZones = useMemo(() => {
-    const flat: { id: string; name: string }[] = [];
-    const walk = (nodes: ZoneWithChildren[]) => {
-      for (const n of nodes) { flat.push({ id: n.id, name: n.name }); if (n.children.length > 0) walk(n.children); }
-    };
-    walk(zoneTree);
-    return flat;
-  }, [zoneTree]);
+  const allZones = useMemo(() => flattenZonesWithPath(zoneTree), [zoneTree]);
+  const zoneChains = useMemo(() => zoneChainMap(allZones), [allZones]);
 
   // Set of {zoneId} ∪ {descendantIds(zoneId)} used by slots with constraints.includeDescendants.
   const zoneAndDescendantIds = useMemo(() => {
@@ -1920,9 +1955,7 @@ function AddRecipeForm({
                                       className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                                     >
                                       <option value="">{t("common.select")}</option>
-                                      {getEquipmentOptions(slot.id).map((eq) => (
-                                        <option key={eq.id} value={eq.id}>{eq.name}</option>
-                                      ))}
+                                      <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
                                     </select>
                                   ) : slot.type === "data-key" ? (
                                     (() => {
@@ -2014,28 +2047,12 @@ function AddRecipeForm({
                         {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                       </label>
                       {slot.type === "equipment" && slot.list ? (
-                        <div className="space-y-1">
-                          {getEquipmentOptions(slot.id).map((eq) => {
-                            const selected = (params[slot.id] ?? "").split(",").filter(Boolean);
-                            const checked = selected.includes(eq.id);
-                            return (
-                              <label key={eq.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => {
-                                    const next = checked
-                                      ? selected.filter((id) => id !== eq.id)
-                                      : [...selected, eq.id];
-                                    setParams({ ...params, [slot.id]: next.join(",") });
-                                  }}
-                                  className="accent-primary"
-                                />
-                                {eq.name}
-                              </label>
-                            );
-                          })}
-                        </div>
+                        <EquipmentCheckboxList
+                          equipments={getEquipmentOptions(slot.id)}
+                          zoneChains={zoneChains}
+                          value={params[slot.id] ?? ""}
+                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                        />
                       ) : slot.type === "equipment" ? (
                         slot.constraints?.crossZone === true ||
                         slot.constraints?.includeDescendants === true ? (
@@ -2053,9 +2070,7 @@ function AddRecipeForm({
                             className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
                           >
                             <option value="">{t("common.select")}</option>
-                            {getEquipmentOptions(slot.id).map((eq) => (
-                              <option key={eq.id} value={eq.id}>{eq.name}</option>
-                            ))}
+                            <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
                           </select>
                         )
                       ) : slot.type === "data-key" ? (

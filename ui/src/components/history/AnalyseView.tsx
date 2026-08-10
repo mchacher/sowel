@@ -30,6 +30,7 @@ import {
 import { getEquipments, getZones, getHistoryBindings, getHistoryData, getChart } from "../../api";
 import { useCharts } from "../../store/useCharts";
 import { useAuth } from "../../store/useAuth";
+import { flattenZonesWithPath } from "../../lib/zone-path";
 import type {
   EquipmentWithDetails,
   ZoneWithChildren,
@@ -113,19 +114,6 @@ const CATEGORY_UNITS: Record<string, string> = {
 // ============================================================
 // Helpers
 // ============================================================
-
-function flattenZones(zones: ZoneWithChildren[]): { id: string; name: string; depth: number; label: string }[] {
-  const result: { id: string; name: string; depth: number; label: string }[] = [];
-  function walk(list: ZoneWithChildren[], depth: number, parentName?: string) {
-    for (const z of list) {
-      const label = parentName ? `${parentName} › ${z.name}` : z.name;
-      result.push({ id: z.id, name: z.name, depth, label });
-      if (z.children.length > 0) walk(z.children, depth + 1, label);
-    }
-  }
-  walk(zones, 0);
-  return result;
-}
 
 function formatTime(iso: string, period: Period): string {
   const d = new Date(iso);
@@ -221,7 +209,7 @@ export function AnalyseView() {
       .finally(() => setLoading(false));
   }, []);
 
-  const flatZones = useMemo(() => flattenZones(zones), [zones]);
+  const flatZones = useMemo(() => flattenZonesWithPath(zones), [zones]);
 
   // Zone id → name lookup (leaf name, not breadcrumb)
   const zoneNameById = useMemo(() => {
@@ -750,7 +738,7 @@ export function AnalyseView() {
                 >
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
-                      {z.label}
+                      {z.path}
                     </option>
                   ))}
                 </select>
