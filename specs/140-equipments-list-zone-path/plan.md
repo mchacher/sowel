@@ -50,5 +50,7 @@ page component is a renderer over its output.
 ### Not covered by tests
 
 The heading's visual hierarchy (muted ancestors vs emphasised name) and the
-wrapping of a deep path on a narrow viewport — checked manually, as spec 139
-checked its truncation.
+wrapping of a deep path on a narrow viewport. Checked with Playwright against a
+live instance instead, desktop and 390 px — that pass is what caught the name
+breaking mid-word on mobile and produced the `whitespace-nowrap` fix.
+Screenshots in `screenshots/`.

@@ -83,6 +83,13 @@ what makes the heading scannable — the eye lands on the room, the path is ther
 when it is needed. `chain` is optional so the same component renders the orphan
 group from `t("dashboard.unknownZone")`.
 
+The zone's own name is wrapped in a `whitespace-nowrap` span. The first mobile
+screenshot showed why: at 390 px a four-segment path wraps, and it wrapped
+_inside_ the name — `MAISON PRINCIPALE › GITE › RDC › SALLE DE / BAIN`, breaking
+the one word the reader is scanning for. Keeping the name atomic pushes it whole
+onto the second line instead, which is the two-line layout one would have
+designed anyway, without spending vertical space when the path does fit.
+
 ## Why not indent the groups instead
 
 Reproducing the tree with indented headings was the alternative reading of
@@ -103,6 +110,23 @@ empty zones are skipped, several equipments of one zone keep input order,
 orphans land in the trailing group, and an empty input yields no group.
 
 No backend test: nothing outside the browser changed.
+
+### Visual check
+
+Driven with Playwright against a live instance whose tree really does repeat
+room names (`Salle de bain` in `Gite › RDC`, in `Gite › Etage` and in `Maison`;
+`WC` and `Salle à manger` twice each). Screenshots in `screenshots/`:
+
+| File                          | Shows                                                             |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `before-merged-bathrooms.png` | One `SALLE DE BAIN` group holding three rooms' worth of equipment |
+| `after-bathroom-rdc.png`      | The same bathroom, now named by its path                          |
+| `after-bathroom-maison.png`   | Its homonym in the main house, a separate group                   |
+| `after-list.png`              | The whole list: paths and depth-first order                       |
+| `after-mobile.png`            | 390 px — path wraps, zone name stays whole                        |
+
+The count is the check that needs no eye: 13 groups before, 17 after, for the
+same 22 equipments — the four extra groups are the merged homonyms coming apart.
 
 ## Non-impacts
 

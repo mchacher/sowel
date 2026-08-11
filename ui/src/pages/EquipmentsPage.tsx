@@ -186,7 +186,9 @@ function ZoneHeading({ chain }: { chain?: string[] }) {
           {ZONE_PATH_SEPARATOR}
         </span>
       )}
-      {name}
+      {/* The path may wrap; the zone's own name must not be split across lines
+          — it is what the reader is looking for. */}
+      <span className="whitespace-nowrap">{name}</span>
     </h3>
   );
 }
