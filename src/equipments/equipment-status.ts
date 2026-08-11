@@ -14,6 +14,7 @@ import {
 import type {
   DataBindingWithValue,
   DataCategory,
+  DataType,
   Device,
   EquipmentStatus,
   EquipmentStatusReason,
@@ -38,13 +39,24 @@ function parseTimestamp(iso: string | null): number | null {
  * is older than the per-category threshold. Bindings that have never received
  * a value (lastUpdated === null) are NOT stale — we never had any value to
  * begin with, so silence is expected.
+ *
+ * A **boolean** value on a streaming category is a discrete on/off state, not a
+ * live stream: a steady state legitimately does not change, and poll-driven or
+ * state-only integrations refresh it on a cadence longer than the streaming
+ * window (e.g. Panasonic Comfort Cloud `power`). Its health comes from
+ * `device.status`, not from a freshness window, so it is exempt from staleness
+ * (issue #422). This mirrors the `SILENCE_EXEMPT_EQUIPMENT_TYPES` exemption for
+ * buttons (#348), at the value-type level instead of the equipment-type level.
+ * Numeric streaming reads (Shelly / Legrand live clamps) are unaffected.
  */
 export function isStaleBinding(
   category: DataCategory,
   lastUpdated: string | null,
   now: number = Date.now(),
+  type?: DataType,
 ): boolean {
   if (!STREAMING_CATEGORIES.has(category)) return false;
+  if (type === "boolean") return false; // discrete on/off state, not a live stream
   const updatedMs = parseTimestamp(lastUpdated);
   if (updatedMs === null) return false;
   const timeoutMs = STREAMING_TIMEOUT_MS[category] ?? DEFAULT_STREAMING_TIMEOUT_MS;
@@ -113,7 +125,7 @@ export function deriveEquipmentStatus(
     (device) => device.status === "offline",
   );
   const staleBindings = bindings.filter((binding) =>
-    isStaleBinding(binding.category, binding.lastUpdated, now),
+    isStaleBinding(binding.category, binding.lastUpdated, now, binding.type),
   );
 
   const allOffline = uniqueDevices.size > 0 && offlineDevices.length === uniqueDevices.size;

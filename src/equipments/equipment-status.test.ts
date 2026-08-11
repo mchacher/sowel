@@ -80,6 +80,17 @@ describe("isStaleBinding", () => {
   it("unparseable timestamp is treated as no value — not stale", () => {
     expect(isStaleBinding("power", "not-a-date", NOW)).toBe(false);
   });
+
+  it("boolean 'power' (on/off state) is never stale, even far beyond the window (#422)", () => {
+    // PAC / TV pattern: a discrete on/off state that legitimately does not
+    // change between polls. Would be stale as a numeric read (2 min window).
+    expect(isStaleBinding("power", "2026-04-19 00:00:00Z", NOW, "boolean")).toBe(false);
+    expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "boolean")).toBe(false);
+  });
+
+  it("numeric 'power' beyond the window is still stale (live clamp regression guard)", () => {
+    expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "number")).toBe(true);
+  });
 });
 
 // ─── deriveEquipmentStatus ──────────────────────────────────────────────
@@ -153,6 +164,51 @@ describe("deriveEquipmentStatus", () => {
     expect(result.status).toBe("degraded");
     expect(result.reason?.staleBindings).toEqual(["power"]);
     expect(result.reason?.offlineDevices).toEqual([]);
+  });
+
+  it("boolean 'power' stale by time on an online device stays 'online', not degraded (#422)", () => {
+    // PAC / TV: the on/off state has not changed for a long time, but the
+    // device is online and polling. A steady discrete state must not degrade.
+    const binding = makeBinding({
+      category: "power",
+      type: "boolean",
+      value: true,
+      lastUpdated: "2026-04-19 00:00:00Z", // weeks old
+      alias: "power",
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([[binding.id, device]]);
+    const result = deriveEquipmentStatus([binding], map, NOW);
+    expect(result.status).toBe("online");
+    expect(result.reason).toBeNull();
+  });
+
+  it("stale boolean 'power' alongside fresh bindings on an online device stays 'online' (#422)", () => {
+    // PAC evidence: boolean power (stale) + temperature/setpoint fresh at the
+    // same online device. The stale boolean must not tip the equipment.
+    const power = makeBinding({
+      id: "b-power",
+      category: "power",
+      type: "boolean",
+      value: false,
+      lastUpdated: "2026-04-19 00:00:00Z",
+      alias: "power",
+    });
+    const temperature = makeBinding({
+      id: "b-temp",
+      category: "temperature",
+      type: "number",
+      value: 21,
+      lastUpdated: "2026-05-26 09:59:00Z",
+      alias: "temperature",
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([
+      [power.id, device],
+      [temperature.id, device],
+    ]);
+    const result = deriveEquipmentStatus([power, temperature], map, NOW);
+    expect(result.status).toBe("online");
   });
 
   it("device 'unknown' is treated as online — no degradation alone", () => {
