@@ -2,7 +2,7 @@
 
 ## New module
 
-`src/equipments/order-confirmation-tracker.ts`: `OrderConfirmationTracker`, instantiated in `index.ts` next to the other equipment trackers, skipped in shadow mode (no orders are dispatched there anyway).
+`src/equipments/order-confirmation-tracker.ts`: `OrderConfirmationTracker`, instantiated in `index.ts` next to the other equipment trackers, skipped in shadow mode (no orders are dispatched there anyway). It takes the `IntegrationRegistry` to read `getPollingInfo()` from the integrations behind an order: the watchdog delay is `max(30 s, 2 x poll interval)` so polling integrations (whose mirror binding cannot move before the next poll) do not false-alarm.
 
 Event-driven, no polling, no persistence:
 

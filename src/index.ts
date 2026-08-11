@@ -239,6 +239,7 @@ async function main() {
     eventBus,
     equipmentManager,
     deviceManager,
+    integrationRegistry,
     logger,
   );
   if (!config.shadowMode) {

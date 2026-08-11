@@ -40,7 +40,7 @@ On every confirmable `equipment.order.executed`:
 
 1. If the equipment's mirror binding already reports the ordered value, the order is confirmed immediately.
 2. If every device behind the order bindings is offline, the order is marked **unconfirmed** immediately with reason `device_offline` (no point waiting).
-3. Otherwise a 30 s timer is armed. If no `equipment.data.changed` reports the ordered value before it fires, the order is marked **unconfirmed** with reason `timeout`.
+3. Otherwise a watchdog timer is armed: 30 s, stretched to **twice the poll interval** when a target device belongs to a polling integration (its mirror binding cannot move before the next poll; a fixed 30 s would false-alarm on every order to a cloud device). If no `equipment.data.changed` reports the ordered value before it fires, the order is marked **unconfirmed** with reason `timeout`.
 
 A new order on the same `(equipment, alias)` supersedes the pending one (its alarm, if raised, is resolved).
 
@@ -72,11 +72,11 @@ Total wrong-state time: 16 seconds instead of 15.5 hours, and the user was told.
 
 ## Defaults
 
-| Parameter            | Value   | Rationale                                                                                                                                                           |
-| -------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Confirmation timeout | 30 s    | Covers slow polling integrations (cloud APIs poll at 30-60 s are exempt from false alarms via the resolve-on-late-confirm path; MQTT devices report within seconds) |
-| Re-dispatch TTL      | 1 h     | Heals transients, avoids stale intent                                                                                                                               |
-| Re-dispatch count    | 1       | No fighting, no loops                                                                                                                                               |
-| Alarm level          | warning | Self-recoverable degradation per the log-level policy                                                                                                               |
+| Parameter            | Value                        | Rationale                                                                                                                                                                   |
+| -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Confirmation timeout | max(30 s, 2 x poll interval) | MQTT devices report within seconds; polling integrations (Panasonic, MCZ, ...) reflect the effect only on their next poll, so the watchdog stretches via `getPollingInfo()` |
+| Re-dispatch TTL      | 1 h                          | Heals transients, avoids stale intent                                                                                                                                       |
+| Re-dispatch count    | 1                            | No fighting, no loops                                                                                                                                                       |
+| Alarm level          | warning                      | Self-recoverable degradation per the log-level policy                                                                                                                       |
 
 Constants in v1; settings keys can come later if real installations need tuning.

@@ -9,6 +9,7 @@ import {
 } from "./order-confirmation-tracker.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
+import type { IntegrationRegistry } from "../integrations/integration-registry.js";
 import type { EngineEvent } from "../shared/types.js";
 
 const logger = createLogger("silent").logger;
@@ -79,8 +80,22 @@ describe("OrderConfirmationTracker", () => {
   } as unknown as EquipmentManager;
 
   const deviceManager = {
-    getById: (id: string) => ({ id, status: deviceStatus[id] ?? "online" }),
+    getById: (id: string) => ({
+      id,
+      status: deviceStatus[id] ?? "online",
+      integrationId: "int-1",
+    }),
   } as unknown as DeviceManager;
+
+  let pollingIntervalMs: number | null = null;
+  const integrationRegistry = {
+    getById: () => ({
+      getPollingInfo: () =>
+        pollingIntervalMs === null
+          ? null
+          : { lastPollAt: "2026-08-11T00:00:00Z", intervalMs: pollingIntervalMs },
+    }),
+  } as unknown as IntegrationRegistry;
 
   function emitOrder(value: unknown, source?: unknown): void {
     eventBus.emit({
@@ -119,10 +134,17 @@ describe("OrderConfirmationTracker", () => {
     deviceStatus = {};
     bindingValue = "OFF";
     executeOrderCalls = [];
+    pollingIntervalMs = null;
     eventBus.on((event) => {
       emitted.push(event);
     });
-    tracker = new OrderConfirmationTracker(eventBus, equipmentManager, deviceManager, logger);
+    tracker = new OrderConfirmationTracker(
+      eventBus,
+      equipmentManager,
+      deviceManager,
+      integrationRegistry,
+      logger,
+    );
     tracker.init();
   });
 
@@ -276,6 +298,23 @@ describe("OrderConfirmationTracker", () => {
     });
 
     expect(executeOrderCalls.length).toBe(0);
+  });
+
+  it("stretches the watchdog to twice the poll interval for polling integrations", () => {
+    pollingIntervalMs = 60_000; // cloud integration polling every minute
+    emitOrder("ON");
+
+    // A fixed 30 s watchdog would have false-alarmed here.
+    vi.advanceTimersByTime(31_000);
+    expect(alarmsRaised().length).toBe(0);
+
+    // Still pending at 2 x interval minus a margin.
+    vi.advanceTimersByTime(85_000); // t = 116 s
+    expect(alarmsRaised().length).toBe(0);
+
+    // Past 2 x interval (120 s) the alarm fires.
+    vi.advanceTimersByTime(10_000); // t = 126 s
+    expect(alarmsRaised().length).toBe(1);
   });
 
   it("numeric orders confirm numerically", () => {

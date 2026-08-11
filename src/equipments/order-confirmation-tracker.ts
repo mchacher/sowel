@@ -2,6 +2,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
+import type { IntegrationRegistry } from "../integrations/integration-registry.js";
 import type { OrderSource } from "../shared/types.js";
 
 // ============================================================
@@ -15,7 +16,13 @@ import type { OrderSource } from "../shared/types.js";
 // the last unconfirmed order is re-dispatched once within a bounded window.
 // ============================================================
 
-/** Delay after which a dispatched order without an observed effect is unconfirmed. */
+/**
+ * Base delay after which a dispatched order without an observed effect is
+ * unconfirmed. For devices behind polling integrations the effective timeout
+ * is stretched to twice the poll interval: their mirror binding cannot move
+ * before the next poll, and a fixed 30 s would false-alarm on every order to
+ * a cloud device (Panasonic, MCZ, ...).
+ */
 const CONFIRMATION_TIMEOUT_MS = 30_000;
 /** Maximum age of an unconfirmed order eligible for the reconnect re-dispatch. */
 const REDISPATCH_TTL_MS = 3_600_000;
@@ -30,6 +37,8 @@ interface PendingOrder {
   value: unknown;
   orderedAt: number;
   timer: NodeJS.Timeout | null;
+  /** Effective watchdog delay for this order (poll-interval aware). */
+  timeoutMs: number;
   unconfirmed: boolean;
   alarmRaised: boolean;
   retried: boolean;
@@ -77,6 +86,7 @@ export class OrderConfirmationTracker {
     private readonly eventBus: EventBus,
     private readonly equipmentManager: EquipmentManager,
     private readonly deviceManager: DeviceManager,
+    private readonly integrationRegistry: IntegrationRegistry,
     logger: Logger,
   ) {
     this.logger = logger.child({ module: "order-confirmation-tracker" });
@@ -162,6 +172,7 @@ export class OrderConfirmationTracker {
       value,
       orderedAt: Date.now(),
       timer: null,
+      timeoutMs: this.confirmationTimeoutFor(deviceIds),
       unconfirmed: false,
       alarmRaised: false,
       retried: false,
@@ -186,12 +197,30 @@ export class OrderConfirmationTracker {
     this.armTimer(entry);
   }
 
+  /**
+   * The watchdog delay for an order targeting these devices. Polling
+   * integrations cannot reflect the effect before their next poll, so the
+   * timeout stretches to twice the largest poll interval involved.
+   */
+  private confirmationTimeoutFor(deviceIds: string[]): number {
+    let timeout = CONFIRMATION_TIMEOUT_MS;
+    for (const deviceId of deviceIds) {
+      const device = this.deviceManager.getById(deviceId);
+      if (!device) continue;
+      const polling = this.integrationRegistry.getById(device.integrationId)?.getPollingInfo?.();
+      if (polling && polling.intervalMs > 0) {
+        timeout = Math.max(timeout, 2 * polling.intervalMs);
+      }
+    }
+    return timeout;
+  }
+
   private armTimer(entry: PendingOrder): void {
     if (entry.timer) clearTimeout(entry.timer);
     entry.timer = setTimeout(() => {
       entry.timer = null;
       this.markUnconfirmed(entry, "timeout");
-    }, CONFIRMATION_TIMEOUT_MS);
+    }, entry.timeoutMs);
   }
 
   private markUnconfirmed(entry: PendingOrder, reason: "timeout" | "device_offline"): void {
@@ -224,7 +253,10 @@ export class OrderConfirmationTracker {
 
     if (!entry.alarmRaised) {
       entry.alarmRaised = true;
-      const detail = reason === "device_offline" ? "device offline" : "no state change within 30s";
+      const detail =
+        reason === "device_offline"
+          ? "device offline"
+          : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
       this.eventBus.emit({
         type: "system.alarm.raised",
         alarmId: this.alarmId(entry),
