@@ -330,7 +330,7 @@
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "tags": ["pool", "pump", "schedule", "automation", "temperature", "solar", "energy"],
     "i18n": {
       "fr": {
@@ -340,7 +340,7 @@
     },
     "sowelVersion": ">=1.3.0",
     "owner": "mchacher",
-    "sha256": "7c5130bd06ecd66d0297b2a266fe0ec2e22470b2f6f66a98a76317ce7efd028b"
+    "sha256": "50e17e5ca85ae1bcfe7177b9014258d08047e00cfbea8c170269ee36829fb4ec"
   },
   {
     "id": "freecooling",
