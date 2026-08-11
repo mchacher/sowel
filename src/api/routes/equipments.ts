@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
-import type { EquipmentType } from "../../shared/types.js";
+import type { EnergyLoadProfile, EquipmentType } from "../../shared/types.js";
 import type { Logger } from "../../core/logger.js";
 
 interface EquipmentsDeps {
@@ -97,6 +97,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       icon?: string | null;
       description?: string | null;
       enabled?: boolean;
+      energyProfile?: EnergyLoadProfile | null;
     };
   }>("/api/v1/equipments/:id", async (request, reply) => {
     const body = request.body ?? {};
@@ -110,6 +111,33 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
     if (body.description && body.description.length > 500) {
       return reply.code(400).send({ error: "Description must be 500 characters or less" });
     }
+    // Spec 140 — validate the flexible-load declaration; the learned field is
+    // core-owned and silently stripped from user writes.
+    if (body.energyProfile !== undefined && body.energyProfile !== null) {
+      const p = body.energyProfile;
+      if (p.class !== "comfort" && p.class !== "deferrable") {
+        return reply.code(400).send({ error: "energyProfile.class must be comfort or deferrable" });
+      }
+      if (!Number.isFinite(p.nominalPowerW) || p.nominalPowerW <= 0 || p.nominalPowerW > 30000) {
+        return reply.code(400).send({ error: "energyProfile.nominalPowerW must be 1-30000 W" });
+      }
+      if (
+        !Number.isFinite(p.minOnS) ||
+        p.minOnS < 0 ||
+        !Number.isFinite(p.minOffS) ||
+        p.minOffS < 0
+      ) {
+        return reply.code(400).send({ error: "energyProfile min-on/min-off must be >= 0 seconds" });
+      }
+      const existing = equipmentManager.getById(request.params.id);
+      body.energyProfile = {
+        class: p.class,
+        nominalPowerW: Math.round(p.nominalPowerW),
+        minOnS: Math.round(p.minOnS),
+        minOffS: Math.round(p.minOffS),
+        learned: existing?.energyProfile?.learned,
+      };
+    }
 
     try {
       const equipment = equipmentManager.update(request.params.id, {
@@ -119,6 +147,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         icon: body.icon,
         description: body.description,
         enabled: body.enabled,
+        energyProfile: body.energyProfile,
       });
       if (!equipment) {
         return reply.code(404).send({ error: "Equipment not found" });

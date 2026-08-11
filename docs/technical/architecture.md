@@ -263,6 +263,29 @@ InfluxDB is mandatory -- Sowel connects on startup and auto-creates buckets, dow
 
 ---
 
+## Energy Capacity Arbiter (spec 140)
+
+One core component (`src/energy/capacity-arbiter.ts`) is the single reader of
+the grid meter for arbitration purposes and allocates the solar surplus
+between declared flexible loads. Key invariants:
+
+- **Reservation accounting**: `availableW = exportW + Σ effectiveWatts(grants)`
+  on the SIGNED meter reading — an export collapse caused by its own grants is
+  never a deficit; an import is. Effective watts are three-tiered: fresh live
+  draw (the load's own power binding), else a learned nominal (trimmed median
+  of past runs, sub-threshold samples excluded), else the declared profile.
+- **User-owned priority**: one ordered list (settings) read top-down to grant,
+  bottom-up to revoke. Claims may self-demote (`slack`) but can never step up.
+- **The arbiter issues no orders** in phase 1: recipes act through
+  `ctx.helpers.energy.claimCapacity()` callbacks; grants are runtime-only and
+  rebuilt after a restart. Manual orders and wall-switch state divergences
+  suspend arbitration per equipment (TTL, "resume control now" in the UI).
+- **Everything is journaled** (bounded ring, `GET /api/v1/energy/arbiter`) and
+  surfaced on Energy → Live (allocation bar, day timeline, decision journal).
+  Default off: `energy.arbiter.enabled = false` means zero behavior change.
+
+Full design, review log and rationale: `specs/140-energy-capacity-arbiter/`.
+
 ## Authentication & Authorization
 
 - **Passwords**: bcrypt (cost 12).

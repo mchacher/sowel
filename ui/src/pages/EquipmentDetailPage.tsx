@@ -29,6 +29,7 @@ import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
+import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
@@ -412,6 +413,11 @@ export function EquipmentDetailPage() {
         equipment.type === "energy_production_meter" ||
         equipment.type === "energy_meter") && (
         <ElectricalMeteringPanel bindings={equipment.dataBindings} />
+      )}
+
+      {/* Energy management — flexible-load declaration (spec 140), admin only */}
+      {isAdmin && equipment.orderBindings.length > 0 && (
+        <EnergyManagementPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Button actions — config, admin only */}

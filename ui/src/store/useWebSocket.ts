@@ -7,6 +7,7 @@ import { useZoneAggregation } from "./useZoneAggregation";
 import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
 import { useActivity } from "./useActivity";
+import { useArbiter } from "./useArbiter";
 import { INTEGRATION_LABELS } from "../constants";
 
 export type WsTopic =
@@ -17,7 +18,8 @@ export type WsTopic =
   | "recipes"
   | "calendar"
   | "system"
-  | "activity";
+  | "activity"
+  | "energy";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -205,6 +207,17 @@ function handleEvent(event: EngineEvent): void {
       break;
     case "activity.added":
       useActivity.getState().addItem(event.item);
+      break;
+    // Spec 140 — capacity arbiter: patch the live number instantly, then
+    // refetch the full read model (journal, grants) once per burst.
+    case "energy.arbiter.status":
+      useArbiter.getState().patchStatus(event.state, event.availableSurplusW);
+      break;
+    case "energy.capacity.granted":
+    case "energy.capacity.revoked":
+    case "energy.capacity.denied":
+    case "energy.capacity.released":
+      useArbiter.getState().refreshSoon();
       break;
   }
 }

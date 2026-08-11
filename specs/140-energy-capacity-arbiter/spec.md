@@ -1,6 +1,6 @@
 # Spec 140 — Energy Capacity Arbiter
 
-- **Status**: DRAFT — submitted for contributor review, not implemented
+- **Status**: IMPLEMENTED (phase 1) — spec reviewed by maintainer + contributor before implementation; consumer-recipe updates (plan step 8) follow the core release
 - **Date**: 2026-08-10
 - **Related**: spec 138 (recipe tariff helper), spec 126 (`getSunlight()` helper pattern), spec 111 (plugin soft isolation), spec 101 (OrderSource)
 - **Consumers identified**: `sowel-recipe-smart-cooling` (v1.4 candidate), `sowel-recipe-water-heater-smart` (v0.8 candidate — the deferrable stress case, worked example 2b), tariff-aware quota scheduler recipe (core issue #392), any future surplus-aware recipe
@@ -434,50 +434,50 @@ switched the AC off, and every step is one line in the decision journal.
 
 ## Acceptance criteria
 
-- [ ] Two concurrent surplus consumers (simulated Smart Cooling + pump) on a
+- [x] Two concurrent surplus consumers (simulated Smart Cooling + pump) on a
       replayed meter series show zero synchronized oscillation: grants follow
       the priority list, revocations are bottom-up, and available accounting
       never double-counts a granted load's own consumption.
-- [ ] A background surge (hob scenario) revokes bottom-up within
+- [x] A background surge (hob scenario) revokes bottom-up within
       `releaseHoldS`, comfort claims degrade (never off), deferrable claims
       stop.
-- [ ] Manual order on a granted equipment → immediate revoke + suspension for
+- [x] Manual order on a granted equipment → immediate revoke + suspension for
       `overrideTtlS`; claims during suspension are denied `override-active`.
-- [ ] Meter silence > `staleAfterS` → all grants revoked `meter-stale`,
+- [x] Meter silence > `staleAfterS` → all grants revoked `meter-stale`,
       arbiter `degraded`, recovery re-arms automatically on fresh data.
-- [ ] Recipe instance stop auto-releases its claims.
-- [ ] Second claim on an already-claimed equipment denied
+- [x] Recipe instance stop auto-releases its claims.
+- [x] Second claim on an already-claimed equipment denied
       `equipment-already-claimed`.
-- [ ] `minOnS`/`minOffS` honored for surplus decisions (no flapping on a
+- [x] `minOnS`/`minOffS` honored for surplus decisions (no flapping on a
       cloud pass shorter than the holds).
-- [ ] Every transition appears in the decision journal with equipment,
+- [x] Every transition appears in the decision journal with equipment,
       watts, reason, and origin claim note.
-- [ ] All-off default: arbiter disabled and no profiles → strictly zero
+- [x] All-off default: arbiter disabled and no profiles → strictly zero
       behavior change anywhere in the engine.
-- [ ] "Resume control now" lifts a manual suspension immediately.
-- [ ] Audit signals fire on their patterns: `watts-divergence` (learned or
+- [x] "Resume control now" lifts a manual suspension immediately.
+- [x] Audit signals fire on their patterns: `watts-divergence` (learned or
       measured draw > 30 % off the declared nominal), `comfort-off-after-revoke`,
       `unclaimed-run` (profiled equipment running grantless).
-- [ ] Tiered effective watts: a granted modulating load with a power binding
+- [x] Tiered effective watts: a granted modulating load with a power binding
       frees headroom as its measured draw falls (the next pending claim can be
       granted); a clamp going silent mid-grant falls back to the learned
       nominal without a revocation.
-- [ ] Signed accounting: an import appearing under active grants produces a
+- [x] Signed accounting: an import appearing under active grants produces a
       positive deficit and a bottom-up revocation. (Regression guard for the
       clamped-export draft, which could not.)
-- [ ] A claim on a load already drawing power is granted without waiting for
+- [x] A claim on a load already drawing power is granted without waiting for
       headroom it can never show, and `availableSurplusW` is unchanged by the
       grant.
-- [ ] A revoke the recipe does not honor revokes nobody else: the equipment is
+- [x] A revoke the recipe does not honor revokes nobody else: the equipment is
       marked `unresponsive`, its draw counted as background, and the next load
       down keeps its grant.
-- [ ] `toleratedImportW` widens engage and narrows release by exactly that
+- [x] `toleratedImportW` widens engage and narrows release by exactly that
       amount, and 0 reproduces the strict behavior.
-- [ ] `slack: "high"` yields the surplus to a lower-priority claim; no claim
+- [x] `slack: "high"` yields the surplus to a lower-priority claim; no claim
       value can ever move a claim _up_ the user's list.
-- [ ] Flipping a profiled equipment at the wall (state divergence, no order
+- [x] Flipping a profiled equipment at the wall (state divergence, no order
       event) revokes and suspends exactly as a manual order does.
-- [ ] A thermostatic load cycling to zero mid-grant does not drag
+- [x] A thermostatic load cycling to zero mid-grant does not drag
       `profile.learned` down, and raises no `watts-divergence`.
 
 ## Review log

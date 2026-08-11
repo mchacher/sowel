@@ -20,6 +20,7 @@ import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-t
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
+import { CapacityArbiter } from "./energy/capacity-arbiter.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
 import { VersionChecker } from "./core/version-checker.js";
@@ -301,6 +302,12 @@ async function main() {
   const mqttBrokerManager = new MqttBrokerManager(db, eventBus, logger);
   const mqttPublisherManager = new MqttPublisherManager(db, eventBus, logger);
 
+  // 11d. Create Capacity Arbiter (spec 140) — single meter reader arbitrating
+  // solar surplus between declared flexible loads. Default off; zero behavior
+  // until `energy.arbiter.enabled` is set.
+  const capacityArbiter = new CapacityArbiter(eventBus, settingsManager, equipmentManager, logger);
+  capacityArbiter.start();
+
   // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
@@ -312,6 +319,7 @@ async function main() {
     historyWriter.getTariffClassifier(), // spec 138 — read-only ctx.helpers.getTariff()
     logger,
     config.shadowMode, // spec 124 — runtime gate on startInstance
+    capacityArbiter, // spec 140 — ctx.helpers.energy claims
   );
   // All recipes are now external packages loaded by RecipeLoader
 
@@ -448,6 +456,7 @@ async function main() {
     packageManager,
     pluginLoader,
     recipeLoader,
+    capacityArbiter,
     backupManager,
     versionChecker,
     updateManager,
@@ -597,6 +606,11 @@ async function main() {
   // Graceful shutdown — each step is isolated so one failure doesn't block the rest
   const shutdown = async () => {
     logger.info("Shutting down...");
+    try {
+      capacityArbiter.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping capacity arbiter");
+    }
     try {
       sunlightManager.stop();
     } catch (err) {

@@ -1,7 +1,7 @@
 # Spec 140 — Implementation Plan
 
-> **Status: NOT STARTED.** This spec is submitted for contributor review
-> before any implementation. The plan below is the proposed sequencing.
+> **Status: steps 1-7 DONE** (this PR). Step 8 (consumer recipes) follows
+> the core release, per the rollout plan below.
 
 ## Steps
 

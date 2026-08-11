@@ -44,6 +44,7 @@ interface Equipment {
   icon?: string; // Lucide icon name (overrides type default)
   description?: string;
   enabled: boolean; // Disabled equipments are ignored by the engine
+  energyProfile?: EnergyLoadProfile; // Spec 140 — flexible-load declaration (class, nominal W, min-on/off, learned)
   createdAt: string;
   updatedAt: string;
 }
@@ -88,6 +89,7 @@ CREATE TABLE equipments (
   icon TEXT,
   description TEXT,
   enabled INTEGER DEFAULT 1,
+  energy_profile TEXT,            -- Spec 140: EnergyLoadProfile JSON, NULL = not claimable
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

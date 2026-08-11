@@ -39,6 +39,7 @@ import type { ThemeSetting } from "../theme";
 import type { ApiToken, User, UserRole } from "../types";
 import { MobileSection } from "../components/settings/MobileSection";
 import { TariffSettings } from "../components/settings/TariffSettings";
+import { ArbiterSettings } from "../components/settings/ArbiterSettings";
 
 type SettingsTab = "general" | "account" | "system" | "admin";
 
@@ -148,6 +149,7 @@ export function SettingsPage() {
           <div className="space-y-6">
             <UserManagementSection currentUserId={user?.id ?? ""} />
             <TariffSettings />
+            <ArbiterSettings />
           </div>
         )}
       </div>

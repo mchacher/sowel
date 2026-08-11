@@ -76,7 +76,8 @@ type WsTopic =
   | "mqtt-publishers"
   | "system"
   | "logs"
-  | "activity";
+  | "activity"
+  | "energy";
 
 const VALID_TOPICS = new Set<WsTopic>([
   "devices",
@@ -89,6 +90,7 @@ const VALID_TOPICS = new Set<WsTopic>([
   "system",
   "logs",
   "activity",
+  "energy",
 ]);
 const BATCH_INTERVAL_MS = 200;
 
@@ -119,6 +121,8 @@ function getEventTopic(event: EngineEvent): WsTopic {
       return "mqtt-publishers";
     case "activity":
       return "activity";
+    case "energy":
+      return "energy"; // spec 140 — arbiter decisions and status
     default:
       return "system";
   }
@@ -139,6 +143,8 @@ function getDedupKey(event: EngineEvent): string | null {
       return `es:${event.equipmentId}`;
     case "zone.data.changed":
       return `z:${event.zoneId}`;
+    case "energy.arbiter.status":
+      return "ea:status"; // spec 140 — keep only the latest status per batch
     default:
       return null;
   }

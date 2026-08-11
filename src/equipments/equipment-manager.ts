@@ -12,6 +12,8 @@ import type {
   ComputedDataEntry,
   DataBinding,
   DataBindingWithValue,
+  EnergyLoadProfile,
+  EnergyLoadProfileLearned,
   OrderBinding,
   OrderBindingWithDetails,
   DataType,
@@ -79,6 +81,8 @@ interface UpdateEquipmentInput {
   icon?: string | null;
   description?: string | null;
   enabled?: boolean;
+  /** Spec 140 — flexible-load declaration. `null` clears the profile. */
+  energyProfile?: EnergyLoadProfile | null;
 }
 
 // ============================================================
@@ -172,7 +176,11 @@ export class EquipmentManager {
       updateEquipment: this.db.prepare(
         `UPDATE equipments SET name = @name, zone_id = @zoneId,
          type = @type, icon = @icon, description = @description, enabled = @enabled,
+         energy_profile = @energyProfile,
          updated_at = datetime('now') WHERE id = @id`,
+      ),
+      updateEquipmentEnergyProfile: this.db.prepare(
+        `UPDATE equipments SET energy_profile = ?, updated_at = datetime('now') WHERE id = ?`,
       ),
       deleteEquipment: this.db.prepare("DELETE FROM equipments WHERE id = ?"),
       countEquipmentsByZone: this.db.prepare(
@@ -438,6 +446,12 @@ export class EquipmentManager {
       icon: input.icon !== undefined ? input.icon : existing.icon,
       description: input.description !== undefined ? input.description : existing.description,
       enabled: input.enabled !== undefined ? (input.enabled ? 1 : 0) : existing.enabled,
+      energyProfile:
+        input.energyProfile !== undefined
+          ? input.energyProfile === null
+            ? null
+            : JSON.stringify(input.energyProfile)
+          : existing.energy_profile,
     });
 
     const equipment = this.getById(id)!;
@@ -451,6 +465,28 @@ export class EquipmentManager {
     this.logger.info({ equipmentId: id, name: equipment.name }, "Equipment updated");
     this.eventBus.emit({ type: "equipment.updated", equipment });
     return equipment;
+  }
+
+  /**
+   * Spec 140 — the capacity arbiter's learner writes its rolling estimate
+   * here (FR-2 middle tier). Core-only path: never exposed to the update
+   * route, no-op when the equipment is not profiled.
+   */
+  setEnergyProfileLearned(id: string, learned: EnergyLoadProfileLearned): void {
+    const existing = this.stmts.getEquipmentById.get(id) as EquipmentRow | undefined;
+    if (!existing) return;
+    const profile = parseEnergyProfile(existing.energy_profile);
+    if (!profile) return;
+    const next: EnergyLoadProfile = { ...profile, learned };
+    this.stmts.updateEquipmentEnergyProfile.run(JSON.stringify(next), id);
+    const equipment = this.getById(id);
+    if (equipment) {
+      this.logger.debug(
+        { equipmentId: id, learnedWatts: learned.watts, runs: learned.runs },
+        "Energy profile learned watts updated",
+      );
+      this.eventBus.emit({ type: "equipment.updated", equipment });
+    }
   }
 
   /**
@@ -1215,6 +1251,7 @@ interface EquipmentRow {
   icon: string | null;
   description: string | null;
   enabled: number;
+  energy_profile: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1282,6 +1319,24 @@ interface DeviceOrderRow {
   unit: string | null;
 }
 
+/** Parse the energy_profile JSON column; invalid JSON reads as unprofiled
+ *  (spec 140 — never crash a read path on a corrupt row). */
+function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed = JSON.parse(json) as EnergyLoadProfile;
+    if (
+      (parsed.class === "comfort" || parsed.class === "deferrable") &&
+      typeof parsed.nominalPowerW === "number"
+    ) {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function rowToEquipment(row: EquipmentRow): Equipment {
   return {
     id: row.id,
@@ -1291,6 +1346,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     icon: row.icon ?? undefined,
     description: row.description ?? undefined,
     enabled: row.enabled === 1,
+    energyProfile: parseEnergyProfile(row.energy_profile),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

@@ -20,6 +20,7 @@ function createTestDb(): Database.Database {
     "005_device_data_enum_values.sql",
     "006_pool_runtime_and_category_override.sql",
     "014_device_orders_value_on_off.sql",
+    "016_equipment_energy_profile.sql",
   ]) {
     db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
   }
@@ -152,8 +153,48 @@ describe("EquipmentManager", () => {
   });
 
   // ============================================================
-  // Equipment CRUD
+  // Energy profile (spec 140)
   // ============================================================
+
+  describe("energy profile", () => {
+    it("round-trips the profile through update and the learned writer", () => {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Pompe", type: "pool_pump", zoneId: zone.id });
+      expect(eq.energyProfile).toBeUndefined();
+
+      manager.update(eq.id, {
+        energyProfile: { class: "deferrable", nominalPowerW: 600, minOnS: 900, minOffS: 300 },
+      });
+      const read = manager.getById(eq.id);
+      expect(read?.energyProfile?.class).toBe("deferrable");
+      expect(read?.energyProfile?.nominalPowerW).toBe(600);
+
+      manager.setEnergyProfileLearned(eq.id, {
+        watts: 640,
+        atIso: "2026-08-12T10:00:00Z",
+        runs: 1,
+      });
+      expect(manager.getById(eq.id)?.energyProfile?.learned?.watts).toBe(640);
+
+      // Clearing removes the profile (and the learned estimate with it).
+      manager.update(eq.id, { energyProfile: null });
+      expect(manager.getById(eq.id)?.energyProfile).toBeUndefined();
+      // Learned writer on an unprofiled equipment is a no-op, never a crash.
+      manager.setEnergyProfileLearned(eq.id, {
+        watts: 700,
+        atIso: "2026-08-12T10:00:00Z",
+        runs: 2,
+      });
+      expect(manager.getById(eq.id)?.energyProfile).toBeUndefined();
+    });
+
+    it("treats invalid profile JSON in the DB as unprofiled without crashing", () => {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Pompe", type: "pool_pump", zoneId: zone.id });
+      db.prepare("UPDATE equipments SET energy_profile = ? WHERE id = ?").run("{not json", eq.id);
+      expect(manager.getById(eq.id)?.energyProfile).toBeUndefined();
+    });
+  });
 
   describe("create", () => {
     it("creates an equipment in a zone", () => {

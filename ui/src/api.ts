@@ -8,6 +8,8 @@ import type {
   ZoneAggregatedData,
   Equipment,
   EquipmentType,
+  EnergyLoadProfile,
+  ArbiterPublicState,
   EquipmentWithDetails,
   DataBinding,
   OrderBinding,
@@ -475,12 +477,26 @@ export async function updateEquipment(
     icon?: string | null;
     description?: string | null;
     enabled?: boolean;
+    /** Spec 140 — flexible-load declaration; null clears it. */
+    energyProfile?: EnergyLoadProfile | null;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {
     method: "PUT",
     body: JSON.stringify(updates),
   });
+}
+
+// ============================================================
+// Energy capacity arbiter (spec 140)
+// ============================================================
+
+export async function getArbiterState(): Promise<ArbiterPublicState> {
+  return fetchJSON<ArbiterPublicState>(`${API_BASE}/energy/arbiter`);
+}
+
+export async function resumeArbiterEquipment(equipmentId: string): Promise<void> {
+  await fetchJSON(`${API_BASE}/energy/arbiter/resume/${equipmentId}`, { method: "POST" });
 }
 
 export async function deleteEquipment(id: string): Promise<void> {

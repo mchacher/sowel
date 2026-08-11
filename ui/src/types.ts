@@ -247,6 +247,73 @@ export interface Equipment {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Flexible-load declaration (spec 140). Present only when arbitration is
+   *  enabled for this equipment. */
+  energyProfile?: EnergyLoadProfile;
+}
+
+// ============================================================
+// Energy capacity arbiter (spec 140)
+// ============================================================
+
+export type EnergyLoadClass = "comfort" | "deferrable";
+
+export interface EnergyLoadProfile {
+  class: EnergyLoadClass;
+  nominalPowerW: number;
+  minOnS: number;
+  minOffS: number;
+  /** Core-maintained measured estimate; read-only in the UI. */
+  learned?: { watts: number; atIso: string; runs: number };
+}
+
+export type ArbiterRunState = "active" | "degraded" | "disabled";
+
+export type ArbiterDecisionKind =
+  | "granted"
+  | "revoked"
+  | "denied"
+  | "released"
+  | "suspended"
+  | "resumed"
+  | "revoke-not-honored"
+  | "comfort-off-after-revoke"
+  | "watts-divergence"
+  | "unclaimed-run";
+
+export interface ArbiterDecision {
+  atIso: string;
+  kind: ArbiterDecisionKind;
+  equipmentId?: string;
+  equipmentName?: string;
+  watts?: number;
+  reason?: string;
+  note?: string;
+}
+
+export interface ArbiterPublicState {
+  enabled: boolean;
+  state: ArbiterRunState;
+  availableSurplusW: number | null;
+  productionDetected: boolean;
+  grants: Array<{
+    equipmentId: string;
+    equipmentName: string;
+    instanceId: string;
+    watts: number;
+    sinceIso: string;
+    note?: string;
+  }>;
+  pending: Array<{
+    equipmentId: string;
+    equipmentName: string;
+    instanceId: string;
+    watts: number;
+    reasonWaiting: string;
+  }>;
+  suspensions: Array<{ equipmentId: string; equipmentName: string; untilIso: string }>;
+  journal: ArbiterDecision[];
+  surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
 /** Derived availability of an equipment (spec 116). Computed server-side
@@ -508,6 +575,12 @@ export type EngineEvent =
       source?: OrderSource;
     }
   | { type: "activity.added"; item: ActivityItem }
+  // Spec 140 — energy capacity arbiter
+  | { type: "energy.capacity.granted"; equipmentId: string; instanceId: string; watts: number; note?: string }
+  | { type: "energy.capacity.revoked"; equipmentId: string; instanceId: string; watts: number; reason: string }
+  | { type: "energy.capacity.denied"; equipmentId: string; instanceId: string; reason: string }
+  | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
+  | { type: "energy.arbiter.status"; state: ArbiterRunState; availableSurplusW: number | null }
   | { type: "connected"; message: string; version: string };
 
 // ============================================================

@@ -231,6 +231,7 @@ Recipe packages reach shared utilities through `ctx.helpers` (the `RecipeHelpers
 | `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Light orchestration over equipment ids         |
 | `getSunlight()`                                                                | Sun-aware scheduling (spec 126) — see below    |
 | `getTariff()`                                                                  | Tariff-aware scheduling (spec 138) — see below |
+| `energy.claimCapacity()` / `energy.getCapacityState()`                         | Solar-surplus claims (spec 140) — see below    |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` returns the current sun times (`"HH:MM"`, spec 023 offsets applied). Pair it with the `sunlight.changed` event to re-sync across days; fields are `null` when sun times are not yet computed or no home coordinates are configured.
 
@@ -256,6 +257,51 @@ Three properties are worth relying on:
 - **Always answer for the unconfigured case.** `configured` is `false` on a fresh instance and on any instance whose owner never filled the tariff page. Treat the recipe's own slots as the fallback rather than refusing to run.
 
 `offPeakToday` reflects the current local day-of-week: a schedule that only covers weekdays yields an empty list on Sunday. Re-read it rather than caching it at start.
+
+### `energy` — surplus capacity claims (spec 140)
+
+Recipes never read the grid meter to decide whether to consume: one core
+arbiter is the single meter reader, does reservation accounting, and allocates
+the surplus in the **user's** priority order. A recipe expresses a need and
+reacts to callbacks:
+
+```typescript
+const claim = ctx.helpers.energy?.claimCapacity({
+  equipmentId: pumpId,
+  watts: 600, // sizes the engage decision only
+  toleratedImportW: 0, // grid draw you accept to buy (resistive loads)
+  slack: "none", // "some"/"high" steps DOWN the user's list, never up
+  note: "filtration on surplus",
+  onGranted: () => pumpOn(),
+  onRevoked: (reason) => pumpOff(), // comfort loads degrade instead — never off
+});
+// later: claim.release() when the need disappears
+```
+
+`claimCapacity` returns a handle (`status()`, `deniedReason`, `release()`).
+Denials are typed: `not-profiled`, `equipment-already-claimed`,
+`arbiter-disabled`, `override-active`. `energy.getCapacityState()` is a
+read-only snapshot (`enabled`, `availableSurplusW`, `grants`).
+
+Rules for authors (spec 140, enforced socially and audited by the core):
+
+1. **A claim is a bonus, never a plan.** Keep a standalone fallback (tariff
+   windows, schedules, thresholds): it is your behavior on older cores
+   (`ctx.helpers.energy === undefined`), when the arbiter is disabled, after
+   `meter-stale`, and on the many homes with **no solar production** — where
+   tariff-only is a complete mode, never a degraded one.
+2. **Act on callbacks immediately.** The reservation is freed at revocation;
+   not honoring a revoke is detected (`revoke-not-honored`) and the equipment
+   is temporarily excused as background.
+3. **Never read the grid meter** to decide whether to consume when a claim is
+   possible — private meter logic reintroduces the oscillation the arbiter
+   removes.
+4. **`release()` when the need disappears** — the watts belong to the next
+   load in the list.
+5. **Hard-quota loads**: when your deadline forces you to run without a
+   grant, run — but keep the claim open while you do. A grant landing on an
+   already-running load makes the arbiter's books exact, and the journal
+   shows an `unclaimed-run` entry instead of a mystery hole in the surplus.
 
 ## Event Bus Events
 
