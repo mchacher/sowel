@@ -41,7 +41,7 @@ import { MobileSection } from "../components/settings/MobileSection";
 import { TariffSettings } from "../components/settings/TariffSettings";
 import { ArbiterSettings } from "../components/settings/ArbiterSettings";
 
-type SettingsTab = "general" | "account" | "system" | "admin";
+type SettingsTab = "general" | "account" | "energy" | "system" | "admin";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -54,6 +54,7 @@ export function SettingsPage() {
   const tabs: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
     { id: "general", label: t("settings.tabs.general"), adminOnly: true },
     { id: "account", label: t("settings.tabs.account") },
+    { id: "energy", label: t("settings.tabs.energy"), adminOnly: true },
     { id: "system", label: t("settings.tabs.system") },
     { id: "admin", label: t("settings.tabs.admin"), adminOnly: true },
   ];
@@ -138,6 +139,13 @@ export function SettingsPage() {
           </div>
         )}
 
+        {activeTab === "energy" && isAdmin && (
+          <div className="space-y-6">
+            <TariffSettings />
+            <ArbiterSettings />
+          </div>
+        )}
+
         {activeTab === "system" && (
           <div className="space-y-6">
             {isAdmin && <MobileSection />}
@@ -148,8 +156,6 @@ export function SettingsPage() {
         {activeTab === "admin" && isAdmin && (
           <div className="space-y-6">
             <UserManagementSection currentUserId={user?.id ?? ""} />
-            <TariffSettings />
-            <ArbiterSettings />
           </div>
         )}
       </div>

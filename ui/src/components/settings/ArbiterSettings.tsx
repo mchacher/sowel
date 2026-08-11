@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Scale, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { getSettings, updateSettings } from "../../api";
 import { useEquipments } from "../../store/useEquipments";
+import { InfoTooltip } from "../InfoTooltip";
 
 /**
  * Spec 140 — arbiter card in Settings → Administration. Enable switch, the
@@ -201,9 +202,15 @@ export function ArbiterSettings() {
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
               {ADVANCED.map(({ key, fallback, min }) => (
                 <div key={key}>
-                  <label className="block text-[11px] text-text-tertiary mb-1" htmlFor={`arb-${key}`}>
-                    {t(`arbiter.settings.${key}`)}
-                  </label>
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="text-[11px] text-text-tertiary" htmlFor={`arb-${key}`}>
+                      {t(`arbiter.settings.${key}`)}
+                    </label>
+                    <InfoTooltip
+                      text={t(`arbiter.settings.${key}Help`)}
+                      label={t(`arbiter.settings.${key}`)}
+                    />
+                  </div>
                   <input
                     id={`arb-${key}`}
                     type="number"
