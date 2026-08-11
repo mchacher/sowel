@@ -1,4 +1,4 @@
-# Architecture — Spec 140
+# Architecture — Spec 142
 
 ## Flow diagram
 

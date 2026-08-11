@@ -41,7 +41,7 @@ export function EquipmentsPage() {
     ? equipments.filter((e) => e.name.toLowerCase().includes(filter.toLowerCase()))
     : equipments;
 
-  // Group by zone id — not by name, which merges homonym zones (spec 140).
+  // Group by zone id — not by name, which merges homonym zones (spec 142).
   const zoneOptions = useMemo(() => flattenZonesWithPath(tree), [tree]);
   const byZone = groupEquipmentsByZone(filtered, zoneOptions);
 

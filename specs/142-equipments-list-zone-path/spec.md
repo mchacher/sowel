@@ -1,4 +1,4 @@
-# Spec 140 — Zone paths in the equipments admin list
+# Spec 142 — Zone paths in the equipments admin list
 
 ## Context
 

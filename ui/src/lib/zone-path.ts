@@ -161,7 +161,7 @@ export interface ZoneGroup<T> {
 }
 
 /**
- * Group equipments by the zone they belong to, in tree order (spec 140).
+ * Group equipments by the zone they belong to, in tree order (spec 142).
  *
  * Grouping on the zone *name* silently merges homonyms: a bathroom per building
  * collapses into one `Salle de bain` heading listing equipments that are not in
