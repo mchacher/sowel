@@ -1118,6 +1118,7 @@
   "activity.empty": "Aucune activité dans les dernières 24 h",
   "activity.loading": "Chargement de l'activité…",
   "activity.loadError": "Impossible de charger l'activité",
+  "activity.retry": "Réessayer",
   "activity.templates.order.executed": "<b>{{equipmentName}}</b> → {{value}}",
   "activity.templates.order.executed.multi": "<b>{{firstName}}</b> ×{{count}} → {{value}}",
   "activity.templates.motion.detected": "Mouvement détecté sur <b>{{equipmentName}}</b>",

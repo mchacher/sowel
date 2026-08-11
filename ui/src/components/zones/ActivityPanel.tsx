@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Network } from "lucide-react";
+import { Network, RotateCw } from "lucide-react";
 import { useActivity } from "../../store/useActivity";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useZones } from "../../store/useZones";
@@ -23,14 +23,23 @@ export function ActivityPanel({ zoneId }: Props) {
   const reset = useActivity((s) => s.reset);
   const includeDescendants = useActivity((s) => s.includeDescendants);
   const setIncludeDescendants = useActivity((s) => s.setIncludeDescendants);
+  const retry = useActivity((s) => s.retry);
   const tree = useZones((s) => s.tree);
   const wsStatus = useWebSocket((s) => s.status);
   const isLive = wsStatus === "connected";
   const isMobile = useIsMobile();
 
   // Compute descendant zone IDs for the current zone (excluding the zone itself).
-  // Updated whenever the tree or zoneId changes; passed to the store on load + toggle.
-  const descendantIds = useMemo(() => collectDescendantIds(tree, zoneId), [tree, zoneId]);
+  // Keyed on the joined IDs so an unrelated zone-tree refresh (e.g. the refetch on every
+  // WebSocket reconnect) doesn't hand back a new array identity and re-trigger the load.
+  const descendantKey = useMemo(
+    () => collectDescendantIds(tree, zoneId).join(","),
+    [tree, zoneId],
+  );
+  const descendantIds = useMemo(
+    () => (descendantKey === "" ? [] : descendantKey.split(",")),
+    [descendantKey],
+  );
   const hasDescendants = descendantIds.length > 0;
 
   // Re-render every minute so relative-time labels stay fresh.
@@ -47,6 +56,15 @@ export function ActivityPanel({ zoneId }: Props) {
     reset();
     void loadForZone(zoneId, descendantIds);
   }, [zoneId, loadForZone, reset, descendantIds]);
+
+  // Reload once the socket comes back: a load that failed while connectivity was down
+  // would otherwise stay stuck on the error message until the user re-picks the zone.
+  const wasLive = useRef(isLive);
+  useEffect(() => {
+    const reconnected = isLive && !wasLive.current;
+    wasLive.current = isLive;
+    if (reconnected && status === "error") void retry();
+  }, [isLive, status, retry]);
 
   // Mobile is glance-only: hard cap at 10 most-recent items.
   // Desktop scrolls internally through the full buffered window (up to CAPACITY in the store).
@@ -112,8 +130,16 @@ export function ActivityPanel({ zoneId }: Props) {
           </div>
         )}
         {status === "error" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 text-[0.78rem] text-error">
-            {t("activity.loadError")}
+          <div className="px-[1.1rem] py-3 flex items-center gap-2 text-[0.78rem] text-error">
+            <span>{t("activity.loadError")}</span>
+            <button
+              type="button"
+              onClick={() => void retry()}
+              className="inline-flex items-center gap-1 text-primary hover:text-primary-hover font-medium underline underline-offset-2"
+            >
+              <RotateCw size={12} strokeWidth={2} />
+              {t("activity.retry")}
+            </button>
           </div>
         )}
         {status === "ready" && items.length === 0 && (

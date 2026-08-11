@@ -17,6 +17,7 @@ import {
   removeOrderBinding as apiRemoveOrderBinding,
 } from "../api";
 import { useOrderTiming } from "./useOrderTiming";
+import { coalesceCalls } from "../lib/coalesce-calls";
 
 interface EquipmentsState {
   equipments: EquipmentWithDetails[];
@@ -57,6 +58,11 @@ interface EquipmentsState {
   handleEquipmentDataChanged: (equipmentId: string, alias: string, value: unknown) => void;
   handleEquipmentStatusChanged: (equipmentId: string, newStatus: EquipmentStatus) => void;
 }
+
+/** Equipment WS events arrive in batches — one refetch per batch, not one per event. */
+const refetchEquipments = coalesceCalls(() => {
+  void useEquipments.getState().fetchEquipments();
+}, 1000);
 
 export const useEquipments = create<EquipmentsState>((set, get) => ({
   equipments: [],
@@ -118,9 +124,9 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
   },
 
   // WebSocket handlers
-  handleEquipmentCreated: () => { get().fetchEquipments(); },
-  handleEquipmentUpdated: () => { get().fetchEquipments(); },
-  handleEquipmentRemoved: () => { get().fetchEquipments(); },
+  handleEquipmentCreated: () => { refetchEquipments(); },
+  handleEquipmentUpdated: () => { refetchEquipments(); },
+  handleEquipmentRemoved: () => { refetchEquipments(); },
   handleEquipmentDataChanged: (equipmentId, alias, value) => {
     useOrderTiming.getState().markReceived(equipmentId, alias);
     const now = new Date().toISOString();
@@ -156,8 +162,8 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
   handleEquipmentStatusChanged: (equipmentId, newStatus) => {
     // Spec 116: refetch when status changes — statusReason needs the full
     // server-side derivation (offlineDevices, staleBindings, offlineSince).
-    // Status transitions are rare enough that a refetch is fine.
-    get().fetchEquipments();
+    // Coalesced: an integration coming back online flips every equipment at once.
+    refetchEquipments();
     // Optimistic local update for instant badge feedback while the fetch
     // is in flight (~100ms RTT on LAN).
     set((state) => ({

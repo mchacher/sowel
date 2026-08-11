@@ -67,7 +67,21 @@ export function setOnUnauthorized(handler: () => Promise<boolean>): void {
   _onUnauthorized = handler;
 }
 
-async function fetchJSON<T>(url: string, options?: RequestInit, isRetry = false): Promise<T> {
+/** Server-side global rate limit is 300 req/min per IP — a burst can 429 a legitimate read. */
+const RATE_LIMIT_MAX_WAIT_MS = 5000;
+
+function parseRetryAfter(header: string | null): number {
+  const seconds = Number(header);
+  if (!Number.isFinite(seconds) || seconds <= 0) return 1000;
+  return Math.min(seconds * 1000, RATE_LIMIT_MAX_WAIT_MS);
+}
+
+async function fetchJSON<T>(
+  url: string,
+  options?: RequestInit,
+  isRetry = false,
+  rateLimitRetried = false,
+): Promise<T> {
   const headers: Record<string, string> = {};
   if (_accessToken) {
     headers["Authorization"] = `Bearer ${_accessToken}`;
@@ -80,6 +94,16 @@ async function fetchJSON<T>(url: string, options?: RequestInit, isRetry = false)
     headers,
     ...options,
   });
+
+  // Rate limited (429): retry reads once after the server-advertised delay. Only GETs are
+  // retried — replaying a mutation blindly could apply it twice.
+  const method = (options?.method ?? "GET").toUpperCase();
+  if (response.status === 429 && !rateLimitRetried && method === "GET") {
+    await new Promise((resolve) =>
+      setTimeout(resolve, parseRetryAfter(response.headers.get("retry-after"))),
+    );
+    return fetchJSON<T>(url, options, isRetry, true);
+  }
 
   if (response.status === 401 && _onUnauthorized && !isRetry) {
     // Deduplicate concurrent refresh attempts

@@ -1118,6 +1118,7 @@
   "activity.empty": "No activity in the last 24 h",
   "activity.loading": "Loading activity…",
   "activity.loadError": "Failed to load activity",
+  "activity.retry": "Retry",
   "activity.templates.order.executed": "<b>{{equipmentName}}</b> → {{value}}",
   "activity.templates.order.executed.multi": "<b>{{firstName}}</b> ×{{count}} → {{value}}",
   "activity.templates.motion.detected": "Motion detected on <b>{{equipmentName}}</b>",

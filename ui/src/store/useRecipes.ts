@@ -11,6 +11,7 @@ import {
   getRecipeInstanceLog,
   sendRecipeInstanceAction,
 } from "../api";
+import { coalesceCalls } from "../lib/coalesce-calls";
 
 interface RecipesState {
   recipes: RecipeInfo[];
@@ -28,6 +29,14 @@ interface RecipesState {
   getLog: (instanceId: string) => Promise<RecipeLogEntry[]>;
   handleInstanceChanged: () => void;
 }
+
+/**
+ * `recipe.instance.state.changed` fires several dozen times per minute on a busy install,
+ * and arrives batched — refetching the whole instance list per event flooded the API.
+ */
+const refetchInstances = coalesceCalls(() => {
+  void useRecipes.getState().fetchInstances();
+}, 1000);
 
 export const useRecipes = create<RecipesState>((set, get) => ({
   recipes: [],
@@ -92,6 +101,6 @@ export const useRecipes = create<RecipesState>((set, get) => ({
   },
 
   handleInstanceChanged: () => {
-    get().fetchInstances();
+    refetchInstances();
   },
 }));
