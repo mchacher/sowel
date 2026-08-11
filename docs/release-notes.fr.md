@@ -11,6 +11,17 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.41.x: Précision des mesures et alarmes acquittables
+
+### v1.41.0 — 2026-08-12 { #v1-41-0 }
+
+- Feat (ui) : **les alarmes du bandeau peuvent désormais être acquittées**. Une alarme dont la condition persiste (une prise laissée débranchée, un plugin qui reste hors ligne) restait dans la pastille d'alarme de l'en-tête sans aucun moyen de l'effacer. Chaque alarme dispose maintenant d'une action d'acquittement dans la feuille des alarmes ; les alarmes acquittées passent dans une section grisée d'où l'on peut les réafficher, et la pastille de l'en-tête ne compte plus que celles qui ne sont pas acquittées. L'acquittement est mémorisé dans votre navigateur et lié à l'alarme précise, donc la même reste masquée après un rechargement tandis qu'un problème réellement nouveau réapparaît. L'icône de la pastille est désormais un octogone pour les erreurs et un triangle pour les avertissements, cohérente avec la feuille. (#424)
+- Fix (energy) : **l'énergie n'est plus perdue sur les compteurs qui rapportent plusieurs fois par minute**. Un tick d'énergie temps réel porte les wattheures accumulés depuis le précédent, mais la déduplication générique le traitait comme un échantillon et en écartait la plupart, si bien qu'un compteur bavard (le Tuya PJ-1203A publie une trentaine de ticks par minute) voyait sa production plaquée à zéro et laissait le graphe Production vide. Les ticks sont désormais cumulés en un point par minute, la série d'énergie réseau a un écrivain unique pour supprimer une double écriture, et le découpage HP/HC est calculé sur la vraie fenêtre d'une minute au lieu de trente, donc l'énergie n'est plus étalée de part et d'autre d'une bascule tarifaire. L'historique passé n'est pas reconstruit ; les chiffres sont justes à partir de cette version. Contribution d'Adrien Jouve (computingify). (#415)
+- Fix (equipments) : **les équipements reposant sur un état marche/arrêt ne sont plus signalés « dégradés » alors qu'ils sont en ligne**. Un binding power booléen (Panasonic Comfort Cloud, une TV, un lave-linge) se rafraîchit au rythme propre de l'intégration, souvent plus lent que la fenêtre de streaming de deux minutes, si bien qu'un état marche/arrêt stable était lu comme périmé et faisait basculer tout l'équipement en dégradé alors que l'appareil était en ligne et interrogé. Les états booléens sont désormais exemptés de la péremption de streaming ; les lectures numériques temps réel (Shelly, pinces Legrand) continuent de se dégrader sur un vrai silence. (#422)
+- Chore (registry) : pool-pump-schedule passe en 1.2.0 ; smart-cooling en 1.4.0. (#427)
+
+---
+
 ## 1.40.x: Réglages énergie et résilience de l'Activité
 
 ### v1.40.0 — 2026-08-11 { #v1-40-0 }

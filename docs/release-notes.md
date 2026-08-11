@@ -11,6 +11,17 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.41.x: Metering accuracy and acknowledgeable alarms
+
+### v1.41.0 — 2026-08-12 { #v1-41-0 }
+
+- Feat (ui): **banner alarms can now be acknowledged**. An alarm whose condition persists (a socket left unplugged, a plugin that stays offline) used to sit in the header alarm pill with no way to clear it. Each alarm now has an acknowledge action in the alarms sheet; acknowledged alarms move to a muted section you can restore them from, and the header pill only counts the ones you have not acknowledged. The acknowledgement is remembered in your browser and keyed to the exact alarm, so the same one stays hidden across reloads while a genuinely new problem reappears. The pill icon is now an octagon for errors and a triangle for warnings, matching the sheet. (#424)
+- Fix (energy): **energy is no longer lost on meters that report many times a minute**. A live energy tick carries the watt-hours accumulated since the previous one, but the generic de-duplication treated it as a sample and dropped most of them, so a chatty meter (the Tuya PJ-1203A publishes about thirty ticks a minute) had its production pinned to zero and left the Production chart empty. Ticks are now summed into one point per minute, the grid energy series has a single writer to remove a double-write, and the HP/HC split is computed over the real one-minute window instead of a thirty-minute one, so energy is no longer smeared across a tariff transition. Past data is not backfilled; figures are correct from this release forward. Contributed by Adrien Jouve (computingify). (#415)
+- Fix (equipments): **equipments backed by an on/off state are no longer flagged "degraded" while online**. A boolean power binding (Panasonic Comfort Cloud, a TV, a washing machine) refreshes on the integration's own cadence, often slower than the two-minute streaming window, so a steady on/off value read as stale and tipped the whole equipment to degraded even though the device was online and polling. Boolean states are now exempt from streaming staleness; numeric live reads (Shelly, Legrand clamps) still degrade on genuine silence. (#422)
+- Chore (registry): pool-pump-schedule bumped to 1.2.0; smart-cooling to 1.4.0. (#427)
+
+---
+
 ## 1.40.x: Energy settings and Activity resilience
 
 ### v1.40.0 — 2026-08-11 { #v1-40-0 }
