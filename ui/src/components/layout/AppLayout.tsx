@@ -29,6 +29,7 @@ import {
   BarChart3,
   ChevronRight,
   AlertTriangle,
+  AlertOctagon,
   RefreshCw,
   Power,
 } from "lucide-react";
@@ -45,7 +46,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { HeaderPill } from "./HeaderPill";
 import { AlarmsSheet } from "./AlarmsSheet";
 import { UpdatesSheet } from "./UpdatesSheet";
-import { useAggregatedIssues } from "./useAggregatedIssues";
+import { useVisibleIssues } from "./useAggregatedIssues";
 import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { ADMIN_NAV_ITEMS, visibleAdminNavItems } from "./admin-nav-items";
@@ -75,7 +76,7 @@ export function AppLayout() {
   const restartRequired = useWebSocket((s) => s.restartRequired);
   const fetchTimezone = useTimezone((s) => s.fetch);
   const fetchShadowMode = useShadowMode((s) => s.fetch);
-  const issues = useAggregatedIssues();
+  const issues = useVisibleIssues();
   const [alarmsOpen, setAlarmsOpen] = useState(false);
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -119,120 +120,126 @@ export function AppLayout() {
       {/* Issue #401 — restored-data takeover stripe (red, admin confirm). */}
       <TakeoverBanner />
       <div className="flex flex-1 min-h-0 overflow-hidden">
-      {/* Sidebar — desktop only (lg: 1024px+, unreachable on phones) */}
-      <div className="hidden lg:flex">
-        <Sidebar />
-      </div>
+        {/* Sidebar — desktop only (lg: 1024px+, unreachable on phones) */}
+        <div className="hidden lg:flex">
+          <Sidebar />
+        </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Safe area spacer for iOS PWA */}
-        <div
-          className="header-tint flex-shrink-0"
-          style={{ height: "env(safe-area-inset-top, 0px)" }}
-        />
-        {/* Top bar — compact on mobile, full on desktop */}
-        <header className="flex items-center min-h-[56px] sm:min-h-[49px] px-3 sm:px-6 border-b border-border-light bg-surface gap-2">
-          {/* Left: mobile burger (on zone pages) + title+sub (mockup parity), desktop breadcrumb */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <MobileTopbarBurger />
-            <div className="sm:hidden flex-1 min-w-0">
-              <MobileTopbarTitle homeName={homeName} />
-            </div>
-            <div className="hidden lg:flex items-center">
-              <TopbarBreadcrumb homeName={homeName} />
-            </div>
-          </div>
-
-          {/* Right: pills (mock order: time → sun → conn → alarm → updates → avatar). */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Time + sun — full pills on desktop */}
-            <div className="hidden sm:flex items-center gap-2">
-              <CurrentTimePill />
-              <SunlightBanner data={rootAgg} />
-            </div>
-            {/* Time + sun — compact, space-saving variant on mobile (no seconds) */}
-            <div className="flex sm:hidden items-center gap-2">
-              <SunlightBanner data={rootAgg} compact />
-              <CurrentTimePill compact withSeconds={false} />
-            </div>
-            <ConnectionStatus />
-            {issues.length > 0 && (
-              <HeaderPill
-                icon={<AlertTriangle size={14} strokeWidth={1.5} />}
-                count={issues.length}
-                tone={alarmTone}
-                title={t("alarms.pill.title", { count: issues.length })}
-                onClick={() => setAlarmsOpen(true)}
-              />
-            )}
-            {totalUpdates > 0 && (
-              <HeaderPill
-                icon={<RefreshCw size={14} strokeWidth={1.5} />}
-                count={totalUpdates}
-                tone="error"
-                title={t("updates.pill.title", { count: totalUpdates })}
-                onClick={() => setUpdatesOpen(true)}
-              />
-            )}
-            {restartRequired && (
-              <HeaderPill
-                icon={<Power size={14} strokeWidth={1.5} />}
-                tone="info"
-                title={t("restart.pill.title")}
-                pulse
-                href="/settings"
-              />
-            )}
-            {/* User avatar pill — desktop only (matches mock `.topbar__avatar`). */}
-            {user && (
-              <div className="hidden sm:flex items-center gap-1.5 ml-1">
-                <div className="flex items-center gap-1.5 pl-1 pr-2.5 py-[3px] rounded-full bg-[var(--n-50)] border border-border-light">
-                  <span className="w-[22px] h-[22px] rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold leading-none">
-                    {getInitials(user.displayName)}
-                  </span>
-                  <span className="text-[12px] font-medium text-text">{user.displayName}</span>
-                </div>
-                <button
-                  onClick={() => logout()}
-                  className="p-1.5 rounded-full text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors duration-150 cursor-pointer"
-                  title={t("auth.logout")}
-                >
-                  <LogOut size={14} strokeWidth={1.5} />
-                </button>
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Safe area spacer for iOS PWA */}
+          <div
+            className="header-tint flex-shrink-0"
+            style={{ height: "env(safe-area-inset-top, 0px)" }}
+          />
+          {/* Top bar — compact on mobile, full on desktop */}
+          <header className="flex items-center min-h-[56px] sm:min-h-[49px] px-3 sm:px-6 border-b border-border-light bg-surface gap-2">
+            {/* Left: mobile burger (on zone pages) + title+sub (mockup parity), desktop breadcrumb */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <MobileTopbarBurger />
+              <div className="sm:hidden flex-1 min-w-0">
+                <MobileTopbarTitle homeName={homeName} />
               </div>
-            )}
-          </div>
-        </header>
+              <div className="hidden lg:flex items-center">
+                <TopbarBreadcrumb homeName={homeName} />
+              </div>
+            </div>
 
-        {/* Offline banner */}
-        <OfflineBanner />
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-[var(--n-25)]">
-          <Outlet />
-        </main>
+            {/* Right: pills (mock order: time → sun → conn → alarm → updates → avatar). */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Time + sun — full pills on desktop */}
+              <div className="hidden sm:flex items-center gap-2">
+                <CurrentTimePill />
+                <SunlightBanner data={rootAgg} />
+              </div>
+              {/* Time + sun — compact, space-saving variant on mobile (no seconds) */}
+              <div className="flex sm:hidden items-center gap-2">
+                <SunlightBanner data={rootAgg} compact />
+                <CurrentTimePill compact withSeconds={false} />
+              </div>
+              <ConnectionStatus />
+              {issues.length > 0 && (
+                <HeaderPill
+                  icon={
+                    alarmTone === "error" ? (
+                      <AlertOctagon size={14} strokeWidth={1.5} />
+                    ) : (
+                      <AlertTriangle size={14} strokeWidth={1.5} />
+                    )
+                  }
+                  count={issues.length}
+                  tone={alarmTone}
+                  title={t("alarms.pill.title", { count: issues.length })}
+                  onClick={() => setAlarmsOpen(true)}
+                />
+              )}
+              {totalUpdates > 0 && (
+                <HeaderPill
+                  icon={<RefreshCw size={14} strokeWidth={1.5} />}
+                  count={totalUpdates}
+                  tone="error"
+                  title={t("updates.pill.title", { count: totalUpdates })}
+                  onClick={() => setUpdatesOpen(true)}
+                />
+              )}
+              {restartRequired && (
+                <HeaderPill
+                  icon={<Power size={14} strokeWidth={1.5} />}
+                  tone="info"
+                  title={t("restart.pill.title")}
+                  pulse
+                  href="/settings"
+                />
+              )}
+              {/* User avatar pill — desktop only (matches mock `.topbar__avatar`). */}
+              {user && (
+                <div className="hidden sm:flex items-center gap-1.5 ml-1">
+                  <div className="flex items-center gap-1.5 pl-1 pr-2.5 py-[3px] rounded-full bg-[var(--n-50)] border border-border-light">
+                    <span className="w-[22px] h-[22px] rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold leading-none">
+                      {getInitials(user.displayName)}
+                    </span>
+                    <span className="text-[12px] font-medium text-text">{user.displayName}</span>
+                  </div>
+                  <button
+                    onClick={() => logout()}
+                    className="p-1.5 rounded-full text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors duration-150 cursor-pointer"
+                    title={t("auth.logout")}
+                  >
+                    <LogOut size={14} strokeWidth={1.5} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </header>
 
-        {/* Mobile bottom navigation */}
-        <MobileNav drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
-      </div>
+          {/* Offline banner */}
+          <OfflineBanner />
+          {/* Page content */}
+          <main className="flex-1 overflow-y-auto bg-[var(--n-25)]">
+            <Outlet />
+          </main>
 
-      {/* PWA install prompt */}
-      <InstallPrompt />
+          {/* Mobile bottom navigation */}
+          <MobileNav drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} />
+        </div>
 
-      {/* Alarms sheet — opened by the header pill */}
-      <AlarmsSheet open={alarmsOpen} onClose={() => setAlarmsOpen(false)} />
+        {/* PWA install prompt */}
+        <InstallPrompt />
 
-      {/* Updates sheet — lists Sowel core + outdated plugins with per-row actions */}
-      <UpdatesSheet open={updatesOpen} onClose={() => setUpdatesOpen(false)} />
+        {/* Alarms sheet — opened by the header pill */}
+        <AlarmsSheet open={alarmsOpen} onClose={() => setAlarmsOpen(false)} />
 
-      {/* First-login Home setup wizard — blocks the UI when home.name is empty.
+        {/* Updates sheet — lists Sowel core + outdated plugins with per-row actions */}
+        <UpdatesSheet open={updatesOpen} onClose={() => setUpdatesOpen(false)} />
+
+        {/* First-login Home setup wizard — blocks the UI when home.name is empty.
           Rendered BEFORE UpdateOverlay so that an active restart (e.g. the one
           the wizard itself triggers on submit) visually replaces the wizard
           rather than letting the user see a stale form behind the overlay. */}
-      <HomeSetupWizard />
+        <HomeSetupWizard />
 
-      {/* Self-update overlay (shown during sowel self-update / restart) */}
-      <UpdateOverlay />
+        {/* Self-update overlay (shown during sowel self-update / restart) */}
+        <UpdateOverlay />
       </div>
     </div>
   );

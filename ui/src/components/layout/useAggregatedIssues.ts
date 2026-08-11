@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { useWebSocket } from "../../store/useWebSocket";
+import { useAckedIssues } from "../../store/useAckedIssues";
+import { issueSignature } from "../../lib/acked-issues";
 
 export interface AggregatedIssue {
   /** Stable key for React rendering: `<source>:<kind>` */
@@ -69,6 +71,21 @@ export function useAggregatedIssues(): AggregatedIssue[] {
       return a.source.localeCompare(b.source);
     });
   }, [alarms, integrationStatuses]);
+}
+
+/**
+ * The subset of aggregated issues the user has NOT acknowledged (#424). Drives
+ * the header pill so acknowledging a persistent warning clears it from the
+ * banner. The AlarmsSheet keeps using `useAggregatedIssues` (the full list) to
+ * also show the acknowledged ones.
+ */
+export function useVisibleIssues(): AggregatedIssue[] {
+  const issues = useAggregatedIssues();
+  const acked = useAckedIssues((s) => s.acked);
+  return useMemo(
+    () => issues.filter((issue) => !acked.has(issueSignature(issue))),
+    [issues, acked],
+  );
 }
 
 /** Translation lookup is done inside the components; this helper just
