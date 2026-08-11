@@ -11,6 +11,35 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.40.x: Réglages énergie et résilience de l'Activité
+
+### v1.40.0 — 2026-08-11 { #v1-40-0 }
+
+- Feat (ui) : **les réglages d'énergie ont désormais leur propre onglet**. La grille tarifaire et l'arbitre de surplus quittent Réglages > Administration, où ils voisinaient avec la gestion des utilisateurs, pour un onglet dédié **Réglages > Énergie**, rassemblant tout ce qui touche à l'énergie. Chaque seuil avancé de l'arbitre gagne une bulle d'aide au survol expliquant son rôle et son unité, pour qu'ils ne soient plus des nombres opaques. (#418)
+- Fix (energy) : l'arbitre de surplus **ne prend plus une réémission d'ordre pour une commande manuelle**. Quand l'appareil d'une charge pilotable passait hors ligne puis revenait avec un ordre non confirmé, Sowel réémettait cet ordre (le renvoi de confirmation de livraison de la v1.39.0) et l'arbitre y voyait une prise de main humaine, se suspendant deux heures. Il ignore désormais son propre canal de réémission, donc une charge Zigbee instable n'affiche plus un « Manuel jusqu'à ... » injustifié sur son panneau énergie. (#420)
+- Fix (ui) : le **panneau Activité se remet des échecs de chargement passagers** au lieu de rester bloqué sur « Impossible de charger l'activité » jusqu'à ce qu'on quitte la zone et y revienne. Il réessaie, propose un bouton Réessayer, recharge à la reconnexion WebSocket, et ne laisse plus une requête périmée écraser un résultat plus récent. Les rafales de rechargement WebSocket qui pouvaient épuiser la limite de requêtes (un rechargement complet par événement de recette ou d'équipement) sont regroupées, et les requêtes GET réessaient une fois sur une réponse de dépassement de limite. Contribution d'Adrien Jouve (computingify). (#413)
+
+---
+
+## 1.39.x: Arbitrage du surplus énergie
+
+### v1.39.1 — 2026-08-11 { #v1-39-1 }
+
+- Fix (ui) : plusieurs correctifs de l'interface de l'arbitre de surplus livrée en v1.39.0. L'**interrupteur d'activation apparaît désormais dès que vous avez un compteur principal** (réseau) au lieu d'exiger un compteur de production séparé, pour qu'une maison dont le solaire apparaît en injection réseau puisse réellement l'activer. La **liste de priorité est maintenant respectée telle qu'affichée** (une charge nouvellement déclarée pouvait être ignorée jusqu'à un réordonnancement). Déclarer une charge pilotable ne mène plus à une impasse : les champs classe et puissance apparaissent en cochant la case, avec une explication de Différable vs Confort, un bouton Enregistrer explicite et une confirmation avant suppression. Les seuils avancés ne peuvent plus être vidés vers une valeur qui désactive l'arbitre en silence, le badge « Manuel jusqu'à » apparaît en temps réel, et plusieurs points d'accessibilité et de formulation ont été corrigés. (#416)
+
+### v1.39.0 — 2026-08-11 { #v1-39-0 }
+
+- Feat (energy) : **l'arbitre de surplus énergie** (spec 140). Un arbitre central distribue le surplus solaire à vos charges pilotables dans l'ordre de priorité que vous choisissez, mettant fin au bras de fer où plusieurs automatisations conscientes du surplus s'allument chacune en voyant de l'injection, dépassent ensemble, puis l'effondrent. Déclarez une charge pilotable (pompe de piscine, chauffe-eau, etc.) sur sa fiche d'équipement (classe, puissance nominale, marche/arrêt minimum, pré-remplis depuis le type et sa propre mesure), activez l'arbitre dans Réglages > Administration > Énergie, et ordonnez vos charges. Énergie > En direct gagne une surface d'arbitrage : une barre d'allocation de là où va la production en ce moment, une frise du jour par charge, et un journal des décisions en langage clair. **Opt-in et désactivé par défaut**, et l'arbitre n'émet aucun ordre lui-même. C'est la fondation contre laquelle les recettes conscientes du surplus réclament de la capacité (`ctx.helpers.energy`) ; les recettes qui l'utilisent arrivent ensuite, donc sur cette version l'arbitre est là pour être activé et observé. Durci par deux passes de revue adversariale indépendantes avant le merge. (#412)
+- Feat (equipments) : **confirmation de livraison d'ordre** (spec 141). Un ordre envoyé avec succès ne prouvait que son arrivée à l'intégration, pas au device : un OFF de pompe de piscine envoyé pendant une fenêtre hors ligne de 104 secondes a un jour laissé la pompe tourner 15,5 h sans que rien ne le signale (issue #398). Les ordres confirmables sont désormais surveillés pour que la valeur commandée apparaisse réellement sous 30 s (verdict immédiat quand tous les devices cibles sont hors ligne) ; sinon, Sowel lève une alarme d'avertissement (transmise en notification push) et renvoie l'ordre une fois quand le device revient dans l'heure. (#404)
+- Feat (core) : **garde-fou données restaurées**. Une base restaurée depuis un autre déploiement porte les brokers MQTT et canaux de ce déploiement ; une instance pleinement armée sur ces données se bat contre l'originale. Une instance restaurée démarre désormais inerte jusqu'à ce que vous confirmiez la reprise, pour que les deux ne se disputent jamais les mêmes devices. (#405)
+- Fix (mqtt) : chaque processus utilise un **client id de publisher MQTT unique** (suffixe aléatoire par connexion) et limite les avertissements de reconnexion, pour qu'une instance de dev sur une copie d'une base de production ne mette plus l'originale dehors en boucle. (#402)
+- Fix (logging) : les fichiers de log quotidiens sont **datés et conservés à travers la recréation du conteneur**, et les fichiers de log au format pré-daté laissés par les anciennes versions sont purgés automatiquement au démarrage. (#403, #408)
+- Fix (ui) : la liste des équipements **regroupe par identité de zone, pas par nom de zone** (deux pièces au même nom ne fusionnent plus), et le badge des plugins communautaires affiche une icône Utilisateurs plutôt qu'un triangle d'avertissement. (#406, #411)
+- Chore (registry) : Zigbee2MQTT passé à 2.4.0 ; pool-pump-schedule à 1.1.0 ; netatmo_weather à 2.1.0. (#397, #409)
+- Docs : les règles de configuration multi-coordinateurs Zigbee sont reportées dans les pages device et prise en main qui couvrent déjà Zigbee ; nouvelle documentation utilisateur et développeur pour l'arbitre de surplus. (#407)
+
+---
+
 ## 1.38.x: Plusieurs coordinateurs Zigbee
 
 ### v1.38.0 — 2026-08-10 { #v1-38-0 }

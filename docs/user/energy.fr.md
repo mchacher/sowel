@@ -150,6 +150,38 @@ La page Production affiche l'historique de la production solaire (ou autre produ
 
 Les totaux sous le graphique somment les deux tranches en production journalière, mensuelle ou annuelle.
 
+## Arbitrage du surplus
+
+Quand vous produisez du solaire, plusieurs automatisations peuvent vouloir le même surplus au même moment (pré-refroidir la maison, faire tourner la pompe de piscine, chauffer l'eau). Sans coordination elles se le disputent : chacune s'allume en voyant de l'injection, ensemble elles dépassent, l'injection s'effondre, et tout s'éteint. L'**arbitre de surplus** est l'arbitre unique qui distribue le surplus dans l'ordre que **vous** décidez.
+
+Il est **désactivé par défaut** et ne change rien tant que vous ne l'activez pas. Sur une maison sans production solaire, il reste masqué.
+
+### Déclarer une charge pilotable
+
+Sur un équipement qui peut s'allumer et s'éteindre (pompe de piscine, chauffe-eau, un interrupteur pilotant un radiateur), ouvrez sa fiche et activez **Pilotage énergie**. Vous choisissez :
+
+- **Classe** — _Différable_ (peut être coupée puis rattrapée plus tard, comme une pompe de piscine) ou _Confort_ (ne reçoit qu'un bonus par-dessus son fonctionnement normal, jamais coupée par l'arbitre, comme une climatisation). Sowel présélectionne la bonne classe selon le type d'équipement ; vous pouvez la corriger.
+- **Puissance nominale** — pré-remplie depuis la mesure de l'équipement quand une pince est associée.
+- **Marche / arrêt minimum** — durée minimale de marche une fois démarré, et de repos avant redémarrage (protège un compresseur des cycles courts).
+
+Activer ceci ne fait que _déclarer_ la charge. Rien ne la pilote tant que l'arbitre lui-même n'est pas activé.
+
+### Activer l'arbitre et définir la priorité
+
+Allez dans **Réglages > Administration > Énergie**, activez l'**Arbitre de surplus**, et ordonnez vos charges pilotables dans la liste de priorité. La liste se lit dans les deux sens : le surplus est offert de haut en bas, et quand il manque, la charge du bas s'efface la première. Les seuils de temporisation avancés sont derrière un repli, avec des valeurs par défaut raisonnables.
+
+### La lire sur la page En direct
+
+La page **Énergie > En direct** gagne un panneau d'arbitrage du surplus en trois parties :
+
+- une **barre d'allocation** montrant où va la production en ce moment (maison, chaque charge accordée, surplus libre), et une ligne nommant toute charge en attente et pourquoi ;
+- une **frise du jour** avec un couloir par charge pilotable — vert là où elle a tenu le surplus, un repère rouge (avec la raison au survol) là où elle s'est effacée ;
+- un **journal des décisions** en langage clair, pour que rien de ce que fait l'arbitre ne soit un mystère.
+
+### Vous avez toujours le dernier mot
+
+Si vous allumez ou éteignez vous-même une charge pilotable — dans l'application, avec un bouton physique, ou l'interrupteur mural — l'arbitre s'efface et la laisse tranquille pendant deux heures. Sa fiche d'équipement affiche _Manuel jusqu'à HH:MM_ avec un bouton **reprendre le pilotage** si vous voulez la lui rendre plus tôt.
+
 ## Pipeline de données
 
 Comprendre comment circulent les données aide au diagnostic :

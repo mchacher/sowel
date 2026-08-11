@@ -7,6 +7,7 @@ import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { SunlightManager } from "../../zones/sunlight-manager.js";
 import { isWithinSlot, type TariffClassifier } from "../../energy/tariff-classifier.js";
+import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import type {
   RecipeInfo,
   RecipeInstance,
@@ -18,6 +19,9 @@ import type {
   RecipeActionDef,
   RecipeLangPack,
   RecipeTariff,
+  RecipeEnergyHelpers,
+  CapacityClaimHandle,
+  CapacityClaimRequest,
   TariffConfig,
   TariffSlot,
   OrderSource,
@@ -65,6 +69,9 @@ export class RecipeManager {
   /** Spec 124 — when true, `startInstance` is a no-op so no recipe
    * ever emits an order while the shadow instance is up. */
   private readonly shadowMode: boolean;
+  /** Spec 140 — capacity arbiter behind `ctx.helpers.energy`. Null in tests
+   *  and shadow contexts: the helper then denies `arbiter-disabled`. */
+  private capacityArbiter: CapacityArbiter | null;
 
   constructor(
     db: Database.Database,
@@ -76,6 +83,7 @@ export class RecipeManager {
     tariffClassifier: TariffClassifier | null,
     logger: Logger,
     shadowMode = false,
+    capacityArbiter: CapacityArbiter | null = null, // spec 140 — ctx.helpers.energy
   ) {
     this.db = db;
     this.eventBus = eventBus;
@@ -87,6 +95,7 @@ export class RecipeManager {
     this.logger = logger.child({ module: "recipe-manager" });
     this.stmts = this.prepareStatements();
     this.shadowMode = shadowMode;
+    this.capacityArbiter = capacityArbiter;
   }
 
   private prepareStatements() {
@@ -521,11 +530,22 @@ export class RecipeManager {
 
     // Stop any existing runner for this instance first (prevents orphaned subscriptions)
     this.stopInstance(instance.id);
+    // Spec 140 — release any capacity claim left by a PRIOR start of this
+    // instance that threw before `running` was set (stopInstance above would
+    // early-return in that case and never release it).
+    this.capacityArbiter?.releaseAllFor(instance.id);
 
     const ctx = this.buildContext(instance.id, instance.recipeId);
 
-    recipe.validate(instance.params, ctx);
-    recipe.start(instance.params, ctx);
+    try {
+      recipe.validate(instance.params, ctx);
+      recipe.start(instance.params, ctx);
+    } catch (err) {
+      // A recipe that claimed capacity in start() and then threw must not
+      // leak the claim (which would block the equipment until restart).
+      this.capacityArbiter?.releaseAllFor(instance.id);
+      throw err;
+    }
 
     this.running.set(instance.id, { recipe, instance });
     const startedRecipeName = this.registry.get(instance.recipeId)?.info.name;
@@ -543,6 +563,9 @@ export class RecipeManager {
   private stopInstance(instanceId: string): void {
     const running = this.running.get(instanceId);
     if (!running) return;
+
+    // Spec 140 — a stopping instance never leaves claims behind.
+    this.capacityArbiter?.releaseAllFor(instanceId);
 
     try {
       running.recipe.stop();
@@ -563,7 +586,9 @@ export class RecipeManager {
     });
   }
 
-  private readonly helpers: RecipeHelpers = {
+  // `energy` is per-instance (the claim must be owned, spec 140), so the
+  // shared object carries everything BUT it; buildContext adds it.
+  private readonly helpers: Omit<RecipeHelpers, "energy"> = {
     isAnyLightOn,
     turnOnLights,
     turnOffLights,
@@ -575,6 +600,42 @@ export class RecipeManager {
     getSunlight: () => this.sunlightManager.getSunlightData(),
     getTariff: () => this.buildTariffSnapshot(),
   };
+
+  /**
+   * Spec 140 — per-instance capacity helper. Always present on this core;
+   * claims are denied `arbiter-disabled` when no arbiter is wired (tests)
+   * or the arbiter is off, so recipes never need to probe.
+   */
+  private buildEnergyHelpers(instanceId: string): RecipeEnergyHelpers {
+    return {
+      claimCapacity: (req: CapacityClaimRequest): CapacityClaimHandle => {
+        if (!this.capacityArbiter) {
+          return {
+            id: randomUUID(),
+            status: () => "denied",
+            deniedReason: "arbiter-disabled",
+            release: () => {},
+          };
+        }
+        return this.capacityArbiter.claim(instanceId, req);
+      },
+      getCapacityState: () => {
+        if (!this.capacityArbiter) {
+          return { enabled: false, availableSurplusW: null, grants: [] };
+        }
+        const pub = this.capacityArbiter.getPublicState();
+        return {
+          enabled: pub.enabled,
+          availableSurplusW: pub.availableSurplusW,
+          grants: pub.grants.map((g) => ({
+            equipmentId: g.equipmentId,
+            watts: g.watts,
+            sinceIso: g.sinceIso,
+          })),
+        };
+      },
+    };
+  }
 
   /**
    * Build the recipe-facing tariff snapshot (spec 138).
@@ -635,7 +696,7 @@ export class RecipeManager {
         const childLogger = this.logger.child({ instanceId, recipeId, recipeName });
         childLogger[level]({ instanceId, recipeId, recipeName }, message);
       },
-      helpers: this.helpers,
+      helpers: { ...this.helpers, energy: this.buildEnergyHelpers(instanceId) },
       dispatchOrder: (equipmentId, alias, value) =>
         this.equipmentManager.executeOrder(equipmentId, alias, value, orderSource),
     };

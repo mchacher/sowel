@@ -23,6 +23,7 @@ import { EnergyMobileNav } from "./EnergyMobileNav";
 import { LiveSubmeterBreakdown } from "./LiveSubmeterBreakdown";
 import { PhaseBreakdown } from "./PhaseBreakdown";
 import { useWsSubscription } from "../../hooks/useWsSubscription";
+import { ArbitrationSurface } from "./ArbitrationSurface";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
 const HP_COLOR = "#4F7BE8";       // House consumption (vivid blue, focal)
@@ -130,7 +131,7 @@ export function LiveEnergyPage() {
   const { t } = useTranslation();
   // Subscribe to equipments topic so equipment.data.changed events flow to
   // the Zustand store and re-render this page in real time (~1 Hz from Shelly).
-  useWsSubscription(["equipments"]);
+  useWsSubscription(["equipments", "energy"]);
   const equipments = useEquipments((s) => s.equipments);
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
 
@@ -202,6 +203,9 @@ export function LiveEnergyPage() {
             }
             hasMainMeter={gridEqs.length > 0}
           />
+          {/* Spec 140 / FR-10 — arbitration surface (renders only when the
+              arbiter is enabled; a no-PV home never sees dead UI here) */}
+          <ArbitrationSurface />
         </>
       )}
     </div>

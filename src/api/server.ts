@@ -95,6 +95,7 @@ interface ServerDeps {
   packageManager: PackageManager;
   pluginLoader: PluginLoader;
   recipeLoader: import("../recipes/recipe-loader.js").RecipeLoader;
+  capacityArbiter: import("../energy/capacity-arbiter.js").CapacityArbiter; // spec 140
   backupManager: BackupManager;
   versionChecker: import("../core/version-checker.js").VersionChecker;
   updateManager: import("../core/update-manager.js").UpdateManager;
@@ -146,6 +147,7 @@ export async function createServer(deps: ServerDeps) {
     packageManager,
     pluginLoader,
     recipeLoader,
+    capacityArbiter,
     backupManager,
     versionChecker,
     updateManager,
@@ -320,6 +322,7 @@ export async function createServer(deps: ServerDeps) {
     influxClient,
     settingsManager,
     tariffClassifier: historyWriter.getTariffClassifier(),
+    capacityArbiter,
     logger,
   });
   registerDashboardRoutes(app, { db });

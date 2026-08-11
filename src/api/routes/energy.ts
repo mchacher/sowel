@@ -3,6 +3,7 @@ import type { Logger } from "../../core/logger.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
+import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type {
@@ -22,6 +23,7 @@ interface EnergyDeps {
   influxClient: InfluxClient;
   settingsManager: SettingsManager;
   tariffClassifier: TariffClassifier;
+  capacityArbiter: CapacityArbiter | null; // spec 140 — null in some tests
   logger: Logger;
 }
 
@@ -31,6 +33,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     influxClient,
     settingsManager,
     tariffClassifier,
+    capacityArbiter,
     logger: parentLogger,
   } = deps;
   const logger = parentLogger.child({ module: "energy-api" });
@@ -390,6 +393,47 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.status(500).send({ error: "Failed to query energy by-usage data" });
     }
   });
+
+  // ============================================================
+  // GET /api/v1/energy/arbiter — spec 140 read model (FR-10)
+  // ============================================================
+  app.get("/api/v1/energy/arbiter", async () => {
+    if (!capacityArbiter) {
+      return {
+        enabled: false,
+        state: "disabled",
+        availableSurplusW: null,
+        productionDetected: false,
+        grants: [],
+        pending: [],
+        suspensions: [],
+        journal: [],
+        surplusSeries: [],
+      };
+    }
+    return capacityArbiter.getPublicState();
+  });
+
+  // ============================================================
+  // POST /api/v1/energy/arbiter/resume/:equipmentId — lift a manual
+  // suspension immediately ("resume control now", FR-6). Admin only.
+  // ============================================================
+  app.post<{ Params: { equipmentId: string } }>(
+    "/api/v1/energy/arbiter/resume/:equipmentId",
+    async (request, reply) => {
+      if (!request.auth || request.auth.role !== "admin") {
+        return reply.code(403).send({ error: "Admin access required" });
+      }
+      if (!capacityArbiter) {
+        return reply.code(404).send({ error: "Arbiter not available" });
+      }
+      const lifted = capacityArbiter.resumeEquipment(request.params.equipmentId);
+      if (!lifted) {
+        return reply.code(404).send({ error: "No active suspension for this equipment" });
+      }
+      return { resumed: true };
+    },
+  );
 
   // ============================================================
   // GET /api/v1/settings/energy/tariff (admin only — carries prices)

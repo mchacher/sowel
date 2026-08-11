@@ -1,4 +1,10 @@
-import type { DataCategory, DataType, EquipmentType, WidgetFamily } from "./types.js";
+import type {
+  DataCategory,
+  DataType,
+  EnergyLoadClass,
+  EquipmentType,
+  WidgetFamily,
+} from "./types.js";
 
 // ============================================================
 // Root Zone — "Maison" is the root of the zone hierarchy
@@ -235,3 +241,46 @@ export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
 };
 
 export const DEFAULT_STREAMING_TIMEOUT_MS = 15 * 60 * 1000;
+
+// ============================================================
+// Energy capacity arbiter (spec 140)
+// ============================================================
+
+/**
+ * Default load class per equipment type (FR-1). Sowel knows its equipments,
+ * so the class is derived and the user only corrects the exceptions. `null`
+ * means no obvious energy semantics — the form requires an explicit choice.
+ * A form default only: the stored profile always carries the resolved class.
+ */
+export function defaultEnergyClassFor(type: EquipmentType): EnergyLoadClass | null {
+  switch (type) {
+    case "water_heater":
+    case "pool_pump":
+    case "pool_heat_pump":
+    case "water_valve":
+      return "deferrable";
+    case "thermostat":
+    case "heater":
+      return "comfort";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Default min-on / min-off per equipment type (review decision 15). A relay
+ * in front of a resistor restarts for free; a compressor does not. Editable
+ * per equipment.
+ */
+export function defaultEnergyTimingsFor(type: EquipmentType): { minOnS: number; minOffS: number } {
+  switch (type) {
+    case "water_heater":
+      return { minOnS: 300, minOffS: 300 };
+    case "pool_heat_pump":
+    case "thermostat":
+    case "heater":
+      return { minOnS: 900, minOffS: 600 };
+    default:
+      return { minOnS: 900, minOffS: 300 };
+  }
+}

@@ -1,0 +1,1017 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { CapacityArbiter, trimmedMedian } from "./capacity-arbiter.js";
+import { EventBus } from "../core/event-bus.js";
+import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
+import type {
+  CapacityClaimHandle,
+  CapacityClaimRequest,
+  EnergyLoadProfile,
+  EngineEvent,
+  Equipment,
+} from "../shared/types.js";
+
+// ============================================================
+// Harness — fake settings + equipment manager, real EventBus.
+// Meter convention: value is SIGNED grid power (+import / −export),
+// so feedMeter(-1000) means "exporting 1 kW".
+// ============================================================
+
+const silentLogger = {
+  child: () => silentLogger,
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {},
+  trace: () => {},
+  fatal: () => {},
+} as never;
+
+interface FakeEquipment extends Equipment {
+  energyProfile?: EnergyLoadProfile;
+}
+
+function makeHarness(opts?: {
+  priority?: string[];
+  settings?: Record<string, string>;
+  profiles?: Record<string, EnergyLoadProfile | undefined>;
+  shadow?: boolean;
+}) {
+  const settingsMap = new Map<string, string>(
+    Object.entries({
+      "energy.arbiter.enabled": "true",
+      "energy.arbiter.priority": JSON.stringify(opts?.priority ?? ["pac", "pump", "heater"]),
+      // smoothing 1 s: the EMA settles within one 10 s tick, so tests reason
+      // about holds, not about filter convergence.
+      "energy.arbiter.smoothingS": "1",
+      ...(opts?.settings ?? {}),
+    }),
+  );
+  const settingsManager = {
+    get: (k: string) => settingsMap.get(k),
+    set: (k: string, v: string) => settingsMap.set(k, v),
+  } as never;
+
+  const base = (id: string, name: string, type: string): FakeEquipment =>
+    ({
+      id,
+      name,
+      zoneId: "z",
+      type,
+      enabled: true,
+      createdAt: "",
+      updatedAt: "",
+    }) as FakeEquipment;
+
+  const profiles: Record<string, EnergyLoadProfile | undefined> = {
+    pac: { class: "comfort", nominalPowerW: 2000, minOnS: 900, minOffS: 600 },
+    pump: { class: "deferrable", nominalPowerW: 600, minOnS: 900, minOffS: 300 },
+    heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 300, minOffS: 300 },
+    ...(opts?.profiles ?? {}),
+  };
+
+  const equipments = new Map<string, FakeEquipment>([
+    ["grid", base("grid", "Shelly Grid", "main_energy_meter")],
+    ["solar", base("solar", "Shelly Solar", "energy_production_meter")],
+    ["pac", { ...base("pac", "PAC", "thermostat"), energyProfile: profiles.pac }],
+    ["pump", { ...base("pump", "Pompe Piscine", "pool_pump"), energyProfile: profiles.pump }],
+    [
+      "heater",
+      { ...base("heater", "Chauffe-eau", "water_heater"), energyProfile: profiles.heater },
+    ],
+    ["lamp", base("lamp", "Lampe", "light_onoff")],
+  ]);
+
+  const bindings = new Map<string, Array<{ alias: string; category: string }>>([
+    ["grid", [{ alias: "power", category: "power" }]],
+    ["pac", [{ alias: "power", category: "power" }]],
+    ["pump", [{ alias: "power", category: "power" }]],
+    ["heater", [{ alias: "power", category: "power" }]],
+  ]);
+
+  const learnedCalls: Array<{ id: string; watts: number; runs: number }> = [];
+  const equipmentManager = {
+    getById: (id: string) => equipments.get(id) ?? null,
+    getAll: () => [...equipments.values()],
+    getDataBindingsWithValues: (id: string) => bindings.get(id) ?? [],
+    setEnergyProfileLearned: (
+      id: string,
+      learned: { watts: number; atIso: string; runs: number },
+    ) => {
+      learnedCalls.push({ id, watts: learned.watts, runs: learned.runs });
+      const e = equipments.get(id);
+      if (e?.energyProfile) e.energyProfile = { ...e.energyProfile, learned };
+    },
+  } as never;
+
+  const eventBus = new EventBus(silentLogger);
+  const events: EngineEvent[] = [];
+  eventBus.on((e) => {
+    if (e.type.startsWith("energy.")) events.push(e);
+  });
+
+  const arbiter = new CapacityArbiter(
+    eventBus,
+    settingsManager,
+    equipmentManager,
+    silentLogger,
+    opts?.shadow ?? false,
+  );
+  arbiter.start();
+
+  const feedMeter = (signedW: number) =>
+    eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId: "grid",
+      alias: "power",
+      value: signedW,
+      previous: null,
+    });
+  const feedLoadPower = (equipmentId: string, w: number) =>
+    eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId,
+      alias: "power",
+      value: w,
+      previous: null,
+    });
+  const feedState = (equipmentId: string, on: boolean) =>
+    eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId,
+      alias: "state",
+      value: on ? "ON" : "OFF",
+      previous: null,
+    });
+  const order = (
+    equipmentId: string,
+    value: unknown,
+    source: { kind: string; instanceId?: string; channel?: string },
+  ) =>
+    eventBus.emit({
+      type: "equipment.order.executed",
+      equipmentId,
+      orderAlias: "power",
+      value,
+      source,
+    } as EngineEvent);
+  /** Advance in 10 s ticks, re-feeding the meter to keep it fresh. */
+  const run = (signedW: number, seconds: number) => {
+    for (let i = 0; i < Math.ceil(seconds / 10); i++) {
+      vi.advanceTimersByTime(10_000);
+      feedMeter(signedW);
+    }
+  };
+  const claim = (
+    instanceId: string,
+    req: Partial<CapacityClaimRequest> & { equipmentId: string },
+  ): CapacityClaimHandle =>
+    arbiter.claim(instanceId, {
+      onGranted: () => {},
+      onRevoked: () => {},
+      ...req,
+    } as CapacityClaimRequest);
+  const emitSettingsChanged = () =>
+    eventBus.emit({ type: "settings.changed", keys: ["energy.arbiter.enabled"] });
+
+  const revokedEvents = () =>
+    events.filter((e) => e.type === "energy.capacity.revoked") as Array<
+      Extract<EngineEvent, { type: "energy.capacity.revoked" }>
+    >;
+  const grantedEvents = () =>
+    events.filter((e) => e.type === "energy.capacity.granted") as Array<
+      Extract<EngineEvent, { type: "energy.capacity.granted" }>
+    >;
+
+  return {
+    arbiter,
+    eventBus,
+    events,
+    settingsMap,
+    equipments,
+    learnedCalls,
+    feedMeter,
+    feedLoadPower,
+    feedState,
+    order,
+    run,
+    claim,
+    emitSettingsChanged,
+    revokedEvents,
+    grantedEvents,
+  };
+}
+
+describe("helpers", () => {
+  it("trimmedMedian drops the extreme quarters", () => {
+    expect(trimmedMedian([600])).toBe(600);
+    expect(trimmedMedian([100, 600, 620, 640, 5000])).toBe(620);
+    expect(trimmedMedian([600, 640])).toBe(640);
+  });
+});
+
+describe("capacity arbiter", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("grants a single claim once the surplus holds through engageHoldS", () => {
+    const h = makeHarness();
+    const granted = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onGranted: granted });
+    h.feedMeter(-1000); // exporting 1 kW
+    h.run(-1000, 60);
+    expect(granted).not.toHaveBeenCalled(); // engage hold not elapsed
+    h.run(-1000, 80);
+    expect(granted).toHaveBeenCalledOnce();
+    expect(h.grantedEvents()).toHaveLength(1);
+    const state = h.arbiter.getPublicState();
+    expect(state.grants[0]?.equipmentId).toBe("pump");
+    expect(state.journal.some((j) => j.kind === "granted")).toBe(true);
+  });
+
+  it("keeps a claim pending when the surplus is below watts+margin", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" }); // needs 600+100
+    h.feedMeter(-500);
+    h.run(-500, 300);
+    expect(h.grantedEvents()).toHaveLength(0);
+    expect(h.arbiter.getPublicState().pending[0]?.reasonWaiting).toContain("insufficient-surplus");
+  });
+
+  it("does NOT revoke when its own grant collapses the export (reservation accounting)", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    // The pump physically starts: export drops to 400 W. Still exporting →
+    // no deficit, whatever the hold. This is the anti-oscillation core.
+    h.run(-400, 700);
+    expect(h.revokedEvents()).toHaveLength(0);
+    // availableSurplusW stays on the true surplus (export + reserved).
+    expect(h.arbiter.getPublicState().availableSurplusW).toBe(1000);
+  });
+
+  it("a background surge revokes bottom-up after releaseHoldS", () => {
+    const h = makeHarness();
+    h.claim("pacI", { equipmentId: "pac" });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.run(-3000, 150); // both granted
+    expect(h.grantedEvents()).toHaveLength(2);
+    // Hob: the house now IMPORTS 2.4 kW sustained (long enough to clear the
+    // per-type minOnS windows as well as the release hold).
+    h.run(2400, 1100);
+    const revs = h.revokedEvents();
+    expect(revs.length).toBeGreaterThanOrEqual(1);
+    expect(revs[0].equipmentId).toBe("pump"); // bottom of ["pac","pump"]
+    expect(revs[0].reason).toBe("surplus-deficit");
+  });
+
+  it("cloud pass shorter than releaseHoldS never revokes", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.run(300, 300); // import for 5 min < releaseHold 600 s
+    h.run(-800, 100); // sun returns
+    expect(h.revokedEvents()).toHaveLength(0);
+  });
+
+  it("minOnS blocks revocation until elapsed (no short-cycling)", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" }); // minOnS 900
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    h.run(2000, 700); // deficit sustained past releaseHold, but minOn not elapsed
+    expect(h.revokedEvents()).toHaveLength(0);
+    h.run(2000, 300); // now past minOn (grant age > 900 s)
+    expect(h.revokedEvents()).toHaveLength(1);
+  });
+
+  it("minOffS blocks a re-grant after a revocation", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 300 } },
+    });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.run(2000, 700);
+    expect(h.revokedEvents()).toHaveLength(1);
+    h.run(-1000, 200); // engage hold satisfied but min-off (300 s) not yet
+    expect(h.grantedEvents()).toHaveLength(1);
+    h.run(-1000, 300);
+    expect(h.grantedEvents()).toHaveLength(2);
+  });
+
+  it("with surplus for one, the higher-priority pending claim does not stop the lower one", () => {
+    const h = makeHarness();
+    h.claim("pacI", { equipmentId: "pac" }); // needs 2100
+    h.claim("pumpI", { equipmentId: "pump" }); // needs 700
+    h.run(-800, 200);
+    expect(h.grantedEvents()).toHaveLength(1);
+    expect(h.grantedEvents()[0].equipmentId).toBe("pump");
+  });
+
+  it("a higher-priority claim preempts lower grants when the shortfall is coverable", () => {
+    const h = makeHarness({
+      profiles: {
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.run(-800, 150); // pump granted
+    expect(h.grantedEvents()[0].equipmentId).toBe("pump");
+    h.claim("pacI", { equipmentId: "pac" }); // outranks pump, needs 2100
+    h.run(-1600, 100); // headroom 1600 < 2100, shortfall 500 ≤ pump 600
+    const revs = h.revokedEvents();
+    expect(revs).toHaveLength(1);
+    expect(revs[0].equipmentId).toBe("pump");
+    expect(revs[0].reason).toBe("priority-preempted");
+    // Pump physically stops → export recovers → pac granted.
+    h.run(-2200, 150);
+    expect(h.grantedEvents().map((e) => e.equipmentId)).toContain("pac");
+  });
+
+  it("manual order on a granted equipment revokes immediately and suspends", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "manual", instanceId: undefined });
+    expect(revoked).toHaveBeenCalledWith("manual-override");
+    const denied = h.claim("i2", { equipmentId: "pump" });
+    expect(denied.status()).toBe("denied");
+    expect(denied.deniedReason).toBe("override-active");
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+  });
+
+  it("a recipe order on a granted equipment does NOT suspend", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+    expect(h.revokedEvents()).toHaveLength(0);
+  });
+
+  // #420 — after a device reconnect the confirmation tracker re-dispatches
+  // Sowel's OWN last unconfirmed order (typically a recipe order) as
+  // { kind: "external", channel: "delivery-retry" }. That is not a human
+  // action: it must neither suspend arbitration nor revoke a live grant.
+  it("an external delivery-retry re-dispatch does NOT suspend a granted load", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150); // pump granted
+    h.order("pump", true, { kind: "external", channel: RETRY_CHANNEL });
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+    expect(h.revokedEvents()).toHaveLength(0);
+  });
+
+  it("a non-retry external order still suspends (genuine external control)", () => {
+    const h = makeHarness();
+    h.order("pump", true, { kind: "external", channel: "home-assistant" });
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+  });
+
+  it("resume lifts a suspension immediately", () => {
+    const h = makeHarness();
+    const first = h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "manual" });
+    expect(h.arbiter.resumeEquipment("pump")).toBe(true);
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+    expect(h.arbiter.resumeEquipment("pump")).toBe(false); // nothing to lift
+    first.release(); // the revoked claim still owns the equipment (FR-4)
+    const again = h.claim("i2", { equipmentId: "pump" });
+    expect(again.status()).toBe("pending");
+  });
+
+  it("meter silence revokes everything and degrades; fresh data re-arms", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    vi.advanceTimersByTime(400_000); // > staleAfterS with no meter data
+    expect(revoked).toHaveBeenCalledWith("meter-stale");
+    expect(h.arbiter.getPublicState().state).toBe("degraded");
+    expect(h.arbiter.getPublicState().availableSurplusW).toBeNull();
+    // Fresh data → active again, and the still-pending claim can be served.
+    h.run(-1000, 500); // min-off (300 s) then engage hold
+    expect(h.arbiter.getPublicState().state).toBe("active");
+    expect(h.grantedEvents()).toHaveLength(2);
+  });
+
+  it("disabling via settings revokes all with reason disabled", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    h.settingsMap.set("energy.arbiter.enabled", "false");
+    h.emitSettingsChanged();
+    expect(revoked).toHaveBeenCalledWith("disabled");
+    const denied = h.claim("i2", { equipmentId: "pump" });
+    expect(denied.deniedReason).toBe("arbiter-disabled");
+  });
+
+  it("denies claims on non-profiled equipments and double claims", () => {
+    const h = makeHarness();
+    expect(h.claim("i1", { equipmentId: "lamp" }).deniedReason).toBe("not-profiled");
+    const first = h.claim("i1", { equipmentId: "pump" });
+    expect(first.status()).toBe("pending");
+    expect(h.claim("i2", { equipmentId: "pump" }).deniedReason).toBe("equipment-already-claimed");
+    first.release();
+    expect(h.claim("i2", { equipmentId: "pump" }).status()).toBe("pending");
+  });
+
+  it("claim watts default to the profile nominal", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pac" }); // nominal 2000 → need 2100
+    h.run(-1500, 300);
+    expect(h.grantedEvents()).toHaveLength(0);
+    h.run(-2200, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+  });
+
+  it("revokes with reason disabled when the equipment is removed mid-grant", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    h.equipments.delete("pump");
+    h.eventBus.emit({
+      type: "equipment.removed",
+      equipmentId: "pump",
+      equipmentName: "Pompe Piscine",
+      zoneId: "z",
+    });
+    expect(revoked).toHaveBeenCalledWith("disabled");
+  });
+
+  it("a throwing recipe callback never breaks the arbiter", () => {
+    const h = makeHarness();
+    h.claim("i1", {
+      equipmentId: "pump",
+      onGranted: () => {
+        throw new Error("recipe bug");
+      },
+    });
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    // Arbiter still functional afterwards:
+    h.claim("i2", { equipmentId: "heater", toleratedImportW: 0 });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+  });
+
+  it("journal is bounded", () => {
+    const h = makeHarness();
+    for (let i = 0; i < 230; i++) h.claim("i", { equipmentId: "lamp" }); // each denial journals
+    expect(h.arbiter.getPublicState().journal.length).toBeLessThanOrEqual(200);
+  });
+
+  // ── Effective watts (FR-2, three tiers) ───────────────────
+
+  it("a modulating load frees headroom as its live draw falls", () => {
+    const h = makeHarness();
+    h.claim("pacI", { equipmentId: "pac" });
+    h.run(-2200, 150);
+    expect(h.grantedEvents()[0].equipmentId).toBe("pac");
+    // PAC ramps down to 1.2 kW → export rises accordingly; available stays
+    // on the true surplus through the live-draw reservation.
+    h.feedLoadPower("pac", 1200);
+    h.run(-1000, 50);
+    expect(h.arbiter.getPublicState().availableSurplusW).toBe(2200);
+    // The freed headroom serves the pump without any release.
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    expect(h.grantedEvents().map((e) => e.equipmentId)).toContain("pump");
+  });
+
+  it("a silent clamp mid-grant falls back to learned/declared without a revocation", () => {
+    const h = makeHarness();
+    h.claim("pacI", { equipmentId: "pac" });
+    h.run(-2200, 150);
+    h.feedLoadPower("pac", 1800);
+    // Clamp goes silent for > 120 s: tier 1 stale → falls back, no revoke.
+    h.run(-300, 200);
+    expect(h.revokedEvents()).toHaveLength(0);
+  });
+
+  it("watts-divergence is journaled once when measurement disagrees with the declared nominal", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" }); // nominal 600
+    h.run(-1000, 150);
+    h.feedLoadPower("pump", 900); // > 30 % off
+    h.run(-400, 50);
+    const entries = h.arbiter.getPublicState().journal.filter((j) => j.kind === "watts-divergence");
+    expect(entries).toHaveLength(1);
+    expect(entries[0].watts).toBe(900);
+  });
+
+  // ── Already-running claims & unclaimed runs (rule 5) ──────
+
+  it("grants an already-running load through its own draw (review decision 11)", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    // Recipe force-runs the pump (must-run): 600 W drawn, export only 200 W.
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    h.feedLoadPower("pump", 600);
+    h.claim("i1", { equipmentId: "pump" });
+    // headroom 200 + ownDraw 600 = 800 ≥ need 700 → grantable. The clamp
+    // keeps reporting (freshness window is 120 s), like a real clamp would.
+    for (let i = 0; i < 15; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-200);
+      h.feedLoadPower("pump", 600);
+    }
+    expect(h.grantedEvents()).toHaveLength(1);
+    // Books become exact: available = export + live draw.
+    expect(h.arbiter.getPublicState().availableSurplusW).toBe(800);
+  });
+
+  it("journals unclaimed-run once for a grantless recipe run", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" }); // repeat: no dup
+    const entries = h.arbiter.getPublicState().journal.filter((j) => j.kind === "unclaimed-run");
+    expect(entries).toHaveLength(1);
+  });
+
+  // ── Tolerated import & slack (FR-3) ───────────────────────
+
+  it("toleratedImportW widens engage and narrows release by exactly that amount", () => {
+    const h = makeHarness({ priority: ["heater"] });
+    h.claim("i1", { equipmentId: "heater", toleratedImportW: 200 });
+    // need = 2200 + 100 − 200 = 2100
+    h.run(-2000, 300);
+    expect(h.grantedEvents()).toHaveLength(0);
+    h.run(-2150, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    // Import within the tolerance is NOT a deficit…
+    h.run(150, 700);
+    expect(h.revokedEvents()).toHaveLength(0);
+    // …beyond it, it is.
+    h.run(400, 700);
+    expect(h.revokedEvents()).toHaveLength(1);
+  });
+
+  it("slack high yields the surplus to a lower-priority none claim", () => {
+    const h = makeHarness({
+      priority: ["pump", "heater"],
+      profiles: {
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+        heater: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pumpI", { equipmentId: "pump", slack: "high" }); // top of list, steps down
+    h.claim("heaterI", { equipmentId: "heater", slack: "none" });
+    h.run(-800, 200); // fits exactly one 600 W load
+    expect(h.grantedEvents()).toHaveLength(1);
+    expect(h.grantedEvents()[0].equipmentId).toBe("heater");
+  });
+
+  // ── Signed accounting regression (review decision 10) ─────
+
+  it("an import under active grants produces a positive deficit and a revocation", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    // House pulls 300 W off the grid, sustained. With the clamped-export
+    // draft this deficit computed to zero and nothing ever revoked.
+    h.run(300, 700);
+    expect(h.revokedEvents()).toHaveLength(1);
+    expect(h.revokedEvents()[0].reason).toBe("surplus-deficit");
+  });
+
+  // ── Unhonored revokes (review decision 12) ────────────────
+
+  it("an unhonored revoke marks the load unresponsive and revokes nobody else", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.feedLoadPower("pump", 600);
+    // Deficit of ~400 W: bottom-up revokes the pump only.
+    h.run(400, 700);
+    expect(h.revokedEvents()).toHaveLength(1);
+    expect(h.revokedEvents()[0].equipmentId).toBe("pump");
+    // The pump recipe never acts: draw stays, export never recovers. Keep
+    // feeding its clamp so the excused-draw accounting sees fresh data.
+    for (let i = 0; i < 130; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+      h.feedLoadPower("pump", 600);
+    }
+    const journal = h.arbiter.getPublicState().journal;
+    expect(journal.some((j) => j.kind === "revoke-not-honored")).toBe(true);
+    // The cascade is contained: the PAC keeps its grant.
+    expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
+  });
+
+  // ── Wall-switch divergence (FR-6, review decision 16) ─────
+
+  it("a granted load reported OFF at the wall is revoked and suspended", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" }); // recipe turned it on
+    h.feedState("pump", false); // somebody flips the selector on the box
+    h.run(-400, 80); // > divergenceConfirmS
+    expect(revoked).toHaveBeenCalledWith("manual-override");
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+  });
+
+  it("a load forced ON at the wall outside arbitration is suspended", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pump", true); // no grant, no recipe order
+    h.run(-100, 80);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+  });
+
+  it("a recipe's own OFF order is not a wall event", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "recipe", instanceId: "i1" });
+    h.feedState("pump", false);
+    h.run(-1000, 80);
+    // No manual-override revocation: the recipe did it, not the wall.
+    expect(h.revokedEvents().filter((e) => e.reason === "manual-override")).toHaveLength(0);
+  });
+
+  // ── Comfort audit (review decision 3) ─────────────────────
+
+  it("journals comfort-off-after-revoke when the claiming recipe kills a comfort load", () => {
+    const h = makeHarness({
+      profiles: { pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    h.run(-2200, 150);
+    h.run(500, 700); // deficit → revoked
+    expect(h.revokedEvents()).toHaveLength(1);
+    h.order("pac", false, { kind: "recipe", instanceId: "pacI" });
+    expect(
+      h.arbiter.getPublicState().journal.some((j) => j.kind === "comfort-off-after-revoke"),
+    ).toBe(true);
+  });
+
+  // ── Learner (review decision 17) ──────────────────────────
+
+  it("learns a trimmed median from sustained samples on run end", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    for (const w of [600, 640, 620, 610, 630]) h.feedLoadPower("pump", w);
+    h.arbiter.releaseAllFor("i1");
+    expect(h.learnedCalls).toHaveLength(1);
+    expect(h.learnedCalls[0].id).toBe("pump");
+    expect(h.learnedCalls[0].watts).toBeGreaterThanOrEqual(610);
+    expect(h.learnedCalls[0].watts).toBeLessThanOrEqual(630);
+    expect(h.learnedCalls[0].runs).toBe(1);
+  });
+
+  it("ignores sub-threshold samples so a thermostatic load keeps a correct profile", () => {
+    const h = makeHarness({ priority: ["heater"] });
+    h.claim("i1", { equipmentId: "heater" }); // nominal 2200, floor 550
+    h.run(-2500, 150);
+    for (const w of [2200, 2150, 0, 0, 3, 2180]) h.feedLoadPower("heater", w);
+    h.arbiter.releaseAllFor("i1");
+    expect(h.learnedCalls).toHaveLength(1);
+    expect(h.learnedCalls[0].watts).toBeGreaterThanOrEqual(2150);
+    // And no watts-divergence: the sustained draw matches the profile.
+    expect(h.arbiter.getPublicState().journal.some((j) => j.kind === "watts-divergence")).toBe(
+      false,
+    );
+  });
+
+  // ── Instance lifecycle ────────────────────────────────────
+
+  it("releaseAllFor releases only that instance's claims", () => {
+    const h = makeHarness();
+    h.claim("a", { equipmentId: "pump" });
+    h.claim("b", { equipmentId: "pac" });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.arbiter.releaseAllFor("a");
+    const state = h.arbiter.getPublicState();
+    expect(state.grants.map((g) => g.equipmentId)).toEqual(["pac"]);
+    expect(h.events.filter((e) => e.type === "energy.capacity.released")).toHaveLength(1);
+  });
+
+  // ── Zero-behavior default (acceptance) ────────────────────
+
+  it("disabled arbiter with no profiles produces no events and denies claims", () => {
+    const h = makeHarness({ settings: { "energy.arbiter.enabled": "false" } });
+    h.run(-2000, 300);
+    expect(h.events.filter((e) => e.type !== "energy.arbiter.status")).toHaveLength(0);
+    expect(h.claim("i", { equipmentId: "pump" }).deniedReason).toBe("arbiter-disabled");
+  });
+
+  // ── The heat-wave day, end to end (worked example 3) ──────
+
+  it("replays the two-consumer day without synchronized oscillation", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    h.claim("pumpI", { equipmentId: "pump" });
+    // Morning ramp: both granted.
+    h.run(-3000, 200);
+    expect(h.grantedEvents()).toHaveLength(2);
+    // Both loads run: export collapses to near zero for half an hour. The
+    // old per-recipe threshold logic oscillated here; the arbiter must not.
+    h.run(-50, 1800);
+    expect(h.revokedEvents()).toHaveLength(0);
+    // Lunch hob: +2.8 kW import sustained → bottom-up revocations.
+    h.run(2800, 700);
+    const lunchtime = h.revokedEvents();
+    expect(lunchtime.length).toBeGreaterThanOrEqual(1);
+    expect(lunchtime[0].equipmentId).toBe("pump");
+    // Hob off, sun still up: pump re-granted, exactly one grant per load —
+    // no grant/revoke churn.
+    h.run(-1200, 300);
+    const grantsPerEq = h.grantedEvents().reduce<Record<string, number>>((acc, e) => {
+      acc[e.equipmentId] = (acc[e.equipmentId] ?? 0) + 1;
+      return acc;
+    }, {});
+    expect(grantsPerEq.pump).toBeLessThanOrEqual(2);
+    expect(grantsPerEq.pac).toBeLessThanOrEqual(2);
+  });
+});
+
+// ============================================================
+// Regression + coverage from the critical review pass (2026-08-12).
+// Each test below locks a fix or fills a false-green gap the review found.
+// ============================================================
+
+describe("capacity arbiter — review hardening", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // core review #1 — the divergence-timer staleness bug: a load idle+OFF
+  // before it is granted must NOT be suspended the instant it is granted.
+  it("does not suspend a freshly-granted load that was reported OFF before the grant", () => {
+    const h = makeHarness();
+    h.feedState("pump", false); // idle + reported off, long before any claim
+    h.run(-1000, 300); // 5 min of OFF while unclaimed
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150); // granted
+    expect(h.grantedEvents()).toHaveLength(1);
+    // The recipe's onGranted turns the load on; the device confirms ON well
+    // within divergenceConfirmS.
+    h.feedState("pump", true);
+    h.run(-1000, 120);
+    expect(revoked).not.toHaveBeenCalled();
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  // integration review H1 — a numeric non-state binding (current/voltage) at 0
+  // must never be read as a wall-switch OFF (thermostatic cutoff false positive).
+  it("ignores a numeric binding reading 0 for divergence (thermostatic cutoff)", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "heater", onRevoked: revoked });
+    h.run(-3000, 150); // granted
+    h.order("heater", true, { kind: "recipe", instanceId: "i1" });
+    // The resistor's own thermostat opens: a `current` binding drops to 0
+    // while the relay `state` stays on. Pre-fix this faked a wall OFF.
+    for (let i = 0; i < 12; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-3000);
+      h.eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: "heater",
+        alias: "current",
+        value: 0,
+        previous: null,
+      });
+    }
+    expect(revoked).not.toHaveBeenCalledWith("manual-override");
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  // test review H1 — tier-2 (learned nominal) is actually used for the
+  // reservation once the live clamp goes silent.
+  it("reserves the learned nominal when the live clamp goes silent, else declared", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    h.equipments.get("pump")!.energyProfile!.learned = {
+      watts: 550,
+      atIso: "2026-08-12T09:00:00Z",
+      runs: 3,
+    };
+    h.claim("i1", { equipmentId: "pump" });
+    // Keep the clamp reporting through the engage hold so tier 1 stays fresh.
+    for (let i = 0; i < 15; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-2000);
+      h.feedLoadPower("pump", 900);
+    }
+    expect(h.arbiter.getPublicState().grants[0].watts).toBe(900);
+    // Let the clamp go silent past the freshness window → tier 2 (learned).
+    for (let i = 0; i < 14; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-2000);
+    }
+    expect(h.arbiter.getPublicState().grants[0].watts).toBe(550);
+  });
+
+  // core review #2 — a callback that releases a sibling claim mid-pass must
+  // not cause a revoke-after-release, a duplicate event, or an orphan record.
+  it("a callback releasing a sibling claim does not double-fire or orphan it", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    const pacRevoked = vi.fn();
+    // Holder so the pump's onRevoked can reference pac's handle, which is
+    // created after it (the closure captures the box, not a value).
+    const box: { pac?: ReturnType<typeof h.claim> } = {};
+    h.claim("i1", {
+      equipmentId: "pump",
+      onRevoked: () => box.pac?.release(), // sibling release from inside a callback
+    });
+    box.pac = h.claim("i1", { equipmentId: "pac", onRevoked: pacRevoked });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    // Deficit → release pass revokes pump (bottom); its callback releases pac.
+    h.run(2000, 700);
+    expect(pacRevoked).not.toHaveBeenCalled(); // released, never revoked
+    expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
+    expect(h.events.filter((e) => e.type === "energy.capacity.released")).toHaveLength(1);
+    expect(h.arbiter.getPublicState().grants.some((g) => g.equipmentId === "pac")).toBe(false);
+  });
+
+  // core review #3 — disabling a profile mid-grant releases the claim.
+  it("revokes a granted claim when its equipment profile is disabled", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    h.equipments.get("pump")!.energyProfile = undefined; // admin turns it off
+    h.eventBus.emit({ type: "equipment.updated", equipment: h.equipments.get("pump")! as never });
+    expect(revoked).toHaveBeenCalledWith("disabled");
+    expect(h.arbiter.getPublicState().grants).toHaveLength(0);
+  });
+
+  // core review #4 — a negative live-draw sample never yields negative
+  // reservation (which would inflate the deficit).
+  it("clamps a negative live draw to zero in the reservation", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.feedLoadPower("pump", -50); // bidirectional-clamp noise
+    h.feedMeter(-1000);
+    const st = h.arbiter.getPublicState();
+    // available = export(1000) + reserved(max(0,-50)=0); never < export.
+    expect(st.availableSurplusW).toBeGreaterThanOrEqual(1000);
+  });
+
+  // test review M2 — the manual-override suspension actually expires after
+  // overrideTtlS (7200 s), it is not permanent.
+  it("expires a manual-override suspension after overrideTtlS", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "manual" });
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(1);
+    vi.advanceTimersByTime(7_210_000); // past 2 h; overrides expire even while stale
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  // test review M5 — toleratedImportW widens engage by *exactly* that amount:
+  // the same surplus that grants with tolerance stays pending without it.
+  it("toleratedImportW is what makes the difference at the engage boundary", () => {
+    const withTol = makeHarness({ priority: ["heater"] });
+    withTol.claim("i1", { equipmentId: "heater", toleratedImportW: 200 }); // need 2100
+    withTol.run(-2150, 200);
+    expect(withTol.grantedEvents()).toHaveLength(1);
+
+    const without = makeHarness({ priority: ["heater"] });
+    without.claim("i1", { equipmentId: "heater", toleratedImportW: 0 }); // need 2300
+    without.run(-2150, 200);
+    expect(without.grantedEvents()).toHaveLength(0);
+  });
+
+  // test review M6 — preemption can revoke MORE than one victim in a pass.
+  it("preempts two lower grants when one victim is not enough", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump", "heater"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 900, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+        heater: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-1500, 150); // both granted
+    expect(h.grantedEvents()).toHaveLength(2);
+    // Simulate them consuming: export collapses to ~100 W. pac (need 1000)
+    // arrives; shortfall 900 needs BOTH 600 W victims.
+    h.claim("pacI", { equipmentId: "pac" });
+    h.run(-100, 100);
+    const preempts = h.revokedEvents().filter((e) => e.reason === "priority-preempted");
+    expect(preempts).toHaveLength(2);
+    expect(preempts.map((e) => e.equipmentId).sort()).toEqual(["heater", "pump"]);
+  });
+
+  // test review M4 — journal + event carry the claim note and effective watts.
+  it("carries the claim note through the journal and the granted event", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump", note: "precool boost" });
+    h.run(-1000, 150);
+    const granted = h.grantedEvents()[0];
+    expect(granted.note).toBe("precool boost");
+    const entry = h.arbiter
+      .getPublicState()
+      .journal.find((j) => j.kind === "granted" && j.equipmentId === "pump");
+    expect(entry?.note).toBe("precool boost");
+    expect(entry?.watts).toBe(600);
+  });
+
+  // second-audit gap — a callback that claims a sibling re-enters evaluate();
+  // the coalescing must prevent the nested pass from spending headroom the
+  // outer pass has not yet debited (double-spend), so only what fits is granted.
+  it("does not double-spend headroom when a grant callback claims a sibling", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    // Surplus fits pac (2000) but not also pump (would need 2600). pac's
+    // onGranted claims pump from inside the grant pass (re-entrant evaluate).
+    h.claim("i1", {
+      equipmentId: "pac",
+      onGranted: () => h.claim("i1", { equipmentId: "pump" }),
+    });
+    h.run(-2200, 200);
+    const granted = h.grantedEvents().map((e) => e.equipmentId);
+    expect(granted).toContain("pac");
+    expect(granted).not.toContain("pump"); // 2200 < 2000+600, no double-spend
+    // And no runaway: pac granted exactly once.
+    expect(h.grantedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(1);
+  });
+
+  // second-audit gap — a shadow instance must never arbitrate, whatever the
+  // stored setting says.
+  it("is forced off in shadow mode even when the setting is enabled", () => {
+    const h = makeHarness({ shadow: true });
+    const denied = h.claim("i1", { equipmentId: "pump" });
+    expect(denied.deniedReason).toBe("arbiter-disabled");
+    h.run(-3000, 200);
+    expect(h.grantedEvents()).toHaveLength(0);
+    expect(h.arbiter.getPublicState().enabled).toBe(false);
+  });
+
+  // test review M1 — the EMA is a real low-pass filter at the default 60 s
+  // (every other test runs at smoothingS=1 where it is a pass-through).
+  it("lags the meter under the default smoothing rather than snapping", () => {
+    const h = makeHarness({ settings: { "energy.arbiter.smoothingS": "60" } });
+    h.run(-2000, 600); // settle EMA near exporting 2000 W
+    const settled = h.arbiter.getPublicState().availableSurplusW ?? 0;
+    expect(settled).toBeGreaterThan(1500);
+    // A single "export gone" sample, 10 s later so the EMA alpha is non-zero.
+    vi.advanceTimersByTime(10_000);
+    h.feedMeter(0);
+    const afterStep = h.arbiter.getPublicState().availableSurplusW ?? 0;
+    // Smoothed: still sees most of the surplus one sample later, not snapped to 0.
+    expect(afterStep).toBeGreaterThan(1000);
+    expect(afterStep).toBeLessThan(settled);
+  });
+});

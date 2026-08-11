@@ -9,6 +9,7 @@ import { DeviceManager } from "../../devices/device-manager.js";
 import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { RecipeManager, RecipeError } from "./recipe-manager.js";
+import { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import { Recipe } from "./recipe.js";
 import type { SunlightManager } from "../../zones/sunlight-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
@@ -55,6 +56,7 @@ function createTestDb(): Database.Database {
     "005_device_data_enum_values.sql",
     "006_pool_runtime_and_category_override.sql",
     "014_device_orders_value_on_off.sql",
+    "016_equipment_energy_profile.sql",
   ];
   for (const file of migrations) {
     const sql = readFileSync(
@@ -559,5 +561,147 @@ describe("restartInstancesOfRecipe", () => {
 
     const restarted = manager.restartInstancesOfRecipe("ext-recipe");
     expect(restarted).toBe(1); // second instance restarted despite first failing
+  });
+});
+
+// ============================================================
+// Spec 140 — ctx.helpers.energy wiring (review finding H2: the
+// stopInstance → releaseAllFor path was previously untested because
+// every RecipeManager in this file was built with a null arbiter).
+// ============================================================
+
+describe("RecipeManager × CapacityArbiter (spec 140)", () => {
+  let db: Database.Database;
+  let eventBus: EventBus;
+  let equipmentManager: EquipmentManager;
+  let arbiter: CapacityArbiter;
+  let manager: RecipeManager;
+  let pumpId: string;
+
+  function setup(opts: { withArbiter: boolean }): void {
+    db = createTestDb();
+    eventBus = new EventBus(logger);
+    const zoneManager = new ZoneManager(db, eventBus, logger);
+    const deviceManager = new DeviceManager(db, eventBus, logger);
+    equipmentManager = new EquipmentManager(
+      db,
+      eventBus,
+      { getById: () => undefined } as never,
+      deviceManager,
+      logger,
+    );
+    const aggregator = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
+    const sunlightManager = {
+      getSunlightData: () => ({ sunrise: "07:30", sunset: "21:00", isDaylight: true }),
+    } as unknown as SunlightManager;
+
+    const zone = zoneManager.create({ name: "Piscine" });
+    const pump = equipmentManager.create({ name: "Pompe", type: "pool_pump", zoneId: zone.id });
+    pumpId = pump.id;
+    equipmentManager.update(pumpId, {
+      energyProfile: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+    });
+
+    const settingsMap = new Map<string, string>([
+      ["energy.arbiter.enabled", "true"],
+      ["energy.arbiter.priority", JSON.stringify([pumpId])],
+    ]);
+    const settings = {
+      get: (k: string) => settingsMap.get(k),
+      set: (k: string, v: string) => settingsMap.set(k, v),
+    } as never;
+    arbiter = new CapacityArbiter(eventBus, settings, equipmentManager, logger);
+    arbiter.start();
+
+    manager = new RecipeManager(
+      db,
+      eventBus,
+      equipmentManager,
+      zoneManager,
+      aggregator,
+      sunlightManager,
+      tariffClassifier,
+      logger,
+      false,
+      opts.withArbiter ? arbiter : null,
+    );
+  }
+
+  afterEach(() => {
+    manager.stopAll();
+    arbiter.stop();
+    db.close();
+  });
+
+  /** Recipe whose instance claims capacity for the pump on start. */
+  function registerClaimer(id: string, onDenied?: (reason: string | undefined) => void): void {
+    manager.registerExternal({
+      id,
+      name: id,
+      description: "claims capacity",
+      slots: [],
+      validate: () => {},
+      createInstance: (_params, ctx) => {
+        const handle = ctx.helpers.energy.claimCapacity({
+          equipmentId: pumpId,
+          onGranted: () => {},
+          onRevoked: () => {},
+        });
+        onDenied?.(handle.deniedReason);
+        return { stop: () => {} };
+      },
+    } satisfies RecipeDefinition);
+  }
+
+  it("auto-releases a recipe's claim when the instance is stopped", () => {
+    setup({ withArbiter: true });
+    registerClaimer("claimer");
+    const instance = manager.createInstance("claimer", {});
+    // No meter data → the claim is pending, but it is registered.
+    expect(arbiter.getPublicState().pending.map((p) => p.equipmentId)).toContain(pumpId);
+    manager.deleteInstance(instance.id);
+    expect(arbiter.getPublicState().pending).toHaveLength(0);
+  });
+
+  it("denies the claim with arbiter-disabled when no arbiter is wired", () => {
+    setup({ withArbiter: false });
+    let denied: string | undefined = "unset";
+    registerClaimer("claimer-null", (r) => {
+      denied = r;
+    });
+    manager.createInstance("claimer-null", {});
+    expect(denied).toBe("arbiter-disabled");
+  });
+
+  it("does not leak a claim when a recipe claims then throws during start", () => {
+    setup({ withArbiter: true });
+    // First recipe claims the pump, then throws → the claim must be released,
+    // not leaked (which would block the equipment until restart).
+    manager.registerExternal({
+      id: "thrower",
+      name: "thrower",
+      description: "claims then throws",
+      slots: [],
+      validate: () => {},
+      createInstance: (_params, ctx) => {
+        ctx.helpers.energy.claimCapacity({
+          equipmentId: pumpId,
+          onGranted: () => {},
+          onRevoked: () => {},
+        });
+        throw new Error("boom after claim");
+      },
+    } satisfies RecipeDefinition);
+    manager.createInstance("thrower", {}); // swallows the start error internally
+    expect(arbiter.getPublicState().pending).toHaveLength(0);
+
+    // The equipment is claimable again — proof the claim did not leak.
+    let denied: string | undefined = "unset";
+    registerClaimer("claimer-after", (r) => {
+      denied = r;
+    });
+    manager.createInstance("claimer-after", {});
+    expect(denied).toBeUndefined();
+    expect(arbiter.getPublicState().pending.map((p) => p.equipmentId)).toContain(pumpId);
   });
 });

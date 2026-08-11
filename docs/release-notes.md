@@ -11,6 +11,35 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.40.x: Energy settings and Activity resilience
+
+### v1.40.0 — 2026-08-11 { #v1-40-0 }
+
+- Feat (ui): **energy settings now live in their own tab**. The tariff schedule and the surplus arbiter moved out of Settings > Administration, where they sat next to user management, into a dedicated **Settings > Energy** tab, so everything energy is in one place. Each of the arbiter's advanced thresholds gained a hover tooltip explaining what it does and its unit, so they are no longer opaque numbers. (#418)
+- Fix (energy): the surplus arbiter **no longer mistakes an order re-delivery for a manual override**. When a flexible load's device dropped offline and reconnected with an unconfirmed order, Sowel re-sent that order (the delivery-confirmation retry from v1.39.0) and the arbiter read it as a human taking manual control, suspending itself for two hours. It now ignores its own retry channel, so a flaky Zigbee load no longer shows a spurious "Manual until ..." on its energy panel. (#420)
+- Fix (ui): the **Activity panel recovers from transient load failures** instead of staying stuck on "cannot load activity" until you left the zone and came back. It now retries, offers a Retry button, reloads on WebSocket reconnect, and no longer lets a stale request overwrite a newer result. The WebSocket refetch bursts that could exhaust the request rate limit (a full reload per recipe or equipment event) are coalesced, and GET requests retry once on a rate-limit response. Contributed by Adrien Jouve (computingify). (#413)
+
+---
+
+## 1.39.x: Energy surplus arbitration
+
+### v1.39.1 — 2026-08-11 { #v1-39-1 }
+
+- Fix (ui): several fixes to the energy surplus arbiter interface shipped in v1.39.0. The **Enable switch now appears whenever you have a main energy meter** (grid) instead of requiring a separate production meter, so a home whose solar shows up as grid export can actually turn the arbiter on. The **priority list is now honored as shown** (a newly declared load could previously be ignored until you reordered the list). Declaring a flexible load no longer dead-ends: the class and power fields appear when you tick the box, with an inline explanation of Deferrable vs Comfort, an explicit Save, and a confirmation before removing a load. Advanced thresholds can no longer be cleared to a value that silently disables the arbiter, the "Manual until" chip appears in real time, and several accessibility and wording issues were addressed. (#416)
+
+### v1.39.0 — 2026-08-11 { #v1-39-0 }
+
+- Feat (energy): **the energy surplus arbiter** (spec 140). One core referee hands solar surplus to your flexible loads in the priority order you choose, ending the tug-of-war where several surplus-aware automations each switch on when they see export, overshoot together, and collapse it. Declare a pilotable load (pool pump, water heater, ...) on its equipment page (class, nominal power, minimum on/off, pre-filled from the equipment type and its own measurement), enable the arbiter under Settings > Administration > Energy, and order your loads. Energy > Live gains an arbitration surface: an allocation bar of where production is going right now, a day timeline per load, and a plain-language decision journal. **Opt-in and off by default**, and the arbiter issues no orders itself. It is the foundation surplus-aware recipes claim capacity against (`ctx.helpers.energy`); the recipes that use it ship next, so on this release the arbiter is there to enable and observe. Hardened by two independent adversarial review passes before merge. (#412)
+- Feat (equipments): **order delivery confirmation** (spec 141). A dispatched order succeeding only proved it reached the integration, not the device: a pool pump OFF sent into a 104-second offline window once left the pump running 15.5 h unnoticed (issue #398). Confirmable orders are now watched for the ordered value to actually appear within 30 s (immediate verdict when every target device is offline); if it does not, Sowel raises a warning alarm (forwarded as a push) and re-dispatches once when the device comes back within the hour. (#404)
+- Feat (core): **restored-data guardrail**. A database restored from another deployment carries that deployment's MQTT brokers and channels, so a fully armed instance on such data fights the original. A restored instance now starts inert until you confirm takeover, so the two never race for the same devices. (#405)
+- Fix (mqtt): each process uses a **unique MQTT publisher client id** (random per-connection suffix) and throttles reconnect warnings, so a dev instance running on a copy of a production database no longer mutually kicks the original off the broker. (#402)
+- Fix (logging): daily log files are **date-stamped and retained across container recreation**, and pre-date-format log files left by older versions are purged automatically at boot. (#403, #408)
+- Fix (ui): the equipments list **groups by zone identity, not by zone name** (two rooms sharing a name no longer merge), and the community-plugin badge shows a Users icon rather than a warning triangle. (#406, #411)
+- Chore (registry): Zigbee2MQTT bumped to 2.4.0; pool-pump-schedule to 1.1.0; netatmo_weather to 2.1.0. (#397, #409)
+- Docs: the several-Zigbee-coordinators setup rules are carried into the device and getting-started pages that already cover Zigbee; new user and developer documentation for the surplus arbiter. (#407)
+
+---
+
 ## 1.38.x: Several Zigbee coordinators
 
 ### v1.38.0 — 2026-08-10 { #v1-38-0 }

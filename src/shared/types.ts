@@ -270,6 +270,9 @@ export interface Equipment {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Flexible-load declaration (spec 140). Present only when the admin
+   *  enabled arbitration for this equipment. */
+  energyProfile?: EnergyLoadProfile;
 }
 
 /**
@@ -557,6 +560,148 @@ export interface RecipeHelpers {
    *  false when the user has not filled Settings → Administration → Energy
    *  tariff, in which case a recipe should fall back to its own parameters. */
   getTariff(): RecipeTariff;
+  /** Capacity arbiter API (spec 140). Always present on this core; claims are
+   *  denied `arbiter-disabled` when the arbiter is off, so recipes distinguish
+   *  "absent" (older core, `ctx.helpers.energy === undefined`) from "present
+   *  but off" without probing. */
+  energy: RecipeEnergyHelpers;
+}
+
+// ============================================================
+// Energy capacity arbiter (spec 140)
+// ============================================================
+
+export type EnergyLoadClass = "comfort" | "deferrable";
+
+/** Core-maintained rolling estimate of a load's sustained draw (FR-2 middle
+ *  tier). Never edited by the user form; shown read-only as "measured". */
+export interface EnergyLoadProfileLearned {
+  watts: number;
+  atIso: string;
+  runs: number;
+}
+
+/** Flexible-load declaration on an equipment (FR-1). Stored as JSON in the
+ *  `equipments.energy_profile` column; presence of the profile is what makes
+ *  an equipment claimable. */
+export interface EnergyLoadProfile {
+  class: EnergyLoadClass;
+  /** User-declared; engage sizing + last-resort reservation tier. */
+  nominalPowerW: number;
+  minOnS: number;
+  minOffS: number;
+  learned?: EnergyLoadProfileLearned;
+}
+
+/** Self-demotion only — a claim can step DOWN the user's priority list,
+ *  never up (review decision 14). */
+export type CapacitySlack = "none" | "some" | "high";
+
+export type CapacityRevokeReason =
+  | "surplus-deficit" // background rose or clouds came
+  | "priority-preempted" // a higher-priority claim needed the watts
+  | "manual-override" // the user touched the equipment (order or wall switch)
+  | "meter-stale"
+  | "disabled";
+
+export type CapacityDenyReason =
+  | "not-profiled"
+  | "equipment-already-claimed"
+  | "arbiter-disabled"
+  | "override-active";
+
+export interface CapacityClaimRequest {
+  equipmentId: string;
+  /** Sizes the ENGAGE decision only; reservation follows effective watts. */
+  watts?: number;
+  /** Grid draw the recipe accepts to buy in exchange for the surplus it
+   *  catches (FR-3). Default 0. */
+  toleratedImportW?: number;
+  slack?: CapacitySlack;
+  /** Free-text shown in the decision journal ("precool boost"). */
+  note?: string;
+  onGranted: () => void;
+  onRevoked: (reason: CapacityRevokeReason) => void;
+}
+
+export interface CapacityClaimHandle {
+  readonly id: string;
+  status(): "pending" | "granted" | "denied" | "released";
+  readonly deniedReason?: CapacityDenyReason;
+  /** Withdraw the claim; releasing a granted claim frees the reservation. */
+  release(): void;
+}
+
+export interface RecipeEnergyHelpers {
+  claimCapacity(req: CapacityClaimRequest): CapacityClaimHandle;
+  getCapacityState(): {
+    enabled: boolean;
+    availableSurplusW: number | null; // null while degraded/stale
+    grants: Array<{ equipmentId: string; watts: number; sinceIso: string }>;
+  };
+}
+
+export type ArbiterRunState = "active" | "degraded" | "disabled";
+
+export type ArbiterDecisionKind =
+  | "granted"
+  | "revoked"
+  | "denied"
+  | "released"
+  | "suspended"
+  | "resumed"
+  | "revoke-not-honored"
+  | "comfort-off-after-revoke"
+  | "watts-divergence"
+  | "unclaimed-run";
+
+/** One line of the decision journal (FR-8/FR-9). Bounded ring buffer. */
+export interface ArbiterDecision {
+  atIso: string;
+  kind: ArbiterDecisionKind;
+  equipmentId?: string;
+  equipmentName?: string;
+  watts?: number;
+  reason?: string;
+  note?: string;
+}
+
+export interface ArbiterGrantInfo {
+  equipmentId: string;
+  equipmentName: string;
+  instanceId: string;
+  watts: number;
+  sinceIso: string;
+  note?: string;
+}
+
+export interface ArbiterPendingInfo {
+  equipmentId: string;
+  equipmentName: string;
+  instanceId: string;
+  watts: number;
+  reasonWaiting: string;
+}
+
+export interface ArbiterSuspensionInfo {
+  equipmentId: string;
+  equipmentName: string;
+  untilIso: string;
+}
+
+/** Read model of the arbiter for the API route and the UI (FR-10). */
+export interface ArbiterPublicState {
+  enabled: boolean;
+  state: ArbiterRunState;
+  availableSurplusW: number | null;
+  productionDetected: boolean;
+  grants: ArbiterGrantInfo[];
+  pending: ArbiterPendingInfo[];
+  suspensions: ArbiterSuspensionInfo[];
+  journal: ArbiterDecision[];
+  /** Today's available-surplus samples (~5 min cadence, in-memory, bounded)
+   *  — the curve of the FR-10 day timeline. */
+  surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
 // ============================================================
@@ -865,7 +1010,34 @@ export type EngineEvent =
   // Restart required (e.g. after home location / timezone change)
   | { type: "system.restart_required"; reason: string }
   // Activity feed (spec 101)
-  | { type: "activity.added"; item: ActivityItem };
+  | { type: "activity.added"; item: ActivityItem }
+  // Energy capacity arbiter (spec 140) — emitted by core only
+  | {
+      type: "energy.capacity.granted";
+      equipmentId: string;
+      instanceId: string;
+      watts: number;
+      note?: string;
+    }
+  | {
+      type: "energy.capacity.revoked";
+      equipmentId: string;
+      instanceId: string;
+      watts: number;
+      reason: CapacityRevokeReason;
+    }
+  | {
+      type: "energy.capacity.denied";
+      equipmentId: string;
+      instanceId: string;
+      reason: CapacityDenyReason;
+    }
+  | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
+  | {
+      type: "energy.arbiter.status";
+      state: ArbiterRunState;
+      availableSurplusW: number | null;
+    };
 
 // ============================================================
 // zigbee2mqtt types (parser internal)
