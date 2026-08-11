@@ -85,9 +85,22 @@ const DEFAULT_MIN_WRITE_INTERVAL = 30_000;
 /** Maximum interval between writes in ms — forces a write even if value unchanged (default 5 min). */
 const DEFAULT_MAX_WRITE_INTERVAL = 5 * 60_000;
 
+/** How often stale energy minute buckets are swept out (ms). */
+const ENERGY_FLUSH_INTERVAL_MS = 60_000;
+
 interface LastWritten {
   value: unknown;
   timestamp: number;
+}
+
+/**
+ * Open per-minute accumulator for one live energy-delta binding.
+ * `minuteS` is the epoch-second of the minute start the deltas belong to.
+ */
+interface EnergyBucket {
+  minuteS: number;
+  wh: number;
+  meta: BindingMeta;
 }
 
 // ============================================================
@@ -111,6 +124,12 @@ export class HistoryWriter {
 
   /** Last written value per binding for deduplication. */
   private lastWritten: Map<string, LastWritten> = new Map();
+
+  /** Open energy accumulators (one per live energy-delta binding). */
+  private energyBuckets: Map<string, EnergyBucket> = new Map();
+
+  /** Sweeper for energy buckets whose minute has elapsed without new ticks. */
+  private energyFlushTimer: ReturnType<typeof setInterval> | null = null;
 
   /** Resolved min write interval. */
   private minWriteInterval = DEFAULT_MIN_WRITE_INTERVAL;
@@ -174,6 +193,17 @@ export class HistoryWriter {
       }
     });
 
+    // Sweep energy buckets that stopped receiving ticks (device offline, or a
+    // meter that only reports on change) so their minute still gets written.
+    this.energyFlushTimer = setInterval(() => {
+      try {
+        this.flushEnergyBuckets();
+      } catch (err) {
+        this.logger.error({ err }, "Error flushing energy buckets");
+      }
+    }, ENERGY_FLUSH_INTERVAL_MS);
+    this.energyFlushTimer.unref?.();
+
     this.logger.info(
       { historizedBindings: this.historizedBindings.size },
       "History writer initialized",
@@ -184,6 +214,11 @@ export class HistoryWriter {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    if (this.energyFlushTimer) {
+      clearInterval(this.energyFlushTimer);
+      this.energyFlushTimer = null;
+    }
+    this.flushEnergyBuckets(true);
   }
 
   /** Get the count of effectively historized bindings. */
@@ -283,6 +318,25 @@ export class HistoryWriter {
     if (!bindingId || !meta) return;
     if (!this.historizedBindings.has(bindingId)) return;
 
+    // Live energy ticks are ADDITIVE deltas, not samples: each one carries the
+    // Wh accumulated since the previous tick. Dropping one (deadband or
+    // min-interval) silently loses that energy for good — and meters like the
+    // Tuya PJ-1203A emit ~30 ticks a minute of which a single one carries the
+    // 10 Wh counter jump, so the dedup was throwing away most of the energy.
+    // Accumulate the whole minute and write one aligned point instead: nothing
+    // is lost, the point rate actually drops, and the minute alignment is what
+    // lets SelfConsumptionWriter upsert its household values on top (same tags
+    // + same timestamp ⇒ last write wins in InfluxDB).
+    if (
+      sourceTimestamp === undefined &&
+      meta.category === "energy" &&
+      alias === "energy" &&
+      typeof value === "number"
+    ) {
+      this.accumulateEnergyDelta(bindingId, meta, value);
+      return;
+    }
+
     // Skip deduplication for aligned historical writes (e.g. energy 30-min windows).
     // These are idempotent by design (same tags + timestamp = overwrite in InfluxDB).
     if (sourceTimestamp === undefined) {
@@ -326,6 +380,71 @@ export class HistoryWriter {
   /** Get the TariffClassifier instance (for API routes). */
   getTariffClassifier(): TariffClassifier {
     return this.tariffClassifier;
+  }
+
+  // ============================================================
+  // Private: live energy accumulation
+  // ============================================================
+
+  /** Fold one live energy delta into its minute bucket, flushing the previous one. */
+  private accumulateEnergyDelta(bindingId: string, meta: BindingMeta, value: number): void {
+    const minuteS = Math.floor(Date.now() / 60_000) * 60;
+    const bucket = this.energyBuckets.get(bindingId);
+
+    if (!bucket) {
+      this.energyBuckets.set(bindingId, { minuteS, wh: value, meta });
+      return;
+    }
+    // Same minute, or a straggler for a minute we already closed over: fold it
+    // into the open bucket rather than losing it. Wh is Wh — a few seconds of
+    // misattribution beats a hole in the series.
+    if (minuteS <= bucket.minuteS) {
+      bucket.wh += value;
+      bucket.meta = meta;
+      return;
+    }
+
+    this.flushEnergyBucket(bindingId, bucket);
+    this.energyBuckets.set(bindingId, { minuteS, wh: value, meta });
+  }
+
+  /**
+   * Write out energy buckets whose minute has elapsed.
+   *
+   * Also the shutdown / test hook: `force` flushes the still-open minute too,
+   * so a stopping engine does not drop the Wh it has already accumulated.
+   */
+  flushEnergyBuckets(force = false): void {
+    const currentMinuteS = Math.floor(Date.now() / 60_000) * 60;
+    for (const [bindingId, bucket] of this.energyBuckets) {
+      if (!force && bucket.minuteS >= currentMinuteS) continue;
+      this.flushEnergyBucket(bindingId, bucket);
+      this.energyBuckets.delete(bindingId);
+    }
+  }
+
+  /** Write one accumulated minute (energy + HP/HC split) at the aligned timestamp. */
+  private flushEnergyBucket(bindingId: string, bucket: EnergyBucket): void {
+    if (!this.influxClient.isConnected()) return;
+
+    const { meta, minuteS, wh } = bucket;
+    const point = new Point("equipment_data")
+      .tag("equipmentId", meta.equipmentId)
+      .tag("alias", meta.alias)
+      .tag("category", meta.category)
+      .tag("zoneId", meta.zoneId)
+      .tag("type", meta.type)
+      .floatField("value_number", wh)
+      .timestamp(minuteS);
+
+    this.influxClient.writePoint(point);
+    this.writeEnergyHpHc(meta.equipmentId, meta, wh, minuteS);
+
+    this.lastWritten.set(bindingId, { value: wh, timestamp: Date.now() });
+    this.logger.trace(
+      { equipmentId: meta.equipmentId, wh, minuteS },
+      "Energy minute accumulated and written",
+    );
   }
 
   // ============================================================

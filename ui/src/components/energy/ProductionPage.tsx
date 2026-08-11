@@ -4,7 +4,7 @@ import { useEnergy } from "../../store/useEnergy";
 import { PeriodSelector } from "./PeriodSelector";
 import { ProductionBarChart } from "./ProductionBarChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
-import { displayedProductionTotalWh } from "./productionTotal";
+import { displayedProductionTotalWh, hasProductionSplit } from "./productionTotal";
 
 function formatKWh(wh: number, period: string): string {
   const kwh = wh / 1000;
@@ -27,7 +27,8 @@ export function ProductionPage() {
     fetchHistory();
   }, [fetchHistory]);
 
-  const hasProdData = history ? history.totals.total_production > 0 : false;
+  const hasProdData = history ? displayedProductionTotalWh(history.totals) > 0 : false;
+  const showSplit = history ? hasProductionSplit(history.totals) : false;
 
   return (
     <div className="p-4 sm:p-6">
@@ -54,16 +55,18 @@ export function ProductionPage() {
           {/* Production legend */}
           {history && hasProdData && (
             <div className="flex flex-col items-center mt-3 gap-1">
-              <div className="flex items-center gap-4 text-[13px] text-text-secondary">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                  {t("energy.autoconsumption")} : {formatKWh(history.totals.total_autoconso, period)} kWh
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: INJECTION_COLOR }} />
-                  {t("energy.gridInjection")} : {formatKWh(history.totals.total_injection, period)} kWh
-                </span>
-              </div>
+              {showSplit && (
+                <div className="flex items-center gap-4 text-[13px] text-text-secondary">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
+                    {t("energy.autoconsumption")} : {formatKWh(history.totals.total_autoconso, period)} kWh
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: INJECTION_COLOR }} />
+                    {t("energy.gridInjection")} : {formatKWh(history.totals.total_injection, period)} kWh
+                  </span>
+                </div>
+              )}
               <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
                 Total : {formatKWh(displayedProductionTotalWh(history.totals), period)} kWh
               </div>

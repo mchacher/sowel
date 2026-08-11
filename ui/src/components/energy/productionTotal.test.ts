@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EnergyTotals } from "../../types";
-import { displayedProductionTotalWh } from "./productionTotal";
+import { displayedProductionTotalWh, hasProductionSplit } from "./productionTotal";
 
 function totals(partial: Partial<EnergyTotals>): EnergyTotals {
   return {
@@ -38,5 +38,22 @@ describe("displayedProductionTotalWh", () => {
 
   it("returns 0 when both components are 0", () => {
     expect(displayedProductionTotalWh(totals({}))).toBe(0);
+  });
+
+  it("falls back to the raw production when there is no split at all", () => {
+    // No grid meter (or a grid stream that never paired): the chart plots the
+    // raw `prod` series, so the label has to follow it instead of reading 0.
+    expect(displayedProductionTotalWh(totals({ total_production: 5_120 }))).toBe(5_120);
+  });
+});
+
+describe("hasProductionSplit", () => {
+  it("is true as soon as one side of the split is non-zero", () => {
+    expect(hasProductionSplit(totals({ total_autoconso: 100 }))).toBe(true);
+    expect(hasProductionSplit(totals({ total_injection: 70 }))).toBe(true);
+  });
+
+  it("is false when production is measured but never split", () => {
+    expect(hasProductionSplit(totals({ total_production: 5_120 }))).toBe(false);
   });
 });

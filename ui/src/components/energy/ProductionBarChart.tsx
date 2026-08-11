@@ -23,10 +23,13 @@ interface ChartDatum {
   tooltipLabel?: string;
   autoconso: number; // kWh
   injection: number; // kWh
+  prod: number; // kWh — raw production, used when the split is unavailable
 }
 
 const AUTOCONSO_COLOR = "#6BCB77"; // light green
 const INJECTION_COLOR = "#2D8F3E"; // dark green
+/** Single-series green, used when only the raw production is known. */
+const PRODUCTION_COLOR = "#4CA85C";
 
 /** Local date key to avoid UTC midnight split. */
 function localDateKey(d: Date): string {
@@ -37,34 +40,46 @@ function capitalizeFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
-  const autoByHour = new Map<number, number>();
-  const injByHour = new Map<number, number>();
+/** Wh totals for one chart bucket. */
+interface Totals {
+  autoconso: number;
+  injection: number;
+  prod: number;
+}
 
+const EMPTY: Totals = { autoconso: 0, injection: 0, prod: 0 };
+
+/** Sum the three production series per bucket, keyed by `keyOf(point date)`. */
+function bucketize<K>(points: EnergyPoint[], keyOf: (d: Date) => K): Map<K, Totals> {
+  const buckets = new Map<K, Totals>();
   for (const p of points) {
-    const d = new Date(p.time);
-    const hour = d.getHours();
-    autoByHour.set(hour, (autoByHour.get(hour) ?? 0) + p.autoconso);
-    injByHour.set(hour, (injByHour.get(hour) ?? 0) + p.injection);
+    const key = keyOf(new Date(p.time));
+    const acc = buckets.get(key) ?? { ...EMPTY };
+    acc.autoconso += p.autoconso;
+    acc.injection += p.injection;
+    acc.prod += p.prod;
+    buckets.set(key, acc);
   }
+  return buckets;
+}
+
+/** Wh → kWh on the three series at once. */
+function toKWh(t: Totals): Totals {
+  return { autoconso: t.autoconso / 1000, injection: t.injection / 1000, prod: t.prod / 1000 };
+}
+
+function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
+  const byHour = bucketize(points, (d) => d.getHours());
 
   return Array.from({ length: 24 }, (_, hour) => ({
     label: `${String(hour).padStart(2, "0")}h`,
     tooltipLabel: `${String(hour).padStart(2, "0")}h00 – ${String((hour + 1) % 24).padStart(2, "0")}h00`,
-    autoconso: (autoByHour.get(hour) ?? 0) / 1000,
-    injection: (injByHour.get(hour) ?? 0) / 1000,
+    ...toKWh(byHour.get(hour) ?? EMPTY),
   }));
 }
 
 function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  const autoByDay = new Map<string, number>();
-  const injByDay = new Map<string, number>();
-  for (const p of points) {
-    const d = new Date(p.time);
-    const key = localDateKey(d);
-    autoByDay.set(key, (autoByDay.get(key) ?? 0) + p.autoconso);
-    injByDay.set(key, (injByDay.get(key) ?? 0) + p.injection);
-  }
+  const byDay = bucketize(points, localDateKey);
 
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
   const dayOfWeek = ref.getDay();
@@ -85,21 +100,13 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     return {
       label,
       tooltipLabel,
-      autoconso: (autoByDay.get(key) ?? 0) / 1000,
-      injection: (injByDay.get(key) ?? 0) / 1000,
+      ...toKWh(byDay.get(key) ?? EMPTY),
     };
   });
 }
 
 function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  const autoByDay = new Map<string, number>();
-  const injByDay = new Map<string, number>();
-  for (const p of points) {
-    const d = new Date(p.time);
-    const key = localDateKey(d);
-    autoByDay.set(key, (autoByDay.get(key) ?? 0) + p.autoconso);
-    injByDay.set(key, (injByDay.get(key) ?? 0) + p.injection);
-  }
+  const byDay = bucketize(points, localDateKey);
 
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
   const year = ref.getFullYear();
@@ -115,8 +122,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     return {
       label: String(i + 1),
       tooltipLabel,
-      autoconso: (autoByDay.get(key) ?? 0) / 1000,
-      injection: (injByDay.get(key) ?? 0) / 1000,
+      ...toKWh(byDay.get(key) ?? EMPTY),
     };
   });
 }
@@ -124,14 +130,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
 function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
   const year = ref.getFullYear();
-
-  const autoTotals = new Array<number>(12).fill(0);
-  const injTotals = new Array<number>(12).fill(0);
-  for (const p of points) {
-    const d = new Date(p.time);
-    autoTotals[d.getMonth()] += p.autoconso;
-    injTotals[d.getMonth()] += p.injection;
-  }
+  const byMonth = bucketize(points, (d) => d.getMonth());
 
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(year, i, 1);
@@ -141,8 +140,7 @@ function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     return {
       label: capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "short" })),
       tooltipLabel,
-      autoconso: autoTotals[i] / 1000,
-      injection: injTotals[i] / 1000,
+      ...toKWh(byMonth.get(i) ?? EMPTY),
     };
   });
 }
@@ -179,6 +177,13 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
   const { t } = useTranslation();
   const data = useMemo(() => buildChartData(points, period, date), [points, period, date]);
 
+  // The autoconso / injection split needs BOTH a production and a grid meter.
+  // With only a production meter — or while the grid side is silent — the raw
+  // `prod` series is all we have; plot it as a single bar rather than
+  // pretending there is no production at all.
+  const hasSplit = data.some((d) => d.autoconso > 0 || d.injection > 0);
+  const barTotal = (d: ChartDatum): number => (hasSplit ? d.autoconso + d.injection : d.prod);
+
   const yTicks = useMemo(() => {
     const stepByPeriod: Record<string, number> = {
       day: 0.5,
@@ -187,11 +192,12 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
       year: 200,
     };
     const step = stepByPeriod[period] ?? 0.5;
-    const max = Math.ceil(Math.max(...data.map((d) => d.autoconso + d.injection), step) / step) * step;
+    const max = Math.ceil(Math.max(...data.map(barTotal), step) / step) * step;
     return Array.from({ length: max / step + 1 }, (_, i) => i * step);
-  }, [data, period]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, period, hasSplit]);
 
-  const hasData = data.some((d) => d.autoconso > 0 || d.injection > 0);
+  const hasData = data.some((d) => barTotal(d) > 0);
   if (!hasData) {
     return (
       <div className="flex items-center justify-center text-text-tertiary text-[13px]" style={{ height }}>
@@ -228,7 +234,7 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
             if (!active || !payload?.length) return null;
             const datum = payload[0]?.payload as ChartDatum | undefined;
             if (!datum) return null;
-            const total = (datum.autoconso ?? 0) + (datum.injection ?? 0);
+            const total = barTotal(datum);
             return (
               <div
                 style={{
@@ -240,21 +246,35 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{t("energy.production")} : {formatKWh(total)}</div>
-                <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")} : {formatKWh(datum.autoconso)}</div>
-                {datum.injection > 0 && (
-                  <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")} : {formatKWh(datum.injection)}</div>
+                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")} : {formatKWh(total)}</div>
+                {hasSplit && (
+                  <>
+                    <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")} : {formatKWh(datum.autoconso)}</div>
+                    {datum.injection > 0 && (
+                      <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")} : {formatKWh(datum.injection)}</div>
+                    )}
+                  </>
                 )}
               </div>
             );
           }}
         />
+        {!hasSplit && (
+          <Bar
+            dataKey="prod"
+            fill={PRODUCTION_COLOR}
+            radius={[4, 4, 0, 0]}
+            maxBarSize={period === "day" ? 20 : 40}
+            name="prod"
+          />
+        )}
         <Bar
           dataKey="autoconso"
           stackId="production"
           fill={AUTOCONSO_COLOR}
           maxBarSize={period === "day" ? 20 : 40}
           name="autoconso"
+          hide={!hasSplit}
           shape={(props: unknown) => {
             const p = props as Record<string, unknown>;
             const x = p.x as number, y = p.y as number, width = p.width as number, height = p.height as number;
@@ -276,6 +296,7 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
           radius={[4, 4, 0, 0]}
           maxBarSize={period === "day" ? 20 : 40}
           name="injection"
+          hide={!hasSplit}
         />
       </BarChart>
     </ResponsiveContainer>

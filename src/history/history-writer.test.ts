@@ -1,5 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type Database from "better-sqlite3";
 import { HistoryWriter } from "./history-writer.js";
+import { EventBus } from "../core/event-bus.js";
+import { createLogger } from "../core/logger.js";
+import type { Point } from "../core/influx-client.js";
+import type { InfluxClient } from "../core/influx-client.js";
+import type { SettingsManager } from "../core/settings-manager.js";
+import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { DataCategory } from "../shared/types.js";
 
 describe("HistoryWriter.resolveHistorize", () => {
@@ -79,5 +86,164 @@ describe("HistoryWriter.resolveHistorize", () => {
   it("does not historize generic or unknown categories by default", () => {
     expect(HistoryWriter.resolveHistorize(null, "state", "generic")).toBe(false);
     expect(HistoryWriter.resolveHistorize(null, "action", "action")).toBe(false);
+  });
+});
+
+// ============================================================
+// Live energy accumulation
+// ============================================================
+
+const EQUIPMENT_ID = "meter-uuid";
+const ZONE_ID = "zone-uuid";
+const BINDING_ID = "binding-uuid";
+/** Minute-aligned epoch ms used as the base of every scenario. */
+const T0_MS = 1714723200_000;
+
+interface CapturedPoint {
+  alias: string;
+  value: number;
+  timestamp: number | undefined;
+}
+
+class StubInfluxClient {
+  written: CapturedPoint[] = [];
+  isConnected(): boolean {
+    return true;
+  }
+  writePoint(point: Point): void {
+    const tags = (point as unknown as { tags: Record<string, string> }).tags ?? {};
+    const fields = (point as unknown as { fields: Record<string, string> }).fields ?? {};
+    const ts = (point as unknown as { time?: string }).time;
+    this.written.push({
+      alias: tags.alias,
+      value: parseFloat(fields.value_number ?? "0"),
+      timestamp: ts !== undefined ? Number(ts) : undefined,
+    });
+  }
+}
+
+describe("HistoryWriter — live energy accumulation", () => {
+  const logger = createLogger("silent").logger;
+  let bus: EventBus;
+  let influx: StubInfluxClient;
+  let writer: HistoryWriter;
+
+  function emitEnergy(value: number): void {
+    bus.emit({
+      type: "equipment.data.changed",
+      equipmentId: EQUIPMENT_ID,
+      alias: "energy",
+      value,
+      previous: null,
+    } as never);
+  }
+
+  function energyPoints(): CapturedPoint[] {
+    return influx.written.filter((p) => p.alias === "energy");
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0_MS);
+
+    bus = new EventBus(logger);
+    influx = new StubInfluxClient();
+
+    const equipmentManager = {
+      getAll: () => [{ id: EQUIPMENT_ID, enabled: true, zoneId: ZONE_ID }],
+      getDataBindingsWithValues: () => [
+        { id: BINDING_ID, alias: "energy", category: "energy", type: "number", historize: null },
+        { id: "power-binding", alias: "power", category: "power", type: "number", historize: null },
+      ],
+    } as unknown as EquipmentManager;
+
+    writer = new HistoryWriter(
+      {} as Database.Database,
+      bus,
+      { get: () => undefined } as unknown as SettingsManager,
+      equipmentManager,
+      influx as unknown as InfluxClient,
+      logger,
+    );
+    writer.init();
+  });
+
+  afterEach(() => {
+    writer.destroy();
+    vi.useRealTimers();
+  });
+
+  it("sums the ticks of a minute into one aligned point", () => {
+    // Ticks arrive well inside the 30s min-write interval that used to drop
+    // them; every Wh must survive.
+    emitEnergy(0);
+    vi.setSystemTime(T0_MS + 10_000);
+    emitEnergy(40);
+    vi.setSystemTime(T0_MS + 20_000);
+    emitEnergy(0);
+    vi.setSystemTime(T0_MS + 30_000);
+    emitEnergy(10);
+
+    expect(energyPoints()).toHaveLength(0); // minute still open
+
+    vi.setSystemTime(T0_MS + 60_000);
+    writer.flushEnergyBuckets();
+
+    expect(energyPoints()).toEqual([{ alias: "energy", value: 50, timestamp: T0_MS / 1000 }]);
+  });
+
+  it("closes the previous minute when a tick of the next one arrives", () => {
+    emitEnergy(30);
+    vi.setSystemTime(T0_MS + 70_000);
+    emitEnergy(5);
+
+    const points = energyPoints();
+    expect(points).toHaveLength(1);
+    expect(points[0]).toEqual({ alias: "energy", value: 30, timestamp: T0_MS / 1000 });
+
+    writer.destroy();
+    expect(energyPoints()[1]).toEqual({
+      alias: "energy",
+      value: 5,
+      timestamp: T0_MS / 1000 + 60,
+    });
+  });
+
+  it("writes the HP/HC split on the same aligned timestamp", () => {
+    emitEnergy(40);
+    vi.setSystemTime(T0_MS + 60_000);
+    writer.flushEnergyBuckets();
+
+    const hp = influx.written.find((p) => p.alias === "energy_hp");
+    const hc = influx.written.find((p) => p.alias === "energy_hc");
+    // No tariff configured → everything lands in HP, at the minute start.
+    expect(hp).toEqual({ alias: "energy_hp", value: 40, timestamp: T0_MS / 1000 });
+    expect(hc?.timestamp).toBe(T0_MS / 1000);
+  });
+
+  it("keeps negative deltas (grid export) in the sum", () => {
+    emitEnergy(20);
+    vi.setSystemTime(T0_MS + 10_000);
+    emitEnergy(-50);
+
+    vi.setSystemTime(T0_MS + 60_000);
+    writer.flushEnergyBuckets();
+
+    expect(energyPoints()[0].value).toBe(-30);
+  });
+
+  it("leaves non-energy bindings on the immediate write path", () => {
+    bus.emit({
+      type: "equipment.data.changed",
+      equipmentId: EQUIPMENT_ID,
+      alias: "power",
+      value: 1200,
+      previous: null,
+    } as never);
+
+    // Power is a sample, not a delta: written straight away, unaligned.
+    const power = influx.written.filter((p) => p.alias === "power");
+    expect(power).toHaveLength(1);
+    expect(power[0].timestamp).toBeUndefined();
   });
 });

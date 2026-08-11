@@ -261,6 +261,17 @@ Additional downsampled buckets (`sowel-hourly`, `sowel-daily`) exist for non-ene
 
 InfluxDB is mandatory -- Sowel connects on startup and auto-creates buckets, downsampling tasks, and energy aggregation tasks.
 
+#### Energy deltas are accumulated, never sampled
+
+An `energy` binding carries an **additive delta** (Wh since the previous tick), not a measurement. The deduplication that protects the other categories (deadband, 30 s min-write interval) would silently destroy energy: meters differ wildly in cadence -- a Shelly EM emits one tick a minute, a Tuya PJ-1203A emits ~30, of which a single one carries the 10 Wh counter jump.
+
+So `HistoryWriter` accumulates live `energy` ticks per minute and writes one point aligned on the minute start, HP/HC split included. `SelfConsumptionWriter` accumulates the paired Grid + Solar minute the same way and derives `autoconso` / `injection` / household from the summed minute. Both landing on the same aligned timestamp is what lets the second one upsert over the first (InfluxDB keys points by measurement + tag set + timestamp).
+
+Two consequences worth knowing:
+
+- Ticks carrying an explicit `sourceTimestamp` (plugins that post aligned historical windows, e.g. 30-min Netatmo/Legrand windows) bypass accumulation -- they are already aggregated and idempotent by design.
+- A minute that saw only one side of the Grid/Solar pair gets no self-consumption split; the raw grid values written by `HistoryWriter` stand.
+
 ---
 
 ## Authentication & Authorization

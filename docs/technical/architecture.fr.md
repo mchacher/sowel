@@ -261,6 +261,17 @@ Des buckets downsamplés supplémentaires (`sowel-hourly`, `sowel-daily`) existe
 
 InfluxDB est obligatoire : Sowel se connecte au démarrage et auto-crée les buckets, les tâches de downsampling, et les tâches d'agrégation énergétique.
 
+#### Les deltas d'énergie sont cumulés, jamais échantillonnés
+
+Un binding `energy` porte un **delta additif** (Wh depuis le tick précédent), pas une mesure. La déduplication qui protège les autres catégories (deadband, intervalle minimum de 30 s) détruirait silencieusement de l'énergie : les compteurs ont des cadences très différentes — un Shelly EM émet un tick par minute, un Tuya PJ-1203A en émet ~30, dont un seul porte le saut de compteur de 10 Wh.
+
+Le `HistoryWriter` cumule donc les ticks `energy` temps réel sur la minute et écrit un point unique aligné sur le début de minute, découpage HP/HC compris. Le `SelfConsumptionWriter` cumule de la même façon la minute appairée Réseau + Solaire et en dérive `autoconso` / `injection` / consommation foyer. C'est cette écriture sur un timestamp aligné identique qui permet au second d'écraser le premier (InfluxDB indexe les points par measurement + tag set + timestamp).
+
+Deux conséquences à connaître :
+
+- Les ticks porteurs d'un `sourceTimestamp` explicite (plugins publiant des fenêtres historiques alignées, ex. fenêtres 30 min Netatmo/Legrand) contournent le cumul — ils sont déjà agrégés et idempotents par construction.
+- Une minute qui n'a vu qu'un seul côté de la paire Réseau/Solaire ne produit pas de découpage d'autoconsommation ; les valeurs réseau brutes écrites par le `HistoryWriter` font foi.
+
 ---
 
 ## Authentification et autorisation
