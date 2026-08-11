@@ -268,9 +268,12 @@ All audit-only, journal + structured log, zero enforcement in phase 1:
 
 - **`revoke-not-honored`** — after a revoke, expected export recovery ≈
   revoked watts. If the smoothed export has not risen by ≥ 50 % of that
-  within `2 × releaseHoldS`, journal it. False positives are possible (a
-  cloud can mask the recovery) — acceptable for an audit signal, stated in
-  the journal entry copy.
+  within **one `releaseHoldS`** (one hold of grace to act — this fires
+  _before_ the deficit hold can re-arm and cascade onto the next load), the
+  equipment is marked `unresponsive` for a further `2 × releaseHoldS` and the
+  entry is journaled. False positives are possible (a cloud can mask the
+  recovery) — acceptable for an audit signal, stated in the journal entry
+  copy.
 - **`comfort-off-after-revoke`** — an `equipment.order.executed` with
   `source.kind: "recipe"` matching the claiming `instanceId`, an OFF-like
   value, on a `comfort`-class equipment, within `releaseHoldS` of that

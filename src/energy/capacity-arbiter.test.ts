@@ -33,6 +33,7 @@ function makeHarness(opts?: {
   priority?: string[];
   settings?: Record<string, string>;
   profiles?: Record<string, EnergyLoadProfile | undefined>;
+  shadow?: boolean;
 }) {
   const settingsMap = new Map<string, string>(
     Object.entries({
@@ -107,7 +108,13 @@ function makeHarness(opts?: {
     if (e.type.startsWith("energy.")) events.push(e);
   });
 
-  const arbiter = new CapacityArbiter(eventBus, settingsManager, equipmentManager, silentLogger);
+  const arbiter = new CapacityArbiter(
+    eventBus,
+    settingsManager,
+    equipmentManager,
+    silentLogger,
+    opts?.shadow ?? false,
+  );
   arbiter.start();
 
   const feedMeter = (signedW: number) =>
@@ -934,6 +941,42 @@ describe("capacity arbiter — review hardening", () => {
       .journal.find((j) => j.kind === "granted" && j.equipmentId === "pump");
     expect(entry?.note).toBe("precool boost");
     expect(entry?.watts).toBe(600);
+  });
+
+  // second-audit gap — a callback that claims a sibling re-enters evaluate();
+  // the coalescing must prevent the nested pass from spending headroom the
+  // outer pass has not yet debited (double-spend), so only what fits is granted.
+  it("does not double-spend headroom when a grant callback claims a sibling", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    // Surplus fits pac (2000) but not also pump (would need 2600). pac's
+    // onGranted claims pump from inside the grant pass (re-entrant evaluate).
+    h.claim("i1", {
+      equipmentId: "pac",
+      onGranted: () => h.claim("i1", { equipmentId: "pump" }),
+    });
+    h.run(-2200, 200);
+    const granted = h.grantedEvents().map((e) => e.equipmentId);
+    expect(granted).toContain("pac");
+    expect(granted).not.toContain("pump"); // 2200 < 2000+600, no double-spend
+    // And no runaway: pac granted exactly once.
+    expect(h.grantedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(1);
+  });
+
+  // second-audit gap — a shadow instance must never arbitrate, whatever the
+  // stored setting says.
+  it("is forced off in shadow mode even when the setting is enabled", () => {
+    const h = makeHarness({ shadow: true });
+    const denied = h.claim("i1", { equipmentId: "pump" });
+    expect(denied.deniedReason).toBe("arbiter-disabled");
+    h.run(-3000, 200);
+    expect(h.grantedEvents()).toHaveLength(0);
+    expect(h.arbiter.getPublicState().enabled).toBe(false);
   });
 
   // test review M1 — the EMA is a real low-pass filter at the default 60 s

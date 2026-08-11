@@ -252,8 +252,8 @@ export function ArbitrationSurface() {
         <span
           className={`ml-auto flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-0.5 rounded-full border ${
             state.state === "active"
-              ? "text-green-700 border-green-600/40"
-              : "text-amber-600 border-amber-500/40"
+              ? "text-green-700 dark:text-green-400 border-green-600/40"
+              : "text-amber-600 dark:text-amber-400 border-amber-500/40"
           }`}
         >
           {t(`arbiter.state.${state.state}`)}

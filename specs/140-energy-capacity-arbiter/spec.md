@@ -195,8 +195,9 @@ the hob on) → revoke bottom-up until the balance is restored.
   exposed to the UI. Nothing ever happens without a visible reason.
 - **FR-9** Audit-only signals — with one bounded exception, below — each logged
   and journaled: `revoke-not-honored` (a revoked grant whose measured effect
-  never materializes within the watchdog window; this one **also** marks the
-  equipment `unresponsive` for `2 × releaseHoldS`, so its draw is accounted as
+  never materializes within one `releaseHoldS` of grace; this one **also**
+  marks the equipment `unresponsive` for `2 × releaseHoldS`, so its draw is
+  accounted as
   background and the release pass skips it — the reservation was freed while
   the consumption stayed, and without the guard the arbiter revokes the next
   load down, and the next, cascading through the list for one recipe's

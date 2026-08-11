@@ -136,7 +136,10 @@ export class CapacityArbiter {
   private runSamples = new Map<string, number[]>();
   private unclaimedRunning = new Set<string>();
   private recipeWantsOn = new Map<string, boolean>();
-  private reportedOnOff = new Map<string, { on: boolean; at: number }>();
+  /** Last reported on/off STATE per profiled deferrable load. The confirm
+   *  timing lives in `divergenceSince`, not here — this is only the current
+   *  state to compare the grant expectation against. */
+  private reportedOnOff = new Map<string, boolean>();
   /** When the current (grant-expectation vs reported-state) contradiction
    *  began — the confirm window is measured from here, NOT from the last
    *  state transition, so a load idle+OFF before it is granted does not read
@@ -375,8 +378,7 @@ export class CapacityArbiter {
     // wall-switch OFF. `isBooleanState` accepts boolean / "on"|"off" strings
     // and rejects numbers precisely to exclude those measurements.
     if (profile.class === "deferrable" && isBooleanState(value)) {
-      const on = isOnLike(value);
-      this.reportedOnOff.set(equipmentId, { on, at: now });
+      this.reportedOnOff.set(equipmentId, isOnLike(value));
     }
   }
 
@@ -532,6 +534,9 @@ export class CapacityArbiter {
   resumeEquipment(equipmentId: string): boolean {
     if (!this.overridesUntil.has(equipmentId)) return false;
     this.overridesUntil.delete(equipmentId);
+    // Also drop any half-armed divergence timer, so a resume never re-suspends
+    // on a contradiction that started before the manual override was lifted.
+    this.divergenceSince.delete(equipmentId);
     this.journal({ kind: "resumed", equipmentId, reason: "resume control" });
     return true;
   }
@@ -607,13 +612,14 @@ export class CapacityArbiter {
     }
     this.evaluating = true;
     try {
-      this.runEvaluate();
+      // Loop rather than recurse: a coalesced re-entrant call re-runs the
+      // pass without adding a stack frame per round (converges in 1-2 passes).
+      do {
+        this.reevalQueued = false;
+        this.runEvaluate();
+      } while (this.reevalQueued);
     } finally {
       this.evaluating = false;
-    }
-    if (this.reevalQueued) {
-      this.reevalQueued = false;
-      this.evaluate();
     }
   }
 
@@ -928,7 +934,7 @@ export class CapacityArbiter {
 
   private checkStateDivergence(now: number): void {
     const confirmMs = this.config.divergenceConfirmS * 1000;
-    for (const [equipmentId, reported] of this.reportedOnOff) {
+    for (const [equipmentId, reportedOn] of this.reportedOnOff) {
       if (this.isSuspended(equipmentId)) {
         this.divergenceSince.delete(equipmentId);
         continue;
@@ -938,8 +944,8 @@ export class CapacityArbiter {
       // A recipe's own order is never a wall event: a granted load the recipe
       // turned on but that reports off (recipeOn === true) is the actuation lag
       // the confirm window exists to absorb, not a divergence to punish.
-      const wallOff = granted && !reported.on && recipeOn !== false;
-      const wallOn = !granted && reported.on && recipeOn !== true;
+      const wallOff = granted && !reportedOn && recipeOn !== false;
+      const wallOn = !granted && reportedOn && recipeOn !== true;
       if (!wallOff && !wallOn) {
         this.divergenceSince.delete(equipmentId);
         continue;
