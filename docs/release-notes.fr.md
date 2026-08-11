@@ -11,6 +11,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.40.x: Réglages énergie et résilience de l'Activité
+
+### v1.40.0 — 2026-08-11 { #v1-40-0 }
+
+- Feat (ui) : **les réglages d'énergie ont désormais leur propre onglet**. La grille tarifaire et l'arbitre de surplus quittent Réglages > Administration, où ils voisinaient avec la gestion des utilisateurs, pour un onglet dédié **Réglages > Énergie**, rassemblant tout ce qui touche à l'énergie. Chaque seuil avancé de l'arbitre gagne une bulle d'aide au survol expliquant son rôle et son unité, pour qu'ils ne soient plus des nombres opaques. (#418)
+- Fix (energy) : l'arbitre de surplus **ne prend plus une réémission d'ordre pour une commande manuelle**. Quand l'appareil d'une charge pilotable passait hors ligne puis revenait avec un ordre non confirmé, Sowel réémettait cet ordre (le renvoi de confirmation de livraison de la v1.39.0) et l'arbitre y voyait une prise de main humaine, se suspendant deux heures. Il ignore désormais son propre canal de réémission, donc une charge Zigbee instable n'affiche plus un « Manuel jusqu'à ... » injustifié sur son panneau énergie. (#420)
+- Fix (ui) : le **panneau Activité se remet des échecs de chargement passagers** au lieu de rester bloqué sur « Impossible de charger l'activité » jusqu'à ce qu'on quitte la zone et y revienne. Il réessaie, propose un bouton Réessayer, recharge à la reconnexion WebSocket, et ne laisse plus une requête périmée écraser un résultat plus récent. Les rafales de rechargement WebSocket qui pouvaient épuiser la limite de requêtes (un rechargement complet par événement de recette ou d'équipement) sont regroupées, et les requêtes GET réessaient une fois sur une réponse de dépassement de limite. Contribution d'Adrien Jouve (computingify). (#413)
+
+---
+
 ## 1.39.x: Arbitrage du surplus énergie
 
 ### v1.39.1 — 2026-08-11 { #v1-39-1 }

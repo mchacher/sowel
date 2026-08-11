@@ -11,6 +11,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.40.x: Energy settings and Activity resilience
+
+### v1.40.0 — 2026-08-11 { #v1-40-0 }
+
+- Feat (ui): **energy settings now live in their own tab**. The tariff schedule and the surplus arbiter moved out of Settings > Administration, where they sat next to user management, into a dedicated **Settings > Energy** tab, so everything energy is in one place. Each of the arbiter's advanced thresholds gained a hover tooltip explaining what it does and its unit, so they are no longer opaque numbers. (#418)
+- Fix (energy): the surplus arbiter **no longer mistakes an order re-delivery for a manual override**. When a flexible load's device dropped offline and reconnected with an unconfirmed order, Sowel re-sent that order (the delivery-confirmation retry from v1.39.0) and the arbiter read it as a human taking manual control, suspending itself for two hours. It now ignores its own retry channel, so a flaky Zigbee load no longer shows a spurious "Manual until ..." on its energy panel. (#420)
+- Fix (ui): the **Activity panel recovers from transient load failures** instead of staying stuck on "cannot load activity" until you left the zone and came back. It now retries, offers a Retry button, reloads on WebSocket reconnect, and no longer lets a stale request overwrite a newer result. The WebSocket refetch bursts that could exhaust the request rate limit (a full reload per recipe or equipment event) are coalesced, and GET requests retry once on a rate-limit response. Contributed by Adrien Jouve (computingify). (#413)
+
+---
+
 ## 1.39.x: Energy surplus arbitration
 
 ### v1.39.1 — 2026-08-11 { #v1-39-1 }
