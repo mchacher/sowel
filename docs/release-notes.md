@@ -11,6 +11,21 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.39.x: Energy surplus arbitration
+
+### v1.39.0 — 2026-08-11 { #v1-39-0 }
+
+- Feat (energy): **the energy surplus arbiter** (spec 140). One core referee hands solar surplus to your flexible loads in the priority order you choose, ending the tug-of-war where several surplus-aware automations each switch on when they see export, overshoot together, and collapse it. Declare a pilotable load (pool pump, water heater, ...) on its equipment page (class, nominal power, minimum on/off, pre-filled from the equipment type and its own measurement), enable the arbiter under Settings > Administration > Energy, and order your loads. Energy > Live gains an arbitration surface: an allocation bar of where production is going right now, a day timeline per load, and a plain-language decision journal. **Opt-in and off by default**, and the arbiter issues no orders itself. It is the foundation surplus-aware recipes claim capacity against (`ctx.helpers.energy`); the recipes that use it ship next, so on this release the arbiter is there to enable and observe. Hardened by two independent adversarial review passes before merge. (#412)
+- Feat (equipments): **order delivery confirmation** (spec 141). A dispatched order succeeding only proved it reached the integration, not the device: a pool pump OFF sent into a 104-second offline window once left the pump running 15.5 h unnoticed (issue #398). Confirmable orders are now watched for the ordered value to actually appear within 30 s (immediate verdict when every target device is offline); if it does not, Sowel raises a warning alarm (forwarded as a push) and re-dispatches once when the device comes back within the hour. (#404)
+- Feat (core): **restored-data guardrail**. A database restored from another deployment carries that deployment's MQTT brokers and channels, so a fully armed instance on such data fights the original. A restored instance now starts inert until you confirm takeover, so the two never race for the same devices. (#405)
+- Fix (mqtt): each process uses a **unique MQTT publisher client id** (random per-connection suffix) and throttles reconnect warnings, so a dev instance running on a copy of a production database no longer mutually kicks the original off the broker. (#402)
+- Fix (logging): daily log files are **date-stamped and retained across container recreation**, and pre-date-format log files left by older versions are purged automatically at boot. (#403, #408)
+- Fix (ui): the equipments list **groups by zone identity, not by zone name** (two rooms sharing a name no longer merge), and the community-plugin badge shows a Users icon rather than a warning triangle. (#406, #411)
+- Chore (registry): Zigbee2MQTT bumped to 2.4.0; pool-pump-schedule to 1.1.0; netatmo_weather to 2.1.0. (#397, #409)
+- Docs: the several-Zigbee-coordinators setup rules are carried into the device and getting-started pages that already cover Zigbee; new user and developer documentation for the surplus arbiter. (#407)
+
+---
+
 ## 1.38.x: Several Zigbee coordinators
 
 ### v1.38.0 — 2026-08-10 { #v1-38-0 }

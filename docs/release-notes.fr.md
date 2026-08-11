@@ -11,6 +11,21 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.39.x: Arbitrage du surplus énergie
+
+### v1.39.0 — 2026-08-11 { #v1-39-0 }
+
+- Feat (energy) : **l'arbitre de surplus énergie** (spec 140). Un arbitre central distribue le surplus solaire à vos charges pilotables dans l'ordre de priorité que vous choisissez, mettant fin au bras de fer où plusieurs automatisations conscientes du surplus s'allument chacune en voyant de l'injection, dépassent ensemble, puis l'effondrent. Déclarez une charge pilotable (pompe de piscine, chauffe-eau, etc.) sur sa fiche d'équipement (classe, puissance nominale, marche/arrêt minimum, pré-remplis depuis le type et sa propre mesure), activez l'arbitre dans Réglages > Administration > Énergie, et ordonnez vos charges. Énergie > En direct gagne une surface d'arbitrage : une barre d'allocation de là où va la production en ce moment, une frise du jour par charge, et un journal des décisions en langage clair. **Opt-in et désactivé par défaut**, et l'arbitre n'émet aucun ordre lui-même. C'est la fondation contre laquelle les recettes conscientes du surplus réclament de la capacité (`ctx.helpers.energy`) ; les recettes qui l'utilisent arrivent ensuite, donc sur cette version l'arbitre est là pour être activé et observé. Durci par deux passes de revue adversariale indépendantes avant le merge. (#412)
+- Feat (equipments) : **confirmation de livraison d'ordre** (spec 141). Un ordre envoyé avec succès ne prouvait que son arrivée à l'intégration, pas au device : un OFF de pompe de piscine envoyé pendant une fenêtre hors ligne de 104 secondes a un jour laissé la pompe tourner 15,5 h sans que rien ne le signale (issue #398). Les ordres confirmables sont désormais surveillés pour que la valeur commandée apparaisse réellement sous 30 s (verdict immédiat quand tous les devices cibles sont hors ligne) ; sinon, Sowel lève une alarme d'avertissement (transmise en notification push) et renvoie l'ordre une fois quand le device revient dans l'heure. (#404)
+- Feat (core) : **garde-fou données restaurées**. Une base restaurée depuis un autre déploiement porte les brokers MQTT et canaux de ce déploiement ; une instance pleinement armée sur ces données se bat contre l'originale. Une instance restaurée démarre désormais inerte jusqu'à ce que vous confirmiez la reprise, pour que les deux ne se disputent jamais les mêmes devices. (#405)
+- Fix (mqtt) : chaque processus utilise un **client id de publisher MQTT unique** (suffixe aléatoire par connexion) et limite les avertissements de reconnexion, pour qu'une instance de dev sur une copie d'une base de production ne mette plus l'originale dehors en boucle. (#402)
+- Fix (logging) : les fichiers de log quotidiens sont **datés et conservés à travers la recréation du conteneur**, et les fichiers de log au format pré-daté laissés par les anciennes versions sont purgés automatiquement au démarrage. (#403, #408)
+- Fix (ui) : la liste des équipements **regroupe par identité de zone, pas par nom de zone** (deux pièces au même nom ne fusionnent plus), et le badge des plugins communautaires affiche une icône Utilisateurs plutôt qu'un triangle d'avertissement. (#406, #411)
+- Chore (registry) : Zigbee2MQTT passé à 2.4.0 ; pool-pump-schedule à 1.1.0 ; netatmo_weather à 2.1.0. (#397, #409)
+- Docs : les règles de configuration multi-coordinateurs Zigbee sont reportées dans les pages device et prise en main qui couvrent déjà Zigbee ; nouvelle documentation utilisateur et développeur pour l'arbitre de surplus. (#407)
+
+---
+
 ## 1.38.x: Plusieurs coordinateurs Zigbee
 
 ### v1.38.0 — 2026-08-10 { #v1-38-0 }
