@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
@@ -6,9 +6,14 @@ import { useAuth } from "../store/useAuth";
 import { EquipmentCard } from "../components/equipments/EquipmentCard";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { Box, Loader2, Plus, Search, X } from "lucide-react";
-import type { EquipmentType, EquipmentWithDetails, ZoneWithChildren } from "../types";
+import type { EquipmentType, EquipmentWithDetails } from "../types";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice } from "../lib/binding-utils";
+import {
+  flattenZonesWithPath,
+  groupEquipmentsByZone,
+  ZONE_PATH_SEPARATOR,
+} from "../lib/zone-path";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
 export function EquipmentsPage() {
@@ -36,8 +41,9 @@ export function EquipmentsPage() {
     ? equipments.filter((e) => e.name.toLowerCase().includes(filter.toLowerCase()))
     : equipments;
 
-  // Group by zone
-  const byZone = groupByZone(filtered, tree);
+  // Group by zone id — not by name, which merges homonym zones (spec 140).
+  const zoneOptions = useMemo(() => flattenZonesWithPath(tree), [tree]);
+  const byZone = groupEquipmentsByZone(filtered, zoneOptions);
 
   return (
     <div className="p-6">
@@ -99,11 +105,9 @@ export function EquipmentsPage() {
         <EmptyState onAdd={() => setShowForm(true)} canCreate={isAdmin} />
       ) : (
         <div className="space-y-6">
-          {byZone.map(({ zoneName, equipments: zoneEquipments }) => (
-            <div key={zoneName}>
-              <h3 className="text-[13px] font-semibold text-text-secondary uppercase tracking-widest mb-2">
-                {zoneName}
-              </h3>
+          {byZone.map(({ zone, equipments: zoneEquipments }) => (
+            <div key={zone?.id ?? "orphans"}>
+              <ZoneHeading chain={zone?.chain} />
               <div className="space-y-1.5">
                 {zoneEquipments.map((eq) => (
                   <EquipmentCard
@@ -163,30 +167,28 @@ function singletonExcludeTypes(equipments: EquipmentWithDetails[]): Set<Equipmen
 }
 
 
-function groupByZone(
-  equipments: EquipmentWithDetails[],
-  tree: ZoneWithChildren[],
-): { zoneName: string; equipments: EquipmentWithDetails[] }[] {
-  const zoneNames = new Map<string, string>();
-  function walk(zones: ZoneWithChildren[]) {
-    for (const z of zones) {
-      zoneNames.set(z.id, z.name);
-      walk(z.children);
-    }
-  }
-  walk(tree);
+/**
+ * Group heading spelling out where the zone actually is: ancestors muted, the
+ * zone's own name carrying the emphasis. A flat list has no shape to lean on,
+ * so two rooms sharing a name are only told apart by the path — and the full
+ * path fits here, unlike in the compact pickers of spec 139.
+ */
+function ZoneHeading({ chain }: { chain?: string[] }) {
+  const { t } = useTranslation();
+  const ancestors = chain?.slice(0, -1) ?? [];
+  const name = chain?.[chain.length - 1] ?? t("dashboard.unknownZone");
 
-  const groups = new Map<string, EquipmentWithDetails[]>();
-  for (const eq of equipments) {
-    const name = zoneNames.get(eq.zoneId) ?? "Unknown zone";
-    const list = groups.get(name) ?? [];
-    list.push(eq);
-    groups.set(name, list);
-  }
-
-  return Array.from(groups.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([zoneName, eqs]) => ({ zoneName, equipments: eqs }));
+  return (
+    <h3 className="text-[13px] font-semibold text-text-secondary uppercase tracking-widest mb-2">
+      {ancestors.length > 0 && (
+        <span className="font-normal text-text-tertiary">
+          {ancestors.join(ZONE_PATH_SEPARATOR)}
+          {ZONE_PATH_SEPARATOR}
+        </span>
+      )}
+      {name}
+    </h3>
+  );
 }
 
 function EmptyState({ onAdd, canCreate }: { onAdd: () => void; canCreate: boolean }) {

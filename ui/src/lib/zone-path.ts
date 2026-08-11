@@ -153,3 +153,48 @@ export function equipmentLabelMap(
 export function zoneChainMap(options: ZoneOption[]): Map<string, string[]> {
   return new Map(options.map((z) => [z.id, z.chain]));
 }
+
+/** One zone's equipments. `zone` is null for equipments whose zone is gone. */
+export interface ZoneGroup<T> {
+  zone: ZoneOption | null;
+  equipments: T[];
+}
+
+/**
+ * Group equipments by the zone they belong to, in tree order (spec 140).
+ *
+ * Grouping on the zone *name* silently merges homonyms: a bathroom per building
+ * collapses into one `Salle de bain` heading listing equipments that are not in
+ * the same room. The key here is the zone id, so distinct zones stay distinct
+ * however they are named, and the caller renders `ZoneOption.chain` to say
+ * which one it is looking at.
+ *
+ * Groups come back in the order of `zones` — depth-first, so the list reads
+ * like the zone tree and sibling rooms sit next to each other. Zones with no
+ * equipment are skipped; equipments whose zone no longer exists land in a
+ * trailing `zone: null` group rather than disappearing.
+ */
+export function groupEquipmentsByZone<T extends { zoneId: string }>(
+  equipments: T[],
+  zones: ZoneOption[],
+): ZoneGroup<T>[] {
+  const byZoneId = new Map<string, T[]>();
+  for (const eq of equipments) {
+    const group = byZoneId.get(eq.zoneId);
+    if (group) group.push(eq);
+    else byZoneId.set(eq.zoneId, [eq]);
+  }
+
+  const groups: ZoneGroup<T>[] = [];
+  for (const zone of zones) {
+    const owned = byZoneId.get(zone.id);
+    if (owned) {
+      groups.push({ zone, equipments: owned });
+      byZoneId.delete(zone.id);
+    }
+  }
+
+  const orphans = Array.from(byZoneId.values()).flat();
+  if (orphans.length > 0) groups.push({ zone: null, equipments: orphans });
+  return groups;
+}

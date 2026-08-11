@@ -3,6 +3,7 @@ import {
   flattenZonesWithPath,
   zoneChainMap,
   equipmentLabelMap,
+  groupEquipmentsByZone,
   ZONE_PATH_SEPARATOR,
 } from "./zone-path";
 import type { ZoneWithChildren } from "../types";
@@ -206,5 +207,52 @@ describe("equipmentLabelMap", () => {
     );
     expect(labels.get("c1")).toBe("VMC — Maison");
     expect(labels.get("c2")).toBe("VMC — Maison");
+  });
+});
+
+describe("groupEquipmentsByZone", () => {
+  const eq = (id: string, zoneId: string) => ({ id, zoneId });
+
+  it("keeps homonym zones apart — the bug the name-keyed grouping had", () => {
+    const groups = groupEquipmentsByZone(
+      [eq("a", "m-sdb"), eq("b", "rdc-sdb"), eq("c", "et-sdb")],
+      zones,
+    );
+    expect(groups).toHaveLength(3);
+    expect(groups.map((g) => g.zone?.id)).toEqual(["m-sdb", "rdc-sdb", "et-sdb"]);
+    expect(groups.every((g) => g.equipments.length === 1)).toBe(true);
+  });
+
+  it("orders groups like the tree, not alphabetically", () => {
+    const groups = groupEquipmentsByZone(
+      [eq("a", "et-wc"), eq("b", "maison"), eq("c", "rdc-sdb")],
+      zones,
+    );
+    expect(groups.map((g) => g.zone?.id)).toEqual(["maison", "rdc-sdb", "et-wc"]);
+  });
+
+  it("hands the caller the full chain of each group", () => {
+    const [group] = groupEquipmentsByZone([eq("a", "rdc-sdb")], zones);
+    expect(group.zone?.chain).toEqual(["Gîte", "RDC", "Salle de bain"]);
+  });
+
+  it("skips zones with no equipment", () => {
+    const groups = groupEquipmentsByZone([eq("a", "m-grenier")], zones);
+    expect(groups.map((g) => g.zone?.id)).toEqual(["m-grenier"]);
+  });
+
+  it("keeps several equipments of one zone together, in input order", () => {
+    const [group] = groupEquipmentsByZone([eq("a", "maison"), eq("b", "maison")], zones);
+    expect(group.equipments.map((e) => e.id)).toEqual(["a", "b"]);
+  });
+
+  it("collects equipments of a deleted zone in a trailing group rather than dropping them", () => {
+    const groups = groupEquipmentsByZone([eq("a", "deleted"), eq("b", "maison")], zones);
+    expect(groups.map((g) => g.zone?.id ?? null)).toEqual(["maison", null]);
+    expect(groups[1].equipments.map((e) => e.id)).toEqual(["a"]);
+  });
+
+  it("returns nothing for no equipments", () => {
+    expect(groupEquipmentsByZone([], zones)).toEqual([]);
   });
 });
