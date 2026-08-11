@@ -3,7 +3,7 @@
 - **Status**: DRAFT — submitted for contributor review, not implemented
 - **Date**: 2026-08-10
 - **Related**: spec 138 (recipe tariff helper), spec 126 (`getSunlight()` helper pattern), spec 111 (plugin soft isolation), spec 101 (OrderSource)
-- **Consumers identified**: `sowel-recipe-smart-cooling` (v1.4 candidate), tariff-aware quota scheduler recipe (core issue #392), any future surplus-aware recipe
+- **Consumers identified**: `sowel-recipe-smart-cooling` (v1.4 candidate), `sowel-recipe-water-heater-smart` (v0.8 candidate — the deferrable stress case, worked example 2b), tariff-aware quota scheduler recipe (core issue #392), any future surplus-aware recipe
 
 ## Problem
 
@@ -32,9 +32,13 @@ component that is the only reader of the meter** and that performs
 export collapse that follows is its own decision, not a disappearance of the
 surplus.
 
-This is a **platform primitive**, and its timing matters: today exactly one
-published recipe hand-rolls surplus logic. Every additional surplus-aware
-recipe published before the primitive exists is one more migration later.
+This is a **platform primitive**, and its timing matters: two published
+recipes already hand-roll surplus logic — `smart-cooling` above, and
+`water-heater-smart`, which carries its own copy of the reservation trick
+(it adds the heater's own draw back into the export, or closing the relay
+would immediately re-open it) precisely because one recipe alone can do that
+correctly and two cannot. Every additional surplus-aware recipe published
+before the primitive exists is one more migration later.
 
 ## Concepts
 
@@ -89,8 +93,10 @@ the hob on) → revoke bottom-up until the balance is restored.
    equipment, receive grant/revoke callbacks, release. Read-only state
    inspection. Auto-release when the recipe instance stops.
 4. **Manual override**: a manual/button/external order on a profiled equipment
-   pauses its arbitration for a TTL (existing `OrderSource` tells origins
-   apart). The human always wins.
+   — or a sustained divergence between its reported state and its grant, which
+   is what a wall switch looks like — pauses its arbitration for a TTL
+   (existing `OrderSource` tells origins apart). The human always wins,
+   including the human who never opened the app.
 5. **Fail-safe**: stale meter data revokes everything and idles the arbiter;
    global kill-switch; every decision logged and visible (decision journal in
    the UI, "why" first-class).
@@ -132,12 +138,31 @@ the hob on) → revoke bottom-up until the balance is restored.
   of a granted load are its **effective watts**: smoothed live draw when a
   fresh `power` binding exists, else the learned nominal from past runs, else
   the declared profile watts. A claim's `watts` field sizes the engage
-  decision only.
+  decision only. The grid reading stays **signed** end to end: the deficit the
+  release pass acts on is an _import_, not a low export, and clamping the
+  export at zero would erase exactly the quantity being measured.
 - **FR-3** Grants follow the user priority list: highest-priority pending
-  claim is granted when `availableSurplusW ≥ claimW + engageMarginW` sustained
-  for `engageHoldS`; on sustained deficit, grants are revoked bottom-up.
-  `minOnS` / `minOffS` are respected for surplus decisions (only the future
-  kVA phase may bypass them).
+  claim is granted when free headroom (plus the load's own draw when it is
+  already running) covers `claimW + engageMarginW − toleratedImportW`
+  sustained for `engageHoldS`; on sustained deficit, grants are revoked
+  bottom-up. Three refinements make the rule usable by real loads:
+  - **Tolerated import** — a claim may declare `toleratedImportW` (default 0),
+    the grid draw the recipe accepts to buy in exchange for the surplus it
+    does catch. An all-or-nothing 2.2 kW resistive load is the case: refusing
+    to run until the surplus covers it entirely wastes most of a day's export,
+    and the recipes doing this by hand today all carry such a tolerance.
+  - **Already-running claims** — the grant test adds the load's own measured
+    draw to the headroom. Without it, a load running under author rule 5 can
+    never be granted (its consumption has already depressed the export it
+    would have to be granted from), and the "books become exact when the grant
+    lands" guarantee is unreachable.
+  - **Slack** — a claim may declare `slack: "none" | "some" | "high"` to step
+    _down_ the user's list. It cannot step up: self-demotion is the only
+    ordering signal a recipe cannot gain by lying about, which is what
+    separates it from the recipe-declared priority this spec rejects.
+    `minOnS` / `minOffS` are respected for surplus decisions (only the future
+    kVA phase may bypass them) and default **per equipment type**, not globally:
+    a relay in front of a resistor restarts for free, a compressor does not.
 - **FR-4** One active claim per equipment, whole system. A second claim is
   denied with an explicit reason. Claims are runtime-only (not persisted);
   recipes re-claim on start.
@@ -152,7 +177,12 @@ the hob on) → revoke bottom-up until the balance is restored.
   present on an installation that never exports.
 - **FR-6** A manual, button, or external order on a profiled equipment revokes
   its grant (`reason: "manual-override"`) and suspends arbitration of that
-  equipment for `overrideTtlS` (default 2 h). The suspension is first-class in
+  equipment for `overrideTtlS` (default 2 h). **A sustained divergence between
+  the equipment's reported state and its grant is the same event**: the
+  archetypal flexible load has a physical switch — a water heater contactor
+  beside the panel, a pool pump selector on the box — and using it produces no
+  Sowel order at all. Held for `divergenceConfirmS` (default 60 s), it revokes
+  and suspends exactly as an order would. The suspension is first-class in
   the UI: the equipment card shows "Manual until HH:MM" and offers a "resume
   control now" action that lifts it immediately.
 - **FR-7** No meter update for `staleAfterS` (default 300 s) → revoke all
@@ -163,9 +193,15 @@ the hob on) → revoke bottom-up until the balance is restored.
 - **FR-8** Every transition (grant, revoke, deny, release, degrade) is logged
   (pino, structured) and appended to a bounded in-memory decision journal
   exposed to the UI. Nothing ever happens without a visible reason.
-- **FR-9** Audit-only signals (no enforcement in phase 1), each logged and
-  journaled: `revoke-not-honored` (a revoked grant whose measured effect never
-  materializes within the watchdog window), `comfort-off-after-revoke` (an OFF
+- **FR-9** Audit-only signals — with one bounded exception, below — each logged
+  and journaled: `revoke-not-honored` (a revoked grant whose measured effect
+  never materializes within the watchdog window; this one **also** marks the
+  equipment `unresponsive` for `2 × releaseHoldS`, so its draw is accounted as
+  background and the release pass skips it — the reservation was freed while
+  the consumption stayed, and without the guard the arbiter revokes the next
+  load down, and the next, cascading through the list for one recipe's
+  inaction. Author rule 5 makes unhonored revokes an expected state, not an
+  anomaly), `comfort-off-after-revoke` (an OFF
   order from the claiming instance on a comfort-class equipment right after a
   revocation — the recipe violates the degrade-never-off convention),
   `watts-divergence` (the learned or measured draw deviates > 30 % from the
@@ -206,6 +242,19 @@ interface EnergyHelpers {
   claimCapacity(req: {
     equipmentId: string;
     watts?: number;
+    /**
+     * Grid draw this recipe accepts to buy in exchange for catching the
+     * surplus (default 0). An all-or-nothing resistive load that refuses to
+     * start until the export covers it whole catches almost nothing.
+     */
+    toleratedImportW?: number;
+    /**
+     * Step DOWN the user's priority list — never up. Lets a recipe say what
+     * the static list cannot know: its own state of charge. A water heater
+     * at 55 °C with an off-peak window six hours away sets "high" and lets
+     * the pump below it go first; near its floor it sets "none".
+     */
+    slack?: "none" | "some" | "high";
     /** Free-text shown in the decision journal ("precool boost"). */
     note?: string;
     onGranted: () => void;
@@ -286,6 +335,43 @@ claim = ctx.helpers.energy?.claimCapacity({
 
 The "it must really run today" guarantee is the recipe's quota fallback, not
 the claim — a deferrable load losing its grant loses nothing but time.
+
+### Worked example 2b — smart water heater (deferrable, the stress test)
+
+`sowel-recipe-water-heater-smart` is the load that exercises every corner of
+this spec at once, and it is worth walking because each corner produced a
+requirement above.
+
+It drives a bare relay in front of a 2.2 kW resistor whose own mechanical
+thermostat ends the cycle; the recipe detects "tank full" from the power
+collapsing while the relay is still closed, and learns how long a full heat-up
+takes. It heats for three reasons, in priority order: a **temperature floor**
+(the tank is cold, someone needs a shower — runs at peak price if it must), an
+**off-peak bulk cycle** placed so it _finishes_ as the window closes, and
+**solar surplus** the rest of the time. Today that third branch is 100 lines
+of hand-rolled threshold logic including the self-draw add-back this spec
+exists to delete.
+
+- It is **all-or-nothing at 2.2 kW** and has no restart cost → `minOnS` 300 s
+  (FR-3) and a `toleratedImportW` around 200 W, which is the tolerance its
+  current form already exposes to the user.
+- Its two top reasons are **must-run**: the floor cannot wait for a grant, and
+  the off-peak cycle is placed by tariff, not by sun. Both run under author
+  rule 5 with the claim held open — so both depend on already-running claims
+  being grantable, and on unhonored revokes not cascading.
+- On an installation with an **afternoon off-peak window** (the Enedis pattern
+  this spec cites for pool pumps), that must-run cycle is 2.2 kW appearing at
+  14:00, in full sun, next to a pool pump claiming the same surplus. Whether
+  the arbiter can regularise it or must count it as a mystery hole in the
+  surplus decides whether the pump gets starved.
+- Its **state of charge is invisible to the priority list** and known to the
+  recipe alone → `slack`.
+- Its manual override is **a switch on the wall**, not a Sowel order → FR-6
+  state divergence. The recipe carries its own divergence detector today,
+  which is exactly the kind of per-recipe reimplementation this spec removes.
+- Its thermostat makes it **cycle to zero while granted** → the learner must
+  ignore sub-threshold samples, or the profile drifts and `watts-divergence`
+  cries wolf.
 
 **Hard quotas larger than the cheap windows** (a 12 h filtration against 8 h
 of HC) are the stress case, and the resolution rests on one principle: **a
@@ -376,6 +462,23 @@ switched the AC off, and every step is one line in the decision journal.
       frees headroom as its measured draw falls (the next pending claim can be
       granted); a clamp going silent mid-grant falls back to the learned
       nominal without a revocation.
+- [ ] Signed accounting: an import appearing under active grants produces a
+      positive deficit and a bottom-up revocation. (Regression guard for the
+      clamped-export draft, which could not.)
+- [ ] A claim on a load already drawing power is granted without waiting for
+      headroom it can never show, and `availableSurplusW` is unchanged by the
+      grant.
+- [ ] A revoke the recipe does not honor revokes nobody else: the equipment is
+      marked `unresponsive`, its draw counted as background, and the next load
+      down keeps its grant.
+- [ ] `toleratedImportW` widens engage and narrows release by exactly that
+      amount, and 0 reproduces the strict behavior.
+- [ ] `slack: "high"` yields the surplus to a lower-priority claim; no claim
+      value can ever move a claim _up_ the user's list.
+- [ ] Flipping a profiled equipment at the wall (state divergence, no order
+      event) revokes and suspends exactly as a manual order does.
+- [ ] A thermostatic load cycling to zero mid-grant does not drag
+      `profile.learned` down, and raises no `watts-divergence`.
 
 ## Review log
 
@@ -427,8 +530,71 @@ switched the AC off, and every step is one line in the decision journal.
    features inert, tariff/comfort value intact (FR-5, author rule 1) — and
    the rollout validates that path on the no-PV demo instance.
 
+### Resolved — contributor review pass, 2026-08-11 (@computingify)
+
+Read against `sowel-recipe-water-heater-smart`, the second published recipe
+hand-rolling surplus logic and the harder of the two consumers (worked example
+2b). Three of these are defects in the draft, four are additions the load
+argues for.
+
+10. **Signed export** (defect, `architecture.md`): the pseudo-code clamped
+    `smoothedExportW = max(0, -emaPowerW)`, which erases the magnitude of an
+    import — and the import _is_ the deficit. Worked through with the spec's
+    own heat-wave numbers: PV 3.2 kW, background 0.9, AC 2.0, pump 0.6 →
+    importing 300 W, clamped export 0, `deficitW = 2600 − 2600 = 0`. Turn on
+    the 3 kW hob and it is still 0. The release pass was unreachable, and the
+    27 test scenarios would have passed over code that never revokes. Fixed:
+    the reading stays signed, and `deficitW ≡ signedGridW`. `spec.md` had it
+    right; the two documents disagreed.
+11. **Already-running claims cannot be granted** (defect): the grant test
+    measures free headroom, and a load that is already running has itself
+    depressed the export that headroom is computed from. Author rule 5 tells
+    hard-quota recipes to hold their claim open while force-running, and
+    review decision 8 promises the books become exact "if the grant arrives" —
+    but nothing could ever make it arrive, and the test-plan row for it
+    described an unreachable state. Fixed by adding the load's own draw to the
+    grant test (FR-3): the grant then costs nothing incremental and the
+    accounting is exact from that tick on.
+12. **Unhonored revokes cascade** (defect): the reservation is freed while the
+    consumption stays in the meter, so the next pass sees the same deficit and
+    revokes the load below — down the whole list, for one recipe's inaction.
+    `revoke-not-honored` being audit-only made this invisible by construction.
+    Fixed: the signal now also marks the equipment `unresponsive` for
+    `2 × releaseHoldS` (draw counted as background, skipped by the release
+    pass). Bounded, still no orders issued.
+13. **Tolerated import per claim** (addition, FR-3): the draft can express
+    engage margin but not release tolerance, so the release condition is zero
+    grid, always. For an all-or-nothing 2.2 kW resistor that is strictly worse
+    than what the recipes do today — the water heater's current form lets the
+    user accept 200 W of grid to catch a nearly-free heat-up, and dropping
+    that would be a regression dressed as a platform improvement.
+14. **`slack`, self-demotion only** (addition, FR-3): the rejection of
+    recipe-declared priority is right and is exactly what makes its mirror
+    safe. Priority is positional — everyone claims the top. Nobody games their
+    way _down_. It buys the one thing a static user list structurally cannot
+    hold: state of charge, which only the recipe knows.
+15. **Per-type min-on / min-off** (addition): the class is derived from
+    `EquipmentType` on the grounds that Sowel knows its equipments; the
+    timings deserve the same. A blanket 900 s `minOnS` justified by compressor
+    short-cycling costs a relay-and-resistor load up to 0.55 kWh of grid per
+    unresolvable deficit, for a restart that is free.
+16. **Manual override at the wall** (addition, FR-6): order-event detection
+    only sees humans who went through Sowel. Water heater contactors and pool
+    pump selectors are physical switches; the recipes that drive them already
+    ship state-divergence detectors, which is the duplication this spec is
+    supposed to end.
+17. **Thermostatic loads and the learner** (addition): a load that cycles to
+    zero on its own thermostat while still granted must not teach the learner
+    its off periods — sample above 25 % of nominal only, or the profile drifts
+    down, the arbiter over-grants, and `watts-divergence` blames a correct
+    profile.
+
 ### Still open — for contributor review
 
 - **Namespace**: `ctx.helpers.energy.claimCapacity()` (namespaced family, this
   draft) vs flat `ctx.helpers.claimCapacity()` — spec 138 chose flat
   (`getTariff`); the namespace bets on a growing family (state, later quota).
+  _Contributor position (@computingify): keep the namespace._ Flat was right
+  for one read-only getter; this is already two entry points with a lifecycle,
+  and the phase-2 quota API lands in the same family. `getTariff` staying flat
+  is not an inconsistency worth paying for — it is a helper, not a subsystem.
