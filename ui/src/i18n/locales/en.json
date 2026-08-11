@@ -1187,7 +1187,6 @@
   "arbiter.state.disabled": "Disabled",
   "arbiter.household": "Household",
   "arbiter.free": "Free surplus",
-  "arbiter.waiting": "waiting — needs {{watts}} W",
   "arbiter.legend.granted": "Granted (surplus)",
   "arbiter.legend.manual": "Manual",
   "arbiter.legend.revoked": "Revocation",
@@ -1202,5 +1201,17 @@
   "arbiter.kind.revoke-not-honored": "revoke not honored",
   "arbiter.kind.comfort-off-after-revoke": "comfort load switched off on revoke",
   "arbiter.kind.watts-divergence": "measured watts diverge from profile",
-  "arbiter.kind.unclaimed-run": "running outside arbitration"
+  "arbiter.kind.unclaimed-run": "running outside arbitration",
+  "arbiter.waitReason.insufficient": "waiting for surplus (needs {{watts}} W)",
+  "arbiter.waitReason.override-active": "paused (manual override active)",
+  "arbiter.waitReason.min-off-cooldown": "waiting out the minimum-off delay",
+  "arbiter.waitReason.unresponsive": "did not respond to the last revoke",
+  "arbiter.revokeReason.surplus-deficit": "production dropped",
+  "arbiter.revokeReason.priority-preempted": "yielded to a higher-priority load",
+  "arbiter.revokeReason.manual-override": "you took manual control",
+  "arbiter.revokeReason.meter-stale": "meter data went stale",
+  "arbiter.revokeReason.disabled": "arbiter disabled",
+  "arbiter.suspendReason.user-order": "manual order",
+  "arbiter.suspendReason.wall-switch-off": "switched off at the wall",
+  "arbiter.suspendReason.wall-switch-on": "switched on at the wall"
 }

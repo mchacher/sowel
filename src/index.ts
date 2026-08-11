@@ -305,7 +305,13 @@ async function main() {
   // 11d. Create Capacity Arbiter (spec 140) — single meter reader arbitrating
   // solar surplus between declared flexible loads. Default off; zero behavior
   // until `energy.arbiter.enabled` is set.
-  const capacityArbiter = new CapacityArbiter(eventBus, settingsManager, equipmentManager, logger);
+  const capacityArbiter = new CapacityArbiter(
+    eventBus,
+    settingsManager,
+    equipmentManager,
+    logger,
+    config.shadowMode, // spec 124 — a shadow instance never arbitrates
+  );
   capacityArbiter.start();
 
   // 12. Create Recipe Manager

@@ -126,6 +126,44 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
   );
 }
 
+/**
+ * Human-language reason for a journal row. Revoke reasons and suspend reasons
+ * are stable codes the backend emits, so they translate cleanly; the audit
+ * kinds (watts-divergence, unclaimed-run, comfort-off) already say everything
+ * in their translated `kind`, so their raw English `reason` is not shown.
+ */
+function journalReason(entry: ArbiterDecision, t: (k: string) => string): string | null {
+  if (!entry.reason) return null;
+  if (entry.kind === "revoked") {
+    const key = `arbiter.revokeReason.${entry.reason}`;
+    const translated = t(key);
+    return translated === key ? null : translated;
+  }
+  if (entry.kind === "suspended") {
+    const key = `arbiter.suspendReason.${entry.reason}`;
+    const translated = t(key);
+    return translated === key ? null : translated;
+  }
+  return null;
+}
+
+/**
+ * Why a pending claim is waiting (FR-10a). `reasonWaiting` is a backend code;
+ * `insufficient-surplus:<W>` carries the current free headroom.
+ */
+function waitingReason(
+  reasonWaiting: string,
+  watts: number,
+  t: (k: string, o?: Record<string, unknown>) => string,
+): string {
+  if (reasonWaiting.startsWith("insufficient-surplus")) {
+    return t("arbiter.waitReason.insufficient", { watts });
+  }
+  const key = `arbiter.waitReason.${reasonWaiting}`;
+  const translated = t(key);
+  return translated === key ? t("arbiter.waitReason.insufficient", { watts }) : translated;
+}
+
 function JournalRow({ entry }: { entry: ArbiterDecision }) {
   const { t } = useTranslation();
   const dot =
@@ -139,6 +177,7 @@ function JournalRow({ entry }: { entry: ArbiterDecision }) {
             ? HC_COLOR
             : "#9CA3AF";
   const time = new Date(entry.atIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const reason = journalReason(entry, t);
   return (
     <li className="flex items-baseline gap-2.5 py-1.5 border-t border-border-light first:border-t-0 text-[13px]">
       <span className="font-mono text-[12px] text-text-tertiary w-11 flex-none">{time}</span>
@@ -146,7 +185,7 @@ function JournalRow({ entry }: { entry: ArbiterDecision }) {
       <span className="font-semibold text-text">{entry.equipmentName ?? ""}</span>
       <span className="text-text-secondary truncate">
         {t(`arbiter.kind.${entry.kind}`)}
-        {entry.reason ? ` — ${entry.reason}` : ""}
+        {reason ? ` · ${reason}` : ""}
       </span>
       {entry.watts !== undefined && (
         <span className="ml-auto font-mono text-[12px] text-text-tertiary whitespace-nowrap">
@@ -181,17 +220,26 @@ export function ArbitrationSurface() {
 
   if (!state || !state.enabled) return null;
 
-  const productionW = equipments
-    .filter((e) => e.type === "energy_production_meter")
-    .reduce((sum, e) => {
-      const b = e.dataBindings?.find((x) => x.category === "power") as { value?: unknown } | undefined;
-      return sum + (typeof b?.value === "number" ? b.value : 0);
-    }, 0);
+  // Instantaneous production for the allocation bar: a production meter if
+  // there is one, else the sum of solar-panel readings (net-metered installs
+  // that expose panels but no dedicated production meter). When neither yields
+  // a reading the bar is hidden rather than shown with a missing household
+  // segment — the timeline and journal below carry the substance.
+  const sumPowerOf = (type: string): number =>
+    equipments
+      .filter((e) => e.type === type)
+      .reduce((sum, e) => {
+        const b = e.dataBindings?.find((x) => x.category === "power") as
+          | { value?: unknown }
+          | undefined;
+        return sum + (typeof b?.value === "number" ? b.value : 0);
+      }, 0);
+  const productionW = sumPowerOf("energy_production_meter") || sumPowerOf("solar_panel");
   const available = state.availableSurplusW;
   const reserved = state.grants.reduce((s, g) => s + g.watts, 0);
   const free = available !== null ? Math.max(0, available - reserved) : 0;
   const house = Math.max(0, productionW - reserved - free);
-  const barTotal = house + reserved + free;
+  const showBar = productionW > 50;
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-5 mt-4">
@@ -216,7 +264,7 @@ export function ArbitrationSurface() {
       </div>
 
       {/* Allocation bar */}
-      {barTotal > 50 && (
+      {showBar && (
         <>
           <div className="flex gap-0.5 h-7 rounded-md overflow-hidden mb-1.5">
             {house > 0 && (
@@ -233,7 +281,7 @@ export function ArbitrationSurface() {
                 key={g.equipmentId}
                 className="flex items-center justify-center gap-1 text-[11px] font-semibold min-w-0"
                 style={{ flex: g.watts, backgroundColor: GRANTED_COLOR, color: GRANTED_TEXT }}
-                title={`${g.equipmentName} — ${g.watts} W`}
+                title={`${g.equipmentName} · ${g.watts} W`}
               >
                 <span className="truncate px-1">✓ {g.equipmentName}</span>
               </div>
@@ -257,8 +305,7 @@ export function ArbitrationSurface() {
         >
           <span>⏳</span>
           <span>
-            <b className="text-text">{p.equipmentName}</b>{" "}
-            {t("arbiter.waiting", { watts: p.watts })}
+            <b className="text-text">{p.equipmentName}</b> {waitingReason(p.reasonWaiting, p.watts, t)}
           </span>
         </div>
       ))}

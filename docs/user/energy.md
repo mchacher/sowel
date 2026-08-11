@@ -150,6 +150,38 @@ The Production page renders solar (or other local production) history:
 
 Totals below the chart sum the two slices into the day's, month's, or year's total production.
 
+## Surplus arbitration
+
+When you have solar production, several automations may want the same surplus at the same time (pre-cooling the house, running the pool pump, heating water). Left uncoordinated they fight over it: each switches on when it sees export, together they overshoot, the export collapses, and everything switches off again. The **surplus arbiter** is the single referee that hands the surplus out in an order **you** decide.
+
+It is **off by default** and changes nothing until you enable it. On a home without solar production it stays hidden.
+
+### Declaring a flexible load
+
+On an equipment that can be switched on and off (pool pump, water heater, a switch driving a heater), open its page and turn on **Energy management**. You choose:
+
+- **Class** — _Deferrable_ (can be switched off and caught up later, like a pool pump) or _Comfort_ (only ever gets a bonus on top of its normal operation, never switched off by the arbiter, like an air conditioner). Sowel pre-selects the right class from the equipment type; you can override it.
+- **Nominal power** — pre-filled from the equipment's own measurement when a clamp is bound.
+- **Minimum on / off** — how long it must stay on once started, and rest before restarting (protects a compressor from short-cycling).
+
+Enabling this only _declares_ the load. Nothing acts on it until the arbiter itself is enabled.
+
+### Enabling the arbiter and setting priority
+
+Go to **Settings > Administration > Energy**, enable **Surplus arbiter**, and order your flexible loads in the priority list. The list is read both ways: the surplus is offered top-down, and when it runs short the bottom load is the first to step back. Advanced timing thresholds live behind a fold with sensible defaults.
+
+### Reading it on the Live page
+
+The **Energy > Live** page gains a surplus-arbitration panel with three parts:
+
+- an **allocation bar** showing where the production is going right now (household, each granted load, free surplus), and a line naming any load that is waiting and why;
+- a **day timeline** with one lane per flexible load — green where it held the surplus, a red marker (with the reason on hover) where it was stepped back;
+- a **decision journal** in plain language, so nothing the arbiter does is a mystery.
+
+### You always win
+
+If you switch a flexible load on or off yourself — in the app, with a physical button, or the switch on the wall — the arbiter steps back and leaves it alone for two hours. Its equipment page shows _Manual until HH:MM_ with a **resume control now** button if you want to hand it back sooner.
+
 ## Data pipeline
 
 Understanding how data flows helps with troubleshooting:

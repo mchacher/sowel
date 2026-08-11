@@ -530,11 +530,22 @@ export class RecipeManager {
 
     // Stop any existing runner for this instance first (prevents orphaned subscriptions)
     this.stopInstance(instance.id);
+    // Spec 140 — release any capacity claim left by a PRIOR start of this
+    // instance that threw before `running` was set (stopInstance above would
+    // early-return in that case and never release it).
+    this.capacityArbiter?.releaseAllFor(instance.id);
 
     const ctx = this.buildContext(instance.id, instance.recipeId);
 
-    recipe.validate(instance.params, ctx);
-    recipe.start(instance.params, ctx);
+    try {
+      recipe.validate(instance.params, ctx);
+      recipe.start(instance.params, ctx);
+    } catch (err) {
+      // A recipe that claimed capacity in start() and then threw must not
+      // leak the claim (which would block the equipment until restart).
+      this.capacityArbiter?.releaseAllFor(instance.id);
+      throw err;
+    }
 
     this.running.set(instance.id, { recipe, instance });
     const startedRecipeName = this.registry.get(instance.recipeId)?.info.name;

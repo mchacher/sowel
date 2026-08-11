@@ -408,6 +408,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         pending: [],
         suspensions: [],
         journal: [],
+        surplusSeries: [],
       };
     }
     return capacityArbiter.getPublicState();

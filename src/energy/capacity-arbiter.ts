@@ -86,6 +86,24 @@ function isOffLike(value: unknown): boolean {
   return value === false || value === 0 || value === "off" || value === "OFF";
 }
 
+/**
+ * A genuine on/off STATE value, as opposed to a numeric measurement. Numbers
+ * are deliberately excluded: a load's `current` / `voltage` / `power` binding
+ * reading 0 (thermostat opened mid-run) must never be mistaken for a
+ * wall-switch OFF (spec 140 review — the divergence detector must key off a
+ * real state, not a value shape).
+ */
+function isBooleanState(value: unknown): boolean {
+  return (
+    value === true ||
+    value === false ||
+    value === "on" ||
+    value === "ON" ||
+    value === "off" ||
+    value === "OFF"
+  );
+}
+
 /** Trimmed median: drop the top/bottom quarter, take the middle value. */
 export function trimmedMedian(samples: number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
@@ -118,7 +136,12 @@ export class CapacityArbiter {
   private runSamples = new Map<string, number[]>();
   private unclaimedRunning = new Set<string>();
   private recipeWantsOn = new Map<string, boolean>();
-  private reportedOnOff = new Map<string, { on: boolean; since: number }>();
+  private reportedOnOff = new Map<string, { on: boolean; at: number }>();
+  /** When the current (grant-expectation vs reported-state) contradiction
+   *  began — the confirm window is measured from here, NOT from the last
+   *  state transition, so a load idle+OFF before it is granted does not read
+   *  as "already diverged for minutes" the instant the grant lands. */
+  private divergenceSince = new Map<string, number>();
   private recentComfortRevoke = new Map<string, { instanceId: string; at: number }>();
 
   private deficitSince: number | null = null;
@@ -131,16 +154,20 @@ export class CapacityArbiter {
   private tick: NodeJS.Timeout | null = null;
   private unsubscribes: Array<() => void> = [];
 
+  private readonly shadowMode: boolean;
+
   constructor(
     eventBus: EventBus,
     settings: SettingsManager,
     equipments: EquipmentManager,
     logger: Logger,
+    shadowMode = false, // spec 124 — a shadow instance never arbitrates
   ) {
     this.eventBus = eventBus;
     this.settings = settings;
     this.equipments = equipments;
     this.logger = logger.child({ module: "capacity-arbiter" });
+    this.shadowMode = shadowMode;
     this.config = this.readConfig();
   }
 
@@ -163,7 +190,13 @@ export class CapacityArbiter {
           this.logger.error({ err }, "Arbiter order handler failed");
         }
       }),
-      this.eventBus.onType("equipment.updated", () => this.resolveMeter()),
+      this.eventBus.onType("equipment.updated", (e) => {
+        try {
+          this.onEquipmentUpdated(e.equipment.id);
+        } catch (err) {
+          this.logger.error({ err }, "Arbiter update handler failed");
+        }
+      }),
       this.eventBus.onType("equipment.removed", (e) => {
         try {
           this.onEquipmentRemoved(e.equipmentId);
@@ -212,7 +245,7 @@ export class CapacityArbiter {
       this.logger.warn("Invalid energy.arbiter.priority setting, using empty list");
     }
     return {
-      enabled: this.settings.get(SETTING_PREFIX + "enabled") === "true",
+      enabled: !this.shadowMode && this.settings.get(SETTING_PREFIX + "enabled") === "true",
       priority,
       engageMarginW: num("engageMarginW", 100),
       engageHoldS: num("engageHoldS", 120),
@@ -251,12 +284,36 @@ export class CapacityArbiter {
       this.emaPowerW = null;
       this.lastMeterAt = null;
     }
-    if (this.meterId && !this.meterAlias) {
+    if (this.meterId) {
+      // Re-derive the alias whenever the current one is not (yet) a real
+      // binding: the meter's `power` binding may appear after boot (device
+      // discovered late), and defaulting to "power" forever would leave the
+      // arbiter silently `degraded` if the true alias differs.
       const bindings = this.equipments.getDataBindingsWithValues(this.meterId);
-      this.meterAlias =
-        bindings.find((b) => b.category === "power")?.alias ??
-        bindings.find((b) => b.alias === "power")?.alias ??
-        "power";
+      const known = this.meterAlias && bindings.some((b) => b.alias === this.meterAlias);
+      if (!known) {
+        this.meterAlias =
+          bindings.find((b) => b.category === "power")?.alias ??
+          bindings.find((b) => b.alias === "power")?.alias ??
+          "power";
+      }
+    }
+  }
+
+  /**
+   * Spec 140 review #3 — an admin turning OFF an equipment's energy profile
+   * while it holds a grant must release it; otherwise the arbiter keeps
+   * reserving capacity for a load that is no longer flexible. `equipment.updated`
+   * is also where a late-appearing meter binding is picked up (resolveMeter).
+   */
+  private onEquipmentUpdated(equipmentId: string): void {
+    this.resolveMeter();
+    if (!this.profileOf(equipmentId)) {
+      for (const claim of [...this.claims.values()]) {
+        if (claim.equipmentId !== equipmentId) continue;
+        if (claim.status === "granted") this.revoke(claim, "disabled");
+        this.claims.delete(claim.id);
+      }
     }
   }
 
@@ -312,11 +369,14 @@ export class CapacityArbiter {
     }
 
     // Reported on/off state → wall-switch divergence tracking (FR-6), on
-    // deferrable loads only (comfort baselines are not the arbiter's to infer).
-    if (profile.class === "deferrable" && (isOnLike(value) || isOffLike(value))) {
+    // deferrable loads only. Only a genuine on/off STATE value is tracked:
+    // measurement bindings a load exposes (current, voltage, power) report
+    // numeric 0 when a thermostat opens mid-run, which must NOT read as a
+    // wall-switch OFF. `isBooleanState` accepts boolean / "on"|"off" strings
+    // and rejects numbers precisely to exclude those measurements.
+    if (profile.class === "deferrable" && isBooleanState(value)) {
       const on = isOnLike(value);
-      const prev = this.reportedOnOff.get(equipmentId);
-      if (!prev || prev.on !== on) this.reportedOnOff.set(equipmentId, { on, since: now });
+      this.reportedOnOff.set(equipmentId, { on, at: now });
     }
   }
 
@@ -331,7 +391,7 @@ export class CapacityArbiter {
     const now = Date.now();
 
     if (source?.kind === "manual" || source?.kind === "button" || source?.kind === "external") {
-      this.suspend(equipmentId, "user order");
+      this.suspend(equipmentId, "user-order");
       return;
     }
 
@@ -381,7 +441,24 @@ export class CapacityArbiter {
       if (claim.status === "granted") this.revoke(claim, "disabled");
       this.claims.delete(claim.id);
     }
+    this.forgetEquipment(equipmentId);
     if (equipmentId === this.meterId) this.resolveMeter();
+  }
+
+  /** Drop all per-equipment runtime state (review #5 — otherwise these maps
+   *  grow unbounded over the process lifetime and could mis-inform logic if a
+   *  UUID is ever reused). */
+  private forgetEquipment(equipmentId: string): void {
+    this.liveDraw.delete(equipmentId);
+    this.lastRevokedAt.delete(equipmentId);
+    this.overridesUntil.delete(equipmentId);
+    this.unresponsiveUntil.delete(equipmentId);
+    this.runSamples.delete(equipmentId);
+    this.unclaimedRunning.delete(equipmentId);
+    this.recipeWantsOn.delete(equipmentId);
+    this.reportedOnOff.delete(equipmentId);
+    this.divergenceSince.delete(equipmentId);
+    this.recentComfortRevoke.delete(equipmentId);
   }
 
   // ── Claim API (recipe-manager + tests) ──────────────────────
@@ -511,7 +588,36 @@ export class CapacityArbiter {
 
   // ── Core evaluation ─────────────────────────────────────────
 
+  /**
+   * Re-entrancy guard. `grant()` / `revoke()` invoke recipe callbacks
+   * synchronously, and a callback may `claimCapacity()` (which calls
+   * `evaluate()`) or `release()` a sibling. Without this, a nested pass would
+   * grant against a `headroomW` the outer pass has not yet spent (double
+   * spend). We coalesce: a re-entrant call is deferred and re-run once after
+   * the current pass unwinds. The per-loop `status` guards below handle
+   * sibling mutation within a single pass.
+   */
+  private evaluating = false;
+  private reevalQueued = false;
+
   private evaluate(): void {
+    if (this.evaluating) {
+      this.reevalQueued = true;
+      return;
+    }
+    this.evaluating = true;
+    try {
+      this.runEvaluate();
+    } finally {
+      this.evaluating = false;
+    }
+    if (this.reevalQueued) {
+      this.reevalQueued = false;
+      this.evaluate();
+    }
+  }
+
+  private runEvaluate(): void {
     if (!this.config.enabled) return;
     const now = Date.now();
 
@@ -527,6 +633,10 @@ export class CapacityArbiter {
     if (this.lastMeterAt === null || now - this.lastMeterAt > this.config.staleAfterS * 1000) {
       if (this.hasGrants()) this.revokeAll("meter-stale");
       this.deficitSince = null;
+      // Drop watchdogs: their `at` would otherwise freeze through the outage
+      // and fire a spurious `revoke-not-honored` the instant data returns
+      // (review #9). A stale meter revoked everything anyway.
+      this.watchdogs = [];
       this.emitStatus();
       return;
     }
@@ -551,6 +661,7 @@ export class CapacityArbiter {
         let revokedAny = false;
         for (const claim of this.grantedBottomUp()) {
           if (remaining <= 0) break;
+          if (claim.status !== "granted") continue; // a callback released it mid-loop
           if (claim.grantedAt !== null && now - claim.grantedAt < this.minOnMs(claim.equipmentId)) {
             continue; // anti short-cycle: an unresolvable deficit simply waits
           }
@@ -573,6 +684,7 @@ export class CapacityArbiter {
     let headroomW = exportW;
     const pendingOrdered = this.pendingOrdered();
     for (const claim of pendingOrdered) {
+      if (claim.status !== "pending") continue; // a callback released/denied it mid-loop
       const eq = claim.equipmentId;
       if (this.isSuspended(eq) || this.unresponsiveUntil.has(eq)) {
         claim.engageSince = null;
@@ -584,7 +696,11 @@ export class CapacityArbiter {
         continue;
       }
       const ownDrawW = this.freshLiveDraw(eq) ?? 0;
-      const needW = Math.max(0, claim.watts + this.config.engageMarginW - claim.toleratedImportW);
+      // No floor at 0 (review #6): a claim whose toleratedImportW exceeds
+      // watts+margin is explicitly willing to run while importing that much,
+      // which is the whole point of the tolerance (FR-3). Flooring needW would
+      // silently refuse it during any import.
+      const needW = claim.watts + this.config.engageMarginW - claim.toleratedImportW;
       if (headroomW + ownDrawW >= needW) {
         claim.engageSince ??= now;
         if (now - claim.engageSince >= this.config.engageHoldS * 1000) {
@@ -612,6 +728,7 @@ export class CapacityArbiter {
             let freed = 0;
             for (const g of revocable) {
               if (freed >= shortfallW) break;
+              if (g.status !== "granted") continue;
               freed += this.effectiveWatts(g);
               this.revoke(g, "priority-preempted");
             }
@@ -687,12 +804,16 @@ export class CapacityArbiter {
     const entry = this.liveDraw.get(equipmentId);
     if (!entry) return null;
     if (Date.now() - entry.at > LIVE_DRAW_FRESH_MS) return null;
-    return entry.ema;
+    // Clamp to ≥ 0: a bidirectional clamp or EMA noise can report a slightly
+    // negative draw, which would understate reservedW and, worse, INCREASE the
+    // deficit when a negative-draw load is "revoked" (remaining -= watts).
+    return Math.max(0, entry.ema);
   }
 
   // ── Grant / revoke / release ────────────────────────────────
 
   private grant(claim: ClaimRecord): void {
+    if (claim.status !== "pending") return; // released/denied by a re-entrant callback
     claim.status = "granted";
     claim.grantedAt = Date.now();
     claim.engageSince = null;
@@ -714,6 +835,7 @@ export class CapacityArbiter {
   }
 
   private revoke(claim: ClaimRecord, reason: CapacityRevokeReason): void {
+    if (claim.status !== "granted") return; // released by a re-entrant callback
     const watts = Math.round(this.effectiveWatts(claim));
     claim.status = "pending";
     claim.grantedAt = null;
@@ -807,18 +929,29 @@ export class CapacityArbiter {
   private checkStateDivergence(now: number): void {
     const confirmMs = this.config.divergenceConfirmS * 1000;
     for (const [equipmentId, reported] of this.reportedOnOff) {
-      if (now - reported.since < confirmMs) continue;
-      if (this.isSuspended(equipmentId)) continue;
-      const granted = this.grantedClaimFor(equipmentId);
-      const recipeOn = this.recipeWantsOn.get(equipmentId);
-      if (granted && !reported.on && recipeOn !== false) {
-        // Wall switch killed a granted load: no order event, but the human
-        // wins. A recipe's own OFF order is not a wall event (recipeOn false).
-        this.suspend(equipmentId, "wall switch (reported off while granted)");
-      } else if (!granted && reported.on && recipeOn !== true) {
-        // Wall switch forced the load on: suspend so nobody fights the human.
-        this.suspend(equipmentId, "wall switch (reported on outside arbitration)");
+      if (this.isSuspended(equipmentId)) {
+        this.divergenceSince.delete(equipmentId);
+        continue;
       }
+      const granted = this.grantedClaimFor(equipmentId) !== undefined;
+      const recipeOn = this.recipeWantsOn.get(equipmentId);
+      // A recipe's own order is never a wall event: a granted load the recipe
+      // turned on but that reports off (recipeOn === true) is the actuation lag
+      // the confirm window exists to absorb, not a divergence to punish.
+      const wallOff = granted && !reported.on && recipeOn !== false;
+      const wallOn = !granted && reported.on && recipeOn !== true;
+      if (!wallOff && !wallOn) {
+        this.divergenceSince.delete(equipmentId);
+        continue;
+      }
+      // Arm from onset: measure how long the contradiction has HELD, not how
+      // long ago the device last changed state (which may predate the grant).
+      const since = this.divergenceSince.get(equipmentId) ?? now;
+      this.divergenceSince.set(equipmentId, since);
+      if (now - since < confirmMs) continue;
+      this.divergenceSince.delete(equipmentId);
+      // Stable codes (not free text) so the UI journal can translate them.
+      this.suspend(equipmentId, wallOff ? "wall-switch-off" : "wall-switch-on");
     }
   }
 
@@ -926,8 +1059,11 @@ export class CapacityArbiter {
 
   private emitStatus(availableW?: number): void {
     const state = this.runState();
-    const availableSurplusW =
-      state === "active" ? Math.round(availableW ?? this.accounting().availableW) : null;
+    // Coarsen to the nearest 25 W so the status event fires on a meaningful
+    // change, not on every meter sample (the raw surplus jitters by >1 W
+    // almost continuously — review #7; the architecture wants "on change").
+    const raw = availableW ?? this.accounting().availableW;
+    const availableSurplusW = state === "active" ? Math.round(raw / 25) * 25 : null;
     const prev = this.lastStatus;
     if (prev && prev.state === state && prev.availableSurplusW === availableSurplusW) return;
     this.lastStatus = { state, availableSurplusW };

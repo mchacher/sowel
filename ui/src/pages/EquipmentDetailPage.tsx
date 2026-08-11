@@ -58,7 +58,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 import { HistoryPanel } from "../components/history/HistoryPanel";
 
 export function EquipmentDetailPage() {
-  useWsSubscription(["equipments", "devices"]);
+  useWsSubscription(["equipments", "devices", "energy"]);
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

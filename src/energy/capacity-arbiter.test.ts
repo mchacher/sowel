@@ -731,3 +731,224 @@ describe("capacity arbiter", () => {
     expect(grantsPerEq.pac).toBeLessThanOrEqual(2);
   });
 });
+
+// ============================================================
+// Regression + coverage from the critical review pass (2026-08-12).
+// Each test below locks a fix or fills a false-green gap the review found.
+// ============================================================
+
+describe("capacity arbiter — review hardening", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // core review #1 — the divergence-timer staleness bug: a load idle+OFF
+  // before it is granted must NOT be suspended the instant it is granted.
+  it("does not suspend a freshly-granted load that was reported OFF before the grant", () => {
+    const h = makeHarness();
+    h.feedState("pump", false); // idle + reported off, long before any claim
+    h.run(-1000, 300); // 5 min of OFF while unclaimed
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150); // granted
+    expect(h.grantedEvents()).toHaveLength(1);
+    // The recipe's onGranted turns the load on; the device confirms ON well
+    // within divergenceConfirmS.
+    h.feedState("pump", true);
+    h.run(-1000, 120);
+    expect(revoked).not.toHaveBeenCalled();
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  // integration review H1 — a numeric non-state binding (current/voltage) at 0
+  // must never be read as a wall-switch OFF (thermostatic cutoff false positive).
+  it("ignores a numeric binding reading 0 for divergence (thermostatic cutoff)", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "heater", onRevoked: revoked });
+    h.run(-3000, 150); // granted
+    h.order("heater", true, { kind: "recipe", instanceId: "i1" });
+    // The resistor's own thermostat opens: a `current` binding drops to 0
+    // while the relay `state` stays on. Pre-fix this faked a wall OFF.
+    for (let i = 0; i < 12; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-3000);
+      h.eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: "heater",
+        alias: "current",
+        value: 0,
+        previous: null,
+      });
+    }
+    expect(revoked).not.toHaveBeenCalledWith("manual-override");
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  // test review H1 — tier-2 (learned nominal) is actually used for the
+  // reservation once the live clamp goes silent.
+  it("reserves the learned nominal when the live clamp goes silent, else declared", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    h.equipments.get("pump")!.energyProfile!.learned = {
+      watts: 550,
+      atIso: "2026-08-12T09:00:00Z",
+      runs: 3,
+    };
+    h.claim("i1", { equipmentId: "pump" });
+    // Keep the clamp reporting through the engage hold so tier 1 stays fresh.
+    for (let i = 0; i < 15; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-2000);
+      h.feedLoadPower("pump", 900);
+    }
+    expect(h.arbiter.getPublicState().grants[0].watts).toBe(900);
+    // Let the clamp go silent past the freshness window → tier 2 (learned).
+    for (let i = 0; i < 14; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-2000);
+    }
+    expect(h.arbiter.getPublicState().grants[0].watts).toBe(550);
+  });
+
+  // core review #2 — a callback that releases a sibling claim mid-pass must
+  // not cause a revoke-after-release, a duplicate event, or an orphan record.
+  it("a callback releasing a sibling claim does not double-fire or orphan it", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    const pacRevoked = vi.fn();
+    // Holder so the pump's onRevoked can reference pac's handle, which is
+    // created after it (the closure captures the box, not a value).
+    const box: { pac?: ReturnType<typeof h.claim> } = {};
+    h.claim("i1", {
+      equipmentId: "pump",
+      onRevoked: () => box.pac?.release(), // sibling release from inside a callback
+    });
+    box.pac = h.claim("i1", { equipmentId: "pac", onRevoked: pacRevoked });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    // Deficit → release pass revokes pump (bottom); its callback releases pac.
+    h.run(2000, 700);
+    expect(pacRevoked).not.toHaveBeenCalled(); // released, never revoked
+    expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
+    expect(h.events.filter((e) => e.type === "energy.capacity.released")).toHaveLength(1);
+    expect(h.arbiter.getPublicState().grants.some((g) => g.equipmentId === "pac")).toBe(false);
+  });
+
+  // core review #3 — disabling a profile mid-grant releases the claim.
+  it("revokes a granted claim when its equipment profile is disabled", () => {
+    const h = makeHarness();
+    const revoked = vi.fn();
+    h.claim("i1", { equipmentId: "pump", onRevoked: revoked });
+    h.run(-1000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    h.equipments.get("pump")!.energyProfile = undefined; // admin turns it off
+    h.eventBus.emit({ type: "equipment.updated", equipment: h.equipments.get("pump")! as never });
+    expect(revoked).toHaveBeenCalledWith("disabled");
+    expect(h.arbiter.getPublicState().grants).toHaveLength(0);
+  });
+
+  // core review #4 — a negative live-draw sample never yields negative
+  // reservation (which would inflate the deficit).
+  it("clamps a negative live draw to zero in the reservation", () => {
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.feedLoadPower("pump", -50); // bidirectional-clamp noise
+    h.feedMeter(-1000);
+    const st = h.arbiter.getPublicState();
+    // available = export(1000) + reserved(max(0,-50)=0); never < export.
+    expect(st.availableSurplusW).toBeGreaterThanOrEqual(1000);
+  });
+
+  // test review M2 — the manual-override suspension actually expires after
+  // overrideTtlS (7200 s), it is not permanent.
+  it("expires a manual-override suspension after overrideTtlS", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "manual" });
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(1);
+    vi.advanceTimersByTime(7_210_000); // past 2 h; overrides expire even while stale
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  // test review M5 — toleratedImportW widens engage by *exactly* that amount:
+  // the same surplus that grants with tolerance stays pending without it.
+  it("toleratedImportW is what makes the difference at the engage boundary", () => {
+    const withTol = makeHarness({ priority: ["heater"] });
+    withTol.claim("i1", { equipmentId: "heater", toleratedImportW: 200 }); // need 2100
+    withTol.run(-2150, 200);
+    expect(withTol.grantedEvents()).toHaveLength(1);
+
+    const without = makeHarness({ priority: ["heater"] });
+    without.claim("i1", { equipmentId: "heater", toleratedImportW: 0 }); // need 2300
+    without.run(-2150, 200);
+    expect(without.grantedEvents()).toHaveLength(0);
+  });
+
+  // test review M6 — preemption can revoke MORE than one victim in a pass.
+  it("preempts two lower grants when one victim is not enough", () => {
+    const h = makeHarness({
+      priority: ["pac", "pump", "heater"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 900, minOnS: 0, minOffS: 0 },
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+        heater: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-1500, 150); // both granted
+    expect(h.grantedEvents()).toHaveLength(2);
+    // Simulate them consuming: export collapses to ~100 W. pac (need 1000)
+    // arrives; shortfall 900 needs BOTH 600 W victims.
+    h.claim("pacI", { equipmentId: "pac" });
+    h.run(-100, 100);
+    const preempts = h.revokedEvents().filter((e) => e.reason === "priority-preempted");
+    expect(preempts).toHaveLength(2);
+    expect(preempts.map((e) => e.equipmentId).sort()).toEqual(["heater", "pump"]);
+  });
+
+  // test review M4 — journal + event carry the claim note and effective watts.
+  it("carries the claim note through the journal and the granted event", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump", note: "precool boost" });
+    h.run(-1000, 150);
+    const granted = h.grantedEvents()[0];
+    expect(granted.note).toBe("precool boost");
+    const entry = h.arbiter
+      .getPublicState()
+      .journal.find((j) => j.kind === "granted" && j.equipmentId === "pump");
+    expect(entry?.note).toBe("precool boost");
+    expect(entry?.watts).toBe(600);
+  });
+
+  // test review M1 — the EMA is a real low-pass filter at the default 60 s
+  // (every other test runs at smoothingS=1 where it is a pass-through).
+  it("lags the meter under the default smoothing rather than snapping", () => {
+    const h = makeHarness({ settings: { "energy.arbiter.smoothingS": "60" } });
+    h.run(-2000, 600); // settle EMA near exporting 2000 W
+    const settled = h.arbiter.getPublicState().availableSurplusW ?? 0;
+    expect(settled).toBeGreaterThan(1500);
+    // A single "export gone" sample, 10 s later so the EMA alpha is non-zero.
+    vi.advanceTimersByTime(10_000);
+    h.feedMeter(0);
+    const afterStep = h.arbiter.getPublicState().availableSurplusW ?? 0;
+    // Smoothed: still sees most of the surplus one sample later, not snapped to 0.
+    expect(afterStep).toBeGreaterThan(1000);
+    expect(afterStep).toBeLessThan(settled);
+  });
+});

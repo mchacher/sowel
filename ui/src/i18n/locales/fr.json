@@ -1187,7 +1187,6 @@
   "arbiter.state.disabled": "Désactivé",
   "arbiter.household": "Maison",
   "arbiter.free": "Surplus libre",
-  "arbiter.waiting": "en attente — besoin de {{watts}} W",
   "arbiter.legend.granted": "Accordé (surplus)",
   "arbiter.legend.manual": "Manuel",
   "arbiter.legend.revoked": "Révocation",
@@ -1202,5 +1201,17 @@
   "arbiter.kind.revoke-not-honored": "révocation non appliquée",
   "arbiter.kind.comfort-off-after-revoke": "charge confort éteinte sur révocation",
   "arbiter.kind.watts-divergence": "puissance mesurée différente du profil",
-  "arbiter.kind.unclaimed-run": "marche hors arbitrage"
+  "arbiter.kind.unclaimed-run": "marche hors arbitrage",
+  "arbiter.waitReason.insufficient": "en attente de surplus (besoin de {{watts}} W)",
+  "arbiter.waitReason.override-active": "en pause (pilotage manuel actif)",
+  "arbiter.waitReason.min-off-cooldown": "attente du délai d'arrêt minimum",
+  "arbiter.waitReason.unresponsive": "n'a pas répondu à la dernière révocation",
+  "arbiter.revokeReason.surplus-deficit": "la production a baissé",
+  "arbiter.revokeReason.priority-preempted": "cédé à une charge plus prioritaire",
+  "arbiter.revokeReason.manual-override": "vous avez pris le pilotage manuel",
+  "arbiter.revokeReason.meter-stale": "données compteur périmées",
+  "arbiter.revokeReason.disabled": "arbitre désactivé",
+  "arbiter.suspendReason.user-order": "ordre manuel",
+  "arbiter.suspendReason.wall-switch-off": "coupé à l'interrupteur",
+  "arbiter.suspendReason.wall-switch-on": "allumé à l'interrupteur"
 }

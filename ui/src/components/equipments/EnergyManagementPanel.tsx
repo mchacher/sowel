@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PlugZap, Loader2 } from "lucide-react";
 import { updateEquipment, resumeArbiterEquipment } from "../../api";
@@ -22,6 +22,13 @@ export function EnergyManagementPanel({
   const profile = equipment.energyProfile;
   const arbiterState = useArbiter((s) => s.state);
   const fetchArbiter = useArbiter((s) => s.fetch);
+
+  // Fetch arbiter state on mount so the "Manual until HH:MM" suspension chip
+  // and the "resume control now" action (FR-6) actually render — without this
+  // the panel only ever sees arbiter state after a resume() round-trip.
+  useEffect(() => {
+    void fetchArbiter();
+  }, [fetchArbiter]);
 
   const measuredW = useMemo(() => {
     const binding =
