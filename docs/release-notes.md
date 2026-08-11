@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.39.x: Energy surplus arbitration
 
+### v1.39.1 — 2026-08-11 { #v1-39-1 }
+
+- Fix (ui): several fixes to the energy surplus arbiter interface shipped in v1.39.0. The **Enable switch now appears whenever you have a main energy meter** (grid) instead of requiring a separate production meter, so a home whose solar shows up as grid export can actually turn the arbiter on. The **priority list is now honored as shown** (a newly declared load could previously be ignored until you reordered the list). Declaring a flexible load no longer dead-ends: the class and power fields appear when you tick the box, with an inline explanation of Deferrable vs Comfort, an explicit Save, and a confirmation before removing a load. Advanced thresholds can no longer be cleared to a value that silently disables the arbiter, the "Manual until" chip appears in real time, and several accessibility and wording issues were addressed. (#416)
+
 ### v1.39.0 — 2026-08-11 { #v1-39-0 }
 
 - Feat (energy): **the energy surplus arbiter** (spec 140). One core referee hands solar surplus to your flexible loads in the priority order you choose, ending the tug-of-war where several surplus-aware automations each switch on when they see export, overshoot together, and collapse it. Declare a pilotable load (pool pump, water heater, ...) on its equipment page (class, nominal power, minimum on/off, pre-filled from the equipment type and its own measurement), enable the arbiter under Settings > Administration > Energy, and order your loads. Energy > Live gains an arbitration surface: an allocation bar of where production is going right now, a day timeline per load, and a plain-language decision journal. **Opt-in and off by default**, and the arbiter issues no orders itself. It is the foundation surplus-aware recipes claim capacity against (`ctx.helpers.energy`); the recipes that use it ship next, so on this release the arbiter is there to enable and observe. Hardened by two independent adversarial review passes before merge. (#412)
