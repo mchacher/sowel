@@ -105,11 +105,11 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-weather",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["weather", "netatmo", "temperature", "humidity", "rain", "wind"],
     "sowelVersion": ">=1.2.11",
     "owner": "mchacher",
-    "sha256": "cd3904440ca875dd75fdfaea9aa2d74175c9a855c325eaf3c8e40ced91fb0552"
+    "sha256": "a6183b43ecca41b2ebf554410a9665082154be1067e9c7f27c18879b11de9a71"
   },
   {
     "id": "weather-forecast",
@@ -330,7 +330,7 @@
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "tags": ["pool", "pump", "schedule", "automation"],
     "i18n": {
       "fr": {
@@ -340,7 +340,7 @@
     },
     "sowelVersion": ">=1.3.0",
     "owner": "mchacher",
-    "sha256": "b6275775e24a8ec6db1ecafd3d3be0e8ea284584654bb7f419e21adbe0539248"
+    "sha256": "0616a65abac7e221c87bd4e77c5e543ad8cbaa95577b54fdd5ca7aca8445cae8"
   },
   {
     "id": "freecooling",
