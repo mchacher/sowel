@@ -18,6 +18,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
   ArbiterDecision,
   ArbiterPublicState,
@@ -29,6 +30,7 @@ import type {
   CapacitySlack,
   EnergyLoadProfile,
   EngineEvent,
+  OrderSource,
 } from "../shared/types.js";
 
 const SETTING_PREFIX = "energy.arbiter.";
@@ -385,14 +387,24 @@ export class CapacityArbiter {
   private onOrderExecuted(
     equipmentId: string,
     value: unknown,
-    source: { kind: string; instanceId?: string } | undefined,
+    source: OrderSource | undefined,
   ): void {
     if (!this.config.enabled) return;
     const profile = this.profileOf(equipmentId);
     if (!profile) return;
     const now = Date.now();
 
-    if (source?.kind === "manual" || source?.kind === "button" || source?.kind === "external") {
+    // A human (manual/button) or an external system taking control backs the
+    // arbiter off for overrideTtlS so it does not fight them. The delivery-retry
+    // channel is excluded: that is the order-confirmation tracker re-sending
+    // Sowel's OWN last unconfirmed order after a device reconnect (typically a
+    // recipe order), not a person — counting it as a manual override spuriously
+    // suspended flexible loads on flaky links (#420).
+    if (
+      source?.kind === "manual" ||
+      source?.kind === "button" ||
+      (source?.kind === "external" && source.channel !== RETRY_CHANNEL)
+    ) {
       this.suspend(equipmentId, "user-order");
       return;
     }

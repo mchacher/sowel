@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { CapacityArbiter, trimmedMedian } from "./capacity-arbiter.js";
 import { EventBus } from "../core/event-bus.js";
+import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
   CapacityClaimHandle,
   CapacityClaimRequest,
@@ -144,7 +145,7 @@ function makeHarness(opts?: {
   const order = (
     equipmentId: string,
     value: unknown,
-    source: { kind: string; instanceId?: string },
+    source: { kind: string; instanceId?: string; channel?: string },
   ) =>
     eventBus.emit({
       type: "equipment.order.executed",
@@ -352,6 +353,25 @@ describe("capacity arbiter", () => {
     h.order("pump", true, { kind: "recipe", instanceId: "i1" });
     expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
     expect(h.revokedEvents()).toHaveLength(0);
+  });
+
+  // #420 — after a device reconnect the confirmation tracker re-dispatches
+  // Sowel's OWN last unconfirmed order (typically a recipe order) as
+  // { kind: "external", channel: "delivery-retry" }. That is not a human
+  // action: it must neither suspend arbitration nor revoke a live grant.
+  it("an external delivery-retry re-dispatch does NOT suspend a granted load", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150); // pump granted
+    h.order("pump", true, { kind: "external", channel: RETRY_CHANNEL });
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+    expect(h.revokedEvents()).toHaveLength(0);
+  });
+
+  it("a non-retry external order still suspends (genuine external control)", () => {
+    const h = makeHarness();
+    h.order("pump", true, { kind: "external", channel: "home-assistant" });
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
   });
 
   it("resume lifts a suspension immediately", () => {
