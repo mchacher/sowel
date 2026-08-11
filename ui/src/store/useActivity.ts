@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { ActivityItem, ActivityMessage } from "../types";
 import { getActivity } from "../api";
+import { loadWithRetry } from "../lib/load-with-retry";
 
 const CAPACITY = 100;
 const COALESCE_WINDOW_MS = 500;
@@ -49,8 +50,6 @@ let loadSeq = 0;
 
 const RETRY_DELAYS_MS = [700, 2500];
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 export const useActivity = create<ActivityState>((set, get) => ({
   items: [],
   status: "idle",
@@ -68,22 +67,16 @@ export const useActivity = create<ActivityState>((set, get) => ({
 
     // A single blip used to leave the panel stuck on "Impossible de charger l'activité"
     // until the user navigated away and back — retry a couple of times before giving up.
-    for (let attempt = 0; ; attempt++) {
-      try {
-        const data = await getActivity(zoneId, { includeDescendants, limit: CAPACITY });
-        if (seq !== loadSeq) return; // superseded by a newer load
-        set({ items: data.items.slice(0, CAPACITY), status: "ready" });
-        return;
-      } catch (err) {
-        if (seq !== loadSeq) return;
-        if (attempt >= RETRY_DELAYS_MS.length) {
-          console.error("Failed to load activity", err);
-          set({ status: "error" });
-          return;
-        }
-        await sleep(RETRY_DELAYS_MS[attempt]);
-        if (seq !== loadSeq) return;
-      }
+    const outcome = await loadWithRetry(
+      () => getActivity(zoneId, { includeDescendants, limit: CAPACITY }),
+      { retryDelaysMs: RETRY_DELAYS_MS, isCurrent: () => seq === loadSeq },
+    );
+
+    if (outcome.status === "ok") {
+      set({ items: outcome.value.items.slice(0, CAPACITY), status: "ready" });
+    } else if (outcome.status === "failed") {
+      console.error("Failed to load activity", outcome.error);
+      set({ status: "error" });
     }
   },
 
