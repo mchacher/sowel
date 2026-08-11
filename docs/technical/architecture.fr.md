@@ -265,12 +265,21 @@ InfluxDB est obligatoire : Sowel se connecte au démarrage et auto-crée les buc
 
 Un binding `energy` porte un **delta additif** (Wh depuis le tick précédent), pas une mesure. La déduplication qui protège les autres catégories (deadband, intervalle minimum de 30 s) détruirait silencieusement de l'énergie : les compteurs ont des cadences très différentes — un Shelly EM émet un tick par minute, un Tuya PJ-1203A en émet ~30, dont un seul porte le saut de compteur de 10 Wh.
 
-Le `HistoryWriter` cumule donc les ticks `energy` temps réel sur la minute et écrit un point unique aligné sur le début de minute, découpage HP/HC compris. Le `SelfConsumptionWriter` cumule de la même façon la minute appairée Réseau + Solaire et en dérive `autoconso` / `injection` / consommation foyer. C'est cette écriture sur un timestamp aligné identique qui permet au second d'écraser le premier (InfluxDB indexe les points par measurement + tag set + timestamp).
+Le `HistoryWriter` cumule donc les ticks `energy` temps réel sur la minute et écrit un point unique aligné sur le début de minute, découpage HP/HC compris. Le `SelfConsumptionWriter` cumule de la même façon la minute appairée Réseau + Solaire et en dérive `autoconso` / `injection` / consommation foyer.
+
+#### Un seul écrivain par série
+
+Les deux writers ferment leur bucket de minute sur des déclencheurs différents : le `HistoryWriter` par binding, le `SelfConsumptionWriter` au premier tick de la minute suivante venant de l'un ou l'autre compteur. Partager une série entre eux serait donc une course au dernier écrivain, arbitrée par le compteur qui émet le premier. La propriété des séries `energy` / `energy_hp` / `energy_hc` du compteur réseau est de ce fait exclusive :
+
+- **Avec un `energy_production_meter` configuré**, le `SelfConsumptionWriter` en est le seul écrivain (sémantique foyer), et le `HistoryWriter` ignore exactement ces trois alias sur le `main_energy_meter`. Il continue d'écrire tout le reste : puissance, tension, `energy_forward` / `energy_reverse`, tous les sous-compteurs, et l'énergie propre du compteur solaire.
+- **Réseau seul (pas de compteur de production)**, le `SelfConsumptionWriter` est inerte et le `HistoryWriter` écrit l'énergie réseau cumulée brute, comme avant.
+
+La propriété suit le cache d'équipements : ajouter ou retirer le compteur de production à chaud transfère la série sans redémarrage.
 
 Deux conséquences à connaître :
 
-- Les ticks porteurs d'un `sourceTimestamp` explicite (plugins publiant des fenêtres historiques alignées, ex. fenêtres 30 min Netatmo/Legrand) contournent le cumul — ils sont déjà agrégés et idempotents par construction.
-- Une minute qui n'a vu qu'un seul côté de la paire Réseau/Solaire ne produit pas de découpage d'autoconsommation ; les valeurs réseau brutes écrites par le `HistoryWriter` font foi.
+- Toute minute ayant vu un tick réseau est écrite. Une minute sans tick solaire n'est pas un trou : c'est un import réseau pur (`autoconso = 0`). Seule une minute solaire-seule est abandonnée — l'injection est indéfinie sans le côté réseau.
+- Les ticks porteurs d'un `sourceTimestamp` explicite (plugins publiant des fenêtres historiques alignées, ex. fenêtres 30 min Netatmo/Legrand) sont déjà agrégés : le `HistoryWriter` les écrit tels quels et le découpage HP/HC est classifié sur 30 minutes, et non sur les 60 s d'un bucket temps réel.
 
 ---
 

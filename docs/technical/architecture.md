@@ -265,12 +265,21 @@ InfluxDB is mandatory -- Sowel connects on startup and auto-creates buckets, dow
 
 An `energy` binding carries an **additive delta** (Wh since the previous tick), not a measurement. The deduplication that protects the other categories (deadband, 30 s min-write interval) would silently destroy energy: meters differ wildly in cadence -- a Shelly EM emits one tick a minute, a Tuya PJ-1203A emits ~30, of which a single one carries the 10 Wh counter jump.
 
-So `HistoryWriter` accumulates live `energy` ticks per minute and writes one point aligned on the minute start, HP/HC split included. `SelfConsumptionWriter` accumulates the paired Grid + Solar minute the same way and derives `autoconso` / `injection` / household from the summed minute. Both landing on the same aligned timestamp is what lets the second one upsert over the first (InfluxDB keys points by measurement + tag set + timestamp).
+So `HistoryWriter` accumulates live `energy` ticks per minute and writes one point aligned on the minute start, HP/HC split included. `SelfConsumptionWriter` accumulates the paired Grid + Solar minute the same way and derives `autoconso` / `injection` / household from the summed minute.
+
+#### One authority per series
+
+The two writers close their per-minute buckets on different triggers -- `HistoryWriter` per binding, `SelfConsumptionWriter` on the first tick of the next minute from either meter. Sharing a series between them would therefore be a last-write-wins race decided by which meter happens to tick first, so ownership of the grid meter's `energy` / `energy_hp` / `energy_hc` is exclusive:
+
+- **With an `energy_production_meter` configured**, `SelfConsumptionWriter` is their sole writer (household semantic), and `HistoryWriter` skips exactly those three aliases on the `main_energy_meter`. It keeps writing everything else: power, voltage, `energy_forward` / `energy_reverse`, every sub-meter, and the solar meter's own energy.
+- **Solo grid (no production meter)**, `SelfConsumptionWriter` is inert and `HistoryWriter` writes the raw accumulated grid energy as usual.
+
+Ownership follows the equipment cache, so adding or removing the production meter at runtime hands the series over without a restart.
 
 Two consequences worth knowing:
 
-- Ticks carrying an explicit `sourceTimestamp` (plugins that post aligned historical windows, e.g. 30-min Netatmo/Legrand windows) bypass accumulation -- they are already aggregated and idempotent by design.
-- A minute that saw only one side of the Grid/Solar pair gets no self-consumption split; the raw grid values written by `HistoryWriter` stand.
+- Every minute that saw a grid tick is written. A minute with no solar tick is not a hole: it is a pure grid import (`autoconso = 0`). Only a solar-only minute is dropped -- injection is undefined without the grid side.
+- Ticks carrying an explicit `sourceTimestamp` (plugins that post aligned historical windows, e.g. 30-min Netatmo/Legrand windows) are already aggregated, so `HistoryWriter` writes them through unchanged and the HP/HC split is classified over 30 minutes rather than the 60 s of a live bucket.
 
 ---
 

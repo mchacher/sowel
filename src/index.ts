@@ -520,9 +520,11 @@ async function main() {
   historyWriter.init();
 
   // 18-bis. Self-consumption writer: derives autoconso/injection from
-  // Grid + Solar energy ticks AND overwrites the grid-side energy/hp/hc
-  // points with their household-level equivalent so the consumption
-  // chart matches the legacy Netatmo semantic (spec 086 step F).
+  // Grid + Solar energy ticks AND owns the grid-side energy/hp/hc series,
+  // writing the household-level equivalent so the consumption chart matches
+  // the legacy Netatmo semantic (spec 086 step F). The HistoryWriter skips
+  // those three aliases on the main_energy_meter whenever a production meter
+  // is configured — one writer per series, no upsert race.
   const selfConsumptionWriter = new SelfConsumptionWriter(
     eventBus,
     equipmentManager,

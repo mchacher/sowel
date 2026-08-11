@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import { SelfConsumptionWriter } from "./self-consumption-writer.js";
@@ -10,15 +10,17 @@ import type { TariffClassifier } from "./tariff-classifier.js";
 const logger = createLogger("silent").logger;
 
 /**
- * Stub TariffClassifier — splits a value 60/40 into hp/hc deterministically.
- * Real tariff prorata is exercised in tariff-classifier.test.ts; here we
- * only assert the writer routes household values through the classifier.
+ * Stub TariffClassifier — splits a value 60/40 into hp/hc deterministically
+ * and records the window it was asked to classify. Real tariff prorata is
+ * exercised in tariff-classifier.test.ts; here we only assert the writer
+ * routes household values through the classifier over the right window.
  */
+const classifyCalls: Array<{ totalWh: number; windowStart: number; windowS?: number }> = [];
 const stubTariff: TariffClassifier = {
-  classify: (totalWh: number) => ({
-    hp: Math.round(totalWh * 0.6),
-    hc: Math.round(totalWh * 0.4),
-  }),
+  classify: (totalWh: number, windowStart: number, windowS?: number) => {
+    classifyCalls.push({ totalWh, windowStart, windowS });
+    return { hp: Math.round(totalWh * 0.6), hc: Math.round(totalWh * 0.4) };
+  },
 } as unknown as TariffClassifier;
 
 const GRID_ID = "grid-uuid";
@@ -82,6 +84,11 @@ function makeStubEquipmentManager(opts: {
   } as unknown as EquipmentManager;
 }
 
+/**
+ * Emit an energy delta. Without `sourceTimestamp` this is the live path (the
+ * writer buckets on the wall clock, which the tests drive with fake timers);
+ * with one it is the aligned-window path plugins like Netatmo use.
+ */
 function emitEnergyChange(
   bus: EventBus,
   equipmentId: string,
@@ -98,8 +105,9 @@ function emitEnergyChange(
   } as never);
 }
 
-/** Minute-aligned epoch second used as the base of every scenario. */
+/** Minute-aligned epoch used as the base of every scenario. */
 const T0 = 1714723200;
+const T0_MS = T0 * 1000;
 
 describe("SelfConsumptionWriter", () => {
   let bus: EventBus;
@@ -120,20 +128,29 @@ describe("SelfConsumptionWriter", () => {
     return writer;
   }
 
+  /** Move the wall clock to `T0 + seconds`. */
+  function at(seconds: number): void {
+    vi.setSystemTime(T0_MS + seconds * 1000);
+  }
+
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0_MS);
     bus = new EventBus(logger);
     influx = new StubInfluxClient();
+    classifyCalls.length = 0;
   });
 
   afterEach(() => {
     writer?.destroy();
+    vi.useRealTimers();
   });
 
   it("writes autoconso=solar and injection=0 when grid is importing (grid > 0)", () => {
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 5, T0);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
 
     const auto = influx.written.find((p) => p.alias === "autoconso");
@@ -147,8 +164,8 @@ describe("SelfConsumptionWriter", () => {
     makeWriter();
 
     // Solar produces 8, house uses 3 → grid exports 5 (gridΔ = -5)
-    emitEnergyChange(bus, GRID_ID, -5, T0);
-    emitEnergyChange(bus, SOLAR_ID, 8, T0);
+    emitEnergyChange(bus, GRID_ID, -5);
+    emitEnergyChange(bus, SOLAR_ID, 8);
     writer.flushPending(true);
 
     const auto = influx.written.find((p) => p.alias === "autoconso");
@@ -160,8 +177,8 @@ describe("SelfConsumptionWriter", () => {
   it("writes 0/0 when neither side is producing/consuming", () => {
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 0, T0);
-    emitEnergyChange(bus, SOLAR_ID, 0, T0);
+    emitEnergyChange(bus, GRID_ID, 0);
+    emitEnergyChange(bus, SOLAR_ID, 0);
     writer.flushPending(true);
 
     const auto = influx.written.find((p) => p.alias === "autoconso");
@@ -177,14 +194,17 @@ describe("SelfConsumptionWriter", () => {
     // single one carries the counter jump. Sampling any one pair would write
     // autoconso = 0 and lose the whole minute.
     for (let i = 0; i < 10; i++) {
-      emitEnergyChange(bus, GRID_ID, 0, T0 + i * 2);
-      emitEnergyChange(bus, SOLAR_ID, 0, T0 + i * 2);
+      at(i * 2);
+      emitEnergyChange(bus, GRID_ID, 0);
+      emitEnergyChange(bus, SOLAR_ID, 0);
     }
-    emitEnergyChange(bus, GRID_ID, -20, T0 + 40);
-    emitEnergyChange(bus, SOLAR_ID, 50, T0 + 40);
+    at(40);
+    emitEnergyChange(bus, GRID_ID, -20);
+    emitEnergyChange(bus, SOLAR_ID, 50);
     for (let i = 0; i < 5; i++) {
-      emitEnergyChange(bus, GRID_ID, 0, T0 + 42 + i * 2);
-      emitEnergyChange(bus, SOLAR_ID, 0, T0 + 42 + i * 2);
+      at(42 + i * 2);
+      emitEnergyChange(bus, GRID_ID, 0);
+      emitEnergyChange(bus, SOLAR_ID, 0);
     }
     writer.flushPending(true);
 
@@ -194,10 +214,28 @@ describe("SelfConsumptionWriter", () => {
     expect(auto?.value).toBe(30); // 50 produced - 20 injected
   });
 
-  it("does not write if only Grid arrived (no Solar tick in the minute)", () => {
+  it("writes a grid-only minute as pure import (autoconso=0), leaving no hole", () => {
+    // As the sole writer of the grid series it must cover every minute the
+    // grid reported — a missing solar tick means no self-consumption, not an
+    // undefined minute.
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 5, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
+    writer.flushPending(true);
+
+    const auto = influx.written.find((p) => p.alias === "autoconso");
+    const inj = influx.written.find((p) => p.alias === "injection");
+    const energy = influx.written.find((p) => p.alias === "energy" && p.equipmentId === GRID_ID);
+    expect(auto?.value).toBe(0);
+    expect(inj?.value).toBe(0);
+    expect(energy?.value).toBe(5); // household == grid import
+    expect(energy?.timestamp).toBe(T0);
+  });
+
+  it("drops a solar-only minute (injection undefined without the grid side)", () => {
+    makeWriter();
+
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
 
     expect(influx.written).toHaveLength(0);
@@ -206,13 +244,16 @@ describe("SelfConsumptionWriter", () => {
   it("writes one aligned point per minute", () => {
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 5, T0 + 10);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0 + 10);
-    emitEnergyChange(bus, GRID_ID, 6, T0 + 50);
-    emitEnergyChange(bus, SOLAR_ID, 4, T0 + 50);
+    at(10);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
+    at(50);
+    emitEnergyChange(bus, GRID_ID, 6);
+    emitEnergyChange(bus, SOLAR_ID, 4);
     // Next minute closes the previous bucket
-    emitEnergyChange(bus, GRID_ID, 1, T0 + 70);
-    emitEnergyChange(bus, SOLAR_ID, 2, T0 + 70);
+    at(70);
+    emitEnergyChange(bus, GRID_ID, 1);
+    emitEnergyChange(bus, SOLAR_ID, 2);
     writer.flushPending(true);
 
     const autos = influx.written.filter((p) => p.alias === "autoconso");
@@ -226,10 +267,16 @@ describe("SelfConsumptionWriter", () => {
   it("keeps a minute open until it elapses (no premature write)", () => {
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 5, T0);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
 
-    // T0 is in the past, so the sweep closes it; nothing forced.
+    // Still inside the minute: the sweep leaves it alone.
+    at(30);
+    writer.flushPending();
+    expect(influx.written).toHaveLength(0);
+
+    // Once elapsed, the sweep closes it without any new tick.
+    at(60);
     writer.flushPending();
     expect(influx.written.filter((p) => p.alias === "autoconso")).toHaveLength(1);
 
@@ -277,7 +324,7 @@ describe("SelfConsumptionWriter", () => {
   it("does not write if Solar production_meter is missing", () => {
     makeWriter(makeStubEquipmentManager({ hasSolar: false }));
 
-    emitEnergyChange(bus, GRID_ID, 5, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
     writer.flushPending(true);
     expect(influx.written).toHaveLength(0);
   });
@@ -286,50 +333,77 @@ describe("SelfConsumptionWriter", () => {
     influx.connected = false;
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 5, T0);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
     expect(influx.written).toHaveLength(0);
   });
 
-  it("overwrites grid-side energy/hp/hc with household-semantic values", () => {
+  it("writes grid-side energy/hp/hc with household-semantic values", () => {
     makeWriter();
 
     // grid imports 5 Wh, solar produces 3 Wh fully consumed in-house.
     // household = max(0, 5) + max(0, 3 - max(0, -5)) = 5 + 3 = 8
-    emitEnergyChange(bus, GRID_ID, 5, T0);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
 
     const energy = influx.written.find((p) => p.alias === "energy" && p.equipmentId === GRID_ID);
     const hp = influx.written.find((p) => p.alias === "energy_hp" && p.equipmentId === GRID_ID);
     const hc = influx.written.find((p) => p.alias === "energy_hc" && p.equipmentId === GRID_ID);
     expect(energy?.value).toBe(8); // household
-    expect(energy?.timestamp).toBe(T0); // same minute the HistoryWriter uses ⇒ upsert
+    expect(energy?.timestamp).toBe(T0); // aligned on the minute start
     expect(hp?.value).toBe(5); // 8 * 0.6 → 4.8 → 5
     expect(hc?.value).toBe(3); // 8 * 0.4 → 3.2 → 3
   });
 
-  it("does not overwrite grid-side when grid equipment is missing (solo solar)", () => {
+  it("classifies a live bucket over its real 60 s window", () => {
+    makeWriter();
+
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
+    writer.flushPending(true);
+
+    expect(classifyCalls).toEqual([{ totalWh: 8, windowStart: T0, windowS: 60 }]);
+  });
+
+  it("keeps the 30-min window for plugin-supplied aligned windows", () => {
+    // Netatmo / Legrand post already-aggregated 30-min windows with an
+    // explicit sourceTimestamp; classifying those as one minute would
+    // mis-prorate every tariff transition.
+    makeWriter();
+
+    emitEnergyChange(bus, GRID_ID, 500, T0);
+    emitEnergyChange(bus, SOLAR_ID, 200, T0);
+    writer.flushPending(true);
+
+    expect(classifyCalls).toEqual([{ totalWh: 700, windowStart: T0, windowS: 1800 }]);
+    const energy = influx.written.find((p) => p.alias === "energy" && p.equipmentId === GRID_ID);
+    expect(energy?.value).toBe(700); // household, at the aligned timestamp
+    expect(energy?.timestamp).toBe(T0);
+  });
+
+  it("does not write grid-side when grid equipment is missing (solo solar)", () => {
     makeWriter(makeStubEquipmentManager({ hasGrid: false }));
 
-    emitEnergyChange(bus, SOLAR_ID, 3, T0);
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
-    // No grid event → no pairing → no writes either way.
+    // No grid tick → the minute is undefined → no writes either way.
     expect(influx.written).toHaveLength(0);
   });
 
   it("destroy() flushes the open minute, then stops writing", () => {
     makeWriter();
 
-    emitEnergyChange(bus, GRID_ID, 5, T0);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.destroy();
     expect(influx.written.filter((p) => p.alias === "autoconso")).toHaveLength(1);
 
     influx.written = [];
-    emitEnergyChange(bus, GRID_ID, 5, T0 + 60);
-    emitEnergyChange(bus, SOLAR_ID, 3, T0 + 60);
+    at(60);
+    emitEnergyChange(bus, GRID_ID, 5);
+    emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
     expect(influx.written).toHaveLength(0);
   });

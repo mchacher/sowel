@@ -105,6 +105,15 @@ describe("TariffClassifier.classify", () => {
     expect(c.classify(600, epochAt(`${MONDAY}T21:50:00`))).toEqual({ hp: 200, hc: 400 });
   });
 
+  it("honours the window duration instead of assuming 30 minutes", () => {
+    const c = makeClassifier(nightAndDay);
+    // A per-minute bucket at 05:45 is entirely off-peak: only the minute that
+    // actually straddles 06:00 may be prorated.
+    expect(c.classify(1000, epochAt(`${MONDAY}T05:45:00`), 60)).toEqual({ hp: 0, hc: 1000 });
+    expect(c.classify(1000, epochAt(`${MONDAY}T05:59:00`), 60)).toEqual({ hp: 0, hc: 1000 });
+    expect(c.classify(1000, epochAt(`${MONDAY}T06:00:00`), 60)).toEqual({ hp: 1000, hc: 0 });
+  });
+
   it("falls back to HP for a day with no schedule", () => {
     const c = makeClassifier({
       schedules: [{ days: [0], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] }],

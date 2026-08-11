@@ -58,15 +58,18 @@ export class TariffClassifier {
   }
 
   /**
-   * Classify a 30-min energy window into HP/HC split.
+   * Classify an energy window into HP/HC split.
    * Uses the tariff schedule in effect for the window's day-of-week.
    * Applies linear prorata if the window straddles a tariff transition.
    *
-   * @param totalWh Total energy in Wh for the 30-min window
+   * @param totalWh Total energy in Wh for the window
    * @param windowStartEpoch Window start as Unix epoch seconds
+   * @param windowSeconds Window duration in seconds (default 30 min — the
+   *   historical aggregation window). Callers folding per-minute buckets
+   *   pass 60 so a tariff transition only prorates the minute it lands in.
    * @returns HP/HC split in Wh
    */
-  classify(totalWh: number, windowStartEpoch: number): TariffSplit {
+  classify(totalWh: number, windowStartEpoch: number, windowSeconds = HALF_HOUR_S): TariffSplit {
     const config = this.getConfig();
     if (!config) {
       // No tariff configured → everything is HP
@@ -84,7 +87,7 @@ export class TariffClassifier {
     }
 
     const windowStartMinutes = windowStart.getHours() * 60 + windowStart.getMinutes();
-    const windowEndMinutes = windowStartMinutes + 30;
+    const windowEndMinutes = windowStartMinutes + windowSeconds / 60;
 
     let hpMinutes = 0;
     let hcMinutes = 0;
