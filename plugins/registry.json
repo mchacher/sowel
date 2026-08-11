@@ -326,21 +326,21 @@
     "type": "recipe",
     "category": "water",
     "name": "Pool Pump Schedule",
-    "description": "Scheduled on/off for a pool pump — up to 3 daily time windows",
+    "description": "Pool pump control: daily schedule windows, an optional water-temperature filtration-time target, and optional solar-surplus running.",
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.1.0",
-    "tags": ["pool", "pump", "schedule", "automation"],
+    "version": "1.2.0",
+    "tags": ["pool", "pump", "schedule", "automation", "temperature", "solar", "energy"],
     "i18n": {
       "fr": {
         "name": "Programmation pompe piscine",
-        "description": "Plages horaires on/off pour la pompe de piscine — jusqu'à 3 créneaux par jour"
+        "description": "Pilotage de pompe de piscine : créneaux horaires quotidiens, cible de temps de filtration selon la température de l'eau (option) et fonctionnement sur surplus solaire (option)."
       }
     },
     "sowelVersion": ">=1.3.0",
     "owner": "mchacher",
-    "sha256": "0616a65abac7e221c87bd4e77c5e543ad8cbaa95577b54fdd5ca7aca8445cae8"
+    "sha256": "7c5130bd06ecd66d0297b2a266fe0ec2e22470b2f6f66a98a76317ce7efd028b"
   },
   {
     "id": "freecooling",
@@ -515,7 +515,7 @@
     "icon": "Snowflake",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-smart-cooling",
-    "version": "1.2.0",
+    "version": "1.4.0",
     "tags": ["cooling", "ac", "solar", "energy", "automation"],
     "i18n": {
       "fr": {
@@ -525,7 +525,7 @@
     },
     "sowelVersion": ">=1.31.1",
     "owner": "mchacher",
-    "sha256": "d4b632af817acbfaefb7be0c4ea54666e8088e3d0013bc78c40de2fcd12c336c"
+    "sha256": "bde6257f27bbffb9a8560a9f7fc2854e6199fbe865c781d2236906c9eb1fcaa2"
   },
   {
     "id": "netatmo_camera",
