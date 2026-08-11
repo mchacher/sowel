@@ -6,21 +6,33 @@ import { useEquipments } from "../../store/useEquipments";
 
 /**
  * Spec 140 — arbiter card in Settings → Administration. Enable switch, the
- * user-owned priority list (up/down, no drag dependency), thresholds under
- * an advanced fold. On installations without a production meter the card
- * explains why arbitration has nothing to do instead of offering a switch
- * that would animate an empty timeline.
+ * user-owned priority list (up/down, no drag dependency), thresholds under an
+ * advanced fold. The arbiter reads the MAIN ENERGY METER (grid export), so the
+ * card gates on that — not on a production meter, which is only used for the
+ * display bar. A home whose solar shows up as grid export (one bidirectional
+ * clamp, no separate production meter) can and should enable it.
  */
 const PREFIX = "energy.arbiter.";
-const ADVANCED: Array<{ key: string; fallback: number }> = [
-  { key: "engageMarginW", fallback: 100 },
-  { key: "engageHoldS", fallback: 120 },
-  { key: "releaseHoldS", fallback: 600 },
-  { key: "smoothingS", fallback: 60 },
-  { key: "overrideTtlS", fallback: 7200 },
-  { key: "staleAfterS", fallback: 300 },
-  { key: "divergenceConfirmS", fallback: 60 },
+/** Each threshold with a hard minimum, so clearing a field can never persist a
+ *  0 that silently kills the feature (staleAfterS=0 → permanently degraded). */
+const ADVANCED: Array<{ key: string; fallback: number; min: number }> = [
+  { key: "engageMarginW", fallback: 100, min: 0 },
+  { key: "engageHoldS", fallback: 120, min: 5 },
+  { key: "releaseHoldS", fallback: 600, min: 5 },
+  { key: "smoothingS", fallback: 60, min: 1 },
+  { key: "overrideTtlS", fallback: 7200, min: 60 },
+  { key: "staleAfterS", fallback: 300, min: 30 },
+  { key: "divergenceConfirmS", fallback: 60, min: 5 },
 ];
+
+function parsePriority(raw: string | undefined): string[] {
+  try {
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 export function ArbiterSettings() {
   const { t } = useTranslation();
@@ -28,6 +40,7 @@ export function ArbiterSettings() {
   const fetchEquipments = useEquipments((s) => s.fetchEquipments);
   const [settings, setSettings] = useState<Record<string, string> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
@@ -37,36 +50,49 @@ export function ArbiterSettings() {
       .catch(() => setSettings({}));
   }, [fetchEquipments]);
 
-  const hasProduction = useMemo(
-    () => equipments.some((e) => e.type === "energy_production_meter" || e.type === "solar_panel"),
+  const hasGridMeter = useMemo(
+    () => equipments.some((e) => e.type === "main_energy_meter"),
     [equipments],
   );
   const profiled = useMemo(() => equipments.filter((e) => e.energyProfile), [equipments]);
 
   const enabled = settings?.[PREFIX + "enabled"] === "true";
+
+  // Displayed order = persisted ids (that are still profiled) then any profiled
+  // id not yet persisted, appended at the bottom.
   const priority: string[] = useMemo(() => {
-    try {
-      const raw = settings?.[PREFIX + "priority"];
-      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-      const ids = Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
-      // Profiled equipments missing from the list append at the bottom (most
-      // sacrificable position) until the user moves them.
-      const missing = profiled.map((e) => e.id).filter((id) => !ids.includes(id));
-      return [...ids.filter((id) => profiled.some((e) => e.id === id)), ...missing];
-    } catch {
-      return profiled.map((e) => e.id);
-    }
+    const ids = parsePriority(settings?.[PREFIX + "priority"]);
+    const kept = ids.filter((id) => profiled.some((e) => e.id === id));
+    const missing = profiled.map((e) => e.id).filter((id) => !kept.includes(id));
+    return [...kept, ...missing];
   }, [settings, profiled]);
 
   const put = async (patch: Record<string, string>) => {
     setSaving(true);
+    setError(null);
     try {
       await updateSettings(patch);
       setSettings((prev) => ({ ...(prev ?? {}), ...patch }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
   };
+
+  // Persist the displayed order whenever it drifts from what is stored — new
+  // profiled loads appear appended, and the arbiter honors ONLY the stored
+  // list (anything absent ties at the bottom). Without this, the numbered list
+  // shown to the user is not the order the arbiter actually uses.
+  useEffect(() => {
+    if (settings === null || profiled.length === 0) return;
+    const stored = parsePriority(settings[PREFIX + "priority"]).filter((id) =>
+      profiled.some((e) => e.id === id),
+    );
+    if (JSON.stringify(stored) !== JSON.stringify(priority)) {
+      void put({ [PREFIX + "priority"]: JSON.stringify(priority) });
+    }
+  }, [settings, profiled, priority]);
 
   const move = (index: number, dir: -1 | 1) => {
     const next = [...priority];
@@ -74,6 +100,16 @@ export function ArbiterSettings() {
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     void put({ [PREFIX + "priority"]: JSON.stringify(next) });
+  };
+
+  const commitThreshold = (key: string, min: number, fallback: number, el: HTMLInputElement) => {
+    const v = Number(el.value);
+    if (el.value.trim() === "" || !Number.isFinite(v) || v < min) {
+      // Refuse an empty/too-low value (would disable the feature); snap back.
+      el.value = String(Number(settings?.[PREFIX + key] ?? fallback));
+      return;
+    }
+    void put({ [PREFIX + key]: String(Math.round(v)) });
   };
 
   if (settings === null) {
@@ -92,7 +128,7 @@ export function ArbiterSettings() {
       <div className="flex items-center gap-2 mb-1">
         <Scale size={18} strokeWidth={1.5} className="text-text-secondary" />
         <h2 className="text-[15px] font-semibold text-text">{t("arbiter.title")}</h2>
-        {hasProduction && (
+        {hasGridMeter && (
           <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
             <input
               type="checkbox"
@@ -106,8 +142,8 @@ export function ArbiterSettings() {
       </div>
       <p className="text-[12px] text-text-tertiary mb-4">{t("arbiter.hint")}</p>
 
-      {!hasProduction ? (
-        <p className="text-[13px] text-text-secondary">{t("arbiter.noProduction")}</p>
+      {!hasGridMeter ? (
+        <p className="text-[13px] text-text-secondary">{t("arbiter.noGridMeter")}</p>
       ) : (
         <>
           <h3 className="text-[13px] font-medium text-text mb-2">{t("arbiter.priorityTitle")}</h3>
@@ -134,16 +170,16 @@ export function ArbiterSettings() {
                       <button
                         onClick={() => move(i, -1)}
                         disabled={i === 0 || saving}
-                        className="p-1 text-text-tertiary hover:text-text disabled:opacity-30"
-                        aria-label={t("arbiter.moveUp")}
+                        className="p-1 text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                        aria-label={t("arbiter.moveUpNamed", { name: eq.name })}
                       >
                         <ArrowUp size={14} />
                       </button>
                       <button
                         onClick={() => move(i, 1)}
                         disabled={i === priority.length - 1 || saving}
-                        className="p-1 text-text-tertiary hover:text-text disabled:opacity-30"
-                        aria-label={t("arbiter.moveDown")}
+                        className="p-1 text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                        aria-label={t("arbiter.moveDownNamed", { name: eq.name })}
                       >
                         <ArrowDown size={14} />
                       </button>
@@ -163,15 +199,17 @@ export function ArbiterSettings() {
           </button>
           {showAdvanced && (
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {ADVANCED.map(({ key, fallback }) => (
+              {ADVANCED.map(({ key, fallback, min }) => (
                 <div key={key}>
-                  <label className="block text-[11px] text-text-tertiary mb-1">
+                  <label className="block text-[11px] text-text-tertiary mb-1" htmlFor={`arb-${key}`}>
                     {t(`arbiter.settings.${key}`)}
                   </label>
                   <input
+                    id={`arb-${key}`}
                     type="number"
+                    min={min}
                     defaultValue={Number(settings[PREFIX + key] ?? fallback)}
-                    onBlur={(e) => void put({ [PREFIX + key]: e.target.value })}
+                    onBlur={(e) => commitThreshold(key, min, fallback, e.target)}
                     className="w-full px-2 py-1 border border-border rounded text-[13px] text-text bg-background"
                   />
                 </div>
@@ -180,6 +218,8 @@ export function ArbiterSettings() {
           )}
         </>
       )}
+
+      {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}
     </div>
   );
 }

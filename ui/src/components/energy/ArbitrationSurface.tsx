@@ -15,14 +15,25 @@ import { buildLanes, isToday, minuteOfDay, type Lane } from "../../lib/arbitrati
  * no-PV home never sees dead arbitration UI.
  */
 
-const HOUSE_COLOR = "#4F7BE8";
+const HOUSE_COLOR = "#33529E"; // darker blue: white 11px bold on it clears WCAG AA
 const GRANTED_COLOR = "#6BCB77";
 const GRANTED_TEXT = "#123f1c";
 const HC_COLOR = "#BB8232";
-const MANUAL_COLOR = "#8A97A3";
+const MANUAL_COLOR = "#6E7C88"; // darkened to clear 3:1 on a light surface
 const REVOKE_COLOR = "#E5484D";
 
+/** Translate a timeline marker's raw backend reason code for its tooltip. */
+function markerTitle(m: Lane["markers"][number], t: (k: string) => string): string {
+  if (m.kind === "revoked") {
+    const key = `arbiter.revokeReason.${m.label}`;
+    const tr = t(key);
+    return tr === key ? t("arbiter.kind.revoked") : tr;
+  }
+  return t("arbiter.kind.unclaimed-run");
+}
+
 function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: Lane[]; nowMin: number }) {
+  const { t } = useTranslation();
   const W = 840;
   const LEFT = 110;
   const RIGHT = 12;
@@ -44,7 +55,7 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
 
   return (
     <div className="overflow-x-auto">
-      <svg width={W} height={H} role="img" aria-label="Arbitration timeline">
+      <svg width={W} height={H} role="img" aria-label={t("arbiter.timelineLabel")}>
         <defs>
           <pattern id="arb-hatch-man" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
             <rect width="6" height="6" fill={MANUAL_COLOR} fillOpacity="0.16" />
@@ -108,11 +119,11 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
                       d={`M ${x(m.min) - 4.5} ${yTop - 7} L ${x(m.min) + 4.5} ${yTop - 7} L ${x(m.min)} ${yTop - 1} Z`}
                       fill={REVOKE_COLOR}
                     >
-                      <title>{m.label}</title>
+                      <title>{markerTitle(m, t)}</title>
                     </path>
                   ) : (
                     <rect x={x(m.min) - 3} y={yTop - 8} width={6} height={6} transform={`rotate(45 ${x(m.min)} ${yTop - 5})`} fill={HC_COLOR}>
-                      <title>{m.label}</title>
+                      <title>{markerTitle(m, t)}</title>
                     </rect>
                   )}
                 </g>
@@ -255,6 +266,7 @@ export function ArbitrationSurface() {
               ? "text-green-700 dark:text-green-400 border-green-600/40"
               : "text-amber-600 dark:text-amber-400 border-amber-500/40"
           }`}
+          title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
         >
           {t(`arbiter.state.${state.state}`)}
           {available !== null && (
@@ -262,6 +274,11 @@ export function ArbitrationSurface() {
           )}
         </span>
       </div>
+      {state.state === "degraded" && (
+        <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-2">
+          {t("arbiter.degradedReason")}
+        </p>
+      )}
 
       {/* Allocation bar */}
       {showBar && (
@@ -292,7 +309,7 @@ export function ArbitrationSurface() {
                 style={{ flex: free }}
                 title={t("arbiter.free")}
               >
-                <span className="font-mono">{(free / 1000).toFixed(1)}</span>
+                <span className="font-mono">{(free / 1000).toFixed(1)} kW</span>
               </div>
             )}
           </div>

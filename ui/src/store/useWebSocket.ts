@@ -209,9 +209,12 @@ function handleEvent(event: EngineEvent): void {
       useActivity.getState().addItem(event.item);
       break;
     // Spec 140 — capacity arbiter: patch the live number instantly, then
-    // refetch the full read model (journal, grants) once per burst.
+    // refetch the full read model. A status event also fires when suspensions
+    // change (which the status value doesn't carry), so a debounced full
+    // refresh is needed for the suspension chip to appear/clear live.
     case "energy.arbiter.status":
       useArbiter.getState().patchStatus(event.state, event.availableSurplusW);
+      useArbiter.getState().refreshSoon();
       break;
     case "energy.capacity.granted":
     case "energy.capacity.revoked":

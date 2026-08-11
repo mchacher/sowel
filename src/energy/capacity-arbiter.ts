@@ -538,7 +538,17 @@ export class CapacityArbiter {
     // on a contradiction that started before the manual override was lifted.
     this.divergenceSince.delete(equipmentId);
     this.journal({ kind: "resumed", equipmentId, reason: "resume control" });
+    this.forceStatusEmit(); // let the UI drop the "Manual until…" chip live
+    this.evaluate();
     return true;
+  }
+
+  /** Emit an `energy.arbiter.status` even if the coarse value is unchanged —
+   *  used when suspensions change (which the status value does not capture) so
+   *  the UI refetches the full read model. */
+  private forceStatusEmit(): void {
+    this.lastStatus = null;
+    this.emitStatus();
   }
 
   // ── Public read model (route + UI + recipe state) ───────────
@@ -901,6 +911,11 @@ export class CapacityArbiter {
     if (granted) this.revoke(granted, "manual-override");
     this.journal({ kind: "suspended", equipmentId, reason: why });
     this.logger.info({ equipmentId, why }, "Arbitration suspended (manual override)");
+    // Force a status event: suspending an IDLE (ungranted) load revokes
+    // nothing, so without this the UI (which refreshes on energy.* events)
+    // would not learn about the new suspension until the next full fetch —
+    // and the "Manual until HH:MM" chip + Resume would not appear.
+    this.forceStatusEmit();
   }
 
   // ── Watchdogs & divergence ──────────────────────────────────
