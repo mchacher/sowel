@@ -137,6 +137,9 @@ Once an integration connects, devices appear automatically. The table shows:
 
 Use the integration tabs at the top to filter by source. If devices do not appear, check that your integration is connected (green indicator) and that devices are paired with your coordinator or registered in your cloud account.
 
+!!! tip "Devices from a second Zigbee coordinator are missing"
+Each Zigbee2MQTT instance has its own base topic, and the plugin only listens to the topics you list in its **Zigbee2MQTT Base Topic(s)** setting. If a whole network is missing, its base topic is probably absent from that list — see [Several Zigbee coordinators](host-setup.md#several-zigbee-coordinators). If the list is right, the devices are there but sorted under their base topic prefix, at the bottom of the table.
+
 ### Step 4: Create your zone topology
 
 Go to **Administration > Topology**.

@@ -85,6 +85,20 @@ Each device gets a stable UUID generated from its `(integrationId, sourceDeviceI
 
 This sounds boring until the day you have to do it.
 
+### With several Zigbee coordinators
+
+A home with several Zigbee coordinators runs one Zigbee2MQTT instance per coordinator, all declared in a single plugin — see the "Several Zigbee coordinators" section of [Preparing the Host](host-setup.md). The first network in the list keeps its device names as-is; the following ones prefix theirs with their base topic, so that two networks can host a `kitchen_lamp` each without their devices merging.
+
+That prefix is **part of the source device ID**, so it falls under the rule above:
+
+- Adding a network **at the end** of the list leaves every existing device untouched.
+- Reordering the list, renaming a base topic, or adding or removing a prefix **changes the source device IDs** of the affected network. Those devices are recreated as new ones, and their equipment bindings are dropped.
+
+!!! tip "Decide the naming before you bind"
+Right after you declare a new network, its devices have no bindings yet — that is the one moment where changing your mind about the prefix costs nothing. Once you have built equipments on top, it does not.
+
+If your device names are unique across all your networks, dropping the prefix (`zigbee2mqtt_annex:`, with a trailing colon) keeps a single flat inventory sorted by name, rather than pushing a whole network to the bottom of the list under its base topic. The trade-off is that two devices sharing a name would then silently become one.
+
 ---
 
 ## Why it matters

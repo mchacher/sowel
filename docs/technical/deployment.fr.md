@@ -391,7 +391,7 @@ Un déploiement domestique typique sur un seul hôte ressemble à ceci :
 - **Version actuelle** : `docker logs sowel | grep "Sowel engine started"`
 - **Backups** : locaux dans `data/backups/` (auto), plus des téléchargements manuels conservés hors de l'hôte
 - **MQTT** : `mosquitto` externe tournant sur le même hôte (pas dans le compose), utilisé par les plugins `zigbee2mqtt` et `lora2mqtt`
-- **Zigbee2MQTT** : daemon externe sur le même hôte, pas géré par Sowel lui-même
+- **Zigbee2MQTT** : daemon externe sur le même hôte, pas géré par Sowel lui-même. Une instance par coordinateur Zigbee — plusieurs instances partagent le broker, chacune avec son base topic et son répertoire de données, et le plugin `zigbee2mqtt` les dessert toutes. Voir [Plusieurs coordinateurs Zigbee](../user/host-setup.md#plusieurs-coordinateurs-zigbee).
 
 Le graphe de connectivité :
 
