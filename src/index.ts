@@ -2,7 +2,7 @@ import { resolve, dirname } from "node:path";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { hostname } from "node:os";
 import { loadConfig } from "./config.js";
-import { createLogger } from "./core/logger.js";
+import { createLogger, purgeLegacyLogFiles } from "./core/logger.js";
 import { LogRingBuffer } from "./core/log-buffer.js";
 import { installProcessCrashHandlers } from "./core/process-crash-handlers.js";
 import { AuditLogger } from "./core/audit-logger.js";
@@ -107,6 +107,10 @@ async function main() {
   // Throws before this point are caught by the `main().catch()` block
   // at the bottom of this file (stderr JSON fallback).
   installProcessCrashHandlers(logger);
+
+  // #400 follow-up — pre-date-format log files are invisible to pino-roll's
+  // retention; drop the ones past the normal 14-day window.
+  purgeLegacyLogFiles(logger);
 
   // Flush deferred timezone diagnostics
   const tzLogger = logger.child({ module: "timezone" });

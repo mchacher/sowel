@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import pino from "pino";
-import { mkdtempSync, rmSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readdirSync, readFileSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileTransportOptions } from "./logger.js";
+import { fileTransportOptions, purgeLegacyLogFiles } from "./logger.js";
 
 // #400 — one calendar day must map to one predictable log file across restarts.
 
@@ -86,5 +86,59 @@ describe("pino-roll file naming (integration)", () => {
     expect(files).toContain("sowel.3.log");
     expect(files).toContain("backfill-rain.log");
     expect(files.some((f) => DATED_FILE_RE.test(f))).toBe(true);
+  });
+});
+
+// #400 follow-up — one-shot purge of pre-date-format files at boot.
+describe("purgeLegacyLogFiles", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sowel-legacy-purge-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function makeSpyLogger() {
+    const spy = { info: vi.fn(), warn: vi.fn() };
+    return spy;
+  }
+
+  function touch(name: string, ageDays: number): void {
+    const path = join(dir, name);
+    writeFileSync(path, "x\n");
+    const t = new Date(Date.now() - ageDays * 24 * 3600_000);
+    utimesSync(path, t, t);
+  }
+
+  it("removes only legacy-format files older than 14 days", () => {
+    touch("sowel.3.log", 20); // legacy, stale → removed
+    touch("sowel.11.log", 40); // legacy, stale → removed
+    touch("sowel.5.log", 3); // legacy, recent → kept
+    touch("sowel.2026-07-01.1.log", 40); // new format → pino-roll's job, kept
+    touch("backfill-rain.log", 400); // unrelated → kept
+
+    const spy = makeSpyLogger();
+    purgeLegacyLogFiles(spy as never, dir);
+
+    const files = readdirSync(dir).sort();
+    expect(files).toEqual(["backfill-rain.log", "sowel.2026-07-01.1.log", "sowel.5.log"]);
+    expect(spy.info.mock.calls.length).toBe(1);
+    expect(spy.info.mock.calls[0][0]).toMatchObject({ removed: 2 });
+  });
+
+  it("stays silent when there is nothing to purge", () => {
+    touch("sowel.2026-08-01.1.log", 5);
+    const spy = makeSpyLogger();
+    purgeLegacyLogFiles(spy as never, dir);
+    expect(spy.info.mock.calls.length).toBe(0);
+    expect(spy.warn.mock.calls.length).toBe(0);
+  });
+
+  it("does not throw on a missing directory", () => {
+    const spy = makeSpyLogger();
+    expect(() => purgeLegacyLogFiles(spy as never, join(dir, "absent"))).not.toThrow();
   });
 });

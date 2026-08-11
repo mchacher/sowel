@@ -1,5 +1,7 @@
 import pino from "pino";
 import { Writable } from "node:stream";
+import { existsSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
 import type { LogRingBuffer } from "./log-buffer.js";
 
 export type Logger = pino.Logger;
@@ -55,6 +57,48 @@ export function fileTransportOptions(file = "data/logs/sowel"): {
     limit: { count: 14, removeOtherLogFiles: true },
     mkdir: true,
   };
+}
+
+/** Retention window matching `fileTransportOptions().limit.count` days. */
+const LEGACY_LOG_RETENTION_MS = 14 * 24 * 3600_000;
+
+/** Pre-#400 rotation format: sowel.<number>.log, no date segment. */
+const LEGACY_LOG_RE = /^sowel\.\d+\.log$/;
+
+/**
+ * One-shot migration purge (#400 follow-up): pino-roll's cleanup only
+ * pattern-matches the new date-stamped format, so files rotated by versions
+ * before the switch would sit on disk forever. Delete legacy-format files
+ * older than the normal retention window; recent ones are kept so the last
+ * two weeks of history stay greppable across the format change. Never
+ * throws — a purge failure must not block boot.
+ *
+ * Exported for tests.
+ */
+export function purgeLegacyLogFiles(logger: Logger, dir = "data/logs"): void {
+  try {
+    if (!existsSync(dir)) return;
+    const cutoff = Date.now() - LEGACY_LOG_RETENTION_MS;
+    let removed = 0;
+    let freedBytes = 0;
+    for (const name of readdirSync(dir)) {
+      if (!LEGACY_LOG_RE.test(name)) continue;
+      const path = join(dir, name);
+      const stats = statSync(path);
+      if (stats.mtimeMs >= cutoff) continue;
+      unlinkSync(path);
+      removed++;
+      freedBytes += stats.size;
+    }
+    if (removed > 0) {
+      logger.info(
+        { module: "logger", removed, freedMB: Math.round(freedBytes / 1_048_576) },
+        "Purged legacy log files past the retention window",
+      );
+    }
+  } catch (err) {
+    logger.warn({ module: "logger", err }, "Legacy log purge failed");
+  }
 }
 
 /**

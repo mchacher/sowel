@@ -489,11 +489,7 @@ Example retrieval:
 docker exec sowel sh -c 'cat /app/data/logs/sowel.2026-04-11.1.log | grep -E "2026-04-11T07:" | grep error'
 ```
 
-Before v1.39, files were named `sowel.N.log` with a rotation number picked per process: several restarts a day interleaved time ranges across files, and one file could span months. When investigating an incident older than the format switch, grep ALL `sowel.*.log` files rather than trusting one. Legacy numbered files are not covered by the new retention and can be removed manually once no longer needed:
-
-```bash
-docker exec sowel sh -c 'rm /app/data/logs/sowel.[0-9]*.log'
-```
+Before v1.39, files were named `sowel.N.log` with a rotation number picked per process: several restarts a day interleaved time ranges across files, and one file could span months. When investigating an incident older than the format switch, grep ALL `sowel.*.log` files rather than trusting one. Legacy numbered files are invisible to the new retention, so the engine purges them automatically at boot once they are older than 14 days; no manual action is needed.
 
 ### Log level guidance
 

@@ -477,11 +477,7 @@ Exemple de récupération :
 docker exec sowel sh -c 'cat /app/data/logs/sowel.2026-04-11.1.log | grep -E "2026-04-11T07:" | grep error'
 ```
 
-Avant la v1.39, les fichiers étaient nommés `sowel.N.log` avec un numéro de rotation choisi par processus : plusieurs redémarrages dans la journée éclataient les plages horaires entre fichiers, et un même fichier pouvait couvrir plusieurs mois. Pour investiguer un incident antérieur au changement de format, grepper TOUS les fichiers `sowel.*.log` plutôt que de se fier à un seul. Les anciens fichiers numérotés ne sont pas couverts par la nouvelle rétention et peuvent être supprimés manuellement une fois devenus inutiles :
-
-```bash
-docker exec sowel sh -c 'rm /app/data/logs/sowel.[0-9]*.log'
-```
+Avant la v1.39, les fichiers étaient nommés `sowel.N.log` avec un numéro de rotation choisi par processus : plusieurs redémarrages dans la journée éclataient les plages horaires entre fichiers, et un même fichier pouvait couvrir plusieurs mois. Pour investiguer un incident antérieur au changement de format, grepper TOUS les fichiers `sowel.*.log` plutôt que de se fier à un seul. Les anciens fichiers numérotés sont invisibles pour la nouvelle rétention : le moteur les purge automatiquement au démarrage dès qu'ils ont plus de 14 jours, aucune action manuelle n'est nécessaire.
 
 ### Conseils sur les niveaux de log
 
