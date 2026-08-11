@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   UserRound,
+  Users,
   FolderGit2,
   Plus,
   Search,
@@ -774,13 +775,16 @@ function StoreRow({
               {manifest.version}
             </span>
           )}
-          {/* Community badge — owner is not in OFFICIAL_OWNERS (spec 089 C1) */}
+          {/* Community badge — owner is not in OFFICIAL_OWNERS (spec 089 C1).
+              Users, not AlertTriangle: the tier means "third-party author,
+              integrity verified", not "hazard" (#410). The caution icon lives
+              in the install confirmation modal, where caution is the point. */}
           {tier === "community" && (
             <span
               className="text-[10px] px-1.5 py-0.5 bg-warning/10 text-warning rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
               title={t("plugins.community.badge.tooltip")}
             >
-              <AlertTriangle size={10} strokeWidth={2} />
+              <Users size={10} strokeWidth={2} />
               {t("plugins.community.badge")}
             </span>
           )}
