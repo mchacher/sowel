@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.44.x : Validation des entrées API et OpenAPI
+
+### v1.44.0 — 2026-08-13 { #v1-44-0 }
+
+- Fix (devices) : **les alertes de batterie faible nomment désormais l'équipement concerné et restent cantonnées à sa zone**. Un capteur en batterie faible n'apparaissait que par le nom du device et remontait dans le fil d'activité de toutes les zones. Le bandeau d'avertissement et l'activité de zone affichent maintenant le nom de l'équipement associé à côté du device, et l'alerte est rattachée à la zone de l'équipement. Contribué par Adrien Jouve (computingify). (spec 143, #472, #473)
+- Interne (api) : **les corps de requête sont désormais validés par des schémas déclaratifs sur la plupart des routes API**. Les vérifications écrites à la main et dupliquées dans les handlers ont été remplacées par des schémas JSON Fastify, offrant une frontière de validation cohérente et une forme unique `{ error }` pour les réponses 400. Les routes, méthodes et codes de statut sont inchangés ; seul le libellé des messages d'erreur de validation change. Les routes qui contrôlent l'authentification ou l'existence d'une ressource dans le handler conservent leurs vérifications actuelles pour l'instant (suivi dans #482). (#452, #475, #476, #477, #478, #479, #480)
+- Interne (api) : **une description OpenAPI 3 de l'API est maintenant générée à partir de ces schémas**, servie en JSON sur `/api/v1/openapi.json` pour les utilisateurs authentifiés. Aucune interface de documentation interactive n'est montée. (#452, #481)
+
 ## 1.43.x: Alertes batterie faible et contrôles du graphe Analyse
 
 ### v1.43.0 — 2026-08-12 { #v1-43-0 }

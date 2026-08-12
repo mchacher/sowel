@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.44.x: API input validation and OpenAPI
+
+### v1.44.0 — 2026-08-13 { #v1-44-0 }
+
+- Fix (devices): **low battery alerts now name the affected equipment and stay scoped to its zone**. A sensor in low battery surfaced by device name only and showed up in every zone's activity feed. The warning banner and the zone activity now show the bound equipment name next to the device, and the alert is attributed to the equipment's own zone. Contributed by Adrien Jouve (computingify). (spec 143, #472, #473)
+- Internal (api): **request bodies are now validated by declarative schemas across most API routes**. The hand-rolled checks duplicated inside route handlers were replaced with Fastify JSON schemas, giving one consistent validation boundary and a single `{ error }` shape for 400 responses. Routes, methods and status codes are unchanged; only the wording of validation error messages changes. Routes that gate on authentication or resource existence inside the handler keep their existing checks for now (tracked in #482). (#452, #475, #476, #477, #478, #479, #480)
+- Internal (api): **an OpenAPI 3 description of the API is now generated from those schemas**, served as JSON at `/api/v1/openapi.json` for authenticated users. No interactive documentation UI is mounted. (#452, #481)
+
 ## 1.43.x: Low battery alerts and Analyse chart controls
 
 ### v1.43.0 — 2026-08-12 { #v1-43-0 }
