@@ -57,6 +57,16 @@ function parseTimestamp(iso: string | null): number | null {
  * updates, and the tight electrical window would then flip the equipment to
  * `degraded` on every reporting cycle without anything being wrong. Where the
  * reading *is* the equipment's job, the window still applies in full.
+ *
+ * Known trade-off (review): a `switch` used purely as a submeter is exempted
+ * too, because it is indistinguishable from a plug controlling a load (both
+ * expose a state binding + bonus power), so its electrical freshness is not a
+ * health signal and it leans on `device.status`. Gating on "is a metering
+ * switch" instead would re-flap every controlled-load plug, which is the very
+ * bug this fix removes. The clean fix is to size the electrical window on the
+ * *allowed* report interval (Zigbee `max_report_interval`, ~1 h) rather than the
+ * typical one, so a genuinely dead submeter is caught without flapping healthy
+ * ones — deferred as a follow-up.
  */
 export function isStaleBinding(
   category: DataCategory,
