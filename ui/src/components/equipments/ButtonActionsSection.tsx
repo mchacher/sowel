@@ -8,6 +8,7 @@ import { useRecipes } from "../../store/useRecipes";
 import { useZones } from "../../store/useZones";
 import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "../../types";
 import { allSupportStop } from "../../lib/binding-utils";
+import { flattenZonesWithPath } from "../../lib/zone-path";
 
 const DEFAULT_BUTTON_ACTIONS = ["single", "double", "hold"];
 
@@ -22,18 +23,6 @@ const ZONE_ORDER_OPTIONS: { key: string; group: string; parametric: boolean }[] 
   { key: "allThermostatsPowerOff", group: "heating", parametric: false },
   { key: "allThermostatsSetpoint", group: "heating", parametric: true },
 ];
-
-function flattenZones(tree: ZoneWithChildren[]): { id: string; name: string }[] {
-  const result: { id: string; name: string }[] = [];
-  const walk = (nodes: ZoneWithChildren[]) => {
-    for (const z of nodes) {
-      result.push({ id: z.id, name: z.name });
-      walk(z.children);
-    }
-  };
-  walk(tree);
-  return result;
-}
 
 /** Zone id itself plus every descendant, matching the backend's own
  *  zone-order scope (POST /zones/:id/orders/:orderKey acts on the whole
@@ -70,8 +59,8 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
   const fetchModes = useModes((s) => s.fetchModes);
   const equipments = useEquipments((s) => s.equipments);
   const zoneTree = useZones((s) => s.tree);
-  // Flatten zone tree for name lookup
-  const zones = flattenZones(zoneTree);
+  // Flatten zone tree for label lookup (path-aware, spec 139)
+  const zones = useMemo(() => flattenZonesWithPath(zoneTree), [zoneTree]);
   const instances = useRecipes((s) => s.instances);
 
   // Derive action values from the equipment's "action" data binding enum values
@@ -140,7 +129,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
       }
       case "equipment_order": {
         const eq = equipments.find((e) => e.id === binding.config.equipmentId);
-        const zoneName = eq ? zones.find((z) => z.id === eq.zoneId)?.name : undefined;
+        const zoneName = eq ? zones.find((z) => z.id === eq.zoneId)?.label : undefined;
         const eqName = eq ? (zoneName ? `${zoneName} — ${eq.name}` : eq.name) : String(binding.config.equipmentId);
         const val = binding.config.value;
         const valueStr = val != null && val !== "" ? ` = ${val}` : "";
@@ -156,7 +145,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
         const orderKey = String(binding.config.orderKey);
         const val = binding.config.value;
         const valueStr = val != null && val !== "" ? ` = ${val}` : "";
-        return `${t("buttonActions.effectType.zone_order")} → ${zone?.name ?? "?"} · ${t(`buttonActions.zoneOrder.${orderKey}`)}${valueStr}`;
+        return `${t("buttonActions.effectType.zone_order")} → ${zone?.label ?? "?"} · ${t(`buttonActions.zoneOrder.${orderKey}`)}${valueStr}`;
       }
       default:
         return binding.effectType;
@@ -266,7 +255,7 @@ function AddEffectForm({
 }: {
   modes: { id: string; name: string; active: boolean }[];
   equipments: { id: string; name: string; type: string; zoneId: string; orderBindings: { alias: string; type?: string; category?: string; enumValues?: string[]; min?: number; max?: number }[] }[];
-  zones: { id: string; name: string }[];
+  zones: { id: string; label: string }[];
   zoneTree: ZoneWithChildren[];
   instances: { id: string; recipeId: string }[];
   actionValues: string[];
@@ -541,7 +530,7 @@ function AddEffectForm({
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
-                <option key={z.id} value={z.id}>{z.name}</option>
+                <option key={z.id} value={z.id}>{z.label}</option>
               ))}
             </select>
           </div>
@@ -688,7 +677,7 @@ function AddEffectForm({
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
-                <option key={z.id} value={z.id}>{z.name}</option>
+                <option key={z.id} value={z.id}>{z.label}</option>
               ))}
             </select>
           </div>

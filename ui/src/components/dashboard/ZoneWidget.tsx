@@ -42,6 +42,8 @@ const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
 interface ZoneWidgetProps {
   widget: DashboardWidget;
   zone: ZoneWithChildren | null;
+  /** Path-aware zone label (spec 139), preferred over the bare zone name. */
+  zoneLabel?: string;
   equipments: EquipmentWithDetails[];
 }
 
@@ -53,7 +55,7 @@ function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
   return ids;
 }
 
-export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
+export function ZoneWidget({ widget, zone, zoneLabel, equipments }: ZoneWidgetProps) {
   const { t } = useTranslation();
   const [commandLoading, setCommandLoading] = useState<string | null>(null);
 
@@ -71,7 +73,7 @@ export function ZoneWidget({ widget, zone, equipments }: ZoneWidgetProps) {
     );
   }, [equipments, zoneIds, familyTypes]);
 
-  const zoneName = zone?.name ?? t("dashboard.unknownZone");
+  const zoneName = zoneLabel ?? zone?.name ?? t("dashboard.unknownZone");
   const label = widget.label || zoneName;
 
   const handleZoneCommand = useCallback(async (orderKey: string, value?: unknown) => {

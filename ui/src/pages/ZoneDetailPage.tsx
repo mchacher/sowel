@@ -297,7 +297,7 @@ export function ZoneDetailPage() {
         <ZoneForm
           title={t("zones.editZone")}
           initial={{ name: zone.name, description: zone.description }}
-          parentZones={flattenZoneTree(tree, 0, zone.id)}
+          parentZones={flattenZoneTree(tree, zone.id)}
           defaultParentId={zone.parentId}
           onSubmit={async (data) => {
             await updateZone(zone.id, data);

@@ -36,6 +36,8 @@ interface WidgetGridProps {
   widgets: DashboardWidget[];
   equipmentMap: Map<string, EquipmentWithDetails>;
   zoneMap: Map<string, ZoneWithChildren>;
+  /** zoneId → path-aware label (spec 139), used wherever a widget shows a zone name. */
+  zoneLabels: Map<string, string>;
   equipments: EquipmentWithDetails[];
   editMode: boolean;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
@@ -47,6 +49,7 @@ export function WidgetGrid({
   widgets,
   equipmentMap,
   zoneMap,
+  zoneLabels,
   equipments,
   editMode,
   onExecuteOrder,
@@ -92,6 +95,7 @@ export function WidgetGrid({
               widget={widget}
               equipmentMap={equipmentMap}
               zoneMap={zoneMap}
+              zoneLabels={zoneLabels}
               equipments={equipments}
               onExecuteOrder={onExecuteOrder}
               isMobile={isMobile}
@@ -113,6 +117,7 @@ export function WidgetGrid({
           <ZoneDetailSheet
             widget={detailWidget}
             zone={zoneMap.get(detailWidget.zoneId) ?? null}
+            zoneLabel={zoneLabels.get(detailWidget.zoneId)}
             equipments={equipments}
             onClose={() => setDetailWidgetId(null)}
           />
@@ -131,6 +136,7 @@ export function WidgetGrid({
               widget={widget}
               equipmentMap={equipmentMap}
               zoneMap={zoneMap}
+              zoneLabels={zoneLabels}
               equipments={equipments}
               onExecuteOrder={onExecuteOrder}
               onDelete={onDelete}
@@ -157,6 +163,7 @@ function SortableWidget({
   widget,
   equipmentMap,
   zoneMap,
+  zoneLabels,
   equipments,
   onExecuteOrder,
   onDelete,
@@ -165,6 +172,7 @@ function SortableWidget({
   widget: DashboardWidget;
   equipmentMap: Map<string, EquipmentWithDetails>;
   zoneMap: Map<string, ZoneWithChildren>;
+  zoneLabels: Map<string, string>;
   equipments: EquipmentWithDetails[];
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   onDelete: (id: string) => void;
@@ -203,7 +211,7 @@ function SortableWidget({
 
   const currentLabel = widget.label
     || (widget.type === "equipment" && widget.equipmentId ? equipmentMap.get(widget.equipmentId)?.name : undefined)
-    || (widget.type === "zone" && widget.zoneId ? zoneMap.get(widget.zoneId)?.name : undefined)
+    || (widget.type === "zone" && widget.zoneId ? zoneLabels.get(widget.zoneId) : undefined)
     || "";
 
   const handleRenameStart = () => {
@@ -318,6 +326,7 @@ function SortableWidget({
         widget={widget}
         equipmentMap={equipmentMap}
         zoneMap={zoneMap}
+        zoneLabels={zoneLabels}
         equipments={equipments}
         onExecuteOrder={onExecuteOrder}
         isMobile={isMobile}
@@ -331,6 +340,7 @@ function WidgetRenderer({
   widget,
   equipmentMap,
   zoneMap,
+  zoneLabels,
   equipments,
   onExecuteOrder,
   isMobile,
@@ -340,6 +350,7 @@ function WidgetRenderer({
   widget: DashboardWidget;
   equipmentMap: Map<string, EquipmentWithDetails>;
   zoneMap: Map<string, ZoneWithChildren>;
+  zoneLabels: Map<string, string>;
   equipments: EquipmentWithDetails[];
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   isMobile?: boolean;
@@ -380,6 +391,7 @@ function WidgetRenderer({
         <MobileZoneCard
           widget={widget}
           zone={zone}
+          zoneLabel={zoneLabels.get(widget.zoneId)}
           equipments={equipments}
           onClick={editMode ? undefined : onOpenDetail}
           editMode={editMode}
@@ -392,6 +404,7 @@ function WidgetRenderer({
       <ZoneWidget
         widget={widget}
         zone={zone}
+        zoneLabel={zoneLabels.get(widget.zoneId)}
         equipments={equipments}
       />
     );
@@ -422,18 +435,20 @@ function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
 function MobileZoneCard({
   widget,
   zone,
+  zoneLabel,
   equipments,
   onClick,
   editMode,
 }: {
   widget: DashboardWidget;
   zone: ZoneWithChildren | null;
+  zoneLabel?: string;
   equipments: EquipmentWithDetails[];
   onClick?: () => void;
   editMode?: boolean;
 }) {
   const { t } = useTranslation();
-  const label = widget.label || zone?.name || t("dashboard.unknownZone");
+  const label = widget.label || zoneLabel || zone?.name || t("dashboard.unknownZone");
   const family = widget.family;
 
   // Filter equipments for this zone + family

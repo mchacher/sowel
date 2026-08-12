@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import type { EquipmentType, ZoneWithChildren } from "../../types";
 import { DeviceSelector } from "./DeviceSelector";
 import { getDevices, type DeviceWithData } from "../../api";
+import { flattenZonesWithPath } from "../../lib/zone-path";
 
 const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "light_onoff", labelKey: "equipments.type.light_onoff" },
@@ -92,7 +93,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
     return { ok: hasPac && hasRelay, hasPac, hasRelay };
   }, [type, allDevices, selectedDeviceIds]);
 
-  const flatZones = flattenZones(zones);
+  const flatZones = useMemo(() => flattenZonesWithPath(zones), [zones]);
   const availableTypes = excludeTypes
     ? EQUIPMENT_TYPE_KEYS.filter((et) => !excludeTypes.has(et.value))
     : EQUIPMENT_TYPE_KEYS;
@@ -286,17 +287,4 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
       </div>
     </div>
   );
-}
-
-function flattenZones(zones: ZoneWithChildren[]): { id: string; name: string; label: string }[] {
-  const result: { id: string; name: string; label: string }[] = [];
-  function walk(list: ZoneWithChildren[], parentLabel?: string) {
-    for (const z of list) {
-      const label = parentLabel ? `${parentLabel} › ${z.name}` : z.name;
-      result.push({ id: z.id, name: z.name, label });
-      if (z.children.length > 0) walk(z.children, label);
-    }
-  }
-  walk(zones);
-  return result;
 }

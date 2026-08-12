@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Box, Map as MapIcon } from "lucide-react";
 import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
+import { flattenZonesWithPath } from "../../lib/zone-path";
 
 interface AddWidgetModalProps {
   equipments: EquipmentWithDetails[];
@@ -26,18 +27,8 @@ export function AddWidgetModal({
   const [selectedFamily, setSelectedFamily] = useState<WidgetFamily>("lights");
   const [eqZoneId, setEqZoneId] = useState<string>("");
 
-  // Flatten zones for zone picker
-  const flatZones = useMemo(() => {
-    const result: { id: string; name: string; depth: number }[] = [];
-    function walk(zoneList: ZoneWithChildren[], depth: number) {
-      for (const z of zoneList) {
-        result.push({ id: z.id, name: z.name, depth });
-        walk(z.children, depth + 1);
-      }
-    }
-    walk(zones, 0);
-    return result;
-  }, [zones]);
+  // Flatten zones for zone picker, labelled with their disambiguating path (spec 139)
+  const flatZones = useMemo(() => flattenZonesWithPath(zones), [zones]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -91,7 +82,7 @@ export function AddWidgetModal({
                   <option value="">{t("dashboard.chooseZone")}</option>
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
-                      {"  ".repeat(z.depth)}{z.name}
+                      {z.label}
                     </option>
                   ))}
                 </select>
@@ -140,7 +131,7 @@ export function AddWidgetModal({
                   <option value="">{t("dashboard.chooseZone")}</option>
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
-                      {"  ".repeat(z.depth)}{z.name}
+                      {z.label}
                     </option>
                   ))}
                 </select>

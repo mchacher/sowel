@@ -40,6 +40,7 @@ import type {
   RecipeInfo,
   MqttBroker,
 } from "../types";
+import { flattenZonesWithPath, type ZoneOption } from "../lib/zone-path";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -542,7 +543,7 @@ function PublisherCard({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<number | null>(null);
 
-  const flatZones = flattenZones(zones);
+  const flatZones = flattenZonesWithPath(zones);
   const broker = brokers.find((b) => b.id === publisher.brokerId);
 
   if (editing) {
@@ -610,7 +611,7 @@ function PublisherCard({
       return `${label} → ${mapping.sourceKey}`;
     }
     const zone = flatZones.find((z) => z.id === mapping.sourceId);
-    return zone ? `${zone.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
+    return zone ? `${zone.label} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
   };
 
   return (
@@ -759,7 +760,7 @@ function MappingRow({
   mapping: MqttPublisherMapping;
   label: string;
   equipments: EquipmentWithDetails[];
-  zones: FlatZone[];
+  zones: ZoneOption[];
   recipeInstances: RecipeInstance[];
   recipes: RecipeInfo[];
   onRefresh: () => void;
@@ -907,7 +908,7 @@ function MappingRow({
               </option>
               {zones.map((z) => (
                 <option key={z.id} value={z.id}>
-                  {z.name}
+                  {z.label}
                 </option>
               ))}
             </select>
@@ -1052,24 +1053,6 @@ function MappingRow({
 
 // ── Add mapping form ─────────────────────────────────────────
 
-interface FlatZone {
-  id: string;
-  name: string;
-}
-
-function flattenZones(zones: ZoneWithChildren[]): FlatZone[] {
-  const result: FlatZone[] = [];
-  const recurse = (list: ZoneWithChildren[], parentLabel?: string) => {
-    for (const z of list) {
-      const label = parentLabel ? `${parentLabel} › ${z.name}` : z.name;
-      result.push({ id: z.id, name: label });
-      if (z.children.length > 0) recurse(z.children, label);
-    }
-  };
-  recurse(zones, undefined);
-  return result;
-}
-
 function AddMappingForm({
   publisherId,
   equipments,
@@ -1081,7 +1064,7 @@ function AddMappingForm({
 }: {
   publisherId: string;
   equipments: EquipmentWithDetails[];
-  zones: FlatZone[];
+  zones: ZoneOption[];
   recipeInstances: RecipeInstance[];
   recipes: RecipeInfo[];
   onAdded: () => void;
@@ -1205,7 +1188,7 @@ function AddMappingForm({
             </option>
             {zones.map((z) => (
               <option key={z.id} value={z.id}>
-                {z.name}
+                {z.label}
               </option>
             ))}
           </select>

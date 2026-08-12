@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { ZoneWithChildren } from "../../types";
+import { flattenZonesWithPath, type ZoneOption } from "../../lib/zone-path";
 
 interface ZoneFormProps {
   /** If provided, we're editing this zone. Otherwise creating a new one. */
   initial?: { name: string; description?: string; icon?: string };
   /** Available parent zones for the dropdown */
-  parentZones: { id: string; name: string; depth: number }[];
+  parentZones: ZoneOption[];
   /** Pre-selected parent zone ID */
   defaultParentId?: string | null;
   onSubmit: (data: {
@@ -96,7 +97,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
               <option value="">{t("zones.form.parentNone")}</option>
               {parentZones.map((z) => (
                 <option key={z.id} value={z.id}>
-                  {"  ".repeat(z.depth)}{z.name}
+                  {z.label}
                 </option>
               ))}
             </select>
@@ -146,18 +147,31 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
   );
 }
 
-/** Flatten zone tree into a list with depth info (for parent dropdown) */
+/** Flatten the zone tree for the parent dropdown, labelling every zone with its
+ *  disambiguating path (spec 139). `excludeId` drops that zone and its whole
+ *  subtree — a zone cannot become its own descendant. Labels are computed on
+ *  the full tree, so they stay stable regardless of the exclusion. */
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with ZoneForm
 export function flattenZoneTree(
   zones: ZoneWithChildren[],
-  depth = 0,
   excludeId?: string
-): { id: string; name: string; depth: number }[] {
-  const result: { id: string; name: string; depth: number }[] = [];
-  for (const zone of zones) {
-    if (zone.id === excludeId) continue;
-    result.push({ id: zone.id, name: zone.name, depth });
-    result.push(...flattenZoneTree(zone.children, depth + 1, excludeId));
+): ZoneOption[] {
+  const excluded = new Set<string>();
+  if (excludeId) {
+    const collect = (z: ZoneWithChildren) => {
+      excluded.add(z.id);
+      z.children.forEach(collect);
+    };
+    const find = (nodes: ZoneWithChildren[]): ZoneWithChildren | null => {
+      for (const z of nodes) {
+        if (z.id === excludeId) return z;
+        const found = find(z.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    const node = find(zones);
+    if (node) collect(node);
   }
-  return result;
+  return flattenZonesWithPath(zones).filter((z) => !excluded.has(z.id));
 }

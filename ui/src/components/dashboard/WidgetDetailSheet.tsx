@@ -398,13 +398,15 @@ function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
 interface ZoneDetailProps {
   widget: DashboardWidget;
   zone: ZoneWithChildren | null;
+  /** Path-aware zone label (spec 139), preferred over the bare zone name. */
+  zoneLabel?: string;
   equipments: EquipmentWithDetails[];
   onClose: () => void;
 }
 
-export function ZoneDetailSheet({ widget, zone, equipments, onClose }: ZoneDetailProps) {
+export function ZoneDetailSheet({ widget, zone, zoneLabel, equipments, onClose }: ZoneDetailProps) {
   const { t } = useTranslation();
-  const label = widget.label || (zone ? `${zone.name}` : "");
+  const label = widget.label || zoneLabel || (zone ? `${zone.name}` : "");
   const family = widget.family;
 
   const zoneIds = useMemo(() => {

@@ -5,7 +5,7 @@ import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { DeviceList } from "../components/devices/DeviceList";
-import type { ZoneWithChildren } from "../types";
+import { flattenZonesWithPath } from "../lib/zone-path";
 import { Radio, Loader2, Search, X } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { INTEGRATION_LABELS } from "../constants";
@@ -22,18 +22,11 @@ export function DevicesPage() {
   const equipments = useEquipments((s) => s.equipments);
   const zoneTree = useZones((s) => s.tree);
 
-  // Flatten zone tree into id → name map
-  const zoneNames = useMemo(() => {
-    const map = new Map<string, string>();
-    const walk = (zones: ZoneWithChildren[]) => {
-      for (const z of zones) {
-        map.set(z.id, z.name);
-        if (z.children) walk(z.children);
-      }
-    };
-    walk(zoneTree);
-    return map;
-  }, [zoneTree]);
+  // Flatten zone tree into id → path-aware label map (spec 139)
+  const zoneNames = useMemo(
+    () => new Map(flattenZonesWithPath(zoneTree).map((z) => [z.id, z.label])),
+    [zoneTree],
+  );
 
   // Build map: deviceId → list of equipments that reference it via bindings
   const deviceEquipmentMap = useMemo(() => {

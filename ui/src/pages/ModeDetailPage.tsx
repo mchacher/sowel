@@ -16,6 +16,7 @@ import { useAuth } from "../store/useAuth";
 import { ModeForm } from "../components/modes/ModeForm";
 import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+import { flattenZonesWithPath } from "../lib/zone-path";
 
 export function ModeDetailPage() {
   useWsSubscription(["modes"]);
@@ -114,18 +115,9 @@ export function ModeDetailPage() {
     );
   }
 
-  // Find zone names for impacts
-  const findZoneName = (zoneId: string): string => {
-    const find = (zones: typeof tree): string | null => {
-      for (const z of zones) {
-        if (z.id === zoneId) return z.name;
-        const found = find(z.children);
-        if (found) return found;
-      }
-      return null;
-    };
-    return find(tree) ?? zoneId;
-  };
+  // Path-aware zone labels for impacts (spec 139)
+  const zoneLabels = new Map(flattenZonesWithPath(tree).map((z) => [z.id, z.label]));
+  const findZoneName = (zoneId: string): string => zoneLabels.get(zoneId) ?? zoneId;
 
   return (
     <div className="p-4 sm:p-6">

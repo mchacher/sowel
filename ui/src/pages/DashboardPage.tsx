@@ -9,6 +9,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 import { WidgetGrid } from "../components/dashboard/WidgetGrid";
 import { AddWidgetModal } from "../components/dashboard/AddWidgetModal";
 import type { ZoneWithChildren, WidgetFamily } from "../types";
+import { flattenZonesWithPath } from "../lib/zone-path";
 
 export function DashboardPage() {
   useWsSubscription(["equipments", "zones"]);
@@ -48,6 +49,13 @@ export function DashboardPage() {
     walk(tree);
     return map;
   }, [tree]);
+
+  // Path-aware zone labels (spec 139): a widget on one of two homonym zones
+  // must say which one it watches.
+  const zoneLabels = useMemo(
+    () => new Map(flattenZonesWithPath(tree).map((z) => [z.id, z.label])),
+    [tree],
+  );
 
   // Build equipment map for fast lookup
   const equipmentMap = useMemo(() => {
@@ -177,6 +185,7 @@ export function DashboardPage() {
           widgets={widgets}
           equipmentMap={equipmentMap}
           zoneMap={zoneMap}
+          zoneLabels={zoneLabels}
           equipments={equipments}
           editMode={editMode}
           onExecuteOrder={executeOrder}
