@@ -48,12 +48,17 @@ describe("familyOf", () => {
     expect(familyOf("water_leak")).toBe("states");
   });
 
-  it("classifies actuator feedback as states (spec 144)", () => {
+  it("classifies strictly-binary actuator feedback as states (spec 144)", () => {
     expect(familyOf("light_state")).toBe("states");
     expect(familyOf("appliance_state")).toBe("states");
-    expect(familyOf("lock_state")).toBe("states");
-    expect(familyOf("gate_state")).toBe("states");
-    expect(familyOf("cover_state")).toBe("states");
+  });
+
+  it("does NOT force cover/gate/lock onto the 0/1 state axis (they can be multi-value; #434 index-encodes them)", () => {
+    // Excluded on purpose: a cover's OPEN/CLOSED/STOP is index 0/1/2, which a
+    // two-label [0,1] axis would clip and mislabel. They chart as numeric.
+    expect(familyOf("cover_state")).toBeNull();
+    expect(familyOf("gate_state")).toBeNull();
+    expect(familyOf("lock_state")).toBeNull();
   });
 
   it("returns null for unknown categories", () => {
@@ -175,23 +180,6 @@ describe("booleanTickLabels", () => {
     ]);
   });
 
-  it("returns lock-specific labels", () => {
-    expect(booleanTickLabels("lock_state")).toEqual([
-      "analyse.bool.lock.unlocked",
-      "analyse.bool.lock.locked",
-    ]);
-  });
-
-  it("reuses the contact labels for gates and covers", () => {
-    expect(booleanTickLabels("gate_state")).toEqual([
-      "analyse.bool.contact.closed",
-      "analyse.bool.contact.open",
-    ]);
-    expect(booleanTickLabels("cover_state")).toEqual([
-      "analyse.bool.contact.closed",
-      "analyse.bool.contact.open",
-    ]);
-  });
 
   it("falls back to generic on/off for unsupported categories", () => {
     expect(booleanTickLabels("unknown")).toEqual([

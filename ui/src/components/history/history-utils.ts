@@ -19,14 +19,13 @@ export const BOOLEAN_CATEGORIES = new Set<string>([
   "contact_window",
   "water_leak",
   "smoke",
-  // Spec 144 — actuator feedback. These are the on/off state a relay reports
-  // back, historized on demand (they are off by default in HistoryWriter).
-  // They belong with the sensor states: same 0/1 domain, same step rendering.
+  // Spec 144 — actuator feedback. Only strictly binary ON/OFF relays go on the
+  // 0/1 state axis. cover/gate/lock are excluded on purpose: they can carry a
+  // third value (a cover's OPEN/CLOSED/STOP), which HistoryWriter encodes by
+  // declared index (#434), so forcing them onto a two-label [0,1] axis would
+  // clip and mislabel them. They chart as a plain numeric series instead.
   "light_state",
   "appliance_state",
-  "lock_state",
-  "gate_state",
-  "cover_state",
 ]);
 
 const MEASUREMENT_CATEGORIES = new Set<string>([
@@ -134,11 +133,6 @@ export function booleanTickLabels(category: string): [string, string] {
     case "light_state":
     case "appliance_state":
       return ["analyse.bool.power.off", "analyse.bool.power.on"];
-    case "lock_state":
-      return ["analyse.bool.lock.unlocked", "analyse.bool.lock.locked"];
-    case "gate_state":
-    case "cover_state":
-      return ["analyse.bool.contact.closed", "analyse.bool.contact.open"];
     default:
       return ["analyse.bool.generic.off", "analyse.bool.generic.on"];
   }
