@@ -5,22 +5,28 @@ Branch: `feat/analyse-mixed-state-axis`
 UI-only. No type, route, event, table or migration change; `SavedChartConfig`
 is untouched, so saved charts survive as-is.
 
+> Note: the spec was originally drafted for five actuator categories. The
+> shipped code narrowed this to the two strictly-binary ones (`light_state`,
+> `appliance_state`); `cover_state` / `gate_state` / `lock_state` are excluded
+> on purpose because they can carry a third value, which `HistoryWriter`
+> encodes by declared index (spec 434). This plan describes what shipped.
+
 ## Steps
 
-1. **Classify the actuator categories** — add `light_state`, `appliance_state`,
-   `lock_state`, `gate_state` and `cover_state` to `BOOLEAN_CATEGORIES` in
-   `ui/src/components/history/history-utils.ts`. `familyOf` and
-   `isBooleanCategory` then report them as `states` with no further change.
+1. **Classify the binary actuator categories** — add `light_state` and
+   `appliance_state` to `BOOLEAN_CATEGORIES` in
+   `ui/src/components/history/history-utils.ts`, so `familyOf` and
+   `isBooleanCategory` report them as `states`. `cover_state` / `gate_state` /
+   `lock_state` are deliberately left out (a three-value cover would clip on a
+   two-label `[0, 1]` axis); they keep charting as a plain numeric series.
 2. **Family compatibility** — add `familiesCompatible(a, b)` to
    `history-utils.ts`: everything mixes except `cumulative`, which stays alone;
    `null` (unclassified) is compatible with anything. Keeping it in the utils
    file rather than inline in the picker is what lets the test file pin it down;
    `AnalyseView` has no test harness.
-3. **Tick labels** — extend `booleanTickLabels` with three cases:
-   `light_state` / `appliance_state` map to the new power pair (`Arrêt` /
-   `Marche`) rather than the generic `Inactif` / `Actif`; `lock_state` maps to
-   unlocked / locked; `gate_state` / `cover_state` reuse the contact pair
-   (`Fermé` / `Ouvert`).
+3. **Tick labels** — extend `booleanTickLabels` with one case: `light_state` /
+   `appliance_state` map to the new power pair (`Arrêt` / `Marche`) rather than
+   the generic `Inactif` / `Actif`.
 4. **Chart family model** — in `AnalyseView.tsx`, replace the single
    `lockedFamily` with `chartFamilies: Set<ChartFamily>`, `hasStateSeries` and
    `hasMeasurementSeries` derived from the plotted series.
@@ -42,8 +48,7 @@ is untouched, so saved charts survive as-is.
    charts with no state series keep passing `measurementFormatter` directly.
 8. **Family pill and envelope toggle** — pill reads `Mesures + états` on a mixed
    chart; the envelope toggle stays gated on measurement series only.
-9. **i18n** — add `analyse.family.mixed`, `analyse.bool.power.{off,on}` and
-   `analyse.bool.lock.{unlocked,locked}` to
+9. **i18n** — add `analyse.family.mixed` and `analyse.bool.power.{off,on}` to
    `ui/src/i18n/locales/{en,fr}.json`.
 10. **Tests** — extend `ui/src/components/history/history-utils.test.ts` (see
     test plan below).
@@ -54,24 +59,23 @@ is untouched, so saved charts survive as-is.
 ### Module to test
 
 - `ui/src/components/history/history-utils.ts` — classification,
-  `familiesCompatible` and the new label pairs. `AnalyseView.tsx` has no React
+  `familiesCompatible` and the new label pair. `AnalyseView.tsx` has no React
   test harness in this project and is covered by manual verification.
 
 ### Scenarios (`history-utils.test.ts`)
 
-| Function             | Scenario                                                                    | Expected                          |
-| -------------------- | --------------------------------------------------------------------------- | --------------------------------- |
-| `familyOf`           | `light_state`, `appliance_state`, `lock_state`, `gate_state`, `cover_state` | `states`                          |
-| `familyOf`           | `setpoint`, unknown category                                                | `null` (unchanged)                |
-| `familiesCompatible` | `measurements` with `states` (either order)                                 | `true`                            |
-| `familiesCompatible` | `cumulative` with `measurements` or `states`                                | `false`                           |
-| `familiesCompatible` | `cumulative` with `cumulative`                                              | `true`                            |
-| `familiesCompatible` | `null` with any family (either order)                                       | `true`                            |
-| `isBooleanCategory`  | `light_state`, `appliance_state`                                            | `true`                            |
-| `isBooleanCategory`  | `temperature`, `rain`                                                       | `false` (unchanged)               |
-| `booleanTickLabels`  | `light_state` / `appliance_state`                                           | power pair (`Arrêt` / `Marche`)   |
-| `booleanTickLabels`  | `lock_state`                                                                | unlocked / locked pair            |
-| `booleanTickLabels`  | `gate_state` / `cover_state`                                                | contact pair (`Fermé` / `Ouvert`) |
+| Function             | Scenario                                     | Expected                        |
+| -------------------- | -------------------------------------------- | ------------------------------- |
+| `familyOf`           | `light_state`, `appliance_state`             | `states`                        |
+| `familyOf`           | `cover_state`, `gate_state`, `lock_state`    | `null` (not forced onto 0/1)    |
+| `familyOf`           | `setpoint`, unknown category                 | `null` (unchanged)              |
+| `familiesCompatible` | `measurements` with `states` (either order)  | `true`                          |
+| `familiesCompatible` | `cumulative` with `measurements` or `states` | `false`                         |
+| `familiesCompatible` | `cumulative` with `cumulative`               | `true`                          |
+| `familiesCompatible` | `null` with any family (either order)        | `true`                          |
+| `isBooleanCategory`  | `light_state`, `appliance_state`             | `true`                          |
+| `isBooleanCategory`  | `temperature`, `rain`                        | `false` (unchanged)             |
+| `booleanTickLabels`  | `light_state` / `appliance_state`            | power pair (`Arrêt` / `Marche`) |
 
 ### Manual verification
 

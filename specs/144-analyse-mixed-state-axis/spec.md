@@ -1,10 +1,18 @@
 # Spec 144 — States and measurements on one Analyse chart
 
+> Shipped-scope note: this spec was drafted for five actuator categories, but
+> the shipped code classifies only the two strictly-binary ones (`light_state`,
+> `appliance_state`) as `states`. `cover_state` / `gate_state` / `lock_state`
+> are excluded on purpose (they can carry a third value, which `HistoryWriter`
+> encodes by declared index, spec 434), so AC1's five-category list and the
+> lock/gate/cover tick labels below describe the original design, not what
+> ships. See plan.md for the shipped behaviour.
+
 ## Context
 
 Following a water heater means reading two series together: the tank
-temperature and the relay that heats it. The temperature answers *how hot*, the
-relay answers *why* — a rise with no relay activity is solar gain or a wrong
+temperature and the relay that heats it. The temperature answers _how hot_, the
+relay answers _why_ — a rise with no relay activity is solar gain or a wrong
 sensor, a relay run with no rise is a dead element. Separately, neither series
 says much; overlaid, they are a diagnosis.
 

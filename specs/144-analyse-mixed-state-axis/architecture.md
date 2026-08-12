@@ -3,14 +3,21 @@
 UI-only. No type, route, event, table or migration changes; `SavedChartConfig`
 is untouched, so saved charts survive as-is.
 
+> Shipped-scope note: `BOOLEAN_CATEGORIES` gained only `light_state` and
+> `appliance_state`, not five categories; `booleanTickLabels` gained only the
+> power pair; and only `analyse.family.mixed` + `analyse.bool.power.{off,on}`
+> were added to i18n. `cover_state` / `gate_state` / `lock_state` are excluded
+> on purpose (index-encoded per spec 434). The table below reflects the original
+> five-category design; plan.md reflects what shipped.
+
 ## Files
 
-| File | Change |
-| ---- | ------ |
-| `ui/src/components/history/history-utils.ts` | `BOOLEAN_CATEGORIES` gains the five actuator state categories; new `familiesCompatible(a, b)`; `booleanTickLabels` gains power / lock / gate-cover cases. |
-| `ui/src/components/history/AnalyseView.tsx` | `lockedFamily` → `chartFamilies` + `hasStateSeries` / `hasMeasurementSeries`; picker gate, family pill, envelope toggle and the render branches follow. |
-| `ui/src/components/history/history-utils.test.ts` | Cases for the new classification, `familiesCompatible` and the new label pairs. |
-| `ui/src/i18n/locales/{en,fr}.json` | `analyse.family.mixed`, `analyse.bool.power.{off,on}`, `analyse.bool.lock.{unlocked,locked}`. |
+| File                                              | Change                                                                                                                                                    |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ui/src/components/history/history-utils.ts`      | `BOOLEAN_CATEGORIES` gains the five actuator state categories; new `familiesCompatible(a, b)`; `booleanTickLabels` gains power / lock / gate-cover cases. |
+| `ui/src/components/history/AnalyseView.tsx`       | `lockedFamily` → `chartFamilies` + `hasStateSeries` / `hasMeasurementSeries`; picker gate, family pill, envelope toggle and the render branches follow.   |
+| `ui/src/components/history/history-utils.test.ts` | Cases for the new classification, `familiesCompatible` and the new label pairs.                                                                           |
+| `ui/src/i18n/locales/{en,fr}.json`                | `analyse.family.mixed`, `analyse.bool.power.{off,on}`, `analyse.bool.lock.{unlocked,locked}`.                                                             |
 
 ## Family model
 
@@ -18,9 +25,9 @@ is untouched, so saved charts survive as-is.
 chart is no longer described by one family:
 
 ```ts
-const chartFamilies: Set<ChartFamily>   // families actually present
-const hasStateSeries: boolean           // ≥1 series in `states`
-const hasMeasurementSeries: boolean     // ≥1 series in `measurements` or unclassified
+const chartFamilies: Set<ChartFamily>; // families actually present
+const hasStateSeries: boolean; // ≥1 series in `states`
+const hasMeasurementSeries: boolean; // ≥1 series in `measurements` or unclassified
 ```
 
 `familiesCompatible(a, b)` states the only remaining exclusion — `cumulative`
@@ -40,7 +47,7 @@ Three branches, selected in this order:
 
 1. `chartFamilies.has("cumulative")` → `BarChart`, unchanged.
 2. `hasStateSeries && !hasMeasurementSeries` → the states `LineChart`,
-   unchanged except that its tick labels now come from the first *state*
+   unchanged except that its tick labels now come from the first _state_
    series instead of the first series.
 3. otherwise → the measurements `ComposedChart`, which grows the secondary
    axis.
