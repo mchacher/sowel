@@ -3,6 +3,16 @@ import type { DeviceManager } from "../../devices/device-manager.js";
 import type { BatteryMonitor } from "../../devices/battery-monitor.js";
 import type { Logger } from "../../core/logger.js";
 
+// Input schema (issue #452). The old PUT rejected a body with neither `name`
+// nor `zoneId` (`name === undefined && zoneId === undefined`), including a
+// body-less request (`request.body ?? {}` -> {}). `anyOf` on the two fields
+// reproduces that exactly: at least one must be present, and a null/absent body
+// fails `type: object`. Values stay unconstrained (old passed them through).
+const updateDeviceBodySchema = {
+  type: "object",
+  anyOf: [{ required: ["name"] }, { required: ["zoneId"] }],
+};
+
 interface DevicesDeps {
   deviceManager: DeviceManager;
   /** Spec 143 — absent in shadow mode, where the monitor does not run. */
@@ -37,21 +47,19 @@ export function registerDeviceRoutes(app: FastifyInstance, deps: DevicesDeps): v
   app.put<{
     Params: { id: string };
     Body: { name?: string; zoneId?: string | null };
-  }>("/api/v1/devices/:id", async (request, reply) => {
-    const { name, zoneId } = request.body ?? {};
+  }>(
+    "/api/v1/devices/:id",
+    { schema: { body: updateDeviceBodySchema } },
+    async (request, reply) => {
+      const { name, zoneId } = request.body;
 
-    if (name === undefined && zoneId === undefined) {
-      return reply
-        .code(400)
-        .send({ error: "No update fields provided. Use 'name' and/or 'zoneId'." });
-    }
-
-    const device = deviceManager.update(request.params.id, { name, zoneId });
-    if (!device) {
-      return reply.code(404).send({ error: "Device not found" });
-    }
-    return device;
-  });
+      const device = deviceManager.update(request.params.id, { name, zoneId });
+      if (!device) {
+        return reply.code(404).send({ error: "Device not found" });
+      }
+      return device;
+    },
+  );
 
   // DELETE /api/v1/devices/:id — Remove device
   app.delete<{ Params: { id: string } }>("/api/v1/devices/:id", async (request, reply) => {

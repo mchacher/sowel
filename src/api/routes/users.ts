@@ -5,6 +5,26 @@ import type { AuditLogger } from "../../core/audit-logger.js";
 import type { UserRole } from "../../shared/types.js";
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import { buildActor } from "../audit-context.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schema (issue #452) for POST /users. Old guards: `!username ||
+// !password || !displayName` (bare, no trim), `password.length < 6`, and an
+// optional-role enum check. nonEmptyString matches the truthiness guards;
+// password gets minLength 6. `role` is optional and enum-checked. The 409
+// unique-username check and admin gating (onRequest hook) stay as-is, both
+// running in the same order as before (403 hook -> body 400 -> 409). PUT /users
+// is left hand-rolled: it returns 404 for an unknown id BEFORE its body check,
+// which a body schema would flip to a 400.
+const createUserBodySchema = {
+  type: "object",
+  required: ["username", "password", "displayName"],
+  properties: {
+    username: nonEmptyString,
+    password: { type: "string", minLength: 6 },
+    displayName: nonEmptyString,
+    role: { enum: ["admin", "standard"] },
+  },
+};
 
 interface UsersDeps {
   userManager: UserManager;
@@ -35,18 +55,8 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
       displayName: string;
       role: UserRole;
     };
-  }>("/api/v1/users", async (request, reply) => {
-    const { username, password, displayName, role } = request.body ?? {};
-
-    if (!username || !password || !displayName) {
-      return reply.code(400).send({ error: "username, password, and displayName are required" });
-    }
-    if (password.length < 6) {
-      return reply.code(400).send({ error: "Password must be at least 6 characters" });
-    }
-    if (role && role !== "admin" && role !== "standard") {
-      return reply.code(400).send({ error: "role must be 'admin' or 'standard'" });
-    }
+  }>("/api/v1/users", { schema: { body: createUserBodySchema } }, async (request, reply) => {
+    const { username, password, displayName, role } = request.body;
 
     // Check unique username
     if (userManager.getByUsername(username)) {

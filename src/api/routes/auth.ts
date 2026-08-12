@@ -4,6 +4,23 @@ import { AuthError } from "../../auth/auth-service.js";
 import type { UserManager } from "../../auth/user-manager.js";
 import type { Logger } from "../../core/logger.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schemas (issue #452). login/refresh had bare `!x` guards (no trim), so
+// nonEmptyString matches. /auth/setup and /auth/logout stay hand-rolled: setup
+// returns 403 when a user already exists BEFORE its body check (a body schema
+// would flip that 403 to a 400), and logout has no required field.
+const loginBodySchema = {
+  type: "object",
+  required: ["username", "password"],
+  properties: { username: nonEmptyString, password: nonEmptyString },
+};
+
+const refreshBodySchema = {
+  type: "object",
+  required: ["refreshToken"],
+  properties: { refreshToken: nonEmptyString },
+};
 
 interface AuthDeps {
   authService: AuthService;
@@ -54,12 +71,12 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     Body: { username: string; password: string };
   }>(
     "/api/v1/auth/login",
-    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    {
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+      schema: { body: loginBodySchema },
+    },
     async (request, reply) => {
-      const { username, password } = request.body ?? {};
-      if (!username || !password) {
-        return reply.code(400).send({ error: "username and password are required" });
-      }
+      const { username, password } = request.body;
 
       try {
         const tokens = await authService.login(username, password);
@@ -93,11 +110,8 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
   // POST /api/v1/auth/refresh
   app.post<{
     Body: { refreshToken: string };
-  }>("/api/v1/auth/refresh", async (request, reply) => {
-    const { refreshToken } = request.body ?? {};
-    if (!refreshToken) {
-      return reply.code(400).send({ error: "refreshToken is required" });
-    }
+  }>("/api/v1/auth/refresh", { schema: { body: refreshBodySchema } }, async (request, reply) => {
+    const { refreshToken } = request.body;
 
     try {
       const tokens = await authService.refresh(refreshToken);
