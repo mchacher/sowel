@@ -125,7 +125,7 @@ beforeEach(async () => {
   vi.stubGlobal("window", {
     location: { hostname: "localhost", host: "localhost:5173", protocol: "http:" },
   });
-  globalThis.localStorage = makeStorage();
+  vi.stubGlobal("localStorage", makeStorage());
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => ({ json: async () => ({}) })),
@@ -173,9 +173,14 @@ describe("connect", () => {
 
     expect(useWebSocket.getState().status).toBe("connected");
     expect(ws.sent[0]).toContain('"type":"subscribe"');
+    // All seven store refetches fire so nothing missed while disconnected is stale.
     expect(S.devices.fetchDevices).toHaveBeenCalled();
     expect(S.equipments.fetchEquipments).toHaveBeenCalled();
     expect(S.zones.fetchZones).toHaveBeenCalled();
+    expect(S.zoneAgg.fetchAggregation).toHaveBeenCalled();
+    expect(S.recipes.fetchRecipes).toHaveBeenCalled();
+    expect(S.recipes.fetchInstances).toHaveBeenCalled();
+    expect(S.modes.fetchModes).toHaveBeenCalled();
   });
 
   it("on open: restores integration statuses and error alarms from the health endpoint", async () => {
@@ -264,6 +269,50 @@ describe("handleEvent dispatch", () => {
     expect(() => ws.simulateMessage("this is not json")).not.toThrow();
     expect(S.devices.addDevice).not.toHaveBeenCalled();
   });
+
+  it("routes the remaining device / zone / equipment / mode cases", () => {
+    const ws = connect();
+    ws.simulateMessage({
+      type: "device.data.updated",
+      deviceId: "d1",
+      key: "temp",
+      value: 20,
+      timestamp: "t",
+    });
+    ws.simulateMessage({ type: "device.heartbeat", deviceId: "d1", timestamp: "t" });
+    ws.simulateMessage({ type: "zone.created", zone: { id: "z1" } });
+    ws.simulateMessage({ type: "zone.updated", zone: { id: "z1" } });
+    ws.simulateMessage({ type: "zone.removed", zoneId: "z1" });
+    ws.simulateMessage({ type: "equipment.created" });
+    ws.simulateMessage({ type: "equipment.removed" });
+    ws.simulateMessage({ type: "equipment.status.changed", equipmentId: "eq-1", newStatus: "offline" });
+    ws.simulateMessage({ type: "mode.created" });
+    ws.simulateMessage({ type: "mode.deactivated", modeId: "m1" });
+
+    expect(S.devices.updateDeviceDataValue).toHaveBeenCalledWith("d1", "temp", 20, "t");
+    expect(S.devices.updateDeviceHeartbeat).toHaveBeenCalledWith("d1", "t");
+    expect(S.zones.handleZoneCreated).toHaveBeenCalledWith({ id: "z1" });
+    expect(S.zones.handleZoneUpdated).toHaveBeenCalledWith({ id: "z1" });
+    expect(S.zones.handleZoneRemoved).toHaveBeenCalledWith("z1");
+    expect(S.equipments.handleEquipmentCreated).toHaveBeenCalled();
+    expect(S.equipments.handleEquipmentRemoved).toHaveBeenCalled();
+    expect(S.equipments.handleEquipmentStatusChanged).toHaveBeenCalledWith("eq-1", "offline");
+    expect(S.modes.handleModeEvent).toHaveBeenCalled();
+    expect(S.modes.handleModeDeactivated).toHaveBeenCalledWith("m1");
+  });
+
+  it("refreshes the arbiter on every capacity event", () => {
+    const ws = connect();
+    for (const type of [
+      "energy.capacity.granted",
+      "energy.capacity.revoked",
+      "energy.capacity.denied",
+      "energy.capacity.released",
+    ]) {
+      ws.simulateMessage({ type });
+    }
+    expect(S.arbiter.refreshSoon).toHaveBeenCalledTimes(4);
+  });
 });
 
 describe("system events update the store", () => {
@@ -304,6 +353,14 @@ describe("system events update the store", () => {
     });
     ws.simulateMessage({ type: "system.restart_required", reason: "home_location_changed" });
     expect(useWebSocket.getState().restartRequired).toBe("home_location_changed");
+  });
+
+  it("toggles updateInProgress on update progress then error", () => {
+    const ws = connect();
+    ws.simulateMessage({ type: "system.update.progress" });
+    expect(useWebSocket.getState().updateInProgress).toBe(true);
+    ws.simulateMessage({ type: "system.update.error" });
+    expect(useWebSocket.getState().updateInProgress).toBe(false);
   });
 });
 
