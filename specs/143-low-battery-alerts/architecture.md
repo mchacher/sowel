@@ -132,9 +132,6 @@ state.
 `!device.data.some((d) => MAINS_DATA_CATEGORIES.has(d.category))`. A watched data
 is one whose `category === "battery"` **or** whose `key === "battery_low"`.
 
-`isLow` is the current alert state, which is what makes the hysteresis band
-(`(20, 25)`) resolve to `"ignore"` — hold the current state, whatever it is.
-
 Sweep (`BATTERY_SWEEP_START_DELAY_MS` after `init`, then every
 `BATTERY_SWEEP_INTERVAL_MS`):
 
@@ -167,9 +164,9 @@ pipeline did.
 
 ## API
 
-`GET /api/v1/devices/battery-alerts` (in `src/api/routes/devices.ts`, registered
-**before** `/api/v1/devices/:id` so the literal path is not captured by the param
-route) returns the active alerts:
+`GET /api/v1/devices/battery-alerts` (in `src/api/routes/devices.ts` — a static
+path, which Fastify's router matches ahead of `/api/v1/devices/:id`) returns the
+active alerts:
 
 ```json
 [
