@@ -361,6 +361,8 @@
   "category.luminosity": "Luminosité",
   "category.contact_door": "Contact porte",
   "category.contact_window": "Contact fenêtre",
+  "category.light_state": "État",
+  "category.appliance_state": "État",
   "category.co2": "CO₂",
   "category.voc": "COV",
   "category.water_leak": "Fuite d'eau",
