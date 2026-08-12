@@ -2,6 +2,20 @@ import type { FastifyInstance } from "fastify";
 import type { ChartManager } from "../../charts/chart-manager.js";
 import { ChartError } from "../../charts/chart-manager.js";
 import type { SavedChartConfig } from "../../shared/types.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schemas (issue #452). POST kept the old `!name` / `!config` rules:
+// name non-empty (bare `!name` accepted whitespace, so nonEmptyString not
+// nameField), config required. PUT had no hand-rolled validation and did
+// `request.body ?? {}`, so its schema stays permissive (object-or-null, no
+// required, no field constraints) to keep the body-less 200 no-op.
+const createChartBodySchema = {
+  type: "object",
+  required: ["name", "config"],
+  properties: { name: nonEmptyString, config: { type: "object" } },
+};
+
+const updateChartBodySchema = { type: ["object", "null"] };
 
 interface ChartsDeps {
   chartManager: ChartManager;
@@ -25,10 +39,8 @@ export function registerChartRoutes(app: FastifyInstance, deps: ChartsDeps): voi
   // POST /api/v1/charts
   app.post<{
     Body: { name: string; config: SavedChartConfig };
-  }>("/api/v1/charts", async (request, reply) => {
-    const { name, config } = request.body ?? {};
-    if (!name) return reply.code(400).send({ error: "name is required" });
-    if (!config) return reply.code(400).send({ error: "config is required" });
+  }>("/api/v1/charts", { schema: { body: createChartBodySchema } }, async (request, reply) => {
+    const { name, config } = request.body;
 
     try {
       const chart = chartManager.createChart(name, config);
@@ -43,7 +55,7 @@ export function registerChartRoutes(app: FastifyInstance, deps: ChartsDeps): voi
   app.put<{
     Params: { id: string };
     Body: { name?: string; config?: SavedChartConfig };
-  }>("/api/v1/charts/:id", async (request, reply) => {
+  }>("/api/v1/charts/:id", { schema: { body: updateChartBodySchema } }, async (request, reply) => {
     try {
       const chart = chartManager.updateChart(request.params.id, request.body ?? {});
       return chart;

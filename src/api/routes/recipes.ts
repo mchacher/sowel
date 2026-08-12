@@ -2,6 +2,29 @@ import type { FastifyInstance } from "fastify";
 import type { RecipeManager } from "../../recipes/engine/recipe-manager.js";
 import { RecipeError } from "../../recipes/engine/recipe-manager.js";
 import type { Logger } from "../../core/logger.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schemas (issue #452). Old guards were bare truthiness + `typeof x ===
+// "object"` / `=== "string"`, none of which trimmed, so nonEmptyString (accepts
+// "   ") matches. `params` must be a JSON object (type object rejects null and
+// non-objects, matching `!params || typeof params !== "object"`).
+const createInstanceBodySchema = {
+  type: "object",
+  required: ["recipeId", "params"],
+  properties: { recipeId: nonEmptyString, params: { type: "object" } },
+};
+
+const updateInstanceBodySchema = {
+  type: "object",
+  required: ["params"],
+  properties: { params: { type: "object" } },
+};
+
+const sendActionBodySchema = {
+  type: "object",
+  required: ["action"],
+  properties: { action: nonEmptyString },
+};
 
 interface RecipesDeps {
   recipeManager: RecipeManager;
@@ -36,46 +59,44 @@ export function registerRecipeRoutes(app: FastifyInstance, deps: RecipesDeps): v
       recipeId: string;
       params: Record<string, unknown>;
     };
-  }>("/api/v1/recipe-instances", async (request, reply) => {
-    const { recipeId, params } = request.body ?? {};
+  }>(
+    "/api/v1/recipe-instances",
+    { schema: { body: createInstanceBodySchema } },
+    async (request, reply) => {
+      const { recipeId, params } = request.body;
 
-    if (!recipeId) {
-      return reply.code(400).send({ error: "recipeId is required" });
-    }
-    if (!params || typeof params !== "object") {
-      return reply.code(400).send({ error: "params object is required" });
-    }
-
-    try {
-      const instance = recipeManager.createInstance(recipeId, params);
-      return reply.code(201).send(instance);
-    } catch (err) {
-      if (err instanceof RecipeError) {
-        return reply.code(err.status).send({ error: err.message });
+      try {
+        const instance = recipeManager.createInstance(recipeId, params);
+        return reply.code(201).send(instance);
+      } catch (err) {
+        if (err instanceof RecipeError) {
+          return reply.code(err.status).send({ error: err.message });
+        }
+        throw err;
       }
-      throw err;
-    }
-  });
+    },
+  );
 
   // PUT /api/v1/recipe-instances/:id — Update instance params
   app.put<{
     Params: { id: string };
     Body: { params: Record<string, unknown> };
-  }>("/api/v1/recipe-instances/:id", async (request, reply) => {
-    const { params } = request.body ?? {};
-    if (!params || typeof params !== "object") {
-      return reply.code(400).send({ error: "params object is required" });
-    }
-    try {
-      const instance = recipeManager.updateInstance(request.params.id, params);
-      return instance;
-    } catch (err) {
-      if (err instanceof RecipeError) {
-        return reply.code(err.status).send({ error: err.message });
+  }>(
+    "/api/v1/recipe-instances/:id",
+    { schema: { body: updateInstanceBodySchema } },
+    async (request, reply) => {
+      const { params } = request.body;
+      try {
+        const instance = recipeManager.updateInstance(request.params.id, params);
+        return instance;
+      } catch (err) {
+        if (err instanceof RecipeError) {
+          return reply.code(err.status).send({ error: err.message });
+        }
+        throw err;
       }
-      throw err;
-    }
-  });
+    },
+  );
 
   // DELETE /api/v1/recipe-instances/:id — Stop and delete instance
   app.delete<{ Params: { id: string } }>("/api/v1/recipe-instances/:id", async (request, reply) => {
@@ -126,21 +147,22 @@ export function registerRecipeRoutes(app: FastifyInstance, deps: RecipesDeps): v
   app.post<{
     Params: { id: string };
     Body: { action: string; payload?: Record<string, unknown> };
-  }>("/api/v1/recipe-instances/:id/actions", async (request, reply) => {
-    const { action, payload } = request.body ?? {};
-    if (!action || typeof action !== "string") {
-      return reply.code(400).send({ error: "action is required" });
-    }
-    try {
-      recipeManager.sendAction(request.params.id, action, payload);
-      return { ok: true };
-    } catch (err) {
-      if (err instanceof RecipeError) {
-        return reply.code(err.status).send({ error: err.message });
+  }>(
+    "/api/v1/recipe-instances/:id/actions",
+    { schema: { body: sendActionBodySchema } },
+    async (request, reply) => {
+      const { action, payload } = request.body;
+      try {
+        recipeManager.sendAction(request.params.id, action, payload);
+        return { ok: true };
+      } catch (err) {
+        if (err instanceof RecipeError) {
+          return reply.code(err.status).send({ error: err.message });
+        }
+        throw err;
       }
-      throw err;
-    }
-  });
+    },
+  );
 
   // GET /api/v1/recipe-instances/:id/log — Get execution log
   app.get<{
