@@ -64,17 +64,20 @@ describe("UserManager", () => {
       expect(await bcrypt.compare("plaintext-here", row.password_hash)).toBe(true);
     });
 
-    it("merges supplied preferences over the defaults", async () => {
+    it("merges a partial preference over the defaults (unset keys keep their default)", async () => {
+      // Supply only `theme`: `language` must fall back to the default "fr".
+      // A test that supplied both keys would still pass even if createUser
+      // ignored DEFAULT_PREFERENCES entirely, so we exercise the partial case.
       const user = await manager.createUser({
         username: "bob",
         displayName: "Bob",
         password: "pw",
         role: "standard",
-        preferences: { language: "en", theme: "dark" },
+        preferences: { theme: "dark" },
       });
 
-      expect(user.preferences.language).toBe("en");
       expect(user.preferences.theme).toBe("dark");
+      expect(user.preferences.language).toBe("fr");
     });
 
     it("rejects a duplicate username (UNIQUE constraint)", async () => {
@@ -157,6 +160,15 @@ describe("UserManager", () => {
       expect(updated?.enabled).toBe(false);
       // Confirm it round-trips through the DB, not just the returned object.
       expect(manager.getById(user.id)?.enabled).toBe(false);
+    });
+
+    it("returns null when updating an unknown id", () => {
+      const updated = manager.updateUser("does-not-exist", {
+        displayName: "Ghost",
+        role: "standard",
+        enabled: true,
+      });
+      expect(updated).toBeNull();
     });
   });
 
