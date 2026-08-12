@@ -89,6 +89,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # The root vitest run (Tests step) includes ui/src store tests that import
+      # zustand, so ui/node_modules must be present before it runs.
+      - run: cd ui && npm ci
 
       - name: TypeScript check
         run: npx tsc --noEmit
