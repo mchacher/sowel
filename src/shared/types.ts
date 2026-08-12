@@ -1186,6 +1186,9 @@ export interface LogEntry {
 export interface SavedChartSeriesConfig {
   equipmentId: string;
   alias: string;
+  /** Series colour as `#rrggbb` (spec 145). Absent on charts saved before that
+   * spec — the palette default by position applies. */
+  color?: string;
 }
 
 export interface SavedChartConfig {
@@ -1198,6 +1201,9 @@ export interface SavedChartConfig {
   period?: "day" | "week" | "month" | "year";
   /** Anchor date for the period (YYYY-MM-DD). Required when `period` is set. */
   date?: string;
+  /** Fit the measurement Y axis to the visible data instead of anchoring it at
+   * zero (spec 145). Absent = off, which is the pre-145 rendering. */
+  yAxisFit?: boolean;
 }
 
 export interface SavedChart {

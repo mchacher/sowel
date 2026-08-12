@@ -13,6 +13,22 @@ export type TimeRange = "6h" | "24h" | "7d" | "30d";
 
 export type ChartFamily = "measurements" | "cumulative" | "states";
 
+/**
+ * Default Analyse series palette (spec 118). A series with no explicit colour
+ * takes the entry at its position in the list — the pre-145 behaviour, and what
+ * keeps untouched charts rendering exactly as before.
+ */
+export const SERIES_COLORS = [
+  "#1A4F6E", // primary (ocean blue)
+  "#D4963F", // accent (amber)
+  "#2D8B59", // green
+  "#9B59B6", // purple
+  "#E74C3C", // red
+  "#17A2B8", // teal
+  "#F39C12", // orange
+  "#8E44AD", // deep purple
+];
+
 const CUMULATIVE_CATEGORIES = new Set<string>(["rain", "energy"]);
 
 export const BOOLEAN_CATEGORIES = new Set<string>([
