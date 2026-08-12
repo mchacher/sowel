@@ -17,13 +17,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # The root vitest run includes ui/src tests; store tests import ui runtime
-      # deps (zustand), so ui/node_modules must be present.
+      # UI tests run from ui/ (component-test tier, issue #458), so ui deps are
+      # installed here and the UI suite runs after the backend one below.
       - run: cd ui && npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
       - run: npm test
+      - run: cd ui && npm test
 
   frontend:
     name: Frontend (lint, typecheck, build)
