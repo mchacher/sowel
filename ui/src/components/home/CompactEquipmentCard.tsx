@@ -82,6 +82,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isOn,
     sensorBindings,
     batteryBindings,
+    batteryAlert,
     iconElement,
   } = useEquipmentState(equipment);
 
@@ -194,6 +195,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 : sensorBindings
             }
             batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
+            batteryAlert={equipment.type === "weather" ? null : batteryAlert}
           />
         </div>
       )}

@@ -14,6 +14,7 @@ import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { EquipmentStatusTracker } from "./equipments/equipment-status-tracker.js";
 import { OrderConfirmationTracker } from "./equipments/order-confirmation-tracker.js";
+import { BatteryMonitor } from "./devices/battery-monitor.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
 import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-tracker.js";
@@ -281,6 +282,13 @@ async function main() {
   );
   await runUnlessShadow("orderConfirmationTracker.init()", () => orderConfirmationTracker.init());
 
+  // 10d. Low battery monitor (spec 143) — raises a system alarm when a
+  // battery-powered device drops under the threshold, reminding weekly until
+  // the cell is replaced. Not started in shadow mode: a shadow instance must
+  // not push notifications to the user's phone.
+  const batteryMonitor = new BatteryMonitor(db, eventBus, deviceManager, logger);
+  await runUnlessShadow("batteryMonitor.init()", () => batteryMonitor.init());
+
   // 11. Create InfluxDB client and connect
   const influxClient = new InfluxClient(logger);
   influxClient.connect(config.influx);
@@ -440,6 +448,7 @@ async function main() {
   const server = await createServer({
     db,
     deviceManager,
+    batteryMonitor,
     zoneManager,
     zoneAggregator,
     equipmentManager,
@@ -635,6 +644,11 @@ async function main() {
       orderConfirmationTracker.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping order confirmation tracker");
+    }
+    try {
+      batteryMonitor.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping battery monitor");
     }
     try {
       poolWaterTempTracker.stop();

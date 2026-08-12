@@ -1,4 +1,5 @@
 import type {
+  BatteryAlert,
   Device,
   DeviceData,
   DeviceOrder,
@@ -148,6 +149,11 @@ export interface DeviceWithData extends Device {
 
 export async function getDevices(): Promise<DeviceWithData[]> {
   return fetchJSON<DeviceWithData[]>(`${API_BASE}/devices`);
+}
+
+/** Active low-battery alerts (spec 143). */
+export async function getBatteryAlerts(): Promise<BatteryAlert[]> {
+  return fetchJSON<BatteryAlert[]>(`${API_BASE}/devices/battery-alerts`);
 }
 
 export async function getDevice(id: string): Promise<DeviceWithDetails> {

@@ -126,6 +126,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     iconColor,
     sensorBindings,
     batteryBindings,
+    batteryAlert,
   } = useEquipmentState(equipment);
 
   return (
@@ -163,6 +164,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         <SensorValues
           sensorBindings={sensorBindings}
           batteryBindings={batteryBindings}
+          batteryAlert={batteryAlert}
         />
       )}
 

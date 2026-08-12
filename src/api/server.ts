@@ -72,6 +72,8 @@ import { registerWebSocket } from "./websocket.js";
 interface ServerDeps {
   db: Database.Database;
   deviceManager: DeviceManager;
+  /** Spec 143 — not started in shadow mode. */
+  batteryMonitor?: import("../devices/battery-monitor.js").BatteryMonitor;
   zoneManager: ZoneManager;
   zoneAggregator: ZoneAggregator;
   equipmentManager: EquipmentManager;
@@ -124,6 +126,7 @@ export async function createServer(deps: ServerDeps) {
   const {
     db,
     deviceManager,
+    batteryMonitor,
     zoneManager,
     zoneAggregator,
     equipmentManager,
@@ -279,7 +282,7 @@ export async function createServer(deps: ServerDeps) {
   registerAuthRoutes(app, { authService, userManager, auditLogger, logger });
   registerMeRoutes(app, { authService, userManager, auditLogger, logger });
   registerUserRoutes(app, { userManager, auditLogger, logger });
-  registerDeviceRoutes(app, { deviceManager, logger });
+  registerDeviceRoutes(app, { deviceManager, batteryMonitor, logger });
   registerZoneRoutes(app, { zoneManager, zoneAggregator, equipmentManager, logger });
   registerEquipmentRoutes(app, { equipmentManager, logger });
   registerCameraRoutes(app, { equipmentManager, logger });

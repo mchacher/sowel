@@ -1,18 +1,27 @@
 import type { FastifyInstance } from "fastify";
 import type { DeviceManager } from "../../devices/device-manager.js";
+import type { BatteryMonitor } from "../../devices/battery-monitor.js";
 import type { Logger } from "../../core/logger.js";
 
 interface DevicesDeps {
   deviceManager: DeviceManager;
+  /** Spec 143 — absent in shadow mode, where the monitor does not run. */
+  batteryMonitor?: BatteryMonitor;
   logger: Logger;
 }
 
 export function registerDeviceRoutes(app: FastifyInstance, deps: DevicesDeps): void {
-  const { deviceManager } = deps;
+  const { deviceManager, batteryMonitor } = deps;
 
   // GET /api/v1/devices — List all devices with current data
   app.get("/api/v1/devices", async () => {
     return deviceManager.getAllWithData();
+  });
+
+  // GET /api/v1/devices/battery-alerts — Active low-battery alerts (spec 143).
+  // Static path: Fastify's router matches it ahead of /devices/:id.
+  app.get("/api/v1/devices/battery-alerts", async () => {
+    return batteryMonitor?.getActiveAlerts() ?? [];
   });
 
   // GET /api/v1/devices/:id — Get device with data and orders

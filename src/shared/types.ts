@@ -112,6 +112,13 @@ export type DeviceSource =
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
+/**
+ * How a device is powered, as declared by its integration at discovery
+ * (spec 143). `unknown` is the default for every integration that does not
+ * report it — consumers fall back to a heuristic rather than guessing here.
+ */
+export type PowerSource = "battery" | "mains" | "dc" | "unknown";
+
 export interface Device {
   id: string;
   integrationId: string;
@@ -123,10 +130,27 @@ export interface Device {
   zoneId: string | null;
   source: DeviceSource;
   status: DeviceStatus;
+  /** Spec 143 — `unknown` unless the integration declares it at discovery. */
+  powerSource: PowerSource;
   lastSeen: string | null;
   rawExpose?: unknown;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * An active low-battery alert (spec 143). One row per battery device data
+ * currently under the threshold; deleted when the battery recovers.
+ */
+export interface BatteryAlert {
+  deviceDataId: string;
+  deviceId: string;
+  deviceName: string;
+  /** Raw low value as reported, for the log and the UI label ("12", "true"). */
+  value: string;
+  raisedAt: string;
+  /** Drives the weekly reminder — persisted so a restart does not reset it. */
+  lastNotifiedAt: string;
 }
 
 export interface DeviceData {
