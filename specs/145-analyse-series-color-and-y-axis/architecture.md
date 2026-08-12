@@ -196,6 +196,19 @@ Tick labels carry their unit only in split mode (`formatAxisTick`), because
 that is the only case where a bare number is ambiguous. Axis width goes 52 → 62
 to fit the suffix.
 
+They are also tinted like their curve, which is the cheapest way to pair a
+series with its scale:
+
+```ts
+const onAxis = styledSeries.filter((s) => axisIdOf(s.category) === target);
+return onAxis.length === 1 ? onAxis[0].color : null;
+```
+
+Single series only — two curves on one axis have no single colour to borrow —
+and `null` falls back to `--color-text-tertiary`, so a shared axis is exactly
+as neutral as today. Only the tick labels take the colour: `axisLine` and
+`tickLine` are already off on these axes.
+
 ## Colour picker anchors
 
 The picker opens from two places, so `colorPicker` state carries where from:

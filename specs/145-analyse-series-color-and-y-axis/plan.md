@@ -89,3 +89,6 @@ covered by the manual pass below.
 12. Add a pressure series → back to one shared left axis, bare number ticks.
 13. Temperature + humidity + relay → °C left, % right, `[0, 1]` stacked outside
     the right axis.
+14. Same two-quantity chart → each axis is tinted like its curve; add a second
+    temperature → the left axis goes back to neutral, the right one stays
+    tinted.

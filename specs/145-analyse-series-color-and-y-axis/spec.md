@@ -82,6 +82,11 @@ put them on one chart at all — is exactly what the shared scale prevents.
 - When two axes are shown, the tick labels carry their unit (`21.5 °C` on the
   left, `60 %` on the right). With one axis they stay bare numbers, as today:
   the legend and the tooltip already give the unit.
+- A split axis is tinted with the colour of its curve, so the eye pairs a
+  series with its scale without a detour through the legend. Only when the
+  axis carries a single series — several curves on one axis have no single
+  colour to borrow, and a shared axis (one, or three-plus quantities) stays
+  neutral, as today.
 - State series are unaffected: they keep their own `[0, 1]` axis on the right,
   stacked outside the second measurement axis when both are present.
 
@@ -117,6 +122,8 @@ configuration that backs it.
 | 10  | A mixed measurements + states chart with the fit on | —                                                          | Only the measurement axes are fitted; the right `[0, 1]` axis is untouched            |
 | 11  | Same chart                                          | The user clicks a legend entry                             | The picker opens at the click point and recolours that series                         |
 | 12  | A temperature + humidity chart                      | —                                                          | Two axes: °C on the left, % on the right, each spanning only its own data             |
+| 12b | Same chart, one series per quantity                 | —                                                          | The °C axis is tinted like its curve, the % axis like its own                         |
+| 12c | Two temperatures + one humidity                     | —                                                          | The right (%) axis is tinted; the left axis carries two curves so it stays neutral    |
 | 13  | A chart with two temperatures                       | —                                                          | One shared axis — same unit, directly comparable                                      |
 | 14  | A temperature + humidity + pressure chart           | —                                                          | One shared left axis, as before                                                       |
 | 15  | A temperature + humidity + relay chart              | —                                                          | °C left, % right, and the `[0, 1]` state axis stacked outside it                      |

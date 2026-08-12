@@ -608,6 +608,19 @@ export function AnalyseView() {
     [chartUnits],
   );
 
+  // With one scale per side, tinting each axis like its curve says at a glance
+  // which side to read a series off. Only when the axis carries a single
+  // series: several curves on one axis have no single colour to borrow, and a
+  // shared axis (one, or three-plus quantities) stays neutral.
+  const axisColors = useMemo(() => {
+    const colorOf = (target: "left" | "right") => {
+      if (!splitAxes) return null;
+      const onAxis = styledSeries.filter((s) => axisIdOf(s.category) === target);
+      return onAxis.length === 1 ? onAxis[0].color : null;
+    };
+    return { left: colorOf("left"), right: colorOf("right") };
+  }, [splitAxes, styledSeries, axisIdOf]);
+
   // Domain + ticks per measurement axis when the fit is on. Built from what
   // each axis actually carries: its own series, plus their envelope bounds
   // when the band is on screen.
@@ -1247,7 +1260,7 @@ export function AnalyseView() {
                       {...(fittedAxes.left
                         ? { domain: fittedAxes.left.domain, ticks: fittedAxes.left.ticks }
                         : {})}
-                      tick={{ fontSize: 10, fill: textTertiary }}
+                      tick={{ fontSize: 10, fill: axisColors.left ?? textTertiary }}
                       tickLine={false}
                       axisLine={false}
                       width={splitAxes ? 62 : 52}
@@ -1260,7 +1273,7 @@ export function AnalyseView() {
                         {...(fittedAxes.right
                           ? { domain: fittedAxes.right.domain, ticks: fittedAxes.right.ticks }
                           : {})}
-                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tick={{ fontSize: 10, fill: axisColors.right ?? textTertiary }}
                         tickLine={false}
                         axisLine={false}
                         width={62}
