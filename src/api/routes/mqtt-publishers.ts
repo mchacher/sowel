@@ -3,6 +3,30 @@ import type { MqttPublisherManager } from "../../mqtt-publishers/mqtt-publisher-
 import type { MqttPublishService } from "../../mqtt-publishers/mqtt-publish-service.js";
 import { MqttPublisherError } from "../../mqtt-publishers/mqtt-publisher-manager.js";
 import { requireAdmin } from "../../auth/auth-middleware.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schemas (issue #452). Old guards were bare `!x` (no trim), so
+// nonEmptyString matches. Admin gating is an onRequest hook (runs before schema
+// validation), so the 403-before-400 precedence holds. PUT had no validation
+// (`request.body ?? {}`), so its schema stays permissive (object-or-null).
+const createPublisherBodySchema = {
+  type: "object",
+  required: ["name", "brokerId", "topic"],
+  properties: { name: nonEmptyString, brokerId: nonEmptyString, topic: nonEmptyString },
+};
+
+const updatePublisherBodySchema = { type: ["object", "null"] };
+
+const addMappingBodySchema = {
+  type: "object",
+  required: ["publishKey", "sourceType", "sourceId", "sourceKey"],
+  properties: {
+    publishKey: nonEmptyString,
+    sourceType: nonEmptyString,
+    sourceId: nonEmptyString,
+    sourceKey: nonEmptyString,
+  },
+};
 
 interface MqttPublishersDeps {
   mqttPublisherManager: MqttPublisherManager;
@@ -38,27 +62,28 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
       enabled?: boolean;
       onChangeOnly?: boolean;
     };
-  }>("/api/v1/mqtt-publishers", async (request, reply) => {
-    const { name, brokerId, topic, enabled, onChangeOnly } = request.body ?? {};
-    if (!name) return reply.code(400).send({ error: "name is required" });
-    if (!brokerId) return reply.code(400).send({ error: "brokerId is required" });
-    if (!topic) return reply.code(400).send({ error: "topic is required" });
+  }>(
+    "/api/v1/mqtt-publishers",
+    { schema: { body: createPublisherBodySchema } },
+    async (request, reply) => {
+      const { name, brokerId, topic, enabled, onChangeOnly } = request.body;
 
-    try {
-      const publisher = mqttPublisherManager.create({
-        name,
-        brokerId,
-        topic,
-        enabled,
-        onChangeOnly,
-      });
-      return reply.code(201).send(publisher);
-    } catch (err) {
-      if (err instanceof MqttPublisherError)
-        return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+      try {
+        const publisher = mqttPublisherManager.create({
+          name,
+          brokerId,
+          topic,
+          enabled,
+          onChangeOnly,
+        });
+        return reply.code(201).send(publisher);
+      } catch (err) {
+        if (err instanceof MqttPublisherError)
+          return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // PUT /api/v1/mqtt-publishers/:id
   app.put<{
@@ -70,16 +95,20 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
       enabled?: boolean;
       onChangeOnly?: boolean;
     };
-  }>("/api/v1/mqtt-publishers/:id", async (request, reply) => {
-    try {
-      const publisher = mqttPublisherManager.update(request.params.id, request.body ?? {});
-      return publisher;
-    } catch (err) {
-      if (err instanceof MqttPublisherError)
-        return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+  }>(
+    "/api/v1/mqtt-publishers/:id",
+    { schema: { body: updatePublisherBodySchema } },
+    async (request, reply) => {
+      try {
+        const publisher = mqttPublisherManager.update(request.params.id, request.body ?? {});
+        return publisher;
+      } catch (err) {
+        if (err instanceof MqttPublisherError)
+          return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // DELETE /api/v1/mqtt-publishers/:id
   app.delete<{ Params: { id: string } }>("/api/v1/mqtt-publishers/:id", async (request, reply) => {
@@ -115,28 +144,28 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
       sourceKey: string;
       enabled?: boolean;
     };
-  }>("/api/v1/mqtt-publishers/:id/mappings", async (request, reply) => {
-    const { publishKey, sourceType, sourceId, sourceKey, enabled } = request.body ?? {};
-    if (!publishKey) return reply.code(400).send({ error: "publishKey is required" });
-    if (!sourceType) return reply.code(400).send({ error: "sourceType is required" });
-    if (!sourceId) return reply.code(400).send({ error: "sourceId is required" });
-    if (!sourceKey) return reply.code(400).send({ error: "sourceKey is required" });
+  }>(
+    "/api/v1/mqtt-publishers/:id/mappings",
+    { schema: { body: addMappingBodySchema } },
+    async (request, reply) => {
+      const { publishKey, sourceType, sourceId, sourceKey, enabled } = request.body;
 
-    try {
-      const mapping = mqttPublisherManager.addMapping(request.params.id, {
-        publishKey,
-        sourceType,
-        sourceId,
-        sourceKey,
-        enabled,
-      });
-      return reply.code(201).send(mapping);
-    } catch (err) {
-      if (err instanceof MqttPublisherError)
-        return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+      try {
+        const mapping = mqttPublisherManager.addMapping(request.params.id, {
+          publishKey,
+          sourceType,
+          sourceId,
+          sourceKey,
+          enabled,
+        });
+        return reply.code(201).send(mapping);
+      } catch (err) {
+        if (err instanceof MqttPublisherError)
+          return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // PUT /api/v1/mqtt-publishers/:id/mappings/:mappingId
   app.put<{

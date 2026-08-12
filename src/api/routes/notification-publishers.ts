@@ -4,6 +4,31 @@ import type { NotificationPublishService } from "../../notifications/notificatio
 import { NotificationPublisherError } from "../../notifications/notification-publisher-manager.js";
 import type { NotificationChannelType, NotificationChannelConfig } from "../../shared/types.js";
 import { requireAdmin } from "../../auth/auth-middleware.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schemas (issue #452). Old guards were bare `!x` (no trim), so
+// nonEmptyString matches. Admin gating is an onRequest hook (runs before schema
+// validation), preserving 403-before-400. The POST publisher only checked
+// `!name` (channelType/channelConfig are defaulted in the handler), so only
+// `name` is constrained. PUT had no validation, so its schema stays permissive.
+const createPublisherBodySchema = {
+  type: "object",
+  required: ["name"],
+  properties: { name: nonEmptyString },
+};
+
+const updatePublisherBodySchema = { type: ["object", "null"] };
+
+const addMappingBodySchema = {
+  type: "object",
+  required: ["message", "sourceType", "sourceId", "sourceKey"],
+  properties: {
+    message: nonEmptyString,
+    sourceType: nonEmptyString,
+    sourceId: nonEmptyString,
+    sourceKey: nonEmptyString,
+  },
+};
 
 interface NotificationPublishersDeps {
   notificationPublisherManager: NotificationPublisherManager;
@@ -45,24 +70,27 @@ export function registerNotificationPublisherRoutes(
       channelConfig: NotificationChannelConfig;
       enabled?: boolean;
     };
-  }>("/api/v1/notification-publishers", async (request, reply) => {
-    const { name, channelType, channelConfig, enabled } = request.body ?? {};
-    if (!name) return reply.code(400).send({ error: "name is required" });
+  }>(
+    "/api/v1/notification-publishers",
+    { schema: { body: createPublisherBodySchema } },
+    async (request, reply) => {
+      const { name, channelType, channelConfig, enabled } = request.body;
 
-    try {
-      const publisher = notificationPublisherManager.create({
-        name,
-        channelType: channelType ?? "telegram",
-        channelConfig: channelConfig ?? ({} as NotificationChannelConfig),
-        enabled,
-      });
-      return reply.code(201).send(publisher);
-    } catch (err) {
-      if (err instanceof NotificationPublisherError)
-        return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+      try {
+        const publisher = notificationPublisherManager.create({
+          name,
+          channelType: channelType ?? "telegram",
+          channelConfig: channelConfig ?? ({} as NotificationChannelConfig),
+          enabled,
+        });
+        return reply.code(201).send(publisher);
+      } catch (err) {
+        if (err instanceof NotificationPublisherError)
+          return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // PUT /api/v1/notification-publishers/:id
   app.put<{
@@ -73,16 +101,23 @@ export function registerNotificationPublisherRoutes(
       channelConfig?: NotificationChannelConfig;
       enabled?: boolean;
     };
-  }>("/api/v1/notification-publishers/:id", async (request, reply) => {
-    try {
-      const publisher = notificationPublisherManager.update(request.params.id, request.body ?? {});
-      return publisher;
-    } catch (err) {
-      if (err instanceof NotificationPublisherError)
-        return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+  }>(
+    "/api/v1/notification-publishers/:id",
+    { schema: { body: updatePublisherBodySchema } },
+    async (request, reply) => {
+      try {
+        const publisher = notificationPublisherManager.update(
+          request.params.id,
+          request.body ?? {},
+        );
+        return publisher;
+      } catch (err) {
+        if (err instanceof NotificationPublisherError)
+          return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // DELETE /api/v1/notification-publishers/:id
   app.delete<{ Params: { id: string } }>(
@@ -141,31 +176,31 @@ export function registerNotificationPublisherRoutes(
       repeatMs?: number | null;
       repeatMax?: number | null;
     };
-  }>("/api/v1/notification-publishers/:id/mappings", async (request, reply) => {
-    const { message, sourceType, sourceId, sourceKey, throttleMs, repeatMs, repeatMax } =
-      request.body ?? {};
-    if (!message) return reply.code(400).send({ error: "message is required" });
-    if (!sourceType) return reply.code(400).send({ error: "sourceType is required" });
-    if (!sourceId) return reply.code(400).send({ error: "sourceId is required" });
-    if (!sourceKey) return reply.code(400).send({ error: "sourceKey is required" });
+  }>(
+    "/api/v1/notification-publishers/:id/mappings",
+    { schema: { body: addMappingBodySchema } },
+    async (request, reply) => {
+      const { message, sourceType, sourceId, sourceKey, throttleMs, repeatMs, repeatMax } =
+        request.body;
 
-    try {
-      const mapping = notificationPublisherManager.addMapping(request.params.id, {
-        message,
-        sourceType,
-        sourceId,
-        sourceKey,
-        throttleMs,
-        repeatMs,
-        repeatMax,
-      });
-      return reply.code(201).send(mapping);
-    } catch (err) {
-      if (err instanceof NotificationPublisherError)
-        return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+      try {
+        const mapping = notificationPublisherManager.addMapping(request.params.id, {
+          message,
+          sourceType,
+          sourceId,
+          sourceKey,
+          throttleMs,
+          repeatMs,
+          repeatMax,
+        });
+        return reply.code(201).send(mapping);
+      } catch (err) {
+        if (err instanceof NotificationPublisherError)
+          return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // PUT /api/v1/notification-publishers/:id/mappings/:mappingId
   app.put<{
