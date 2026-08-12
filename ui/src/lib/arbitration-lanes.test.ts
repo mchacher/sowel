@@ -22,6 +22,7 @@ function state(journal: ArbiterDecision[], pending: string[] = []): ArbiterPubli
       equipmentName: equipmentId,
       instanceId: "i",
       watts: 600,
+      needW: 700,
       reasonWaiting: "insufficient-surplus:0",
     })),
     suspensions: [],

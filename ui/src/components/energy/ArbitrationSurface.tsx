@@ -167,12 +167,18 @@ function journalReason(entry: ArbiterDecision, t: (k: string) => string): string
 /**
  * Why a pending claim is waiting (FR-10a). `reasonWaiting` is a backend code;
  * `insufficient-surplus:<W>` carries the current free headroom.
+ *
+ * The figure shown is `needW`, the surplus the arbiter actually tests against,
+ * NOT the load's own draw: a claim that tolerates grid engages well below its
+ * own power, and quoting `watts` here read as "it will never start" to someone
+ * watching a surplus sit just under it.
  */
 function waitingReason(
   reasonWaiting: string,
-  watts: number,
+  needW: number,
   t: (k: string, o?: Record<string, unknown>) => string,
 ): string {
+  const watts = Math.max(0, needW);
   if (reasonWaiting.startsWith("insufficient-surplus")) {
     return t("arbiter.waitReason.insufficient", { watts });
   }
@@ -331,7 +337,7 @@ export function ArbitrationSurface() {
         >
           <span>⏳</span>
           <span>
-            <b className="text-text">{p.equipmentName}</b> {waitingReason(p.reasonWaiting, p.watts, t)}
+            <b className="text-text">{p.equipmentName}</b> {waitingReason(p.reasonWaiting, p.needW, t)}
           </span>
         </div>
       ))}

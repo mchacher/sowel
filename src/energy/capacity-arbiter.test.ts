@@ -242,6 +242,19 @@ describe("capacity arbiter", () => {
     expect(h.arbiter.getPublicState().pending[0]?.reasonWaiting).toContain("insufficient-surplus");
   });
 
+  it("publishes the surplus a pending claim waits for, not the load's own draw", () => {
+    // The two differ by whatever grid the claim tolerates, and the UI quotes
+    // this figure: a 600 W load willing to buy 400 W engages at 300 W, and
+    // showing 600 there reads as "it will never start".
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump", toleratedImportW: 400 });
+    h.feedMeter(-200);
+    h.run(-200, 300);
+    const [pending] = h.arbiter.getPublicState().pending;
+    expect(pending?.watts).toBe(600);
+    expect(pending?.needW).toBe(300); // 600 + 100 margin - 400 tolerated
+  });
+
   it("does NOT revoke when its own grant collapses the export (reservation accounting)", () => {
     const h = makeHarness();
     h.claim("i1", { equipmentId: "pump" });

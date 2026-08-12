@@ -329,6 +329,8 @@ export interface ArbiterPublicState {
     equipmentName: string;
     instanceId: string;
     watts: number;
+    /** Surplus the claim waits for — `watts` minus what it will buy from the grid. */
+    needW: number;
     reasonWaiting: string;
   }>;
   suspensions: Array<{ equipmentId: string; equipmentName: string; untilIso: string }>;

@@ -709,7 +709,15 @@ export interface ArbiterPendingInfo {
   equipmentId: string;
   equipmentName: string;
   instanceId: string;
+  /** What the load will draw once it runs. */
   watts: number;
+  /**
+   * Surplus the claim is actually waiting for: `watts + engageMarginW -
+   * toleratedImportW`. It is what the grant is tested against, and it differs
+   * from `watts` by however much grid the claim is willing to buy — which is
+   * the whole point of the tolerance, so the gap is routinely large.
+   */
+  needW: number;
   reasonWaiting: string;
 }
 
