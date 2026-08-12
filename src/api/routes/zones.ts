@@ -15,8 +15,10 @@ const createZoneBodySchema = {
   properties: { name: nameField, description: descriptionField },
 };
 
+// Allow a null/absent body: the old handler did `request.body ?? {}`, so a
+// body-less PUT was a 200 no-op. `type: ["object", "null"]` keeps that.
 const updateZoneBodySchema = {
-  type: "object",
+  type: ["object", "null"],
   properties: { name: nameField, description: descriptionField },
 };
 

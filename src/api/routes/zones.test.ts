@@ -94,4 +94,9 @@ describe("PUT /api/v1/zones/:id — input validation (characterization)", () => 
     expect((await put({ description: null })).statusCode).toBe(200);
     expect((await put({ parentId: null, bogus: 1 })).statusCode).toBe(200);
   });
+
+  it("200 for a body-less PUT (old `request.body ?? {}` no-op update)", async () => {
+    const res = await app.inject({ method: "PUT", url: "/api/v1/zones/z-1" });
+    expect(res.statusCode).toBe(200);
+  });
 });

@@ -121,6 +121,27 @@ describe("Mode API routes", () => {
         payload: { description: "No name" },
       });
       expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: expect.any(String) });
+    });
+
+    it("returns 400 when name is an empty string", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/modes",
+        payload: { name: "" },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("accepts a whitespace-only name (old `!name` did not trim)", async () => {
+      // Characterization: nonEmptyString (minLength 1), NOT nameField — a bare
+      // `!name` guard accepted "   ". Swapping to a \\S pattern would regress.
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/modes",
+        payload: { name: "   " },
+      });
+      expect(res.statusCode).toBe(201);
     });
   });
 
