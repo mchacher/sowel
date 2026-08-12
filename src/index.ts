@@ -286,7 +286,7 @@ async function main() {
   // battery-powered device drops under the threshold, reminding weekly until
   // the cell is replaced. Not started in shadow mode: a shadow instance must
   // not push notifications to the user's phone.
-  const batteryMonitor = new BatteryMonitor(db, eventBus, deviceManager, logger);
+  const batteryMonitor = new BatteryMonitor(db, eventBus, deviceManager, equipmentManager, logger);
   await runUnlessShadow("batteryMonitor.init()", () => batteryMonitor.init());
 
   // 11. Create InfluxDB client and connect

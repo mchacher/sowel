@@ -169,6 +169,13 @@ export class EquipmentManager {
          VALUES (@id, @name, @zoneId, @type, @icon, @description, @enabled)`,
       ),
       getEquipmentById: this.db.prepare("SELECT * FROM equipments WHERE id = ?"),
+      // Equipments that bind any data of a given device (reverse lookup, spec 143/#472).
+      equipmentIdsForDevice: this.db.prepare(
+        `SELECT DISTINCT db.equipment_id AS equipmentId
+         FROM data_bindings db
+         JOIN device_data dd ON db.device_data_id = dd.id
+         WHERE dd.device_id = ?`,
+      ),
       getAllEquipments: this.db.prepare("SELECT * FROM equipments ORDER BY name"),
       getEquipmentsByZone: this.db.prepare(
         "SELECT * FROM equipments WHERE zone_id = ? ORDER BY name",
@@ -362,6 +369,18 @@ export class EquipmentManager {
   getById(id: string): Equipment | null {
     const row = this.stmts.getEquipmentById.get(id) as EquipmentRow | undefined;
     return row ? rowToEquipment(row) : null;
+  }
+
+  /**
+   * Every equipment that binds any data of the given device (spec 143/#472).
+   * Ordered by name for a stable label. Empty when the device is unbound.
+   */
+  getEquipmentsForDeviceId(deviceId: string): Equipment[] {
+    const rows = this.stmts.equipmentIdsForDevice.all(deviceId) as { equipmentId: string }[];
+    return rows
+      .map((r) => this.getById(r.equipmentId))
+      .filter((e): e is Equipment => e !== null)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   getAll(): Equipment[] {

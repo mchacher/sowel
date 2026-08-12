@@ -10,7 +10,8 @@ import {
 } from "./battery-monitor.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
-import type { DeviceWithDetails, EngineEvent, PowerSource } from "../shared/types.js";
+import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import type { DeviceWithDetails, EngineEvent, Equipment, PowerSource } from "../shared/types.js";
 import type { DeviceManager } from "./device-manager.js";
 
 const logger = createLogger("silent").logger;
@@ -59,7 +60,29 @@ function makeDevice(
   };
 }
 
-function createHarness(devices: DeviceWithDetails[] = []) {
+/** Stub EquipmentManager: maps a deviceId to the equipments bound to it. */
+function mkEquipmentManager(byDevice: Record<string, Equipment[]> = {}): EquipmentManager {
+  return {
+    getEquipmentsForDeviceId: (deviceId: string) => byDevice[deviceId] ?? [],
+  } as unknown as EquipmentManager;
+}
+
+function eq(id: string, name: string, zoneId: string): Equipment {
+  return {
+    id,
+    name,
+    zoneId,
+    type: "sensor",
+    enabled: true,
+    createdAt: "2026-08-12T00:00:00Z",
+    updatedAt: "2026-08-12T00:00:00Z",
+  };
+}
+
+function createHarness(
+  devices: DeviceWithDetails[] = [],
+  equipmentsByDevice: Record<string, Equipment[]> = {},
+) {
   const db = createTestDb();
   const eventBus = new EventBus(logger);
   const events: EngineEvent[] = [];
@@ -70,7 +93,13 @@ function createHarness(devices: DeviceWithDetails[] = []) {
     getAllWithData: () => current,
   } as unknown as DeviceManager;
 
-  const monitor = new BatteryMonitor(db, eventBus, deviceManager, logger);
+  const monitor = new BatteryMonitor(
+    db,
+    eventBus,
+    deviceManager,
+    mkEquipmentManager(equipmentsByDevice),
+    logger,
+  );
   return {
     db,
     eventBus,
@@ -205,6 +234,61 @@ describe("BatteryMonitor", () => {
     expect(harness.raised()[0]).toMatchObject({ message: "Low battery" });
   });
 
+  // ─── equipment context (spec 143/#472) ──────────────────────────────────
+
+  it("labels the alarm with the equipment name and scopes it to the equipment's zone", () => {
+    harness = createHarness([makeDevice({ powerSource: "battery" })], {
+      "dev-1": [eq("e1", "Détecteur salon", "zone-salon")],
+    });
+    harness.monitor.init();
+    harness.monitor.sweep();
+
+    expect(harness.raised()[0]).toMatchObject({
+      source: "Détecteur salon", // equipment name headlines the alarm
+      message: "Low battery: 12% (Capteur porte)", // device name stays in the message
+      zoneId: "zone-salon",
+    });
+  });
+
+  it("lists several bound equipments and uses the first one's zone", () => {
+    harness = createHarness([makeDevice({ powerSource: "battery" })], {
+      "dev-1": [eq("e1", "Détecteur salon", "zone-salon"), eq("e2", "Alarme", "zone-hall")],
+    });
+    harness.monitor.init();
+    harness.monitor.sweep();
+
+    expect(harness.raised()[0]).toMatchObject({
+      source: "Détecteur salon, Alarme",
+      zoneId: "zone-salon",
+    });
+  });
+
+  it("falls back to the device name and a global (null) zone when the device is unbound", () => {
+    harness = createHarness([makeDevice({ powerSource: "battery" })]); // no equipment bound
+    harness.monitor.init();
+    harness.monitor.sweep();
+
+    expect(harness.raised()[0]).toMatchObject({
+      source: "Capteur porte",
+      message: "Low battery: 12%",
+      zoneId: null,
+    });
+  });
+
+  it("getActiveAlerts resolves the equipment names and zone live", () => {
+    harness = createHarness([makeDevice({ powerSource: "battery" })], {
+      "dev-1": [eq("e1", "Détecteur salon", "zone-salon")],
+    });
+    harness.monitor.init();
+    harness.monitor.sweep();
+
+    expect(harness.monitor.getActiveAlerts()[0]).toMatchObject({
+      deviceName: "Capteur porte",
+      equipmentNames: ["Détecteur salon"],
+      zoneId: "zone-salon",
+    });
+  });
+
   it("ignores a mains-powered device whatever its battery value", () => {
     harness = createHarness([makeDevice({ powerSource: "mains" })]);
     harness.monitor.init();
@@ -316,6 +400,7 @@ describe("BatteryMonitor", () => {
       {
         getAllWithData: () => [makeDevice({ powerSource: "battery" })],
       } as unknown as DeviceManager,
+      mkEquipmentManager(),
       logger,
     );
     reloaded.init();
@@ -333,6 +418,7 @@ describe("BatteryMonitor", () => {
       {
         getAllWithData: () => [makeDevice({ powerSource: "battery" })],
       } as unknown as DeviceManager,
+      mkEquipmentManager(),
       logger,
     );
     later.init();
@@ -356,6 +442,7 @@ describe("BatteryMonitor", () => {
       {
         getAllWithData: () => [makeDevice({ powerSource: "battery" })],
       } as unknown as DeviceManager,
+      mkEquipmentManager(),
       logger,
     );
     restarted.init();
@@ -385,6 +472,7 @@ describe("BatteryMonitor", () => {
       {
         getAllWithData: () => [makeDevice({ powerSource: "battery", data: [{ value: 95 }] })],
       } as unknown as DeviceManager,
+      mkEquipmentManager(),
       logger,
     );
     restarted.init();

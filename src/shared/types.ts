@@ -151,6 +151,12 @@ export interface BatteryAlert {
   raisedAt: string;
   /** Drives the weekly reminder — persisted so a restart does not reset it. */
   lastNotifiedAt: string;
+  /** Names of the equipments bound to this device, resolved live for the API
+   *  response (spec 143/#472). Absent on the internal record; empty array when
+   *  the device is unbound. Lets the banner show the equipment. */
+  equipmentNames?: string[];
+  /** Zone of the first bound equipment, null when unbound. Resolved live. */
+  zoneId?: string | null;
 }
 
 export interface DeviceData {
@@ -1025,6 +1031,9 @@ export type EngineEvent =
       level: "warning" | "error";
       source: string;
       message: string;
+      /** Zone the alarm belongs to, so the activity feed can scope it. Absent
+       *  or null = a global alarm shown in every zone (spec 143/#472). */
+      zoneId?: string | null;
     }
   | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
   // Self-update events

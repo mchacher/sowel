@@ -22,6 +22,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { BatteryAlert, DeviceWithDetails } from "../shared/types.js";
 import type { DeviceManager } from "./device-manager.js";
+import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import {
   BATTERY_REMINDER_INTERVAL_MS,
   BATTERY_SWEEP_INTERVAL_MS,
@@ -121,6 +122,7 @@ export class BatteryMonitor {
     private readonly db: Database.Database,
     private readonly eventBus: EventBus,
     private readonly deviceManager: DeviceManager,
+    private readonly equipmentManager: EquipmentManager,
     logger: Logger,
   ) {
     this.logger = logger.child({ module: "battery-monitor" });
@@ -167,7 +169,26 @@ export class BatteryMonitor {
 
   /** Active alerts, newest first. Feeds `GET /devices/battery-alerts`. */
   getActiveAlerts(): BatteryAlert[] {
-    return [...this.alerts.values()].sort((a, b) => b.raisedAt.localeCompare(a.raisedAt));
+    return [...this.alerts.values()]
+      .sort((a, b) => b.raisedAt.localeCompare(a.raisedAt))
+      .map((alert) => ({ ...alert, ...this.resolveEquipmentContext(alert.deviceId) }));
+  }
+
+  /**
+   * Equipment context of a battery device (spec 143/#472): the names of the
+   * equipments it is bound to and the zone of the first one. Resolved live, so
+   * a re-binding is reflected without touching the stored alert. An unbound
+   * device gets an empty list and a null zone, so its alarm stays global.
+   */
+  private resolveEquipmentContext(deviceId: string): {
+    equipmentNames: string[];
+    zoneId: string | null;
+  } {
+    const equipments = this.equipmentManager.getEquipmentsForDeviceId(deviceId);
+    return {
+      equipmentNames: equipments.map((e) => e.name),
+      zoneId: equipments[0]?.zoneId ?? null,
+    };
   }
 
   /**
@@ -244,12 +265,21 @@ export class BatteryMonitor {
   }
 
   private notify(alert: BatteryAlert): void {
+    const { equipmentNames, zoneId } = this.resolveEquipmentContext(alert.deviceId);
+    const bound = equipmentNames.length > 0;
     this.eventBus.emit({
       type: "system.alarm.raised",
       alarmId: `${ALARM_PREFIX}${alert.deviceDataId}`,
       level: "warning",
-      source: alert.deviceName,
-      message: batteryMessage(alert.value),
+      // The equipment name(s) headline the alarm; the device name stays visible
+      // in the message. An unbound device keeps the device name as the source.
+      source: bound ? equipmentNames.join(", ") : alert.deviceName,
+      message: bound
+        ? `${batteryMessage(alert.value)} (${alert.deviceName})`
+        : batteryMessage(alert.value),
+      // Scope the activity to the equipment's zone; null for an unbound device
+      // keeps it global rather than showing it in every zone.
+      zoneId,
     });
   }
 

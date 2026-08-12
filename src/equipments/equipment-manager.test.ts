@@ -381,6 +381,37 @@ describe("EquipmentManager", () => {
   // DataBinding
   // ============================================================
 
+  describe("getEquipmentsForDeviceId (spec 143/#472)", () => {
+    it("returns every equipment bound to any data of the device, ordered by name", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eqB = manager.create({ name: "Beta", type: "light_dimmable", zoneId: zone.id });
+      const eqA = manager.create({ name: "Alpha", type: "light_dimmable", zoneId: zone.id });
+      const { dataIds } = seedDevice(db, {
+        deviceId: "dev-x",
+        dataKeys: [
+          { key: "temperature", category: "temperature" },
+          { key: "battery", category: "battery" },
+        ],
+      });
+      // Two equipments each bind a different data of the same device.
+      manager.addDataBinding(eqB.id, dataIds[0], "temperature");
+      manager.addDataBinding(eqA.id, dataIds[1], "battery");
+
+      expect(manager.getEquipmentsForDeviceId("dev-x").map((e) => e.name)).toEqual([
+        "Alpha",
+        "Beta",
+      ]);
+    });
+
+    it("returns an empty array for an unbound device", () => {
+      seedDevice(db, {
+        deviceId: "dev-unbound",
+        dataKeys: [{ key: "battery", category: "battery" }],
+      });
+      expect(manager.getEquipmentsForDeviceId("dev-unbound")).toEqual([]);
+    });
+  });
+
   describe("addDataBinding", () => {
     it("creates a data binding", () => {
       const zone = zoneManager.create({ name: "Salon" });

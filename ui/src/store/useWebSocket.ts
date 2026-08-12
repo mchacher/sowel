@@ -325,11 +325,17 @@ export const useWebSocket = create<WebSocketState>((set) => ({
 
           for (const alert of batteryAlerts) {
             const alarmId = `${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`;
+            // Mirror the engine's live alarm (spec 143/#472): the equipment
+            // name(s) headline the banner, the device name stays in the message.
+            const equipmentNames = alert.equipmentNames ?? [];
+            const bound = equipmentNames.length > 0;
             alarms.set(alarmId, {
               alarmId,
               level: "warning",
-              source: alert.deviceName,
-              message: batteryAlarmMessage(alert.value),
+              source: bound ? equipmentNames.join(", ") : alert.deviceName,
+              message: bound
+                ? `${batteryAlarmMessage(alert.value)} (${alert.deviceName})`
+                : batteryAlarmMessage(alert.value),
             });
           }
 

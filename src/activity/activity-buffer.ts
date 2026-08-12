@@ -227,8 +227,11 @@ export class ActivityBuffer {
     this.push("sunlight", null, { template, params: {} });
   }
 
-  private onAlarmRaised(event: { source: string; message: string }): void {
-    this.push("alarm", null, {
+  private onAlarmRaised(event: { source: string; message: string; zoneId?: string | null }): void {
+    // A zone-scoped alarm (a battery alert bound to an equipment, spec 143/#472)
+    // lands in that zone; an alarm with no zone (integrations, unbound device)
+    // stays global and shows in every zone, as before.
+    this.push("alarm", event.zoneId ?? null, {
       template: "alarm.raised",
       params: { source: event.source, message: event.message },
     });

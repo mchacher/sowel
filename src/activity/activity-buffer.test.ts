@@ -399,6 +399,37 @@ describe("ActivityBuffer", () => {
     });
   });
 
+  describe("system alarms (spec 143/#472)", () => {
+    const isAlarm = (i: { message: { template: string } }) => i.message.template === "alarm.raised";
+
+    it("scopes a zone-tagged alarm to that zone only, not every zone", () => {
+      h.bus.emit({
+        type: "system.alarm.raised",
+        alarmId: "battery-low:dd-1",
+        level: "warning",
+        source: "Détecteur salon",
+        message: "Low battery: 12% (Capteur porte)",
+        zoneId: "zone-A",
+      });
+
+      expect(h.buffer.getItems({ zoneId: "zone-A" }).some(isAlarm)).toBe(true);
+      expect(h.buffer.getItems({ zoneId: "zone-B" }).some(isAlarm)).toBe(false);
+    });
+
+    it("keeps an alarm with no zone global (shown in every zone)", () => {
+      h.bus.emit({
+        type: "system.alarm.raised",
+        alarmId: "poll-fail:z2m",
+        level: "error",
+        source: "Zigbee2MQTT",
+        message: "down",
+      });
+
+      expect(h.buffer.getItems({ zoneId: "zone-A" }).some(isAlarm)).toBe(true);
+      expect(h.buffer.getItems({ zoneId: "zone-B" }).some(isAlarm)).toBe(true);
+    });
+  });
+
   describe("ring buffer cap and emit", () => {
     it("emits activity.added on the bus for every push", () => {
       const onActivity = vi.fn();

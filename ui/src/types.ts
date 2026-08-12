@@ -118,6 +118,11 @@ export interface BatteryAlert {
   value: string;
   raisedAt: string;
   lastNotifiedAt: string;
+  /** Names of the equipments bound to this device (spec 143/#472); empty when
+   *  unbound. Lets the banner show the equipment, not just the device. */
+  equipmentNames?: string[];
+  /** Zone of the first bound equipment, null when unbound. */
+  zoneId?: string | null;
 }
 
 export interface Device {
