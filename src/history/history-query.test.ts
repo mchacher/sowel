@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildFluxQuery } from "./history-query";
+import {
+  buildFluxQuery,
+  queryHistory,
+  querySparkline,
+  queryZoneSparkline,
+  queryHistorizedAliases,
+} from "./history-query";
+import { createLogger } from "../core/logger";
+import type { InfluxClient } from "../core/influx-client";
+
+const logger = createLogger("silent").logger;
 
 const baseParams = {
   bucket: "sowel",
@@ -8,6 +18,39 @@ const baseParams = {
   from: new Date("2026-05-01T00:00:00Z"),
   to: new Date("2026-06-01T00:00:00Z"),
 };
+
+/**
+ * Build a fake InfluxClient. `rows` is the list of row objects each query
+ * iteration should yield; `capture` (optional) records every Flux string run.
+ * Pass `configured: false` to simulate an unconfigured client.
+ */
+function makeInflux(options: {
+  rows?: Record<string, unknown>[];
+  capture?: string[];
+  configured?: boolean;
+  throwOnQuery?: boolean;
+}): InfluxClient {
+  const { rows = [], capture, configured = true, throwOnQuery = false } = options;
+
+  const queryApi = {
+    iterateRows(flux: string) {
+      capture?.push(flux);
+      if (throwOnQuery) throw new Error("influx boom");
+      return {
+        async *[Symbol.asyncIterator]() {
+          for (const row of rows) {
+            yield { values: row, tableMeta: { toObject: (v: unknown) => v } };
+          }
+        },
+      };
+    },
+  };
+
+  return {
+    getConfig: () => (configured ? { org: "sowel-org", bucket: "sowel" } : null),
+    getClient: () => (configured ? { getQueryApi: () => queryApi } : null),
+  } as unknown as InfluxClient;
+}
 
 describe("buildFluxQuery", () => {
   describe("raw bucket", () => {
@@ -125,5 +168,198 @@ describe("buildFluxQuery", () => {
       expect(flux).toContain("2026-05-01T00:00:00.000Z");
       expect(flux).toContain("2026-06-01T00:00:00.000Z");
     });
+  });
+
+  describe("raw result limits", () => {
+    it("caps continuous raw data at 2500 points", () => {
+      const flux = buildFluxQuery({ ...baseParams, resolution: "raw" });
+      expect(flux).toContain("limit(n: 2500)");
+    });
+
+    it("caps discrete (state) raw data at 2000 points", () => {
+      const flux = buildFluxQuery({ ...baseParams, resolution: "raw", isDiscrete: true });
+      expect(flux).toContain("limit(n: 2000)");
+    });
+  });
+});
+
+describe("queryHistory", () => {
+  it("returns an empty raw result when Influx is not configured", async () => {
+    const res = await queryHistory(
+      makeInflux({ configured: false }),
+      { equipmentId: "eq-1", alias: "temperature", from: "-24h" },
+      logger,
+    );
+    expect(res).toEqual({ points: [], resolution: "raw" });
+  });
+
+  it("maps raw points and drops rows with a missing or non-numeric value", async () => {
+    const influx = makeInflux({
+      rows: [
+        { _time: "2026-08-01T00:00:00Z", _value: 21.5 },
+        { _time: "2026-08-01T00:05:00Z", _value: "NaN-string" }, // dropped
+        { _value: 22 }, // missing time, dropped
+        { _time: "2026-08-01T00:10:00Z", _value: 22.1 },
+      ],
+      capture: [],
+    });
+
+    const res = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "temperature", from: "-1h", dataType: "number" },
+      logger,
+    );
+
+    expect(res.resolution).toBe("raw");
+    expect(res.points).toEqual([
+      { time: "2026-08-01T00:00:00Z", value: 21.5 },
+      { time: "2026-08-01T00:10:00Z", value: 22.1 },
+    ]);
+  });
+
+  it("forces raw resolution for discrete (boolean/enum) data types", async () => {
+    const capture: string[] = [];
+    const influx = makeInflux({ rows: [], capture });
+    const res = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "state", from: "-30d", dataType: "boolean" },
+      logger,
+    );
+    expect(res.resolution).toBe("raw");
+    expect(capture[0]).toContain("value_number");
+    expect(capture[0]).toContain("limit(n: 2000)"); // discrete raw limit
+  });
+
+  it("aggregated path pivots mean/min/max into points", async () => {
+    const influx = makeInflux({
+      rows: [{ _time: "2026-08-01T00:00:00Z", mean: 20, min: 18, max: 23 }],
+    });
+    const res = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "temperature", from: "-7d", aggregation: "1h" },
+      logger,
+    );
+    expect(res.resolution).toBe("1h");
+    expect(res.points[0]).toEqual({ time: "2026-08-01T00:00:00Z", value: 20, min: 18, max: 23 });
+  });
+
+  it("energy category routes to the dedicated energy bucket", async () => {
+    const capture: string[] = [];
+    const influx = makeInflux({ rows: [{ _time: "t", _value: 5 }], capture });
+    await queryHistory(
+      influx,
+      {
+        equipmentId: "eq-1",
+        alias: "consumption",
+        from: "-7d",
+        aggregation: "1h",
+        category: "energy",
+      },
+      logger,
+    );
+    expect(capture[0]).toContain('from(bucket: "sowel-energy-hourly")');
+  });
+
+  it("cumulative category falls back to the raw bucket when the downsampled one is empty", async () => {
+    const capture: string[] = [];
+    // Downsampled bucket yields nothing on the first query, then the raw
+    // fallback query runs. Both share the same fake row set, so we assert two
+    // queries ran (downsampled + raw fallback).
+    const influx = makeInflux({ rows: [], capture });
+    const res = await queryHistory(
+      influx,
+      {
+        equipmentId: "eq-1",
+        alias: "consumption",
+        from: "-7d",
+        aggregation: "1h",
+        category: "energy",
+      },
+      logger,
+    );
+    expect(res.points).toEqual([]);
+    expect(capture.length).toBe(2); // downsampled bucket, then raw fallback
+    expect(capture[0]).toContain('from(bucket: "sowel-energy-hourly")');
+    expect(capture[1]).toContain('from(bucket: "sowel")');
+  });
+
+  it("aggregated path falls back to the raw bucket when the downsampled one is empty", async () => {
+    const capture: string[] = [];
+    const influx = makeInflux({ rows: [], capture });
+    await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "temperature", from: "-7d", aggregation: "1h" },
+      logger,
+    );
+    expect(capture.length).toBe(2); // downsampled (sowel-hourly), then raw fallback
+    expect(capture[1]).toContain('from(bucket: "sowel")');
+  });
+
+  it("swallows a query error and returns empty points", async () => {
+    const influx = makeInflux({ throwOnQuery: true });
+    const res = await queryHistory(
+      influx,
+      { equipmentId: "eq-1", alias: "temperature", from: "-1h" },
+      logger,
+    );
+    expect(res.points).toEqual([]);
+  });
+});
+
+describe("querySparkline", () => {
+  it("returns [] when Influx is not configured", async () => {
+    const res = await querySparkline(
+      makeInflux({ configured: false }),
+      { equipmentId: "eq-1", alias: "temperature" },
+      logger,
+    );
+    expect(res).toEqual([]);
+  });
+
+  it("collects numeric values over a 24h / 30m window", async () => {
+    const capture: string[] = [];
+    const influx = makeInflux({
+      rows: [{ _value: 1 }, { _value: 2 }, { _value: "skip" }, { _value: 3 }],
+      capture,
+    });
+    const res = await querySparkline(influx, { equipmentId: "eq-1", alias: "temperature" }, logger);
+    expect(res).toEqual([1, 2, 3]);
+    expect(capture[0]).toContain("range(start: -24h)");
+    expect(capture[0]).toContain("aggregateWindow(every: 30m");
+  });
+
+  it("returns [] on error", async () => {
+    const influx = makeInflux({ throwOnQuery: true });
+    expect(
+      await querySparkline(influx, { equipmentId: "eq-1", alias: "temperature" }, logger),
+    ).toEqual([]);
+  });
+});
+
+describe("queryZoneSparkline", () => {
+  it("aggregates a zone/category over 24h", async () => {
+    const capture: string[] = [];
+    const influx = makeInflux({ rows: [{ _value: 4 }, { _value: 6 }], capture });
+    const res = await queryZoneSparkline(
+      influx,
+      { zoneId: "zone-1", category: "temperature" },
+      logger,
+    );
+    expect(res).toEqual([4, 6]);
+    expect(capture[0]).toContain('r.zoneId == "zone-1"');
+    expect(capture[0]).toContain('r.category == "temperature"');
+  });
+});
+
+describe("queryHistorizedAliases", () => {
+  it("returns distinct alias strings", async () => {
+    const influx = makeInflux({ rows: [{ _value: "temperature" }, { _value: "humidity" }] });
+    const res = await queryHistorizedAliases(influx, "eq-1", logger);
+    expect(res).toEqual(["temperature", "humidity"]);
+  });
+
+  it("returns [] on error", async () => {
+    const influx = makeInflux({ throwOnQuery: true });
+    expect(await queryHistorizedAliases(influx, "eq-1", logger)).toEqual([]);
   });
 });

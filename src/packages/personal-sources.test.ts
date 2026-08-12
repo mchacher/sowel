@@ -4,9 +4,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { PersonalSourceManager, type PersonalRelease } from "./personal-sources.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import { createLogger } from "../core/logger.js";
 
 const logger = createLogger("silent").logger;
@@ -14,15 +13,7 @@ const REPO = "jdupont/sowel-recipe-myrecipe";
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
-  db.exec(
-    readFileSync(
-      resolve(import.meta.dirname ?? ".", "../../migrations/015_plugin_sources.sql"),
-      "utf-8",
-    ),
-  );
+  applyMigrations(db);
   return db;
 }
 

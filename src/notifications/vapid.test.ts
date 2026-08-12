@@ -11,9 +11,8 @@ vi.mock("web-push", () => ({
 }));
 
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { ensureVapidKeys } from "./vapid.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import { SettingsManager } from "../core/settings-manager.js";
 import { createLogger } from "../core/logger.js";
 
@@ -21,9 +20,7 @@ const logger = createLogger("silent").logger;
 
 function createSettings(): { settings: SettingsManager; db: Database.Database } {
   const db = new Database(":memory:");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
+  applyMigrations(db);
   return { settings: new SettingsManager(db), db };
 }
 

@@ -9,6 +9,7 @@ import {
   getAllBatteryBindings,
 } from "./sensorUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
+import { useWebSocket } from "../../store/useWebSocket";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
   // Classification
@@ -100,6 +101,14 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     batteryBinding && typeof batteryBinding.value === "number"
       ? batteryBinding.value
       : null;
+
+  // Spec 143 — an active low-battery alert on any device this equipment binds.
+  // Matching on the device, not on a battery binding: an equipment bound only to
+  // its sensor's temperature still has to warn about that sensor's cell.
+  const batteryAlerts = useWebSocket((s) => s.batteryAlerts);
+  const batteryAlert =
+    batteryAlerts.find((a) => equipment.dataBindings.some((b) => b.deviceId === a.deviceId)) ??
+    null;
   const actionBinding =
     equipment.type === "button"
       ? equipment.dataBindings.find((b) => b.category === "action")
@@ -183,6 +192,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     batteryBindings,
     batteryBinding,
     batteryLevel,
+    batteryAlert,
     actionBinding,
     iconElement,
     iconColor,

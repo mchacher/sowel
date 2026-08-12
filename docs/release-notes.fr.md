@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.42.x: Historique des états et navigation plus claire
+
+### v1.42.0 — 2026-08-12 { #v1-42-0 }
+
+- Feat (ui): **les états des équipements apparaissent enfin dans l'historique, à côté des mesures**. Le retour d'état marche/arrêt d'un actionneur (un relais, une pompe, un interrupteur) était enregistré mais jamais tracé, car seules les séries numériques l'étaient. Les valeurs d'état sont désormais stockées aussi sous forme numérique : la page Analyse peut tracer une courbe de température et le relais qui la pilote sur un même graphe, le relais sur son propre axe 0/1 à droite. Les volets, portails et serrures à plus de deux valeurs se tracent en série numérique simple. L'historisation des états est côté cœur ; l'axe mixte d'Analyse a été contribué par Adrien Jouve (computingify). (spec 144, #434, #442)
+- Feat (ui): **les recettes peuvent afficher une ligne de statut en direct sur leur carte**. Une recette peut résumer en une ligne ce qu'elle fait, par exemple une pompe de piscine affichant « Filtration 2,1/9,6 h, heures creuses » au lieu que ce contexte vive uniquement dans le journal de la recette. (#431)
+- Feat (ui): **les chemins de zone sont affichés dans tous les menus et libellés de zone**. Deux pièces de même nom (une « Salle de bain » à chaque étage) étaient indiscernables dans la plupart des sélecteurs ; chaque zone porte désormais son chemin de désambiguïsation partout. Contribué par Adrien Jouve (computingify). (spec 139, #433)
+- Fix (ui): **la vue énergie est atteignable juste après minuit local**. « Aujourd'hui » était calculé en UTC, donc pendant les premières heures après minuit (jusqu'à 02:00 l'été) le jour courant était traité comme futur et ses données inaccessibles. Le jour calendaire local est désormais utilisé. (#432)
+- Fix (equipments): **les appareils qui reportent à la variation ne clignotent plus entre online et degraded**. Une prise avec mesure ne remonte sa puissance qu'au changement : une charge stable cesse de mettre à jour et la fenêtre de fraîcheur serrée basculait l'équipement en degraded à chaque cycle (180 changements de statut en une heure sur une installation). La puissance, le courant et la tension qui arrivent en bonus sur un équipement non-compteur sont désormais exemptés de cette fenêtre ; les vrais compteurs restent dégradés en cas de silence réel. Contribué par Adrien Jouve (computingify). (spec 116, #440)
+
+---
+
 ## 1.41.x: Précision des mesures et alarmes acquittables
 
 ### v1.41.0 — 2026-08-12 { #v1-41-0 }

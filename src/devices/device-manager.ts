@@ -21,6 +21,7 @@ import type {
   DataType,
   DataCategory,
   OrderCategory,
+  PowerSource,
 } from "../shared/types.js";
 import { PROPERTY_TO_CATEGORY } from "../shared/constants.js";
 import { parseWireValue } from "../shared/order-wire-value.js";
@@ -30,6 +31,11 @@ export interface DiscoveredDevice {
   friendlyName: string;
   manufacturer?: string;
   model?: string;
+  /**
+   * Spec 143 — how the device is powered, when the integration knows it
+   * (Zigbee2MQTT reports `power_source`). Omitted = `unknown`.
+   */
+  powerSource?: PowerSource;
   data: {
     key: string;
     type: DataType;
@@ -72,12 +78,13 @@ export class DeviceManager {
         "SELECT * FROM devices WHERE integration_id = ? AND source_device_id = ?",
       ),
       insertDevice: this.db.prepare(
-        `INSERT INTO devices (id, integration_id, source_device_id, name, manufacturer, model, ieee_address, source, status, raw_expose)
-         VALUES (@id, @integrationId, @sourceDeviceId, @name, @manufacturer, @model, @ieeeAddress, @source, @status, @rawExpose)`,
+        `INSERT INTO devices (id, integration_id, source_device_id, name, manufacturer, model, ieee_address, source, status, power_source, raw_expose)
+         VALUES (@id, @integrationId, @sourceDeviceId, @name, @manufacturer, @model, @ieeeAddress, @source, @status, @powerSource, @rawExpose)`,
       ),
       updateDeviceDiscovery: this.db.prepare(
         `UPDATE devices SET name = @name, manufacturer = @manufacturer, model = @model,
-         ieee_address = @ieeeAddress, raw_expose = @rawExpose, updated_at = datetime('now')
+         ieee_address = @ieeeAddress, power_source = @powerSource, raw_expose = @rawExpose,
+         updated_at = datetime('now')
          WHERE id = @id`,
       ),
       updateDeviceName: this.db.prepare(
@@ -167,6 +174,9 @@ export class DeviceManager {
           manufacturer: discovered.manufacturer ?? null,
           model: discovered.model ?? null,
           ieeeAddress: discovered.ieeeAddress ?? null,
+          // A plugin that stops declaring it (downgrade) keeps the last known
+          // value rather than losing it — only an explicit declaration writes.
+          powerSource: discovered.powerSource ?? existing.power_source ?? "unknown",
           rawExpose: discovered.rawExpose ? JSON.stringify(discovered.rawExpose) : null,
         });
       } else {
@@ -181,6 +191,7 @@ export class DeviceManager {
           ieeeAddress: discovered.ieeeAddress ?? null,
           source,
           status: "unknown",
+          powerSource: discovered.powerSource ?? "unknown",
           rawExpose: discovered.rawExpose ? JSON.stringify(discovered.rawExpose) : null,
         });
       }
@@ -717,6 +728,7 @@ interface DeviceRow {
   zone_id: string | null;
   source: string;
   status: string;
+  power_source: string | null;
   last_seen: string | null;
   raw_expose: string | null;
   created_at: string;
@@ -761,6 +773,7 @@ function rowToDevice(row: DeviceRow): Device {
     zoneId: row.zone_id,
     source: row.source as Device["source"],
     status: row.status as Device["status"],
+    powerSource: (row.power_source as PowerSource | null) ?? "unknown",
     lastSeen: toISOUtc(row.last_seen),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),

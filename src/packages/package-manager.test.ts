@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { PackageManager } from "./package-manager.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import {
   ChecksumMismatchError,
   CommunityPluginConfirmationRequiredError,
@@ -44,16 +45,7 @@ const logger = createLogger("silent").logger;
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
-  // Spec 136 — plugin_sources table + plugins.source/pinned_sha256 columns.
-  db.exec(
-    readFileSync(
-      resolve(import.meta.dirname ?? ".", "../../migrations/015_plugin_sources.sql"),
-      "utf-8",
-    ),
-  );
+  applyMigrations(db);
   return db;
 }
 

@@ -419,18 +419,40 @@ export class NotificationPublishService {
 
   // ── System alarm notifications ──────────────────────────────
 
+  /**
+   * Broadcast an engine alarm to every enabled publisher (spec 143).
+   *
+   * System alarms carry no user mapping — they are the engine reporting its own
+   * failures — so they go out on every channel the user configured. Until spec
+   * 143 this only fed the first enabled Telegram publisher, which silently
+   * dropped every system alarm on a web-push-only install.
+   */
   private sendSystemAlarm(text: string): void {
-    // Send to the first enabled Telegram publisher found
-    const publishers = this.publisherManager.getAllWithMappings();
-    const telegramPub = publishers.find((p) => p.channelType === "telegram" && p.enabled);
-    if (!telegramPub) return;
+    let sent = 0;
+    for (const publisher of this.publisherManager.getAllWithMappings()) {
+      if (!publisher.enabled) continue;
 
-    const channel = this.channels.telegram;
-    if (!channel) return;
+      const channel = this.channels[publisher.channelType];
+      if (!channel) {
+        this.logger.warn(
+          { channelType: publisher.channelType },
+          "Unknown notification channel type for system alarm",
+        );
+        continue;
+      }
 
-    channel.send(telegramPub.channelConfig, { title: text }).catch((err) => {
-      this.logger.error({ err }, "System alarm notification send failed");
-    });
+      // Each send owns its failure: a dead Telegram bot must not swallow the
+      // push that would have reached the user's phone.
+      channel.send(publisher.channelConfig, { title: text }).catch((err) => {
+        this.logger.error(
+          { err, publisherId: publisher.id, channelType: publisher.channelType },
+          "System alarm notification send failed",
+        );
+      });
+      sent++;
+    }
+
+    this.logger.info({ publishers: sent }, "System alarm dispatched");
   }
 
   // ── Test publish ─────────────────────────────────────────────

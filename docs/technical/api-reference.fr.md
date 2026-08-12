@@ -83,14 +83,15 @@ Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
 ## Devices
 
-| Method   | Path                      | Description                                                                                 |
-| -------- | ------------------------- | ------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/devices`         | Liste tous les devices avec leurs données et ordres courants.                               |
-| `GET`    | `/api/v1/devices/:id`     | Récupère un device avec données et ordres.                                                  |
-| `PUT`    | `/api/v1/devices/:id`     | Met à jour un device. Body : `{ name?, zoneId? }`.                                          |
-| `DELETE` | `/api/v1/devices/:id`     | Supprime un device. Retourne 204.                                                           |
-| `GET`    | `/api/v1/devices/suggest` | Suggère les devices compatibles avec un type d'équipement. Query : `?type=<equipmentType>`. |
-| `GET`    | `/api/v1/devices/:id/raw` | Récupère les données expose brutes de l'intégration pour un device.                         |
+| Method   | Path                             | Description                                                                                 |
+| -------- | -------------------------------- | ------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/devices`                | Liste tous les devices avec leurs données et ordres courants.                               |
+| `GET`    | `/api/v1/devices/:id`            | Récupère un device avec données et ordres.                                                  |
+| `PUT`    | `/api/v1/devices/:id`            | Met à jour un device. Body : `{ name?, zoneId? }`.                                          |
+| `DELETE` | `/api/v1/devices/:id`            | Supprime un device. Retourne 204.                                                           |
+| `GET`    | `/api/v1/devices/suggest`        | Suggère les devices compatibles avec un type d'équipement. Query : `?type=<equipmentType>`. |
+| `GET`    | `/api/v1/devices/battery-alerts` | Alertes de batterie faible actives (spec 143). Liste de `BatteryAlert`.                     |
+| `GET`    | `/api/v1/devices/:id/raw`        | Récupère les données expose brutes de l'intégration pour un device.                         |
 
 ---
 

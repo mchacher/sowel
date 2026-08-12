@@ -6,14 +6,13 @@ import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
 import { BackupManager, BackupSizeCapExceededError } from "./backup-manager.js";
 import { createLogger } from "../core/logger.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import type { InfluxClient } from "../core/influx-client.js";
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
+  applyMigrations(db);
   return db;
 }
 

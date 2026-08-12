@@ -106,6 +106,20 @@ export type DeviceSource =
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 
+/** How a device is powered, as declared by its integration (spec 143). */
+export type PowerSource = "battery" | "mains" | "dc" | "unknown";
+
+/** An active low-battery alert (spec 143). */
+export interface BatteryAlert {
+  deviceDataId: string;
+  deviceId: string;
+  deviceName: string;
+  /** Raw low value: "12" for a percentage, "true" for a battery_low flag. */
+  value: string;
+  raisedAt: string;
+  lastNotifiedAt: string;
+}
+
 export interface Device {
   id: string;
   integrationId: string;
@@ -117,6 +131,7 @@ export interface Device {
   zoneId: string | null;
   source: DeviceSource;
   status: DeviceStatus;
+  powerSource?: PowerSource;
   lastSeen: string | null;
   rawExpose?: unknown;
   createdAt: string;

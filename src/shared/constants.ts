@@ -280,6 +280,45 @@ export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
 export const DEFAULT_STREAMING_TIMEOUT_MS = 15 * 60 * 1000;
 
 // ============================================================
+// Low battery alerts (spec 143)
+// ============================================================
+
+/** At or below this percentage, a battery is low. */
+export const LOW_BATTERY_THRESHOLD_PCT = 20;
+
+/**
+ * At or above this percentage, a low battery is considered replaced. The
+ * 5-point gap is a hysteresis band: cheap sensors report percentages that
+ * bounce with temperature, and a bare `<= 20` / `> 20` pair would raise and
+ * resolve — hence notify — several times a day around the threshold.
+ */
+export const LOW_BATTERY_RECOVERY_PCT = 25;
+
+/**
+ * Categories proving a device is mains-fed. Used only when the integration
+ * does not declare a `powerSource`.
+ *
+ * `voltage` is deliberately absent: battery sensors report their own cell
+ * voltage under that category (17 of the 19 battery devices on the reference
+ * install), so treating it as a mains marker would exclude nearly every real
+ * battery device.
+ */
+export const MAINS_DATA_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
+  "power",
+  "energy",
+  "current",
+]);
+
+/** Full re-evaluation of every battery device. */
+export const BATTERY_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+/** Delay before the first sweep — lets plugins connect and report first. */
+export const BATTERY_SWEEP_START_DELAY_MS = 30 * 1000;
+
+/** A battery left low is re-notified at this cadence, not more often. */
+export const BATTERY_REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// ============================================================
 // Energy capacity arbiter (spec 140)
 // ============================================================
 

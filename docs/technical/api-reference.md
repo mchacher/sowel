@@ -106,14 +106,15 @@ All user management routes require admin role.
 
 ## Devices
 
-| Method   | Path                      | Description                                                                       |
-| -------- | ------------------------- | --------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/devices`         | List all devices with current data and orders.                                    |
-| `GET`    | `/api/v1/devices/:id`     | Get device with data and orders.                                                  |
-| `PUT`    | `/api/v1/devices/:id`     | Update device. Body: `{ name?, zoneId? }`.                                        |
-| `DELETE` | `/api/v1/devices/:id`     | Remove device. Returns 204.                                                       |
-| `GET`    | `/api/v1/devices/suggest` | Suggest compatible devices for an equipment type. Query: `?type=<equipmentType>`. |
-| `GET`    | `/api/v1/devices/:id/raw` | Get raw integration expose data for a device.                                     |
+| Method   | Path                             | Description                                                                       |
+| -------- | -------------------------------- | --------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/devices`                | List all devices with current data and orders.                                    |
+| `GET`    | `/api/v1/devices/:id`            | Get device with data and orders.                                                  |
+| `PUT`    | `/api/v1/devices/:id`            | Update device. Body: `{ name?, zoneId? }`.                                        |
+| `DELETE` | `/api/v1/devices/:id`            | Remove device. Returns 204.                                                       |
+| `GET`    | `/api/v1/devices/suggest`        | Suggest compatible devices for an equipment type. Query: `?type=<equipmentType>`. |
+| `GET`    | `/api/v1/devices/battery-alerts` | Active low-battery alerts (spec 143). Returns a list of `BatteryAlert`.           |
+| `GET`    | `/api/v1/devices/:id/raw`        | Get raw integration expose data for a device.                                     |
 
 ---
 

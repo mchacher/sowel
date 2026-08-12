@@ -24,6 +24,10 @@ type DeviceSource =
 
 type DeviceStatus = "online" | "offline" | "unknown";
 
+// Spec 143 — declared by the integration at discovery, `unknown` when it does
+// not report one. Drives the low-battery monitor.
+type PowerSource = "battery" | "mains" | "dc" | "unknown";
+
 interface Device {
   id: string; // UUID v4 (Sowel-internal)
   integrationId: string; // Plugin id that owns this device (e.g. "zigbee2mqtt")
@@ -35,6 +39,7 @@ interface Device {
   zoneId: string | null; // Optional placement (used by integrations for context)
   source: DeviceSource;
   status: DeviceStatus;
+  powerSource: PowerSource; // Spec 143
   lastSeen: string | null; // ISO 8601
   rawExpose?: unknown; // Raw plugin-specific metadata
   createdAt: string;
@@ -163,6 +168,7 @@ CREATE TABLE devices (
   zone_id TEXT,
   source TEXT NOT NULL DEFAULT 'zigbee2mqtt',
   status TEXT NOT NULL DEFAULT 'unknown',
+  power_source TEXT NOT NULL DEFAULT 'unknown',  -- spec 143
   last_seen DATETIME,
   raw_expose JSON,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -185,6 +191,19 @@ CREATE TABLE device_data (
   last_changed TEXT,
   enum_values JSON,
   UNIQUE(device_id, key)
+);
+
+-- Spec 143 — active low-battery alerts. One row per battery device data under
+-- the threshold; deleted when the battery recovers. `last_notified_at` drives
+-- the weekly reminder across restarts. No FK: the monitor reconciles orphans
+-- itself so it can emit system.alarm.resolved before dropping the row.
+CREATE TABLE battery_alerts (
+  device_data_id   TEXT PRIMARY KEY,
+  device_id        TEXT NOT NULL,
+  device_name      TEXT NOT NULL,
+  value            TEXT NOT NULL,
+  raised_at        TEXT NOT NULL,
+  last_notified_at TEXT NOT NULL
 );
 
 CREATE TABLE device_orders (

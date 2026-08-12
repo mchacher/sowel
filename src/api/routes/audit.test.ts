@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { describe, it, expect, afterEach } from "vitest";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { createLogger } from "../../core/logger.js";
+import { applyMigrations } from "../../test-helpers/migrations.js";
 import { registerAuditRoutes } from "./audit.js";
 
 // Spec 113 — Integration test on GET /api/v1/audit via Fastify inject().
@@ -21,20 +22,7 @@ async function buildApp(opts: BuildOpts = {}): Promise<{
   auditLogger: AuditLogger;
 }> {
   const db = new Database(":memory:");
-  db.exec(`
-    CREATE TABLE audit_log (
-      id TEXT PRIMARY KEY,
-      timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      actor_kind TEXT NOT NULL,
-      actor_user_id TEXT,
-      actor_label TEXT NOT NULL,
-      action TEXT NOT NULL,
-      target_type TEXT,
-      target_id TEXT,
-      ip TEXT,
-      meta TEXT
-    );
-  `);
+  applyMigrations(db);
   const auditLogger = new AuditLogger(db, logger);
   if (opts.seed) opts.seed(auditLogger);
 

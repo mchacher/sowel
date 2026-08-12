@@ -862,7 +862,7 @@ function SensorEquipmentWidget({
   iconKey?: string;
   visibleBindings?: string[];
 }) {
-  const { sensorBindings, batteryBindings } = useEquipmentState(equipment);
+  const { sensorBindings, batteryBindings, batteryAlert } = useEquipmentState(equipment);
 
   const customEntry = iconKey ? CUSTOM_ICON_REGISTRY[iconKey] : undefined;
   const sensorIcon = customEntry
@@ -881,7 +881,12 @@ function SensorEquipmentWidget({
         <div />
         {sensorIcon}
         <div className="flex flex-col items-start pl-2 overflow-y-auto max-h-full">
-          <SensorValues sensorBindings={filteredBindings} batteryBindings={batteryBindings} layout="column" />
+          <SensorValues
+            sensorBindings={filteredBindings}
+            batteryBindings={batteryBindings}
+            batteryAlert={batteryAlert}
+            layout="column"
+          />
         </div>
       </div>
     </WidgetCard>

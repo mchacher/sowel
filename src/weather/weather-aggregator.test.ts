@@ -53,4 +53,41 @@ describe("computeRainCumuls", () => {
     expect(rain1h).toBeNull();
     expect(sumIncremental).not.toHaveBeenCalled();
   });
+
+  // ── Additional cases (spec 449 coverage) ──────────────────────────────
+
+  it("mixes native (present) and incremental fallback (absent) per window", async () => {
+    // sum_rain_1 present → used as-is; sum_rain_24 absent → incremental fallback.
+    const sumIncremental = vi.fn(async () => 3.0);
+    const { rain1h, rain24h } = await computeRainCumuls(
+      [{ alias: "sum_rain_1", value: 2.0 }],
+      sumIncremental,
+    );
+
+    expect(rain1h).toBe(2.0); // native
+    expect(rain24h).toBe(3.0); // fallback
+    expect(sumIncremental).toHaveBeenCalledTimes(1);
+    expect(sumIncremental).toHaveBeenCalledWith("-24h");
+  });
+
+  it("coerces a numeric string native value (and only that value is used)", async () => {
+    const sumIncremental = vi.fn(async () => null);
+    const { rain1h, rain24h } = await computeRainCumuls(
+      [
+        { alias: "sum_rain_1", value: "1.5" }, // coerced to 1.5
+        { alias: "sum_rain_24", value: "abc" }, // NaN → null
+      ],
+      sumIncremental,
+    );
+
+    expect(rain1h).toBe(1.5);
+    expect(rain24h).toBeNull();
+    expect(sumIncremental).not.toHaveBeenCalled();
+  });
+
+  it("returns null (not 0) when the incremental fallback itself has no data", async () => {
+    const { rain1h, rain24h } = await computeRainCumuls([], async () => null);
+    expect(rain1h).toBeNull();
+    expect(rain24h).toBeNull();
+  });
 });

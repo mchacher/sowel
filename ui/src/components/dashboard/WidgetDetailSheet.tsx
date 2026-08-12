@@ -1477,7 +1477,7 @@ function SensorDetailContent({
   equipment: EquipmentWithDetails;
   visibleBindings?: string[];
 }) {
-  const { sensorBindings, batteryBindings } = useEquipmentState(equipment);
+  const { sensorBindings, batteryBindings, batteryAlert } = useEquipmentState(equipment);
 
   const filteredBindings = visibleBindings && visibleBindings.length > 0
     ? visibleBindings.map((alias) => sensorBindings.find((b) => b.alias === alias)).filter((b): b is typeof sensorBindings[number] => !!b)
@@ -1488,7 +1488,12 @@ function SensorDetailContent({
       <div className="flex justify-center">
         <MultiSensorIcon />
       </div>
-      <SensorValues sensorBindings={filteredBindings} batteryBindings={batteryBindings} layout="column" />
+      <SensorValues
+        sensorBindings={filteredBindings}
+        batteryBindings={batteryBindings}
+        batteryAlert={batteryAlert}
+        layout="column"
+      />
     </div>
   );
 }

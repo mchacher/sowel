@@ -8,9 +8,10 @@ vi.mock("./channels/telegram.js", () => ({
     testConnection = vi.fn();
   },
 }));
+const webPushSend = vi.fn().mockResolvedValue(undefined);
 vi.mock("./channels/web-push.js", () => ({
   WebPushChannel: class {
-    send = vi.fn().mockResolvedValue(undefined);
+    send = webPushSend;
     testConnection = vi.fn();
   },
 }));
@@ -213,6 +214,107 @@ describe("boolean simple mappings notify on activation only", () => {
     h.setState("status", "done");
     h.fire();
     expect(telegramSend).toHaveBeenCalledTimes(2);
+    h.svc.destroy();
+  });
+});
+
+// ── System alarm broadcast (spec 143) ────────────────────────
+
+interface PublisherSpec {
+  id: string;
+  channelType: string;
+  enabled: boolean;
+}
+
+/** A service wired to publishers with no mapping — system alarms need none. */
+function makeAlarmService(publishers: PublisherSpec[]) {
+  let handler: ((e: EngineEvent) => void) | null = null;
+  const rows = publishers.map((p) => ({
+    ...p,
+    name: p.id,
+    channelConfig: { botToken: "t", chatId: "c" },
+    mappings: [],
+  }));
+
+  const deps = [
+    { on: (h: (e: EngineEvent) => void) => ((handler = h), () => {}) }, // eventBus
+    { getAllWithMappings: () => rows, getById: () => rows[0], getByIdWithMappings: () => rows[0] },
+    { getDataBindingsWithValues: () => [] }, // equipmentManager
+    { getAll: () => ({}) }, // zoneAggregator
+    { getInstanceState: () => ({}) }, // recipeManager
+    {}, // pushSubscriptionManager
+    { publicKey: "p", privateKey: "k", subject: "mailto:a@b.c" }, // vapid
+    logger,
+  ] as unknown as ConstructorParameters<typeof NotificationPublishService>;
+
+  const svc = new NotificationPublishService(...deps);
+  svc.init();
+
+  return {
+    svc,
+    raise() {
+      handler?.({
+        type: "system.alarm.raised",
+        alarmId: "battery-low:dd-1",
+        level: "warning",
+        source: "Capteur porte",
+        message: "Low battery: 12%",
+      });
+    },
+  };
+}
+
+describe("system alarm broadcast (spec 143)", () => {
+  beforeEach(() => {
+    telegramSend.mockClear();
+    webPushSend.mockClear();
+    telegramSend.mockResolvedValue(undefined);
+  });
+
+  it("sends to every enabled publisher, whatever the channel", () => {
+    const h = makeAlarmService([
+      { id: "pub-tg", channelType: "telegram", enabled: true },
+      { id: "pub-wp", channelType: "web-push", enabled: true },
+    ]);
+    h.raise();
+
+    expect(telegramSend).toHaveBeenCalledTimes(1);
+    expect(webPushSend).toHaveBeenCalledTimes(1);
+    expect(webPushSend.mock.calls[0][1]).toEqual({ title: "⚠️ Capteur porte : Low battery: 12%" });
+    h.svc.destroy();
+  });
+
+  it("reaches a web-push-only install (no Telegram publisher)", () => {
+    const h = makeAlarmService([{ id: "pub-wp", channelType: "web-push", enabled: true }]);
+    h.raise();
+
+    expect(webPushSend).toHaveBeenCalledTimes(1);
+    expect(telegramSend).not.toHaveBeenCalled();
+    h.svc.destroy();
+  });
+
+  it("skips disabled publishers", () => {
+    const h = makeAlarmService([
+      { id: "pub-tg", channelType: "telegram", enabled: false },
+      { id: "pub-wp", channelType: "web-push", enabled: true },
+    ]);
+    h.raise();
+
+    expect(telegramSend).not.toHaveBeenCalled();
+    expect(webPushSend).toHaveBeenCalledTimes(1);
+    h.svc.destroy();
+  });
+
+  it("a failing channel does not stop the others", () => {
+    telegramSend.mockRejectedValueOnce(new Error("bot token revoked"));
+    const h = makeAlarmService([
+      { id: "pub-tg", channelType: "telegram", enabled: true },
+      { id: "pub-wp", channelType: "web-push", enabled: true },
+    ]);
+    h.raise();
+
+    expect(telegramSend).toHaveBeenCalledTimes(1);
+    expect(webPushSend).toHaveBeenCalledTimes(1);
     h.svc.destroy();
   });
 });

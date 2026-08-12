@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { EngineEvent } from "../types";
+import type { BatteryAlert, EngineEvent } from "../types";
+import { getBatteryAlerts } from "../api";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
@@ -40,6 +41,8 @@ interface WebSocketState {
   status: ConnectionStatus;
   integrationStatuses: Record<string, string>;
   alarms: Map<string, SystemAlarm>;
+  /** Active low-battery alerts (spec 143) — drives the equipment indicator. */
+  batteryAlerts: BatteryAlert[];
   updateAvailable: UpdateAvailableInfo | null;
   updateInProgress: boolean;
   restartRequired: string | null; // reason, e.g. "home_location_changed"
@@ -49,6 +52,34 @@ interface WebSocketState {
   connect: () => void;
   disconnect: () => void;
   subscribe: (topics: WsTopic[]) => void;
+}
+
+const BATTERY_ALARM_PREFIX = "battery-low:";
+
+/**
+ * Battery alarms carry no device id (the alarm event shape is generic), so the
+ * authoritative list is refetched whenever one moves. Rare event, one small GET.
+ */
+function refreshBatteryAlertsIfNeeded(alarmId: string): void {
+  if (!alarmId.startsWith(BATTERY_ALARM_PREFIX)) return;
+  void fetchBatteryAlerts();
+}
+
+/** Same wording as the engine alarm, so a restored banner reads identically. */
+export function batteryAlarmMessage(value: string): string {
+  const num = Number(value);
+  const isPercentage = value.trim() !== "" && Number.isFinite(num) && num >= 0 && num <= 100;
+  return isPercentage ? `Low battery: ${value}%` : "Low battery";
+}
+
+async function fetchBatteryAlerts(): Promise<BatteryAlert[]> {
+  try {
+    const alerts = await getBatteryAlerts();
+    useWebSocket.setState({ batteryAlerts: alerts });
+    return alerts;
+  } catch {
+    return [];
+  }
 }
 
 let ws: WebSocket | null = null;
@@ -179,6 +210,7 @@ function handleEvent(event: EngineEvent): void {
         });
         return { alarms };
       });
+      refreshBatteryAlertsIfNeeded(event.alarmId);
       break;
     case "system.alarm.resolved":
       useWebSocket.setState((s) => {
@@ -186,6 +218,7 @@ function handleEvent(event: EngineEvent): void {
         alarms.delete(event.alarmId);
         return { alarms };
       });
+      refreshBatteryAlertsIfNeeded(event.alarmId);
       break;
     case "system.update.available":
       useWebSocket.setState({
@@ -229,6 +262,7 @@ export const useWebSocket = create<WebSocketState>((set) => ({
   status: "disconnected",
   integrationStatuses: {},
   alarms: new Map(),
+  batteryAlerts: [],
   updateAvailable: null,
   updateInProgress: false,
   restartRequired: null,
@@ -262,28 +296,44 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       useRecipes.getState().fetchInstances();
       useModes.getState().fetchModes();
 
-      // Fetch integration statuses from health endpoint
-      fetch("/api/v1/health")
-        .then((r) => r.json())
-        .then((data: { integrations?: Record<string, { status: string }> }) => {
-          if (data.integrations) {
-            const statuses: Record<string, string> = {};
-            const alarms = new Map<string, SystemAlarm>();
-            for (const [id, info] of Object.entries(data.integrations)) {
-              statuses[id] = info.status;
-              // Restore alarm banner for integrations in error state
-              if (info.status === "error") {
-                const label = INTEGRATION_LABELS[id] ?? id;
-                alarms.set(`poll-fail:${id}`, {
-                  alarmId: `poll-fail:${id}`,
-                  level: "error",
-                  source: label,
-                  message: "Communication en échec",
-                });
-              }
+      // Rebuild the alarm banner from server state: integration health, plus
+      // the low-battery alerts (spec 143), which outlive both a page reload and
+      // a Sowel restart. Resolved together so neither clobbers the other.
+      Promise.all([
+        fetch("/api/v1/health")
+          .then((r) => r.json() as Promise<{ integrations?: Record<string, { status: string }> }>)
+          .catch(() => ({}) as { integrations?: Record<string, { status: string }> }),
+        fetchBatteryAlerts(),
+      ])
+        .then(([health, batteryAlerts]) => {
+          const statuses: Record<string, string> = {};
+          const alarms = new Map<string, SystemAlarm>();
+
+          for (const [id, info] of Object.entries(health.integrations ?? {})) {
+            statuses[id] = info.status;
+            // Restore alarm banner for integrations in error state
+            if (info.status === "error") {
+              const label = INTEGRATION_LABELS[id] ?? id;
+              alarms.set(`poll-fail:${id}`, {
+                alarmId: `poll-fail:${id}`,
+                level: "error",
+                source: label,
+                message: "Communication en échec",
+              });
             }
-            set({ integrationStatuses: statuses, alarms });
           }
+
+          for (const alert of batteryAlerts) {
+            const alarmId = `${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`;
+            alarms.set(alarmId, {
+              alarmId,
+              level: "warning",
+              source: alert.deviceName,
+              message: batteryAlarmMessage(alert.value),
+            });
+          }
+
+          set({ integrationStatuses: statuses, alarms });
         })
         .catch(() => {
           // Ignore — will be updated by WS events

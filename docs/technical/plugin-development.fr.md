@@ -410,6 +410,7 @@ interface DiscoveredDevice {
   friendlyName: string;
   manufacturer?: string;
   model?: string;
+  powerSource?: "battery" | "mains" | "dc" | "unknown";
   data: {
     key: string;
     type: string;
@@ -733,6 +734,7 @@ interface DiscoveredDevice {
   friendlyName: string; // Unique device name -- used as sourceDeviceId for data updates
   manufacturer?: string; // Device manufacturer
   model?: string; // Device model
+  powerSource?: "battery" | "mains" | "dc" | "unknown"; // Spec 143 -- omettre si inconnu ; alimente la surveillance batterie
   data: {
     // Data points this device exposes
     key: string; // Data point key (e.g. "temperature", "j1_condition")
