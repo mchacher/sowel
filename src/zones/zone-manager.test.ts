@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { ZoneManager, ZoneError } from "./zone-manager.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import type { EngineEvent } from "../shared/types.js";
@@ -10,9 +9,7 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  db.exec(
-    readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations/001_initial.sql"), "utf-8"),
-  );
+  applyMigrations(db);
   return db;
 }
 

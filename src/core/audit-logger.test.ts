@@ -2,9 +2,11 @@ import Database from "better-sqlite3";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AuditLogger } from "./audit-logger.js";
 import type { Logger } from "./logger.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 
 // Spec 113 — Unit tests on the AuditLogger over an in-memory SQLite
-// database. The schema mirrors migrations/010_audit_log.sql exactly.
+// database seeded with the real migration set (audit_log lives in
+// migrations/010_audit_log.sql).
 
 interface MockLogger {
   error: ReturnType<typeof vi.fn>;
@@ -17,26 +19,6 @@ function makeMockLogger(): MockLogger {
   return self;
 }
 
-function createSchema(db: Database.Database): void {
-  db.exec(`
-    CREATE TABLE audit_log (
-      id TEXT PRIMARY KEY,
-      timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      actor_kind TEXT NOT NULL,
-      actor_user_id TEXT,
-      actor_label TEXT NOT NULL,
-      action TEXT NOT NULL,
-      target_type TEXT,
-      target_id TEXT,
-      ip TEXT,
-      meta TEXT
-    );
-    CREATE INDEX idx_audit_log_timestamp ON audit_log (timestamp DESC);
-    CREATE INDEX idx_audit_log_actor_user_id ON audit_log (actor_user_id);
-    CREATE INDEX idx_audit_log_action ON audit_log (action);
-  `);
-}
-
 describe("AuditLogger", () => {
   let db: Database.Database;
   let logger: MockLogger;
@@ -44,7 +26,7 @@ describe("AuditLogger", () => {
 
   beforeEach(() => {
     db = new Database(":memory:");
-    createSchema(db);
+    applyMigrations(db);
     logger = makeMockLogger();
     auditLogger = new AuditLogger(db, logger as unknown as Logger);
   });

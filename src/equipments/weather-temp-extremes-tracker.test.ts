@@ -1,23 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import crypto from "node:crypto";
 import { EquipmentManager } from "./equipment-manager.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import { WeatherTempExtremesTracker } from "./weather-temp-extremes-tracker.js";
 import { DeviceManager } from "../devices/device-manager.js";
 import { ZoneManager } from "../zones/zone-manager.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 
-const MIGRATIONS_DIR = resolve(import.meta.dirname ?? ".", "../../migrations");
-
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of readdirSync(MIGRATIONS_DIR).sort()) {
-    if (file.endsWith(".sql")) db.exec(readFileSync(resolve(MIGRATIONS_DIR, file), "utf-8"));
-  }
+  applyMigrations(db);
   return db;
 }
 

@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { ZoneManager } from "./zone-manager.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import { ZoneAggregator } from "./zone-aggregator.js";
 import { EquipmentManager } from "../equipments/equipment-manager.js";
 import { DeviceManager } from "../devices/device-manager.js";
@@ -13,18 +12,7 @@ import type { EngineEvent } from "../shared/types.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  for (const file of [
-    "001_initial.sql",
-    "002_mqtt_publisher_on_change_only.sql",
-    "003_device_order_category.sql",
-    "004_drop_dispatch_config.sql",
-    "005_device_data_enum_values.sql",
-    "006_pool_runtime_and_category_override.sql",
-    "014_device_orders_value_on_off.sql",
-    "016_equipment_energy_profile.sql",
-  ]) {
-    db.exec(readFileSync(resolve(import.meta.dirname ?? ".", "../../migrations", file), "utf-8"));
-  }
+  applyMigrations(db);
   return db;
 }
 

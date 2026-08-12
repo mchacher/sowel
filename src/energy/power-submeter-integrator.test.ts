@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { PowerSubmeterIntegrator } from "./power-submeter-integrator.js";
+import { applyMigrations } from "../test-helpers/migrations.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
@@ -11,24 +10,7 @@ import type { InfluxClient } from "../core/influx-client.js";
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = ON");
-  const migrations = [
-    "001_initial.sql",
-    "002_mqtt_publisher_on_change_only.sql",
-    "003_device_order_category.sql",
-    "004_drop_dispatch_config.sql",
-    "005_device_data_enum_values.sql",
-    "006_pool_runtime_and_category_override.sql",
-    "007_pool_water_temp_state.sql",
-    "008_mqtt_publisher_mapping_enabled.sql",
-    "009_submeter_integrator_state.sql",
-  ];
-  for (const file of migrations) {
-    const sql = readFileSync(
-      resolve(import.meta.dirname ?? ".", `../../migrations/${file}`),
-      "utf-8",
-    );
-    db.exec(sql);
-  }
+  applyMigrations(db);
   // Insert minimum zone + equipment rows to satisfy FK on submeter state inserts.
   db.prepare(`INSERT INTO zones (id, name) VALUES (?, ?)`).run("zone-1", "Test");
   db.prepare(
