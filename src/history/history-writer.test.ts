@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type Database from "better-sqlite3";
-import { HistoryWriter } from "./history-writer.js";
+import { HistoryWriter, enumToNumber } from "./history-writer.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import type { Point } from "../core/influx-client.js";
@@ -8,6 +8,37 @@ import type { InfluxClient } from "../core/influx-client.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { DataCategory } from "../shared/types.js";
+
+describe("enumToNumber (#434 — enum states charted)", () => {
+  it("maps binary on/off-like states intuitively (1 = on, 0 = off)", () => {
+    expect(enumToNumber("ON", ["ON", "OFF"])).toBe(1); // token wins over index (index would be 0)
+    expect(enumToNumber("OFF", ["ON", "OFF"])).toBe(0); // token wins over index (index would be 1)
+    expect(enumToNumber("OFF", ["OFF", "ON"])).toBe(0); // OFF token → 0 regardless of declared order
+    expect(enumToNumber("OPEN", ["OPEN", "CLOSED"])).toBe(1);
+    expect(enumToNumber("CLOSED", ["OPEN", "CLOSED"])).toBe(0);
+    expect(enumToNumber("true", null)).toBe(1); // no list needed for a known token
+    expect(enumToNumber("false", null)).toBe(0);
+  });
+
+  it("uses the declared-value index for multi-value enums (no token collision)", () => {
+    expect(enumToNumber("IDLE", ["IDLE", "HEAT", "COOL"])).toBe(0);
+    expect(enumToNumber("HEAT", ["IDLE", "HEAT", "COOL"])).toBe(1);
+    expect(enumToNumber("COOL", ["IDLE", "HEAT", "COOL"])).toBe(2);
+    // A 3-value enum containing an on/off token: index wins, NOT the token.
+    expect(enumToNumber("OFF", ["LOW", "OFF", "HIGH"])).toBe(1);
+  });
+
+  it("falls back to the index for a 2-value enum without on/off tokens", () => {
+    expect(enumToNumber("LOW", ["LOW", "HIGH"])).toBe(0);
+    expect(enumToNumber("HIGH", ["LOW", "HIGH"])).toBe(1);
+  });
+
+  it("returns null when the value cannot be encoded (label kept in value_string)", () => {
+    expect(enumToNumber("WHATEVER", null)).toBeNull();
+    expect(enumToNumber("WHATEVER", [])).toBeNull();
+    expect(enumToNumber("MISSING", ["A", "B", "C"])).toBeNull(); // not in the declared list
+  });
+});
 
 describe("HistoryWriter.resolveHistorize", () => {
   // ============================================================
@@ -377,5 +408,63 @@ describe("HistoryWriter — grid energy ownership", () => {
 
     const energy = influx.written.filter((p) => p.alias === "energy");
     expect(energy).toEqual([{ alias: "energy", value: 40, timestamp: T0_MS / 1000 }]);
+  });
+});
+
+describe("HistoryWriter — enum state charting (#434)", () => {
+  const logger = createLogger("silent").logger;
+  let bus: EventBus;
+  let influx: StubInfluxClient;
+  let writer: HistoryWriter;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0_MS);
+    bus = new EventBus(logger);
+    influx = new StubInfluxClient();
+    const equipmentManager = {
+      getAll: () => [{ id: EQUIPMENT_ID, enabled: true, zoneId: ZONE_ID }],
+      getDataBindingsWithValues: () => [
+        {
+          id: "pump-state",
+          alias: "state",
+          category: "light_state",
+          type: "enum",
+          enumValues: ["ON", "OFF"],
+          historize: 1,
+        },
+      ],
+    } as unknown as EquipmentManager;
+    writer = new HistoryWriter(
+      {} as Database.Database,
+      bus,
+      { get: () => undefined } as unknown as SettingsManager,
+      equipmentManager,
+      influx as unknown as InfluxClient,
+      logger,
+    );
+    writer.init();
+  });
+
+  afterEach(() => {
+    writer.destroy();
+    vi.useRealTimers();
+  });
+
+  function emitState(value: string, previous: unknown): void {
+    bus.emit({
+      type: "equipment.data.changed",
+      equipmentId: EQUIPMENT_ID,
+      alias: "state",
+      value,
+      previous,
+    } as never);
+  }
+
+  it("writes value_number for an enum ON/OFF state (previously value_string only → empty chart)", () => {
+    emitState("ON", "OFF");
+    emitState("OFF", "ON");
+    const states = influx.written.filter((p) => p.alias === "state");
+    expect(states.map((p) => p.value)).toEqual([1, 0]); // ON=1, OFF=0 → chartable step
   });
 });

@@ -308,6 +308,7 @@ export class HistoryWriter {
           type: b.type,
           equipmentId: eq.id,
           zoneId: eq.zoneId,
+          enumValues: b.enumValues ?? null,
         });
       }
     }
@@ -396,6 +397,13 @@ export class HistoryWriter {
       const boolVal = value === true || value === "ON" || value === "true";
       point.stringField("value_string", String(boolVal));
       point.floatField("value_number", boolVal ? 1 : 0);
+    } else if (meta.type === "enum") {
+      // Enum states keep their label in value_string; ALSO emit a numeric
+      // encoding so the (numeric-only) history chart can render them as steps.
+      // Without this the state is stored but never charts (#434).
+      point.stringField("value_string", String(value));
+      const n = enumToNumber(value, meta.enumValues);
+      if (n !== null) point.floatField("value_number", n);
     } else {
       point.stringField("value_string", String(value));
     }
@@ -616,10 +624,38 @@ export class HistoryWriter {
   }
 }
 
+const ENUM_ON_TOKENS = new Set(["ON", "OPEN", "OPENED", "TRUE", "ACTIVE", "YES", "1"]);
+const ENUM_OFF_TOKENS = new Set(["OFF", "CLOSED", "CLOSE", "FALSE", "INACTIVE", "NO", "0"]);
+
+/**
+ * Numeric encoding for an enum state so it can be charted (#434). Binary states
+ * map to intuitive on/off (ON/OPEN/... -> 1, OFF/CLOSED/... -> 0); enums with
+ * more than two declared values use the value's index in that declared list
+ * (tokens are ignored there to avoid index/token collisions). Returns null when
+ * the value cannot be encoded (unknown value, no declared list) — the label is
+ * still kept in value_string.
+ */
+export function enumToNumber(value: unknown, enumValues?: string[] | null): number | null {
+  const s = String(value).trim();
+  if (enumValues && enumValues.length > 2) {
+    const i = enumValues.indexOf(s);
+    return i >= 0 ? i : null;
+  }
+  const up = s.toUpperCase();
+  if (ENUM_ON_TOKENS.has(up)) return 1;
+  if (ENUM_OFF_TOKENS.has(up)) return 0;
+  if (enumValues && enumValues.length) {
+    const i = enumValues.indexOf(s);
+    if (i >= 0) return i;
+  }
+  return null;
+}
+
 interface BindingMeta {
   alias: string;
   category: DataCategory;
   type: string;
   equipmentId: string;
   zoneId: string;
+  enumValues?: string[] | null;
 }
