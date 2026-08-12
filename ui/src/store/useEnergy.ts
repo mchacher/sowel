@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { EnergyHistoryResponse } from "../types";
 import { getEnergyHistory, getEnergyStatus } from "../api";
+import { localDateStr } from "../lib/local-date";
 
 type Period = "day" | "week" | "month" | "year";
 
@@ -23,7 +24,7 @@ interface EnergyState {
 }
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr();
 }
 
 /** Check whether advancing one period would go beyond today. */
@@ -67,7 +68,7 @@ function shiftDate(dateStr: string, period: Period, direction: -1 | 1): string {
       d.setFullYear(d.getFullYear() + direction);
       break;
   }
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 
 export const useEnergy = create<EnergyState>((set, get) => ({

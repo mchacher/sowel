@@ -1,5 +1,6 @@
 import archiver from "archiver";
 import type { FastifyInstance } from "fastify";
+import { localDateStr } from "../../shared/local-date.js";
 import type { Logger } from "../../core/logger.js";
 import type { BackupManager } from "../../backup/backup-manager.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
@@ -25,7 +26,7 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupRouteDeps
       return reply.code(403).send({ error: "Admin access required" });
     }
 
-    const dateStr = new Date().toISOString().slice(0, 10);
+    const dateStr = localDateStr();
     reply
       .header("Content-Type", "application/zip")
       .header("Content-Disposition", `attachment; filename="sowel-backup-${dateStr}.zip"`);

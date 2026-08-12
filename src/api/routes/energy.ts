@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { localDateStr } from "../../shared/local-date.js";
 import type { Logger } from "../../core/logger.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
@@ -73,7 +74,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     Querystring: { period?: string; date?: string };
   }>("/api/v1/energy/history", async (request, reply) => {
     const period = request.query.period ?? "day";
-    const dateStr = request.query.date ?? new Date().toISOString().slice(0, 10);
+    const dateStr = request.query.date ?? localDateStr();
 
     if (!["day", "week", "month", "year"].includes(period)) {
       return reply.status(400).send({ error: "Invalid period. Use: day, week, month, year" });
@@ -224,7 +225,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     Querystring: { period?: string; date?: string };
   }>("/api/v1/energy/by-usage", async (request, reply) => {
     const period = request.query.period ?? "day";
-    const dateStr = request.query.date ?? new Date().toISOString().slice(0, 10);
+    const dateStr = request.query.date ?? localDateStr();
 
     if (!["day", "week", "month", "year"].includes(period)) {
       return reply.status(400).send({ error: "Invalid period. Use: day, week, month, year" });

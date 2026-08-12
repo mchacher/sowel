@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEnergy, canGoForward } from "../../store/useEnergy";
+import { localDateStr } from "../../lib/local-date";
 
 const PERIODS = [
   { key: "day", label: "Jour" },
@@ -38,7 +39,7 @@ export function PeriodSelector() {
   const setDate = useEnergy((s) => s.setDate);
   const navigateDate = useEnergy((s) => s.navigateDate);
   const canNext = canGoForward(date, period);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const isToday = date === today;
 
   return (

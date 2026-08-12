@@ -8,6 +8,7 @@ import {
   restoreLocalBackup,
 } from "../api";
 import type { LocalBackup } from "../api";
+import { localDateStr } from "../lib/local-date";
 
 export function BackupPage() {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ export function BackupPage() {
       const url = URL.createObjectURL(resp.blob);
       const a = document.createElement("a");
       a.href = url;
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const dateStr = localDateStr();
       a.download = `sowel-backup-${dateStr}.zip`;
       a.click();
       URL.revokeObjectURL(url);

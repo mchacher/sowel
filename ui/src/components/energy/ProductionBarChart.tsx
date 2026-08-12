@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { localDateStr } from "../../lib/local-date";
 import {
   ResponsiveContainer,
   BarChart,
@@ -81,7 +82,7 @@ function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
 function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   const byDay = bucketize(points, localDateKey);
 
-  const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
+  const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
   const dayOfWeek = ref.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(ref);
@@ -108,7 +109,7 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
 function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   const byDay = bucketize(points, localDateKey);
 
-  const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
+  const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
   const year = ref.getFullYear();
   const month = ref.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -128,7 +129,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
 }
 
 function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
-  const ref = new Date((dateStr ?? new Date().toISOString().slice(0, 10)) + "T12:00:00");
+  const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
   const year = ref.getFullYear();
   const byMonth = bucketize(points, (d) => d.getMonth());
 
