@@ -106,6 +106,17 @@ async function main() {
   const logHandle = createLogger(config.log.level, logBuffer);
   const logger = logHandle.logger;
 
+  // Spec 124 — run a boot step only outside shadow mode; in shadow mode emit a
+  // single consistent "Skipping <label>" line. `config.shadowMode` is read live
+  // so a takeover flip (below) is honoured. Supports sync and async steps.
+  const runUnlessShadow = async (label: string, fn: () => void | Promise<void>): Promise<void> => {
+    if (config.shadowMode) {
+      logger.warn({ module: "shadow-mode" }, `Skipping ${label}`);
+      return;
+    }
+    await fn();
+  };
+
   // Spec 112: install crash handlers as soon as the logger is ready.
   // Throws before this point are caught by the `main().catch()` block
   // at the bottom of this file (stderr JSON fallback).
@@ -268,9 +279,7 @@ async function main() {
     integrationRegistry,
     logger,
   );
-  if (!config.shadowMode) {
-    orderConfirmationTracker.init();
-  }
+  await runUnlessShadow("orderConfirmationTracker.init()", () => orderConfirmationTracker.init());
 
   // 11. Create InfluxDB client and connect
   const influxClient = new InfluxClient(logger);
@@ -406,19 +415,11 @@ async function main() {
   // Spec 124 — loadAll iterates installed packages and calls
   // loadPlugin per id; the runtime gate would no-op every one of
   // them. Skip the whole pass to keep the boot log clean.
-  if (!config.shadowMode) {
-    await pluginLoader.loadAll();
-  } else {
-    logger.warn({ module: "shadow-mode" }, "Skipping pluginLoader.loadAll()");
-  }
+  await runUnlessShadow("pluginLoader.loadAll()", () => pluginLoader.loadAll());
 
   // 14b. Load external recipe packages (must be before recipeManager.init)
   const recipeLoader = new RecipeLoader(packageManager, recipeManager, logger);
-  if (!config.shadowMode) {
-    await recipeLoader.loadAll();
-  } else {
-    logger.warn({ module: "shadow-mode" }, "Skipping recipeLoader.loadAll()");
-  }
+  await runUnlessShadow("recipeLoader.loadAll()", () => recipeLoader.loadAll());
 
   // 14c. Create backup manager (used by routes and update manager)
   const backupManager = new BackupManager({
@@ -503,11 +504,7 @@ async function main() {
 
   // 16b. Start version checker (polls GitHub releases for updates)
   // Spec 124 — skip in shadow mode (no outbound, including GitHub).
-  if (!config.shadowMode) {
-    versionChecker.start();
-  } else {
-    logger.warn({ module: "shadow-mode" }, "Skipping versionChecker.start()");
-  }
+  await runUnlessShadow("versionChecker.start()", () => versionChecker.start());
 
   // 17. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
@@ -516,11 +513,7 @@ async function main() {
   // Spec 124 — skip in shadow mode (no recipe should re-arm on a
   // shadow). The runtime gate on startInstance is the second line
   // of defence for runtime UI actions.
-  if (!config.shadowMode) {
-    recipeManager.init();
-  } else {
-    logger.warn({ module: "shadow-mode" }, "Skipping recipeManager.init()");
-  }
+  await runUnlessShadow("recipeManager.init()", () => recipeManager.init());
 
   // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
   poolRuntimeTracker.start();
@@ -581,18 +574,12 @@ async function main() {
   // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
   // Spec 124 — skip in shadow mode; the service is monolithic and has
   // no runtime entry point, so the boot gate alone keeps it inert.
-  if (!config.shadowMode) {
-    mqttPublishService.init();
-  } else {
-    logger.warn({ module: "shadow-mode" }, "Skipping mqttPublishService.init()");
-  }
+  await runUnlessShadow("mqttPublishService.init()", () => mqttPublishService.init());
 
   // 18c. Initialize notification publish service (subscribes to events)
-  if (!config.shadowMode) {
-    notificationPublishService.init();
-  } else {
-    logger.warn({ module: "shadow-mode" }, "Skipping notificationPublishService.init()");
-  }
+  await runUnlessShadow("notificationPublishService.init()", () =>
+    notificationPublishService.init(),
+  );
 
   // 19. Initialize mode manager, calendar, and button actions
   modeManager.init();
