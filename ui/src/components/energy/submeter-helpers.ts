@@ -42,9 +42,13 @@ export function readSubmeterPower(eq: EquipmentWithDetails): number | null {
  *      chart, so a given equipment gets the same color in both views.
  *   3. Re-sort the rows for display: by power descending, then null-power
  *      (offline / no data) last.
+ *
+ * `labels` optionally overrides display names by equipment id (spec 139 —
+ * `name — zone` for homonym submeters); sorting uses the displayed name.
  */
 export function buildSubmeterRows(
   equipments: EquipmentWithDetails[],
+  labels?: Map<string, string>,
 ): SubmeterRow[] {
   const byId = [...equipments]
     .filter((eq) => isSubmeterEquipment(eq))
@@ -52,7 +56,7 @@ export function buildSubmeterRows(
 
   const rows: SubmeterRow[] = byId.map((eq, idx) => ({
     id: eq.id,
-    name: eq.name,
+    name: labels?.get(eq.id) ?? eq.name,
     power: readSubmeterPower(eq),
     status: eq.status,
     offlineSince: eq.statusReason?.offlineSince ?? null,

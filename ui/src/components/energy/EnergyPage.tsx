@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEnergy } from "../../store/useEnergy";
 import { useUiState } from "../../store/useUiState";
+import { useZones } from "../../store/useZones";
 import { PeriodSelector } from "./PeriodSelector";
 import { EnergyBarChart } from "./EnergyBarChart";
 import { EnergyByUsageChart } from "./EnergyByUsageChart";
@@ -10,6 +11,11 @@ import { UnitToggle } from "./UnitToggle";
 import { formatEnergyOrCost, formatKWh } from "./format";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse } from "../../types";
+import {
+  equipmentLabelMap,
+  flattenZonesWithPath,
+  zoneChainMap,
+} from "../../lib/zone-path";
 
 const AUTOCONSO_COLOR = "#6BCB77";
 
@@ -32,19 +38,25 @@ export function EnergyPage() {
   const [hasSubmeters, setHasSubmeters] = useState(false);
   const [byUsage, setByUsage] = useState<EnergyByUsageResponse | null>(null);
   const [byUsageLoading, setByUsageLoading] = useState(false);
+  const [submeterLookup, setSubmeterLookup] = useState<
+    { id: string; name: string; zoneId: string }[]
+  >([]);
+  const zoneTree = useZones((s) => s.tree);
 
   useEffect(() => {
     fetchHistory();
     checkAvailability();
   }, [fetchHistory, checkAvailability]);
 
-  // Detect whether at least one submeter is configured.
+  // Detect whether at least one submeter is configured, and keep the
+  // id → zone lookup used to disambiguate homonym submeters (spec 139).
   useEffect(() => {
     let cancelled = false;
     getEquipments()
       .then((list) => {
         if (cancelled) return;
         setHasSubmeters(list.some((e) => e.type === "energy_meter" && e.enabled));
+        setSubmeterLookup(list.map((e) => ({ id: e.id, name: e.name, zoneId: e.zoneId })));
       })
       .catch(() => {});
     return () => {
@@ -73,6 +85,25 @@ export function EnergyPage() {
       cancelled = true;
     };
   }, [viewMode, period, date]);
+
+  // Homonym submeters get a `name — zone` series label (spec 139). The series
+  // names come from the backend, so the override is keyed by equipment id and
+  // falls back to the backend name for deleted equipments.
+  const labelledByUsage = useMemo(() => {
+    if (!byUsage) return null;
+    const ids = new Set(byUsage.submeters.map((s) => s.id));
+    const labels = equipmentLabelMap(
+      submeterLookup.filter((e) => ids.has(e.id)),
+      zoneChainMap(flattenZonesWithPath(zoneTree)),
+    );
+    return {
+      ...byUsage,
+      submeters: byUsage.submeters.map((s) => ({
+        ...s,
+        name: labels.get(s.id) ?? s.name,
+      })),
+    };
+  }, [byUsage, submeterLookup, zoneTree]);
 
   const hasHpHc = history ? history.totals.total_hc > 0 : false;
 
@@ -131,9 +162,9 @@ export function EnergyPage() {
                 <div className="flex items-center justify-center h-[350px] text-text-tertiary text-[13px]">
                   {t("common.loading")}
                 </div>
-              ) : byUsage ? (
+              ) : labelledByUsage ? (
                 <EnergyByUsageChart
-                  data={byUsage}
+                  data={labelledByUsage}
                   period={period}
                   date={date}
                   height={350}

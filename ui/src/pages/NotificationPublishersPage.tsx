@@ -47,7 +47,7 @@ import {
   repeatFieldsFor,
   type RepeatMode,
 } from "../lib/notif-mapping";
-import { flattenZonesWithPath, type ZoneOption } from "../lib/zone-path";
+import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap, type ZoneOption } from "../lib/zone-path";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -730,6 +730,10 @@ function MappingRow({
     ? equipments.filter((e) => e.zoneId === filterZoneId)
     : equipments;
 
+  // Homonym equipments get a "name - zone" label (spec 139), qualified only
+  // against the other candidates in this dropdown.
+  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
+
   const filteredRecipeInstances = filterZoneId
     ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
     : recipeInstances;
@@ -882,7 +886,7 @@ function MappingRow({
                 <option value="">{t("notifPublishers.selectSource")}</option>
                 {filteredEquipments.map((eq) => (
                   <option key={eq.id} value={eq.id}>
-                    {eq.name}
+                    {eqLabels.get(eq.id) ?? eq.name}
                   </option>
                 ))}
               </select>
@@ -1055,6 +1059,10 @@ function AddMappingForm({
     ? equipments.filter((e) => e.zoneId === filterZoneId)
     : equipments;
 
+  // Homonym equipments get a "name - zone" label (spec 139), qualified only
+  // against the other candidates in this dropdown.
+  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
+
   const filteredRecipeInstances = filterZoneId
     ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
     : recipeInstances;
@@ -1184,7 +1192,7 @@ function AddMappingForm({
               <option value="">{t("notifPublishers.selectSource")}</option>
               {filteredEquipments.map((eq) => (
                 <option key={eq.id} value={eq.id}>
-                  {eq.name}
+                  {eqLabels.get(eq.id) ?? eq.name}
                 </option>
               ))}
             </select>

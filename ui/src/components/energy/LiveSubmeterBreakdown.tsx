@@ -10,11 +10,18 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useEquipments } from "../../store/useEquipments";
+import { useZones } from "../../store/useZones";
 import {
   buildSubmeterRows,
   computeOther,
   type SubmeterRow,
 } from "./submeter-helpers";
+import { isSubmeterEquipment } from "../../lib/metering";
+import {
+  equipmentLabelMap,
+  flattenZonesWithPath,
+  zoneChainMap,
+} from "../../lib/zone-path";
 
 const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
 const OTHER_COLOR = "#A1A1AA"; // var(--n-300), neutral grey
@@ -60,8 +67,17 @@ function formatRelative(iso: string | null): string {
 export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const { t } = useTranslation();
   const equipments = useEquipments((s) => s.equipments);
+  const zoneTree = useZones((s) => s.tree);
 
-  const rows = useMemo(() => buildSubmeterRows(equipments), [equipments]);
+  // Homonym submeters get a `name — zone` label (spec 139); the qualifier
+  // only appears when two submeters actually share a name.
+  const rows = useMemo(() => {
+    const labels = equipmentLabelMap(
+      equipments.filter((eq) => isSubmeterEquipment(eq)),
+      zoneChainMap(flattenZonesWithPath(zoneTree)),
+    );
+    return buildSubmeterRows(equipments, labels);
+  }, [equipments, zoneTree]);
   if (rows.length === 0) return null;
 
   const submeterSum = rows.reduce((acc, r) => acc + (r.power ?? 0), 0);

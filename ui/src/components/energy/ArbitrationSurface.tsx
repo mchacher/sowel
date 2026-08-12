@@ -3,8 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Scale } from "lucide-react";
 import { useArbiter } from "../../store/useArbiter";
 import { useEquipments } from "../../store/useEquipments";
+import { useZones } from "../../store/useZones";
 import type { ArbiterDecision, ArbiterPublicState } from "../../types";
 import { buildLanes, isToday, minuteOfDay, type Lane } from "../../lib/arbitration-lanes";
+import {
+  equipmentLabelMap,
+  flattenZonesWithPath,
+  zoneChainMap,
+} from "../../lib/zone-path";
 
 /**
  * Spec 140 / FR-10 — the arbitration surface on Energy → Live. Normative
@@ -212,15 +218,18 @@ export function ArbitrationSurface() {
   const state = useArbiter((s) => s.state);
   const fetch = useArbiter((s) => s.fetch);
   const equipments = useEquipments((s) => s.equipments);
+  const zoneTree = useZones((s) => s.tree);
 
   useEffect(() => {
     void fetch();
   }, [fetch]);
 
-  const profiled = useMemo(
-    () => equipments.filter((e) => e.energyProfile).map((e) => ({ id: e.id, name: e.name })),
-    [equipments],
-  );
+  // Homonym profiled loads get a `name — zone` lane label (spec 139).
+  const profiled = useMemo(() => {
+    const list = equipments.filter((e) => e.energyProfile);
+    const labels = equipmentLabelMap(list, zoneChainMap(flattenZonesWithPath(zoneTree)));
+    return list.map((e) => ({ id: e.id, name: labels.get(e.id) ?? e.name }));
+  }, [equipments, zoneTree]);
 
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();

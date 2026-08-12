@@ -40,7 +40,7 @@ import type {
   RecipeInfo,
   MqttBroker,
 } from "../types";
-import { flattenZonesWithPath, type ZoneOption } from "../lib/zone-path";
+import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap, type ZoneOption } from "../lib/zone-path";
 
 const ZONE_AGG_KEYS = [
   "temperature",
@@ -544,6 +544,8 @@ function PublisherCard({
   const [testResult, setTestResult] = useState<number | null>(null);
 
   const flatZones = flattenZonesWithPath(zones);
+  // Homonym equipments get a "name - zone" label in mapping rows (spec 139).
+  const eqLabels = equipmentLabelMap(equipments, zoneChainMap(flatZones));
   const broker = brokers.find((b) => b.id === publisher.brokerId);
 
   if (editing) {
@@ -602,7 +604,7 @@ function PublisherCard({
   const resolveSourceLabel = (mapping: MqttPublisherMapping): string => {
     if (mapping.sourceType === "equipment") {
       const eq = equipments.find((e) => e.id === mapping.sourceId);
-      return eq ? `${eq.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
+      return eq ? `${eqLabels.get(eq.id) ?? eq.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
     }
     if (mapping.sourceType === "recipe") {
       const inst = recipeInstances.find((i) => i.id === mapping.sourceId);
@@ -779,6 +781,10 @@ function MappingRow({
     ? equipments.filter((e) => e.zoneId === filterZoneId)
     : equipments;
 
+  // Homonym equipments get a "name - zone" label (spec 139), qualified only
+  // against the other candidates in this dropdown.
+  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
+
   const filteredRecipeInstances = filterZoneId
     ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
     : recipeInstances;
@@ -930,7 +936,7 @@ function MappingRow({
                 <option value="">{t("mqttPublishers.selectSource")}</option>
                 {filteredEquipments.map((eq) => (
                   <option key={eq.id} value={eq.id}>
-                    {eq.name}
+                    {eqLabels.get(eq.id) ?? eq.name}
                   </option>
                 ))}
               </select>
@@ -1084,6 +1090,10 @@ function AddMappingForm({
     ? equipments.filter((e) => e.zoneId === filterZoneId)
     : equipments;
 
+  // Homonym equipments get a "name - zone" label (spec 139), qualified only
+  // against the other candidates in this dropdown.
+  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
+
   // Recipe instances filtered by selected zone (zone stored in params.zone)
   const filteredRecipeInstances = filterZoneId
     ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
@@ -1211,7 +1221,7 @@ function AddMappingForm({
               <option value="">{t("mqttPublishers.selectSource")}</option>
               {filteredEquipments.map((eq) => (
                 <option key={eq.id} value={eq.id}>
-                  {eq.name}
+                  {eqLabels.get(eq.id) ?? eq.name}
                 </option>
               ))}
             </select>
