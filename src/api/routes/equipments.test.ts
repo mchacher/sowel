@@ -65,3 +65,142 @@ describe("GET /api/v1/equipments — ?type filter", () => {
     expect(res.json()).toEqual([]);
   });
 });
+
+// ─── Input-validation characterization (issue #452) ─────────────────────────
+// These pin the CURRENT accept/reject behaviour and 400 error-body shape of the
+// hand-rolled checks in POST/PUT, so a later move to schema validation can be
+// proven equivalent. If a conversion changes any of these, it is a deliberate
+// decision, not an accident.
+
+function makeMutableManager() {
+  const created = { id: "new-eq", name: "x", type: "light_onoff", zoneId: "z1", enabled: true };
+  return {
+    create: () => created,
+    createWithAutoBindings: () => created,
+    update: () => ({ ...created, id: "eq-1" }),
+    getById: () => null,
+  } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"];
+}
+
+describe("POST /api/v1/equipments — input validation (characterization)", () => {
+  let app: ReturnType<typeof Fastify>;
+  beforeEach(async () => {
+    app = Fastify({ logger: false });
+    registerEquipmentRoutes(app, {
+      equipmentManager: makeMutableManager(),
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+  afterEach(async () => await app.close());
+
+  const post = (body: unknown) =>
+    app.inject({ method: "POST", url: "/api/v1/equipments", payload: body });
+
+  const base = { name: "Salon", type: "light_onoff", zoneId: "z1" };
+
+  it("400 with { error: 'Name is required' } when name is missing or blank", async () => {
+    for (const name of [undefined, "", "   "]) {
+      const res = await post({ ...base, name });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: "Name is required" });
+    }
+  });
+
+  it("400 when name exceeds 100 characters", async () => {
+    const res = await post({ ...base, name: "a".repeat(101) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Name must be 100 characters or less" });
+  });
+
+  it("400 { error: 'Type is required' } when type is missing", async () => {
+    const res = await post({ name: "Salon", zoneId: "z1" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Type is required" });
+  });
+
+  it("400 { error: 'Zone ID is required' } when zoneId is missing", async () => {
+    const res = await post({ name: "Salon", type: "light_onoff" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Zone ID is required" });
+  });
+
+  it("400 when description exceeds 500 characters", async () => {
+    const res = await post({ ...base, description: "a".repeat(501) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Description must be 500 characters or less" });
+  });
+
+  it("201 for a valid body", async () => {
+    const res = await post(base);
+    expect(res.statusCode).toBe(201);
+  });
+
+  it("currently ACCEPTS and ignores an unknown extra field (schema must strip, not reject)", async () => {
+    const res = await post({ ...base, bogus: "surprise" });
+    expect(res.statusCode).toBe(201);
+  });
+});
+
+describe("PUT /api/v1/equipments/:id — input validation (characterization)", () => {
+  let app: ReturnType<typeof Fastify>;
+  beforeEach(async () => {
+    app = Fastify({ logger: false });
+    registerEquipmentRoutes(app, {
+      equipmentManager: makeMutableManager(),
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+  afterEach(async () => await app.close());
+
+  const put = (body: unknown) =>
+    app.inject({ method: "PUT", url: "/api/v1/equipments/eq-1", payload: body });
+
+  it("400 { error: 'Name cannot be empty' } when name is present but blank", async () => {
+    const res = await put({ name: "  " });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Name cannot be empty" });
+  });
+
+  it("400 when name exceeds 100 characters", async () => {
+    const res = await put({ name: "a".repeat(101) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Name must be 100 characters or less" });
+  });
+
+  it("400 when description exceeds 500 characters", async () => {
+    const res = await put({ description: "a".repeat(501) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "Description must be 500 characters or less" });
+  });
+
+  it("400 when energyProfile.class is neither comfort nor deferrable", async () => {
+    const res = await put({
+      energyProfile: { class: "nope", nominalPowerW: 1000, minOnS: 0, minOffS: 0 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "energyProfile.class must be comfort or deferrable" });
+  });
+
+  it("400 when energyProfile.nominalPowerW is out of the 1-30000 range", async () => {
+    const res = await put({
+      energyProfile: { class: "comfort", nominalPowerW: 0, minOnS: 0, minOffS: 0 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "energyProfile.nominalPowerW must be 1-30000 W" });
+  });
+
+  it("400 when energyProfile min-on/min-off is negative", async () => {
+    const res = await put({
+      energyProfile: { class: "comfort", nominalPowerW: 1000, minOnS: -1, minOffS: 0 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "energyProfile min-on/min-off must be >= 0 seconds" });
+  });
+
+  it("200 for a valid partial update", async () => {
+    const res = await put({ name: "Renamed" });
+    expect(res.statusCode).toBe(200);
+  });
+});
