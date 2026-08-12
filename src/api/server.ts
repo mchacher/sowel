@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
@@ -8,6 +8,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
+import swagger from "@fastify/swagger";
 import type { Logger } from "../core/logger.js";
 import type { LogRingBuffer } from "../core/log-buffer.js";
 import type { ActivityBuffer } from "../activity/activity-buffer.js";
@@ -178,6 +179,23 @@ export async function createServer(deps: ServerDeps) {
   // Schema-validation failures answer as { error } / 400 (issue #452).
   installValidationErrorHandler(app);
 
+  // OpenAPI spec generation (issue #452 follow-up). @fastify/swagger reads the
+  // JSON schemas declared on routes (added by the #452 rollout) and builds an
+  // OpenAPI 3 document, served as JSON at GET /api/v1/openapi.json below. Must be
+  // registered before the routes so it captures their schemas. No Swagger UI is
+  // mounted — this exposes the machine-readable spec only.
+  const pkgVersion = (
+    JSON.parse(
+      readFileSync(resolve(import.meta.dirname ?? ".", "../../package.json"), "utf-8"),
+    ) as { version: string }
+  ).version;
+  await app.register(swagger, {
+    openapi: {
+      info: { title: "Sowel API", version: pkgVersion },
+      servers: [{ url: "/" }],
+    },
+  });
+
   // CORS
   await app.register(cors, {
     origin: corsOrigins,
@@ -281,6 +299,12 @@ export async function createServer(deps: ServerDeps) {
 
   // Auth middleware (must be registered before routes)
   registerAuthMiddleware(app, { authService, userManager, logger });
+
+  // OpenAPI spec (issue #452 follow-up). Machine-readable document built by
+  // @fastify/swagger from the route schemas. Not in PUBLIC_ROUTES, so it sits
+  // behind the auth middleware like any other /api route — authenticated users
+  // can fetch it; add it to PUBLIC_ROUTES to expose it anonymously.
+  app.get("/api/v1/openapi.json", async () => app.swagger());
 
   // Register routes
   registerHealthRoutes(app, { deviceManager, integrationRegistry, logger });

@@ -28,6 +28,7 @@
     "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/static": "^9.0.0",
+    "@fastify/swagger": "^9.8.1",
     "@fastify/websocket": "^11.0.1",
     "@influxdata/influxdb-client": "^1.35.0",
     "@types/archiver": "^7.0.0",
