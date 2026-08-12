@@ -11,6 +11,18 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.42.x: State history and clearer navigation
+
+### v1.42.0 — 2026-08-12 { #v1-42-0 }
+
+- Feat (ui): **equipment states now appear in history, next to measurements**. On/off actuator feedback (a relay, a pump, a switch) was recorded but never drawn, because only numeric series were charted. State values are now stored numerically as well, so the Analyse page can plot a temperature curve and the relay driving it on a single chart, with the relay on its own 0/1 axis on the right. Covers, gates and locks that carry more than two values chart as a plain numeric series. The state historization is core; the Analyse mixed-axis was contributed by Adrien Jouve (computingify). (spec 144, #434, #442)
+- Feat (ui): **recipes can show a live status line on their card**. A recipe can now surface a one-line summary of what it is doing, for example a pool pump showing "Filtration 2.1/9.6 h, off-peak" instead of that context living only in the recipe log. (#431)
+- Feat (ui): **zone paths are shown in every zone dropdown and label**. Two rooms sharing a name (a "Bathroom" on each floor) were indistinguishable in most pickers; every zone now carries its disambiguating path everywhere. Contributed by Adrien Jouve (computingify). (spec 139, #433)
+- Fix (ui): **the energy view is reachable right after local midnight**. "Today" was computed in UTC, so for the first hours after local midnight (until 02:00 in summer) the current day was treated as the future and its data was unreachable. It now uses the local calendar day. (#432)
+- Fix (equipments): **report-on-change devices no longer flap between online and degraded**. A metering plug reports power only when it changes, so a steady load stopped updating and the tight freshness window tipped the equipment to degraded on every reporting cycle (180 status changes in an hour on one install). Power, current and voltage that arrive as a bonus on a non-metering equipment are now exempt from that window; dedicated meters still degrade on genuine silence. Contributed by Adrien Jouve (computingify). (spec 116, #440)
+
+---
+
 ## 1.41.x: Metering accuracy and acknowledgeable alarms
 
 ### v1.41.0 — 2026-08-12 { #v1-41-0 }
