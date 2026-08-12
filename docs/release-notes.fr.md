@@ -11,6 +11,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.43.x: Alertes batterie faible et contrôles du graphe Analyse
+
+### v1.43.0 — 2026-08-12 { #v1-43-0 }
+
+- Feat (devices): **alertes de batterie faible pour les appareils sur pile**. Un capteur sur pile pouvait tomber à plat en silence : la spec 116 considère le silence radio des équipements à pile événementiels comme normal, donc une pile morte restait affichée en ligne pendant que le pourcentage bas dormait, non lu. Sowel surveille désormais le niveau de batterie de chaque appareil sur pile, lève une alerte système à 20% ou moins (levée à nouveau à 25%), rappelle une fois par semaine tant que le niveau reste bas, et résout l'alerte au remplacement de la pile. La carte d'équipement affiche un indicateur de batterie à côté de ses valeurs. Les appareils sont détectés automatiquement, et précisément dès que le plugin Zigbee2MQTT 2.5.0 déclare la source d'alimentation de chaque appareil. À cette occasion, les alarmes système (batterie, ordres non confirmés, erreurs d'intégration) atteignent maintenant tous les publishers de notification activés au lieu du seul premier Telegram, si bien qu'une installation en web-push seul les reçoit aussi. Contribué par Adrien Jouve (computingify). (spec 143, #444)
+- Feat (ui): **couleurs par série et axes Y ajustés sur le graphe Analyse**. Trois choses échappaient au contrôle sur un graphe Analyse. Les couleurs suivaient l'ordre d'ajout sans rien de sauvegardé, si bien que retirer une série recolorait les autres ; chaque série ouvre désormais un sélecteur de couleur et le choix est sauvegardé. Un axe de mesure était ancré à zéro, donc une température de ballon entre 48 et 55 degrés se lisait comme une ligne plate en haut ; une bascule ajuste maintenant chaque axe de mesure à sa propre plage. Et toutes les mesures partageaient une seule échelle ; un graphe traçant exactement deux quantités obtient désormais un axe chacune, à gauche et à droite, groupées par unité. Les deux réglages sont optionnels, donc un graphe sauvegardé avant ce changement garde l'ordre de la palette et l'axe ancré à zéro, sauf qu'un graphe existant traçant exactement deux quantités d'unités différentes s'ouvrira désormais avec des axes gauche et droite séparés. Contribué par Adrien Jouve (computingify). (spec 145, #446)
+- Interne : couverture de tests automatisés élargie (le UserManager, plusieurs modules backend jusque-là non testés, et les stores UI useAuth et useWebSocket), un nettoyage des gardes de démarrage du mode ombre et du client API UI, plus un nouveau garde-fou CI et des documents de conception complétés pour les dossiers de spec. Aucun changement visible. (#459, #461, #462, #463, #464, #465, #466, #467, #468)
+
 ## 1.42.x: Historique des états et navigation plus claire
 
 ### v1.42.0 — 2026-08-12 { #v1-42-0 }

@@ -11,6 +11,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.43.x: Low battery alerts and Analyse chart controls
+
+### v1.43.0 — 2026-08-12 { #v1-43-0 }
+
+- Feat (devices): **low battery alerts for battery-powered devices**. A battery-powered sensor could go flat silently: spec 116 treats the radio silence of event-driven battery hardware as normal, so a dead cell still showed as online while the low percentage sat unread. Sowel now watches the battery level of every battery-powered device, raises a system alert at 20% or below (clearing again at 25%), reminds once a week while it stays low, and resolves the alert when the cell is replaced. The equipment card shows a battery marker next to its readings. Devices are detected automatically, and precisely once the Zigbee2MQTT plugin 2.5.0 declares each device's power source. As part of this, system alarms (battery, unconfirmed orders, integration errors) now reach every enabled notification publisher instead of only the first Telegram one, so a web-push-only setup receives them too. Contributed by Adrien Jouve (computingify). (spec 143, #444)
+- Feat (ui): **per-series colours and fitted Y axes on the Analyse chart**. Three things were out of reach on an Analyse chart. Series colours followed insertion order with nothing saved, so removing a series recoloured the rest; each series now opens a colour picker and the choice is saved. A measurement axis was anchored at zero, so a tank temperature living between 48 and 55 degrees read as a flat line at the top; a toggle now fits each measurement axis to its own range. And every measurement shared one scale; a chart plotting exactly two quantities now gets an axis each, left and right, grouped by unit. Both settings are optional, so charts saved before this change keep the palette order and the zero-anchored axis, except that a pre-existing chart plotting exactly two different-unit quantities will now open with split left and right axes. Contributed by Adrien Jouve (computingify). (spec 145, #446)
+- Internal: broader automated test coverage (the UserManager, several previously-untested backend modules, and the useAuth and useWebSocket UI stores), a tidy-up of the shadow-mode boot gates and the UI API client, and a new CI gate plus backfilled design docs for the spec folders. No user-facing change. (#459, #461, #462, #463, #464, #465, #466, #467, #468)
+
 ## 1.42.x: State history and clearer navigation
 
 ### v1.42.0 — 2026-08-12 { #v1-42-0 }
