@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  axisForCategory,
   booleanTickLabels,
   familiesCompatible,
   familyOf,
@@ -7,6 +8,7 @@ import {
   isBooleanCategory,
   isCumulativeBarChart,
   isCumulativeChart,
+  measurementUnits,
 } from "./history-utils";
 
 describe("isCumulativeBarChart", () => {
@@ -192,5 +194,57 @@ describe("booleanTickLabels", () => {
       "analyse.bool.generic.off",
       "analyse.bool.generic.on",
     ]);
+  });
+});
+
+describe("measurementUnits", () => {
+  it("lists the distinct quantities in insertion order", () => {
+    expect(measurementUnits(["temperature", "humidity"])).toEqual(["°C", "%"]);
+    expect(measurementUnits(["humidity", "temperature"])).toEqual(["%", "°C"]);
+  });
+
+  it("groups same-unit categories together", () => {
+    // Two temperatures compare directly — one scale, not two.
+    expect(measurementUnits(["temperature", "temperature_outdoor"])).toEqual(["°C", ""]);
+    // Humidity and battery are both percentages.
+    expect(measurementUnits(["humidity", "battery"])).toEqual(["%"]);
+  });
+
+  it("ignores state categories — they own the [0, 1] axis", () => {
+    expect(measurementUnits(["temperature", "light_state", "motion"])).toEqual(["°C"]);
+  });
+
+  it("treats categories with no declared unit as one unitless quantity", () => {
+    expect(measurementUnits(["cover_state", "gate_state"])).toEqual([""]);
+  });
+});
+
+describe("axisForCategory", () => {
+  it("puts the second quantity on the right axis", () => {
+    const units = measurementUnits(["temperature", "humidity"]);
+    expect(axisForCategory("temperature", units)).toBe("left");
+    expect(axisForCategory("humidity", units)).toBe("right");
+  });
+
+  it("keeps same-unit series on the same axis", () => {
+    const units = measurementUnits(["humidity", "temperature"]);
+    expect(axisForCategory("humidity", units)).toBe("left");
+    expect(axisForCategory("battery", units)).toBe("left"); // also "%"
+    expect(axisForCategory("temperature", units)).toBe("right");
+  });
+
+  it("shares the left axis below and above two quantities", () => {
+    expect(axisForCategory("temperature", measurementUnits(["temperature"]))).toBe("left");
+    const three = measurementUnits(["temperature", "humidity", "pressure"]);
+    expect(axisForCategory("temperature", three)).toBe("left");
+    expect(axisForCategory("humidity", three)).toBe("left");
+    expect(axisForCategory("pressure", three)).toBe("left");
+  });
+
+  it("routes state categories to their own axis whatever the units", () => {
+    expect(axisForCategory("light_state", measurementUnits(["temperature", "humidity"]))).toBe(
+      "state",
+    );
+    expect(axisForCategory("motion", [])).toBe("state");
   });
 });

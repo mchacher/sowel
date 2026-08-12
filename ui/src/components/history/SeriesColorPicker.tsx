@@ -5,16 +5,25 @@ import { SERIES_COLORS } from "./history-utils";
 interface SeriesColorPickerProps {
   /** Current effective colour of the series (`#rrggbb`). */
   color: string;
+  /** Which side of the anchor to open on. Defaults to `below`, used by the
+   *  series pills; the legend anchor sits at the bottom of the chart card and
+   *  opens upwards. */
+  placement?: "below" | "above";
   onChange: (color: string) => void;
   onClose: () => void;
 }
 
 /**
- * Palette + free-hue popover, opened by the colour dot of a series pill
- * (spec 145). Follows `IconPicker`'s pattern: absolutely positioned under its
- * anchor, closed by an outside click or Escape.
+ * Palette + free-hue popover, opened by the colour dot of a series pill or by
+ * a legend entry (spec 145). Follows `IconPicker`'s pattern: absolutely
+ * positioned against its anchor, closed by an outside click or Escape.
  */
-export function SeriesColorPicker({ color, onChange, onClose }: SeriesColorPickerProps) {
+export function SeriesColorPicker({
+  color,
+  placement = "below",
+  onChange,
+  onClose,
+}: SeriesColorPickerProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,8 +45,10 @@ export function SeriesColorPicker({ color, onChange, onClose }: SeriesColorPicke
   return (
     <div
       ref={ref}
-      className="absolute z-30 top-full left-0 mt-1 w-[176px] p-2.5
-        bg-surface border border-border rounded-[10px] shadow-lg"
+      className={`absolute z-30 left-0 w-[176px] p-2.5
+        bg-surface border border-border rounded-[10px] shadow-lg ${
+          placement === "above" ? "bottom-full mb-1" : "top-full mt-1"
+        }`}
     >
       <div className="grid grid-cols-4 gap-1.5">
         {SERIES_COLORS.map((c) => (

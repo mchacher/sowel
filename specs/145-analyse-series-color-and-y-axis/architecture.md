@@ -7,17 +7,18 @@ the UI sends.
 
 ## Files
 
-| File                                              | Change                                                                                                                                                                         |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/shared/types.ts`                             | `SavedChartSeriesConfig.color?`, `SavedChartConfig.yAxisFit?`                                                                                                                  |
-| `ui/src/types.ts`                                 | same two fields (the UI keeps its own copy of the types)                                                                                                                       |
-| `ui/src/components/history/y-axis.ts`             | **new** — `fitYAxis(values)` → `{ domain, ticks }`                                                                                                                             |
-| `ui/src/components/history/y-axis.test.ts`        | **new** — unit tests for the fit                                                                                                                                               |
-| `ui/src/components/history/SeriesColorPicker.tsx` | **new** — palette + free-hue popover                                                                                                                                           |
-| `ui/src/components/history/history-utils.ts`      | `SERIES_COLORS` moves here from `AnalyseView` — the picker and the view both need it, and a `.tsx` file may not export non-components (`react-refresh/only-export-components`) |
-| `ui/src/components/history/AnalyseView.tsx`       | colour state, fit state, save/load, render wiring                                                                                                                              |
-| `ui/src/i18n/locales/{en,fr}.json`                | `analyse.seriesColor`, `analyse.customColor`, `analyse.yAxisFit`                                                                                                               |
-| `docs/specs-index.md`                             | spec 145 row (the French index still stops at spec 136)                                                                                                                        |
+| File                                              | Change                                                                                                            |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `src/shared/types.ts`                             | `SavedChartSeriesConfig.color?`, `SavedChartConfig.yAxisFit?`                                                     |
+| `ui/src/types.ts`                                 | same two fields (the UI keeps its own copy of the types)                                                          |
+| `ui/src/components/history/y-axis.ts`             | **new** — `fitYAxis(values)` → `{ domain, ticks }`                                                                |
+| `ui/src/components/history/y-axis.test.ts`        | **new** — unit tests for the fit                                                                                  |
+| `ui/src/components/history/SeriesColorPicker.tsx` | **new** — palette + free-hue popover                                                                              |
+| `ui/src/components/history/history-utils.ts`      | `SERIES_COLORS` and `CATEGORY_UNITS` move here from `AnalyseView`; new `measurementUnits()` / `axisForCategory()` |
+| `ui/src/components/history/history-utils.test.ts` | cases for the two new helpers                                                                                     |
+| `ui/src/components/history/AnalyseView.tsx`       | colour state, fit state, save/load, render wiring                                                                 |
+| `ui/src/i18n/locales/{en,fr}.json`                | `analyse.seriesColor`, `analyse.customColor`, `analyse.yAxisFit`                                                  |
+| `docs/specs-index.md`                             | spec 145 row (the French index still stops at spec 136)                                                           |
 
 ## Data model
 
@@ -121,7 +122,7 @@ leaves the interval, so the domain is preserved either way).
 ```tsx
 <YAxis
   yAxisId="left"
-  {...(fittedAxis ? { domain: fittedAxis.domain, ticks: fittedAxis.ticks } : {})}
+  {...(fittedAxes.left ? { domain: fittedAxes.left.domain, ticks: fittedAxes.left.ticks } : {})}
   …
 />
 ```
@@ -131,12 +132,16 @@ the one shipped today.
 
 ### Which values are fitted
 
-Only what the left axis actually carries:
+`fittedAxes` is `{ left, right }`, each computed from what that axis actually
+carries — `axisForCategory` decides the membership, so the fit follows the
+split for free:
 
-- state series are skipped — they live on the right `[0, 1]` axis;
+- state series never contribute — they live on the `[0, 1]` axis;
 - the `:min` / `:max` envelope keys join in only when the band is rendered
   (`envelopeOn && activeResolution !== "raw"` and the category has an
-  envelope), so the domain matches what is on screen.
+  envelope), so the domain matches what is on screen;
+- an axis with no series fits to `null`, so the right axis on a single-quantity
+  chart is simply absent.
 
 `showBand` moves from inside the render IIFE up to component scope, since the
 fit memo needs it too.
@@ -152,6 +157,66 @@ baseline); a states-only chart has `hasMeasurementSeries === false`, so it is
 out too, and the fit is only ever applied in the measurements/mixed
 `ComposedChart` branch.
 
+## One axis per quantity (F3)
+
+The rule lives in `history-utils.ts` rather than inline in the view, for the
+same reason spec 144 put `familiesCompatible` there: `AnalyseView` has no test
+harness, and this is the piece worth pinning down.
+
+```ts
+export function measurementUnits(categories: string[]): string[];
+export function axisForCategory(category: string, units: string[]): "left" | "right" | "state";
+```
+
+`measurementUnits` collects the distinct `CATEGORY_UNITS[category]` values in
+insertion order, skipping state categories. Grouping by **unit** rather than by
+category is the whole point: two temperatures, or a humidity and a battery
+(both `%`), are directly comparable and must not be pulled onto separate scales
+— that would suggest a difference that is not there.
+
+`axisForCategory` returns `right` only when there are exactly two units and the
+category carries the second one. One unit, or three and up, and everything
+lands on `left` — three scales do not fit on two sides, and the alternative
+(stacking a third axis) eats the plot width on mobile.
+
+The view then holds nothing but the wiring:
+
+```ts
+const chartUnits = useMemo(() => measurementUnits(series.map((s) => s.category)), [series]);
+const splitAxes = chartUnits.length === 2;
+const axisIdOf = useCallback((c: string) => axisForCategory(c, chartUnits), [chartUnits]);
+```
+
+`axisIdOf` feeds the `yAxisId` of every `Line` and every envelope `Area`,
+replacing the hardcoded `"left"` / `isState ? "state" : "left"`. The second
+`YAxis` renders only when `splitAxes`; the state axis is unchanged and Recharts
+stacks it outside the right measurement axis when both exist.
+
+Tick labels carry their unit only in split mode (`formatAxisTick`), because
+that is the only case where a bare number is ambiguous. Axis width goes 52 → 62
+to fit the suffix.
+
+## Colour picker anchors
+
+The picker opens from two places, so `colorPicker` state carries where from:
+
+```ts
+type ColorPickerAnchor =
+  | { kind: "pill"; id: string }
+  | { kind: "legend"; id: string; x: number; y: number };
+```
+
+A pill anchors the popover in the DOM (the pill is `relative`). A legend entry
+is rendered by Recharts and has no node of ours, so `Legend.onClick` gives the
+series id (entries carry `name={series.id}`) and the click point, converted to
+chart-card coordinates against a ref on the card and clamped so the 176 px
+panel stays inside. That anchor opens the popover **upwards** (`placement`
+prop) — the legend sits at the bottom edge of the card.
+
+Neither opener toggles: the picker's own outside-`mousedown` handler has
+already closed it by the time the `click` fires, so a toggle could only ever
+reopen. Escape or a click elsewhere closes it, as with `IconPicker`.
+
 ## Persistence flow
 
 ```
@@ -161,10 +226,10 @@ save  buildConfig() → { series: [{ equipmentId, alias, color }], period, date,
 reset navigating to /analyse (empty workspace) clears both, like period/date
 ```
 
-## Colour picker
+## Colour picker panel
 
 `SeriesColorPicker` follows `IconPicker`'s pattern: an absolutely-positioned
-panel closed by an outside `mousedown` and by `Escape`, opened by the pill dot
-which becomes a `<button>`. Content is the eight palette swatches (the current
-one ringed) plus `<input type="color">` for a free hue, wired on `change` so
-dragging the OS picker does not spam state updates.
+panel closed by an outside `mousedown` and by `Escape`. Content is the eight
+palette swatches (the current one ringed) plus `<input type="color">` for a
+free hue, wired on `change` so dragging the OS picker does not spam state
+updates. See "Colour picker anchors" above for how it is positioned.

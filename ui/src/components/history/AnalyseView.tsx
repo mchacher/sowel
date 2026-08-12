@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -28,6 +28,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+import type { LegendPayload } from "recharts";
 import { getEquipments, getZones, getHistoryBindings, getHistoryData, getChart } from "../../api";
 import { useCharts } from "../../store/useCharts";
 import { useAuth } from "../../store/useAuth";
@@ -41,11 +42,14 @@ import type {
 } from "../../types";
 import { PeriodSelector } from "./PeriodSelector";
 import {
+  axisForCategory,
   booleanTickLabels,
+  CATEGORY_UNITS,
   familiesCompatible,
   familyOf,
   hasEnvelope,
   isBooleanCategory,
+  measurementUnits,
   periodTodayStr,
   periodToWindow,
   SERIES_COLORS,
@@ -83,33 +87,17 @@ interface SeriesConfig {
  * would refetch every series from InfluxDB. */
 type StyledSeries = SeriesConfig & { color: string };
 
+/** Where the colour picker was opened from — see `colorPicker` state. */
+type ColorPickerAnchor =
+  | { kind: "pill"; id: string }
+  | { kind: "legend"; id: string; x: number; y: number };
+
 interface SeriesData {
   points: HistoryPoint[];
   resolution: "raw" | "1h" | "1d";
   loading: boolean;
   error: string | null;
 }
-
-// ============================================================
-// Constants
-// ============================================================
-
-const CATEGORY_UNITS: Record<string, string> = {
-  temperature: "\u00b0C",
-  humidity: "%",
-  pressure: "hPa",
-  luminosity: "lx",
-  power: "W",
-  energy: "kWh",
-  voltage: "V",
-  current: "A",
-  battery: "%",
-  noise: "dB",
-  co2: "ppm",
-  rain: "mm",
-  wind: "km/h",
-  shutter_position: "%",
-};
 
 // ============================================================
 // Helpers
@@ -127,6 +115,13 @@ function formatTime(iso: string, period: Period): string {
     case "year":
       return d.toLocaleDateString(undefined, { month: "short" });
   }
+}
+
+/** Y axis tick label. The unit is appended only when the chart carries two
+ *  scales — on a single-axis chart the legend and tooltip already say it. */
+function formatAxisTick(value: number, unit: string): string {
+  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 function formatTooltipTime(iso: string): string {
@@ -173,7 +168,10 @@ export function AnalyseView() {
   // Spec 145 — per-series colour overrides, keyed by series id. Kept apart
   // from `series` so recolouring never re-triggers the history fetch.
   const [seriesColors, setSeriesColors] = useState<Record<string, string>>({});
-  const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
+  // The picker opens from two places: the dot on a series pill, and the legend
+  // entry under the chart. A legend entry has no DOM node of ours to anchor to,
+  // so it carries the click point, expressed in chart-card coordinates.
+  const [colorPicker, setColorPicker] = useState<ColorPickerAnchor | null>(null);
   // Spec 145 — fit the measurement axis to the data. Off by default: the
   // zero-anchored axis is how every chart reads today.
   const [yAxisFit, setYAxisFit] = useState(false);
@@ -424,6 +422,32 @@ export function AnalyseView() {
     [series, seriesColors],
   );
 
+  // Anchor for the picker opened from a legend entry — the click point is
+  // expressed relative to this card.
+  const chartCardRef = useRef<HTMLDivElement>(null);
+
+  /** Legend entries carry `name={series.id}`, so the payload identifies the
+   *  series directly. */
+  const openColorPickerFromLegend = useCallback(
+    (data: LegendPayload, _index: number, event: MouseEvent) => {
+      const id = typeof data.value === "string" ? data.value : "";
+      const rect = chartCardRef.current?.getBoundingClientRect();
+      if (!id || !rect) return;
+      // Always open, never toggle: the picker's own outside-click handler has
+      // already closed it by the time this click fires, so a toggle would only
+      // ever reopen. Escape or a click elsewhere closes it (same as IconPicker).
+      setColorPicker({
+        kind: "legend",
+        id,
+        // Clamped so the panel stays inside the card when the entry clicked
+        // sits near the right edge.
+        x: Math.min(Math.max(event.clientX - rect.left, 0), Math.max(rect.width - 184, 0)),
+        y: event.clientY - rect.top,
+      });
+    },
+    [],
+  );
+
   // --- Save handlers ---
   // The effective colour is persisted for every series, not just the
   // overridden ones, so a saved chart keeps its exact look even if the default
@@ -573,28 +597,44 @@ export function AnalyseView() {
   // their zero baseline, and a states-only chart owns the fixed [0, 1] scale.
   const showYAxisFitToggle = !chartFamilies.has("cumulative") && hasMeasurementSeries;
 
-  // Domain + ticks of the left axis when the fit is on. Built from what the
-  // left axis actually carries: the measurement series, plus their envelope
-  // bounds when the band is on screen.
-  const fittedAxis = useMemo(() => {
-    if (!yAxisFit || !showYAxisFitToggle) return null;
+  // F3 — the distinct quantities plotted on the measurement axis. Two of them
+  // get an axis each (left and right); the rule itself lives in history-utils
+  // so it can be tested.
+  const chartUnits = useMemo(() => measurementUnits(series.map((s) => s.category)), [series]);
+  const splitAxes = chartUnits.length === 2;
 
-    const keys: string[] = [];
-    for (const s of series) {
-      if (isBooleanCategory(s.category)) continue;
-      keys.push(s.id);
-      if (showBand && hasEnvelope(s.category)) keys.push(`${s.id}:min`, `${s.id}:max`);
-    }
+  const axisIdOf = useCallback(
+    (category: string) => axisForCategory(category, chartUnits),
+    [chartUnits],
+  );
 
-    const values: number[] = [];
-    for (const row of chartData) {
-      for (const key of keys) {
-        const v = row[key];
-        if (typeof v === "number") values.push(v);
+  // Domain + ticks per measurement axis when the fit is on. Built from what
+  // each axis actually carries: its own series, plus their envelope bounds
+  // when the band is on screen.
+  const fittedAxes = useMemo(() => {
+    const fitAxis = (target: "left" | "right") => {
+      if (!yAxisFit || !showYAxisFitToggle) return null;
+
+      const keys: string[] = [];
+      for (const s of series) {
+        if (axisIdOf(s.category) !== target) continue;
+        keys.push(s.id);
+        if (showBand && hasEnvelope(s.category)) keys.push(`${s.id}:min`, `${s.id}:max`);
       }
-    }
-    return fitYAxis(values);
-  }, [yAxisFit, showYAxisFitToggle, series, chartData, showBand]);
+      if (keys.length === 0) return null;
+
+      const values: number[] = [];
+      for (const row of chartData) {
+        for (const key of keys) {
+          const v = row[key];
+          if (typeof v === "number") values.push(v);
+        }
+      }
+      return fitYAxis(values);
+    };
+
+    return { left: fitAxis("left"), right: fitAxis("right") };
+  }, [yAxisFit, showYAxisFitToggle, series, chartData, showBand, axisIdOf]);
 
   const familyLabel = useMemo(() => {
     if (series.length === 0) return "";
@@ -683,17 +723,17 @@ export function AnalyseView() {
               {/* Spec 145 — the dot opens the colour picker for this series. */}
               <button
                 type="button"
-                onClick={() => setColorPickerFor((cur) => (cur === s.id ? null : s.id))}
+                onClick={() => setColorPicker({ kind: "pill", id: s.id })}
                 title={t("analyse.seriesColor")}
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0 cursor-pointer
                   hover:ring-2 hover:ring-primary/30 transition-shadow"
                 style={{ backgroundColor: s.color }}
               />
-              {colorPickerFor === s.id && (
+              {colorPicker?.kind === "pill" && colorPicker.id === s.id && (
                 <SeriesColorPicker
                   color={s.color}
                   onChange={(color) => setSeriesColors((prev) => ({ ...prev, [s.id]: color }))}
-                  onClose={() => setColorPickerFor(null)}
+                  onClose={() => setColorPicker(null)}
                 />
               )}
               {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
@@ -954,7 +994,24 @@ export function AnalyseView() {
           <p className="text-[12px] text-text-tertiary">{t("analyse.emptyHint")}</p>
         </div>
       ) : (
-        <div className="bg-surface rounded-[10px] border border-border p-4">
+        <div ref={chartCardRef} className="relative bg-surface rounded-[10px] border border-border p-4">
+          {/* Colour picker opened from a legend entry — placed at the click
+              point and opening upwards, so it does not fall out of the card
+              (the legend sits at its bottom edge). */}
+          {colorPicker?.kind === "legend" && (
+            <div className="absolute w-0 h-0" style={{ left: colorPicker.x, top: colorPicker.y }}>
+              <SeriesColorPicker
+                color={
+                  styledSeries.find((s) => s.id === colorPicker.id)?.color ?? SERIES_COLORS[0]
+                }
+                placement="above"
+                onChange={(color) =>
+                  setSeriesColors((prev) => ({ ...prev, [colorPicker.id]: color }))
+                }
+                onClose={() => setColorPicker(null)}
+              />
+            </div>
+          )}
           {anyLoading && (
             <div className="flex items-center gap-2 mb-3">
               <Loader2 size={14} className="animate-spin text-text-tertiary" />
@@ -1003,7 +1060,8 @@ export function AnalyseView() {
                         ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
                         : `${s.equipmentName} / ${metricLabel}`;
                     }}
-                    wrapperStyle={{ fontSize: "11px" }}
+                    wrapperStyle={{ fontSize: "11px", cursor: "pointer" }}
+                    onClick={openColorPickerFromLegend}
                   />
                 );
                 const labelFormatter = (_: unknown, payload?: readonly { payload?: Record<string, unknown> }[]) => {
@@ -1181,16 +1239,34 @@ export function AnalyseView() {
                         what pins the bounds down: an explicit domain alone gets
                         re-niced (and widened) by Recharts. Without the fit,
                         neither prop is set and the axis is the zero-anchored
-                        default. */}
+                        default. F3 — when the chart plots exactly two
+                        quantities, the ticks carry their unit: with a scale on
+                        each side, bare numbers give no clue which is which. */}
                     <YAxis
                       yAxisId="left"
-                      {...(fittedAxis ? { domain: fittedAxis.domain, ticks: fittedAxis.ticks } : {})}
+                      {...(fittedAxes.left
+                        ? { domain: fittedAxes.left.domain, ticks: fittedAxes.left.ticks }
+                        : {})}
                       tick={{ fontSize: 10, fill: textTertiary }}
                       tickLine={false}
                       axisLine={false}
-                      width={52}
-                      tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
+                      width={splitAxes ? 62 : 52}
+                      tickFormatter={(v: number) => formatAxisTick(v, splitAxes ? chartUnits[0] : "")}
                     />
+                    {splitAxes && (
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        {...(fittedAxes.right
+                          ? { domain: fittedAxes.right.domain, ticks: fittedAxes.right.ticks }
+                          : {})}
+                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={62}
+                        tickFormatter={(v: number) => formatAxisTick(v, chartUnits[1])}
+                      />
+                    )}
                     {hasStateSeries && (
                       <YAxis
                         yAxisId="state"
@@ -1222,7 +1298,7 @@ export function AnalyseView() {
                           return (
                             <Area
                               key={`${s.id}:band`}
-                              yAxisId="left"
+                              yAxisId={axisIdOf(s.category)}
                               type="monotone"
                               dataKey={(d: Record<string, number>) => {
                                 const lo = d[minKey];
@@ -1248,7 +1324,7 @@ export function AnalyseView() {
                       return (
                         <Line
                           key={s.id}
-                          yAxisId={isState ? "state" : "left"}
+                          yAxisId={axisIdOf(s.category)}
                           type={isState ? "stepAfter" : "monotone"}
                           dataKey={s.id}
                           name={s.id}

@@ -108,6 +108,60 @@ export function familiesCompatible(a: ChartFamily | null, b: ChartFamily | null)
   return a !== "cumulative" && b !== "cumulative";
 }
 
+/** Display unit per data category. Empty when the category carries none. */
+export const CATEGORY_UNITS: Record<string, string> = {
+  temperature: "°C",
+  humidity: "%",
+  pressure: "hPa",
+  luminosity: "lx",
+  power: "W",
+  energy: "kWh",
+  voltage: "V",
+  current: "A",
+  battery: "%",
+  noise: "dB",
+  co2: "ppm",
+  rain: "mm",
+  wind: "km/h",
+  shutter_position: "%",
+};
+
+export type ChartAxisId = "left" | "right" | "state";
+
+/**
+ * The distinct quantities plotted on the measurement axis, in the order the
+ * series were added (spec 145 F3).
+ *
+ * Grouping is by unit, not by category: two temperatures — or a humidity and a
+ * battery, both `%` — keep sharing one scale, because putting same-unit series
+ * on separate axes would make them look comparable when they are not. State
+ * categories are excluded; they own the fixed `[0, 1]` axis.
+ */
+export function measurementUnits(categories: string[]): string[] {
+  const units: string[] = [];
+  for (const category of categories) {
+    if (isBooleanCategory(category)) continue;
+    const unit = CATEGORY_UNITS[category] ?? "";
+    if (!units.includes(unit)) units.push(unit);
+  }
+  return units;
+}
+
+/**
+ * Which Y axis a category belongs to, given the units present on the chart
+ * (spec 145 F3).
+ *
+ * Exactly two quantities get one axis each, left and right — a temperature and
+ * a humidity on one shared scale means reading a 21 °C curve flattened under a
+ * 60 % one. Three or more would need three scales for two sides, so they stay
+ * on the shared left axis as before.
+ */
+export function axisForCategory(category: string, units: string[]): ChartAxisId {
+  if (isBooleanCategory(category)) return "state";
+  if (units.length !== 2) return "left";
+  return (CATEGORY_UNITS[category] ?? "") === units[1] ? "right" : "left";
+}
+
 /** Whether `category` qualifies for the min/max envelope. */
 export function hasEnvelope(category: string): boolean {
   return ENVELOPE_CATEGORIES.has(category);
