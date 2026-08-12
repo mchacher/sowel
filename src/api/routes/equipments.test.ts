@@ -233,3 +233,60 @@ describe("PUT /api/v1/equipments/:id — input validation (characterization)", (
     expect(res.statusCode).toBe(200);
   });
 });
+
+describe("POST /api/v1/equipments/:id/(data|order)-bindings — validation", () => {
+  let app: ReturnType<typeof Fastify>;
+  beforeEach(async () => {
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    const manager = {
+      getAllWithDetails: () => [],
+      addDataBinding: () => ({ id: "db-1" }),
+      addOrderBinding: () => ({ id: "ob-1" }),
+    } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"];
+    registerEquipmentRoutes(app, {
+      equipmentManager: manager,
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+  afterEach(async () => await app.close());
+
+  const dataUrl = "/api/v1/equipments/eq-1/data-bindings";
+  const orderUrl = "/api/v1/equipments/eq-1/order-bindings";
+  const post = (url: string, body: unknown) => app.inject({ method: "POST", url, payload: body });
+
+  it("data-bindings: 400 { error } when deviceDataId or alias is missing/blank", async () => {
+    // old: `!deviceDataId` (bare) + `!alias?.trim()` (rejects whitespace)
+    for (const body of [
+      { alias: "temp" },
+      { deviceDataId: "d-1" },
+      { deviceDataId: "d-1", alias: "   " },
+    ]) {
+      const res = await post(dataUrl, body);
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toEqual({ error: expect.any(String) });
+    }
+  });
+
+  it("data-bindings: 201 for a valid body", async () => {
+    const res = await post(dataUrl, { deviceDataId: "d-1", alias: "temp" });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it("order-bindings: 400 when deviceOrderId or alias is missing/blank", async () => {
+    for (const body of [
+      { alias: "on" },
+      { deviceOrderId: "o-1" },
+      { deviceOrderId: "o-1", alias: "  " },
+    ]) {
+      const res = await post(orderUrl, body);
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  it("order-bindings: 201 for a valid body", async () => {
+    const res = await post(orderUrl, { deviceOrderId: "o-1", alias: "on" });
+    expect(res.statusCode).toBe(201);
+  });
+});

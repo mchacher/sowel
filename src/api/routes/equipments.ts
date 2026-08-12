@@ -47,6 +47,23 @@ const updateEquipmentBodySchema = {
   },
 };
 
+// Binding bodies (issue #452). Old guards: `!deviceDataId` / `!deviceOrderId`
+// (bare truthiness, so minLength 1) and `!alias?.trim()` (rejects a blank or
+// whitespace-only alias). The alias uses a `\S` pattern (a non-blank char) but,
+// unlike name, NO maxLength — the old check never capped its length. The handler
+// keeps `alias.trim()` normalization.
+const nonBlankAlias = { type: "string", pattern: "\\S" };
+const addDataBindingBodySchema = {
+  type: "object",
+  required: ["deviceDataId", "alias"],
+  properties: { deviceDataId: { type: "string", minLength: 1 }, alias: nonBlankAlias },
+};
+const addOrderBindingBodySchema = {
+  type: "object",
+  required: ["deviceOrderId", "alias"],
+  properties: { deviceOrderId: { type: "string", minLength: 1 }, alias: nonBlankAlias },
+};
+
 export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDeps): void {
   const { equipmentManager } = deps;
 
@@ -208,27 +225,24 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   app.post<{
     Params: { id: string };
     Body: { deviceDataId: string; alias: string };
-  }>("/api/v1/equipments/:id/data-bindings", async (request, reply) => {
-    const { deviceDataId, alias } = request.body ?? {};
+  }>(
+    "/api/v1/equipments/:id/data-bindings",
+    { schema: { body: addDataBindingBodySchema } },
+    async (request, reply) => {
+      const { deviceDataId, alias } = request.body;
 
-    if (!deviceDataId) {
-      return reply.code(400).send({ error: "deviceDataId is required" });
-    }
-    if (!alias?.trim()) {
-      return reply.code(400).send({ error: "alias is required" });
-    }
-
-    try {
-      const binding = equipmentManager.addDataBinding(
-        request.params.id,
-        deviceDataId,
-        alias.trim(),
-      );
-      return reply.code(201).send(binding);
-    } catch (err) {
-      return handleEquipmentError(reply, err);
-    }
-  });
+      try {
+        const binding = equipmentManager.addDataBinding(
+          request.params.id,
+          deviceDataId,
+          alias.trim(),
+        );
+        return reply.code(201).send(binding);
+      } catch (err) {
+        return handleEquipmentError(reply, err);
+      }
+    },
+  );
 
   // DELETE /api/v1/equipments/:id/data-bindings/:bindingId — Remove a DataBinding
   app.delete<{
@@ -250,27 +264,24 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   app.post<{
     Params: { id: string };
     Body: { deviceOrderId: string; alias: string };
-  }>("/api/v1/equipments/:id/order-bindings", async (request, reply) => {
-    const { deviceOrderId, alias } = request.body ?? {};
+  }>(
+    "/api/v1/equipments/:id/order-bindings",
+    { schema: { body: addOrderBindingBodySchema } },
+    async (request, reply) => {
+      const { deviceOrderId, alias } = request.body;
 
-    if (!deviceOrderId) {
-      return reply.code(400).send({ error: "deviceOrderId is required" });
-    }
-    if (!alias?.trim()) {
-      return reply.code(400).send({ error: "alias is required" });
-    }
-
-    try {
-      const binding = equipmentManager.addOrderBinding(
-        request.params.id,
-        deviceOrderId,
-        alias.trim(),
-      );
-      return reply.code(201).send(binding);
-    } catch (err) {
-      return handleEquipmentError(reply, err);
-    }
-  });
+      try {
+        const binding = equipmentManager.addOrderBinding(
+          request.params.id,
+          deviceOrderId,
+          alias.trim(),
+        );
+        return reply.code(201).send(binding);
+      } catch (err) {
+        return handleEquipmentError(reply, err);
+      }
+    },
+  );
 
   // DELETE /api/v1/equipments/:id/order-bindings/:bindingId — Remove an OrderBinding
   app.delete<{
