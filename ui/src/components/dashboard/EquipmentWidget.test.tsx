@@ -137,4 +137,70 @@ describe("EquipmentWidget", () => {
     );
     expect(screen.getByText("Living room temp")).toBeTruthy();
   });
+
+  // Issue #324 — a media_player used to fall through to the generic widget on
+  // desktop. It now renders the source and a power toggle.
+  it("renders a media_player with its source and fires the power toggle", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    const tv = makeEquipment({
+      id: "tv-1",
+      name: "TV",
+      type: "media_player",
+      dataBindings: [
+        {
+          id: "db-p",
+          equipmentId: "tv-1",
+          deviceDataId: "dd-p",
+          alias: "power",
+          deviceId: "dev-tv",
+          deviceName: "TV",
+          key: "power",
+          type: "boolean",
+          category: "light_state",
+          value: true,
+          lastUpdated: "2026-01-01T00:00:00Z",
+          lastChanged: "2026-01-01T00:00:00Z",
+          stale: false,
+        },
+        {
+          id: "db-s",
+          equipmentId: "tv-1",
+          deviceDataId: "dd-s",
+          alias: "input_source",
+          deviceId: "dev-tv",
+          deviceName: "TV",
+          key: "input_source",
+          type: "string",
+          category: "generic",
+          value: "HDMI1",
+          lastUpdated: "2026-01-01T00:00:00Z",
+          lastChanged: "2026-01-01T00:00:00Z",
+          stale: false,
+        },
+      ] as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        {
+          id: "ob-p",
+          equipmentId: "tv-1",
+          deviceOrderId: "do-p",
+          alias: "power",
+          deviceId: "dev-tv",
+          deviceName: "TV",
+          key: "power",
+          type: "boolean",
+        },
+      ] as EquipmentWithDetails["orderBindings"],
+    });
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "tv-1" })}
+        equipment={tv}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    expect(screen.getByText("HDMI1")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button"));
+    expect(onExecuteOrder).toHaveBeenCalledWith("tv-1", "power", false);
+  });
 });

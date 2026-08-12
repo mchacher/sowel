@@ -15,6 +15,7 @@ import {
   WashingMachine,
   Timer,
   Camera,
+  Tv,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
@@ -49,7 +50,6 @@ import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 
-
 /** Render the widget's custom icon (widget.icon -> CUSTOM_ICON_REGISTRY) when set,
  *  otherwise the equipment-type default. Mirrors the mobile card so a custom icon
  *  shows the same on phone and desktop (issue #318). */
@@ -66,7 +66,12 @@ interface EquipmentWidgetProps {
   onOpenDetail?: () => void;
 }
 
-export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetail }: EquipmentWidgetProps) {
+export function EquipmentWidget({
+  widget,
+  equipment,
+  onExecuteOrder,
+  onOpenDetail,
+}: EquipmentWidgetProps) {
   const {
     isLight,
     isShutterFamily,
@@ -81,31 +86,132 @@ export function EquipmentWidget({ widget, equipment, onExecuteOrder, onOpenDetai
     isPoolPump,
     isPoolCover,
     isPoolHeatPump,
+    isMediaPlayer,
   } = useEquipmentState(equipment);
 
   const label = widget.label || equipment.name;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
-  if (isLight) return <LightEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (isLight)
+    return (
+      <LightEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
   // Awnings share the shutter widget shape (icon + position + 3-button row).
   // ShutterEquipmentWidget swaps the icon (AwningWidgetIcon) and the vocabulary
   // (deployed/retracted, extend/retract) when type === "awning".
-  if (isShutterFamily) return <ShutterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isThermostat || isPoolHeatPump) return <ThermostatEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isGate) return <GateEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isHeater) return <HeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (isShutterFamily)
+    return (
+      <ShutterEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (isThermostat || isPoolHeatPump)
+    return (
+      <ThermostatEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (isGate)
+    return (
+      <GateEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (isHeater)
+    return (
+      <HeaterEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} equipment={equipment} />;
-  if (equipment.type === "solar_panel") return <SolarPanelEquipmentWidget label={label} equipment={equipment} />;
-  if (equipment.type === "switch") return <SwitchEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (equipment.type === "water_heater") return <WaterHeaterEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
+  if (equipment.type === "solar_panel")
+    return <SolarPanelEquipmentWidget label={label} equipment={equipment} />;
+  if (equipment.type === "switch")
+    return (
+      <SwitchEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (equipment.type === "water_heater")
+    return (
+      <WaterHeaterEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
   if (isWeatherForecast) return <WeatherForecastWidget label={label} equipment={equipment} />;
-  if (equipment.type === "weather") return <WeatherStationWidget label={label} equipment={equipment} onOpenDetail={onOpenDetail} />;
+  if (equipment.type === "weather")
+    return <WeatherStationWidget label={label} equipment={equipment} onOpenDetail={onOpenDetail} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} equipment={equipment} />;
-  if (isWaterValve) return <WaterValveEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isPoolPump) return <PoolPumpEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isPoolCover) return <PoolCoverEquipmentWidget label={label} equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />;
-  if (isSensor) return <SensorEquipmentWidget label={label} equipment={equipment} iconKey={widget.icon} visibleBindings={widget.config?.visibleBindings} />;
-  if (equipment.type === "camera") return <CameraEquipmentWidget label={label} equipment={equipment} />;
+  if (isWaterValve)
+    return (
+      <WaterValveEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (isPoolPump)
+    return (
+      <PoolPumpEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (isPoolCover)
+    return (
+      <PoolCoverEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (isSensor)
+    return (
+      <SensorEquipmentWidget
+        label={label}
+        equipment={equipment}
+        iconKey={widget.icon}
+        visibleBindings={widget.config?.visibleBindings}
+      />
+    );
+  if (equipment.type === "camera")
+    return <CameraEquipmentWidget label={label} equipment={equipment} />;
+  if (isMediaPlayer)
+    return (
+      <MediaPlayerEquipmentWidget
+        label={label}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
 
   return <GenericEquipmentWidget label={label} equipment={equipment} />;
 }
@@ -141,9 +247,10 @@ function LightEquipmentWidget({
   const brightnessBinding = equipment.dataBindings.find(
     (db) => db.alias === "brightness" || db.category === "light_brightness",
   );
-  const deviceBrightness = brightnessBinding && typeof brightnessBinding.value === "number"
-    ? brightnessBinding.value
-    : null;
+  const deviceBrightness =
+    brightnessBinding && typeof brightnessBinding.value === "number"
+      ? brightnessBinding.value
+      : null;
   const brightness = slider.displayValue(deviceBrightness);
   const brightnessPct = brightness !== null ? Math.round((brightness / 254) * 100) : null;
 
@@ -159,19 +266,17 @@ function LightEquipmentWidget({
     setExecuting(true);
     try {
       const alias = toggleBinding.alias;
-      const onVal = toggleBinding.enumValues?.find(v => /^on$/i.test(v)) ?? "ON";
-      const offVal = toggleBinding.enumValues?.find(v => /^off$/i.test(v)) ?? "OFF";
-      const value = toggleBinding.type === "boolean" && alias !== "state"
-        ? !isOn
-        : (isOn ? offVal : onVal);
+      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+      const value =
+        toggleBinding.type === "boolean" && alias !== "state" ? !isOn : isOn ? offVal : onVal;
       await onExecuteOrder(alias, value);
     } finally {
       setExecuting(false);
     }
   };
 
-  const handleBrightnessCommit = () =>
-    slider.onCommit((v) => onExecuteOrder("brightness", v));
+  const handleBrightnessCommit = () => slider.onCommit((v) => onExecuteOrder("brightness", v));
 
   return (
     <WidgetCard label={label}>
@@ -224,7 +329,11 @@ function LightEquipmentWidget({
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       )}
@@ -308,7 +417,11 @@ function SwitchEquipmentWidget({
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       )}
@@ -406,7 +519,11 @@ function WaterHeaterEquipmentWidget({
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       )}
@@ -435,12 +552,9 @@ function ShutterEquipmentWidget({
 
   const isAwning = equipment.type === "awning";
 
-  const positionBinding = equipment.dataBindings.find(
-    (db) => db.category === "shutter_position",
-  );
-  const devicePosition = positionBinding && typeof positionBinding.value === "number"
-    ? positionBinding.value
-    : null;
+  const positionBinding = equipment.dataBindings.find((db) => db.category === "shutter_position");
+  const devicePosition =
+    positionBinding && typeof positionBinding.value === "number" ? positionBinding.value : null;
   const position = slider.displayValue(devicePosition);
 
   // Category-first resolver — mirrors the detail variant below (spec 110).
@@ -458,7 +572,8 @@ function ShutterEquipmentWidget({
   // control — confirmed live: a stop command only makes the motor pause
   // briefly before it continues to its original target). The integration
   // signals this by omitting "STOP" from the move order's enumValues.
-  const hasStop = !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
+  const hasStop =
+    !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
   const level = position !== null ? shutterLevel(position) : null;
 
   // Awning vocabulary swap (mirrors ShutterControl):
@@ -497,12 +612,18 @@ function ShutterEquipmentWidget({
           {position === null ? (
             <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">{pillAtHundred}</span>
+            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+              {pillAtHundred}
+            </span>
           ) : position === 0 ? (
-            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{pillAtZero}</span>
+            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+              {pillAtZero}
+            </span>
           ) : (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">{position}</span>
+              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+                {position}
+              </span>
               <span className="text-[12px] font-medium text-text-tertiary">%</span>
             </div>
           )}
@@ -518,7 +639,11 @@ function ShutterEquipmentWidget({
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             title={openTitle}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <ChevronUp size={16} strokeWidth={2} />
+            )}
           </button>
           {hasStop && (
             <button
@@ -583,7 +708,8 @@ function ThermostatEquipmentWidget({
     : typeof insideTempBinding?.value === "number"
       ? insideTempBinding.value
       : null;
-  const deviceSetpoint = typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
+  const deviceSetpoint =
+    typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
   const displaySetpoint = setpointOverride.displayValue(deviceSetpoint);
 
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
@@ -592,9 +718,8 @@ function ThermostatEquipmentWidget({
   const targetMax = targetTempOrder?.max ?? 30;
   const STEP = 0.5;
 
-  const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - targetMin) / (targetMax - targetMin)
-    : undefined;
+  const thermometerLevel =
+    displaySetpoint !== null ? (displaySetpoint - targetMin) / (targetMax - targetMin) : undefined;
 
   const handleSetpoint = (newValue: number) => {
     setpointOverride.onStart();
@@ -640,7 +765,11 @@ function ThermostatEquipmentWidget({
               }`}
               title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
             >
-              {executing === "power" ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} strokeWidth={1.5} />}
+              {executing === "power" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Power size={14} strokeWidth={1.5} />
+              )}
             </button>
           )}
         </div>
@@ -696,9 +825,7 @@ function GateEquipmentWidget({
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.category === "gate_state",
-  );
+  const stateBinding = equipment.dataBindings.find((db) => db.category === "gate_state");
   const gateState = (stateBinding?.value as string) ?? "unknown";
   const isOpen = gateState === "open";
 
@@ -811,9 +938,7 @@ function HeaterEquipmentWidget({
         <div className="pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
-              isComfort
-                ? "bg-error/10 text-error"
-                : "bg-primary/10 text-primary"
+              isComfort ? "bg-error/10 text-error" : "bg-primary/10 text-primary"
             }`}
           >
             {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
@@ -834,12 +959,13 @@ function HeaterEquipmentWidget({
             }`}
             title={isComfort ? t("controls.heater.switchEco") : t("controls.heater.switchComfort")}
           >
-            {executing
-              ? <Loader2 size={16} className="animate-spin" />
-              : isComfort
-                ? <Snowflake size={16} strokeWidth={1.5} />
-                : <Flame size={16} strokeWidth={1.5} />
-            }
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : isComfort ? (
+              <Snowflake size={16} strokeWidth={1.5} />
+            ) : (
+              <Flame size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       )}
@@ -865,14 +991,19 @@ function SensorEquipmentWidget({
   const { sensorBindings, batteryBindings, batteryAlert } = useEquipmentState(equipment);
 
   const customEntry = iconKey ? CUSTOM_ICON_REGISTRY[iconKey] : undefined;
-  const sensorIcon = customEntry
-    ? createElement(customEntry.component, customEntry.previewProps)
-    : <MultiSensorIcon />;
+  const sensorIcon = customEntry ? (
+    createElement(customEntry.component, customEntry.previewProps)
+  ) : (
+    <MultiSensorIcon />
+  );
 
   // Filter and order bindings according to visibleBindings config
-  const filteredBindings = visibleBindings && visibleBindings.length > 0
-    ? visibleBindings.map((alias) => sensorBindings.find((b) => b.alias === alias)).filter((b): b is typeof sensorBindings[number] => !!b)
-    : sensorBindings;
+  const filteredBindings =
+    visibleBindings && visibleBindings.length > 0
+      ? visibleBindings
+          .map((alias) => sensorBindings.find((b) => b.alias === alias))
+          .filter((b): b is (typeof sensorBindings)[number] => !!b)
+      : sensorBindings;
 
   return (
     <WidgetCard label={label}>
@@ -913,8 +1044,7 @@ function WeatherStationWidget({
   const outdoorExtremes = findTempExtremes(equipment, "temperature_outdoor");
   const indoorExtremes = findTempExtremes(equipment, "temperature");
 
-  const fmt = (b: typeof outdoor) =>
-    b && typeof b.value === "number" ? b.value.toFixed(1) : "—";
+  const fmt = (b: typeof outdoor) => (b && typeof b.value === "number" ? b.value.toFixed(1) : "—");
 
   const clickClass = onOpenDetail
     ? "cursor-pointer transition-colors hover:bg-primary-light/30"
@@ -930,14 +1060,30 @@ function WeatherStationWidget({
       <div className="flex items-stretch justify-center flex-1 min-h-0">
         {both ? (
           <div className="flex items-stretch gap-4 sm:gap-6">
-            <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} extremes={outdoorExtremes} />
+            <WeatherTempColumn
+              label={t("weather.outdoor")}
+              value={fmt(outdoor)}
+              extremes={outdoorExtremes}
+            />
             <div className="w-px bg-border self-stretch" />
-            <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} extremes={indoorExtremes} />
+            <WeatherTempColumn
+              label={t("weather.indoor")}
+              value={fmt(indoor)}
+              extremes={indoorExtremes}
+            />
           </div>
         ) : outdoor ? (
-          <WeatherTempColumn label={t("weather.outdoor")} value={fmt(outdoor)} extremes={outdoorExtremes} />
+          <WeatherTempColumn
+            label={t("weather.outdoor")}
+            value={fmt(outdoor)}
+            extremes={outdoorExtremes}
+          />
         ) : indoor ? (
-          <WeatherTempColumn label={t("weather.indoor")} value={fmt(indoor)} extremes={indoorExtremes} />
+          <WeatherTempColumn
+            label={t("weather.indoor")}
+            value={fmt(indoor)}
+            extremes={indoorExtremes}
+          />
         ) : (
           <WeatherTempColumn label={null} value="—" />
         )}
@@ -966,7 +1112,9 @@ function WeatherTempColumn({
         <span className="font-mono font-bold text-[32px] sm:text-[36px] text-text tabular-nums leading-none">
           {value}
         </span>
-        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">°C</span>
+        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">
+          °C
+        </span>
       </div>
       {extremes && <TempExtremes min={extremes.min} max={extremes.max} />}
     </div>
@@ -1019,7 +1167,9 @@ function EnergyMeterEquipmentWidget({
         <div className="flex flex-col items-start gap-1.5 pl-2">
           {/* Today's consumption — primary value (green for production meters) */}
           <div className="flex items-baseline gap-0.5">
-            <span className={`text-[20px] font-semibold ${primaryColor} tabular-nums leading-none font-mono`}>
+            <span
+              className={`text-[20px] font-semibold ${primaryColor} tabular-nums leading-none font-mono`}
+            >
               {formatWh(energyDay?.value)}
             </span>
             <span className="text-[11px] font-medium text-text-tertiary">
@@ -1111,12 +1261,15 @@ function ApplianceEquipmentWidget({
 
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
-  const remainingTimeStrBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
+  const remainingTimeStrBinding = equipment.dataBindings.find(
+    (b) => b.alias === "remaining_time_str",
+  );
   const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
 
   const isOn = powerBinding?.value === true;
   const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
-  const remainingStr = typeof remainingTimeStrBinding?.value === "string" ? remainingTimeStrBinding.value : null;
+  const remainingStr =
+    typeof remainingTimeStrBinding?.value === "string" ? remainingTimeStrBinding.value : null;
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : 0;
 
   const isRunning = state === "running";
@@ -1128,7 +1281,13 @@ function ApplianceEquipmentWidget({
         <WashingMachine
           size={120}
           strokeWidth={0.8}
-          className={isRunning ? "text-accent animate-pulse" : isOn ? "text-text-secondary" : "text-text-tertiary"}
+          className={
+            isRunning
+              ? "text-accent animate-pulse"
+              : isOn
+                ? "text-text-secondary"
+                : "text-text-tertiary"
+          }
         />
 
         {!isOn || state === "off" ? (
@@ -1194,9 +1353,7 @@ function WaterValveEquipmentWidget({
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = toggleBinding.type === "boolean"
-        ? !isOpen
-        : isOpen ? offVal : onVal;
+      const value = toggleBinding.type === "boolean" ? !isOpen : isOpen ? offVal : onVal;
       await onExecuteOrder(toggleBinding.alias, value);
     } finally {
       setExecuting(false);
@@ -1229,7 +1386,11 @@ function WaterValveEquipmentWidget({
             }`}
             title={isOpen ? t("controls.turnOff") : t("controls.turnOn")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       )}
@@ -1293,9 +1454,7 @@ function PoolPumpEquipmentWidget({
     try {
       const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
       const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = toggleBinding.type === "boolean"
-        ? !isOn
-        : isOn ? offVal : onVal;
+      const value = toggleBinding.type === "boolean" ? !isOn : isOn ? offVal : onVal;
       await onExecuteOrder(toggleBinding.alias, value);
     } finally {
       setExecuting(false);
@@ -1331,7 +1490,11 @@ function PoolPumpEquipmentWidget({
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       )}
@@ -1368,9 +1531,7 @@ function PoolCoverEquipmentWidget({
       db.alias === "position",
   );
   const devicePosition =
-    positionBinding && typeof positionBinding.value === "number"
-      ? positionBinding.value
-      : null;
+    positionBinding && typeof positionBinding.value === "number" ? positionBinding.value : null;
   const position = slider.displayValue(devicePosition);
 
   // Find the move-style order binding by, in order:
@@ -1379,17 +1540,16 @@ function PoolCoverEquipmentWidget({
   //   3. enum values that look like OPEN/CLOSE/STOP
   // This covers freshly auto-bound pool covers as well as bindings created
   // before the category-aware aliasing landed.
-  const moveBinding = equipment.orderBindings.find(
-    (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
-  )
-    ?? equipment.orderBindings.find(
+  const moveBinding =
+    equipment.orderBindings.find(
+      (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
+    ) ??
+    equipment.orderBindings.find(
       (ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias),
-    )
-    ?? equipment.orderBindings.find((ob) => {
+    ) ??
+    equipment.orderBindings.find((ob) => {
       if (ob.type !== "enum" || !ob.enumValues) return false;
-      const upper = ob.enumValues.map((v) =>
-        typeof v === "string" ? v.toUpperCase() : "",
-      );
+      const upper = ob.enumValues.map((v) => (typeof v === "string" ? v.toUpperCase() : ""));
       return upper.includes("OPEN") && upper.includes("CLOSE");
     });
 
@@ -1411,7 +1571,8 @@ function PoolCoverEquipmentWidget({
   // makes the motor pause briefly before it continues to its original
   // target). The integration signals this by omitting "STOP" from the
   // move order's enumValues.
-  const hasStop = !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
+  const hasStop =
+    !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
 
   return (
     <WidgetCard label={label}>
@@ -1453,7 +1614,11 @@ function PoolCoverEquipmentWidget({
             className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             title={t("controls.open")}
           >
-            {executing ? <Loader2 size={16} className="animate-spin" /> : <ChevronLeft size={16} strokeWidth={2} />}
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <ChevronLeft size={16} strokeWidth={2} />
+            )}
           </button>
           {hasStop && (
             <button
@@ -1515,8 +1680,87 @@ function CameraEquipmentWidget({
               : "bg-border-light text-text-tertiary"
           }`}
         >
-          {monitoringBinding.value === true ? t("cameras.monitoring.on") : t("cameras.monitoring.off")}
+          {monitoringBinding.value === true
+            ? t("cameras.monitoring.on")
+            : t("cameras.monitoring.off")}
         </span>
+      )}
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Media player widget (issue #324) — mirrors the mobile card: Tv icon,
+// input source line, and a power toggle when an orders binding exposes it.
+// Without this branch a media_player fell through to the generic widget.
+// ============================================================
+
+function MediaPlayerEquipmentWidget({
+  label,
+  equipment,
+  onExecuteOrder,
+  iconKey,
+}: {
+  label: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
+}) {
+  const [executing, setExecuting] = useState(false);
+
+  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
+  const tvOn = powerBinding?.value === true;
+  const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
+
+  const toggleBinding = equipment.orderBindings.find((ob) => ob.alias === "power");
+  const hasToggle = !!toggleBinding;
+
+  const handleToggle = async () => {
+    if (executing || !toggleBinding) return;
+    setExecuting(true);
+    try {
+      await onExecuteOrder(toggleBinding.alias, !tvOn);
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  return (
+    <WidgetCard label={label}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        {resolveWidgetIcon(
+          iconKey,
+          <Tv size={64} strokeWidth={1} className={tvOn ? "text-primary" : "text-text-tertiary"} />,
+        )}
+        <div className="flex items-center gap-2 pl-2">
+          <span
+            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              tvOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            }`}
+          >
+            {tvOn ? (source ?? "ON") : "OFF"}
+          </span>
+        </div>
+      </div>
+
+      {hasToggle && equipment.enabled && (
+        <div className="flex justify-center gap-3 mt-auto pt-1">
+          <button
+            onClick={handleToggle}
+            disabled={executing}
+            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              tvOn ? "!border-active/40 !text-active !bg-active/5" : ""
+            }`}
+          >
+            {executing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Power size={16} strokeWidth={1.5} />
+            )}
+          </button>
+        </div>
       )}
     </WidgetCard>
   );
@@ -1549,7 +1793,9 @@ function GenericEquipmentWidget({
             </span>
           )}
           {stateBinding && (
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}`}>
+            <span
+              className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}`}
+            >
               {isOn ? t("common.on") : t("common.off")}
             </span>
           )}
