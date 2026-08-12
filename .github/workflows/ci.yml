@@ -38,3 +38,13 @@ jobs:
       - run: cd ui && npm ci
       - run: cd ui && npm run lint
       - run: cd ui && npm run build
+
+  specs:
+    name: Specs completeness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need main's history for the merge-base diff
+      - name: Every new spec folder has spec.md + architecture.md + plan.md
+        run: bash scripts/check-specs-complete.sh
