@@ -23,7 +23,9 @@ const createEquipmentBodySchema = {
     name: { type: "string", pattern: "\\S", maxLength: 100 },
     type: { type: "string", minLength: 1 },
     zoneId: { type: "string", minLength: 1 },
-    description: { type: "string", maxLength: 500 },
+    // null is allowed (create with no description), matching the old check that
+    // only rejected an over-long non-empty string.
+    description: { type: ["string", "null"], maxLength: 500 },
   },
 };
 

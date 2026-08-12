@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Fastify from "fastify";
 import { createLogger } from "../../core/logger.js";
 import { registerEquipmentRoutes } from "./equipments.js";
-import { installValidationErrorHandler } from "../error-handler.js";
+import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 
 // The ?type filter is the only logic worth exercising at the route
 // layer; the rest of the equipment surface is covered by manager-level
@@ -86,7 +86,7 @@ function makeMutableManager() {
 describe("POST /api/v1/equipments — input validation (characterization)", () => {
   let app: ReturnType<typeof Fastify>;
   beforeEach(async () => {
-    app = Fastify({ logger: false });
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
     installValidationErrorHandler(app);
     registerEquipmentRoutes(app, {
       equipmentManager: makeMutableManager(),
@@ -142,12 +142,17 @@ describe("POST /api/v1/equipments — input validation (characterization)", () =
     const res = await post({ ...base, bogus: "surprise" });
     expect(res.statusCode).toBe(201);
   });
+
+  it("accepts a null description (create with no description)", async () => {
+    const res = await post({ ...base, description: null });
+    expect(res.statusCode).toBe(201);
+  });
 });
 
 describe("PUT /api/v1/equipments/:id — input validation (characterization)", () => {
   let app: ReturnType<typeof Fastify>;
   beforeEach(async () => {
-    app = Fastify({ logger: false });
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
     installValidationErrorHandler(app);
     registerEquipmentRoutes(app, {
       equipmentManager: makeMutableManager(),
@@ -204,6 +209,27 @@ describe("PUT /api/v1/equipments/:id — input validation (characterization)", (
 
   it("200 for a valid partial update", async () => {
     const res = await put({ name: "Renamed" });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("accepts a valid energyProfile, and accepts null energyProfile (pass-through)", async () => {
+    const ok = await put({
+      energyProfile: { class: "comfort", nominalPowerW: 1500, minOnS: 0, minOffS: 60 },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect((await put({ energyProfile: null })).statusCode).toBe(200);
+  });
+
+  it("rejects a stringified number for nominalPowerW (strict types, no coercion)", async () => {
+    const res = await put({
+      energyProfile: { class: "comfort", nominalPowerW: "1000", minOnS: 0, minOffS: 0 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: expect.any(String) });
+  });
+
+  it("accepts and ignores an unknown extra field on update", async () => {
+    const res = await put({ name: "Renamed", bogus: "x" });
     expect(res.statusCode).toBe(200);
   });
 });
