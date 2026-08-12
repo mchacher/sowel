@@ -17,6 +17,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The root vitest run includes ui/src tests; store tests import ui runtime
+      # deps (zustand), so ui/node_modules must be present.
+      - run: cd ui && npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
