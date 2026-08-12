@@ -215,28 +215,65 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCateg
 ]);
 
 /**
+ * Electrical measurement categories. Their freshness window is tight because a
+ * live power read that silently freezes is the bug spec 116 was written for
+ * (a Shelly Pro 3EM cut at the breaker still charting its last value). That
+ * tightness is only legitimate where the reading *is* the equipment's job —
+ * see METERING_EQUIPMENT_TYPES.
+ */
+export const ELECTRICAL_STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
+  "power",
+  "energy",
+  "voltage",
+  "current",
+]);
+
+/**
+ * Equipment types whose function is electrical measurement, and for which a
+ * frozen `power` / `energy` / `voltage` / `current` binding is a real fault.
+ *
+ * Everywhere else those categories arrive as a bonus — a metering smart plug
+ * bound to a light or a switch — and their freshness says nothing about
+ * whether the equipment works: the plug reports power on change, so a steady
+ * load simply stops producing updates. Health for those equipments comes from
+ * `device.status` and from their own state binding.
+ */
+export const METERING_EQUIPMENT_TYPES: ReadonlySet<string> = new Set([
+  "energy_meter",
+  "main_energy_meter",
+  "energy_production_meter",
+  "solar_panel",
+]);
+
+/**
  * Per-category freshness window. A streaming binding whose lastUpdated is
  * older than this value is flagged stale (spec 116). Categories listed in
  * STREAMING_CATEGORIES but missing here fall back to DEFAULT_STREAMING_TIMEOUT_MS.
+ *
+ * Ambient windows sit above one hour on purpose. Zigbee sensors report on
+ * change with a `max_report_interval` conventionally set to 3600 s, so any
+ * window below that guarantees a permanently "degraded" equipment for a
+ * perfectly healthy sensor — the window has to exceed the longest silence the
+ * device is allowed to keep, not the typical one.
  */
 export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
-  power: 2 * 60 * 1000, // 2 min — live electrical reads
+  power: 2 * 60 * 1000, // 2 min — live electrical reads (metering equipments only)
   energy: 10 * 60 * 1000, // 10 min — cumulative counter
   voltage: 5 * 60 * 1000,
   current: 5 * 60 * 1000,
-  temperature: 15 * 60 * 1000,
-  temperature_outdoor: 15 * 60 * 1000,
-  temperature_device: 15 * 60 * 1000,
-  humidity: 15 * 60 * 1000,
-  humidity_outdoor: 15 * 60 * 1000,
-  pressure: 30 * 60 * 1000,
-  luminosity: 15 * 60 * 1000,
-  co2: 15 * 60 * 1000,
-  voc: 15 * 60 * 1000,
-  noise: 15 * 60 * 1000,
+  temperature: 65 * 60 * 1000, // > Zigbee's 1 h max_report_interval
+  temperature_outdoor: 65 * 60 * 1000,
+  temperature_device: 65 * 60 * 1000,
+  humidity: 65 * 60 * 1000,
+  humidity_outdoor: 65 * 60 * 1000,
+  pressure: 65 * 60 * 1000,
+  luminosity: 65 * 60 * 1000,
+  co2: 65 * 60 * 1000,
+  voc: 65 * 60 * 1000,
+  noise: 65 * 60 * 1000,
   battery: 2 * 60 * 60 * 1000, // 2 h — battery reports are sparse
   setpoint: 60 * 60 * 1000, // 1 h
-  pool_water_temperature: 15 * 60 * 1000,
+  pool_water_temperature: 65 * 60 * 1000,
   pool_temperature_setpoint: 60 * 60 * 1000,
 };
 

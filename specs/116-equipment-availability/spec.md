@@ -105,28 +105,56 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set([
 
 /** Maximum age (ms) before a streaming binding is flagged stale. */
 export const STREAMING_TIMEOUT_MS: Record<string, number> = {
-  power: 2 * 60 * 1000, // 2 min — live electrical reads
+  power: 2 * 60 * 1000, // 2 min — live electrical reads (metering equipments only)
   energy: 10 * 60 * 1000, // 10 min — cumulative counter
   voltage: 5 * 60 * 1000,
   current: 5 * 60 * 1000,
-  temperature: 15 * 60 * 1000,
-  temperature_outdoor: 15 * 60 * 1000,
-  humidity: 15 * 60 * 1000,
-  humidity_outdoor: 15 * 60 * 1000,
-  pressure: 30 * 60 * 1000,
-  luminosity: 15 * 60 * 1000,
-  co2: 15 * 60 * 1000,
-  voc: 15 * 60 * 1000,
-  noise: 15 * 60 * 1000,
+  temperature: 65 * 60 * 1000, // > Zigbee's 1 h max_report_interval
+  temperature_outdoor: 65 * 60 * 1000,
+  humidity: 65 * 60 * 1000,
+  humidity_outdoor: 65 * 60 * 1000,
+  pressure: 65 * 60 * 1000,
+  luminosity: 65 * 60 * 1000,
+  co2: 65 * 60 * 1000,
+  voc: 65 * 60 * 1000,
+  noise: 65 * 60 * 1000,
   battery: 2 * 60 * 60 * 1000, // 2 h — battery reports are sparse
   setpoint: 60 * 60 * 1000, // 1 h
-  pool_water_temperature: 15 * 60 * 1000,
+  pool_water_temperature: 65 * 60 * 1000,
   pool_temperature_setpoint: 60 * 60 * 1000,
 };
+
+/** Electrical categories — only checked on METERING_EQUIPMENT_TYPES. */
+export const ELECTRICAL_STREAMING_CATEGORIES = new Set(["power", "energy", "voltage", "current"]);
+export const METERING_EQUIPMENT_TYPES = new Set([
+  "energy_meter",
+  "main_energy_meter",
+  "energy_production_meter",
+  "solar_panel",
+]);
 
 /** Default fallback for any future streaming category not yet listed above. */
 export const DEFAULT_STREAMING_TIMEOUT_MS = 15 * 60 * 1000;
 ```
+
+**Amendment — false positives on report-on-change devices.** The ambient windows
+were 15–30 min in the original design, and the electrical ones applied to every
+equipment type. Both turned healthy devices into permanently `degraded`
+equipments:
+
+- Zigbee sensors report on change, with `max_report_interval` conventionally set
+  to 3600 s. Any window below that flags a healthy sensor as stale, so the
+  ambient windows now sit at 65 min — a freshness window has to exceed the
+  longest silence the device is _allowed_ to keep, not the typical one.
+- Electrical categories are now checked **only on metering equipments**.
+  Elsewhere they arrive as a bonus from a metering smart plug bound to a light or
+  a switch, where silence means "steady load", not "fault". The live-energy case
+  this spec was written for is unaffected: a Shelly Pro 3EM is a
+  `main_energy_meter` and keeps its 2 min window.
+
+Measured before the fix on a 33-equipment install: 180 `equipment.status.changed`
+transitions in 64 minutes, six equipments toggling `online` ↔ `degraded` at every
+reporting cycle, nothing actually wrong.
 
 Categories NOT in `STREAMING_CATEGORIES` (motion, contact_door, contact_window, water_leak, smoke, action, light_state, light_brightness, light_color_temp, light_color, shutter_position, lock_state, gate_state, cover_state, runtime_daily, weather_condition, media_volume, media_mute, media_input, appliance_state, uv, solar_radiation, wind, rain, generic) → never stale, full stop.
 

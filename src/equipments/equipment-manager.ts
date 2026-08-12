@@ -604,7 +604,13 @@ export class EquipmentManager {
     // Annotate staleness on streaming bindings (spec 116).
     const now = Date.now();
     for (const binding of bindings) {
-      binding.stale = isStaleBinding(binding.category, binding.lastUpdated, now, binding.type);
+      binding.stale = isStaleBinding(
+        binding.category,
+        binding.lastUpdated,
+        now,
+        binding.type,
+        equipment?.type,
+      );
     }
 
     return bindings;

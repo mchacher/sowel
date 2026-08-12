@@ -10,6 +10,8 @@ import {
   STREAMING_CATEGORIES,
   STREAMING_TIMEOUT_MS,
   DEFAULT_STREAMING_TIMEOUT_MS,
+  ELECTRICAL_STREAMING_CATEGORIES,
+  METERING_EQUIPMENT_TYPES,
 } from "../shared/constants.js";
 import type {
   DataBindingWithValue,
@@ -48,15 +50,29 @@ function parseTimestamp(iso: string | null): number | null {
  * (issue #422). This mirrors the `SILENCE_EXEMPT_EQUIPMENT_TYPES` exemption for
  * buttons (#348), at the value-type level instead of the equipment-type level.
  * Numeric streaming reads (Shelly / Legrand live clamps) are unaffected.
+ *
+ * Electrical categories are checked only on metering equipments. A metering
+ * smart plug bound to a light or a switch contributes `power` / `current` /
+ * `voltage` as a bonus, reported on change: a steady load stops producing
+ * updates, and the tight electrical window would then flip the equipment to
+ * `degraded` on every reporting cycle without anything being wrong. Where the
+ * reading *is* the equipment's job, the window still applies in full.
  */
 export function isStaleBinding(
   category: DataCategory,
   lastUpdated: string | null,
   now: number = Date.now(),
   type?: DataType,
+  equipmentType?: string,
 ): boolean {
   if (!STREAMING_CATEGORIES.has(category)) return false;
   if (type === "boolean") return false; // discrete on/off state, not a live stream
+  if (
+    ELECTRICAL_STREAMING_CATEGORIES.has(category) &&
+    !(equipmentType !== undefined && METERING_EQUIPMENT_TYPES.has(equipmentType))
+  ) {
+    return false;
+  }
   const updatedMs = parseTimestamp(lastUpdated);
   if (updatedMs === null) return false;
   const timeoutMs = STREAMING_TIMEOUT_MS[category] ?? DEFAULT_STREAMING_TIMEOUT_MS;
@@ -125,7 +141,7 @@ export function deriveEquipmentStatus(
     (device) => device.status === "offline",
   );
   const staleBindings = bindings.filter((binding) =>
-    isStaleBinding(binding.category, binding.lastUpdated, now, binding.type),
+    isStaleBinding(binding.category, binding.lastUpdated, now, binding.type, equipmentType),
   );
 
   const allOffline = uniqueDevices.size > 0 && offlineDevices.length === uniqueDevices.size;

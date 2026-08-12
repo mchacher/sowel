@@ -56,12 +56,18 @@ describe("isStaleBinding", () => {
     expect(isStaleBinding("power", "2026-05-26 09:59:00Z", NOW)).toBe(false);
   });
 
-  it("streaming 'power' beyond 2 min window is stale", () => {
-    expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW)).toBe(true);
+  it("streaming 'power' beyond 2 min window is stale on a metering equipment", () => {
+    expect(
+      isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "number", "main_energy_meter"),
+    ).toBe(true);
   });
 
-  it("streaming 'temperature' is stale at 16 min (timeout is 15 min)", () => {
-    expect(isStaleBinding("temperature", "2026-05-26 09:44:00Z", NOW)).toBe(true);
+  it("streaming 'temperature' is stale past the 65 min window", () => {
+    expect(isStaleBinding("temperature", "2026-05-26 08:54:00Z", NOW)).toBe(true);
+  });
+
+  it("streaming 'temperature' is not stale at 16 min — a Zigbee sensor may stay silent for an hour", () => {
+    expect(isStaleBinding("temperature", "2026-05-26 09:44:00Z", NOW)).toBe(false);
   });
 
   it("streaming 'temperature' is not stale at 10 min", () => {
@@ -88,8 +94,26 @@ describe("isStaleBinding", () => {
     expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "boolean")).toBe(false);
   });
 
-  it("numeric 'power' beyond the window is still stale (live clamp regression guard)", () => {
-    expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "number")).toBe(true);
+  it("numeric 'power' beyond the window is still stale on a meter (live clamp regression guard)", () => {
+    expect(
+      isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "number", "main_energy_meter"),
+    ).toBe(true);
+  });
+
+  it("the same stale 'power' on a switch is not stale — metering plug bound to a non-meter", () => {
+    // A metering smart plug reports power on change: a steady load simply stops
+    // producing updates, and that says nothing about the switch being healthy.
+    expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "number", "switch")).toBe(false);
+    expect(isStaleBinding("current", "2026-05-26 09:00:00Z", NOW, "number", "light_onoff")).toBe(
+      false,
+    );
+    expect(isStaleBinding("energy", "2026-05-26 09:00:00Z", NOW, "number", "water_heater")).toBe(
+      false,
+    );
+  });
+
+  it("an equipment type left undefined does not get the electrical window", () => {
+    expect(isStaleBinding("power", "2026-05-26 09:57:00Z", NOW, "number")).toBe(false);
   });
 });
 
@@ -160,7 +184,7 @@ describe("deriveEquipmentStatus", () => {
     });
     const device = makeDevice({ status: "online" });
     const map = new Map([[binding.id, device]]);
-    const result = deriveEquipmentStatus([binding], map, NOW);
+    const result = deriveEquipmentStatus([binding], map, NOW, "main_energy_meter");
     expect(result.status).toBe("degraded");
     expect(result.reason?.staleBindings).toEqual(["power"]);
     expect(result.reason?.offlineDevices).toEqual([]);
@@ -223,7 +247,7 @@ describe("deriveEquipmentStatus", () => {
     const binding = makeBinding({ category: "power", lastUpdated: "2026-05-26 09:50:00Z" });
     const device = makeDevice({ status: "unknown" });
     const map = new Map([[binding.id, device]]);
-    const result = deriveEquipmentStatus([binding], map, NOW);
+    const result = deriveEquipmentStatus([binding], map, NOW, "main_energy_meter");
     expect(result.status).toBe("degraded");
   });
 
@@ -251,7 +275,7 @@ describe("deriveEquipmentStatus", () => {
       [b1.id, d1],
       [b2.id, d2],
     ]);
-    const result = deriveEquipmentStatus([b1, b2], map, NOW);
+    const result = deriveEquipmentStatus([b1, b2], map, NOW, "main_energy_meter");
     expect(result.status).toBe("degraded");
     // Earliest of "09:30:00" and "09:45:00" → "09:30:00"
     expect(result.reason?.offlineSince).toBe("2026-05-26 09:30:00Z");
@@ -311,5 +335,76 @@ describe("deriveEquipmentStatus — button silence exemption (issue #348)", () =
     const map = new Map([[binding.id, device]]);
     const result = deriveEquipmentStatus([binding], map, NOW, "sensor");
     expect(result.status).toBe("offline");
+  });
+});
+
+// ─── metering plug bound to a non-metering equipment ────────────────────
+
+describe("electrical bindings on a non-metering equipment", () => {
+  /** A Zigbee metering plug: on/off state plus the electrical extras. */
+  const meteringPlug = (powerLastUpdated: string) => {
+    const state = makeBinding({
+      id: "b-state",
+      category: "light_state",
+      type: "boolean",
+      value: true,
+      alias: "state",
+      lastUpdated: "2026-05-26 09:59:50Z",
+    });
+    const power = makeBinding({
+      id: "b-power",
+      category: "power",
+      type: "number",
+      value: 0,
+      alias: "power",
+      lastUpdated: powerLastUpdated,
+    });
+    const device = makeDevice({ status: "online" });
+    return {
+      bindings: [state, power],
+      map: new Map([
+        [state.id, device],
+        [power.id, device],
+      ]),
+    };
+  };
+
+  it("stays online when the plug has not reported power for an hour", () => {
+    // The load is steady, so the plug has nothing to report. Before this, the
+    // equipment flipped to degraded 2 min after every report and back on the
+    // next one — 180 status transitions in an hour on a healthy install.
+    const { bindings, map } = meteringPlug("2026-05-26 09:00:00Z");
+    expect(deriveEquipmentStatus(bindings, map, NOW, "switch").status).toBe("online");
+    expect(deriveEquipmentStatus(bindings, map, NOW, "light_onoff").status).toBe("online");
+  });
+
+  it("still degrades when the device itself is reported offline", () => {
+    // device.status stays the authoritative health signal for these types.
+    const { bindings, map } = meteringPlug("2026-05-26 09:59:50Z");
+    for (const [, device] of map) device.status = "offline";
+    expect(deriveEquipmentStatus(bindings, map, NOW, "switch").status).toBe("offline");
+  });
+
+  it("the same silence on a meter is still degraded", () => {
+    const { bindings, map } = meteringPlug("2026-05-26 09:00:00Z");
+    const result = deriveEquipmentStatus(bindings, map, NOW, "main_energy_meter");
+    expect(result.status).toBe("degraded");
+    expect(result.reason?.staleBindings).toEqual(["power"]);
+  });
+
+  it("a non-electrical streaming binding still degrades any equipment type", () => {
+    const temperature = makeBinding({
+      id: "b-temp",
+      category: "temperature",
+      type: "number",
+      value: 19,
+      alias: "temperature",
+      lastUpdated: "2026-05-26 08:00:00Z", // 2 h — beyond the 65 min window
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([[temperature.id, device]]);
+    const result = deriveEquipmentStatus([temperature], map, NOW, "sensor");
+    expect(result.status).toBe("degraded");
+    expect(result.reason?.staleBindings).toEqual(["temperature"]);
   });
 });
