@@ -124,7 +124,8 @@ export async function installPlugin(
   expectedSha256?: string,
 ): Promise<PluginManifest> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (getAccessToken()) headers["Authorization"] = `Bearer ${getAccessToken()}`;
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const response = await fetch(`${API_BASE}/plugins/install`, {
     method: "POST",
     headers,
@@ -167,7 +168,8 @@ export async function updatePlugin(
   opts: { confirmed?: boolean; expectedSha256?: string } = {},
 ): Promise<{ success: boolean; manifest?: PluginManifest }> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (getAccessToken()) headers["Authorization"] = `Bearer ${getAccessToken()}`;
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const response = await fetch(`${API_BASE}/plugins/${id}/update`, {
     method: "POST",
     headers,
