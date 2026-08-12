@@ -8,6 +8,7 @@ import { SettingsManager } from "../../core/settings-manager.js";
 import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { registerCalendarRoutes } from "./calendar.js";
+import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import type { CalendarModeAction } from "../../shared/types.js";
 
 function createTestDb(): Database.Database {
@@ -54,7 +55,8 @@ describe("Calendar API routes", () => {
     );
     calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
 
-    app = Fastify({ logger: false });
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
     registerCalendarRoutes(app, { calendarManager, logger });
     await app.ready();
   });

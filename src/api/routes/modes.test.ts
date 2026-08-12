@@ -7,6 +7,7 @@ import { EventBus } from "../../core/event-bus.js";
 import { createLogger } from "../../core/logger.js";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { registerModeRoutes } from "./modes.js";
+import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
@@ -45,7 +46,8 @@ describe("Mode API routes", () => {
       logger,
     );
 
-    app = Fastify({ logger: false });
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
     const auditLogger = new AuditLogger(db, logger);
     const userManager = {
       getById: () => null,

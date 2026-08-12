@@ -7,6 +7,22 @@ import type { AuditLogger } from "../../core/audit-logger.js";
 import type { UserManager } from "../../auth/user-manager.js";
 import type { ZoneModeImpactAction } from "../../shared/types.js";
 import { buildActor } from "../audit-context.js";
+import { nonEmptyString } from "../schemas.js";
+
+// Input schemas (issue #452): POST requires a non-empty name (old `!name`, no
+// trim, so "   " is accepted); the impacts PUT requires an `actions` array
+// (old `!Array.isArray(actions)`). Other fields pass through unconstrained.
+const createModeBodySchema = {
+  type: "object",
+  required: ["name"],
+  properties: { name: nonEmptyString },
+};
+
+const setZoneImpactBodySchema = {
+  type: "object",
+  required: ["actions"],
+  properties: { actions: { type: "array" } },
+};
 
 interface ModesDeps {
   modeManager: ModeManager;
@@ -36,9 +52,8 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
   // POST /api/v1/modes
   app.post<{
     Body: { name: string; icon?: string; description?: string };
-  }>("/api/v1/modes", async (request, reply) => {
-    const { name, icon, description } = request.body ?? {};
-    if (!name) return reply.code(400).send({ error: "name is required" });
+  }>("/api/v1/modes", { schema: { body: createModeBodySchema } }, async (request, reply) => {
+    const { name, icon, description } = request.body;
 
     try {
       const mode = modeManager.createMode(name, icon, description);
@@ -141,20 +156,21 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
   app.put<{
     Params: { id: string; zoneId: string };
     Body: { actions: ZoneModeImpactAction[] };
-  }>("/api/v1/modes/:id/impacts/:zoneId", async (request, reply) => {
-    const { actions } = request.body ?? {};
-    if (!Array.isArray(actions)) {
-      return reply.code(400).send({ error: "actions array is required" });
-    }
+  }>(
+    "/api/v1/modes/:id/impacts/:zoneId",
+    { schema: { body: setZoneImpactBodySchema } },
+    async (request, reply) => {
+      const { actions } = request.body;
 
-    try {
-      const impact = modeManager.setZoneImpact(request.params.id, request.params.zoneId, actions);
-      return impact;
-    } catch (err) {
-      if (err instanceof ModeError) return reply.code(err.status).send({ error: err.message });
-      throw err;
-    }
-  });
+      try {
+        const impact = modeManager.setZoneImpact(request.params.id, request.params.zoneId, actions);
+        return impact;
+      } catch (err) {
+        if (err instanceof ModeError) return reply.code(err.status).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
 
   // DELETE /api/v1/modes/:id/impacts/:zoneId
   app.delete<{ Params: { id: string; zoneId: string } }>(

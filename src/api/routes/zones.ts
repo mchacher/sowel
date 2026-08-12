@@ -4,6 +4,21 @@ import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { Logger } from "../../core/logger.js";
 import { ROOT_ZONE_ID } from "../../shared/constants.js";
+import { nameField, descriptionField } from "../schemas.js";
+
+// Input schemas (issue #452) — same rules the handlers checked by hand:
+// name required + non-blank + <=100, description <=500. Other fields
+// (parentId, icon, displayOrder) stay unconstrained and pass through.
+const createZoneBodySchema = {
+  type: "object",
+  required: ["name"],
+  properties: { name: nameField, description: descriptionField },
+};
+
+const updateZoneBodySchema = {
+  type: "object",
+  properties: { name: nameField, description: descriptionField },
+};
 
 interface ZonesDeps {
   zoneManager: ZoneManager;
@@ -43,18 +58,8 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
       description?: string;
       displayOrder?: number;
     };
-  }>("/api/v1/zones", async (request, reply) => {
-    const { name, parentId, icon, description, displayOrder } = request.body ?? {};
-
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return reply.code(400).send({ error: "Name is required" });
-    }
-    if (name.length > 100) {
-      return reply.code(400).send({ error: "Name must be 100 characters or less" });
-    }
-    if (description && description.length > 500) {
-      return reply.code(400).send({ error: "Description must be 500 characters or less" });
-    }
+  }>("/api/v1/zones", { schema: { body: createZoneBodySchema } }, async (request, reply) => {
+    const { name, parentId, icon, description, displayOrder } = request.body;
 
     try {
       const zone = zoneManager.create({
@@ -80,25 +85,11 @@ export function registerZoneRoutes(app: FastifyInstance, deps: ZonesDeps): void 
       description?: string | null;
       displayOrder?: number;
     };
-  }>("/api/v1/zones/:id", async (request, reply) => {
+  }>("/api/v1/zones/:id", { schema: { body: updateZoneBodySchema } }, async (request, reply) => {
     const body = request.body ?? {};
 
-    if (body.name !== undefined) {
-      if (typeof body.name !== "string" || body.name.trim().length === 0) {
-        return reply.code(400).send({ error: "Name cannot be empty" });
-      }
-      if (body.name.length > 100) {
-        return reply.code(400).send({ error: "Name must be 100 characters or less" });
-      }
-      body.name = body.name.trim();
-    }
-    if (
-      body.description !== undefined &&
-      body.description !== null &&
-      body.description.length > 500
-    ) {
-      return reply.code(400).send({ error: "Description must be 500 characters or less" });
-    }
+    // Schema validates name/description; keep the trim (business behaviour).
+    if (body.name !== undefined) body.name = body.name.trim();
 
     try {
       const zone = zoneManager.update(request.params.id, body);
