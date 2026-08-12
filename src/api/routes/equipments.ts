@@ -9,6 +9,42 @@ interface EquipmentsDeps {
   logger: Logger;
 }
 
+// Input schemas (issue #452). They encode the same rules the handlers checked
+// by hand: name required and non-blank (<=100), type/zoneId required,
+// description <=500, and the energy-profile bounds. Unknown fields stay
+// unconstrained (additionalProperties defaults to allowed), so extra keys pass
+// through and are ignored, exactly as before. The energyProfile rounding and
+// the core-owned `learned` merge stay in the handler — they are business logic,
+// not validation.
+const createEquipmentBodySchema = {
+  type: "object",
+  required: ["name", "type", "zoneId"],
+  properties: {
+    name: { type: "string", pattern: "\\S", maxLength: 100 },
+    type: { type: "string", minLength: 1 },
+    zoneId: { type: "string", minLength: 1 },
+    description: { type: "string", maxLength: 500 },
+  },
+};
+
+const updateEquipmentBodySchema = {
+  type: "object",
+  properties: {
+    name: { type: "string", pattern: "\\S", maxLength: 100 },
+    description: { type: ["string", "null"], maxLength: 500 },
+    energyProfile: {
+      type: ["object", "null"],
+      required: ["class", "nominalPowerW", "minOnS", "minOffS"],
+      properties: {
+        class: { enum: ["comfort", "deferrable"] },
+        nominalPowerW: { type: "number", exclusiveMinimum: 0, maximum: 30000 },
+        minOnS: { type: "number", minimum: 0 },
+        minOffS: { type: "number", minimum: 0 },
+      },
+    },
+  },
+};
+
 export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDeps): void {
   const { equipmentManager } = deps;
 
@@ -42,50 +78,38 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       description?: string;
       deviceIds?: string[];
     };
-  }>("/api/v1/equipments", async (request, reply) => {
-    const { name, type, zoneId, icon, description, deviceIds } = request.body ?? {};
+  }>(
+    "/api/v1/equipments",
+    { schema: { body: createEquipmentBodySchema } },
+    async (request, reply) => {
+      const { name, type, zoneId, icon, description, deviceIds } = request.body;
 
-    if (!name?.trim()) {
-      return reply.code(400).send({ error: "Name is required" });
-    }
-    if (name.length > 100) {
-      return reply.code(400).send({ error: "Name must be 100 characters or less" });
-    }
-    if (!type) {
-      return reply.code(400).send({ error: "Type is required" });
-    }
-    if (!zoneId) {
-      return reply.code(400).send({ error: "Zone ID is required" });
-    }
-    if (description && description.length > 500) {
-      return reply.code(400).send({ error: "Description must be 500 characters or less" });
-    }
+      try {
+        if (deviceIds && deviceIds.length > 0) {
+          const equipment = equipmentManager.createWithAutoBindings({
+            name: name.trim(),
+            type,
+            zoneId,
+            icon,
+            description,
+            deviceIds,
+          });
+          return reply.code(201).send(equipment);
+        }
 
-    try {
-      if (deviceIds && deviceIds.length > 0) {
-        const equipment = equipmentManager.createWithAutoBindings({
+        const equipment = equipmentManager.create({
           name: name.trim(),
           type,
           zoneId,
           icon,
           description,
-          deviceIds,
         });
         return reply.code(201).send(equipment);
+      } catch (err) {
+        return handleEquipmentError(reply, err);
       }
-
-      const equipment = equipmentManager.create({
-        name: name.trim(),
-        type,
-        zoneId,
-        icon,
-        description,
-      });
-      return reply.code(201).send(equipment);
-    } catch (err) {
-      return handleEquipmentError(reply, err);
-    }
-  });
+    },
+  );
 
   // PUT /api/v1/equipments/:id — Update equipment
   app.put<{
@@ -99,64 +123,46 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       enabled?: boolean;
       energyProfile?: EnergyLoadProfile | null;
     };
-  }>("/api/v1/equipments/:id", async (request, reply) => {
-    const body = request.body ?? {};
+  }>(
+    "/api/v1/equipments/:id",
+    { schema: { body: updateEquipmentBodySchema } },
+    async (request, reply) => {
+      const body = request.body ?? {};
 
-    if (body.name !== undefined && !body.name.trim()) {
-      return reply.code(400).send({ error: "Name cannot be empty" });
-    }
-    if (body.name && body.name.length > 100) {
-      return reply.code(400).send({ error: "Name must be 100 characters or less" });
-    }
-    if (body.description && body.description.length > 500) {
-      return reply.code(400).send({ error: "Description must be 500 characters or less" });
-    }
-    // Spec 140 — validate the flexible-load declaration; the learned field is
-    // core-owned and silently stripped from user writes.
-    if (body.energyProfile !== undefined && body.energyProfile !== null) {
-      const p = body.energyProfile;
-      if (p.class !== "comfort" && p.class !== "deferrable") {
-        return reply.code(400).send({ error: "energyProfile.class must be comfort or deferrable" });
+      // Spec 140 — the schema validates the flexible-load declaration; round the
+      // values and merge back the core-owned `learned` field, which is stripped
+      // from user writes.
+      if (body.energyProfile !== undefined && body.energyProfile !== null) {
+        const p = body.energyProfile;
+        const existing = equipmentManager.getById(request.params.id);
+        body.energyProfile = {
+          class: p.class,
+          nominalPowerW: Math.round(p.nominalPowerW),
+          minOnS: Math.round(p.minOnS),
+          minOffS: Math.round(p.minOffS),
+          learned: existing?.energyProfile?.learned,
+        };
       }
-      if (!Number.isFinite(p.nominalPowerW) || p.nominalPowerW <= 0 || p.nominalPowerW > 30000) {
-        return reply.code(400).send({ error: "energyProfile.nominalPowerW must be 1-30000 W" });
-      }
-      if (
-        !Number.isFinite(p.minOnS) ||
-        p.minOnS < 0 ||
-        !Number.isFinite(p.minOffS) ||
-        p.minOffS < 0
-      ) {
-        return reply.code(400).send({ error: "energyProfile min-on/min-off must be >= 0 seconds" });
-      }
-      const existing = equipmentManager.getById(request.params.id);
-      body.energyProfile = {
-        class: p.class,
-        nominalPowerW: Math.round(p.nominalPowerW),
-        minOnS: Math.round(p.minOnS),
-        minOffS: Math.round(p.minOffS),
-        learned: existing?.energyProfile?.learned,
-      };
-    }
 
-    try {
-      const equipment = equipmentManager.update(request.params.id, {
-        name: body.name?.trim(),
-        type: body.type,
-        zoneId: body.zoneId,
-        icon: body.icon,
-        description: body.description,
-        enabled: body.enabled,
-        energyProfile: body.energyProfile,
-      });
-      if (!equipment) {
-        return reply.code(404).send({ error: "Equipment not found" });
+      try {
+        const equipment = equipmentManager.update(request.params.id, {
+          name: body.name?.trim(),
+          type: body.type,
+          zoneId: body.zoneId,
+          icon: body.icon,
+          description: body.description,
+          enabled: body.enabled,
+          energyProfile: body.energyProfile,
+        });
+        if (!equipment) {
+          return reply.code(404).send({ error: "Equipment not found" });
+        }
+        return equipment;
+      } catch (err) {
+        return handleEquipmentError(reply, err);
       }
-      return equipment;
-    } catch (err) {
-      return handleEquipmentError(reply, err);
-    }
-  });
+    },
+  );
 
   // DELETE /api/v1/equipments/:id — Delete equipment
   app.delete<{ Params: { id: string } }>("/api/v1/equipments/:id", async (request, reply) => {
