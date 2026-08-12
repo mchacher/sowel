@@ -105,6 +105,16 @@ describe("ChartManager", () => {
         expect((e as ChartError).status).toBe(404);
       }
     });
+
+    it("blanks the name on an all-whitespace update (asymmetry with createChart)", () => {
+      // `updates.name?.trim() ?? existing.name`: "   ".trim() is "" which is
+      // NOT nullish, so `??` does not fall back — the name is set to "".
+      // createChart rejects an empty name (400) but updateChart does not; this
+      // test pins the current (asymmetric) behavior so a future fix is deliberate.
+      const chart = manager.createChart("Original", CONFIG);
+      const updated = manager.updateChart(chart.id, { name: "   " });
+      expect(updated.name).toBe("");
+    });
   });
 
   describe("deleteChart", () => {

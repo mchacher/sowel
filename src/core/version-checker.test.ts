@@ -57,7 +57,27 @@ describe("VersionChecker", () => {
     expect(info.updateAvailable).toBe(true);
     expect(info.releaseUrl).toBe("https://github.com/mchacher/sowel/releases/x");
     const update = events.find((e) => e.type === "system.update.available");
-    expect(update).toBeDefined();
+    expect(update).toMatchObject({
+      type: "system.update.available",
+      current,
+      latest: newer.replace(/^v/, ""),
+      releaseUrl: "https://github.com/mchacher/sowel/releases/x",
+    });
+  });
+
+  it("does not re-emit when a repeated check returns the same latest tag", async () => {
+    const { checker, events, current } = makeChecker();
+    const [maj, min, patch] = current.split(".").map(Number);
+    const newer = `v${maj}.${min}.${patch + 1}`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ghResponse(newer)),
+    );
+
+    await checker.checkNow();
+    await checker.checkNow(); // same tag — cached, no second event
+
+    expect(events.filter((e) => e.type === "system.update.available")).toHaveLength(1);
   });
 
   it("does not flag an update when the latest release equals the current version", async () => {

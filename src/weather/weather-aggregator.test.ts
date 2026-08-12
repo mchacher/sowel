@@ -3,7 +3,7 @@ import { computeRainCumuls } from "./weather-aggregator.js";
 
 describe("computeRainCumuls", () => {
   it("uses the native rolling cumulatives as-is when present (never summed)", async () => {
-    const sumIncremental = vi.fn<["-1h" | "-24h"], Promise<number | null>>();
+    const sumIncremental = vi.fn<(w: "-1h" | "-24h") => Promise<number | null>>();
     const result = await computeRainCumuls(
       [
         { alias: "sum_rain_1", value: 1.23 },
