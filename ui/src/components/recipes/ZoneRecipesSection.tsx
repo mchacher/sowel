@@ -723,6 +723,16 @@ function RecipeInstanceRow({
             <div className="text-[14px] font-medium text-text truncate">
               {displayName}
             </div>
+            {/* Optional recipe-provided status line (spec: state.summary).
+                A recipe sets it to surface live context (e.g. a pool pump's
+                "Filtration 2,1/9,6 h · heures creuses"). Absent → unchanged. */}
+            {typeof instance.state?.summary === "string" &&
+              instance.state.summary.length > 0 &&
+              instance.enabled && (
+                <div className="text-[11px] text-text-tertiary truncate mt-0.5">
+                  {instance.state.summary}
+                </div>
+              )}
           </button>
           {!!instance.state?.timerExpiresAt && instance.enabled && (
             <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
