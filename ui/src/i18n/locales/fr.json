@@ -838,8 +838,6 @@
   "analyse.bool.generic.on": "Actif",
   "analyse.bool.power.off": "Arrêt",
   "analyse.bool.power.on": "Marche",
-  "analyse.bool.lock.unlocked": "Déverrouillé",
-  "analyse.bool.lock.locked": "Verrouillé",
   "mqttPublishers.title": "Publications MQTT",
   "mqttPublishers.subtitle": "Publier les données d'équipements, zones et recettes vers des topics MQTT",
   "mqttPublishers.newPublisher": "Nouveau publisher",

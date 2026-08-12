@@ -838,8 +838,6 @@
   "analyse.bool.generic.on": "On",
   "analyse.bool.power.off": "Off",
   "analyse.bool.power.on": "On",
-  "analyse.bool.lock.unlocked": "Unlocked",
-  "analyse.bool.lock.locked": "Locked",
   "mqttPublishers.title": "MQTT Publishers",
   "mqttPublishers.subtitle": "Publish equipment, zone and recipe data to MQTT topics",
   "mqttPublishers.newPublisher": "New Publisher",

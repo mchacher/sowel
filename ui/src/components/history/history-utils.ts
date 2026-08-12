@@ -26,6 +26,9 @@ export const BOOLEAN_CATEGORIES = new Set<string>([
   // third value (a cover's OPEN/CLOSED/STOP), which HistoryWriter encodes by
   // declared index (#434), so forcing them onto a two-label [0,1] axis would
   // clip and mislabel them. They chart as a plain numeric series instead.
+  // appliance_state is likewise ASSUMED strictly binary here; a plugin that
+  // declares it as a >2-value enum would clip the same way — the robust fix is
+  // to classify by enum cardinality rather than category name (deferred).
   "light_state",
   "appliance_state",
 ]);
@@ -83,8 +86,9 @@ export function familyOf(category: string): ChartFamily | null {
  * anywhere, which is the pre-144 behaviour.
  */
 export function familiesCompatible(a: ChartFamily | null, b: ChartFamily | null): boolean {
-  if (a === null || b === null) return true;
-  if (a === b) return true;
+  if (a === b) return true; // same family (including both unclassified) always mixes
+  // cumulative owns the plot as bars and never mixes — including with a null
+  // (unclassified) family, which otherwise charts as a measurement line.
   return a !== "cumulative" && b !== "cumulative";
 }
 

@@ -79,9 +79,15 @@ describe("familiesCompatible", () => {
     expect(familiesCompatible("cumulative", "cumulative")).toBe(true);
   });
 
-  it("accepts unclassified categories anywhere", () => {
-    expect(familiesCompatible(null, "cumulative")).toBe(true);
-    expect(familiesCompatible("cumulative", null)).toBe(true);
+  it("mixes an unclassified (null) category with measurements/states but NOT cumulative", () => {
+    // A null-family series charts as a measurement line, so it joins those — but
+    // cumulative owns the plot as bars and must stay alone (a cover index on an
+    // energy bar chart would be nonsense).
+    expect(familiesCompatible(null, "measurements")).toBe(true);
+    expect(familiesCompatible(null, "states")).toBe(true);
+    expect(familiesCompatible(null, null)).toBe(true);
+    expect(familiesCompatible(null, "cumulative")).toBe(false);
+    expect(familiesCompatible("cumulative", null)).toBe(false);
   });
 });
 
