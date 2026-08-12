@@ -41,8 +41,10 @@ import type {
 import { PeriodSelector } from "./PeriodSelector";
 import {
   booleanTickLabels,
+  familiesCompatible,
   familyOf,
   hasEnvelope,
+  isBooleanCategory,
   periodTodayStr,
   periodToWindow,
   type ChartFamily,
@@ -489,12 +491,25 @@ export function AnalyseView() {
     }));
   }, [series, seriesData]);
 
-  // F7 — family of the first series determines the chart family. The picker
-  // forbids cross-family mixing, so all series share this family at render time.
-  const lockedFamily: ChartFamily | null = useMemo(() => {
-    if (series.length === 0) return null;
-    return familyOf(series[0].category);
+  // Families present in the chart. Spec 144 — `measurements` and `states` may
+  // coexist (states get their own 0/1 axis); `cumulative` stays alone. An
+  // unclassified category (family `null`) is charted as a measurement.
+  const chartFamilies = useMemo(() => {
+    const families = new Set<ChartFamily>();
+    for (const s of series) {
+      const f = familyOf(s.category);
+      if (f) families.add(f);
+    }
+    return families;
   }, [series]);
+
+  const hasStateSeries = useMemo(() => series.some((s) => isBooleanCategory(s.category)), [series]);
+  // Anything that is neither a state nor a bar series lands on the left axis,
+  // including unclassified categories (family `null`).
+  const hasMeasurementSeries = useMemo(
+    () => series.some((s) => familyOf(s.category) === null || familyOf(s.category) === "measurements"),
+    [series],
+  );
 
   // Active aggregation resolution across all series. Envelope only renders at
   // 1h or 1d (raw points have min = max = mean by definition).
@@ -507,14 +522,18 @@ export function AnalyseView() {
   }, [series, seriesData]);
 
   const showEnvelopeToggle =
-    lockedFamily === "measurements" &&
+    !chartFamilies.has("cumulative") &&
+    hasMeasurementSeries &&
     activeResolution !== "raw" &&
     series.some((s) => hasEnvelope(s.category));
 
   const familyLabel = useMemo(() => {
-    if (!lockedFamily) return "";
-    return t(`analyse.family.${lockedFamily}`);
-  }, [lockedFamily, t]);
+    if (series.length === 0) return "";
+    if (hasStateSeries && hasMeasurementSeries) return t("analyse.family.mixed");
+    if (hasStateSeries) return t("analyse.family.states");
+    if (chartFamilies.has("cumulative")) return t("analyse.family.cumulative");
+    return t("analyse.family.measurements");
+  }, [series, hasStateSeries, hasMeasurementSeries, chartFamilies, t]);
 
   const clearChart = useCallback(() => {
     setSeries([]);
@@ -636,8 +655,9 @@ export function AnalyseView() {
             {t("analyse.addSeries")}
           </button>
 
-          {/* F7 — family-lock indicator */}
-          {lockedFamily && (
+          {/* F7 — family indicator (spec 144: reads "Mesures + États" on a
+              mixed chart) */}
+          {familyLabel && (
             <span
               className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-border-light text-text-secondary"
               title={t("analyse.familyLocked", { family: familyLabel })}
@@ -786,13 +806,13 @@ export function AnalyseView() {
                     const alreadyAdded = series.some(
                       (s) => s.equipmentId === selectedEquipmentId && s.alias === b.alias,
                     );
-                    // F7 — family lock: once a series is added, only bindings
-                    // of the same family can be added.
+                    // F7 — family lock, relaxed by spec 144: a binding is
+                    // rejected only when it cannot share a chart with one of
+                    // the families already plotted (i.e. cumulative vs rest).
                     const bindingFamily = familyOf(b.category);
-                    const familyMismatch =
-                      lockedFamily !== null &&
-                      bindingFamily !== null &&
-                      bindingFamily !== lockedFamily;
+                    const familyMismatch = [...chartFamilies].some(
+                      (f) => !familiesCompatible(f, bindingFamily),
+                    );
                     const disabled = alreadyAdded || familyMismatch;
                     const title = familyMismatch
                       ? t("analyse.familyIncompatible")
@@ -951,6 +971,18 @@ export function AnalyseView() {
                     : `${s.equipmentName} / ${metricLabel}`;
                   return [stateText, label];
                 };
+                // Spec 144 — a mixed chart carries both kinds of series, so the
+                // tooltip picks the formatter per series instead of per chart.
+                const mixedFormatter = (
+                  value?: number | string,
+                  name?: string,
+                  item?: { payload?: Record<string, number> },
+                ) => {
+                  const s = series.find((ser) => ser.id === name);
+                  return s && isBooleanCategory(s.category)
+                    ? booleanFormatter(value, name)
+                    : measurementFormatter(value, name, item);
+                };
                 const tooltipStyle = {
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
@@ -959,7 +991,7 @@ export function AnalyseView() {
                   color: "var(--color-text)",
                 };
 
-                if (lockedFamily === "cumulative") {
+                if (chartFamilies.has("cumulative")) {
                   // F2 — bar chart for rain / energy.
                   return (
                     <BarChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
@@ -991,11 +1023,15 @@ export function AnalyseView() {
                   );
                 }
 
-                if (lockedFamily === "states") {
+                // Tick labels of the 0/1 axis come from the first state series'
+                // category — every state series shares that axis.
+                const stateSeries = series.filter((s) => isBooleanCategory(s.category));
+                const [stateOffKey, stateOnKey] = booleanTickLabels(
+                  stateSeries[0]?.category ?? "",
+                );
+
+                if (hasStateSeries && !hasMeasurementSeries) {
                   // F5 — step chart on a [0, 1] axis with semantic tick labels.
-                  // Tick labels come from the first series' category (every
-                  // series in the chart shares the same axis).
-                  const [offKey, onKey] = booleanTickLabels(series[0].category);
                   return (
                     <LineChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
                       {commonGrid}
@@ -1007,7 +1043,7 @@ export function AnalyseView() {
                         tickLine={false}
                         axisLine={false}
                         width={68}
-                        tickFormatter={(v: number) => (v >= 0.5 ? t(onKey) : t(offKey))}
+                        tickFormatter={(v: number) => (v >= 0.5 ? t(stateOnKey) : t(stateOffKey))}
                       />
                       <Tooltip
                         contentStyle={tooltipStyle}
@@ -1033,23 +1069,40 @@ export function AnalyseView() {
                   );
                 }
 
-                // measurements (default) — line chart, optionally with envelope band.
+                // measurements (default) — line chart, optionally with envelope
+                // band. Spec 144 — when state series are mixed in, they get a
+                // dedicated 0/1 axis on the right so the measurement scale is
+                // left untouched.
                 const showBand = envelopeOn && activeResolution !== "raw";
                 return (
                   <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
                     {commonGrid}
                     {commonXAxis}
                     <YAxis
+                      yAxisId="left"
                       tick={{ fontSize: 10, fill: textTertiary }}
                       tickLine={false}
                       axisLine={false}
                       width={52}
                       tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
                     />
+                    {hasStateSeries && (
+                      <YAxis
+                        yAxisId="state"
+                        orientation="right"
+                        domain={[0, 1]}
+                        ticks={[0, 1]}
+                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={68}
+                        tickFormatter={(v: number) => (v >= 0.5 ? t(stateOnKey) : t(stateOffKey))}
+                      />
+                    )}
                     <Tooltip
                       contentStyle={tooltipStyle}
                       labelFormatter={labelFormatter}
-                      formatter={measurementFormatter}
+                      formatter={hasStateSeries ? mixedFormatter : measurementFormatter}
                     />
                     {commonLegend}
                     {showBand &&
@@ -1064,6 +1117,7 @@ export function AnalyseView() {
                           return (
                             <Area
                               key={`${s.id}:band`}
+                              yAxisId="left"
                               type="monotone"
                               dataKey={(d: Record<string, number>) => {
                                 const lo = d[minKey];
@@ -1084,20 +1138,24 @@ export function AnalyseView() {
                             />
                           );
                         })}
-                    {series.map((s) => (
-                      <Line
-                        key={s.id}
-                        type="monotone"
-                        dataKey={s.id}
-                        name={s.id}
-                        stroke={s.color}
-                        strokeWidth={1.5}
-                        dot={false}
-                        activeDot={{ r: 3, fill: s.color }}
-                        isAnimationActive={false}
-                        connectNulls
-                      />
-                    ))}
+                    {series.map((s) => {
+                      const isState = isBooleanCategory(s.category);
+                      return (
+                        <Line
+                          key={s.id}
+                          yAxisId={isState ? "state" : "left"}
+                          type={isState ? "stepAfter" : "monotone"}
+                          dataKey={s.id}
+                          name={s.id}
+                          stroke={s.color}
+                          strokeWidth={1.5}
+                          dot={false}
+                          activeDot={{ r: 3, fill: s.color }}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                      );
+                    })}
                   </ComposedChart>
                 );
               })()}

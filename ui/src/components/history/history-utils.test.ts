@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   booleanTickLabels,
+  familiesCompatible,
   familyOf,
   hasEnvelope,
   isBooleanCategory,
@@ -47,9 +48,35 @@ describe("familyOf", () => {
     expect(familyOf("water_leak")).toBe("states");
   });
 
+  it("classifies actuator feedback as states (spec 144)", () => {
+    expect(familyOf("light_state")).toBe("states");
+    expect(familyOf("appliance_state")).toBe("states");
+    expect(familyOf("lock_state")).toBe("states");
+    expect(familyOf("gate_state")).toBe("states");
+    expect(familyOf("cover_state")).toBe("states");
+  });
+
   it("returns null for unknown categories", () => {
     expect(familyOf("unknown_category")).toBeNull();
     expect(familyOf("setpoint")).toBeNull();
+  });
+});
+
+describe("familiesCompatible", () => {
+  it("lets measurements and states share a chart", () => {
+    expect(familiesCompatible("measurements", "states")).toBe(true);
+    expect(familiesCompatible("states", "measurements")).toBe(true);
+  });
+
+  it("keeps cumulative alone", () => {
+    expect(familiesCompatible("cumulative", "measurements")).toBe(false);
+    expect(familiesCompatible("states", "cumulative")).toBe(false);
+    expect(familiesCompatible("cumulative", "cumulative")).toBe(true);
+  });
+
+  it("accepts unclassified categories anywhere", () => {
+    expect(familiesCompatible(null, "cumulative")).toBe(true);
+    expect(familiesCompatible("cumulative", null)).toBe(true);
   });
 });
 
@@ -93,6 +120,11 @@ describe("isBooleanCategory", () => {
     expect(isBooleanCategory("smoke")).toBe(true);
   });
 
+  it("identifies actuator state categories (spec 144)", () => {
+    expect(isBooleanCategory("light_state")).toBe(true);
+    expect(isBooleanCategory("appliance_state")).toBe(true);
+  });
+
   it("rejects non-state categories", () => {
     expect(isBooleanCategory("temperature")).toBe(false);
     expect(isBooleanCategory("rain")).toBe(false);
@@ -129,6 +161,35 @@ describe("booleanTickLabels", () => {
     expect(booleanTickLabels("smoke")).toEqual([
       "analyse.bool.smoke.clear",
       "analyse.bool.smoke.detected",
+    ]);
+  });
+
+  it("returns power labels for actuator feedback (spec 144)", () => {
+    expect(booleanTickLabels("light_state")).toEqual([
+      "analyse.bool.power.off",
+      "analyse.bool.power.on",
+    ]);
+    expect(booleanTickLabels("appliance_state")).toEqual([
+      "analyse.bool.power.off",
+      "analyse.bool.power.on",
+    ]);
+  });
+
+  it("returns lock-specific labels", () => {
+    expect(booleanTickLabels("lock_state")).toEqual([
+      "analyse.bool.lock.unlocked",
+      "analyse.bool.lock.locked",
+    ]);
+  });
+
+  it("reuses the contact labels for gates and covers", () => {
+    expect(booleanTickLabels("gate_state")).toEqual([
+      "analyse.bool.contact.closed",
+      "analyse.bool.contact.open",
+    ]);
+    expect(booleanTickLabels("cover_state")).toEqual([
+      "analyse.bool.contact.closed",
+      "analyse.bool.contact.open",
     ]);
   });
 
