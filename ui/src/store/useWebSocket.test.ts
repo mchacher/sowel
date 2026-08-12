@@ -46,6 +46,11 @@ vi.mock("./useModes", () => ({ useModes: { getState: () => S.modes } }));
 vi.mock("./useActivity", () => ({ useActivity: { getState: () => S.activity } }));
 vi.mock("./useArbiter", () => ({ useArbiter: { getState: () => S.arbiter } }));
 
+// The only ../api call in this store is getBatteryAlerts (banner restore path).
+// Default to an empty list so the health-restore test is unaffected.
+const api = vi.hoisted(() => ({ getBatteryAlerts: vi.fn(async () => [] as unknown[]) }));
+vi.mock("../api", () => api);
+
 // ── Fake WebSocket ──────────────────────────────────────────────────────────
 class FakeWebSocket {
   static CONNECTING = 0;
@@ -203,6 +208,30 @@ describe("connect", () => {
     const s = useWebSocket.getState();
     expect(s.integrationStatuses.panasonic).toBe("error");
     expect(s.alarms.get("poll-fail:panasonic")?.level).toBe("error");
+  });
+
+  it("on open: restores a battery banner headlined by the equipment name (spec 143/#472)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    api.getBatteryAlerts.mockResolvedValue([
+      { deviceDataId: "dd-1", deviceName: "Capteur porte", value: "12", equipmentNames: ["Détecteur salon"] },
+      { deviceDataId: "dd-2", deviceName: "Capteur cave", value: "8", equipmentNames: [] },
+    ]);
+
+    const ws = connect();
+    ws.simulateOpen();
+
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().alarms.get("battery-low:dd-1")).toBeDefined();
+    });
+
+    const bound = useWebSocket.getState().alarms.get("battery-low:dd-1");
+    expect(bound?.source).toBe("Détecteur salon");
+    expect(bound?.message).toBe("Low battery: 12% (Capteur porte)");
+
+    // Unbound device falls back to the device name, no equipment in the message.
+    const unbound = useWebSocket.getState().alarms.get("battery-low:dd-2");
+    expect(unbound?.source).toBe("Capteur cave");
+    expect(unbound?.message).toBe("Low battery: 8%");
   });
 });
 
