@@ -40,27 +40,13 @@ import type {
   RecipeInfo,
   MqttBroker,
 } from "../types";
-import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap, type ZoneOption } from "../lib/zone-path";
-
-const ZONE_AGG_KEYS = [
-  "temperature",
-  "humidity",
-  "luminosity",
-  "motion",
-  "motionSensors",
-  "openDoors",
-  "openWindows",
-  "waterLeak",
-  "smoke",
-  "lightsOn",
-  "lightsTotal",
-  "shuttersOpen",
-  "shuttersTotal",
-  "averageShutterPosition",
-  "awningsDeployed",
-  "awningsTotal",
-  "isDaylight",
-];
+import {
+  equipmentLabelMap,
+  flattenZonesWithPath,
+  zoneChainMap,
+  type ZoneOption,
+} from "../lib/zone-path";
+import { MappingSourceFields } from "../components/publishers/MappingSourceFields";
 
 export function MqttPublishersPage() {
   const { t } = useTranslation();
@@ -114,13 +100,9 @@ export function MqttPublishersPage() {
       <div className="mb-6">
         <div className="flex items-center gap-2.5 mb-1">
           <Send size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("mqttPublishers.title")}
-          </h1>
+          <h1>{t("mqttPublishers.title")}</h1>
         </div>
-        <p className="text-[13px] text-text-secondary mt-1">
-          {t("mqttPublishers.subtitle")}
-        </p>
+        <p className="text-[13px] text-text-secondary mt-1">{t("mqttPublishers.subtitle")}</p>
       </div>
 
       {/* Brokers section */}
@@ -133,9 +115,7 @@ export function MqttPublishersPage() {
           {t("mqttPublishers.brokers")} ({brokers.length})
           {showBrokers ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
-        {showBrokers && (
-          <BrokersSection brokers={brokers} onRefresh={load} />
-        )}
+        {showBrokers && <BrokersSection brokers={brokers} onRefresh={load} />}
       </div>
 
       {/* Actions */}
@@ -190,13 +170,7 @@ export function MqttPublishersPage() {
 
 // ── Brokers section ───────────────────────────────────────────
 
-function BrokersSection({
-  brokers,
-  onRefresh,
-}: {
-  brokers: MqttBroker[];
-  onRefresh: () => void;
-}) {
+function BrokersSection({ brokers, onRefresh }: { brokers: MqttBroker[]; onRefresh: () => void }) {
   const { t } = useTranslation();
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -233,7 +207,9 @@ function BrokersSection({
               <div className="text-[13px] font-medium text-text">{broker.name}</div>
               <div className="text-[12px] text-text-tertiary font-mono">{broker.url}</div>
               {broker.username && (
-                <div className="text-[11px] text-text-tertiary">{t("mqttPublishers.brokerUsername")}: {broker.username}</div>
+                <div className="text-[11px] text-text-tertiary">
+                  {t("mqttPublishers.brokerUsername")}: {broker.username}
+                </div>
               )}
             </div>
             <div className="flex items-center gap-1">
@@ -323,7 +299,10 @@ function BrokerForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+    <form
+      onSubmit={handleSubmit}
+      className="p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+    >
       <div className="space-y-3">
         <div>
           <label className="block text-[12px] text-text-secondary mb-1">
@@ -379,7 +358,13 @@ function BrokerForm({
             disabled={saving || !name.trim() || !url.trim()}
             className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : broker ? t("common.save") : t("common.create")}
+            {saving ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : broker ? (
+              t("common.save")
+            ) : (
+              t("common.create")
+            )}
           </button>
           <button
             type="button"
@@ -429,7 +414,12 @@ function PublisherForm({
           onChangeOnly,
         });
       } else {
-        await createMqttPublisher({ name: name.trim(), brokerId, topic: topic.trim(), onChangeOnly });
+        await createMqttPublisher({
+          name: name.trim(),
+          brokerId,
+          topic: topic.trim(),
+          onChangeOnly,
+        });
       }
       onSaved();
     } catch {
@@ -440,7 +430,10 @@ function PublisherForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+    <form
+      onSubmit={handleSubmit}
+      className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+    >
       <div className="space-y-3">
         <div>
           <label className="block text-[12px] text-text-secondary mb-1">
@@ -501,7 +494,13 @@ function PublisherForm({
             disabled={saving || !name.trim() || !brokerId || !topic.trim()}
             className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : publisher ? t("common.save") : t("common.create")}
+            {saving ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : publisher ? (
+              t("common.save")
+            ) : (
+              t("common.create")
+            )}
           </button>
           <button
             type="button"
@@ -604,7 +603,9 @@ function PublisherCard({
   const resolveSourceLabel = (mapping: MqttPublisherMapping): string => {
     if (mapping.sourceType === "equipment") {
       const eq = equipments.find((e) => e.id === mapping.sourceId);
-      return eq ? `${eqLabels.get(eq.id) ?? eq.name} → ${mapping.sourceKey}` : `??? → ${mapping.sourceKey}`;
+      return eq
+        ? `${eqLabels.get(eq.id) ?? eq.name} → ${mapping.sourceKey}`
+        : `??? → ${mapping.sourceKey}`;
     }
     if (mapping.sourceType === "recipe") {
       const inst = recipeInstances.find((i) => i.id === mapping.sourceId);
@@ -617,7 +618,9 @@ function PublisherCard({
   };
 
   return (
-    <div className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}>
+    <div
+      className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -625,11 +628,7 @@ function PublisherCard({
           <div>
             <h3 className="text-[14px] font-medium text-text">{publisher.name}</h3>
             <span className="text-[12px] text-text-tertiary font-mono">{publisher.topic}</span>
-            {broker && (
-              <span className="ml-2 text-[11px] text-text-tertiary">
-                → {broker.name}
-              </span>
-            )}
+            {broker && <span className="ml-2 text-[11px] text-text-tertiary">→ {broker.name}</span>}
             {publisher.onChangeOnly && (
               <span className="ml-2 text-[11px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                 {t("mqttPublishers.onChangeOnlyBadge")}
@@ -649,11 +648,7 @@ function PublisherCard({
             className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
             title={t("mqttPublishers.testPublish")}
           >
-            {testing ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <Zap size={13} />
-            )}
+            {testing ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
             {t("mqttPublishers.test")}
           </button>
           {testResult !== null && (
@@ -777,38 +772,6 @@ function MappingRow({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const filteredEquipments = filterZoneId
-    ? equipments.filter((e) => e.zoneId === filterZoneId)
-    : equipments;
-
-  // Homonym equipments get a "name - zone" label (spec 139), qualified only
-  // against the other candidates in this dropdown.
-  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
-
-  const filteredRecipeInstances = filterZoneId
-    ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
-    : recipeInstances;
-
-  const availableKeys: string[] = (() => {
-    if (sourceType === "zone") return ZONE_AGG_KEYS;
-    if (sourceType === "equipment" && sourceId) {
-      const eq = equipments.find((e) => e.id === sourceId);
-      if (eq) return eq.dataBindings.map((b) => b.alias);
-    }
-    if (sourceType === "recipe" && sourceId) {
-      const inst = recipeInstances.find((i) => i.id === sourceId);
-      if (inst?.state) return Object.keys(inst.state);
-    }
-    return [];
-  })();
-
-  const handleSourceTypeChange = (val: "equipment" | "zone" | "recipe") => {
-    setSourceType(val);
-    setFilterZoneId("");
-    setSourceId("");
-    setSourceKey("");
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!publishKey.trim() || !sourceId || !sourceKey) return;
@@ -874,123 +837,23 @@ function MappingRow({
               autoFocus
             />
           </div>
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("mqttPublishers.sourceType")}
-            </label>
-            <select
-              value={sourceType}
-              onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="equipment">{t("mqttPublishers.equipment")}</option>
-              <option value="zone">{t("mqttPublishers.zone")}</option>
-              <option value="recipe">{t("mqttPublishers.recipe")}</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("mqttPublishers.zone")}
-            </label>
-            <select
-              value={sourceType === "zone" ? sourceId : filterZoneId}
-              onChange={(e) => {
-                if (sourceType === "zone") {
-                  setSourceId(e.target.value);
-                  setSourceKey("");
-                } else {
-                  setFilterZoneId(e.target.value);
-                  setSourceId("");
-                  setSourceKey("");
-                }
-              }}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="">
-                {sourceType === "zone"
-                  ? t("mqttPublishers.selectSource")
-                  : t("mqttPublishers.allZones")}
-              </option>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {sourceType === "equipment" && (
-            <div>
-              <label className="block text-[11px] text-text-secondary mb-1">
-                {t("mqttPublishers.equipment")}
-              </label>
-              <select
-                value={sourceId}
-                onChange={(e) => {
-                  setSourceId(e.target.value);
-                  setSourceKey("");
-                }}
-                className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-              >
-                <option value="">{t("mqttPublishers.selectSource")}</option>
-                {filteredEquipments.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eqLabels.get(eq.id) ?? eq.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {sourceType === "recipe" && (
-            <div>
-              <label className="block text-[11px] text-text-secondary mb-1">
-                {t("mqttPublishers.recipeInstance")}
-              </label>
-              <select
-                value={sourceId}
-                onChange={(e) => {
-                  setSourceId(e.target.value);
-                  setSourceKey("");
-                }}
-                className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-              >
-                <option value="">{t("mqttPublishers.selectSource")}</option>
-                {filteredRecipeInstances.map((inst) => {
-                  const recipe = recipes.find((r) => r.id === inst.recipeId);
-                  return (
-                    <option key={inst.id} value={inst.id}>
-                      {recipe?.name ?? inst.recipeId}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("mqttPublishers.sourceKey")}
-            </label>
-            <select
-              value={sourceKey}
-              onChange={(e) => setSourceKey(e.target.value)}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-              disabled={!sourceId}
-            >
-              <option value="">{t("mqttPublishers.selectKey")}</option>
-              {availableKeys.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MappingSourceFields
+            keyPrefix="mqttPublishers"
+            sourceType={sourceType}
+            setSourceType={setSourceType}
+            sourceId={sourceId}
+            setSourceId={setSourceId}
+            sourceKey={sourceKey}
+            setSourceKey={setSourceKey}
+            filterZoneId={filterZoneId}
+            setFilterZoneId={setFilterZoneId}
+            equipments={equipments}
+            zones={zones}
+            recipeInstances={recipeInstances}
+            recipes={recipes}
+          />
         </div>
-        {error && (
-          <div className="mt-2 text-[11px] text-red-500">{error}</div>
-        )}
+        {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
         <div className="flex items-center gap-2 mt-3">
           <button
             type="submit"
@@ -1038,9 +901,7 @@ function MappingRow({
           onClick={handleToggleEnabled}
           className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
           title={
-            mapping.enabled
-              ? t("mqttPublishers.mappingDisable")
-              : t("mqttPublishers.mappingEnable")
+            mapping.enabled ? t("mqttPublishers.mappingDisable") : t("mqttPublishers.mappingEnable")
           }
         >
           {mapping.enabled ? <Power size={12} /> : <PowerOff size={12} />}
@@ -1085,42 +946,6 @@ function AddMappingForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Equipments filtered by selected zone
-  const filteredEquipments = filterZoneId
-    ? equipments.filter((e) => e.zoneId === filterZoneId)
-    : equipments;
-
-  // Homonym equipments get a "name - zone" label (spec 139), qualified only
-  // against the other candidates in this dropdown.
-  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
-
-  // Recipe instances filtered by selected zone (zone stored in params.zone)
-  const filteredRecipeInstances = filterZoneId
-    ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
-    : recipeInstances;
-
-  // Available keys depend on source type and selected source
-  const availableKeys: string[] = (() => {
-    if (sourceType === "zone") return ZONE_AGG_KEYS;
-    if (sourceType === "equipment" && sourceId) {
-      const eq = equipments.find((e) => e.id === sourceId);
-      if (eq) return eq.dataBindings.map((b) => b.alias);
-    }
-    if (sourceType === "recipe" && sourceId) {
-      const inst = recipeInstances.find((i) => i.id === sourceId);
-      if (inst?.state) return Object.keys(inst.state);
-    }
-    return [];
-  })();
-
-  // Reset downstream selections when sourceType changes
-  const handleSourceTypeChange = (val: "equipment" | "zone" | "recipe") => {
-    setSourceType(val);
-    setFilterZoneId("");
-    setSourceId("");
-    setSourceKey("");
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!publishKey.trim() || !sourceId || !sourceKey) return;
@@ -1157,126 +982,23 @@ function AddMappingForm({
             autoFocus
           />
         </div>
-        <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
-            {t("mqttPublishers.sourceType")}
-          </label>
-          <select
-            value={sourceType}
-            onChange={(e) => handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-          >
-            <option value="equipment">{t("mqttPublishers.equipment")}</option>
-            <option value="zone">{t("mqttPublishers.zone")}</option>
-            <option value="recipe">{t("mqttPublishers.recipe")}</option>
-          </select>
-        </div>
-
-        {/* Zone selector — filter for equipment/recipe, direct source for zone */}
-        <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
-            {t("mqttPublishers.zone")}
-          </label>
-          <select
-            value={sourceType === "zone" ? sourceId : filterZoneId}
-            onChange={(e) => {
-              if (sourceType === "zone") {
-                setSourceId(e.target.value);
-                setSourceKey("");
-              } else {
-                setFilterZoneId(e.target.value);
-                setSourceId("");
-                setSourceKey("");
-              }
-            }}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-          >
-            <option value="">
-              {sourceType === "zone"
-                ? t("mqttPublishers.selectSource")
-                : t("mqttPublishers.allZones")}
-            </option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Equipment selector — only when sourceType is equipment */}
-        {sourceType === "equipment" && (
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("mqttPublishers.equipment")}
-            </label>
-            <select
-              value={sourceId}
-              onChange={(e) => {
-                setSourceId(e.target.value);
-                setSourceKey("");
-              }}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="">{t("mqttPublishers.selectSource")}</option>
-              {filteredEquipments.map((eq) => (
-                <option key={eq.id} value={eq.id}>
-                  {eqLabels.get(eq.id) ?? eq.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Recipe instance selector — only when sourceType is recipe */}
-        {sourceType === "recipe" && (
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("mqttPublishers.recipeInstance")}
-            </label>
-            <select
-              value={sourceId}
-              onChange={(e) => {
-                setSourceId(e.target.value);
-                setSourceKey("");
-              }}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="">{t("mqttPublishers.selectSource")}</option>
-              {filteredRecipeInstances.map((inst) => {
-                const recipe = recipes.find((r) => r.id === inst.recipeId);
-                return (
-                  <option key={inst.id} value={inst.id}>
-                    {recipe?.name ?? inst.recipeId}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        )}
-
-        <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
-            {t("mqttPublishers.sourceKey")}
-          </label>
-          <select
-            value={sourceKey}
-            onChange={(e) => setSourceKey(e.target.value)}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            disabled={!sourceId}
-          >
-            <option value="">{t("mqttPublishers.selectKey")}</option>
-            {availableKeys.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MappingSourceFields
+          keyPrefix="mqttPublishers"
+          sourceType={sourceType}
+          setSourceType={setSourceType}
+          sourceId={sourceId}
+          setSourceId={setSourceId}
+          sourceKey={sourceKey}
+          setSourceKey={setSourceKey}
+          filterZoneId={filterZoneId}
+          setFilterZoneId={setFilterZoneId}
+          equipments={equipments}
+          zones={zones}
+          recipeInstances={recipeInstances}
+          recipes={recipes}
+        />
       </div>
-      {error && (
-        <div className="mt-2 text-[11px] text-red-500">{error}</div>
-      )}
+      {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
       <div className="flex items-center gap-2 mt-3">
         <button
           type="submit"

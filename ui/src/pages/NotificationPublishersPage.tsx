@@ -42,32 +42,12 @@ import type {
 import { usePushSubscription } from "../hooks/usePushSubscription";
 import {
   deriveSourceZoneFilter,
-  recipeInstanceLabel,
   repeatModeOf,
   repeatFieldsFor,
   type RepeatMode,
 } from "../lib/notif-mapping";
-import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap, type ZoneOption } from "../lib/zone-path";
-
-const ZONE_AGG_KEYS = [
-  "temperature",
-  "humidity",
-  "luminosity",
-  "motion",
-  "motionSensors",
-  "openDoors",
-  "openWindows",
-  "waterLeak",
-  "smoke",
-  "lightsOn",
-  "lightsTotal",
-  "shuttersOpen",
-  "shuttersTotal",
-  "averageShutterPosition",
-  "awningsDeployed",
-  "awningsTotal",
-  "isDaylight",
-];
+import { flattenZonesWithPath, type ZoneOption } from "../lib/zone-path";
+import { MappingSourceFields } from "../components/publishers/MappingSourceFields";
 
 const DEFAULT_THROTTLE_MS = 300_000; // 5 min
 
@@ -726,38 +706,6 @@ function MappingRow({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const filteredEquipments = filterZoneId
-    ? equipments.filter((e) => e.zoneId === filterZoneId)
-    : equipments;
-
-  // Homonym equipments get a "name - zone" label (spec 139), qualified only
-  // against the other candidates in this dropdown.
-  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
-
-  const filteredRecipeInstances = filterZoneId
-    ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
-    : recipeInstances;
-
-  const availableKeys: string[] = (() => {
-    if (sourceType === "zone") return ZONE_AGG_KEYS;
-    if (sourceType === "equipment" && sourceId) {
-      const eq = equipments.find((e) => e.id === sourceId);
-      if (eq) return eq.dataBindings.map((b) => b.alias);
-    }
-    if (sourceType === "recipe" && sourceId) {
-      const inst = recipeInstances.find((i) => i.id === sourceId);
-      if (inst?.state) return Object.keys(inst.state);
-    }
-    return [];
-  })();
-
-  const handleSourceTypeChange = (val: "equipment" | "zone" | "recipe") => {
-    setSourceType(val);
-    setFilterZoneId("");
-    setSourceId("");
-    setSourceKey("");
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !sourceId || !sourceKey) return;
@@ -822,118 +770,21 @@ function MappingRow({
               autoFocus
             />
           </div>
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("notifPublishers.sourceType")}
-            </label>
-            <select
-              value={sourceType}
-              onChange={(e) =>
-                handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")
-              }
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="equipment">{t("notifPublishers.equipment")}</option>
-              <option value="zone">{t("notifPublishers.zone")}</option>
-              <option value="recipe">{t("notifPublishers.recipe")}</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("notifPublishers.zone")}
-            </label>
-            <select
-              value={sourceType === "zone" ? sourceId : filterZoneId}
-              onChange={(e) => {
-                if (sourceType === "zone") {
-                  setSourceId(e.target.value);
-                  setSourceKey("");
-                } else {
-                  setFilterZoneId(e.target.value);
-                  setSourceId("");
-                  setSourceKey("");
-                }
-              }}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="">
-                {sourceType === "zone"
-                  ? t("notifPublishers.selectSource")
-                  : t("notifPublishers.allZones")}
-              </option>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {sourceType === "equipment" && (
-            <div>
-              <label className="block text-[11px] text-text-secondary mb-1">
-                {t("notifPublishers.equipment")}
-              </label>
-              <select
-                value={sourceId}
-                onChange={(e) => {
-                  setSourceId(e.target.value);
-                  setSourceKey("");
-                }}
-                className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-              >
-                <option value="">{t("notifPublishers.selectSource")}</option>
-                {filteredEquipments.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eqLabels.get(eq.id) ?? eq.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {sourceType === "recipe" && (
-            <div>
-              <label className="block text-[11px] text-text-secondary mb-1">
-                {t("notifPublishers.recipeInstance")}
-              </label>
-              <select
-                value={sourceId}
-                onChange={(e) => {
-                  setSourceId(e.target.value);
-                  setSourceKey("");
-                }}
-                className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-              >
-                <option value="">{t("notifPublishers.selectSource")}</option>
-                {filteredRecipeInstances.map((inst) => (
-                  <option key={inst.id} value={inst.id}>
-                    {recipeInstanceLabel(inst, recipes, equipments)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("notifPublishers.sourceKey")}
-            </label>
-            <select
-              value={sourceKey}
-              onChange={(e) => setSourceKey(e.target.value)}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-              disabled={!sourceId}
-            >
-              <option value="">{t("notifPublishers.selectKey")}</option>
-              {availableKeys.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MappingSourceFields
+            keyPrefix="notifPublishers"
+            sourceType={sourceType}
+            setSourceType={setSourceType}
+            sourceId={sourceId}
+            setSourceId={setSourceId}
+            sourceKey={sourceKey}
+            setSourceKey={setSourceKey}
+            filterZoneId={filterZoneId}
+            setFilterZoneId={setFilterZoneId}
+            equipments={equipments}
+            zones={zones}
+            recipeInstances={recipeInstances}
+            recipes={recipes}
+          />
 
           <div>
             <label className="block text-[11px] text-text-secondary mb-1">
@@ -1055,38 +906,6 @@ function AddMappingForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const filteredEquipments = filterZoneId
-    ? equipments.filter((e) => e.zoneId === filterZoneId)
-    : equipments;
-
-  // Homonym equipments get a "name - zone" label (spec 139), qualified only
-  // against the other candidates in this dropdown.
-  const eqLabels = equipmentLabelMap(filteredEquipments, zoneChainMap(zones));
-
-  const filteredRecipeInstances = filterZoneId
-    ? recipeInstances.filter((i) => i.params.zone === filterZoneId)
-    : recipeInstances;
-
-  const availableKeys: string[] = (() => {
-    if (sourceType === "zone") return ZONE_AGG_KEYS;
-    if (sourceType === "equipment" && sourceId) {
-      const eq = equipments.find((e) => e.id === sourceId);
-      if (eq) return eq.dataBindings.map((b) => b.alias);
-    }
-    if (sourceType === "recipe" && sourceId) {
-      const inst = recipeInstances.find((i) => i.id === sourceId);
-      if (inst?.state) return Object.keys(inst.state);
-    }
-    return [];
-  })();
-
-  const handleSourceTypeChange = (val: "equipment" | "zone" | "recipe") => {
-    setSourceType(val);
-    setFilterZoneId("");
-    setSourceId("");
-    setSourceKey("");
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !sourceId || !sourceKey) return;
@@ -1127,119 +946,21 @@ function AddMappingForm({
             autoFocus
           />
         </div>
-        <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
-            {t("notifPublishers.sourceType")}
-          </label>
-          <select
-            value={sourceType}
-            onChange={(e) =>
-              handleSourceTypeChange(e.target.value as "equipment" | "zone" | "recipe")
-            }
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-          >
-            <option value="equipment">{t("notifPublishers.equipment")}</option>
-            <option value="zone">{t("notifPublishers.zone")}</option>
-            <option value="recipe">{t("notifPublishers.recipe")}</option>
-          </select>
-        </div>
-
-        {/* Zone selector */}
-        <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
-            {t("notifPublishers.zone")}
-          </label>
-          <select
-            value={sourceType === "zone" ? sourceId : filterZoneId}
-            onChange={(e) => {
-              if (sourceType === "zone") {
-                setSourceId(e.target.value);
-                setSourceKey("");
-              } else {
-                setFilterZoneId(e.target.value);
-                setSourceId("");
-                setSourceKey("");
-              }
-            }}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-          >
-            <option value="">
-              {sourceType === "zone"
-                ? t("notifPublishers.selectSource")
-                : t("notifPublishers.allZones")}
-            </option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {sourceType === "equipment" && (
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("notifPublishers.equipment")}
-            </label>
-            <select
-              value={sourceId}
-              onChange={(e) => {
-                setSourceId(e.target.value);
-                setSourceKey("");
-              }}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="">{t("notifPublishers.selectSource")}</option>
-              {filteredEquipments.map((eq) => (
-                <option key={eq.id} value={eq.id}>
-                  {eqLabels.get(eq.id) ?? eq.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {sourceType === "recipe" && (
-          <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
-              {t("notifPublishers.recipeInstance")}
-            </label>
-            <select
-              value={sourceId}
-              onChange={(e) => {
-                setSourceId(e.target.value);
-                setSourceKey("");
-              }}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            >
-              <option value="">{t("notifPublishers.selectSource")}</option>
-              {filteredRecipeInstances.map((inst) => (
-                <option key={inst.id} value={inst.id}>
-                  {recipeInstanceLabel(inst, recipes, equipments)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
-            {t("notifPublishers.sourceKey")}
-          </label>
-          <select
-            value={sourceKey}
-            onChange={(e) => setSourceKey(e.target.value)}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
-            disabled={!sourceId}
-          >
-            <option value="">{t("notifPublishers.selectKey")}</option>
-            {availableKeys.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MappingSourceFields
+          keyPrefix="notifPublishers"
+          sourceType={sourceType}
+          setSourceType={setSourceType}
+          sourceId={sourceId}
+          setSourceId={setSourceId}
+          sourceKey={sourceKey}
+          setSourceKey={setSourceKey}
+          filterZoneId={filterZoneId}
+          setFilterZoneId={setFilterZoneId}
+          equipments={equipments}
+          zones={zones}
+          recipeInstances={recipeInstances}
+          recipes={recipes}
+        />
 
         <div>
           <label className="block text-[11px] text-text-secondary mb-1">
