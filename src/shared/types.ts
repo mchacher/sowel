@@ -728,6 +728,13 @@ export interface ArbiterPendingInfo {
    */
   toleratedImportW: number;
   reasonWaiting: string;
+  /**
+   * The claim is pending (no surplus granted) yet its equipment is actually
+   * running — a recipe drives it as a must-run fallback outside arbitration
+   * (`unclaimedRunning`). The load is drawing power, not idle, so the UI must
+   * show it as "running (no surplus)" rather than "waiting for surplus" (#491).
+   */
+  running: boolean;
 }
 
 export interface ArbiterSuspensionInfo {

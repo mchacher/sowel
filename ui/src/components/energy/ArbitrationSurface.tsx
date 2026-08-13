@@ -380,14 +380,20 @@ export function ArbitrationSurface() {
           key={p.equipmentId}
           className="flex items-center gap-2 mb-1 px-3 py-1.5 rounded-md bg-background border border-border-light text-[12.5px] text-text-secondary"
         >
-          <span>⏳</span>
+          {/* A pending claim whose load a recipe is already running as a
+              must-run fallback is drawing power, not idle — show it as running
+              on grid, never "waiting for surplus" (#491). */}
+          <span>{p.running ? "⚡" : "⏳"}</span>
           <span>
-            <b className="text-text">{p.equipmentName}</b> {waitingReason(p.reasonWaiting, p.needW, t)}
+            <b className="text-text">{p.equipmentName}</b>{" "}
+            {p.running ? t("arbiter.runningNoSurplus") : waitingReason(p.reasonWaiting, p.needW, t)}
             {/* The trigger alone leaves "why is it not 2200 W?" unanswered —
                 the appliance rating and the grid it accepts to buy are what
                 make the lower figure make sense. Secondary on purpose. */}
             <span className="block text-[11.5px] text-text-tertiary">
-              {t("arbiter.waitContext", { watts: p.watts, tolerated: p.toleratedImportW })}
+              {p.running
+                ? t("arbiter.runningNoSurplusHint")
+                : t("arbiter.waitContext", { watts: p.watts, tolerated: p.toleratedImportW })}
             </span>
           </span>
         </div>

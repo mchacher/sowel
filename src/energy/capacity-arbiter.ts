@@ -597,6 +597,10 @@ export class CapacityArbiter {
         needW: Math.round(this.engageNeedW(c)),
         toleratedImportW: c.toleratedImportW,
         reasonWaiting: this.pendingReason(c, accounting.headroomW),
+        // A pending claim whose load a recipe is already running as a must-run
+        // fallback (tracked in unclaimedRunning) is drawing power, not idle —
+        // the UI relabels it "running (no surplus)" instead of "waiting" (#491).
+        running: this.unclaimedRunning.has(c.equipmentId),
       }));
     const suspensions = [...this.overridesUntil.entries()]
       .filter(([, until]) => until > now)

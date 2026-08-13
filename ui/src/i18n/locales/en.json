@@ -1228,6 +1228,8 @@
   "arbiter.waitReason.override-active": "paused (manual override active)",
   "arbiter.waitReason.min-off-cooldown": "waiting out the minimum-off delay",
   "arbiter.waitReason.unresponsive": "did not respond to the last revoke",
+  "arbiter.runningNoSurplus": "running (no surplus)",
+  "arbiter.runningNoSurplusHint": "running on grid; will switch to surplus when available",
   "arbiter.revokeReason.surplus-deficit": "production dropped",
   "arbiter.revokeReason.priority-preempted": "yielded to a higher-priority load",
   "arbiter.revokeReason.manual-override": "you took manual control",

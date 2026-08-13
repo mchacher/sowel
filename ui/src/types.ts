@@ -335,6 +335,9 @@ export interface ArbiterPublicState {
     /** Grid the claim accepts to buy; explains the gap between the two above. */
     toleratedImportW: number;
     reasonWaiting: string;
+    /** Pending but its load is already running as a recipe must-run fallback
+     *  (no surplus granted) — shown as "running (no surplus)", not "waiting" (#491). */
+    running: boolean;
   }>;
   suspensions: Array<{ equipmentId: string; equipmentName: string; untilIso: string }>;
   journal: ArbiterDecision[];

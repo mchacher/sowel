@@ -255,6 +255,28 @@ describe("capacity arbiter", () => {
     expect(pending?.needW).toBe(300); // 600 + 100 margin - 400 tolerated
   });
 
+  it("flags a pending claim as running when its load runs as a recipe must-run fallback (#491)", () => {
+    // A recipe keeps a surplus claim but runs the load anyway (hot day). With
+    // no surplus the claim stays pending, yet the load draws power — it must
+    // read as running-without-surplus, not "waiting for surplus".
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.feedMeter(-500);
+    h.run(-500, 300);
+    // The claim is pending and idle so far.
+    expect(h.arbiter.getPublicState().pending[0]?.running).toBe(false);
+
+    // The recipe turns the load on outside a grant (must-run fallback).
+    h.order("pump", "ON", { kind: "recipe", instanceId: "i1" });
+    const [pending] = h.arbiter.getPublicState().pending;
+    expect(pending?.equipmentId).toBe("pump");
+    expect(pending?.running).toBe(true);
+
+    // When the recipe switches it back off, it reads as waiting again.
+    h.order("pump", "OFF", { kind: "recipe", instanceId: "i1" });
+    expect(h.arbiter.getPublicState().pending[0]?.running).toBe(false);
+  });
+
   it("does NOT revoke when its own grant collapses the export (reservation accounting)", () => {
     const h = makeHarness();
     h.claim("i1", { equipmentId: "pump" });

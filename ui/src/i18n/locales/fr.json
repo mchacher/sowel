@@ -1228,6 +1228,8 @@
   "arbiter.waitReason.override-active": "en pause (pilotage manuel actif)",
   "arbiter.waitReason.min-off-cooldown": "attente du délai d'arrêt minimum",
   "arbiter.waitReason.unresponsive": "n'a pas répondu à la dernière révocation",
+  "arbiter.runningNoSurplus": "en marche (hors surplus)",
+  "arbiter.runningNoSurplusHint": "tourne sur le réseau, passera sur le surplus dès qu'il y en aura",
   "arbiter.revokeReason.surplus-deficit": "la production a baissé",
   "arbiter.revokeReason.priority-preempted": "cédé à une charge plus prioritaire",
   "arbiter.revokeReason.manual-override": "vous avez pris le pilotage manuel",
