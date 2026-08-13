@@ -30,10 +30,8 @@ import {
 import type {
   NotificationPublisherWithMappings,
   NotificationPublisherMapping,
-  TelegramChannelConfig,
   NotificationChannelType,
   NotificationChannelConfig,
-  WebPushChannelConfig,
   EquipmentWithDetails,
   ZoneWithChildren,
   RecipeInstance,
@@ -49,6 +47,13 @@ import {
 } from "../lib/notif-mapping";
 import { flattenZonesWithPath, type ZoneOption } from "../lib/zone-path";
 import { MappingSourceFields } from "../components/publishers/MappingSourceFields";
+import {
+  NOTIFICATION_CHANNELS,
+  channelSpec,
+  channelConfigComplete,
+  useChannelLabel,
+} from "../components/publishers/notification-channels";
+import { ChannelConfigFields } from "../components/publishers/ChannelConfigFields";
 
 const DEFAULT_THROTTLE_MS = 300_000; // 5 min
 
@@ -225,21 +230,26 @@ function PublisherForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
+  const channelLabel = useChannelLabel();
   const [name, setName] = useState(publisher?.name ?? "");
   const [channelType, setChannelType] = useState<NotificationChannelType>(
     publisher?.channelType ?? "web-push",
   );
-  const tg =
-    publisher?.channelType === "telegram"
-      ? (publisher.channelConfig as TelegramChannelConfig)
-      : undefined;
-  const [botToken, setBotToken] = useState(tg?.botToken ?? "");
-  const [chatId, setChatId] = useState(tg?.chatId ?? "");
+  // Flat config record driven by the channel descriptor (issue #457 step 2).
+  const [config, setConfig] = useState<Record<string, string>>(() =>
+    channelSpec(publisher?.channelType ?? "web-push").fromConfig(publisher?.channelConfig),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const telegramReady = channelType !== "telegram" || (!!botToken.trim() && !!chatId.trim());
-  const canSubmit = !!name.trim() && telegramReady;
+  const spec = channelSpec(channelType);
+  const canSubmit = !!name.trim() && channelConfigComplete(spec, config);
+
+  const handleChannelChange = (type: NotificationChannelType) => {
+    setChannelType(type);
+    // Reset the config to the new channel's shape (keeps overlapping keys).
+    setConfig((prev) => ({ ...channelSpec(type).fromConfig(undefined), ...prev }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,10 +257,7 @@ function PublisherForm({
     setSaving(true);
     setError("");
     try {
-      const channelConfig: NotificationChannelConfig =
-        channelType === "telegram"
-          ? { botToken: botToken.trim(), chatId: chatId.trim() }
-          : ({} as WebPushChannelConfig);
+      const channelConfig: NotificationChannelConfig = spec.toConfig(config);
       if (publisher) {
         await updateNotificationPublisher(publisher.id, {
           name: name.trim(),
@@ -293,43 +300,21 @@ function PublisherForm({
           </label>
           <select
             value={channelType}
-            onChange={(e) => setChannelType(e.target.value as NotificationChannelType)}
+            onChange={(e) => handleChannelChange(e.target.value as NotificationChannelType)}
             className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
           >
-            <option value="web-push">{t("notifPublishers.webPush")}</option>
-            <option value="telegram">Telegram</option>
+            {NOTIFICATION_CHANNELS.map((c) => (
+              <option key={c.type} value={c.type}>
+                {channelLabel(c.type)}
+              </option>
+            ))}
           </select>
         </div>
-        {channelType === "telegram" ? (
-          <>
-            <div>
-              <label className="block text-[12px] text-text-secondary mb-1">
-                {t("notifPublishers.botToken")}
-              </label>
-              <input
-                type="password"
-                value={botToken}
-                onChange={(e) => setBotToken(e.target.value)}
-                placeholder="123456:ABC-DEF..."
-                className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] text-text-secondary mb-1">
-                {t("notifPublishers.chatId")}
-              </label>
-              <input
-                type="text"
-                value={chatId}
-                onChange={(e) => setChatId(e.target.value)}
-                placeholder="-1001234567890"
-                className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text font-mono placeholder:text-text-tertiary"
-              />
-            </div>
-          </>
-        ) : (
-          <p className="text-[11px] text-text-tertiary">{t("notifPublishers.webPushHint")}</p>
-        )}
+        <ChannelConfigFields
+          spec={spec}
+          values={config}
+          onChange={(key, value) => setConfig((prev) => ({ ...prev, [key]: value }))}
+        />
         {error && <div className="text-[11px] text-red-500">{error}</div>}
         <div className="flex items-center gap-2">
           <button
@@ -376,6 +361,7 @@ function PublisherCard({
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
+  const channelLabel = useChannelLabel();
   const [showAddMapping, setShowAddMapping] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -489,7 +475,7 @@ function PublisherCard({
           <div className="min-w-0">
             <h3 className="text-[14px] font-medium text-text truncate">{publisher.name}</h3>
             <span className="text-[12px] text-text-tertiary">
-              {publisher.channelType === "web-push" ? "Web Push" : "Telegram"}
+              {channelLabel(publisher.channelType)}
             </span>
           </div>
         </div>
