@@ -52,6 +52,7 @@ import {
   channelSpec,
   channelConfigComplete,
   useChannelLabel,
+  useChannelOptionLabel,
 } from "../components/publishers/notification-channels";
 import { ChannelConfigFields } from "../components/publishers/ChannelConfigFields";
 
@@ -230,7 +231,7 @@ function PublisherForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const channelLabel = useChannelLabel();
+  const channelOptionLabel = useChannelOptionLabel();
   const [name, setName] = useState(publisher?.name ?? "");
   const [channelType, setChannelType] = useState<NotificationChannelType>(
     publisher?.channelType ?? "web-push",
@@ -305,7 +306,7 @@ function PublisherForm({
           >
             {NOTIFICATION_CHANNELS.map((c) => (
               <option key={c.type} value={c.type}>
-                {channelLabel(c.type)}
+                {channelOptionLabel(c)}
               </option>
             ))}
           </select>

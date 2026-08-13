@@ -26,9 +26,12 @@ export interface ChannelFieldSpec {
 
 export interface NotificationChannelSpec {
   type: NotificationChannelType;
-  /** Literal label, or an i18n key resolved with t(). Exactly one is set. */
-  label?: string;
-  labelKey?: string;
+  /** Short label for the publisher card badge (literal, matches the pre-refactor
+   *  hard-coded badge). */
+  label: string;
+  /** Optional longer i18n label for the channel picker option (e.g. "Web Push
+   *  (this app)"); falls back to `label` when absent. */
+  optionLabelKey?: string;
   /** Config fields, empty for channels that need no config (Web Push). */
   fields: ChannelFieldSpec[];
   /** Optional hint shown when there are no fields. */
@@ -42,7 +45,8 @@ export interface NotificationChannelSpec {
 export const NOTIFICATION_CHANNELS: NotificationChannelSpec[] = [
   {
     type: "web-push",
-    labelKey: "notifPublishers.webPush",
+    label: "Web Push",
+    optionLabelKey: "notifPublishers.webPush",
     fields: [],
     hintKey: "notifPublishers.webPushHint",
     toConfig: () => ({}) as WebPushChannelConfig,
@@ -93,11 +97,19 @@ export function channelConfigComplete(
   return spec.fields.every((f) => !f.required || !!(values[f.key] ?? "").trim());
 }
 
-/** The channel's display label (literal or translated). */
+/** The channel's short badge label (matches the pre-refactor card badge). */
+export function channelLabel(type: NotificationChannelType): string {
+  return channelSpec(type).label;
+}
+
+/** Hook form for components that render the badge inside JSX. */
 export function useChannelLabel(): (type: NotificationChannelType) => string {
+  return channelLabel;
+}
+
+/** The channel picker option label: the longer i18n form when set, else the
+ *  short badge label (matches the pre-refactor `<select>` options). */
+export function useChannelOptionLabel(): (spec: NotificationChannelSpec) => string {
   const { t } = useTranslation();
-  return (type) => {
-    const spec = channelSpec(type);
-    return spec.label ?? (spec.labelKey ? t(spec.labelKey) : type);
-  };
+  return (spec) => (spec.optionLabelKey ? t(spec.optionLabelKey) : spec.label);
 }
