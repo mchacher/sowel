@@ -23,6 +23,7 @@ function state(journal: ArbiterDecision[], pending: string[] = []): ArbiterPubli
       instanceId: "i",
       watts: 600,
       needW: 700,
+      toleratedImportW: 0,
       reasonWaiting: "insufficient-surplus:0",
     })),
     suspensions: [],
@@ -47,10 +48,38 @@ describe("buildLanes", () => {
     expect(lane.pendingFromMin).toBeNull();
   });
 
-  it("leaves an open grant running to now", () => {
+  it("leaves an open grant running to now, and says it is still open", () => {
     const journal: ArbiterDecision[] = [{ atIso: at(14, 0), kind: "granted", equipmentId: "pump" }];
     const [lane] = buildLanes(state(journal), profiled, 15 * 60);
-    expect(lane.segments).toEqual([{ startMin: 14 * 60, endMin: 15 * 60, kind: "granted" }]);
+    expect(lane.segments).toEqual([
+      { startMin: 14 * 60, endMin: 15 * 60, kind: "granted", open: true },
+    ]);
+  });
+
+  it("draws a run outside arbitration as a span, not a start marker", () => {
+    // How long a load held power without a grant is the whole question; a
+    // lone start says nothing about it.
+    const journal: ArbiterDecision[] = [
+      { atIso: at(4, 35), kind: "unclaimed-run-ended", equipmentId: "pump" },
+      { atIso: at(2, 4), kind: "unclaimed-run", equipmentId: "pump", reason: "off-peak plan" },
+    ];
+    const [lane] = buildLanes(state(journal), profiled, 16 * 60);
+    expect(lane.segments).toEqual([
+      { startMin: 2 * 60 + 4, endMin: 4 * 60 + 35, kind: "unclaimed" },
+    ]);
+    expect(lane.markers).toEqual([]);
+  });
+
+  it("runs an unfinished unclaimed span up to now", () => {
+    // Also the shape a core older than `unclaimed-run-ended` produces: drawn
+    // to now, which is the honest reading of a start with no recorded end.
+    const journal: ArbiterDecision[] = [
+      { atIso: at(22, 0), kind: "unclaimed-run", equipmentId: "pump" },
+    ];
+    const [lane] = buildLanes(state(journal), profiled, 23 * 60 + 30);
+    expect(lane.segments).toEqual([
+      { startMin: 22 * 60, endMin: 23 * 60 + 30, kind: "unclaimed", open: true },
+    ]);
   });
 
   it("renders a manual suspension as a manual segment", () => {

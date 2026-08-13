@@ -554,6 +554,29 @@ describe("capacity arbiter", () => {
     expect(entries).toHaveLength(1);
   });
 
+  it("closes an unclaimed run when the load stops, so it reads as a span", () => {
+    // Without the end the timeline can only show where the run started, which
+    // says nothing about how long the load held power outside arbitration.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    h.order("pump", false, { kind: "recipe", instanceId: "i1" });
+    const kinds = h.arbiter
+      .getPublicState()
+      .journal.filter((j) => j.kind.startsWith("unclaimed-run"))
+      .map((j) => j.kind);
+    expect(kinds).toEqual(["unclaimed-run-ended", "unclaimed-run"]); // newest-first
+  });
+
+  it("does not close a run that was never flagged as unclaimed", () => {
+    const h = makeHarness({ priority: ["pump"] });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150); // granted, so the run is arbitrated
+    h.order("pump", false, { kind: "recipe", instanceId: "i1" });
+    const kinds = h.arbiter.getPublicState().journal.map((j) => j.kind);
+    expect(kinds).not.toContain("unclaimed-run-ended");
+  });
+
   // ── Tolerated import & slack (FR-3) ───────────────────────
 
   it("toleratedImportW widens engage and narrows release by exactly that amount", () => {

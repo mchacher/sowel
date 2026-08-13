@@ -8,12 +8,20 @@ import type { ArbiterPublicState } from "../types";
 export interface LaneSegment {
   startMin: number;
   endMin: number;
-  kind: "granted" | "manual";
+  /**
+   * `unclaimed` is a run the arbiter watched but did not grant — a recipe's
+   * must-run fallback (off-peak, hot-water floor). It is a span, not a point:
+   * how long a load held power outside arbitration is the whole question, and
+   * a start marker alone cannot answer it.
+   */
+  kind: "granted" | "manual" | "unclaimed";
+  /** True while the span has no recorded end and is drawn up to now. */
+  open?: boolean;
 }
 
 export interface LaneMarker {
   min: number;
-  kind: "revoked" | "unclaimed-run";
+  kind: "revoked";
   label: string;
 }
 
@@ -51,6 +59,7 @@ export function buildLanes(
     const markers: LaneMarker[] = [];
     let openGrant: number | null = null;
     let openManual: number | null = null;
+    let openUnclaimed: number | null = null;
     for (const entry of todays) {
       if (entry.equipmentId !== id) continue;
       const min = minuteOfDay(entry.atIso);
@@ -81,14 +90,26 @@ export function buildLanes(
           }
           break;
         case "unclaimed-run":
-          markers.push({ min, kind: "unclaimed-run", label: entry.reason ?? "" });
+          openUnclaimed ??= min;
+          break;
+        case "unclaimed-run-ended":
+          if (openUnclaimed !== null) {
+            segments.push({ startMin: openUnclaimed, endMin: min, kind: "unclaimed" });
+            openUnclaimed = null;
+          }
           break;
         default:
           break;
       }
     }
-    if (openGrant !== null) segments.push({ startMin: openGrant, endMin: nowMin, kind: "granted" });
-    if (openManual !== null) segments.push({ startMin: openManual, endMin: nowMin, kind: "manual" });
+    if (openGrant !== null)
+      segments.push({ startMin: openGrant, endMin: nowMin, kind: "granted", open: true });
+    if (openManual !== null)
+      segments.push({ startMin: openManual, endMin: nowMin, kind: "manual", open: true });
+    // Cores older than this field, and runs still going, land here: drawn up to
+    // now, which is the honest reading of "started and never reported an end".
+    if (openUnclaimed !== null)
+      segments.push({ startMin: openUnclaimed, endMin: nowMin, kind: "unclaimed", open: true });
     const pending = state.pending.find((p) => p.equipmentId === id);
     const lastEnd = segments.length > 0 ? segments[segments.length - 1].endMin : null;
     return {

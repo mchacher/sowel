@@ -444,6 +444,14 @@ export class CapacityArbiter {
       }
       if (isOffLike(value) && this.unclaimedRunning.has(equipmentId)) {
         this.unclaimedRunning.delete(equipmentId);
+        // Journaled so the run reads as a span on the timeline. Without an end
+        // the lane could only ever show where it started, which says nothing
+        // about how long the load held power outside arbitration.
+        this.journal({
+          kind: "unclaimed-run-ended",
+          equipmentId,
+          reason: "run outside arbitration finished",
+        });
         this.finishLearnerRun(equipmentId);
       }
     }
@@ -587,6 +595,7 @@ export class CapacityArbiter {
         instanceId: c.instanceId,
         watts: c.watts,
         needW: Math.round(this.engageNeedW(c)),
+        toleratedImportW: c.toleratedImportW,
         reasonWaiting: this.pendingReason(c, accounting.headroomW),
       }));
     const suspensions = [...this.overridesUntil.entries()]

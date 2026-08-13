@@ -299,7 +299,8 @@ export type ArbiterDecisionKind =
   | "revoke-not-honored"
   | "comfort-off-after-revoke"
   | "watts-divergence"
-  | "unclaimed-run";
+  | "unclaimed-run"
+  | "unclaimed-run-ended";
 
 export interface ArbiterDecision {
   atIso: string;
@@ -331,6 +332,8 @@ export interface ArbiterPublicState {
     watts: number;
     /** Surplus the claim waits for — `watts` minus what it will buy from the grid. */
     needW: number;
+    /** Grid the claim accepts to buy; explains the gap between the two above. */
+    toleratedImportW: number;
     reasonWaiting: string;
   }>;
   suspensions: Array<{ equipmentId: string; equipmentName: string; untilIso: string }>;

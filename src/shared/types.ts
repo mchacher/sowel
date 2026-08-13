@@ -683,7 +683,10 @@ export type ArbiterDecisionKind =
   | "revoke-not-honored"
   | "comfort-off-after-revoke"
   | "watts-divergence"
-  | "unclaimed-run";
+  | "unclaimed-run"
+  /** Closes the `unclaimed-run` above, so the timeline can draw a span
+   *  rather than a lone start marker. */
+  | "unclaimed-run-ended";
 
 /** One line of the decision journal (FR-8/FR-9). Bounded ring buffer. */
 export interface ArbiterDecision {
@@ -718,6 +721,12 @@ export interface ArbiterPendingInfo {
    * the whole point of the tolerance, so the gap is routinely large.
    */
   needW: number;
+  /**
+   * Grid the claim accepts to buy. Published so the UI can explain the gap
+   * between `watts` and `needW` instead of leaving two numbers to be
+   * reconciled by the reader.
+   */
+  toleratedImportW: number;
   reasonWaiting: string;
 }
 

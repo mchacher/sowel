@@ -5,7 +5,13 @@ import { useArbiter } from "../../store/useArbiter";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import type { ArbiterDecision, ArbiterPublicState } from "../../types";
-import { buildLanes, isToday, minuteOfDay, type Lane } from "../../lib/arbitration-lanes";
+import {
+  buildLanes,
+  isToday,
+  minuteOfDay,
+  type Lane,
+  type LaneSegment,
+} from "../../lib/arbitration-lanes";
 import {
   equipmentLabelMap,
   flattenZonesWithPath,
@@ -30,12 +36,30 @@ const REVOKE_COLOR = "#E5484D";
 
 /** Translate a timeline marker's raw backend reason code for its tooltip. */
 function markerTitle(m: Lane["markers"][number], t: (k: string) => string): string {
-  if (m.kind === "revoked") {
-    const key = `arbiter.revokeReason.${m.label}`;
-    const tr = t(key);
-    return tr === key ? t("arbiter.kind.revoked") : tr;
-  }
-  return t("arbiter.kind.unclaimed-run");
+  const key = `arbiter.revokeReason.${m.label}`;
+  const tr = t(key);
+  return tr === key ? t("arbiter.kind.revoked") : tr;
+}
+
+/** How each span reads on the lane, and which legend entry names it. */
+const SEGMENT_STYLE: Record<
+  LaneSegment["kind"],
+  { fill: string; stroke: string; labelKey: string }
+> = {
+  granted: { fill: GRANTED_COLOR, stroke: "none", labelKey: "grantedShort" },
+  manual: { fill: "url(#arb-hatch-man)", stroke: MANUAL_COLOR, labelKey: "manual" },
+  unclaimed: { fill: "url(#arb-hatch-hc)", stroke: HC_COLOR, labelKey: "unclaimedShort" },
+};
+
+function hhmm(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+/** "Granted · 13:50 → ongoing" — the span's nature and its extent. */
+function segmentTitle(seg: LaneSegment, t: (k: string) => string): string {
+  const what = t(`arbiter.legend.${SEGMENT_STYLE[seg.kind].labelKey}`);
+  const end = seg.open ? t("arbiter.ongoing") : hhmm(seg.endMin);
+  return `${what} · ${hhmm(seg.startMin)} → ${end}`;
 }
 
 function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: Lane[]; nowMin: number }) {
@@ -67,6 +91,10 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
             <rect width="6" height="6" fill={MANUAL_COLOR} fillOpacity="0.16" />
             <rect width="2.5" height="6" fill={MANUAL_COLOR} fillOpacity="0.7" />
           </pattern>
+          <pattern id="arb-hatch-hc" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
+            <rect width="6" height="6" fill={HC_COLOR} fillOpacity="0.16" />
+            <rect width="2.5" height="6" fill={HC_COLOR} fillOpacity="0.7" />
+          </pattern>
         </defs>
         {[0, 6, 12, 18, 24].map((h) => (
           <g key={h}>
@@ -91,19 +119,41 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
                 {lane.name}
               </text>
               <line x1={LEFT} y1={yMid} x2={x(1440)} y2={yMid} stroke="currentColor" strokeOpacity="0.08" />
-              {lane.segments.map((seg, k) => (
-                <rect
-                  key={k}
-                  x={x(seg.startMin)}
-                  y={yTop}
-                  width={Math.max(2, x(seg.endMin) - x(seg.startMin))}
-                  height={SEG_H}
-                  rx={4}
-                  fill={seg.kind === "granted" ? GRANTED_COLOR : "url(#arb-hatch-man)"}
-                  stroke={seg.kind === "manual" ? MANUAL_COLOR : "none"}
-                  strokeWidth={seg.kind === "manual" ? 1 : 0}
-                />
-              ))}
+              {lane.segments.map((seg, k) => {
+                const w = Math.max(2, x(seg.endMin) - x(seg.startMin));
+                const style = SEGMENT_STYLE[seg.kind];
+                return (
+                  <g key={k}>
+                    <rect
+                      x={x(seg.startMin)}
+                      y={yTop}
+                      width={w}
+                      height={SEG_H}
+                      rx={4}
+                      fill={style.fill}
+                      stroke={style.stroke}
+                      strokeWidth={style.stroke === "none" ? 0 : 1}
+                    >
+                      {/* Every span says what it was and when. Reading a bar off
+                          the axis by eye is guesswork at 1 px per 1.7 min. */}
+                      <title>{segmentTitle(seg, t)}</title>
+                    </rect>
+                    {w > 46 && (
+                      <text
+                        x={x(seg.startMin) + 7}
+                        y={yTop + SEG_H / 2 + 3.5}
+                        fontSize="10"
+                        fontWeight="600"
+                        fill={seg.kind === "granted" ? GRANTED_TEXT : "currentColor"}
+                        fillOpacity={seg.kind === "granted" ? 1 : 0.75}
+                        pointerEvents="none"
+                      >
+                        {t(`arbiter.legend.${style.labelKey}`)}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
               {lane.pendingFromMin !== null && (
                 <rect
                   x={x(lane.pendingFromMin)}
@@ -116,23 +166,18 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
                   strokeOpacity="0.4"
                   strokeWidth={1.2}
                   strokeDasharray="3 3"
-                />
+                >
+                  <title>{`${t("arbiter.legend.pending")} · ${hhmm(lane.pendingFromMin)} → ${t("arbiter.ongoing")}`}</title>
+                </rect>
               )}
               {lane.markers.map((m, k) => (
-                <g key={`m${k}`}>
-                  {m.kind === "revoked" ? (
-                    <path
-                      d={`M ${x(m.min) - 4.5} ${yTop - 7} L ${x(m.min) + 4.5} ${yTop - 7} L ${x(m.min)} ${yTop - 1} Z`}
-                      fill={REVOKE_COLOR}
-                    >
-                      <title>{markerTitle(m, t)}</title>
-                    </path>
-                  ) : (
-                    <rect x={x(m.min) - 3} y={yTop - 8} width={6} height={6} transform={`rotate(45 ${x(m.min)} ${yTop - 5})`} fill={HC_COLOR}>
-                      <title>{markerTitle(m, t)}</title>
-                    </rect>
-                  )}
-                </g>
+                <path
+                  key={`m${k}`}
+                  d={`M ${x(m.min) - 4.5} ${yTop - 7} L ${x(m.min) + 4.5} ${yTop - 7} L ${x(m.min)} ${yTop - 1} Z`}
+                  fill={REVOKE_COLOR}
+                >
+                  <title>{`${markerTitle(m, t)} · ${hhmm(m.min)}`}</title>
+                </path>
               ))}
             </g>
           );
@@ -338,6 +383,12 @@ export function ArbitrationSurface() {
           <span>⏳</span>
           <span>
             <b className="text-text">{p.equipmentName}</b> {waitingReason(p.reasonWaiting, p.needW, t)}
+            {/* The trigger alone leaves "why is it not 2200 W?" unanswered —
+                the appliance rating and the grid it accepts to buy are what
+                make the lower figure make sense. Secondary on purpose. */}
+            <span className="block text-[11.5px] text-text-tertiary">
+              {t("arbiter.waitContext", { watts: p.watts, tolerated: p.toleratedImportW })}
+            </span>
           </span>
         </div>
       ))}
@@ -368,8 +419,18 @@ export function ArbitrationSurface() {
               {t("arbiter.legend.revoked")}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-2.5 h-2.5 rotate-45" style={{ backgroundColor: HC_COLOR }} />
+              <span
+                className="inline-block w-4 h-2.5 rounded-sm border"
+                style={{
+                  borderColor: HC_COLOR,
+                  background: `repeating-linear-gradient(135deg, ${HC_COLOR}, ${HC_COLOR} 2px, transparent 2px, transparent 5px)`,
+                }}
+              />
               {t("arbiter.legend.unclaimed")}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-4 h-2.5 rounded-sm border border-dashed border-text-tertiary" />
+              {t("arbiter.legend.pending")}
             </span>
           </div>
         </div>
