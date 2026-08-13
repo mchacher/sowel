@@ -11,6 +11,17 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.45.x: Arbitration display fixes and UI cleanup
+
+### v1.45.0 — 2026-08-13 { #v1-45-0 }
+
+- Fix (energy): **a load that is actually running is no longer shown as "waiting for surplus"**. When a recipe runs a flexible load as a must-run fallback while its solar-surplus claim stays pending (a hot day with no surplus to grant), the arbitration surface listed it as waiting for surplus even though it was drawing several kW. Such a claim now reads "running (no surplus)" with its own marker; a genuinely idle claim is unchanged. (#491, #492)
+- Fix (energy): **a pending arbiter claim shows the surplus it is waiting for, not its own draw**. A claim that tolerates buying a little grid engages well below its own rating, so quoting the full rating read as "it will never start". The row now shows the surplus the arbiter actually tests against, with the appliance rating and the tolerated grid import given as context, and the surplus timeline gained per-run spans for loads running outside arbitration. Contributed by Adrien Jouve (computingify). (#474)
+- Fix (ui): **equipment widgets that share a name are told apart by their zone**. Two identically named sensors in different rooms were indistinguishable on the dashboard; each now shows its disambiguating zone on a second line, reusing the shortest-suffix labelling already used elsewhere in the app. Contributed by Adrien Jouve (computingify). (#488)
+- Fix (ui): **idle nodes in the live energy diagram stay opaque**. A node at rest dimmed enough for the flow paths to bleed through its icon; the box now keeps full opacity while only its content dims. Contributed by Adrien Jouve (computingify). (#487)
+- Fix (ui): **the energy-meter widget now renders on mobile and the media-player widget on desktop**. Each of the two dashboard widget categories rendered on only one breakpoint. (#323, #324, #485)
+- Internal (ui): a large maintainability pass on the recipe and publisher UI, with no user-facing change. The 2200-line `ZoneRecipesSection` was split into focused per-component modules with a shared zone-options hook, the notification and MQTT publisher pages were unified onto a shared descriptor-driven editor and mapping-source layer, and a jsdom + Testing Library component-test tier was introduced. (#456, #387, #457, #458, #484, #486, #489, #490)
+
 ## 1.44.x: API input validation and OpenAPI
 
 ### v1.44.0 — 2026-08-13 { #v1-44-0 }

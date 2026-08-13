@@ -11,6 +11,17 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.45.x : Corrections d'affichage de l'arbitrage et nettoyage de l'UI
+
+### v1.45.0 — 2026-08-13 { #v1-45-0 }
+
+- Correctif (énergie) : **une charge qui tourne réellement n'est plus affichée « en attente de surplus »**. Quand une recette fait tourner une charge pilotable en repli « marche obligatoire » alors que sa demande de surplus solaire reste en attente (journée chaude, aucun surplus à accorder), la surface d'arbitrage l'indiquait « en attente de surplus » alors qu'elle consommait plusieurs kW. Une telle demande affiche désormais « en marche (hors surplus) » avec son propre marqueur ; une demande réellement à l'arrêt est inchangée. (#491, #492)
+- Correctif (énergie) : **une demande d'arbitrage en attente indique le surplus qu'elle attend, pas sa propre consommation**. Une demande qui tolère d'acheter un peu de réseau démarre bien en dessous de sa puissance nominale ; afficher la puissance nominale laissait croire « ça ne démarrera jamais ». La ligne montre maintenant le surplus réellement testé par l'arbitre, avec la puissance de l'appareil et l'import réseau toléré en contexte, et la frise du surplus a gagné des segments par run pour les charges tournant hors arbitrage. Contribution d'Adrien Jouve (computingify). (#474)
+- Correctif (ui) : **les tuiles d'équipements portant le même nom sont distinguées par leur zone**. Deux capteurs de même nom dans des pièces différentes étaient indiscernables sur le tableau de bord ; chacun affiche désormais sa zone distinctive sur une deuxième ligne, en réutilisant l'étiquetage par plus court suffixe déjà employé ailleurs dans l'application. Contribution d'Adrien Jouve (computingify). (#488)
+- Correctif (ui) : **les nœuds au repos du schéma énergétique en direct restent opaques**. Un nœud à l'arrêt s'estompait assez pour laisser transparaître les flux à travers son icône ; la boîte garde maintenant une opacité pleine et seul son contenu s'estompe. Contribution d'Adrien Jouve (computingify). (#487)
+- Correctif (ui) : **la tuile compteur d'énergie s'affiche désormais sur mobile et la tuile lecteur multimédia sur ordinateur**. Chacune des deux catégories de tuiles ne s'affichait que sur un seul format d'écran. (#323, #324, #485)
+- Interne (ui) : grande passe de maintenabilité sur l'UI des recettes et des publishers, sans changement visible. Le fichier `ZoneRecipesSection` de 2200 lignes a été découpé en modules par composant avec un hook partagé d'options de zone, les pages de publishers de notifications et MQTT ont été unifiées sur un éditeur descriptif et une couche de source de mapping partagés, et un niveau de tests de composants jsdom + Testing Library a été introduit. (#456, #387, #457, #458, #484, #486, #489, #490)
+
 ## 1.44.x : Validation des entrées API et OpenAPI
 
 ### v1.44.0 — 2026-08-13 { #v1-44-0 }
