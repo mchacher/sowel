@@ -420,58 +420,69 @@ function LiveDiagram({
           </div>
         </div>
 
-        {/* Réseau (grid) — placed mid-height so the bottom Solar↔Grid curve has room to loop below */}
+        {/* Réseau (grid) — placed mid-height so the bottom Solar↔Grid curve has room to loop below.
+         *  The box itself stays fully opaque even when idle: the skeleton paths start at its
+         *  center, so a translucent box would let the grey line show through the icon. Only the
+         *  contents are dimmed. */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 left-0 w-[22%] h-[29%] flex flex-col items-center justify-center gap-1 px-2 py-2 bg-surface border border-border rounded-[14px] z-10 ${
-            Math.abs(grid) < 5 ? "opacity-40" : ""
-          }`}
+          className="absolute top-1/2 -translate-y-1/2 left-0 w-[22%] h-[29%] flex flex-col items-center justify-center px-2 py-2 bg-surface border border-border rounded-[14px] z-10"
           style={{ color: gridColor }}
         >
-          <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
-            {t("energy.live.label.grid")}
-          </div>
-          <svg className="w-9 h-9 sm:w-10 sm:h-10" viewBox="-60 -60 605 605" fill="currentColor">
-            {/* Transmission pylon — silhouette from electricity-svgrepo-com.svg
-             * with the 8 outer "extremity" corners rounded via Q (quadratic
-             * Bézier) commands at radius ≈ 25. ViewBox padded ±60 so the icon
-             * appears visually lighter (matches the solar panel weight). */}
-            <path d="M 485 141.748 V 101.926 Q 485 76.926 462.075 66.926 L 331.569 10 Q 308.644 0 283.644 0 H 201.356 Q 176.356 0 153.431 10 L 22.925 66.926 Q 0 76.926 0 101.926 V 141.748 H 159.45 L 67.511 455 H 0 V 460 Q 0 485 25 485 H 460 Q 485 485 485 460 V 455 H 417.489 L 325.55 141.748 H 485 Z M 194.485 111.748 V 45 Q 194.485 30 209.485 30 H 275.514 Q 290.514 30 290.514 45 V 111.748 H 194.485 Z M455,111.748H320.515v-73.84L455,96.57V111.748z M30,96.57l134.485-58.663v73.84H30V96.57z M372.125,455h-259.25L242.5,313.804L372.125,455z M262.863,291.624l57.142-62.243l53.706,182.985L262.863,291.624z M111.289,412.366l53.706-182.985l57.142,62.243L111.289,412.366z M310.139,195.766L242.5,269.442l-67.639-73.676l15.854-54.018h103.569L310.139,195.766z" />
-          </svg>
-          <div className="font-mono font-bold text-[16px] sm:text-[19px] leading-none tracking-tight flex items-baseline gap-1">
-            <span className="text-[18px] font-bold">{exporting ? "↓" : "↑"}</span>
-            {(() => {
-              const f = formatPower(gridPower !== null ? grid : null);
-              return (
-                <>
-                  <span>{f.num}</span>
-                  <span className="text-[11px] text-text-tertiary font-semibold">{f.unit}</span>
-                </>
-              );
-            })()}
+          <div
+            className={`flex flex-col items-center justify-center gap-1 ${
+              Math.abs(grid) < 5 ? "opacity-40" : ""
+            }`}
+          >
+            <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+              {t("energy.live.label.grid")}
+            </div>
+            <svg className="w-9 h-9 sm:w-10 sm:h-10" viewBox="-60 -60 605 605" fill="currentColor">
+              {/* Transmission pylon — silhouette from electricity-svgrepo-com.svg
+               * with the 8 outer "extremity" corners rounded via Q (quadratic
+               * Bézier) commands at radius ≈ 25. ViewBox padded ±60 so the icon
+               * appears visually lighter (matches the solar panel weight). */}
+              <path d="M 485 141.748 V 101.926 Q 485 76.926 462.075 66.926 L 331.569 10 Q 308.644 0 283.644 0 H 201.356 Q 176.356 0 153.431 10 L 22.925 66.926 Q 0 76.926 0 101.926 V 141.748 H 159.45 L 67.511 455 H 0 V 460 Q 0 485 25 485 H 460 Q 485 485 485 460 V 455 H 417.489 L 325.55 141.748 H 485 Z M 194.485 111.748 V 45 Q 194.485 30 209.485 30 H 275.514 Q 290.514 30 290.514 45 V 111.748 H 194.485 Z M455,111.748H320.515v-73.84L455,96.57V111.748z M30,96.57l134.485-58.663v73.84H30V96.57z M372.125,455h-259.25L242.5,313.804L372.125,455z M262.863,291.624l57.142-62.243l53.706,182.985L262.863,291.624z M111.289,412.366l53.706-182.985l57.142,62.243L111.289,412.366z M310.139,195.766L242.5,269.442l-67.639-73.676l15.854-54.018h103.569L310.139,195.766z" />
+            </svg>
+            <div className="font-mono font-bold text-[16px] sm:text-[19px] leading-none tracking-tight flex items-baseline gap-1">
+              <span className="text-[18px] font-bold">{exporting ? "↓" : "↑"}</span>
+              {(() => {
+                const f = formatPower(gridPower !== null ? grid : null);
+                return (
+                  <>
+                    <span>{f.num}</span>
+                    <span className="text-[11px] text-text-tertiary font-semibold">{f.unit}</span>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
 
-        {/* Solaire */}
+        {/* Solaire — same opaque-box / dimmed-contents treatment as Réseau above. */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 right-0 w-[22%] h-[29%] flex flex-col items-center justify-center gap-1 px-2 py-2 bg-surface border border-border rounded-[14px] z-10 ${
-            solar < 5 ? "opacity-40" : ""
-          }`}
+          className="absolute top-1/2 -translate-y-1/2 right-0 w-[22%] h-[29%] flex flex-col items-center justify-center px-2 py-2 bg-surface border border-border rounded-[14px] z-10"
           style={{ color: AUTO_COLOR }}
         >
-          <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
-            {t("energy.live.label.production")}
-          </div>
-          <SolarPanelIcon className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.4} />
-          <div className="font-mono font-bold text-[16px] sm:text-[19px] leading-none tracking-tight flex items-baseline gap-1">
-            {(() => {
-              const f = formatPower(solarPower !== null ? solar : null);
-              return (
-                <>
-                  <span>{f.num}</span>
-                  <span className="text-[11px] text-text-tertiary font-semibold">{f.unit}</span>
-                </>
-              );
-            })()}
+          <div
+            className={`flex flex-col items-center justify-center gap-1 ${
+              solar < 5 ? "opacity-40" : ""
+            }`}
+          >
+            <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+              {t("energy.live.label.production")}
+            </div>
+            <SolarPanelIcon className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.4} />
+            <div className="font-mono font-bold text-[16px] sm:text-[19px] leading-none tracking-tight flex items-baseline gap-1">
+              {(() => {
+                const f = formatPower(solarPower !== null ? solar : null);
+                return (
+                  <>
+                    <span>{f.num}</span>
+                    <span className="text-[11px] text-text-tertiary font-semibold">{f.unit}</span>
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
 
