@@ -138,27 +138,30 @@ describe("EquipmentWidget", () => {
     expect(screen.getByText("Living room temp")).toBeTruthy();
   });
 
-  // Spec 139 — two widgets on homonym equipments are told apart by their zone.
-  it("falls back to the zone-qualified label, and a manual label still wins", () => {
+  // Spec 139 — two widgets on homonym equipments are told apart by their zone,
+  // on a second line so the name itself never gets truncated away.
+  it("shows the zone under the name, and a manual label replaces both", () => {
     render(
       <EquipmentWidget
         widget={makeWidget()}
         equipment={makeEquipment()}
-        equipmentLabel="Plug — Bureau"
+        equipmentZone="Bureau"
         onExecuteOrder={vi.fn()}
       />,
     );
-    expect(screen.getByText("Plug — Bureau")).toBeTruthy();
+    expect(screen.getByText("Plug")).toBeTruthy();
+    expect(screen.getByText("Bureau")).toBeTruthy();
 
     render(
       <EquipmentWidget
         widget={makeWidget({ label: "Imprimante 3D" })}
         equipment={makeEquipment()}
-        equipmentLabel="Plug — Bureau"
+        equipmentZone="Bureau"
         onExecuteOrder={vi.fn()}
       />,
     );
     expect(screen.getByText("Imprimante 3D")).toBeTruthy();
+    expect(screen.queryAllByText("Bureau")).toHaveLength(1); // only the first render's
   });
 
   // Issue #324 — a media_player used to fall through to the generic widget on

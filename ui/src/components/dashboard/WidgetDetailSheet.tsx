@@ -51,6 +51,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
+import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 
 // ============================================================
 // Equipment detail sheets
@@ -59,15 +60,17 @@ import { BottomSheet } from "./BottomSheet";
 interface EquipmentDetailProps {
   widget: DashboardWidget;
   equipment: EquipmentWithDetails;
-  /** Zone-qualified name (spec 139), set only when a homonym shares the dashboard. */
-  equipmentLabel?: string;
+  /** Zone qualifier (spec 139), set only when a homonym shares the dashboard. */
+  equipmentZone?: string;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   onClose: () => void;
 }
 
-export function EquipmentDetailSheet({ widget, equipment, equipmentLabel, onExecuteOrder, onClose }: EquipmentDetailProps) {
+export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecuteOrder, onClose }: EquipmentDetailProps) {
   const { isLight, isShutter, isAwning, isThermostat, isHeater, isSensor, isGate, isPoolHeatPump } = useEquipmentState(equipment);
-  const label = widget.label || equipmentLabel || equipment.name;
+  // A full-width sheet header has room for the joined form, unlike the cards.
+  const label = widget.label
+    || (equipmentZone ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${equipmentZone}` : equipment.name);
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
   // Get icon

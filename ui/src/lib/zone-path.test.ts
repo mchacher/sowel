@@ -3,6 +3,7 @@ import {
   flattenZonesWithPath,
   zoneChainMap,
   equipmentLabelMap,
+  equipmentZoneQualifiers,
   groupEquipmentsByZone,
   ZONE_PATH_SEPARATOR,
 } from "./zone-path";
@@ -207,6 +208,45 @@ describe("equipmentLabelMap", () => {
     );
     expect(labels.get("c1")).toBe("VMC — Maison");
     expect(labels.get("c2")).toBe("VMC — Maison");
+  });
+});
+
+describe("equipmentZoneQualifiers", () => {
+  const chains = zoneChainMap(zones);
+
+  it("returns nothing for a name that needs no qualifier", () => {
+    const qualifiers = equipmentZoneQualifiers(
+      [
+        { id: "s1", name: "Hygro salon", zoneId: "maison" },
+        { id: "s2", name: "Température", zoneId: "m-sdb" },
+      ],
+      chains,
+    );
+    expect(qualifiers.size).toBe(0);
+  });
+
+  it("gives the zone alone, so callers can render it on its own line", () => {
+    const qualifiers = equipmentZoneQualifiers(
+      [
+        { id: "t1", name: "Température", zoneId: "m-sdb" },
+        { id: "t2", name: "Température", zoneId: "rdc-sdb" },
+      ],
+      chains,
+    );
+    expect(qualifiers.get("t1")).toBe("Maison › Salle de bain");
+    expect(qualifiers.get("t2")).toBe("RDC › Salle de bain");
+  });
+
+  it("skips an equipment whose zone is gone rather than qualifying it with nothing", () => {
+    const qualifiers = equipmentZoneQualifiers(
+      [
+        { id: "o1", name: "VMC", zoneId: "deleted" },
+        { id: "o2", name: "VMC", zoneId: "maison" },
+      ],
+      chains,
+    );
+    expect(qualifiers.has("o1")).toBe(false);
+    expect(qualifiers.get("o2")).toBe("Maison");
   });
 });
 

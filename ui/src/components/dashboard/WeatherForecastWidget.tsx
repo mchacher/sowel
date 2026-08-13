@@ -10,6 +10,7 @@ import { WidgetCard } from "./WidgetCard";
 
 interface WeatherForecastWidgetProps {
   label: string;
+  sublabel?: string;
   equipment: EquipmentWithDetails;
 }
 
@@ -33,7 +34,7 @@ const CONDITION_LABELS_EN: Record<string, string> = {
   stormy: "Stormy",
 };
 
-export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidgetProps) {
+export function WeatherForecastWidget({ label, sublabel, equipment }: WeatherForecastWidgetProps) {
   const { i18n } = useTranslation();
   const days = parseForecastDays(equipment.dataBindings);
   const tomorrow = days[0]; // J+1
@@ -52,7 +53,7 @@ export function WeatherForecastWidget({ label, equipment }: WeatherForecastWidge
     : "";
 
   return (
-    <WidgetCard label={label}>
+    <WidgetCard label={label} sublabel={sublabel}>
       {/* Zone 2: Content — vertical on mobile, horizontal on desktop */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 flex-1 min-h-0">
         {/* Icon — 36px mobile, 72px desktop (wrapped in div for proper hide/show) */}

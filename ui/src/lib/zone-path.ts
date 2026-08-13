@@ -108,21 +108,25 @@ function segmentsToSeparate(chains: string[][]): number {
   return longest;
 }
 
+/** Separator between an equipment name and its zone qualifier. */
+export const EQUIPMENT_ZONE_SEPARATOR = " — ";
+
 /**
- * Label a list of equipment candidates: bare name when it is unique in that
- * list, `name — zone` when it is not. Qualifying every option instead would
- * push the useful part out of a compact dropdown for no gain.
+ * The zone qualifier each equipment needs to be told from its homonyms in the
+ * given list — nothing at all for a name that is already unique there.
+ * Qualifying every candidate instead would push the useful part out of a
+ * compact dropdown for no gain.
  *
- * The zone qualifier is the shortest suffix that separates the *candidates*,
+ * The qualifier is the shortest zone suffix that separates the *candidates*,
  * not the shortest that separates every zone in the house: three ventilations
  * sitting in three plainly different rooms only need the room name, however
  * deep those rooms are.
  *
- * Two equipments sharing a name *and* a zone stay identical — nothing but a
+ * Two equipments sharing a name *and* a zone get no qualifier — nothing but a
  * rename can tell those apart, and inventing an index would only look like
  * information.
  */
-export function equipmentLabelMap(
+export function equipmentZoneQualifiers(
   equipments: { id: string; name: string; zoneId: string }[],
   zoneChains: Map<string, string[]>,
 ): Map<string, string> {
@@ -133,18 +137,37 @@ export function equipmentLabelMap(
     else byName.set(eq.name, [eq]);
   }
 
-  const labels = new Map<string, string>();
-  for (const [name, group] of byName) {
-    if (group.length === 1) {
-      labels.set(group[0].id, name);
-      continue;
-    }
+  const qualifiers = new Map<string, string>();
+  for (const group of byName.values()) {
+    if (group.length === 1) continue;
     const chains = group.map((eq) => zoneChains.get(eq.zoneId) ?? []);
     const segments = segmentsToSeparate(chains);
     group.forEach((eq, i) => {
       const zone = suffix(chains[i], segments);
-      labels.set(eq.id, zone ? `${name} — ${zone}` : name);
+      if (zone) qualifiers.set(eq.id, zone);
     });
+  }
+  return qualifiers;
+}
+
+/**
+ * {@link equipmentZoneQualifiers} flattened into one string per equipment:
+ * bare name when it is unique in the list, `name — zone` when it is not.
+ *
+ * This is the form for flat controls — dropdowns, option lists, chips. Callers
+ * with room for two lines (dashboard widgets) take the qualifier on its own
+ * instead: at widget width the joined string truncates, and it truncates in
+ * the middle of the very part that disambiguates.
+ */
+export function equipmentLabelMap(
+  equipments: { id: string; name: string; zoneId: string }[],
+  zoneChains: Map<string, string[]>,
+): Map<string, string> {
+  const qualifiers = equipmentZoneQualifiers(equipments, zoneChains);
+  const labels = new Map<string, string>();
+  for (const eq of equipments) {
+    const zone = qualifiers.get(eq.id);
+    labels.set(eq.id, zone ? `${eq.name}${EQUIPMENT_ZONE_SEPARATOR}${zone}` : eq.name);
   }
   return labels;
 }

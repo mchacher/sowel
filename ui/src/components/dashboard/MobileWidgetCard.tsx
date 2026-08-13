@@ -40,8 +40,8 @@ import { Cloud, WashingMachine, Tv, Camera } from "lucide-react";
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
   equipment: EquipmentWithDetails;
-  /** Zone-qualified name (spec 139), set only when a homonym shares the dashboard. */
-  equipmentLabel?: string;
+  /** Zone qualifier (spec 139), set only when a homonym shares the dashboard. */
+  equipmentZone?: string;
   onClick?: () => void;
   editMode?: boolean;
 }
@@ -49,12 +49,15 @@ interface MobileWidgetCardProps {
 export function MobileWidgetCard({
   widget,
   equipment,
-  equipmentLabel,
+  equipmentZone,
   onClick,
   editMode,
 }: MobileWidgetCardProps) {
   const { t } = useTranslation();
-  const label = widget.label || equipmentLabel || equipment.name;
+  const label = widget.label || equipment.name;
+  // Two half-width columns on a phone: joining the zone to the title would cut
+  // it off exactly where it starts to disambiguate. Own line, quieter.
+  const zone = widget.label ? undefined : equipmentZone;
   const { icon, stateLines } = useMobileState(widget, equipment, t);
 
   return (
@@ -72,6 +75,11 @@ export function MobileWidgetCard({
       >
         {label}
       </span>
+      {zone && (
+        <span className="text-[10px] text-text-tertiary truncate w-full text-center leading-tight">
+          {zone}
+        </span>
+      )}
 
       {/* Icon */}
       <div className="flex-1 flex items-center justify-center min-h-0">

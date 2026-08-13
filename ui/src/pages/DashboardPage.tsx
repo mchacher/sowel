@@ -9,7 +9,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 import { WidgetGrid } from "../components/dashboard/WidgetGrid";
 import { AddWidgetModal } from "../components/dashboard/AddWidgetModal";
 import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../types";
-import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../lib/zone-path";
+import { equipmentZoneQualifiers, flattenZonesWithPath, zoneChainMap } from "../lib/zone-path";
 
 export function DashboardPage() {
   useWsSubscription(["equipments", "zones"]);
@@ -66,9 +66,9 @@ export function DashboardPage() {
 
   // Same treatment for equipments (spec 139): two widgets driving homonym
   // equipments are indistinguishable, so the ones that clash get their zone
-  // appended. Scoped to what the dashboard actually shows — a lone
+  // shown under the name. Scoped to what the dashboard actually shows — a lone
   // "Température" widget keeps its bare name even if the house has five more.
-  const equipmentLabels = useMemo(() => {
+  const equipmentZones = useMemo(() => {
     const shown = new Map<string, EquipmentWithDetails>();
     for (const widget of widgets) {
       if (widget.type !== "equipment" || !widget.equipmentId) continue;
@@ -77,7 +77,7 @@ export function DashboardPage() {
       // homonyms: keying by id keeps it from qualifying itself.
       if (equipment) shown.set(equipment.id, equipment);
     }
-    return equipmentLabelMap([...shown.values()], zoneChainMap(zoneOptions));
+    return equipmentZoneQualifiers([...shown.values()], zoneChainMap(zoneOptions));
   }, [widgets, equipmentMap, zoneOptions]);
 
   const handleAddEquipment = useCallback(async (equipmentId: string) => {
@@ -204,7 +204,7 @@ export function DashboardPage() {
           equipmentMap={equipmentMap}
           zoneMap={zoneMap}
           zoneLabels={zoneLabels}
-          equipmentLabels={equipmentLabels}
+          equipmentZones={equipmentZones}
           equipments={equipments}
           editMode={editMode}
           onExecuteOrder={executeOrder}
