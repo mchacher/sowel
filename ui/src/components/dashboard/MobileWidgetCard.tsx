@@ -40,13 +40,21 @@ import { Cloud, WashingMachine, Tv, Camera } from "lucide-react";
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
   equipment: EquipmentWithDetails;
+  /** Zone-qualified name (spec 139), set only when a homonym shares the dashboard. */
+  equipmentLabel?: string;
   onClick?: () => void;
   editMode?: boolean;
 }
 
-export function MobileWidgetCard({ widget, equipment, onClick, editMode }: MobileWidgetCardProps) {
+export function MobileWidgetCard({
+  widget,
+  equipment,
+  equipmentLabel,
+  onClick,
+  editMode,
+}: MobileWidgetCardProps) {
   const { t } = useTranslation();
-  const label = widget.label || equipment.name;
+  const label = widget.label || equipmentLabel || equipment.name;
   const { icon, stateLines } = useMobileState(widget, equipment, t);
 
   return (

@@ -8,8 +8,8 @@ import { useAuth } from "../store/useAuth";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { WidgetGrid } from "../components/dashboard/WidgetGrid";
 import { AddWidgetModal } from "../components/dashboard/AddWidgetModal";
-import type { ZoneWithChildren, WidgetFamily } from "../types";
-import { flattenZonesWithPath } from "../lib/zone-path";
+import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../types";
+import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../lib/zone-path";
 
 export function DashboardPage() {
   useWsSubscription(["equipments", "zones"]);
@@ -50,17 +50,35 @@ export function DashboardPage() {
     return map;
   }, [tree]);
 
+  const zoneOptions = useMemo(() => flattenZonesWithPath(tree), [tree]);
+
   // Path-aware zone labels (spec 139): a widget on one of two homonym zones
   // must say which one it watches.
   const zoneLabels = useMemo(
-    () => new Map(flattenZonesWithPath(tree).map((z) => [z.id, z.label])),
-    [tree],
+    () => new Map(zoneOptions.map((z) => [z.id, z.label])),
+    [zoneOptions],
   );
 
   // Build equipment map for fast lookup
   const equipmentMap = useMemo(() => {
     return new Map(equipments.map((e) => [e.id, e]));
   }, [equipments]);
+
+  // Same treatment for equipments (spec 139): two widgets driving homonym
+  // equipments are indistinguishable, so the ones that clash get their zone
+  // appended. Scoped to what the dashboard actually shows — a lone
+  // "Température" widget keeps its bare name even if the house has five more.
+  const equipmentLabels = useMemo(() => {
+    const shown = new Map<string, EquipmentWithDetails>();
+    for (const widget of widgets) {
+      if (widget.type !== "equipment" || !widget.equipmentId) continue;
+      const equipment = equipmentMap.get(widget.equipmentId);
+      // Same equipment twice on the dashboard is one candidate, not two
+      // homonyms: keying by id keeps it from qualifying itself.
+      if (equipment) shown.set(equipment.id, equipment);
+    }
+    return equipmentLabelMap([...shown.values()], zoneChainMap(zoneOptions));
+  }, [widgets, equipmentMap, zoneOptions]);
 
   const handleAddEquipment = useCallback(async (equipmentId: string) => {
     await createWidget({ type: "equipment", equipmentId });
@@ -186,6 +204,7 @@ export function DashboardPage() {
           equipmentMap={equipmentMap}
           zoneMap={zoneMap}
           zoneLabels={zoneLabels}
+          equipmentLabels={equipmentLabels}
           equipments={equipments}
           editMode={editMode}
           onExecuteOrder={executeOrder}

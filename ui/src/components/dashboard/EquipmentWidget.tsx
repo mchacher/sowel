@@ -61,6 +61,8 @@ function resolveWidgetIcon(iconKey: string | undefined, fallback: ReactNode): Re
 interface EquipmentWidgetProps {
   widget: DashboardWidget;
   equipment: EquipmentWithDetails;
+  /** Zone-qualified name (spec 139), set only when a homonym shares the dashboard. */
+  equipmentLabel?: string;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   /** Click handler that opens the desktop detail drawer. Currently consumed only by the weather widget. */
   onOpenDetail?: () => void;
@@ -69,6 +71,7 @@ interface EquipmentWidgetProps {
 export function EquipmentWidget({
   widget,
   equipment,
+  equipmentLabel,
   onExecuteOrder,
   onOpenDetail,
 }: EquipmentWidgetProps) {
@@ -89,7 +92,7 @@ export function EquipmentWidget({
     isMediaPlayer,
   } = useEquipmentState(equipment);
 
-  const label = widget.label || equipment.name;
+  const label = widget.label || equipmentLabel || equipment.name;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
   if (isLight)

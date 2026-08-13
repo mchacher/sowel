@@ -38,6 +38,8 @@ interface WidgetGridProps {
   zoneMap: Map<string, ZoneWithChildren>;
   /** zoneId → path-aware label (spec 139), used wherever a widget shows a zone name. */
   zoneLabels: Map<string, string>;
+  /** equipmentId → zone-qualified label (spec 139) for the homonyms on this dashboard. */
+  equipmentLabels: Map<string, string>;
   equipments: EquipmentWithDetails[];
   editMode: boolean;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
@@ -50,6 +52,7 @@ export function WidgetGrid({
   equipmentMap,
   zoneMap,
   zoneLabels,
+  equipmentLabels,
   equipments,
   editMode,
   onExecuteOrder,
@@ -96,6 +99,7 @@ export function WidgetGrid({
               equipmentMap={equipmentMap}
               zoneMap={zoneMap}
               zoneLabels={zoneLabels}
+              equipmentLabels={equipmentLabels}
               equipments={equipments}
               onExecuteOrder={onExecuteOrder}
               isMobile={isMobile}
@@ -109,6 +113,7 @@ export function WidgetGrid({
           <EquipmentDetailSheet
             widget={detailWidget}
             equipment={equipmentMap.get(detailWidget.equipmentId)!}
+            equipmentLabel={equipmentLabels.get(detailWidget.equipmentId)}
             onExecuteOrder={onExecuteOrder}
             onClose={() => setDetailWidgetId(null)}
           />
@@ -137,6 +142,7 @@ export function WidgetGrid({
               equipmentMap={equipmentMap}
               zoneMap={zoneMap}
               zoneLabels={zoneLabels}
+              equipmentLabels={equipmentLabels}
               equipments={equipments}
               onExecuteOrder={onExecuteOrder}
               onDelete={onDelete}
@@ -164,6 +170,7 @@ function SortableWidget({
   equipmentMap,
   zoneMap,
   zoneLabels,
+  equipmentLabels,
   equipments,
   onExecuteOrder,
   onDelete,
@@ -173,6 +180,7 @@ function SortableWidget({
   equipmentMap: Map<string, EquipmentWithDetails>;
   zoneMap: Map<string, ZoneWithChildren>;
   zoneLabels: Map<string, string>;
+  equipmentLabels: Map<string, string>;
   equipments: EquipmentWithDetails[];
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   onDelete: (id: string) => void;
@@ -209,8 +217,12 @@ function SortableWidget({
     : undefined;
   const sensorBindings = sensorEquipment ? getSensorBindings(sensorEquipment.dataBindings) : [];
 
+  // The rename field opens on the title the card is showing, zone qualifier
+  // included — anything else would look like it is editing another widget.
   const currentLabel = widget.label
-    || (widget.type === "equipment" && widget.equipmentId ? equipmentMap.get(widget.equipmentId)?.name : undefined)
+    || (widget.type === "equipment" && widget.equipmentId
+      ? equipmentLabels.get(widget.equipmentId) ?? equipmentMap.get(widget.equipmentId)?.name
+      : undefined)
     || (widget.type === "zone" && widget.zoneId ? zoneLabels.get(widget.zoneId) : undefined)
     || "";
 
@@ -327,6 +339,7 @@ function SortableWidget({
         equipmentMap={equipmentMap}
         zoneMap={zoneMap}
         zoneLabels={zoneLabels}
+        equipmentLabels={equipmentLabels}
         equipments={equipments}
         onExecuteOrder={onExecuteOrder}
         isMobile={isMobile}
@@ -341,6 +354,7 @@ function WidgetRenderer({
   equipmentMap,
   zoneMap,
   zoneLabels,
+  equipmentLabels,
   equipments,
   onExecuteOrder,
   isMobile,
@@ -351,6 +365,7 @@ function WidgetRenderer({
   equipmentMap: Map<string, EquipmentWithDetails>;
   zoneMap: Map<string, ZoneWithChildren>;
   zoneLabels: Map<string, string>;
+  equipmentLabels: Map<string, string>;
   equipments: EquipmentWithDetails[];
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   isMobile?: boolean;
@@ -360,6 +375,7 @@ function WidgetRenderer({
   if (widget.type === "equipment" && widget.equipmentId) {
     const equipment = equipmentMap.get(widget.equipmentId);
     if (!equipment) return null;
+    const equipmentLabel = equipmentLabels.get(widget.equipmentId);
 
     // On mobile: ALL equipment widgets use compact MobileWidgetCard
     if (isMobile) {
@@ -368,6 +384,7 @@ function WidgetRenderer({
         <MobileWidgetCard
           widget={widget}
           equipment={equipment}
+          equipmentLabel={equipmentLabel}
           onClick={mobileClick}
           editMode={editMode}
         />
@@ -378,6 +395,7 @@ function WidgetRenderer({
       <EquipmentWidget
         widget={widget}
         equipment={equipment}
+        equipmentLabel={equipmentLabel}
         onExecuteOrder={onExecuteOrder}
         onOpenDetail={editMode ? undefined : onOpenDetail}
       />

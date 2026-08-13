@@ -59,13 +59,15 @@ import { BottomSheet } from "./BottomSheet";
 interface EquipmentDetailProps {
   widget: DashboardWidget;
   equipment: EquipmentWithDetails;
+  /** Zone-qualified name (spec 139), set only when a homonym shares the dashboard. */
+  equipmentLabel?: string;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   onClose: () => void;
 }
 
-export function EquipmentDetailSheet({ widget, equipment, onExecuteOrder, onClose }: EquipmentDetailProps) {
+export function EquipmentDetailSheet({ widget, equipment, equipmentLabel, onExecuteOrder, onClose }: EquipmentDetailProps) {
   const { isLight, isShutter, isAwning, isThermostat, isHeater, isSensor, isGate, isPoolHeatPump } = useEquipmentState(equipment);
-  const label = widget.label || equipment.name;
+  const label = widget.label || equipmentLabel || equipment.name;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
   // Get icon
