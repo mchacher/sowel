@@ -42,6 +42,7 @@ import type {
 import { usePushSubscription } from "../hooks/usePushSubscription";
 import {
   deriveSourceZoneFilter,
+  recipeInstanceLabel,
   repeatModeOf,
   repeatFieldsFor,
   type RepeatMode,
@@ -784,6 +785,7 @@ function MappingRow({
             zones={zones}
             recipeInstances={recipeInstances}
             recipes={recipes}
+            recipeOptionLabel={(inst) => recipeInstanceLabel(inst, recipes, equipments)}
           />
 
           <div>
@@ -960,6 +962,7 @@ function AddMappingForm({
           zones={zones}
           recipeInstances={recipeInstances}
           recipes={recipes}
+          recipeOptionLabel={(inst) => recipeInstanceLabel(inst, recipes, equipments)}
         />
 
         <div>

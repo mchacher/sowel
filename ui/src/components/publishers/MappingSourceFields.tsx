@@ -24,6 +24,13 @@ interface MappingSourceFieldsProps {
   zones: ZoneOption[];
   recipeInstances: RecipeInstance[];
   recipes: RecipeInfo[];
+  /**
+   * How a recipe instance is labelled in the dropdown. Defaults to the recipe
+   * name (the MQTT page behaviour); the notification page passes a richer label
+   * that appends the target equipment names so identical recipes are
+   * distinguishable.
+   */
+  recipeOptionLabel?: (inst: RecipeInstance) => string;
 }
 
 export function MappingSourceFields({
@@ -40,6 +47,7 @@ export function MappingSourceFields({
   zones,
   recipeInstances,
   recipes,
+  recipeOptionLabel,
 }: MappingSourceFieldsProps) {
   const { t } = useTranslation();
   const k = (suffix: string) => t(`${keyPrefix}.${suffix}`);
@@ -142,14 +150,13 @@ export function MappingSourceFields({
             className={selectClass}
           >
             <option value="">{k("selectSource")}</option>
-            {filteredRecipeInstances.map((inst) => {
-              const recipe = recipes.find((r) => r.id === inst.recipeId);
-              return (
-                <option key={inst.id} value={inst.id}>
-                  {recipe?.name ?? inst.recipeId}
-                </option>
-              );
-            })}
+            {filteredRecipeInstances.map((inst) => (
+              <option key={inst.id} value={inst.id}>
+                {recipeOptionLabel
+                  ? recipeOptionLabel(inst)
+                  : (recipes.find((r) => r.id === inst.recipeId)?.name ?? inst.recipeId)}
+              </option>
+            ))}
           </select>
         </div>
       )}

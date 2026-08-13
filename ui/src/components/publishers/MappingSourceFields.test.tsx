@@ -57,6 +57,20 @@ describe("MappingSourceFields", () => {
     expect(screen.getByRole("option", { name: "motion" })).toBeTruthy();
   });
 
+  it("uses recipeOptionLabel for recipe options when provided (notif page)", () => {
+    const inst = { id: "ri-1", recipeId: "r-1", params: {}, state: {} } as Parameters<
+      typeof MappingSourceFields
+    >[0]["recipeInstances"][number];
+    renderFields({
+      sourceType: "recipe",
+      sourceId: "",
+      recipeInstances: [inst],
+      recipes: [{ id: "r-1", name: "State Watch" } as never],
+      recipeOptionLabel: (i) => `${i.recipeId} (Washer)`,
+    });
+    expect(screen.getByRole("option", { name: "r-1 (Washer)" })).toBeTruthy();
+  });
+
   it("resets the downstream selections when the source type changes", () => {
     const props = renderFields();
     const sourceTypeSelect = screen.getAllByRole("combobox")[0];
