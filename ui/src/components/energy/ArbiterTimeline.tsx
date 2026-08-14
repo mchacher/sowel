@@ -97,7 +97,9 @@ export function ArbiterTimeline() {
   }, [data]);
 
   if (failed && !data)
-    return <p className="mt-4 text-[12px] text-text-tertiary">{t("arbiter.timeline.unavailable")}</p>;
+    return (
+      <p className="mt-4 text-[12px] text-text-tertiary">{t("arbiter.timeline.unavailable")}</p>
+    );
   if (!data || !geom) return null;
   const { start, stepMs, n } = geom;
   const isNow = pageOffset === 0;
@@ -108,15 +110,29 @@ export function ArbiterTimeline() {
   const isDesktop = windowHours === WINDOW_HOURS_DESKTOP;
   const W = 480;
   const H = isDesktop ? 92 : 46;
-  const values = data.surplus.map((s) => ({ x: (Date.parse(s.atIso) - start) / (n * stepMs), v: s.availableW }));
+  const values = data.surplus.map((s) => ({
+    x: (Date.parse(s.atIso) - start) / (n * stepMs),
+    v: s.availableW,
+  }));
   const maxAbs = Math.max(500, ...data.surplus.map((s) => Math.abs(s.availableW)));
   const y0 = Math.round(H * 0.58);
   const yUp = y0; // px available above baseline
   const yDown = H - y0; // px below
-  const yOf = (v: number) => (v >= 0 ? y0 - (v / maxAbs) * (yUp - 2) : y0 + (-v / maxAbs) * (yDown - 2));
+  const yOf = (v: number) =>
+    v >= 0 ? y0 - (v / maxAbs) * (yUp - 2) : y0 + (-v / maxAbs) * (yDown - 2);
   const pts = values.map((p) => `${(p.x * W).toFixed(1)},${yOf(p.v).toFixed(1)}`).join(" ");
   const area = values.length ? `0,${y0} ${pts} ${W},${y0}` : "";
   const scaleKW = (maxAbs / 1000).toFixed(1); // symmetric axis: +/- the same peak
+
+  // ── 2h alignment guides ───────────────────────────────────────
+  // Thin dotted verticals every 2 clock-hours, spanning the curve AND the
+  // ribbons, so a point on the surplus curve reads straight down to its quarter.
+  // Positions are cell-boundary fractions (i/n), identical to the ribbon layout.
+  const gridMarks: number[] = [];
+  for (let i = 0; i <= n; i += 1) {
+    const tm = new Date(start + i * stepMs);
+    if (tm.getMinutes() === 0 && tm.getHours() % 2 === 0) gridMarks.push(i / n);
+  }
 
   // ── journal linkage ───────────────────────────────────────────
   const highlighted = new Set<number>();
@@ -164,63 +180,142 @@ export function ArbiterTimeline() {
         </div>
       </div>
 
-      {/* surplus curve with kW scale */}
-      <div className="flex items-stretch gap-2 my-1">
-        <div className="relative w-[52px] flex-none">
-          <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">+{scaleKW} kW</span>
-          <span className="absolute right-0 text-[8px] font-mono text-text-tertiary" style={{ top: `${y0 - 4}px` }}>0</span>
-          <span className="absolute right-0 text-[8px] font-mono text-text-tertiary" style={{ top: `${H - 10}px` }}>-{scaleKW} kW</span>
+      {/* curve + ribbons, overlaid with thin dotted 2h alignment guides */}
+      <div className="relative">
+        <div className="absolute left-[60px] right-0 top-0 bottom-0 pointer-events-none z-20">
+          {gridMarks.map((f, k) => (
+            <div
+              key={k}
+              className="absolute top-0 bottom-0"
+              style={{
+                left: `${f * 100}%`,
+                borderLeft:
+                  "1px dotted color-mix(in srgb, var(--color-text-tertiary) 35%, transparent)",
+              }}
+            />
+          ))}
         </div>
-        <svg
-          width="100%"
-          viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="none"
-          style={{ display: "block", height: `${H}px` }}
-        >
-          <defs>
-            <clipPath id={`up-${uid}`}>
-              <rect x="0" y="0" width={W} height={y0} />
-            </clipPath>
-            <clipPath id={`dn-${uid}`}>
-              <rect x="0" y={y0} width={W} height={H - y0} />
-            </clipPath>
-          </defs>
-          {area && (
-            <>
-              <polygon points={area} fill="var(--color-solar-injection)" opacity="0.16" clipPath={`url(#up-${uid})`} />
-              <polygon points={area} fill="var(--color-error)" opacity="0.16" clipPath={`url(#dn-${uid})`} />
-              <polyline points={pts} fill="none" stroke="var(--color-solar-injection)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" clipPath={`url(#up-${uid})`} />
-              <polyline points={pts} fill="none" stroke="var(--color-error)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" clipPath={`url(#dn-${uid})`} />
-            </>
-          )}
-          <line x1="0" y1={y0} x2={W} y2={y0} stroke="var(--color-text-tertiary)" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" opacity="0.6" />
-          {isNow && <line x1={W} y1="0" x2={W} y2={H} stroke="var(--color-primary)" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
-        </svg>
-      </div>
 
-      {/* per-load ribbons */}
-      {data.loads.map((load) => (
-        <div key={load.equipmentId} className="flex items-center gap-2 my-[3px]">
-          <span className="w-[52px] flex-none text-right text-[10px] text-text-tertiary truncate">{load.name}</span>
-          <div className="flex flex-1 gap-px relative">
-            {load.quarters.map((s, i) => {
-              const cellTime = start + i * stepMs;
-              const hourEdge = new Date(cellTime).getMinutes() === 0;
-              const selected = selTime === cellTime;
-              return (
-                <button
-                  key={i}
-                  onClick={() => onCell(cellTime)}
-                  title={`${hhmm(cellTime)} · ${t(`arbiter.timeline.state.${s}`)}`}
-                  className={`flex-1 h-[18px] rounded-[1px] ${hourEdge ? "shadow-[inset_1px_0_0_var(--color-border)]" : ""} ${selected ? "outline outline-2 outline-primary z-10" : ""}`}
-                  style={{ backgroundColor: cellColor(s) }}
-                />
-              );
-            })}
-            {isNow && <span className="absolute -top-1 -bottom-1 -right-px w-0.5 bg-primary" />}
+        {/* surplus curve with kW scale */}
+        <div className="flex items-stretch gap-2 mt-1 mb-3">
+          <div className="relative w-[52px] flex-none">
+            <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">
+              +{scaleKW} kW
+            </span>
+            <span
+              className="absolute right-0 text-[8px] font-mono text-text-tertiary"
+              style={{ top: `${y0 - 4}px` }}
+            >
+              0
+            </span>
+            <span
+              className="absolute right-0 text-[8px] font-mono text-text-tertiary"
+              style={{ top: `${H - 10}px` }}
+            >
+              -{scaleKW} kW
+            </span>
           </div>
+          <svg
+            width="100%"
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            style={{ display: "block", height: `${H}px` }}
+          >
+            <defs>
+              <clipPath id={`up-${uid}`}>
+                <rect x="0" y="0" width={W} height={y0} />
+              </clipPath>
+              <clipPath id={`dn-${uid}`}>
+                <rect x="0" y={y0} width={W} height={H - y0} />
+              </clipPath>
+            </defs>
+            {area && (
+              <>
+                <polygon
+                  points={area}
+                  fill="var(--color-solar-injection)"
+                  opacity="0.16"
+                  clipPath={`url(#up-${uid})`}
+                />
+                <polygon
+                  points={area}
+                  fill="var(--color-error)"
+                  opacity="0.16"
+                  clipPath={`url(#dn-${uid})`}
+                />
+                <polyline
+                  points={pts}
+                  fill="none"
+                  stroke="var(--color-solar-injection)"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                  clipPath={`url(#up-${uid})`}
+                />
+                <polyline
+                  points={pts}
+                  fill="none"
+                  stroke="var(--color-error)"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                  clipPath={`url(#dn-${uid})`}
+                />
+              </>
+            )}
+            <line
+              x1="0"
+              y1={y0}
+              x2={W}
+              y2={y0}
+              stroke="var(--color-text-tertiary)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+              opacity="0.6"
+            />
+            {isNow && (
+              <line
+                x1={W}
+                y1="0"
+                x2={W}
+                y2={H}
+                stroke="var(--color-primary)"
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+          </svg>
         </div>
-      ))}
+
+        {/* per-load ribbons */}
+        {data.loads.map((load) => (
+          <div key={load.equipmentId} className="flex items-center gap-2 my-[3px]">
+            <span className="w-[52px] flex-none text-right text-[10px] text-text-tertiary truncate">
+              {load.name}
+            </span>
+            <div className="flex flex-1 gap-px relative">
+              {load.quarters.map((s, i) => {
+                const cellTime = start + i * stepMs;
+                const hourEdge = new Date(cellTime).getMinutes() === 0;
+                const selected = selTime === cellTime;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => onCell(cellTime)}
+                    title={`${hhmm(cellTime)} · ${t(`arbiter.timeline.state.${s}`)}`}
+                    className={`flex-1 h-[18px] rounded-[1px] ${hourEdge ? "shadow-[inset_1px_0_0_var(--color-border)]" : ""} ${selected ? "outline outline-2 outline-primary z-10" : ""}`}
+                    style={{ backgroundColor: cellColor(s) }}
+                  />
+                );
+              })}
+              {isNow && <span className="absolute -top-1 -bottom-1 -right-px w-0.5 bg-primary" />}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* hour labels — one slot per cell, labelled only on the hour so they line
           up with the ribbon's hour-edge markers even when the window edge is not
@@ -244,19 +339,34 @@ export function ArbiterTimeline() {
       {/* legend */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-secondary mt-2 items-center">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-2.5 rounded-sm flex-none" style={{ background: "linear-gradient(var(--color-solar-injection) 0 50%, var(--color-error) 50% 100%)" }} />
+          <span
+            className="w-3 h-2.5 rounded-sm flex-none"
+            style={{
+              background:
+                "linear-gradient(var(--color-solar-injection) 0 50%, var(--color-error) 50% 100%)",
+            }}
+          />
           {t("arbiter.legend.surplusDeficit")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-2.5 rounded-sm flex-none" style={{ backgroundColor: "var(--color-solar-auto)" }} />
+          <span
+            className="w-3 h-2.5 rounded-sm flex-none"
+            style={{ backgroundColor: "var(--color-solar-auto)" }}
+          />
           {t("arbiter.legend.granted")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-2.5 rounded-sm flex-none" style={{ backgroundColor: "var(--color-error)" }} />
+          <span
+            className="w-3 h-2.5 rounded-sm flex-none"
+            style={{ backgroundColor: "var(--color-error)" }}
+          />
           {t("arbiter.legend.revoked")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-2.5 rounded-sm flex-none" style={{ backgroundColor: "var(--color-slate)" }} />
+          <span
+            className="w-3 h-2.5 rounded-sm flex-none"
+            style={{ backgroundColor: "var(--color-slate)" }}
+          />
           {t("arbiter.legend.unmanaged")}
         </span>
       </div>
@@ -266,7 +376,9 @@ export function ArbiterTimeline() {
         <div className="text-[12px] font-semibold text-text mb-1">{t("arbiter.journalTitle")}</div>
         <div ref={jscrollRef} className="max-h-[180px] overflow-y-auto">
           {data.journal.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary py-2">{t("arbiter.timeline.noDecisions")}</p>
+            <p className="text-[12px] text-text-tertiary py-2">
+              {t("arbiter.timeline.noDecisions")}
+            </p>
           ) : (
             data.journal.map((e, i) => {
               const at = Date.parse(e.atIso);
@@ -277,8 +389,13 @@ export function ArbiterTimeline() {
                   data-hl={hl ? "1" : undefined}
                   className={`flex items-baseline gap-2.5 py-1.5 px-1.5 text-[12.5px] border-t border-border-light first:border-t-0 rounded-[4px] ${hl ? "bg-primary/10" : ""}`}
                 >
-                  <span className="font-mono text-[11px] text-text-tertiary w-11 flex-none">{hhmm(at)}</span>
-                  <span className="w-2 h-2 rounded-full flex-none self-center" style={{ backgroundColor: journalDotColor(e.kind) }} />
+                  <span className="font-mono text-[11px] text-text-tertiary w-11 flex-none">
+                    {hhmm(at)}
+                  </span>
+                  <span
+                    className="w-2 h-2 rounded-full flex-none self-center"
+                    style={{ backgroundColor: journalDotColor(e.kind) }}
+                  />
                   <span className="font-semibold text-text">{e.equipmentName ?? ""}</span>
                   <span className="text-text-secondary truncate">
                     {t(`arbiter.kind.${e.kind}`)}
