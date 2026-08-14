@@ -189,12 +189,12 @@ export function ArbiterTimeline() {
             <>
               <polygon points={area} fill="var(--color-solar-injection)" opacity="0.16" clipPath={`url(#up-${uid})`} />
               <polygon points={area} fill="var(--color-error)" opacity="0.16" clipPath={`url(#dn-${uid})`} />
-              <polyline points={pts} fill="none" stroke="var(--color-solar-injection)" strokeWidth="1.8" clipPath={`url(#up-${uid})`} />
-              <polyline points={pts} fill="none" stroke="var(--color-error)" strokeWidth="1.8" clipPath={`url(#dn-${uid})`} />
+              <polyline points={pts} fill="none" stroke="var(--color-solar-injection)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" clipPath={`url(#up-${uid})`} />
+              <polyline points={pts} fill="none" stroke="var(--color-error)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" clipPath={`url(#dn-${uid})`} />
             </>
           )}
-          <line x1="0" y1={y0} x2={W} y2={y0} stroke="var(--color-text-tertiary)" strokeWidth="0.5" strokeDasharray="2 3" opacity="0.6" />
-          {isNow && <line x1={W} y1="0" x2={W} y2={H} stroke="var(--color-primary)" strokeWidth="2" />}
+          <line x1="0" y1={y0} x2={W} y2={y0} stroke="var(--color-text-tertiary)" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" opacity="0.6" />
+          {isNow && <line x1={W} y1="0" x2={W} y2={H} stroke="var(--color-primary)" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
         </svg>
       </div>
 
