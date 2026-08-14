@@ -103,8 +103,11 @@ export function ArbiterTimeline() {
   const isNow = pageOffset === 0;
 
   // ── signed surplus/deficit curve ──────────────────────────────
+  // The desktop card has room for a taller curve (2×): the vertical viewBox maps
+  // 1:1 to px, so a bigger H simply gives the surplus/deficit more amplitude.
+  const isDesktop = windowHours === WINDOW_HOURS_DESKTOP;
   const W = 480;
-  const H = 46;
+  const H = isDesktop ? 92 : 46;
   const values = data.surplus.map((s) => ({ x: (Date.parse(s.atIso) - start) / (n * stepMs), v: s.availableW }));
   const maxAbs = Math.max(500, ...data.surplus.map((s) => Math.abs(s.availableW)));
   const y0 = Math.round(H * 0.58);
