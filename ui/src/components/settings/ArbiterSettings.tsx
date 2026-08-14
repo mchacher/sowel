@@ -115,7 +115,7 @@ export function ArbiterSettings() {
 
   if (settings === null) {
     return (
-      <div className="bg-surface border border-border rounded-[10px] p-5">
+      <div className="bg-surface border border-border rounded-[10px] p-4">
         <div className="flex items-center gap-2 text-text-secondary text-[13px]">
           <Loader2 size={14} className="animate-spin" />
           {t("common.loading")}
@@ -125,7 +125,7 @@ export function ArbiterSettings() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-5">
+    <div className="bg-surface border border-border rounded-[10px] p-4">
       <div className="flex items-center gap-2 mb-1">
         <Scale size={18} strokeWidth={1.5} className="text-text-secondary" />
         <h2 className="text-[15px] font-semibold text-text">{t("arbiter.title")}</h2>
@@ -171,18 +171,18 @@ export function ArbiterSettings() {
                       <button
                         onClick={() => move(i, -1)}
                         disabled={i === 0 || saving}
-                        className="p-1 text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                        className="h-9 w-9 flex items-center justify-center text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-[6px]"
                         aria-label={t("arbiter.moveUpNamed", { name: eq.name })}
                       >
-                        <ArrowUp size={14} />
+                        <ArrowUp size={16} />
                       </button>
                       <button
                         onClick={() => move(i, 1)}
                         disabled={i === priority.length - 1 || saving}
-                        className="p-1 text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                        className="h-9 w-9 flex items-center justify-center text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-[6px]"
                         aria-label={t("arbiter.moveDownNamed", { name: eq.name })}
                       >
-                        <ArrowDown size={14} />
+                        <ArrowDown size={16} />
                       </button>
                     </span>
                   </li>
@@ -226,7 +226,7 @@ export function ArbiterSettings() {
         </>
       )}
 
-      {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-[12px] text-error mt-2">{error}</p>}
     </div>
   );
 }

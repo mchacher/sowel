@@ -34,9 +34,10 @@ interface ChartDatum {
   cost_hc: number; // € (spec 123)
 }
 
-const HP_COLOR = "#4F7BE8";
-const HC_COLOR = "#93B5F0";
-const AUTOCONSO_COLOR = "#6BCB77";
+// Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
+const HP_COLOR = "var(--color-energy-hp)";
+const HC_COLOR = "var(--color-energy-hc)";
+const AUTOCONSO_COLOR = "var(--color-solar-auto)";
 
 // ============================================================
 // Aggregation: collapse raw points into period-appropriate bars

@@ -35,6 +35,15 @@
   --color-warning:        var(--a-500);
   --color-error:          var(--red-500);
 
+  /* Energy palette (spec 148) — shared by energy/production charts + arbiter */
+  --color-solar-injection: var(--solar-injection);
+  --color-solar-auto:      var(--solar-auto);
+  --color-solar-production: var(--solar-production);
+  --color-energy-hp:       var(--energy-hp);
+  --color-energy-hc:       var(--energy-hc);
+  --color-energy-grid:     var(--energy-grid);
+  --color-slate:           var(--slate-neutral);
+
   /* Typography */
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);

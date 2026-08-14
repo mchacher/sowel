@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Scale } from "lucide-react";
+import { Scale, Check, Zap, Clock, ChevronDown } from "lucide-react";
+import { journalDotColor } from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -27,12 +28,15 @@ import {
  * no-PV home never sees dead arbitration UI.
  */
 
-const HOUSE_COLOR = "#33529E"; // darker blue: white 11px bold on it clears WCAG AA
-const GRANTED_COLOR = "#6BCB77";
-const GRANTED_TEXT = "#123f1c";
-const HC_COLOR = "#BB8232";
-const MANUAL_COLOR = "#6E7C88"; // darkened to clear 3:1 on a light surface
-const REVOKE_COLOR = "#E5484D";
+// Spec 148 — energy palette tokens (dark-mode correct, shared with the
+// production graph). Accordé = auto-consumption green; the surplus curve =
+// injection (darker green); "On (hors pilotage)" = a solid slate.
+const HOUSE_COLOR = "var(--color-energy-hp)"; // household / consumption (blue)
+const GRANTED_COLOR = "var(--color-solar-auto)"; // accordé (auto-conso)
+const SURPLUS_COLOR = "var(--color-solar-injection)"; // available-surplus curve
+const GRANTED_TEXT = "#123f1c"; // dark-green label on the light granted green (readable both themes)
+const SLATE = "var(--color-slate)"; // On (hors pilotage): manual override + unclaimed run
+const REVOKE_COLOR = "var(--color-error)"; // surplus retiré
 
 /** Translate a timeline marker's raw backend reason code for its tooltip. */
 function markerTitle(m: Lane["markers"][number], t: (k: string) => string): string {
@@ -47,8 +51,10 @@ const SEGMENT_STYLE: Record<
   { fill: string; stroke: string; labelKey: string }
 > = {
   granted: { fill: GRANTED_COLOR, stroke: "none", labelKey: "grantedShort" },
-  manual: { fill: "url(#arb-hatch-man)", stroke: MANUAL_COLOR, labelKey: "manual" },
-  unclaimed: { fill: "url(#arb-hatch-hc)", stroke: HC_COLOR, labelKey: "unclaimedShort" },
+  // Spec 148 — "manual" (override) and "unclaimed" (running unclaimed) merge into
+  // one solid "On (hors pilotage)" state; the journal keeps the precise cause.
+  manual: { fill: SLATE, stroke: "none", labelKey: "unmanaged" },
+  unclaimed: { fill: SLATE, stroke: "none", labelKey: "unmanaged" },
 };
 
 function hhmm(min: number): string {
@@ -86,16 +92,6 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
   return (
     <div className="overflow-x-auto">
       <svg width={W} height={H} role="img" aria-label={t("arbiter.timelineLabel")}>
-        <defs>
-          <pattern id="arb-hatch-man" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
-            <rect width="6" height="6" fill={MANUAL_COLOR} fillOpacity="0.16" />
-            <rect width="2.5" height="6" fill={MANUAL_COLOR} fillOpacity="0.7" />
-          </pattern>
-          <pattern id="arb-hatch-hc" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(135)">
-            <rect width="6" height="6" fill={HC_COLOR} fillOpacity="0.16" />
-            <rect width="2.5" height="6" fill={HC_COLOR} fillOpacity="0.7" />
-          </pattern>
-        </defs>
         {[0, 6, 12, 18, 24].map((h) => (
           <g key={h}>
             <line x1={x(h * 60)} y1={TOP} x2={x(h * 60)} y2={H - 24} stroke="currentColor" strokeOpacity="0.08" />
@@ -106,8 +102,8 @@ function Timeline({ state, lanes, nowMin }: { state: ArbiterPublicState; lanes: 
         ))}
         {curve && (
           <>
-            <path d={`${curve} L ${x(nowMin)} ${yk(0)} L ${x(minuteOfDay(samples[0].atIso))} ${yk(0)} Z`} fill={GRANTED_COLOR} fillOpacity="0.13" />
-            <path d={curve} fill="none" stroke={GRANTED_COLOR} strokeOpacity="0.55" strokeWidth="1.5" />
+            <path d={`${curve} L ${x(nowMin)} ${yk(0)} L ${x(minuteOfDay(samples[0].atIso))} ${yk(0)} Z`} fill={SURPLUS_COLOR} fillOpacity="0.14" />
+            <path d={curve} fill="none" stroke={SURPLUS_COLOR} strokeOpacity="0.7" strokeWidth="1.5" />
           </>
         )}
         {lanes.map((lane, i) => {
@@ -234,16 +230,7 @@ function waitingReason(
 
 function JournalRow({ entry }: { entry: ArbiterDecision }) {
   const { t } = useTranslation();
-  const dot =
-    entry.kind === "granted" || entry.kind === "resumed"
-      ? GRANTED_COLOR
-      : entry.kind === "revoked" || entry.kind === "revoke-not-honored"
-        ? REVOKE_COLOR
-        : entry.kind === "suspended"
-          ? MANUAL_COLOR
-          : entry.kind === "unclaimed-run" || entry.kind === "watts-divergence"
-            ? HC_COLOR
-            : "#9CA3AF";
+  const dot = journalDotColor(entry.kind); // spec 148 — merge + tokenized
   const time = new Date(entry.atIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const reason = journalReason(entry, t);
   return (
@@ -313,7 +300,7 @@ export function ArbitrationSurface() {
   const showBar = productionW > 50;
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-5 mt-4">
+    <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
       <div className="flex items-start gap-2 mb-4">
         <Scale size={18} strokeWidth={1.5} className="text-text-secondary mt-0.5" />
         <div>
@@ -323,8 +310,8 @@ export function ArbitrationSurface() {
         <span
           className={`ml-auto flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-0.5 rounded-full border ${
             state.state === "active"
-              ? "text-green-700 dark:text-green-400 border-green-600/40"
-              : "text-amber-600 dark:text-amber-400 border-amber-500/40"
+              ? "text-success border-success/40"
+              : "text-warning border-warning/40"
           }`}
           title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
         >
@@ -335,7 +322,7 @@ export function ArbitrationSurface() {
         </span>
       </div>
       {state.state === "degraded" && (
-        <p className="text-[12px] text-amber-600 dark:text-amber-400 mb-2">
+        <p className="text-[12px] text-warning mb-2">
           {t("arbiter.degradedReason")}
         </p>
       )}
@@ -360,7 +347,10 @@ export function ArbitrationSurface() {
                 style={{ flex: g.watts, backgroundColor: GRANTED_COLOR, color: GRANTED_TEXT }}
                 title={`${g.equipmentName} · ${g.watts} W`}
               >
-                <span className="truncate px-1">✓ {g.equipmentName}</span>
+                <span className="truncate px-1 flex items-center gap-1">
+                  <Check size={12} strokeWidth={2.5} className="flex-none" />
+                  {g.equipmentName}
+                </span>
               </div>
             ))}
             {free > 0 && (
@@ -383,7 +373,11 @@ export function ArbitrationSurface() {
           {/* A pending claim whose load a recipe is already running as a
               must-run fallback is drawing power, not idle — show it as running
               on grid, never "waiting for surplus" (#491). */}
-          <span>{p.running ? "⚡" : "⏳"}</span>
+          {p.running ? (
+            <Zap size={14} strokeWidth={1.5} className="flex-none text-warning" />
+          ) : (
+            <Clock size={14} strokeWidth={1.5} className="flex-none text-text-tertiary" />
+          )}
           <span>
             <b className="text-text">{p.equipmentName}</b>{" "}
             {p.running ? t("arbiter.runningNoSurplus") : waitingReason(p.reasonWaiting, p.needW, t)}
@@ -409,30 +403,12 @@ export function ArbitrationSurface() {
               {t("arbiter.legend.granted")}
             </span>
             <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block w-4 h-2.5 rounded-sm border"
-                style={{
-                  borderColor: MANUAL_COLOR,
-                  background: `repeating-linear-gradient(135deg, ${MANUAL_COLOR}, ${MANUAL_COLOR} 2px, transparent 2px, transparent 5px)`,
-                }}
-              />
-              {t("arbiter.legend.manual")}
+              <span className="inline-block w-4 h-2.5 rounded-sm" style={{ backgroundColor: SLATE }} />
+              {t("arbiter.legend.unmanaged")}
             </span>
             <span className="flex items-center gap-1.5">
-              <span style={{ color: REVOKE_COLOR }} className="font-bold">
-                ▼
-              </span>
+              <ChevronDown size={13} strokeWidth={2.5} style={{ color: REVOKE_COLOR }} />
               {t("arbiter.legend.revoked")}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className="inline-block w-4 h-2.5 rounded-sm border"
-                style={{
-                  borderColor: HC_COLOR,
-                  background: `repeating-linear-gradient(135deg, ${HC_COLOR}, ${HC_COLOR} 2px, transparent 2px, transparent 5px)`,
-                }}
-              />
-              {t("arbiter.legend.unclaimed")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-4 h-2.5 rounded-sm border border-dashed border-text-tertiary" />

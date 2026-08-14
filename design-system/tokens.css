@@ -24,6 +24,16 @@
   --info-50:#E0EFFA;  --info-500:#247EB5;                        /* informational, sensor accents */
   --red-50:#FBE9E1;   --red-500:#C7522E;                          /* error, alerts */
 
+  /* Energy palette (spec 148) — shared by the production/energy charts and the
+     arbiter surface. Solar greens match ProductionBarChart. */
+  --solar-injection:#2D8F3E;  /* surplus / injection (dark green) */
+  --solar-auto:#6BCB77;       /* auto-consumption / "accordé"     */
+  --solar-production:#4CA85C; /* solar production                 */
+  --energy-hp:#4F7BE8;        /* consumption, peak (vivid blue)   */
+  --energy-hc:#93B5F0;        /* consumption, off-peak (light blue) */
+  --energy-grid:#4A6396;      /* grid import (slate blue)         */
+  --slate-neutral:#6E7C88;    /* On (hors pilotage) / manual      */
+
   /* Equipment category tints — used on .eq__icon backgrounds */
   --light-50:#FFF6D6;    --light-500:#F2C035;
   --shutter-50:#E8EBEE;  --shutter-500:#4F5763;
@@ -51,6 +61,10 @@
   --green-50:#0F2A1E; --green-500:#3DDB89; --green-700:#9AF0C6;
   --info-50:#0F1F33;  --info-500:#5DA8F0;
   --red-50:#2E1614;   --red-500:#F37B5F;
+  /* Energy palette (spec 148) — brightened for dark surfaces */
+  --solar-injection:#3DA855; --solar-auto:#74C77F; --solar-production:#57BE6C;
+  --energy-hp:#6E93EE; --energy-hc:#5E7FC0; --energy-grid:#7E93C0;
+  --slate-neutral:#8A97A3;
   --light-50:#2D2415;   --light-500:#F2BC6E;
   --shutter-50:#1B2230; --shutter-500:#94A3B8;
   --sensor-50:#152920;  --sensor-500:#6BCF8C;

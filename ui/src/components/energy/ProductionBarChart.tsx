@@ -27,10 +27,11 @@ interface ChartDatum {
   prod: number; // kWh — raw production, used when the split is unavailable
 }
 
-const AUTOCONSO_COLOR = "#6BCB77"; // light green
-const INJECTION_COLOR = "#2D8F3E"; // dark green
+// Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
+const AUTOCONSO_COLOR = "var(--color-solar-auto)"; // light green
+const INJECTION_COLOR = "var(--color-solar-injection)"; // dark green
 /** Single-series green, used when only the raw production is known. */
-const PRODUCTION_COLOR = "#4CA85C";
+const PRODUCTION_COLOR = "var(--color-solar-production)";
 
 /** Local date key to avoid UTC midnight split. */
 function localDateKey(d: Date): string {

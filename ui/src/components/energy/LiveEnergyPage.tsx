@@ -26,10 +26,11 @@ import { useWsSubscription } from "../../hooks/useWsSubscription";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
-const HP_COLOR = "#4F7BE8";       // House consumption (vivid blue, focal)
-const GRID_COLOR = "#4A6396";     // Grid import (slate blue, distinct from house)
-const GRID_OFF_COLOR = "#9CA3AF"; // Grid passive (neutral grey, on export)
-const AUTO_COLOR = "#6BCB77";     // Solar / autoconso (green)
+// Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
+const HP_COLOR = "var(--color-energy-hp)";       // House consumption (vivid blue, focal)
+const GRID_COLOR = "var(--color-energy-grid)";   // Grid import (slate blue)
+const GRID_OFF_COLOR = "var(--color-text-tertiary)"; // Grid passive (neutral, on export)
+const AUTO_COLOR = "var(--color-solar-auto)";    // Solar / autoconso (green)
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -490,7 +491,7 @@ function LiveDiagram({
          *  diagram (just below the bottom Solar↔Grid loop at y≈270 / 360). */}
         <span
           className="absolute left-1/2 -translate-x-1/2 bottom-[8%] font-mono text-[12px] font-bold px-3 py-1 rounded-full z-10"
-          style={{ color: statusColor, background: `${statusColor}15` }}
+          style={{ color: statusColor, background: `color-mix(in srgb, ${statusColor} 12%, transparent)` }}
         >
           {t(`energy.live.status.${status}`)}
         </span>
