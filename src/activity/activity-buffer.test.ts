@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ActivityBuffer } from "./activity-buffer.js";
+import type { ActivityStore } from "./activity-store.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
-import type { Equipment } from "../shared/types.js";
+import type { ActivityItem, Equipment } from "../shared/types.js";
 
 const logger = createLogger("silent").logger;
 
@@ -445,5 +446,58 @@ describe("ActivityBuffer", () => {
       }
       expect(h.buffer.size()).toBe(2000);
     });
+  });
+});
+
+// Spec 147 — persistence wiring (store injected).
+describe("ActivityBuffer persistence", () => {
+  function mkItem(id: string, timestamp: number): ActivityItem {
+    return {
+      id,
+      timestamp,
+      category: "mode",
+      zoneId: null,
+      message: { template: "mode.activated", params: { modeName: id } },
+    };
+  }
+
+  function buildWithStore(store: Partial<ActivityStore>) {
+    const bus = new EventBus(logger);
+    const noop = {
+      getById: () => null,
+      getDataBindingsWithValues: () => [],
+    } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[1];
+    const zoneManager = {
+      getDescendantIds: (z: string) => [z],
+    } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[3];
+    const sunlightManager = {
+      getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: false }),
+    } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[4];
+    const buffer = new ActivityBuffer(
+      bus,
+      noop,
+      noop,
+      zoneManager,
+      sunlightManager,
+      logger,
+      store as ActivityStore,
+    );
+    return { bus, buffer };
+  }
+
+  it("seeds the ring from the store on start (newest-first, as returned)", () => {
+    const seed = [mkItem("newer", 200), mkItem("older", 100)]; // store returns DESC
+    const { buffer } = buildWithStore({ loadRecent: () => seed, insert: vi.fn() });
+    buffer.start();
+    expect(buffer.getItems({ limit: 10 }).map((i) => i.id)).toEqual(["newer", "older"]);
+  });
+
+  it("persists each pushed item to the store", () => {
+    const insert = vi.fn();
+    const { bus, buffer } = buildWithStore({ loadRecent: () => [], insert });
+    buffer.start();
+    bus.emit({ type: "mode.activated", modeId: "m1", modeName: "Night" });
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(insert.mock.calls[0][0]).toMatchObject({ category: "mode" });
   });
 });

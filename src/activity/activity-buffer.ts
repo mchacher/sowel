@@ -5,6 +5,7 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { ZoneManager } from "../zones/zone-manager.js";
 import type { SunlightManager } from "../zones/sunlight-manager.js";
+import { ACTIVITY_RETENTION_DAYS, type ActivityStore } from "./activity-store.js";
 import type { ActivityItem, ActivityCategory, ActivityMessage } from "../shared/types.js";
 
 interface GetItemsOptions {
@@ -14,15 +15,19 @@ interface GetItemsOptions {
 }
 
 const MAX_ITEMS = 2000;
-const TTL_MS = 24 * 60 * 60 * 1000;
+// Spec 147 — keep the live ring aligned with the persisted retention so a
+// restart restores the same window it will then maintain (bounded by MAX_ITEMS).
+const TTL_MS = ACTIVITY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Ring buffer of activity items fed by the engine event bus (spec 101).
  *
- * - In-memory only (lost on container restart, like the logs ring buffer).
- * - Cap of 200 items, 1h TTL purged on every push.
+ * - Cap of 2000 items, 7-day TTL purged on every push (matches persistence).
  * - Filters and enriches engine events before storage, then re-emits
  *   `activity.added` on the bus so the WebSocket layer can broadcast.
+ * - Spec 147: when an `ActivityStore` is injected, every item is persisted to
+ *   SQLite and the recent history is reloaded on boot, so the feed survives a
+ *   restart. Without a store it stays in-memory only (pre-147 behaviour).
  */
 export class ActivityBuffer {
   private readonly items: ActivityItem[] = [];
@@ -36,12 +41,22 @@ export class ActivityBuffer {
     private readonly zoneManager: ZoneManager,
     private readonly sunlightManager: SunlightManager,
     logger: Logger,
+    private readonly store?: ActivityStore,
   ) {
     this.logger = logger.child({ module: "activity-buffer" });
     this.prevIsDaylight = this.sunlightManager.getSunlightData().isDaylight;
   }
 
   start(): void {
+    // Spec 147 — seed from persisted history (newest-first, matching the ring)
+    // before subscribing, so the feed is populated right after a restart.
+    if (this.store && this.items.length === 0) {
+      const recent = this.store.loadRecent(MAX_ITEMS);
+      this.items.push(...recent);
+      if (recent.length > 0) {
+        this.logger.info({ count: recent.length }, "Activity feed restored from store");
+      }
+    }
     this.bus.onType("equipment.order.executed", (e) => this.onOrderExecuted(e));
     this.bus.onType("equipment.data.changed", (e) => this.onDataChanged(e));
     this.bus.onType("recipe.instance.started", (e) => this.onRecipeStarted(e));
@@ -112,6 +127,9 @@ export class ActivityBuffer {
     while (this.items.length > 0 && this.items[this.items.length - 1].timestamp < cutoff) {
       this.items.pop();
     }
+
+    // Spec 147 — persist so the feed survives a restart (never throws).
+    this.store?.insert(item);
 
     this.bus.emit({ type: "activity.added", item });
   }

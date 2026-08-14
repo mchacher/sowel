@@ -22,7 +22,9 @@ import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { CapacityArbiter } from "./energy/capacity-arbiter.js";
+import { ArbiterJournalStore } from "./energy/arbiter-journal-store.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
+import { ActivityStore } from "./activity/activity-store.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
 import { VersionChecker } from "./core/version-checker.js";
 import { UpdateManager } from "./core/update-manager.js";
@@ -322,12 +324,17 @@ async function main() {
   // 11d. Create Capacity Arbiter (spec 140) — single meter reader arbitrating
   // solar surplus between declared flexible loads. Default off; zero behavior
   // until `energy.arbiter.enabled` is set.
+  // Spec 147 — persist the arbiter decision journal so it survives a restart.
+  // Purge BEFORE start() so the journal seeds only from within the retention window.
+  const arbiterJournalStore = new ArbiterJournalStore(db, logger);
+  const purgedArbiterRows = arbiterJournalStore.purgeOlderThan();
   const capacityArbiter = new CapacityArbiter(
     eventBus,
     settingsManager,
     equipmentManager,
     logger,
     config.shadowMode, // spec 124 — a shadow instance never arbitrates
+    arbiterJournalStore, // spec 147 — history persistence (journal only)
   );
   capacityArbiter.start();
 
@@ -378,6 +385,8 @@ async function main() {
   const calendarManager = new CalendarManager(db, eventBus, settingsManager, modeManager, logger);
 
   // 13b. Create Activity Buffer (spec 101) — depends on equipment / recipe / zone / sunlight managers
+  // Spec 147 — persist the feed so it survives a restart.
+  const activityStore = new ActivityStore(db, logger);
   const activityBuffer = new ActivityBuffer(
     eventBus,
     equipmentManager,
@@ -385,6 +394,7 @@ async function main() {
     zoneManager,
     sunlightManager,
     logger,
+    activityStore, // spec 147 — history persistence
   );
 
   // 12b. Create Button Action Manager
@@ -407,6 +417,17 @@ async function main() {
   const purgedAuditRows = auditLogger.purgeOlderThan();
   if (purgedAuditRows > 0) {
     logger.info({ purged: purgedAuditRows }, "Audit log retention purge complete");
+  }
+
+  // Spec 147 — retention purge for the persisted activity feed (7 days), same
+  // boot-time pattern as the audit log. The arbiter journal was already purged
+  // above (before its start() so it seeds only within the retention window).
+  const purgedActivityRows = activityStore.purgeOlderThan();
+  if (purgedActivityRows > 0 || purgedArbiterRows > 0) {
+    logger.info(
+      { activity: purgedActivityRows, arbiter: purgedArbiterRows },
+      "History retention purge complete",
+    );
   }
 
   // 14. Create Package Manager + warm registry cache (await remote fetch before loading plugins)

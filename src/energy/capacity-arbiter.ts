@@ -18,6 +18,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import type { ArbiterJournalStore } from "./arbiter-journal-store.js";
 import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
   ArbiterDecision,
@@ -123,6 +124,9 @@ export class CapacityArbiter {
   private config: ArbiterConfig;
   private claims = new Map<string, ClaimRecord>(); // by claim id
   private journalEntries: ArbiterDecision[] = [];
+  /** Spec 147 — optional persistence for the decision journal (history only,
+   *  never the live control state). Undefined = in-memory only (pre-147). */
+  private journalStore?: ArbiterJournalStore;
 
   // Meter
   private meterId: string | null = null;
@@ -167,18 +171,30 @@ export class CapacityArbiter {
     equipments: EquipmentManager,
     logger: Logger,
     shadowMode = false, // spec 124 — a shadow instance never arbitrates
+    journalStore?: ArbiterJournalStore, // spec 147 — persist the decision journal
   ) {
     this.eventBus = eventBus;
     this.settings = settings;
     this.equipments = equipments;
     this.logger = logger.child({ module: "capacity-arbiter" });
     this.shadowMode = shadowMode;
+    this.journalStore = journalStore;
     this.config = this.readConfig();
   }
 
   // ── Lifecycle ───────────────────────────────────────────────
 
   start(): void {
+    // Spec 147 — restore the decision journal from persisted history (oldest
+    // first, matching the ring) so it survives a restart. History only: live
+    // control state (claims, suspensions, surplus) is still rebuilt from events.
+    if (this.journalStore && this.journalEntries.length === 0) {
+      const recent = this.journalStore.loadRecent(JOURNAL_CAP);
+      this.journalEntries.push(...recent);
+      if (recent.length > 0) {
+        this.logger.info({ count: recent.length }, "Arbiter decision journal restored from store");
+      }
+    }
     this.resolveMeter();
     this.unsubscribes.push(
       this.eventBus.onType("equipment.data.changed", (e) => {
@@ -1138,6 +1154,8 @@ export class CapacityArbiter {
     };
     this.journalEntries.push(full);
     if (this.journalEntries.length > JOURNAL_CAP) this.journalEntries.shift();
+    // Spec 147 — persist so the journal survives a restart (never throws).
+    this.journalStore?.insert(full);
     const { kind, ...ctx } = full;
     this.logger.info({ decision: kind, ...ctx }, `Arbiter decision: ${kind}`);
   }
