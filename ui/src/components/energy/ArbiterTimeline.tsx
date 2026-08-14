@@ -102,7 +102,7 @@ export function ArbiterTimeline() {
     );
   if (!data || !geom) return null;
   const { start, stepMs, n } = geom;
-  const isNow = pageOffset === 0;
+  const selIdx = selTime !== null ? Math.round((selTime - start) / stepMs) : -1;
 
   // ── signed surplus/deficit curve ──────────────────────────────
   // The desktop card has room for a taller curve (2×): the vertical viewBox maps
@@ -200,6 +200,12 @@ export function ArbiterTimeline() {
               }}
             />
           ))}
+          {selIdx >= 0 && selIdx < n && (
+            <div
+              className="absolute top-0 bottom-0 bg-primary/15 border-x border-primary/40"
+              style={{ left: `${(selIdx / n) * 100}%`, width: `${(1 / n) * 100}%` }}
+            />
+          )}
         </div>
 
         {/* surplus / deficit curve with kW scale */}
@@ -282,17 +288,6 @@ export function ArbiterTimeline() {
               vectorEffect="non-scaling-stroke"
               opacity="0.6"
             />
-            {isNow && (
-              <line
-                x1={W}
-                y1="0"
-                x2={W}
-                y2={H}
-                stroke="var(--color-primary)"
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-              />
-            )}
           </svg>
         </div>
 
@@ -307,18 +302,16 @@ export function ArbiterTimeline() {
             <div className="flex flex-1 relative">
               {load.quarters.map((s, i) => {
                 const cellTime = start + i * stepMs;
-                const selected = selTime === cellTime;
                 return (
                   <button
                     key={i}
                     onClick={() => onCell(cellTime)}
                     title={`${hhmm(cellTime)} · ${t(`arbiter.timeline.state.${s}`)}`}
-                    className={`flex-1 h-[20px] rounded-[1px] shadow-[inset_-1px_0_0_var(--color-surface)] ${selected ? "outline outline-2 outline-primary z-10" : ""}`}
+                    className="flex-1 h-[20px] rounded-[1px] shadow-[inset_-1px_0_0_var(--color-surface)] focus:outline-none"
                     style={{ backgroundColor: cellColor(s) }}
                   />
                 );
               })}
-              {isNow && <span className="absolute -top-1 -bottom-1 -right-px w-0.5 bg-primary" />}
             </div>
           </div>
         ))}
