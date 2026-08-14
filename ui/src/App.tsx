@@ -24,7 +24,6 @@ import { AnalysePage } from "./pages/AnalysePage";
 import { MqttPublishersPage } from "./pages/MqttPublishersPage";
 import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { QrLoginPage } from "./pages/QrLoginPage";
 import { EnergyPage } from "./components/energy/EnergyPage";
 import { ProductionPage } from "./components/energy/ProductionPage";
 import { LiveEnergyPage } from "./components/energy/LiveEnergyPage";
@@ -37,7 +36,6 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<SetupPage />} />
-        <Route path="/qr-login" element={<QrLoginPage />} />
 
         {/* Protected routes — wrapped in AppLayout */}
         <Route
