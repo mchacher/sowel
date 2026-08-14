@@ -347,6 +347,24 @@ export interface ArbiterPublicState {
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
+/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model. */
+export type ArbiterQuarterState = "granted" | "revoked" | "unmanaged" | "idle";
+
+export interface ArbiterTimelineLoad {
+  equipmentId: string;
+  name: string;
+  quarters: ArbiterQuarterState[];
+}
+
+export interface ArbiterTimeline {
+  windowStartIso: string;
+  windowEndIso: string;
+  stepMin: number;
+  loads: ArbiterTimelineLoad[];
+  surplus: Array<{ atIso: string; availableW: number }>;
+  journal: ArbiterDecision[];
+}
+
 /** Derived availability of an equipment (spec 116). Computed server-side
  *  from devices.status + streaming bindings freshness. Never persisted. */
 export type EquipmentStatus = "online" | "degraded" | "offline";

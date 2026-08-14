@@ -23,6 +23,7 @@ import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { CapacityArbiter } from "./energy/capacity-arbiter.js";
 import { ArbiterJournalStore } from "./energy/arbiter-journal-store.js";
+import { ArbiterSurplusStore } from "./energy/arbiter-surplus-store.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
 import { ActivityStore } from "./activity/activity-store.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
@@ -324,10 +325,12 @@ async function main() {
   // 11d. Create Capacity Arbiter (spec 140) — single meter reader arbitrating
   // solar surplus between declared flexible loads. Default off; zero behavior
   // until `energy.arbiter.enabled` is set.
-  // Spec 147 — persist the arbiter decision journal so it survives a restart.
-  // Purge BEFORE start() so the journal seeds only from within the retention window.
+  // Spec 147/148 — persist the arbiter decision journal and signed surplus series
+  // so the Energy timeline survives restarts. Purge BEFORE start().
   const arbiterJournalStore = new ArbiterJournalStore(db, logger);
+  const arbiterSurplusStore = new ArbiterSurplusStore(db, logger);
   const purgedArbiterRows = arbiterJournalStore.purgeOlderThan();
+  const purgedSurplusRows = arbiterSurplusStore.purgeOlderThan();
   const capacityArbiter = new CapacityArbiter(
     eventBus,
     settingsManager,
@@ -335,6 +338,7 @@ async function main() {
     logger,
     config.shadowMode, // spec 124 — a shadow instance never arbitrates
     arbiterJournalStore, // spec 147 — history persistence (journal only)
+    arbiterSurplusStore, // spec 148 — signed surplus/deficit series persistence
   );
   capacityArbiter.start();
 
@@ -423,9 +427,9 @@ async function main() {
   // boot-time pattern as the audit log. The arbiter journal was already purged
   // above (before its start() so it seeds only within the retention window).
   const purgedActivityRows = activityStore.purgeOlderThan();
-  if (purgedActivityRows > 0 || purgedArbiterRows > 0) {
+  if (purgedActivityRows > 0 || purgedArbiterRows > 0 || purgedSurplusRows > 0) {
     logger.info(
-      { activity: purgedActivityRows, arbiter: purgedArbiterRows },
+      { activity: purgedActivityRows, arbiter: purgedArbiterRows, surplus: purgedSurplusRows },
       "History retention purge complete",
     );
   }

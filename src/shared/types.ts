@@ -761,6 +761,27 @@ export interface ArbiterPublicState {
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
+/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model. */
+export type ArbiterQuarterState = "granted" | "revoked" | "unmanaged" | "idle";
+
+export interface ArbiterTimelineLoad {
+  equipmentId: string;
+  name: string;
+  /** State per step, oldest first, over [windowStart, windowEnd). */
+  quarters: ArbiterQuarterState[];
+}
+
+export interface ArbiterTimeline {
+  windowStartIso: string;
+  windowEndIso: string;
+  stepMin: number;
+  loads: ArbiterTimelineLoad[];
+  /** Signed samples (>0 surplus, <0 déficit) within the window, ascending. */
+  surplus: Array<{ atIso: string; availableW: number }>;
+  /** Decisions within the window, newest first (for the cell → journal link). */
+  journal: ArbiterDecision[];
+}
+
 // ============================================================
 // Mode
 // ============================================================

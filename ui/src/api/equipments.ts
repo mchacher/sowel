@@ -3,6 +3,7 @@ import type {
   EquipmentType,
   EnergyLoadProfile,
   ArbiterPublicState,
+  ArbiterTimeline,
   EquipmentWithDetails,
   DataBinding,
   OrderBinding,
@@ -61,6 +62,17 @@ export async function updateEquipment(
 
 export async function getArbiterState(): Promise<ArbiterPublicState> {
   return fetchJSON<ArbiterPublicState>(`${API_BASE}/energy/arbiter`);
+}
+
+// Spec 148 (Phase B) — arbitrage timeline for a 6h window, paged back to 48h.
+export async function getArbiterTimeline(
+  hours = 6,
+  offset = 0,
+  step = 15,
+): Promise<ArbiterTimeline> {
+  return fetchJSON<ArbiterTimeline>(
+    `${API_BASE}/energy/arbiter/timeline?hours=${hours}&offset=${offset}&step=${step}`,
+  );
 }
 
 export async function resumeArbiterEquipment(equipmentId: string): Promise<void> {

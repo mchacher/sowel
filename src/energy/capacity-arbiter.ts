@@ -19,10 +19,13 @@ import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ArbiterJournalStore } from "./arbiter-journal-store.js";
+import type { ArbiterSurplusStore } from "./arbiter-surplus-store.js";
+import { buildLoadTimelines } from "./arbiter-timeline.js";
 import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
   ArbiterDecision,
   ArbiterPublicState,
+  ArbiterTimeline,
   ArbiterRunState,
   CapacityClaimHandle,
   CapacityClaimRequest,
@@ -127,6 +130,8 @@ export class CapacityArbiter {
   /** Spec 147 — optional persistence for the decision journal (history only,
    *  never the live control state). Undefined = in-memory only (pre-147). */
   private journalStore?: ArbiterJournalStore;
+  /** Spec 148 — optional persistence for the signed surplus/deficit series. */
+  private surplusStore?: ArbiterSurplusStore;
 
   // Meter
   private meterId: string | null = null;
@@ -172,6 +177,7 @@ export class CapacityArbiter {
     logger: Logger,
     shadowMode = false, // spec 124 — a shadow instance never arbitrates
     journalStore?: ArbiterJournalStore, // spec 147 — persist the decision journal
+    surplusStore?: ArbiterSurplusStore, // spec 148 — persist the signed surplus series
   ) {
     this.eventBus = eventBus;
     this.settings = settings;
@@ -179,6 +185,7 @@ export class CapacityArbiter {
     this.logger = logger.child({ module: "capacity-arbiter" });
     this.shadowMode = shadowMode;
     this.journalStore = journalStore;
+    this.surplusStore = surplusStore;
     this.config = this.readConfig();
   }
 
@@ -589,6 +596,59 @@ export class CapacityArbiter {
 
   // ── Public read model (route + UI + recipe state) ───────────
 
+  /**
+   * Spec 148 (Phase B) — the arbitrage timeline for a window ending at `endMs`
+   * spanning `hours` hours, at `stepMin` steps: per-load quarter states
+   * reconstructed from the (persisted) decision journal, the signed surplus
+   * series, and the in-window journal for the cell → journal link.
+   */
+  getTimeline(endMs: number, hours: number, stepMin = 15): ArbiterTimeline {
+    const windowEnd = endMs;
+    const windowStart = windowEnd - hours * 3_600_000;
+    const lookback = windowStart - 24 * 3_600_000; // enough to know the entering state
+    const loads = this.config.priority.map((id) => ({ equipmentId: id, name: this.nameOf(id) }));
+
+    // Decisions: prefer the persisted store; fall back to the in-memory ring.
+    let decisions =
+      this.journalStore?.range(
+        new Date(lookback).toISOString(),
+        new Date(windowEnd).toISOString(),
+      ) ?? [];
+    if (decisions.length === 0) {
+      decisions = this.journalEntries.filter((d) => {
+        const t = Date.parse(d.atIso);
+        return t >= lookback && t <= windowEnd;
+      });
+    }
+
+    const timelines = buildLoadTimelines(decisions, loads, windowStart, windowEnd, stepMin);
+
+    // Surplus: prefer the persisted store; fall back to the in-memory 24h ring.
+    let surplus = this.surplusStore?.range(windowStart, windowEnd) ?? [];
+    if (surplus.length === 0) {
+      surplus = this.surplusSeries.filter((s) => s.at >= windowStart && s.at <= windowEnd);
+    }
+
+    const journal = decisions
+      .filter((d) => {
+        const t = Date.parse(d.atIso);
+        return t >= windowStart && t <= windowEnd;
+      })
+      .reverse(); // newest first
+
+    return {
+      windowStartIso: new Date(windowStart).toISOString(),
+      windowEndIso: new Date(windowEnd).toISOString(),
+      stepMin,
+      loads: timelines,
+      surplus: surplus.map((s) => ({
+        atIso: new Date(s.at).toISOString(),
+        availableW: s.availableW,
+      })),
+      journal,
+    };
+  }
+
   getPublicState(): ArbiterPublicState {
     const now = Date.now();
     const state = this.runState();
@@ -817,7 +877,9 @@ export class CapacityArbiter {
     // Day-timeline curve sample (FR-10): ~5 min cadence, bounded to 24 h.
     if (now - this.lastSurplusSampleAt >= 5 * 60_000) {
       this.lastSurplusSampleAt = now;
-      this.surplusSeries.push({ at: now, availableW: Math.round(availableW) });
+      const sample = { at: now, availableW: Math.round(availableW) };
+      this.surplusSeries.push(sample);
+      this.surplusStore?.insert(sample); // spec 148 — persist for the 48h timeline
       const dayAgo = now - 24 * 3_600_000;
       while (this.surplusSeries.length > 0 && this.surplusSeries[0].at < dayAgo) {
         this.surplusSeries.shift();

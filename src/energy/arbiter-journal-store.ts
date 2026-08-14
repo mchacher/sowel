@@ -28,6 +28,7 @@ export class ArbiterJournalStore {
   private insertStmt: Database.Statement;
   private loadRecentStmt: Database.Statement;
   private purgeStmt: Database.Statement;
+  private rangeStmt: Database.Statement;
   private countStmt: Database.Statement;
 
   constructor(db: Database.Database, logger: Logger) {
@@ -44,6 +45,11 @@ export class ArbiterJournalStore {
     );
     this.purgeStmt = db.prepare(
       "DELETE FROM arbiter_decision_log WHERE at_iso < datetime('now', '-' || ? || ' days')",
+    );
+    this.rangeStmt = db.prepare(
+      "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note" +
+        " FROM arbiter_decision_log WHERE at_iso >= ? AND at_iso <= ?" +
+        " ORDER BY at_iso ASC, rowid ASC",
     );
     this.countStmt = db.prepare("SELECT COUNT(*) AS n FROM arbiter_decision_log");
   }
@@ -86,6 +92,25 @@ export class ArbiterJournalStore {
       }));
     } catch (err) {
       this.logger.error({ err }, "Failed to load recent arbiter decisions");
+      return [];
+    }
+  }
+
+  /** Decisions in [fromIso, toIso], ascending (spec 148 — timeline window). */
+  range(fromIso: string, toIso: string): ArbiterDecision[] {
+    try {
+      const rows = this.rangeStmt.all(fromIso, toIso) as ArbiterDecisionRow[];
+      return rows.map((r) => ({
+        atIso: r.at_iso,
+        kind: r.kind as ArbiterDecisionKind,
+        equipmentId: r.equipment_id ?? undefined,
+        equipmentName: r.equipment_name ?? undefined,
+        watts: r.watts ?? undefined,
+        reason: r.reason ?? undefined,
+        note: r.note ?? undefined,
+      }));
+    } catch (err) {
+      this.logger.error({ err }, "Failed to read arbiter decision range");
       return [];
     }
   }

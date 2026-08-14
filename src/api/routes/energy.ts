@@ -416,6 +416,35 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   });
 
   // ============================================================
+  // GET /api/v1/energy/arbiter/timeline — spec 148 (Phase B) arbitrage timeline.
+  // Query: hours (window size, default 6, max 12), offset (windows back from now),
+  // step (minutes per cell, default 15). Depth capped to 48h.
+  // ============================================================
+  app.get<{ Querystring: { hours?: string; offset?: string; step?: string } }>(
+    "/api/v1/energy/arbiter/timeline",
+    async (request) => {
+      const empty = {
+        windowStartIso: new Date().toISOString(),
+        windowEndIso: new Date().toISOString(),
+        stepMin: 15,
+        loads: [],
+        surplus: [],
+        journal: [],
+      };
+      if (!capacityArbiter) return empty;
+      const hours = Math.min(12, Math.max(1, Number(request.query.hours) || 6));
+      const step = Math.min(60, Math.max(5, Number(request.query.step) || 15));
+      const maxOffset = Math.floor(48 / hours); // 48h of depth
+      const offset = Math.min(
+        maxOffset,
+        Math.max(0, Math.floor(Number(request.query.offset) || 0)),
+      );
+      const end = Date.now() - offset * hours * 3_600_000;
+      return capacityArbiter.getTimeline(end, hours, step);
+    },
+  );
+
+  // ============================================================
   // POST /api/v1/energy/arbiter/resume/:equipmentId — lift a manual
   // suspension immediately ("resume control now", FR-6). Admin only.
   // ============================================================
