@@ -303,6 +303,9 @@ export interface Equipment {
   /** Flexible-load declaration (spec 140). Present only when the admin
    *  enabled arbitration for this equipment. */
   energyProfile?: EnergyLoadProfile;
+  /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
+   *  `true` only when an admin enabled it. Gate equipments only in v1. */
+  requireConfirmation?: boolean;
 }
 
 /**

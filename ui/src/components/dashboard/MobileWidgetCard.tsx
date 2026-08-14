@@ -35,7 +35,8 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { TempExtremes } from "../TempExtremes";
-import { Cloud, WashingMachine, Tv, Camera } from "lucide-react";
+import { Cloud, WashingMachine, Tv, Camera, ShieldCheck } from "lucide-react";
+import { gateNeedsConfirm } from "./gate-confirm";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
@@ -59,14 +60,25 @@ export function MobileWidgetCard({
   // it off exactly where it starts to disambiguate. Own line, quieter.
   const zone = widget.label ? undefined : equipmentZone;
   const { icon, stateLines } = useMobileState(widget, equipment, t);
+  // Spec 146 — a guarded gate shows a tiny shield so it reads as protected.
+  const guarded = !editMode && gateNeedsConfirm(equipment);
 
   return (
     <button
       onClick={onClick}
-      className={`bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+      className={`relative bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
         editMode ? "" : "cursor-pointer active:scale-[0.98]"
       } transition-transform`}
     >
+      {guarded && (
+        <ShieldCheck
+          size={11}
+          strokeWidth={2}
+          className="absolute top-1.5 right-1.5 text-text-tertiary/70"
+          aria-label={t("controls.gate.confirmProtected")}
+        />
+      )}
+
       {/* Label */}
       <span
         className={`text-[12px] font-semibold text-text truncate w-full text-center ${

@@ -45,6 +45,8 @@ export async function updateEquipment(
     enabled?: boolean;
     /** Spec 140 — flexible-load declaration; null clears it. */
     energyProfile?: EnergyLoadProfile | null;
+    /** Spec 146 — opt-in confirmation before actuating (gate v1). */
+    requireConfirmation?: boolean;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {

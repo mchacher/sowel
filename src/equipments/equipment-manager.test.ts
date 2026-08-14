@@ -184,6 +184,42 @@ describe("EquipmentManager", () => {
     });
   });
 
+  // ============================================================
+  // Require confirmation (spec 146)
+  // ============================================================
+
+  describe("require confirmation", () => {
+    it("defaults to false on a freshly created equipment", () => {
+      const zone = zoneManager.create({ name: "Entrée" });
+      const eq = manager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+      expect(eq.requireConfirmation).toBe(false);
+      expect(manager.getById(eq.id)?.requireConfirmation).toBe(false);
+    });
+
+    it("round-trips true and false through update", () => {
+      const zone = zoneManager.create({ name: "Entrée" });
+      const eq = manager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+
+      manager.update(eq.id, { requireConfirmation: true });
+      expect(manager.getById(eq.id)?.requireConfirmation).toBe(true);
+
+      manager.update(eq.id, { requireConfirmation: false });
+      expect(manager.getById(eq.id)?.requireConfirmation).toBe(false);
+    });
+
+    it("preserves the flag when an update omits it", () => {
+      const zone = zoneManager.create({ name: "Entrée" });
+      const eq = manager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+      manager.update(eq.id, { requireConfirmation: true });
+
+      // An unrelated update (rename) must not reset the flag.
+      manager.update(eq.id, { name: "Portail entrée" });
+      const read = manager.getById(eq.id);
+      expect(read?.name).toBe("Portail entrée");
+      expect(read?.requireConfirmation).toBe(true);
+    });
+  });
+
   describe("create", () => {
     it("creates an equipment in a zone", () => {
       const zone = zoneManager.create({ name: "Salon" });

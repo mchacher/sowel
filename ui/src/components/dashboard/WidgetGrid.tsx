@@ -27,6 +27,8 @@ import { MobileWidgetCard } from "./MobileWidgetCard";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
+import { ConfirmActionSheet } from "./ConfirmActionSheet";
+import { gateNeedsConfirm } from "./gate-confirm";
 import { needsDetailSheet } from "./widget-utils";
 import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -62,6 +64,8 @@ export function WidgetGrid({
 }: WidgetGridProps) {
   const isMobile = useIsMobile();
   const [detailWidgetId, setDetailWidgetId] = useState<string | null>(null);
+  // Spec 146 — gate awaiting slide-to-confirm before actuating (mobile only).
+  const [confirmWidgetId, setConfirmWidgetId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -88,6 +92,11 @@ export function WidgetGrid({
 
   // Find the widget being shown in bottom sheet (auto-clears if widget was deleted)
   const detailWidget = detailWidgetId ? widgets.find((w) => w.id === detailWidgetId) ?? null : null;
+  const confirmWidget = confirmWidgetId ? widgets.find((w) => w.id === confirmWidgetId) ?? null : null;
+  const confirmEquipment =
+    confirmWidget?.type === "equipment" && confirmWidget.equipmentId
+      ? equipmentMap.get(confirmWidget.equipmentId)
+      : undefined;
 
   if (!editMode) {
     return (
@@ -105,6 +114,7 @@ export function WidgetGrid({
               onExecuteOrder={onExecuteOrder}
               isMobile={isMobile}
               onOpenDetail={() => setDetailWidgetId(widget.id)}
+              onConfirmAction={() => setConfirmWidgetId(widget.id)}
             />
           ))}
         </div>
@@ -126,6 +136,23 @@ export function WidgetGrid({
             zoneLabel={zoneLabels.get(detailWidget.zoneId)}
             equipments={equipments}
             onClose={() => setDetailWidgetId(null)}
+          />
+        )}
+
+        {/* Spec 146 — slide-to-confirm before actuating a guarded gate (mobile). */}
+        {confirmEquipment && (
+          <ConfirmActionSheet
+            equipment={confirmEquipment}
+            zoneName={equipmentZones.get(confirmEquipment.id)}
+            onConfirm={() => {
+              const command = findOrderByCategory(
+                confirmEquipment.orderBindings,
+                ["gate_trigger"],
+                ["command"],
+              );
+              if (command) void onExecuteOrder(confirmEquipment.id, command.alias, null);
+            }}
+            onClose={() => setConfirmWidgetId(null)}
           />
         )}
       </>
@@ -370,6 +397,7 @@ function WidgetRenderer({
   onExecuteOrder,
   isMobile,
   onOpenDetail,
+  onConfirmAction,
   editMode,
 }: {
   widget: DashboardWidget;
@@ -381,6 +409,7 @@ function WidgetRenderer({
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   isMobile?: boolean;
   onOpenDetail?: () => void;
+  onConfirmAction?: () => void;
   editMode?: boolean;
 }) {
   if (widget.type === "equipment" && widget.equipmentId) {
@@ -390,7 +419,7 @@ function WidgetRenderer({
 
     // On mobile: ALL equipment widgets use compact MobileWidgetCard
     if (isMobile) {
-      const mobileClick = editMode ? undefined : getMobileClickAction(equipment, onExecuteOrder, onOpenDetail);
+      const mobileClick = editMode ? undefined : getMobileClickAction(equipment, onExecuteOrder, onOpenDetail, onConfirmAction);
       return (
         <MobileWidgetCard
           widget={widget}
@@ -586,6 +615,7 @@ function getMobileClickAction(
   equipment: EquipmentWithDetails,
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>,
   onOpenDetail?: () => void,
+  onConfirmAction?: () => void,
 ): (() => void) | undefined {
   const type = equipment.type;
 
@@ -601,6 +631,9 @@ function getMobileClickAction(
     );
     const enumValues = commandBinding?.enumValues ?? [];
     if (commandBinding && enumValues.length <= 1) {
+      // Spec 146 — guarded gate: open the slide-to-confirm sheet instead of
+      // actuating on a single tap (issue #320).
+      if (gateNeedsConfirm(equipment) && onConfirmAction) return onConfirmAction;
       return () => { onExecuteOrder(equipment.id, commandBinding.alias, null); };
     }
     return onOpenDetail;

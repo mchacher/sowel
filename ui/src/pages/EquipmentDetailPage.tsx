@@ -30,6 +30,7 @@ import { ButtonActionsSection } from "../components/equipments/ButtonActionsSect
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
+import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
@@ -327,6 +328,11 @@ export function EquipmentDetailPage() {
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
         </div>
+      )}
+
+      {/* Gate — confirmation before action (spec 146), admin only */}
+      {isGate && isAdmin && (
+        <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Water valve controls */}

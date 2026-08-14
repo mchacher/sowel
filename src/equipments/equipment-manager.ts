@@ -83,6 +83,8 @@ interface UpdateEquipmentInput {
   enabled?: boolean;
   /** Spec 140 — flexible-load declaration. `null` clears the profile. */
   energyProfile?: EnergyLoadProfile | null;
+  /** Spec 146 — opt-in confirmation before actuating (gate v1). */
+  requireConfirmation?: boolean;
 }
 
 // ============================================================
@@ -183,7 +185,7 @@ export class EquipmentManager {
       updateEquipment: this.db.prepare(
         `UPDATE equipments SET name = @name, zone_id = @zoneId,
          type = @type, icon = @icon, description = @description, enabled = @enabled,
-         energy_profile = @energyProfile,
+         energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -471,6 +473,12 @@ export class EquipmentManager {
             ? null
             : JSON.stringify(input.energyProfile)
           : existing.energy_profile,
+      requireConfirmation:
+        input.requireConfirmation !== undefined
+          ? input.requireConfirmation
+            ? 1
+            : 0
+          : existing.require_confirmation,
     });
 
     const equipment = this.getById(id)!;
@@ -1277,6 +1285,7 @@ interface EquipmentRow {
   description: string | null;
   enabled: number;
   energy_profile: string | null;
+  require_confirmation: number;
   created_at: string;
   updated_at: string;
 }
@@ -1372,6 +1381,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     description: row.description ?? undefined,
     enabled: row.enabled === 1,
     energyProfile: parseEnergyProfile(row.energy_profile),
+    requireConfirmation: row.require_confirmation === 1,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };
