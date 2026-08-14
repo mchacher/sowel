@@ -54,7 +54,6 @@ export function ArbitrationSurface() {
     void fetch();
   }, [fetch]);
 
-
   if (!state || !state.enabled) return null;
 
   // Instantaneous production for the allocation bar: a production meter if

@@ -54,6 +54,29 @@ describe("buildLoadTimelines (spec 148)", () => {
     expect(b.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "idle"]);
   });
 
+  it("leaves a granted load granted when watts-divergence fires mid-grant (audit event, not a transition)", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-10, "granted"), dec(35, "watts-divergence")],
+      LOADS,
+      START,
+      END,
+    );
+    // The divergence is transparency only; the grant still holds → all granted.
+    expect(load.quarters).toEqual(["granted", "granted", "granted", "granted"]);
+  });
+
+  it("stays idle after a revoke when the comfort load is switched off (comfort-off-after-revoke)", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-10, "granted"), dec(20, "revoked"), dec(25, "comfort-off-after-revoke")],
+      LOADS,
+      START,
+      END,
+    );
+    // q1 (12:15-12:30) contains the revoke → revoked; the off-confirmation must
+    // NOT repaint the following quarters as "unmanaged" — the device is off.
+    expect(load.quarters).toEqual(["granted", "revoked", "idle", "idle"]);
+  });
+
   it("returns idle everywhere for a load with no decisions, and ignores other equipments", () => {
     const [load] = buildLoadTimelines([dec(20, "granted", "pompe")], LOADS, START, END);
     expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);

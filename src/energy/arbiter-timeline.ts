@@ -36,9 +36,14 @@ function sustainedAfter(kind: ArbiterDecision["kind"]): QuarterState | null {
       return "idle";
     case "suspended":
     case "unclaimed-run":
-    case "watts-divergence":
-    case "comfort-off-after-revoke":
       return "unmanaged";
+    // Audit-only events emitted *while another state already holds* — NOT
+    // transitions. `watts-divergence` fires on a still-granted claim; a load's
+    // measured draw drifting must not repaint it from "accordé" to "hors
+    // pilotage". `comfort-off-after-revoke` fires when a comfort load is
+    // switched OFF after losing its grant — the load is off, so leaving the
+    // preceding revoke→idle in place is correct, not "unmanaged". Both leave
+    // the sustained state unchanged.
     default:
       return null; // non-state event (leaves the sustained state unchanged)
   }

@@ -34,6 +34,7 @@ export function ArbiterTimeline() {
   const { t } = useTranslation();
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<ArbiterTimelineData | null>(null);
+  const [failed, setFailed] = useState(false);
   const [selTime, setSelTime] = useState<number | null>(null);
   const jscrollRef = useRef<HTMLDivElement>(null);
 
@@ -43,10 +44,15 @@ export function ArbiterTimeline() {
       .then((d) => {
         if (!cancelled) {
           setData(d);
+          setFailed(false);
           setSelTime(null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Never throw into the surface; surface a small notice instead of
+        // silently vanishing the whole timeline + journal (spec 148 review #5).
+        if (!cancelled) setFailed(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -61,6 +67,8 @@ export function ArbiterTimeline() {
     return { start, end, stepMs, n };
   }, [data]);
 
+  if (failed && !data)
+    return <p className="mt-4 text-[12px] text-text-tertiary">{t("arbiter.timeline.unavailable")}</p>;
   if (!data || !geom) return null;
   const { start, stepMs, n } = geom;
   const isNow = offset === 0;
@@ -76,8 +84,7 @@ export function ArbiterTimeline() {
   const yOf = (v: number) => (v >= 0 ? y0 - (v / maxAbs) * (yUp - 2) : y0 + (-v / maxAbs) * (yDown - 2));
   const pts = values.map((p) => `${(p.x * W).toFixed(1)},${yOf(p.v).toFixed(1)}`).join(" ");
   const area = values.length ? `0,${y0} ${pts} ${W},${y0}` : "";
-  const posKW = (maxAbs / 1000).toFixed(1);
-  const negKW = (maxAbs / 1000).toFixed(1);
+  const scaleKW = (maxAbs / 1000).toFixed(1); // symmetric axis: +/- the same peak
 
   // ── journal linkage ───────────────────────────────────────────
   const highlighted = new Set<number>();
@@ -128,9 +135,9 @@ export function ArbiterTimeline() {
       {/* surplus curve with kW scale */}
       <div className="flex items-stretch gap-2 my-1">
         <div className="relative w-[52px] flex-none">
-          <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">+{posKW} kW</span>
+          <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">+{scaleKW} kW</span>
           <span className="absolute right-0 text-[8px] font-mono text-text-tertiary" style={{ top: `${y0 - 4}px` }}>0</span>
-          <span className="absolute right-0 text-[8px] font-mono text-text-tertiary" style={{ top: `${H - 10}px` }}>-{negKW} kW</span>
+          <span className="absolute right-0 text-[8px] font-mono text-text-tertiary" style={{ top: `${H - 10}px` }}>-{scaleKW} kW</span>
         </div>
         <svg
           width="100%"
@@ -183,15 +190,23 @@ export function ArbiterTimeline() {
         </div>
       ))}
 
-      {/* hour labels */}
+      {/* hour labels — one slot per cell, labelled only on the hour so they line
+          up with the ribbon's hour-edge markers even when the window edge is not
+          itself on the hour */}
       <div className="flex ml-[60px] mt-1">
-        {Array.from({ length: n }).map((_, i) =>
-          i % 4 === 0 ? (
-            <span key={i} className="text-[9px] text-text-tertiary text-left" style={{ flex: 4 }}>
-              {new Date(start + i * stepMs).getHours()}h
+        {Array.from({ length: n }).map((_, i) => {
+          const cellTime = start + i * stepMs;
+          const onHour = new Date(cellTime).getMinutes() === 0;
+          return (
+            <span
+              key={i}
+              className="text-[9px] text-text-tertiary text-left whitespace-nowrap overflow-visible"
+              style={{ flex: 1 }}
+            >
+              {onHour ? `${new Date(cellTime).getHours()}h` : " "}
             </span>
-          ) : null,
-        )}
+          );
+        })}
       </div>
 
       {/* legend */}

@@ -1212,6 +1212,7 @@
   "arbiter.timeline.yesterday": "hier",
   "arbiter.timeline.daysAgo": "il y a {{n}} j",
   "arbiter.timeline.noDecisions": "Aucune décision sur cette période.",
+  "arbiter.timeline.unavailable": "Frise indisponible pour le moment.",
   "arbiter.timeline.state.granted": "Accordé",
   "arbiter.timeline.state.revoked": "Surplus retiré",
   "arbiter.timeline.state.unmanaged": "On (hors pilotage)",

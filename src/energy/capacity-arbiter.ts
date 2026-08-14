@@ -603,7 +603,12 @@ export class CapacityArbiter {
    * series, and the in-window journal for the cell → journal link.
    */
   getTimeline(endMs: number, hours: number, stepMin = 15): ArbiterTimeline {
-    const windowEnd = endMs;
+    const stepMs = stepMin * 60_000;
+    // Quantize the window edge down to a step boundary so the quarter cells fall
+    // on clock ticks (:00/:15/:30/:45); the UI's hour labels and hour-edge
+    // markers key off `getMinutes() === 0`, which only lands right when the
+    // cells are clock-aligned (spec 148 review #4).
+    const windowEnd = Math.floor(endMs / stepMs) * stepMs;
     const windowStart = windowEnd - hours * 3_600_000;
     const lookback = windowStart - 24 * 3_600_000; // enough to know the entering state
     const loads = this.config.priority.map((id) => ({ equipmentId: id, name: this.nameOf(id) }));

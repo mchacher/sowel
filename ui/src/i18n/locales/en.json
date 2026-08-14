@@ -1212,6 +1212,7 @@
   "arbiter.timeline.yesterday": "yesterday",
   "arbiter.timeline.daysAgo": "{{n}} d ago",
   "arbiter.timeline.noDecisions": "No decisions in this window.",
+  "arbiter.timeline.unavailable": "Timeline unavailable right now.",
   "arbiter.timeline.state.granted": "Granted",
   "arbiter.timeline.state.revoked": "Surplus withdrawn",
   "arbiter.timeline.state.unmanaged": "On (unmanaged)",
