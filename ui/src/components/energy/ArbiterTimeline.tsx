@@ -109,7 +109,7 @@ export function ArbiterTimeline() {
   // 1:1 to px, so a bigger H simply gives the surplus/deficit more amplitude.
   const isDesktop = windowHours === WINDOW_HOURS_DESKTOP;
   const W = 480;
-  const H = isDesktop ? 92 : 46;
+  const H = isDesktop ? 120 : 56;
   const values = data.surplus.map((s) => ({
     x: (Date.parse(s.atIso) - start) / (n * stepMs),
     v: s.availableW,
@@ -124,14 +124,15 @@ export function ArbiterTimeline() {
   const area = values.length ? `0,${y0} ${pts} ${W},${y0}` : "";
   const scaleKW = (maxAbs / 1000).toFixed(1); // symmetric axis: +/- the same peak
 
-  // ── 2h alignment guides ───────────────────────────────────────
-  // Thin dotted verticals every 2 clock-hours, spanning the curve AND the
+  // ── hourly alignment guides ───────────────────────────────────
+  // Thin dotted verticals on every clock-hour, spanning the curve AND the
   // ribbons, so a point on the surplus curve reads straight down to its quarter.
-  // Positions are cell-boundary fractions (i/n), identical to the ribbon layout.
-  const gridMarks: number[] = [];
+  // Positions are cell-boundary fractions (i/n); ribbon cells are gap-less so a
+  // boundary lands exactly at i/n, matching both the guides and the curve.
+  const hourMarks: { f: number; label: string }[] = [];
   for (let i = 0; i <= n; i += 1) {
     const tm = new Date(start + i * stepMs);
-    if (tm.getMinutes() === 0 && tm.getHours() % 2 === 0) gridMarks.push(i / n);
+    if (tm.getMinutes() === 0) hourMarks.push({ f: i / n, label: `${tm.getHours()}h` });
   }
 
   // ── journal linkage ───────────────────────────────────────────
@@ -180,25 +181,30 @@ export function ArbiterTimeline() {
         </div>
       </div>
 
-      {/* curve + ribbons, overlaid with thin dotted 2h alignment guides */}
+      {/* chart title */}
+      <div className="text-[11px] font-medium text-text-secondary mb-1">
+        {t("arbiter.legend.surplusDeficit")}
+      </div>
+
+      {/* curve + ribbons, overlaid with thin dotted hourly alignment guides */}
       <div className="relative">
-        <div className="absolute left-[60px] right-0 top-0 bottom-0 pointer-events-none z-20">
-          {gridMarks.map((f, k) => (
+        <div className="absolute left-[88px] right-0 top-0 bottom-0 pointer-events-none z-20">
+          {hourMarks.map((m, k) => (
             <div
               key={k}
               className="absolute top-0 bottom-0"
               style={{
-                left: `${f * 100}%`,
+                left: `${m.f * 100}%`,
                 borderLeft:
-                  "1px dotted color-mix(in srgb, var(--color-text-tertiary) 35%, transparent)",
+                  "1px dotted color-mix(in srgb, var(--color-text-tertiary) 30%, transparent)",
               }}
             />
           ))}
         </div>
 
-        {/* surplus curve with kW scale */}
+        {/* surplus / deficit curve with kW scale */}
         <div className="flex items-stretch gap-2 mt-1 mb-3">
-          <div className="relative w-[52px] flex-none">
+          <div className="relative w-[80px] flex-none">
             <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">
               +{scaleKW} kW
             </span>
@@ -293,20 +299,21 @@ export function ArbiterTimeline() {
         {/* per-load ribbons */}
         {data.loads.map((load) => (
           <div key={load.equipmentId} className="flex items-center gap-2 my-[3px]">
-            <span className="w-[52px] flex-none text-right text-[10px] text-text-tertiary truncate">
+            <span className="w-[80px] flex-none text-right text-[10px] text-text-secondary truncate">
               {load.name}
             </span>
-            <div className="flex flex-1 gap-px relative">
+            {/* gap-less cells so a boundary lands exactly at i/n; a 1px inset in
+                the card colour fakes a hairline gap without shifting positions */}
+            <div className="flex flex-1 relative">
               {load.quarters.map((s, i) => {
                 const cellTime = start + i * stepMs;
-                const hourEdge = new Date(cellTime).getMinutes() === 0;
                 const selected = selTime === cellTime;
                 return (
                   <button
                     key={i}
                     onClick={() => onCell(cellTime)}
                     title={`${hhmm(cellTime)} · ${t(`arbiter.timeline.state.${s}`)}`}
-                    className={`flex-1 h-[18px] rounded-[1px] ${hourEdge ? "shadow-[inset_1px_0_0_var(--color-border)]" : ""} ${selected ? "outline outline-2 outline-primary z-10" : ""}`}
+                    className={`flex-1 h-[20px] rounded-[1px] shadow-[inset_-1px_0_0_var(--color-surface)] ${selected ? "outline outline-2 outline-primary z-10" : ""}`}
                     style={{ backgroundColor: cellColor(s) }}
                   />
                 );
@@ -317,37 +324,29 @@ export function ArbiterTimeline() {
         ))}
       </div>
 
-      {/* hour labels — one slot per cell, labelled only on the hour so they line
-          up with the ribbon's hour-edge markers even when the window edge is not
-          itself on the hour */}
-      <div className="flex ml-[60px] mt-1">
-        {Array.from({ length: n }).map((_, i) => {
-          const cellTime = start + i * stepMs;
-          const onHour = new Date(cellTime).getMinutes() === 0;
-          return (
-            <span
-              key={i}
-              className="text-[9px] text-text-tertiary text-left whitespace-nowrap overflow-visible"
-              style={{ flex: 1 }}
-            >
-              {onHour ? `${new Date(cellTime).getHours()}h` : " "}
-            </span>
-          );
-        })}
+      {/* hour labels — centered on each hourly guide */}
+      <div className="relative ml-[88px] mt-1 h-[12px]">
+        {hourMarks.map((m, k) => (
+          <span
+            key={k}
+            className="absolute top-0 text-[9px] text-text-tertiary whitespace-nowrap"
+            style={{
+              left: `${m.f * 100}%`,
+              transform:
+                m.f <= 0.02
+                  ? "translateX(0)"
+                  : m.f >= 0.98
+                    ? "translateX(-100%)"
+                    : "translateX(-50%)",
+            }}
+          >
+            {m.label}
+          </span>
+        ))}
       </div>
 
       {/* legend */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-secondary mt-2 items-center">
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-2.5 rounded-sm flex-none"
-            style={{
-              background:
-                "linear-gradient(var(--color-solar-injection) 0 50%, var(--color-error) 50% 100%)",
-            }}
-          />
-          {t("arbiter.legend.surplusDeficit")}
-        </span>
         <span className="flex items-center gap-1.5">
           <span
             className="w-3 h-2.5 rounded-sm flex-none"

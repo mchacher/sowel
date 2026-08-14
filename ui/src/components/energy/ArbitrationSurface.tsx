@@ -1,25 +1,16 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Scale, Check, Zap, Clock } from "lucide-react";
+import { Scale, Zap, Clock } from "lucide-react";
 import { ArbiterTimeline } from "./ArbiterTimeline";
 import { useArbiter } from "../../store/useArbiter";
-import { useEquipments } from "../../store/useEquipments";
 
 /**
- * Spec 140 / FR-10 — the arbitration surface on Energy → Live. Normative
- * design: specs/140-energy-capacity-arbiter/mockups/arbitration-live.html.
- * Three stacked pieces: instant allocation bar + waiting queue, the day
- * timeline (available-surplus curve over one lane per profiled load), and
- * the decision journal. Renders nothing when the arbiter is disabled — a
- * no-PV home never sees dead arbitration UI.
+ * Spec 140 / FR-10 — the arbitration surface on Energy → Live. Two stacked
+ * pieces: the waiting queue (pending claims, why each waits), then the redesigned
+ * timeline (signed surplus/deficit curve + per-load ribbons + decision journal).
+ * Renders nothing when the arbiter is disabled — a no-PV home never sees dead
+ * arbitration UI.
  */
-
-// Spec 148 — energy palette tokens (dark-mode correct, shared with the
-// production graph). Accordé = auto-consumption green; the surplus curve =
-// injection (darker green); "On (hors pilotage)" = a solid slate.
-const HOUSE_COLOR = "var(--color-energy-hp)"; // household / consumption (blue)
-const GRANTED_COLOR = "var(--color-solar-auto)"; // accordé (auto-conso)
-const GRANTED_TEXT = "#123f1c"; // dark-green label on the light granted green (readable both themes)
 
 /**
  * Why a pending claim is waiting (FR-10a). `reasonWaiting` is a backend code;
@@ -48,7 +39,6 @@ export function ArbitrationSurface() {
   const { t } = useTranslation();
   const state = useArbiter((s) => s.state);
   const fetch = useArbiter((s) => s.fetch);
-  const equipments = useEquipments((s) => s.equipments);
 
   useEffect(() => {
     void fetch();
@@ -56,26 +46,7 @@ export function ArbitrationSurface() {
 
   if (!state || !state.enabled) return null;
 
-  // Instantaneous production for the allocation bar: a production meter if
-  // there is one, else the sum of solar-panel readings (net-metered installs
-  // that expose panels but no dedicated production meter). When neither yields
-  // a reading the bar is hidden rather than shown with a missing household
-  // segment — the timeline and journal below carry the substance.
-  const sumPowerOf = (type: string): number =>
-    equipments
-      .filter((e) => e.type === type)
-      .reduce((sum, e) => {
-        const b = e.dataBindings?.find((x) => x.category === "power") as
-          | { value?: unknown }
-          | undefined;
-        return sum + (typeof b?.value === "number" ? b.value : 0);
-      }, 0);
-  const productionW = sumPowerOf("energy_production_meter") || sumPowerOf("solar_panel");
   const available = state.availableSurplusW;
-  const reserved = state.grants.reduce((s, g) => s + g.watts, 0);
-  const free = available !== null ? Math.max(0, available - reserved) : 0;
-  const house = Math.max(0, productionW - reserved - free);
-  const showBar = productionW > 50;
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
@@ -100,49 +71,9 @@ export function ArbitrationSurface() {
         </span>
       </div>
       {state.state === "degraded" && (
-        <p className="text-[12px] text-warning mb-2">
-          {t("arbiter.degradedReason")}
-        </p>
+        <p className="text-[12px] text-warning mb-2">{t("arbiter.degradedReason")}</p>
       )}
 
-      {/* Allocation bar */}
-      {showBar && (
-        <>
-          <div className="flex gap-0.5 h-7 rounded-md overflow-hidden mb-1.5">
-            {house > 0 && (
-              <div
-                className="flex items-center justify-center text-[11px] font-semibold text-white min-w-0"
-                style={{ flex: house, backgroundColor: HOUSE_COLOR }}
-                title={t("arbiter.household")}
-              >
-                <span className="truncate px-1">{t("arbiter.household")}</span>
-              </div>
-            )}
-            {state.grants.map((g) => (
-              <div
-                key={g.equipmentId}
-                className="flex items-center justify-center gap-1 text-[11px] font-semibold min-w-0"
-                style={{ flex: g.watts, backgroundColor: GRANTED_COLOR, color: GRANTED_TEXT }}
-                title={`${g.equipmentName} · ${g.watts} W`}
-              >
-                <span className="truncate px-1 flex items-center gap-1">
-                  <Check size={12} strokeWidth={2.5} className="flex-none" />
-                  {g.equipmentName}
-                </span>
-              </div>
-            ))}
-            {free > 0 && (
-              <div
-                className="flex items-center justify-center text-[11px] text-text-secondary border border-dashed border-border rounded-r-md min-w-0"
-                style={{ flex: free }}
-                title={t("arbiter.free")}
-              >
-                <span className="font-mono">{(free / 1000).toFixed(1)} kW</span>
-              </div>
-            )}
-          </div>
-        </>
-      )}
       {state.pending.map((p) => (
         <div
           key={p.equipmentId}
