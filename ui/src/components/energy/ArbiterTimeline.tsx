@@ -197,16 +197,21 @@ export function ArbiterTimeline() {
               key={k}
               className="absolute top-0 bottom-0"
               style={{
-                left: `${f * 100}%`,
+                // -0.5px centres the 1px line on the boundary, i.e. in the
+                // middle of the 2px gap between the two cells that meet there.
+                left: `calc(${f * 100}% - 0.5px)`,
                 borderLeft:
-                  "1px dotted color-mix(in srgb, var(--color-text-tertiary) 30%, transparent)",
+                  "1px dotted color-mix(in srgb, var(--color-text-tertiary) 40%, transparent)",
               }}
             />
           ))}
           {selIdx >= 0 && selIdx < n && (
             <div
               className="absolute top-0 bottom-0 bg-primary/15 border-x border-primary/40"
-              style={{ left: `${(selIdx / n) * 100}%`, width: `${(1 / n) * 100}%` }}
+              style={{
+                left: `calc(${(selIdx / n) * 100}% + 1px)`,
+                width: `calc(${(1 / n) * 100}% - 2px)`,
+              }}
             />
           )}
         </div>
@@ -300,9 +305,10 @@ export function ArbiterTimeline() {
             <span className="w-[80px] flex-none text-right text-[10px] text-text-secondary truncate">
               {load.name}
             </span>
-            {/* gap-less cells so a boundary lands exactly at i/n; a 1px inset in
-                the card colour fakes a hairline gap without shifting positions */}
-            <div className="flex flex-1 relative">
+            {/* Cells positioned by exact percentage (not flexbox) so a boundary
+                lands precisely at i/n — the SAME basis as the guides — with a 2px
+                gap centred on each boundary, so a guide passes through its middle. */}
+            <div className="relative flex-1 h-[20px]">
               {load.quarters.map((s, i) => {
                 const cellTime = start + i * stepMs;
                 return (
@@ -310,8 +316,12 @@ export function ArbiterTimeline() {
                     key={i}
                     onClick={() => onCell(cellTime)}
                     title={`${hhmm(cellTime)} · ${t(`arbiter.timeline.state.${s}`)}`}
-                    className="flex-1 h-[20px] rounded-[1px] shadow-[inset_-1px_0_0_var(--color-surface)] focus:outline-none"
-                    style={{ backgroundColor: cellColor(s) }}
+                    className="absolute top-0 h-[20px] rounded-[1px] focus:outline-none"
+                    style={{
+                      left: `calc(${(i / n) * 100}% + 1px)`,
+                      width: `calc(${(1 / n) * 100}% - 2px)`,
+                      backgroundColor: cellColor(s),
+                    }}
                   />
                 );
               })}
