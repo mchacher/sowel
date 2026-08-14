@@ -125,14 +125,17 @@ export function ArbiterTimeline() {
   const scaleKW = (maxAbs / 1000).toFixed(1); // symmetric axis: +/- the same peak
 
   // ── hourly alignment guides ───────────────────────────────────
-  // One thin dotted vertical per clock-hour, placed at the CENTRE of the hour
-  // slot (HH:30) — not on the hour boundary — with its "Hh" label centred on it,
-  // so each guide sits in the middle of its hour column. HH:30 is a 15-min cell
-  // boundary, so it still lands exactly at i/n (aligned with cells and curve).
-  const hourMarks: { f: number; label: string }[] = [];
+  // The hour LABELS sit on the clock-hour tick (:00); the dotted GUIDES sit at
+  // the CENTRE of each hour column (HH:30), i.e. exactly between two labels — so
+  // each guide reads as the middle of its hour slot, distinct from the ticks.
+  // Both are 15-min cell boundaries, so they stay pixel-aligned with the ribbon
+  // cells and the curve.
+  const hourLabels: { f: number; label: string }[] = [];
+  const hourGuides: number[] = [];
   for (let i = 0; i <= n; i += 1) {
     const tm = new Date(start + i * stepMs);
-    if (tm.getMinutes() === 30) hourMarks.push({ f: i / n, label: `${tm.getHours()}h` });
+    if (tm.getMinutes() === 0) hourLabels.push({ f: i / n, label: `${tm.getHours()}h` });
+    else if (tm.getMinutes() === 30) hourGuides.push(i / n);
   }
 
   // ── journal linkage ───────────────────────────────────────────
@@ -189,12 +192,12 @@ export function ArbiterTimeline() {
       {/* curve + ribbons, overlaid with thin dotted hourly alignment guides */}
       <div className="relative">
         <div className="absolute left-[88px] right-0 top-0 bottom-0 pointer-events-none z-20">
-          {hourMarks.map((m, k) => (
+          {hourGuides.map((f, k) => (
             <div
               key={k}
               className="absolute top-0 bottom-0"
               style={{
-                left: `${m.f * 100}%`,
+                left: `${f * 100}%`,
                 borderLeft:
                   "1px dotted color-mix(in srgb, var(--color-text-tertiary) 30%, transparent)",
               }}
@@ -319,7 +322,7 @@ export function ArbiterTimeline() {
 
       {/* hour labels — centered on each hourly guide */}
       <div className="relative ml-[88px] mt-1 h-[12px]">
-        {hourMarks.map((m, k) => (
+        {hourLabels.map((m, k) => (
           <span
             key={k}
             className="absolute top-0 text-[9px] text-text-tertiary whitespace-nowrap"
