@@ -258,9 +258,59 @@ npx eslint src/ --ext .ts
 
 ---
 
-## Phase 5: Documentation & Commit
+## Phase 5: Agent Code Review (before PR)
 
-### 5.1 Update Documentation (if applicable)
+**Before committing/opening the PR, the branch diff MUST be reviewed by a
+dedicated review agent.** This catches correctness bugs, convention violations,
+and scope creep while they are still cheap to fix.
+
+### 5.1 Launch the review agent
+
+Spawn a subagent (Agent tool — prefer the `code-reviewer` type if available,
+else `general-purpose`) scoped to the working diff. Give it:
+
+- the diff to review: `git diff main...HEAD` (or the uncommitted working tree if
+  not yet committed);
+- the feature intent: point it at `specs/XXX-<name>/spec.md`;
+- the review checklist below.
+
+The agent must report findings ranked by severity, each with a `file:line`
+pointer and a concrete failure scenario — not vague style notes.
+
+Review checklist (the agent verifies):
+
+- **Correctness**: logic bugs, unhandled null/offline/empty cases, edge cases
+  from the spec's "Edge cases" section.
+- **Conventions** (`CLAUDE.md`): strict TS (no `any`), UUID v4, pino logger (no
+  `console.*`), handlers wrapped in try/catch, Tailwind-only + Lucide, migration
+  numbering, event-bus discriminated unions.
+- **Scope**: the diff does only what the spec says — no unrelated refactors, no
+  feature creep, no silent behavior change on unrelated surfaces.
+- **Tests**: every scenario in the plan's Test Plan has a matching test; the
+  regression/nominal cases actually exercise the new logic.
+- **Security/safety**: no secret leakage, no weakened auth/isolation gates.
+
+### 5.2 Triage and fix
+
+- Fix every **blocking** finding (correctness, convention breach, missing test).
+- For non-blocking suggestions, either apply them or note explicitly why not.
+- If code changed, **re-run Phase 4** (tsc + tests + lint) before proceeding.
+- Summarize the review outcome to the user (what was found, what was fixed).
+
+> **GATE 5 — Checklist** (verify ALL before proceeding):
+>
+> - [ ] 5.1 Done — Review agent ran on the branch diff with the checklist
+> - [ ] 5.2 Done — All blocking findings fixed (or explicitly deferred with the user's agreement)
+> - [ ] 5.2 Done — Phase 4 checks re-run and green if code changed after review
+> - [ ] Review outcome summarized to the user
+>
+> Do NOT open the PR with unresolved blocking findings.
+
+---
+
+## Phase 6: Documentation & Commit
+
+### 6.1 Update Documentation (if applicable)
 
 If the feature adds or changes user-facing behavior, API endpoints, or architecture, update the documentation using `/sowel-docs`. Common triggers:
 
@@ -275,7 +325,7 @@ Also update the spec files:
 - Mark acceptance criteria as `[x]` in `specs/XXX/spec.md`
 - Mark tasks as `[x]` in `specs/XXX/plan.md`
 
-### 5.2 Commit
+### 6.2 Commit
 
 Use conventional commits. Do NOT add Co-Authored-By lines.
 
@@ -288,26 +338,26 @@ Explanation of what and why."
 
 Scopes: `mqtt`, `devices`, `equipments`, `zones`, `recipes`, `modes`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `packages`, `backup`, `self-update`, `energy`, `logging`
 
-### 5.3 Push & Create PR
+### 6.3 Push & Create PR
 
 ```bash
 git push -u origin feat/<feature-name>
 gh pr create --title "feat: description" --body "..."
 ```
 
-PR body must include: Summary, Changes, Test plan (with checkboxes for typecheck, tests, manual verification).
+PR body must include: Summary, Changes, Test plan (with checkboxes for typecheck, tests, manual verification), and a note that the branch passed the Phase 5 agent review.
 
-> **GATE 5 — Checklist** (verify ALL before proceeding):
+> **GATE 6 — Checklist** (verify ALL before proceeding):
 >
-> - [ ] 5.1 Done — Specs updated: acceptance criteria `[x]` in `spec.md`, tasks `[x]` in `plan.md`
-> - [ ] 5.1 Done — Documentation updated (if applicable)
-> - [ ] 5.2 Done — Changes committed on feature branch (conventional commit, no Co-Authored-By)
-> - [ ] 5.3 Done — Branch pushed, PR created with Summary + Changes + Test plan
+> - [ ] 6.1 Done — Specs updated: acceptance criteria `[x]` in `spec.md`, tasks `[x]` in `plan.md`
+> - [ ] 6.1 Done — Documentation updated (if applicable)
+> - [ ] 6.2 Done — Changes committed on feature branch (conventional commit, no Co-Authored-By)
+> - [ ] 6.3 Done — Branch pushed, PR created with Summary + Changes + Test plan
 > - [ ] PR URL shared with user
 
 ---
 
-## Phase 6: Wait for Merge Approval
+## Phase 7: Wait for Merge Approval
 
 **CRITICAL: Do NOT merge without explicit user confirmation.**
 
@@ -321,7 +371,7 @@ PR créée: [URL]. Voulez-vous que je merge dans main ?
 - User has questions → address them first
 - User says "non" / "attends" → STOP
 
-### 6.1 Merge & Cleanup
+### 7.1 Merge & Cleanup
 
 Only after explicit user approval:
 
@@ -331,7 +381,7 @@ git checkout main
 git pull
 ```
 
-> **GATE 6 — Checklist** (verify ALL before proceeding):
+> **GATE 7 — Checklist** (verify ALL before proceeding):
 >
 > - [ ] User has explicitly approved the merge ("oui", "merge", "go")
 > - [ ] PR merged, branch deleted
@@ -341,11 +391,12 @@ git pull
 
 ## Gate Summary
 
-| Gate  | Condition                      | What happens if skipped |
-| ----- | ------------------------------ | ----------------------- |
-| **1** | Requirements clear             | Wrong feature built     |
-| **2** | User approved spec             | Wasted implementation   |
-| **3** | Code on feature branch         | Direct commits to main  |
-| **4** | TypeScript + tests + lint pass | Broken code merged      |
-| **5** | PR created                     | No code review possible |
-| **6** | User approved merge            | Unauthorized merge      |
+| Gate  | Condition                      | What happens if skipped     |
+| ----- | ------------------------------ | --------------------------- |
+| **1** | Requirements clear             | Wrong feature built         |
+| **2** | User approved spec             | Wasted implementation       |
+| **3** | Code on feature branch         | Direct commits to main      |
+| **4** | TypeScript + tests + lint pass | Broken code merged          |
+| **5** | Agent review, blockers fixed   | Avoidable bugs reach the PR |
+| **6** | PR created                     | No human review possible    |
+| **7** | User approved merge            | Unauthorized merge          |
