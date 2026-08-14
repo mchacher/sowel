@@ -125,14 +125,14 @@ export function ArbiterTimeline() {
   const scaleKW = (maxAbs / 1000).toFixed(1); // symmetric axis: +/- the same peak
 
   // ── hourly alignment guides ───────────────────────────────────
-  // Thin dotted verticals on every clock-hour, spanning the curve AND the
-  // ribbons, so a point on the surplus curve reads straight down to its quarter.
-  // Positions are cell-boundary fractions (i/n); ribbon cells are gap-less so a
-  // boundary lands exactly at i/n, matching both the guides and the curve.
+  // One thin dotted vertical per clock-hour, placed at the CENTRE of the hour
+  // slot (HH:30) — not on the hour boundary — with its "Hh" label centred on it,
+  // so each guide sits in the middle of its hour column. HH:30 is a 15-min cell
+  // boundary, so it still lands exactly at i/n (aligned with cells and curve).
   const hourMarks: { f: number; label: string }[] = [];
   for (let i = 0; i <= n; i += 1) {
     const tm = new Date(start + i * stepMs);
-    if (tm.getMinutes() === 0) hourMarks.push({ f: i / n, label: `${tm.getHours()}h` });
+    if (tm.getMinutes() === 30) hourMarks.push({ f: i / n, label: `${tm.getHours()}h` });
   }
 
   // ── journal linkage ───────────────────────────────────────────
