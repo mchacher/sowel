@@ -686,7 +686,14 @@ export class CapacityArbiter {
         untilIso: new Date(until).toISOString(),
       }));
     return {
-      enabled: this.config.enabled,
+      // Display flag — reflects the configured setting, NOT the control gate.
+      // On a shadow instance `config.enabled` is forced false so the arbiter
+      // never acts (spec 124), but spec 124 also promises the shadow is "fully
+      // usable as a UI: everything that reads state still works". Gating the
+      // read-only arbitration surface on the control flag would hide it on
+      // shadow, breaking that promise and making the surface impossible to QA.
+      // Control paths still gate on `config.enabled`; this is display only.
+      enabled: this.settings.get(SETTING_PREFIX + "enabled") === "true",
       state,
       availableSurplusW: state === "active" ? Math.round(accounting.availableW) : null,
       productionDetected: this.equipments

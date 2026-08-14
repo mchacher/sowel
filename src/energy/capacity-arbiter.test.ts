@@ -1047,14 +1047,26 @@ describe("capacity arbiter — review hardening", () => {
   });
 
   // second-audit gap — a shadow instance must never arbitrate, whatever the
-  // stored setting says.
-  it("is forced off in shadow mode even when the setting is enabled", () => {
+  // stored setting says. Control (claims/grants) stays inert...
+  it("never arbitrates in shadow mode even when the setting is enabled", () => {
     const h = makeHarness({ shadow: true });
     const denied = h.claim("i1", { equipmentId: "pump" });
     expect(denied.deniedReason).toBe("arbiter-disabled");
     h.run(-3000, 200);
     expect(h.grantedEvents()).toHaveLength(0);
-    expect(h.arbiter.getPublicState().enabled).toBe(false);
+  });
+
+  // spec 148 — ...but the read-only surface stays visible so it can be QA'd on
+  // a shadow (spec 124: "fully usable as a UI"). The display flag tracks the
+  // configured setting, decoupled from the shadow-forced control gate.
+  it("still reports enabled in the read model on a shadow when the setting is on", () => {
+    const enabledShadow = makeHarness({ shadow: true });
+    expect(enabledShadow.arbiter.getPublicState().enabled).toBe(true);
+    const disabledShadow = makeHarness({
+      shadow: true,
+      settings: { "energy.arbiter.enabled": "false" },
+    });
+    expect(disabledShadow.arbiter.getPublicState().enabled).toBe(false);
   });
 
   // test review M1 — the EMA is a real low-pass filter at the default 60 s
