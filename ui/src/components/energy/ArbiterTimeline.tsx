@@ -6,12 +6,35 @@ import { getArbiterTimeline } from "../../api";
 import { journalDotColor } from "./arbiterColors";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
-// surplus/deficit curve above per-load quarter-hour ribbons, a 6h window paged
-// back to 48h, with the decision journal below linked to a cell click. Colours
-// come from the shared energy tokens (production solar family), dark-mode ready.
+// surplus/deficit curve above per-load quarter-hour ribbons, paged back to 48h,
+// with the decision journal below linked to a cell click. Colours come from the
+// shared energy tokens (production solar family), dark-mode ready.
 
-const WINDOW_HOURS = 6;
-const MAX_OFFSET = Math.floor(48 / WINDOW_HOURS); // 48h depth
+// Window width adapts to the viewport: a wider desktop card can carry 12h of
+// quarter cells legibly, a phone stays at 6h. The 48h scroll depth is fixed.
+const WINDOW_HOURS_MOBILE = 6;
+const WINDOW_HOURS_DESKTOP = 12;
+const DEPTH_HOURS = 48;
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+/** Live 6h/12h window width from the viewport (SSR- and jsdom-safe, resize-aware). */
+function useWindowHours(): number {
+  const desktopMq = (): MediaQueryList | null =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(DESKTOP_QUERY)
+      : null;
+  const [hours, setHours] = useState(() =>
+    desktopMq()?.matches ? WINDOW_HOURS_DESKTOP : WINDOW_HOURS_MOBILE,
+  );
+  useEffect(() => {
+    const mq = desktopMq();
+    if (!mq) return;
+    const onChange = () => setHours(mq.matches ? WINDOW_HOURS_DESKTOP : WINDOW_HOURS_MOBILE);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return hours;
+}
 
 function cellColor(s: ArbiterQuarterState): string {
   switch (s) {
@@ -32,15 +55,21 @@ function hhmm(ms: number): string {
 
 export function ArbiterTimeline() {
   const { t } = useTranslation();
+  const windowHours = useWindowHours();
+  const maxOffset = Math.floor(DEPTH_HOURS / windowHours); // 8 at 6h, 4 at 12h
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<ArbiterTimelineData | null>(null);
   const [failed, setFailed] = useState(false);
   const [selTime, setSelTime] = useState<number | null>(null);
   const jscrollRef = useRef<HTMLDivElement>(null);
 
+  // Crossing the breakpoint can shrink maxOffset below the current page —
+  // clamp before it reaches the fetch so we never ask past the 48h depth.
+  const pageOffset = Math.min(offset, maxOffset);
+
   useEffect(() => {
     let cancelled = false;
-    getArbiterTimeline(WINDOW_HOURS, offset, 15)
+    getArbiterTimeline(windowHours, pageOffset, 15)
       .then((d) => {
         if (!cancelled) {
           setData(d);
@@ -56,7 +85,7 @@ export function ArbiterTimeline() {
     return () => {
       cancelled = true;
     };
-  }, [offset]);
+  }, [windowHours, pageOffset]);
 
   const geom = useMemo(() => {
     if (!data) return null;
@@ -71,7 +100,7 @@ export function ArbiterTimeline() {
     return <p className="mt-4 text-[12px] text-text-tertiary">{t("arbiter.timeline.unavailable")}</p>;
   if (!data || !geom) return null;
   const { start, stepMs, n } = geom;
-  const isNow = offset === 0;
+  const isNow = pageOffset === 0;
 
   // ── signed surplus/deficit curve ──────────────────────────────
   const W = 480;
@@ -103,7 +132,7 @@ export function ArbiterTimeline() {
     });
   };
 
-  const uid = `arbtl-${offset}`;
+  const uid = `arbtl-${pageOffset}`;
   const rangeLabel = `${dayLabel(start, t)} · ${hhmm(start)}-${hhmm(geom.end)}`;
 
   return (
@@ -114,18 +143,18 @@ export function ArbiterTimeline() {
         <span className="ml-auto text-[11px] text-text-tertiary font-mono">{rangeLabel}</span>
         <div className="flex gap-1">
           <button
-            onClick={() => setOffset((o) => Math.min(MAX_OFFSET, o + 1))}
-            disabled={offset >= MAX_OFFSET}
+            onClick={() => setOffset((o) => Math.min(maxOffset, o + 1))}
+            disabled={pageOffset >= maxOffset}
             className="w-6 h-6 flex items-center justify-center border border-border rounded-[6px] text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
-            aria-label={t("arbiter.timeline.earlier")}
+            aria-label={t("arbiter.timeline.earlier", { h: windowHours })}
           >
             <ChevronLeft size={16} strokeWidth={2} />
           </button>
           <button
             onClick={() => setOffset((o) => Math.max(0, o - 1))}
-            disabled={offset === 0}
+            disabled={pageOffset === 0}
             className="w-6 h-6 flex items-center justify-center border border-border rounded-[6px] text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
-            aria-label={t("arbiter.timeline.later")}
+            aria-label={t("arbiter.timeline.later", { h: windowHours })}
           >
             <ChevronRight size={16} strokeWidth={2} />
           </button>
