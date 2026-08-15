@@ -246,8 +246,40 @@ See the "Backup & Restore" section in [architecture.md](architecture.md) for the
 | Source                                       | Retention                           | Use case                                                                              |
 | -------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------- |
 | **Ring buffer** (memory)                     | Lost on restart                     | Live tail via UI Admin → Logs                                                         |
-| **Docker stdout**                            | Per-container (lost on recreate)    | `docker logs sowel`                                                                   |
+| **Docker stdout**                            | Capped at 3 × 10 MB per container   | `docker logs sowel`                                                                   |
 | **`pino-roll` files** on `sowel-data` volume | 14 daily files, survives recreation | **Post-incident investigation** — the only source that survives self-update recreates |
+
+### Docker log size
+
+`docker-compose.yml` caps each container's stdout at `max-size: 10m` /
+`max-file: 3`. Without it, Docker's `json-file` driver is **unbounded**: a chatty
+container quietly grows until the host disk is full, which takes down every
+service on the machine — Sowel included. Compose applies the cap when a container
+is **created**, so on an existing install it takes effect at the next
+`docker compose up -d` (or the next self-update, which recreates the container).
+
+To reclaim space already lost on a running host, and check for other offenders:
+
+```bash
+# Size of every container log, largest last
+for c in $(docker ps -aq); do
+  printf '%s\t%s\n' \
+    "$(sudo du -h "$(docker inspect --format '{{.LogPath}}' $c)" | cut -f1)" \
+    "$(docker inspect --format '{{.Name}}' $c)"
+done | sort -h
+
+# Truncate one in place — no restart needed
+sudo truncate -s 0 "$(docker inspect --format '{{.LogPath}}' <container>)"
+```
+
+Containers Sowel does not manage (a Zigbee2MQTT running alongside it, for
+instance) keep their own settings. A host-wide default can be set in
+`/etc/docker/daemon.json`, but it only applies to containers created after a
+daemon restart:
+
+```json
+{ "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }
+```
 
 ### Accessing the file logs
 

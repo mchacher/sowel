@@ -20,6 +20,11 @@ services:
       - sowel-plugins:/app/plugins
     depends_on:
       - influxdb
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   influxdb:
     image: influxdb:2.7
@@ -36,6 +41,11 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=sowel
       - DOCKER_INFLUXDB_INIT_BUCKET=sowel
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-dev-token
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   sowel-data:

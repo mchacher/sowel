@@ -38,6 +38,14 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - influxdb
+    logging:
+      # Docker's json-file driver is unbounded by default: a chatty container
+      # fills the host disk with no warning. Cap it per service so a Sowel
+      # install cannot take its own host down.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   influxdb:
     image: influxdb:2.7
@@ -52,6 +60,11 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=sowel
       - DOCKER_INFLUXDB_INIT_BUCKET=sowel
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-auto-token
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   sowel-data:

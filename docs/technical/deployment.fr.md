@@ -240,8 +240,42 @@ Voir la section "Backup et restauration" dans [architecture.md](architecture.md)
 | Source                                              | Rétention                                       | Cas d'usage                                                                               |
 | --------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | **Ring buffer** (mémoire)                           | Perdu au redémarrage                            | Tail live via UI Admin → Logs                                                             |
-| **stdout Docker**                                   | Par conteneur (perdu à la recréation)           | `docker logs sowel`                                                                       |
+| **stdout Docker**                                   | Plafonné à 3 × 10 Mo par conteneur              | `docker logs sowel`                                                                       |
 | **Fichiers `pino-roll`** sur le volume `sowel-data` | 14 fichiers journaliers, survit à la recréation | **Investigation post-incident**, la seule source qui survit aux recréations d'auto-update |
+
+### Taille des logs Docker
+
+`docker-compose.yml` plafonne le stdout de chaque conteneur à `max-size: 10m` /
+`max-file: 3`. Sans ce plafond, le driver `json-file` de Docker est **illimité** :
+un conteneur bavard grossit en silence jusqu'à saturer le disque de l'hôte, ce qui
+met à terre tous les services de la machine, Sowel compris. Compose applique le
+plafond à la **création** du conteneur : sur une install existante, il prendra
+donc effet au prochain `docker compose up -d` (ou au prochain auto-update, qui
+recrée le conteneur).
+
+Pour récupérer l'espace déjà perdu sur un hôte en marche, et repérer les autres
+coupables :
+
+```bash
+# Taille de chaque log de conteneur, le plus gros en dernier
+for c in $(docker ps -aq); do
+  printf '%s\t%s\n' \
+    "$(sudo du -h "$(docker inspect --format '{{.LogPath}}' $c)" | cut -f1)" \
+    "$(docker inspect --format '{{.Name}}' $c)"
+done | sort -h
+
+# Vider un log en place, sans redémarrage
+sudo truncate -s 0 "$(docker inspect --format '{{.LogPath}}' <conteneur>)"
+```
+
+Les conteneurs que Sowel ne gère pas (un Zigbee2MQTT installé à côté, par exemple)
+gardent leurs propres réglages. Un défaut valable pour tout l'hôte se pose dans
+`/etc/docker/daemon.json`, mais il ne s'applique qu'aux conteneurs créés après un
+redémarrage du démon :
+
+```json
+{ "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }
+```
 
 ### Accéder aux logs fichiers
 
