@@ -1197,13 +1197,17 @@ export class CapacityArbiter {
   /**
    * Whether `alias` is the equipment's on/off STATE binding (#535 review):
    * mirrors isPowerAlias — prefer a state-categorised binding, fall back to
-   * the conventional "state" alias (plugs/switches categorise as generic).
+   * the conventional "state" alias (plugs/switches categorise as generic),
+   * then to a BOOLEAN-valued "power" alias: cloud-API loads (the Panasonic
+   * PAC) expose their on/off switch under "power" — a wattmeter binding reads
+   * numeric there and never matches `isBooleanState`.
    */
   private isStateAlias(equipmentId: string, alias: string): boolean {
     const bindings = this.equipments.getDataBindingsWithValues(equipmentId);
     const stateBinding =
       bindings.find((b) => b.category === "appliance_state" || b.category === "light_state") ??
-      bindings.find((b) => b.alias === "state");
+      bindings.find((b) => b.alias === "state") ??
+      bindings.find((b) => b.alias === "power" && isBooleanState(b.value));
     return stateBinding?.alias === alias;
   }
 

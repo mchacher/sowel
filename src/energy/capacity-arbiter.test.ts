@@ -34,6 +34,7 @@ function makeHarness(opts?: {
   priority?: string[];
   settings?: Record<string, string>;
   profiles?: Record<string, EnergyLoadProfile | undefined>;
+  bindings?: Record<string, Array<{ alias: string; category: string; value?: unknown }>>;
   shadow?: boolean;
 }) {
   const settingsMap = new Map<string, string>(
@@ -84,7 +85,7 @@ function makeHarness(opts?: {
   // Loads expose their power measurement plus a conventional "state" binding
   // (plugs/switches categorise state as generic) — isStateAlias resolves the
   // latter, so feedState() drives the arbiter's on/off observation (#535).
-  const bindings = new Map<string, Array<{ alias: string; category: string }>>([
+  const bindings = new Map<string, Array<{ alias: string; category: string; value?: unknown }>>([
     ["grid", [{ alias: "power", category: "power" }]],
     [
       "pac",
@@ -108,6 +109,7 @@ function makeHarness(opts?: {
       ],
     ],
   ]);
+  for (const [id, list] of Object.entries(opts?.bindings ?? {})) bindings.set(id, list);
 
   const learnedCalls: Array<{ id: string; watts: number; runs: number }> = [];
   const equipmentManager = {
@@ -701,6 +703,30 @@ describe("capacity arbiter", () => {
     h.feedState("pac", true); // on by itself, no grant, no recipe order
     h.run(-100, 80); // > divergenceConfirmS
     expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  it("a boolean-valued 'power' alias is the state binding when no 'state' alias exists (prod PAC shape)", () => {
+    // The Panasonic PAC exposes its on/off switch as alias "power" (category
+    // "power", boolean value) with no "state" alias at all — a wattmeter
+    // would read numeric there, so the boolean value disambiguates.
+    const h = makeHarness({
+      bindings: {
+        pac: [
+          { alias: "power", category: "power", value: true },
+          { alias: "nanoe", category: "generic", value: "on" },
+        ],
+      },
+    });
+    h.feedMeter(-100);
+    h.order("pac", true, { kind: "recipe", instanceId: "i1" }); // unclaimed run
+    h.eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId: "pac",
+      alias: "power",
+      value: false, // the PAC reached temperature and reports its switch off
+      previous: null,
+    });
+    expect(h.arbiter.getPublicState().journal.map((j) => j.kind)).toContain("unclaimed-run-ended");
   });
 
   it("a boolean value on a non-state alias is not read as the run state", () => {
