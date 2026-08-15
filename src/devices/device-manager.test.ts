@@ -330,6 +330,189 @@ describe("DeviceManager", () => {
     });
   });
 
+  describe("value normalization (spec 150)", () => {
+    function makeManagerWithWarnSpy(): { mgr: DeviceManager; warns: unknown[][] } {
+      const warns: unknown[][] = [];
+      const stubLogger = {
+        child: () => stubLogger,
+        warn: (...args: unknown[]) => warns.push(args),
+        info: () => undefined,
+        error: () => undefined,
+        debug: () => undefined,
+        trace: () => undefined,
+        fatal: () => undefined,
+      };
+      const mgr = new DeviceManager(db, eventBus, stubLogger as unknown as typeof logger);
+      return { mgr, warns };
+    }
+
+    const boolRelay = {
+      friendlyName: "garage_relay",
+      data: [{ key: "state", type: "boolean" as const, category: "light_state" as const }],
+      orders: [],
+      rawExpose: [],
+    };
+
+    it("coerces 'ON'/'OFF' strings to booleans on a boolean-declared key", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", boolRelay);
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "garage_relay", { state: "ON" });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event.value).toBe(true);
+      expect(manager.getDeviceDataValue("zigbee2mqtt", "garage_relay", "state")).toBe(true);
+
+      events.length = 0;
+      manager.updateDeviceData("zigbee2mqtt", "garage_relay", { state: "OFF" });
+      const event2 = events.find((e) => e.type === "device.data.updated");
+      if (event2?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event2.value).toBe(false);
+    });
+
+    it("exposes the previous value normalized after coercion", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", boolRelay);
+      manager.updateDeviceData("zigbee2mqtt", "garage_relay", { state: "ON" });
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "garage_relay", { state: "OFF" });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event.previous).toBe(true);
+    });
+
+    it("parses numeric strings on a number-declared key", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "salon_pir", { battery: "88.5" });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event.value).toBe(88.5);
+    });
+
+    it("recases enum values to their canonical casing", () => {
+      const relay = {
+        friendlyName: "tasmota_relay",
+        data: [
+          {
+            key: "power1",
+            type: "enum" as const,
+            category: "light_state" as const,
+            enumValues: ["ON", "OFF"],
+          },
+        ],
+        orders: [],
+        rawExpose: [],
+      };
+      manager.upsertFromDiscovery("tasmota", "tasmota", relay);
+      events.length = 0;
+
+      manager.updateDeviceData("tasmota", "tasmota_relay", { power1: "on" });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event.value).toBe("ON");
+    });
+
+    it("stores un-coercible values raw and warns exactly once per key", () => {
+      const { mgr, warns } = makeManagerWithWarnSpy();
+      mgr.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", boolRelay);
+      events.length = 0;
+
+      mgr.updateDeviceData("zigbee2mqtt", "garage_relay", { state: "OPEN" });
+      mgr.updateDeviceData("zigbee2mqtt", "garage_relay", { state: "OPEN" });
+
+      const dataEvents = events.filter((e) => e.type === "device.data.updated");
+      expect(dataEvents).toHaveLength(2);
+      if (dataEvents[0]?.type === "device.data.updated") {
+        expect(dataEvents[0].value).toBe("OPEN");
+      }
+      const coercionWarns = warns.filter(
+        (w) => typeof w[1] === "string" && w[1].includes("does not match declared type"),
+      );
+      expect(coercionWarns).toHaveLength(1);
+    });
+
+    it("keeps typeof-inferred behavior for auto-created keys (no declared row)", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleLight);
+      events.length = 0;
+
+      // "temperature" is not declared by sampleLight but is a known property:
+      // the row is auto-created with typeof-inferred type, so no coercion applies.
+      manager.updateDeviceData("zigbee2mqtt", "salon_lampe", { temperature: 21.5 });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event.value).toBe(21.5);
+    });
+
+    it("passes null through untouched", () => {
+      manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", boolRelay);
+      events.length = 0;
+
+      manager.updateDeviceData("zigbee2mqtt", "garage_relay", { state: null });
+
+      const event = events.find((e) => e.type === "device.data.updated");
+      if (event?.type !== "device.data.updated") throw new Error("missing event");
+      expect(event.value).toBeNull();
+    });
+
+    it("warns at discovery when the declared type contradicts the category contract", () => {
+      const { mgr, warns } = makeManagerWithWarnSpy();
+      const weird = {
+        friendlyName: "weird_contact",
+        data: [{ key: "contact", type: "text" as const, category: "contact_door" as const }],
+        orders: [],
+        rawExpose: [],
+      };
+
+      mgr.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", weird);
+      mgr.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", weird);
+
+      const declWarns = warns.filter(
+        (w) => typeof w[1] === "string" && w[1].includes("contradicts category contract"),
+      );
+      expect(declWarns).toHaveLength(1);
+      // Row still created as declared
+      const device = mgr.getAll()[0];
+      expect(mgr.getDeviceData(device.id).find((d) => d.key === "contact")?.type).toBe("text");
+    });
+
+    it("does not warn for an ON/OFF enum on a boolean-expected category (Tasmota pattern)", () => {
+      const { mgr, warns } = makeManagerWithWarnSpy();
+      const relay = {
+        friendlyName: "tasmota_relay",
+        data: [
+          {
+            key: "power1",
+            type: "enum" as const,
+            category: "light_state" as const,
+            enumValues: ["ON", "OFF"],
+          },
+        ],
+        orders: [],
+        rawExpose: [],
+      };
+
+      mgr.upsertFromDiscovery("tasmota", "tasmota", relay);
+
+      const declWarns = warns.filter(
+        (w) => typeof w[1] === "string" && w[1].includes("contradicts category contract"),
+      );
+      expect(declWarns).toHaveLength(0);
+    });
+
+    it("does not warn for coherent declarations", () => {
+      const { mgr, warns } = makeManagerWithWarnSpy();
+      mgr.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);
+      expect(warns).toHaveLength(0);
+    });
+  });
+
   describe("updateDeviceStatus", () => {
     it("updates status to online and emits event", () => {
       manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", sampleDevice);

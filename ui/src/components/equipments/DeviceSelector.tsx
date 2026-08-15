@@ -3,9 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Radio, Check, ChevronDown, ChevronUp, Search } from "lucide-react";
 import type { DataCategory, EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
-import { computeBindingCandidates, type BindingCandidate } from "../../lib/binding-candidates";
+import {
+  CANDIDATE_BASED_TYPES,
+  computeBindingCandidates,
+  type BindingCandidate,
+} from "../../lib/binding-candidates";
 import { freeCandidates } from "../../lib/binding-utils";
-import { isRelevantOrder } from "./bindingUtils";
 
 /** Maps EquipmentType to required DataCategories for filtering. */
 const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> = {
@@ -20,7 +23,7 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
   button: ["action"],
   weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise"],
-  gate: ["generic", "contact_door"],
+  // gate is candidate-based (spec 150) — no category entry here.
   heater: ["generic", "light_state"],
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy"],
@@ -83,27 +86,9 @@ function looksLikeWaterValve(device: DeviceWithData): boolean {
   return device.data.some((d) => WATER_VALVE_MARKERS.has(d.key));
 }
 
-/** Equipment types for which binding is driven by computeBindingCandidates
- * (mirrors the backend). For these types the device is considered compatible
- * iff it exposes ≥1 candidate, and a channel picker appears when N>1. */
-const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
-  "pool_pump",
-  "pool_cover",
-  "pool_heat_pump",
-  "light_onoff",
-  "light_dimmable",
-  "light_color",
-  "switch",
-  "water_heater",
-  "shutter",
-  "awning",
-  // NOTE: water_valve is intentionally key-driven (EQUIPMENT_TYPE_DATA_KEYS +
-  // RELEVANT_*), NOT candidate-based. Its open/close is a boolean `light_toggle`
-  // order the candidate path (enum ON/OFF only) ignores, and a valve must bind
-  // its full surface (state + flow + battery + irrigation), not just the relay.
-  // Spec 125 — solar panel: one candidate per inverter channel (Panel 1 / Panel 2).
-  "solar_panel",
-]);
+// Spec 150 — CANDIDATE_BASED_TYPES now lives in the shared binding-candidates
+// module (single source of truth with the backend and bindingUtils). A device
+// is compatible iff it exposes ≥1 candidate; a channel picker appears when N>1.
 
 interface DeviceSelectorProps {
   equipmentType: EquipmentType;
@@ -192,16 +177,10 @@ export function DeviceSelector({
           )
         : availableDevices;
 
-  // A blind single-button gate (RTS via somfyrts2mqtt) has no contact-sensor
-  // data — only a trigger order. The data-category filter above would hide it
-  // behind "show all", so also propose any device exposing a gate command order.
-  if (equipmentType === "gate") {
-    compatible = availableDevices.filter(
-      (device) =>
-        device.data.some((d) => (categories ?? []).includes(d.category)) ||
-        (device.orders ?? []).some((o) => isRelevantOrder(o.key, "gate")),
-    );
-  }
+  // Spec 150 — gate is candidate-based: blind single-button gates (Somfy RTS
+  // gate_trigger), LoRa R1..R4 relays, Zigbee on/off relays (SONOFF MINI-ZBD)
+  // and contact-only sensors all yield candidates, so the former gate-specific
+  // filter here is gone.
 
   // Exclude smart water valves from light/switch creation flows so they don't
   // pollute the list (their `state` is misclassified as `light_state`).

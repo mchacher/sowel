@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  CANDIDATE_BASED_TYPES,
   computeBindingCandidates,
   hasFreeCandidates,
   inferBindingCategory,
 } from "./binding-candidates.js";
-import type { DeviceData, DeviceOrder } from "../shared/types.js";
+import type { DeviceData, DeviceOrder } from "./types.js";
 
 function order(
   key: string,
@@ -453,5 +454,135 @@ describe("inferBindingCategory", () => {
 
   it("switch + enum [ON,OFF] → null (no override)", () => {
     expect(inferBindingCategory("switch", { type: "enum", enumValues: ["ON", "OFF"] })).toBe(null);
+  });
+});
+
+describe("gate candidates (spec 150)", () => {
+  it("boolean relay (Zigbee dry-contact, e.g. SONOFF MINI-ZBD) → one command candidate", () => {
+    const orders = [
+      order("state", "boolean", { category: "light_toggle" }),
+      // Writable config exposes must NOT become gate candidates
+      order("power_on_behavior", "enum", { enumValues: ["off", "on", "toggle", "previous"] }),
+      order("turbo_mode", "boolean"),
+      order("detach_relay_mode", "boolean"),
+    ];
+    const datas = [
+      data("state", "boolean", { category: "light_state" }),
+      data("turbo_mode", "boolean"),
+      data("detach_relay_mode", "boolean"),
+    ];
+    const result = computeBindingCandidates("gate", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("state");
+    expect(result[0].orderKeys).toEqual(["state"]);
+    // The relay's own state feedback is NOT bound (alias collision with the
+    // virtual gate state + zone lights-on pollution via light_state).
+    expect(result[0].dataKeys).toEqual([]);
+  });
+
+  it("ON/OFF enum relay (Tasmota) → one command candidate", () => {
+    const orders = [order("power1", "enum", { enumValues: ["ON", "OFF"] })];
+    const result = computeBindingCandidates("gate", [], orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["power1"]);
+  });
+
+  it("Somfy RTS gate_trigger order → one candidate (unchanged)", () => {
+    const orders = [order("gate_trigger", "enum", { category: "gate_trigger" })];
+    const result = computeBindingCandidates("gate", [], orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("gate_trigger");
+  });
+
+  it("LoRa controller (R1 relay + RS reed data) → candidate carries the reed feedback", () => {
+    const orders = [order("R1", "enum", { enumValues: ["ON", "OFF"] })];
+    const datas = [data("RS1", "number"), data("vcc", "number", { category: "voltage" })];
+    const result = computeBindingCandidates("gate", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys).toEqual(["R1"]);
+    expect(result[0].dataKeys).toEqual(["RS1"]);
+  });
+
+  it("contact-only sensor (SNZB-04P) → one data-only contact candidate", () => {
+    const datas = [
+      data("contact", "boolean", { category: "contact_door" }),
+      data("battery", "number", { category: "battery" }),
+    ];
+    const result = computeBindingCandidates("gate", datas, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("contact");
+    expect(result[0].orderKeys).toEqual([]);
+    expect(result[0].dataKeys).toEqual(["contact"]);
+  });
+
+  it("data-only device without contact/reed (e.g. a temperature sensor) → no candidate", () => {
+    const datas = [
+      data("temperature", "number", { category: "temperature" }),
+      data("position", "number", { category: "generic" }),
+    ];
+    expect(computeBindingCandidates("gate", datas, [])).toHaveLength(0);
+  });
+
+  it("data-only reed board (RS keys) → contact candidate", () => {
+    const datas = [data("RS1", "number"), data("vcc", "number", { category: "voltage" })];
+    const result = computeBindingCandidates("gate", datas, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("contact");
+    expect(result[0].dataKeys).toEqual(["RS1"]);
+  });
+
+  it("device with only config orders and no data → no candidate", () => {
+    const orders = [
+      order("power_on_behavior", "enum", { enumValues: ["off", "on", "toggle", "previous"] }),
+    ];
+    expect(computeBindingCandidates("gate", [], orders)).toHaveLength(0);
+  });
+});
+
+describe("dimmable/color lights accept boolean relays (spec 150)", () => {
+  it("light_dimmable with boolean state + brightness → one candidate", () => {
+    const orders = [
+      order("state", "boolean", { category: "light_toggle" }),
+      order("brightness", "number", { category: "set_brightness", min: 0, max: 254 }),
+    ];
+    const datas = [
+      data("state", "boolean", { category: "light_state" }),
+      data("brightness", "number", { category: "light_brightness" }),
+    ];
+    const result = computeBindingCandidates("light_dimmable", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys.sort()).toEqual(["brightness", "state"]);
+    expect(result[0].dataKeys.sort()).toEqual(["brightness", "state"]);
+  });
+
+  it("light_color with boolean state + color orders → candidate includes color keys", () => {
+    const orders = [
+      order("state", "boolean", { category: "light_toggle" }),
+      order("brightness", "number", { category: "set_brightness" }),
+      order("color_temp", "number", { category: "set_color_temp" }),
+      order("color", "json", { category: "set_color" }),
+    ];
+    const datas = [data("state", "boolean", { category: "light_state" })];
+    const result = computeBindingCandidates("light_color", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].orderKeys.sort()).toEqual(["brightness", "color", "color_temp", "state"]);
+  });
+});
+
+describe("CANDIDATE_BASED_TYPES coverage (spec 150)", () => {
+  it("every candidate-based type has a dedicated implementation (never the 'all' fallback)", () => {
+    // A candidate-based type falling through to the default "all" case would
+    // recreate the pre-150 divergence bug (UI offering junk or nothing).
+    // The default case is recognizable: single candidate id "all" grabbing
+    // every key including config junk, for ANY input.
+    const junkOrders = [
+      order("power_on_behavior", "enum", { enumValues: ["off", "on", "toggle", "previous"] }),
+    ];
+    for (const t of CANDIDATE_BASED_TYPES) {
+      const result = computeBindingCandidates(t, [], junkOrders);
+      const isDefaultShape =
+        result.length === 1 && result[0].id === "all" && result[0].orderKeys.length === 1;
+      expect(isDefaultShape, `type ${t} fell through to the default case`).toBe(false);
+    }
   });
 });

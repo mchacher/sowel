@@ -21,7 +21,7 @@ import type {
   OrderCategory,
   OrderSource,
 } from "../shared/types.js";
-import { inferBindingCategory } from "./binding-candidates.js";
+import { inferBindingCategory } from "../shared/binding-candidates.js";
 import { parseWireValue, resolveWireValue } from "../shared/order-wire-value.js";
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import type { Device } from "../shared/types.js";
@@ -788,6 +788,20 @@ export class EquipmentManager {
       } catch {
         // ignore parse errors
       }
+    } else if (
+      firstBinding.type === "boolean" &&
+      (resolvedValue === null || resolvedValue === undefined || resolvedValue === "")
+    ) {
+      // Spec 150 — boolean twin of the enum empty-value rule above. A momentary
+      // command caller (GateControl's single button) sends null for "just
+      // trigger it"; on an enum binding that resolves to the first enum value
+      // ("ON"), but a boolean binding (Zigbee relay `state`) has no
+      // enum_values, so null used to reach the wire verbatim and Z2M dropped
+      // it silently. Non-empty values are deliberately left untouched:
+      // resolveWireValue already maps booleans and on/off strings when wire
+      // values are declared, and pre-2.3.0 z2m plugins rely on raw "ON"
+      // strings passing through unchanged.
+      resolvedValue = true;
     }
 
     // Dispatch to all bound device orders via their integration plugins

@@ -12,7 +12,7 @@ import type {
   OrderBindingWithDetails,
   OrderCategory,
 } from "../../types";
-import { computeBindingCandidates } from "../../lib/binding-candidates";
+import { CANDIDATE_BASED_TYPES, computeBindingCandidates } from "../../lib/binding-candidates";
 
 // ============================================================
 // Read-side resolvers (category-first, alias fallback)
@@ -109,6 +109,8 @@ const RELEVANT_DATA: Record<string, string[]> = {
   thermostat: ["temperature", "generic"],
   weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise", "battery"],
   weather_forecast: ["weather_condition", "temperature_outdoor", "rain", "wind"],
+  // gate auto-binding is candidate-based (spec 150); this entry only feeds the
+  // manual AddBindingModal suggestions.
   gate: ["generic", "contact_door"],
   heater: ["generic", "light_state"],
   // Spec 135 — water heater: on/off relay (light_state) + optional water
@@ -165,6 +167,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
   weather: [],
   weather_forecast: [],
+  // gate auto-binding is candidate-based (spec 150); kept for AddBindingModal.
   gate: ["R1", "R2", "R3", "R4", "command", "gate_trigger"],
   heater: ["state", "on", "R1", "R2", "R3", "R4"],
   water_heater: ["state", "on", "R1", "R2", "R3", "R4"],
@@ -304,13 +307,20 @@ const DATA_CATEGORY_ALIASES: Record<string, string> = {
 
 /**
  * Per-equipment-type category → alias overrides, applied before the global
- * DATA_CATEGORY_ALIASES. Spec 135: on a water heater, a `temperature` reading
- * is the WATER temperature, aliased `water_temperature` so the zone aggregator
- * (which only folds category=temperature bindings with alias exactly
- * "temperature" into the room average) leaves it out.
+ * DATA_CATEGORY_ALIASES / ORDER_CATEGORY_ALIASES (data and order categories
+ * are disjoint namespaces, so one map serves both).
+ * - Spec 135: on a water heater, a `temperature` reading is the WATER
+ *   temperature, aliased `water_temperature` so the zone aggregator (which
+ *   only folds category=temperature bindings with alias exactly "temperature"
+ *   into the room average) leaves it out.
+ * - Spec 150: on a gate, an on/off relay order (light_toggle/toggle_power,
+ *   e.g. a Zigbee dry-contact like the SONOFF MINI-ZBD) is the gate command.
+ *   GateControl only reacts to the `command` alias; without this override the
+ *   global ORDER_CATEGORY_ALIASES would alias it `state`.
  */
-const TYPE_DATA_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string>>> = {
+const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string>>> = {
   water_heater: { temperature: "water_temperature" },
+  gate: { light_toggle: "command", toggle_power: "command" },
 };
 
 /**
@@ -327,7 +337,7 @@ export function resolveAlias(
   category?: string,
 ): string {
   if (category) {
-    const perType = TYPE_DATA_CATEGORY_ALIASES[equipmentType as EquipmentType]?.[category];
+    const perType = TYPE_CATEGORY_ALIASES[equipmentType as EquipmentType]?.[category];
     if (perType) return perType;
     if (categoryMap && categoryMap[category]) return categoryMap[category];
   }
@@ -345,32 +355,9 @@ export function isRelevantOrder(key: string, equipmentType: string, category?: O
   return RELEVANT_ORDERS[equipmentType]?.includes(key) ?? false;
 }
 
-/** Equipment types whose bindings are spec'd as structured candidates
- * (see src/equipments/binding-candidates.ts). For these, we honour the
- * candidate chosen in DeviceSelector (or pick the first) and bind exactly
- * its data/order keys — no more, no less. Must stay in sync with the
- * DeviceSelector's own CANDIDATE_BASED_TYPES. */
-const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
-  "pool_pump",
-  "pool_cover",
-  "pool_heat_pump",
-  "light_onoff",
-  "light_dimmable",
-  "light_color",
-  "switch",
-  // Spec 135 — water heater: on/off relay candidate (+ metering attach),
-  // like switch. Water temperature is a manual extra binding.
-  "water_heater",
-  "shutter",
-  "awning",
-  // NOTE: water_valve is intentionally key-driven (RELEVANT_DATA/RELEVANT_ORDERS),
-  // NOT candidate-based — see the matching note in DeviceSelector. It binds its
-  // full surface (state + flow + battery + irrigation), and its open/close is a
-  // boolean `light_toggle` order the candidate path (enum ON/OFF only) ignores.
-  // Spec 125 — one candidate per inverter channel (ch<N>_*), so a 2-panel DS3
-  // yields Panel 1 / Panel 2 and each equipment binds only its channel.
-  "solar_panel",
-]);
+// Spec 150 — CANDIDATE_BASED_TYPES now lives in the shared binding-candidates
+// module (single source of truth with the backend), re-exported by
+// ../../lib/binding-candidates (imported at the top of this file).
 
 /** Auto-create DataBindings and OrderBindings for selected devices. */
 export async function autoCreateBindings(

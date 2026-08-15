@@ -13,10 +13,33 @@
  *  - 1 candidate → auto-bind (preserves legacy UX)
  *  - N candidates → show a picker to the user
  *  - 0 free candidates → hide the device in the selector
+ *
+ * Spec 150 — this is THE single implementation, shared by the backend and the
+ * UI (ui/src/lib/binding-candidates.ts re-exports it). It previously existed
+ * as two hand-synced copies that diverged: the UI copy was missing several
+ * equipment types (light_dimmable/light_color among others), silently hiding
+ * compatible devices. Input types are structural on purpose so backend and UI
+ * callers can pass their own DeviceData/DeviceOrder shapes.
  */
 
-import type { DeviceData, DeviceOrder, EquipmentType, OrderCategory } from "../shared/types.js";
-import { METERING_CATEGORIES } from "./metering.js";
+import type { DataCategory, DataType, EquipmentType, OrderCategory } from "./types.js";
+import { METERING_CATEGORIES } from "./constants.js";
+
+/** Structural subset of a device_data row this module needs. */
+export interface CandidateData {
+  key: string;
+  category: DataCategory;
+}
+
+/** Structural subset of a device_order row this module needs. */
+export interface CandidateOrder {
+  key: string;
+  type: DataType;
+  category?: OrderCategory | null;
+  enumValues?: string[] | null;
+  min?: number | null;
+  max?: number | null;
+}
 
 export interface BindingCandidate {
   /** Stable id used by the UI picker (e.g. "power1", "shutter1", "all"). */
@@ -29,11 +52,37 @@ export interface BindingCandidate {
   orderKeys: string[];
 }
 
+/**
+ * Equipment types whose device compatibility and auto-binding are driven by
+ * computeBindingCandidates (vs the legacy key/category whitelists). Single
+ * source of truth — previously duplicated in DeviceSelector.tsx and
+ * bindingUtils.ts. `water_valve` is intentionally key-driven, NOT
+ * candidate-based: it must bind its full surface (state + flow + battery +
+ * irrigation), not just the relay channel.
+ */
+export const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
+  "pool_pump",
+  "pool_cover",
+  "pool_heat_pump",
+  "light_onoff",
+  "light_dimmable",
+  "light_color",
+  "switch",
+  "water_heater",
+  "shutter",
+  "awning",
+  "solar_panel",
+  // Spec 150 — gate joins the candidate-based types so an on/off relay
+  // (Zigbee dry-contact like the SONOFF MINI-ZBD) is offered as a gate
+  // command alongside LoRa R1..R4 and Somfy gate_trigger.
+  "gate",
+]);
+
 /** ON/OFF-like enum values. Matches common vendor conventions. */
 const ONOFF_TOKENS = new Set(["ON", "OFF", "TOGGLE"]);
 const OPEN_CLOSE_STOP_TOKENS = new Set(["OPEN", "CLOSE", "CLOSED", "STOP"]);
 
-function isOnOffEnum(order: DeviceOrder): boolean {
+function isOnOffEnum(order: CandidateOrder): boolean {
   if (order.type !== "enum") return false;
   if (!order.enumValues || order.enumValues.length === 0) return false;
   return order.enumValues.every((v) => typeof v === "string" && ONOFF_TOKENS.has(v.toUpperCase()));
@@ -50,7 +99,7 @@ const POWER_TOGGLE_CATEGORIES = new Set<OrderCategory>(["light_toggle", "toggle_
  * Boolean orders of any other category (config toggles like `power_alarm`,
  * `eco_mode`, …) are intentionally excluded.
  */
-function isOnOffOrder(order: DeviceOrder): boolean {
+function isOnOffOrder(order: CandidateOrder): boolean {
   if (isOnOffEnum(order)) return true;
   return (
     order.type === "boolean" && !!order.category && POWER_TOGGLE_CATEGORIES.has(order.category)
@@ -73,12 +122,40 @@ function extractShutterGroupKey(key: string): string | null {
 }
 
 /**
+ * True for an order that can trigger a gate: an on/off relay channel (Zigbee
+ * boolean `state`, Tasmota ON/OFF enum), a LoRa relay channel (R1..R4), or an
+ * explicit gate command (`command`/`gate_trigger` key, or `gate_trigger`
+ * category e.g. Somfy RTS). Writable config exposes (`power_on_behavior`,
+ * `turbo_mode`, …) are NOT triggers.
+ */
+function isGateTriggerOrder(order: CandidateOrder): boolean {
+  if (isOnOffOrder(order)) return true;
+  if (/^R[1-4]$/.test(order.key)) return true;
+  if (order.key === "command" || order.key === "gate_trigger") return true;
+  return order.category === "gate_trigger";
+}
+
+/**
+ * Gate state feedback rows worth attaching to a gate candidate: LoRa reed
+ * switches (key `RS*`, deriveGateState strategy 1) and contact sensors
+ * (category contact_door/contact_window, strategy 2).
+ */
+function gateFeedbackKeys(deviceData: readonly CandidateData[]): string[] {
+  return deviceData
+    .filter(
+      (d) =>
+        d.key.startsWith("RS") || d.category === "contact_door" || d.category === "contact_window",
+    )
+    .map((d) => d.key);
+}
+
+/**
  * Build binding candidates for an equipment type against a device's data/orders.
  */
 export function computeBindingCandidates(
   equipmentType: EquipmentType,
-  deviceData: readonly DeviceData[],
-  deviceOrders: readonly DeviceOrder[],
+  deviceData: readonly CandidateData[],
+  deviceOrders: readonly CandidateOrder[],
 ): BindingCandidate[] {
   switch (equipmentType) {
     // Spec 135 — a water heater is an on/off relay with the same candidate
@@ -123,8 +200,7 @@ export function computeBindingCandidates(
       // `state`, category light_toggle/toggle_power) — same rule as `switch`.
       // isOnOffEnum alone silently excluded every Zigbee relay (e.g. Tuya
       // WHD02) from light_onoff/pool_pump (boolean `state`, not enum),
-      // though it bound fine to a `switch`. Kept in sync with
-      // ui/src/lib/binding-candidates.ts.
+      // though it bound fine to a `switch`.
       const candidates: BindingCandidate[] = [];
       for (const o of deviceOrders) {
         if (!isOnOffOrder(o)) continue;
@@ -200,7 +276,11 @@ export function computeBindingCandidates(
 
     case "light_dimmable":
     case "light_color": {
-      // A dimmable/color light candidate = ON/OFF order + attached brightness (and optionally color temp/color).
+      // A dimmable/color light candidate = on/off order + attached brightness
+      // (and optionally color temp/color). Accepts BOTH the ON/OFF enum shape
+      // and the Zigbee boolean light_toggle shape — same isOnOffOrder rule as
+      // switch/light_onoff (a boolean-state dimmable bulb previously yielded
+      // zero candidates here).
       const candidates: BindingCandidate[] = [];
       const brightnessOrders = deviceOrders.filter((o) => o.key.includes("brightness"));
       const colorTempOrders = deviceOrders.filter(
@@ -210,7 +290,7 @@ export function computeBindingCandidates(
         (o) => o.key === "color" || (o.key.includes("color_") && !colorTempOrders.includes(o)),
       );
       for (const o of deviceOrders) {
-        if (!isOnOffEnum(o)) continue;
+        if (!isOnOffOrder(o)) continue;
         const dataKeys: string[] = [];
         const orderKeys = [o.key];
         const matchingData = deviceData.find((d) => d.key === o.key);
@@ -329,21 +409,39 @@ export function computeBindingCandidates(
     }
 
     case "gate": {
-      // One candidate per gate-trigger-like order.
+      // Spec 150 — one candidate per trigger-like order (on/off relay channel,
+      // LoRa R1..R4, Somfy command/gate_trigger). Each candidate also attaches
+      // the device's gate feedback rows (LoRa reed `RS*`, contact sensors) so
+      // a combined controller (e.g. LoRa board with R1 relay + RS reed) keeps
+      // feeding deriveGateState. Config-only writable exposes are ignored —
+      // previously EVERY order became a candidate, and the runtime UI path did
+      // not even accept a Zigbee relay `state` order as a gate command.
+      // The relay's own `state` feedback data is deliberately NOT bound: the
+      // gate's open/closed state is a virtual binding (alias `state`, category
+      // gate_state, derived from contact/reed rows), and a light_state data
+      // binding on a gate would both collide with that alias and pollute the
+      // zone aggregator's lights-on count.
+      const feedback = gateFeedbackKeys(deviceData);
       const candidates: BindingCandidate[] = [];
       for (const o of deviceOrders) {
+        if (!isGateTriggerOrder(o)) continue;
         candidates.push({
           id: o.key,
           label: o.key,
-          dataKeys: deviceData.filter((d) => d.key === o.key).map((d) => d.key),
+          dataKeys: [...feedback],
           orderKeys: [o.key],
         });
       }
-      if (candidates.length === 0 && deviceData.length > 0) {
+      // Trigger-less devices stay bindable for state derivation: contact
+      // sensors (SNZB-04P) and data-only reed boards (RS*). No blanket
+      // "all data" fallback: a device with neither a trigger order nor
+      // feedback rows has nothing a gate can use, and offering it would
+      // auto-bind unrelated sensor data to the gate.
+      if (candidates.length === 0 && feedback.length > 0) {
         candidates.push({
-          id: "all",
-          label: "All gate data",
-          dataKeys: deviceData.map((d) => d.key),
+          id: "contact",
+          label: "Contact sensor",
+          dataKeys: feedback,
           orderKeys: [],
         });
       }
@@ -376,8 +474,8 @@ export function computeBindingCandidates(
  */
 export function hasFreeCandidates(
   equipmentType: EquipmentType,
-  deviceData: readonly DeviceData[],
-  deviceOrders: readonly DeviceOrder[],
+  deviceData: readonly CandidateData[],
+  deviceOrders: readonly CandidateOrder[],
   boundOrderKeysOnDevice: ReadonlySet<string>,
 ): boolean {
   const candidates = computeBindingCandidates(equipmentType, deviceData, deviceOrders);
@@ -399,7 +497,7 @@ export function hasFreeCandidates(
  */
 export function inferBindingCategory(
   equipmentType: EquipmentType,
-  order: Pick<DeviceOrder, "type" | "enumValues" | "min" | "max">,
+  order: Pick<CandidateOrder, "type" | "enumValues" | "min" | "max">,
 ): OrderCategory | null {
   if (equipmentType === "pool_pump") {
     if (

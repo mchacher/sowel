@@ -82,6 +82,8 @@ Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers
 !!! tip "Dashboard icon"
 You can choose a specific icon for gates on the dashboard: standard gate, sliding gate, or garage door.
 
+A gate can be driven by any on/off relay — a Zigbee dry-contact module (e.g. SONOFF MINI-ZBD), a LoRa relay channel, or a Somfy RTS remote — and the command button triggers it as a momentary action. Configure the pulse behavior (inching / auto-off) on the device itself. Bind a door contact sensor (e.g. SONOFF SNZB-04P) to the same equipment to get the open/closed state; without one the state shows as unknown.
+
 ### Sensors
 
 | Type                 | Controls / Display                          | Expected data                                                                                                |

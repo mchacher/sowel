@@ -9,15 +9,12 @@
 // centralise "is this switch a metering plug?" and "does this equipment count
 // as a consumption submeter?" so the binding, energy, and UI layers agree.
 
-import type { DataCategory, EquipmentType } from "../shared/types.js";
+import type { EquipmentType } from "../shared/types.js";
+import { METERING_CATEGORIES } from "../shared/constants.js";
 
-/** Device-data categories that make a plug a meter (bound in addition to on/off). */
-export const METERING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
-  "power",
-  "energy",
-  "voltage",
-  "current",
-]);
+// Moved to shared/constants.ts (spec 150) so the shared binding-candidates
+// module can use it; re-exported here for existing importers.
+export { METERING_CATEGORIES };
 
 /**
  * On/off relay equipment types that carry the same candidate shape as a

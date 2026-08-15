@@ -116,6 +116,57 @@ export const PROPERTY_TO_CATEGORY: Record<string, DataCategory> = {
 };
 
 // ============================================================
+// Category → expected DataType contract (spec 150)
+// ============================================================
+
+/**
+ * Canonical JS type each semantic DataCategory is expected to carry.
+ * Used at discovery to flag a plugin declaring a contradictory type
+ * (warn only — never a hard rejection). Categories with no stable type
+ * contract (generic, action, media_input, weather_condition, ...) are
+ * deliberately absent.
+ */
+export const CATEGORY_EXPECTED_TYPE: Partial<Record<DataCategory, DataType>> = {
+  motion: "boolean",
+  contact_door: "boolean",
+  contact_window: "boolean",
+  water_leak: "boolean",
+  smoke: "boolean",
+  light_state: "boolean",
+  camera_monitoring: "boolean",
+  media_mute: "boolean",
+  temperature: "number",
+  temperature_outdoor: "number",
+  temperature_device: "number",
+  humidity: "number",
+  humidity_outdoor: "number",
+  pressure: "number",
+  luminosity: "number",
+  battery: "number",
+  power: "number",
+  energy: "number",
+  voltage: "number",
+  current: "number",
+  co2: "number",
+  voc: "number",
+  noise: "number",
+  rain: "number",
+  wind: "number",
+  uv: "number",
+  solar_radiation: "number",
+  setpoint: "number",
+  shutter_position: "number",
+  light_brightness: "number",
+  media_volume: "number",
+  pool_water_temperature: "number",
+  pool_temperature_setpoint: "number",
+  runtime_daily: "number",
+  display_brightness: "number",
+  rssi: "number",
+  uptime: "number",
+};
+
+// ============================================================
 // Z2M expose type → DataType mapping
 // ============================================================
 
@@ -222,6 +273,19 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCateg
  * see METERING_EQUIPMENT_TYPES.
  */
 export const ELECTRICAL_STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
+  "power",
+  "energy",
+  "voltage",
+  "current",
+]);
+
+/**
+ * Device-data categories that make a plug a meter (bound in addition to
+ * on/off). Lives here (not in equipments/metering.ts) so the shared
+ * binding-candidates module can use it without importing backend layers;
+ * equipments/metering.ts re-exports it for its existing importers.
+ */
+export const METERING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
   "power",
   "energy",
   "voltage",

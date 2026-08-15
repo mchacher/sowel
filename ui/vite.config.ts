@@ -63,5 +63,13 @@ export default defineConfig({
     proxy: {
       "/api": "http://localhost:3000",
     },
+    fs: {
+      // Spec 150 — the UI imports the shared binding-candidates module from
+      // ../src/shared (single implementation with the backend). The dev
+      // server's default allow-list stops at ui/; setting `allow` replaces
+      // the default, so ui/ itself must be re-listed. Scoped to ../src/shared
+      // only (not the repo root) to avoid serving data/ or .env over /@fs/.
+      allow: [".", "../src/shared"],
+    },
   },
 });

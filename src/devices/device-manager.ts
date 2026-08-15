@@ -23,8 +23,20 @@ import type {
   OrderCategory,
   PowerSource,
 } from "../shared/types.js";
-import { PROPERTY_TO_CATEGORY } from "../shared/constants.js";
+import { CATEGORY_EXPECTED_TYPE, PROPERTY_TO_CATEGORY } from "../shared/constants.js";
 import { parseWireValue } from "../shared/order-wire-value.js";
+import { isCategoryTypeMismatch, normalizeValue } from "../shared/value-normalization.js";
+
+/** Parse a device_data.enum_values JSON column, tolerating malformed content. */
+function parseEnumValues(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface DiscoveredDevice {
   ieeeAddress?: string;
@@ -64,6 +76,11 @@ export class DeviceManager {
 
   // Prepared statements
   private stmts: ReturnType<typeof this.prepareStatements>;
+  /** Warn-once dedupe for type-contract violations (spec 150), keyed
+   *  `coerce:<deviceId>:<key>` (runtime value) or `decl:<deviceId>:<key>`
+   *  (discovery declaration). Process-lifetime on purpose: chatty devices
+   *  would otherwise flood the log on every report. */
+  private typeWarnings = new Set<string>();
 
   constructor(db: Database.Database, eventBus: EventBus, logger: Logger) {
     this.db = db;
@@ -199,6 +216,19 @@ export class DeviceManager {
       // Sync Data definitions: upsert by (device_id, key) to preserve stable IDs
       const discoveredDataKeys = new Set(discovered.data.map((d) => d.key));
       for (const d of discovered.data) {
+        // Spec 150 — flag declarations contradicting the category's canonical
+        // type (warn only; the row is created as declared).
+        const expectedType = CATEGORY_EXPECTED_TYPE[d.category];
+        if (expectedType && isCategoryTypeMismatch(expectedType, d.type, d.enumValues)) {
+          const warnKey = `decl:${deviceId}:${d.key}`;
+          if (!this.typeWarnings.has(warnKey)) {
+            this.typeWarnings.add(warnKey);
+            this.logger.warn(
+              { deviceId, key: d.key, category: d.category, declaredType: d.type, expectedType },
+              "Declared data type contradicts category contract",
+            );
+          }
+        }
         const existingData = this.stmts.findDeviceDataByDeviceAndKey.get(deviceId, d.key) as
           | { id: string }
           | undefined;
@@ -452,7 +482,27 @@ export class DeviceManager {
         if (!dataRow) continue;
       }
 
-      const serialized = JSON.stringify(value);
+      // Spec 150 — single normalization point: coerce the raw plugin value to
+      // the declared type before persisting and before any event leaves here,
+      // so DB, event bus, WebSocket and history all see the same stable type.
+      const normalized = normalizeValue(
+        value,
+        dataRow.type as DataType,
+        parseEnumValues(dataRow.enum_values),
+      );
+      if (normalized.flagged) {
+        const warnKey = `coerce:${device.id}:${key}`;
+        if (!this.typeWarnings.has(warnKey)) {
+          this.typeWarnings.add(warnKey);
+          this.logger.warn(
+            { deviceId: device.id, key, declaredType: dataRow.type, value },
+            "Device value does not match declared type; stored raw",
+          );
+        }
+      }
+      const normalizedValue = normalized.value;
+
+      const serialized = JSON.stringify(normalizedValue);
       const previous = dataRow.value;
 
       this.stmts.updateDeviceDataValue.run(serialized, serialized, dataRow.id);
@@ -463,7 +513,7 @@ export class DeviceManager {
         deviceName: device.name,
         dataId: dataRow.id,
         key,
-        value,
+        value: normalizedValue,
         previous: previous !== null ? JSON.parse(previous) : null,
         timestamp: new Date().toISOString(),
         ...(sourceTimestamp !== undefined && { sourceTimestamp }),

@@ -763,6 +763,48 @@ describe("EquipmentManager", () => {
       expect(JSON.parse(mockPublished[0].payload)).toEqual({ R1: "latch" });
     });
 
+    it("resolves null to true on a boolean binding (gate momentary command, spec 150)", async () => {
+      // GateControl's single button sends null ("just trigger it"). On enum
+      // bindings null resolves to the first enum value; on a boolean Zigbee
+      // relay it used to reach the wire verbatim and Z2M dropped {state:null}.
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "Porte", type: "gate", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "MINI-ZBD",
+        orderKeys: [
+          {
+            key: "state",
+            type: "boolean",
+            category: "light_toggle",
+            valueOn: "ON",
+            valueOff: "OFF",
+          },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "command");
+
+      await manager.executeOrder(eq.id, "command", null);
+
+      expect(mockPublished).toHaveLength(1);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "ON" });
+    });
+
+    it("leaves non-empty strings untouched on a boolean binding without wire values", async () => {
+      // Pre-2.3.0 z2m plugins rely on raw "ON" strings passing through; only
+      // the EMPTY value resolves to true (momentary gate command, spec 150).
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Cloud Switch", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "CloudPlug",
+        orderKeys: [{ key: "power", type: "boolean" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "power");
+
+      await manager.executeOrder(eq.id, "power", "ON");
+
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ power: "ON" });
+    });
+
     it("maps boolean values onto declared wire values (issue #360)", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "Relay", type: "light_onoff", zoneId: zone.id });
