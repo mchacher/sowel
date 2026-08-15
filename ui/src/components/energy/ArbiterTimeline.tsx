@@ -72,6 +72,14 @@ export function ArbiterTimeline() {
   const jscrollRef = useRef<HTMLDivElement>(null);
   const lastFetchAtRef = useRef(0);
   const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Latest view params, read from inside the async live refetch to tell whether
+  // the view moved (paged / resized) while a fetch was in flight (issue #514 #1).
+  const pageOffsetRef = useRef(0);
+  const windowHoursRef = useRef(0);
+  // The timelineRev the current view was loaded at: the live effect only reacts
+  // to *later* arbiter activity, so a mount with an already-nonzero global rev
+  // does not schedule a spurious refetch (issue #514 #2).
+  const baselineRevRef = useRef(0);
 
   // Live-refresh signal: bumped once per debounced arbiter burst (issue #514).
   const timelineRev = useArbiter((s) => s.timelineRev);
@@ -85,6 +93,11 @@ export function ArbiterTimeline() {
   useEffect(() => {
     let cancelled = false;
     lastFetchAtRef.current = Date.now();
+    pageOffsetRef.current = pageOffset;
+    windowHoursRef.current = windowHours;
+    // This authoritative load already reflects every arbiter event so far, so
+    // rebase the live signal onto the current rev (no immediate live refetch).
+    baselineRevRef.current = useArbiter.getState().timelineRev;
     getArbiterTimeline(windowHours, pageOffset, 15)
       .then((d) => {
         if (!cancelled) {
@@ -112,14 +125,23 @@ export function ArbiterTimeline() {
   // (offset 0, never while paging history) and throttled to one refetch per
   // LIVE_REFRESH_THROTTLE_MS. The selection is preserved across a live refetch.
   useEffect(() => {
-    if (pageOffset !== 0 || timelineRev === 0) return;
+    // Only react to arbiter activity that landed *after* the current view was
+    // loaded, and only on the live window.
+    if (pageOffset !== 0 || timelineRev === baselineRevRef.current) return;
     if (liveTimerRef.current) return; // a refetch is already queued for this burst
+    const scheduledWindowHours = windowHours;
     const wait = Math.max(0, LIVE_REFRESH_THROTTLE_MS - (Date.now() - lastFetchAtRef.current));
     liveTimerRef.current = setTimeout(() => {
       liveTimerRef.current = null;
       lastFetchAtRef.current = Date.now();
-      getArbiterTimeline(windowHours, 0, 15)
+      getArbiterTimeline(scheduledWindowHours, 0, 15)
         .then((d) => {
+          // The view may have moved (paged to history, breakpoint crossed) while
+          // this refetch was in flight — don't clobber it with live-window data.
+          if (pageOffsetRef.current !== 0 || windowHoursRef.current !== scheduledWindowHours) {
+            return;
+          }
+          baselineRevRef.current = useArbiter.getState().timelineRev;
           setData(d);
           setFailed(false);
         })
