@@ -19,6 +19,10 @@ RUN npm ci
 # Design system tokens are imported from ui/src/index.css via ../../design-system/
 # (spec 094). The folder lives outside ui/ so copy it explicitly.
 COPY design-system/ /app/design-system/
+# The shared binding-candidates module is imported from ui/src/lib via
+# ../../../src/shared/ (spec 150) — same out-of-ui/ situation as the design
+# system: copy it explicitly so tsc/vite resolve it inside this stage.
+COPY src/shared/ /app/src/shared/
 COPY ui/ ./
 RUN npm run build
 
