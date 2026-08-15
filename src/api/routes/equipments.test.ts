@@ -4,10 +4,15 @@ import { createLogger } from "../../core/logger.js";
 import { registerEquipmentRoutes } from "./equipments.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 
-// The ?type filter is the only logic worth exercising at the route
+// The ?type / ?role filter is the only logic worth exercising at the route
 // layer; the rest of the equipment surface is covered by manager-level
 // tests. A mocked EquipmentManager keeps this test fast and isolated.
-function makeManager(fixture: Array<{ id: string; type: string }>) {
+interface FixtureEq {
+  id: string;
+  type: string;
+  dataBindings?: Array<{ alias?: string; category?: string }>;
+}
+function makeManager(fixture: FixtureEq[]) {
   return {
     getAllWithDetails: () => fixture,
     getByIdWithDetails: () => null,
@@ -17,14 +22,19 @@ function makeManager(fixture: Array<{ id: string; type: string }>) {
   } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"];
 }
 
-describe("GET /api/v1/equipments — ?type filter", () => {
+describe("GET /api/v1/equipments — ?type / ?role filter", () => {
   let app: ReturnType<typeof Fastify>;
 
-  const fixture = [
-    { id: "1", type: "light_onoff" },
-    { id: "2", type: "energy_meter" },
-    { id: "3", type: "energy_meter" },
-    { id: "4", type: "main_energy_meter" },
+  const power = [{ alias: "power", category: "power" }];
+  const state = [{ alias: "state", category: "light_state" }];
+  const fixture: FixtureEq[] = [
+    { id: "1", type: "light_onoff", dataBindings: [] },
+    { id: "2", type: "energy_meter", dataBindings: [] },
+    { id: "3", type: "energy_meter", dataBindings: [] },
+    { id: "4", type: "main_energy_meter", dataBindings: power }, // house total, never a submeter
+    { id: "5", type: "water_heater", dataBindings: power }, // metering relay (#521) → submeter
+    { id: "6", type: "switch", dataBindings: power }, // metering plug (spec 129) → submeter
+    { id: "7", type: "switch", dataBindings: state }, // bare relay → not a submeter
   ];
 
   beforeEach(async () => {
@@ -43,18 +53,30 @@ describe("GET /api/v1/equipments — ?type filter", () => {
   it("returns all equipments when ?type is omitted", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/equipments" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toHaveLength(4);
+    expect(res.json()).toHaveLength(7);
   });
 
-  it("narrows the result set to a single type when ?type is set", async () => {
-    const res = await app.inject({
-      method: "GET",
-      url: "/api/v1/equipments?type=energy_meter",
-    });
+  it("narrows the result set to a single type for a non-meter ?type", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?type=light_onoff" });
     expect(res.statusCode).toBe(200);
-    const body = res.json() as Array<{ id: string; type: string }>;
-    expect(body).toHaveLength(2);
-    expect(body.every((eq) => eq.type === "energy_meter")).toBe(true);
+    const body = res.json() as FixtureEq[];
+    expect(body.map((e) => e.id)).toEqual(["1"]);
+  });
+
+  it("?role=submeter returns energy_meters + metering relays, never the house total or bare relays (#526)", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?role=submeter" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as FixtureEq[];
+    // energy_meter x2 + metering water_heater + metering switch; NOT main_energy_meter, NOT bare switch, NOT light
+    expect(body.map((e) => e.id).sort()).toEqual(["2", "3", "5", "6"]);
+  });
+
+  it("?type=energy_meter is honoured as the submeter role for the legacy display client (#224/#526)", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?type=energy_meter" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as FixtureEq[];
+    // Includes the metering water_heater so the unflashed energy display sees it.
+    expect(body.map((e) => e.id).sort()).toEqual(["2", "3", "5", "6"]);
   });
 
   it("returns an empty list for an unknown type (pass-through, no 400)", async () => {

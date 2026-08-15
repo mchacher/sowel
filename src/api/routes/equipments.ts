@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
+import { isSubmeterEquipment } from "../../equipments/metering.js";
 import type { EnergyLoadProfile, EquipmentType } from "../../shared/types.js";
 import type { Logger } from "../../core/logger.js";
 
@@ -69,15 +70,30 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   const { equipmentManager } = deps;
 
   // GET /api/v1/equipments — List all equipments with bindings and current data.
-  // Optional ?type=<EquipmentType> narrows the response to a single type
-  // (e.g. ?type=energy_meter for clients that only render submeter clamps).
-  // Unknown values yield an empty list rather than 400 so callers can
+  // Optional ?type=<EquipmentType> narrows the response to a single type.
+  // Optional ?role=submeter returns the consumption submeter set — dedicated
+  // energy_meters plus metering relays (water_heater, switch...), i.e. every
+  // equipment isSubmeterEquipment considers a per-usage meter (#526).
+  //
+  // The energy display (#224) has long queried ?type=energy_meter to get "the
+  // submeter clamps". Since metering relays became submeters (#521) that literal
+  // type filter dropped them, so ?type=energy_meter is honoured as the submeter
+  // role too — the unflashed display picks up a metering water_heater without a
+  // reflash. New clients should use ?role=submeter.
+  //
+  // Unknown ?type values yield an empty list rather than 400 so callers can
   // safely pass-through user input without their own validation.
-  app.get<{ Querystring: { type?: string } }>("/api/v1/equipments", async (request) => {
-    const all = equipmentManager.getAllWithDetails();
-    const typeFilter = request.query.type;
-    return typeFilter ? all.filter((eq) => eq.type === typeFilter) : all;
-  });
+  app.get<{ Querystring: { type?: string; role?: string } }>(
+    "/api/v1/equipments",
+    async (request) => {
+      const all = equipmentManager.getAllWithDetails();
+      const { type, role } = request.query;
+      if (role === "submeter" || type === "energy_meter") {
+        return all.filter((eq) => isSubmeterEquipment(eq.type, eq.dataBindings));
+      }
+      return type ? all.filter((eq) => eq.type === type) : all;
+    },
+  );
 
   // GET /api/v1/equipments/:id — Get equipment with bindings and current data
   app.get<{ Params: { id: string } }>("/api/v1/equipments/:id", async (request, reply) => {
