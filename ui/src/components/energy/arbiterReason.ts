@@ -7,39 +7,49 @@
 
 type Translate = (key: string, opts?: Record<string, unknown>) => string;
 
-// Backend reason string → i18n slug. Kebab codes (CapacityRevokeReason /
-// CapacityDenyReason / suspend `why`) map to themselves; the free-text
-// sentences map to the slug of the kind they belong to.
+// Backend reason string → i18n slug, for reasons that ADD information the kind
+// does not carry. Kebab codes (CapacityRevokeReason / CapacityDenyReason /
+// suspend `why`) map to themselves; the one informative free-text sentence
+// (revoke-not-honored) maps to its own slug.
 export const REASON_SLUG: Record<string, string> = {
-  // CapacityRevokeReason
+  // CapacityRevokeReason — why the surplus was withdrawn
   "surplus-deficit": "surplus-deficit",
   "priority-preempted": "priority-preempted",
   "manual-override": "manual-override",
   "meter-stale": "meter-stale",
   disabled: "disabled",
-  // CapacityDenyReason
+  // CapacityDenyReason — why the claim was refused
   "not-profiled": "not-profiled",
   "equipment-already-claimed": "equipment-already-claimed",
   "arbiter-disabled": "arbiter-disabled",
   "override-active": "override-active",
-  // suspend `why`
+  // suspend `why` — how the manual override happened
   "user-order": "user-order",
   "wall-switch-off": "wall-switch-off",
   "wall-switch-on": "wall-switch-on",
-  // free-text sentences
-  "recipe switched a comfort load off on revocation": "comfort-off-after-revoke",
-  "recipe-driven run outside arbitration": "unclaimed-run",
-  "run outside arbitration finished": "unclaimed-run-ended",
-  "resume control": "resume-control",
+  // informative free-text
   "export did not recover (a cloud can mask this)": "export-not-recovered",
 };
+
+// Reasons whose kind (arbiter.kind.*) already says everything: appending the
+// reason would just repeat it (e.g. "fin de marche hors arbitrage · marche hors
+// arbitrage terminée"). Suppress the reason and show only the kind (#518).
+const REDUNDANT_WITH_KIND = new Set([
+  "recipe switched a comfort load off on revocation", // kind comfort-off-after-revoke
+  "recipe-driven run outside arbitration", // kind unclaimed-run
+  "run outside arbitration finished", // kind unclaimed-run-ended
+  "resume control", // kind resumed
+]);
 
 /** The one reason that carries dynamic data: `declared <N> W` (watts-divergence). */
 const DECLARED_W = /^declared (\d+) W$/;
 
-/** Localise a journal decision reason. Returns null when there is no reason. */
+/**
+ * Localise a journal decision reason for display after the kind. Returns null
+ * when there is no reason, or when the reason only repeats its kind.
+ */
 export function journalReasonLabel(reason: string | undefined, t: Translate): string | null {
-  if (!reason) return null;
+  if (!reason || REDUNDANT_WITH_KIND.has(reason)) return null;
   const slug = REASON_SLUG[reason];
   if (slug) return t(`arbiter.reason.${slug}`);
   const m = DECLARED_W.exec(reason);

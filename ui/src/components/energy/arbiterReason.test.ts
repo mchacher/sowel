@@ -20,13 +20,22 @@ describe("journalReasonLabel (#518)", () => {
     expect(journalReasonLabel("wall-switch-off", stub)).toBe("arbiter.reason.wall-switch-off");
   });
 
-  it("maps a free-text reason to the slug of its kind", () => {
-    expect(journalReasonLabel("recipe-driven run outside arbitration", stub)).toBe(
-      "arbiter.reason.unclaimed-run",
-    );
+  it("maps an informative free-text reason to its key", () => {
     expect(journalReasonLabel("export did not recover (a cloud can mask this)", stub)).toBe(
       "arbiter.reason.export-not-recovered",
     );
+  });
+
+  it("suppresses a reason that only repeats its kind (#518 dedup)", () => {
+    // These reasons duplicate their kind, so only the kind should show.
+    for (const redundant of [
+      "recipe switched a comfort load off on revocation",
+      "recipe-driven run outside arbitration",
+      "run outside arbitration finished",
+      "resume control",
+    ]) {
+      expect(journalReasonLabel(redundant, stub), redundant).toBeNull();
+    }
   });
 
   it("interpolates the dynamic watts-divergence reason", () => {
