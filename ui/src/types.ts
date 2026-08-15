@@ -744,6 +744,9 @@ export interface UserPreferences {
   language: "fr" | "en";
   theme?: "light" | "dark" | "system";
   defaultZoneId?: string;
+  /** Spec 149 — days a trusted device stays valid once issued. 1-90, default
+   *  30 when absent. Clamped server-side in `PUT /me/preferences`. */
+  mfaTrustedDeviceDays?: number;
 }
 
 export interface ApiToken {
@@ -759,6 +762,40 @@ export interface AuthTokens {
   refreshToken: string;
   expiresIn: number;
   user: User;
+}
+
+// ============================================================
+// Two-factor authentication (spec 149)
+// ============================================================
+
+export interface MfaStatus {
+  enabled: boolean;
+  confirmedAt: string | null;
+  backupCodesRemaining: number;
+}
+
+export interface MfaSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+}
+
+export interface MfaConfirmResponse {
+  backupCodes: string[];
+}
+
+export interface MfaTrustedDevice {
+  id: string;
+  userAgent: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/** Returned by `POST /auth/login` instead of `AuthTokens` when the account
+ *  has confirmed TOTP MFA and no valid trusted-device token was presented. */
+export interface MfaChallenge {
+  mfaRequired: true;
+  mfaToken: string;
 }
 
 // ============================================================

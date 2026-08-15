@@ -3,17 +3,36 @@ import jwt from "jsonwebtoken";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { UserManager } from "./user-manager.js";
-import type { User, UserRole } from "../shared/types.js";
+import type { MfaService } from "./mfa-service.js";
+import type { User, UserRole, MfaChallenge } from "../shared/types.js";
 import { toISOUtc } from "../core/database.js";
 
 // ============================================================
 // Types
 // ============================================================
 
+/**
+ * Spec 149 — token purpose isolation. `"access"` is a normal bearer token,
+ * legitimate on every protected route. `"mfa_pending"` is issued instead of
+ * full tokens when a second factor is still required; it MUST be rejected by
+ * `verifyAccessToken` (see below) or a replayed `mfaToken` would grant partial
+ * API access before the second factor is ever checked. Omitted `purpose`
+ * (tokens signed before this spec) is treated as `"access"`.
+ */
+export type TokenPurpose = "access" | "mfa_pending";
+
 export interface JwtPayload {
   userId: string;
   role: UserRole;
+  purpose?: TokenPurpose;
 }
+
+interface MfaPendingPayload {
+  userId: string;
+  purpose: "mfa_pending";
+}
+
+const MFA_PENDING_TTL_S = 5 * 60;
 
 export interface AuthTokens {
   accessToken: string;
@@ -34,12 +53,20 @@ export interface AuthConfig {
 
 export class AuthService {
   private userManager: UserManager;
+  private mfaService: MfaService;
   private config: AuthConfig;
   private logger: Logger;
   private stmts: ReturnType<typeof this.prepareStatements>;
 
-  constructor(db: Database.Database, userManager: UserManager, config: AuthConfig, logger: Logger) {
+  constructor(
+    db: Database.Database,
+    userManager: UserManager,
+    mfaService: MfaService,
+    config: AuthConfig,
+    logger: Logger,
+  ) {
     this.userManager = userManager;
+    this.mfaService = mfaService;
     this.config = config;
     this.logger = logger.child({ module: "auth-service" });
     this.stmts = this.prepareStatements(db);
@@ -81,7 +108,11 @@ export class AuthService {
   // JWT Authentication
   // ============================================================
 
-  async login(username: string, password: string): Promise<AuthTokens> {
+  async login(
+    username: string,
+    password: string,
+    trustedDeviceToken?: string,
+  ): Promise<AuthTokens | MfaChallenge> {
     const userWithHash = this.userManager.getByUsername(username);
     if (!userWithHash) {
       throw new AuthError("Invalid credentials", 401);
@@ -101,8 +132,46 @@ export class AuthService {
 
     // Get clean user object without passwordHash
     const user = this.userManager.getById(userWithHash.id)!;
+
+    if (this.mfaService.isMfaEnabled(user.id)) {
+      const trusted = trustedDeviceToken
+        ? this.mfaService.checkTrustedDevice(user.id, trustedDeviceToken)
+        : false;
+      if (!trusted) {
+        this.logger.info({ userId: user.id, username }, "Login requires MFA");
+        return this.generateMfaChallenge(user.id);
+      }
+    }
+
     this.logger.info({ userId: user.id, username, role: user.role }, "User logged in");
     return this.generateTokens(user);
+  }
+
+  /** Called by `/auth/mfa/verify` after the second factor has been checked. */
+  completeMfaLogin(userId: string): AuthTokens {
+    const user = this.userManager.getById(userId)!;
+    this.logger.info({ userId, role: user.role }, "User logged in (MFA verified)");
+    return this.generateTokens(user);
+  }
+
+  private generateMfaChallenge(userId: string): MfaChallenge {
+    const payload: MfaPendingPayload = { userId, purpose: "mfa_pending" };
+    const mfaToken = jwt.sign(payload, this.config.secret, { expiresIn: MFA_PENDING_TTL_S });
+    return { mfaRequired: true, mfaToken };
+  }
+
+  /** Validates an `mfaToken` from `/auth/login`'s MFA challenge. */
+  verifyMfaToken(mfaToken: string): { userId: string } {
+    let payload: MfaPendingPayload;
+    try {
+      payload = jwt.verify(mfaToken, this.config.secret) as MfaPendingPayload;
+    } catch {
+      throw new AuthError("Invalid or expired MFA token", 401);
+    }
+    if (payload.purpose !== "mfa_pending") {
+      throw new AuthError("Invalid or expired MFA token", 401);
+    }
+    return { userId: payload.userId };
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
@@ -130,16 +199,22 @@ export class AuthService {
   }
 
   verifyAccessToken(token: string): JwtPayload {
+    let payload: JwtPayload;
     try {
-      const payload = jwt.verify(token, this.config.secret) as JwtPayload;
-      return payload;
+      payload = jwt.verify(token, this.config.secret) as JwtPayload;
     } catch {
       throw new AuthError("Invalid or expired token", 401);
     }
+    // Spec 149 — an mfa_pending token (issued while a second factor is still
+    // outstanding) must never be usable as a normal bearer token.
+    if (payload.purpose === "mfa_pending") {
+      throw new AuthError("Invalid or expired token", 401);
+    }
+    return payload;
   }
 
   private generateTokens(user: User): AuthTokens {
-    const payload: JwtPayload = { userId: user.id, role: user.role };
+    const payload: JwtPayload = { userId: user.id, role: user.role, purpose: "access" };
     const accessToken = jwt.sign(payload, this.config.secret, {
       expiresIn: this.config.accessTtl,
     });

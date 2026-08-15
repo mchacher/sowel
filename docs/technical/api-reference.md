@@ -11,6 +11,7 @@ Sowel exposes a REST API under `/api/v1/` and a WebSocket endpoint at `/ws`. All
 ## Table of Contents
 
 - [Authentication](#authentication)
+- [Two-Factor Authentication (MFA)](#two-factor-authentication-mfa)
 - [Current User (Me)](#current-user-me)
 - [Users (Admin)](#users-admin)
 - [Devices](#devices)
@@ -42,13 +43,35 @@ Sowel exposes a REST API under `/api/v1/` and a WebSocket endpoint at `/ws`. All
 
 Public endpoints -- no auth required for `status` and `setup`.
 
-| Method | Path                   | Description                                                                                                               |
-| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/auth/status`  | Check if first-run setup is required. Returns `{ setupRequired: boolean }`.                                               |
-| `POST` | `/api/v1/auth/setup`   | Create the first admin user (first-run only). Body: `{ username, password, displayName, language? }`. Returns JWT tokens. |
-| `POST` | `/api/v1/auth/login`   | Authenticate. Body: `{ username, password }`. Returns `{ accessToken, refreshToken }`. Rate limited: 10 req/min.          |
-| `POST` | `/api/v1/auth/refresh` | Refresh access token. Body: `{ refreshToken }`. Returns new token pair.                                                   |
-| `POST` | `/api/v1/auth/logout`  | Invalidate refresh token. Body: `{ refreshToken }`. Returns 204.                                                          |
+| Method | Path                   | Description                                                                                                                                                                                                                                                           |
+| ------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/auth/status`  | Check if first-run setup is required. Returns `{ setupRequired: boolean }`.                                                                                                                                                                                           |
+| `POST` | `/api/v1/auth/setup`   | Create the first admin user (first-run only). Body: `{ username, password, displayName, language? }`. Returns JWT tokens.                                                                                                                                             |
+| `POST` | `/api/v1/auth/login`   | Authenticate. Body: `{ username, password, trustedDeviceToken? }`. Returns `{ accessToken, refreshToken }`, or `{ mfaRequired: true, mfaToken }` if the account has TOTP MFA enabled and `trustedDeviceToken` is absent/invalid (spec 149). Rate limited: 10 req/min. |
+| `POST` | `/api/v1/auth/refresh` | Refresh access token. Body: `{ refreshToken }`. Returns new token pair.                                                                                                                                                                                               |
+| `POST` | `/api/v1/auth/logout`  | Invalidate refresh token. Body: `{ refreshToken }`. Returns 204.                                                                                                                                                                                                      |
+
+---
+
+## Two-Factor Authentication (MFA)
+
+Spec 149 — optional per-user TOTP (RFC 6238) second factor with single-use backup codes. Public endpoint (login second factor) plus authenticated self-service management under `/me/mfa`.
+
+| Method   | Path                                     | Description                                                                                                                                                                                                                                                                     |
+| -------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/v1/auth/mfa/verify`                | **Public.** Completes login after an `mfaRequired` challenge. Body: `{ mfaToken, code, isBackupCode?, trustDevice? }`. Returns `{ accessToken, refreshToken, ... }`, plus `trustedDeviceToken` + `trustedDeviceExpiresAt` when `trustDevice` was set. Rate limited: 10 req/min. |
+| `GET`    | `/api/v1/me/mfa`                         | Current MFA status: `{ enabled, confirmedAt, backupCodesRemaining }`.                                                                                                                                                                                                           |
+| `POST`   | `/api/v1/me/mfa/totp/setup`              | Start (or restart) enrollment. Returns `{ secret, otpauthUrl, qrCodeDataUrl }`.                                                                                                                                                                                                 |
+| `POST`   | `/api/v1/me/mfa/totp/confirm`            | Confirm enrollment. Body: `{ code }`. Returns `{ backupCodes: string[] }` — 10 codes, shown only once.                                                                                                                                                                          |
+| `DELETE` | `/api/v1/me/mfa/totp`                    | Disable MFA. Body: `{ password, code, isBackupCode? }` — requires a live password + code regardless of session trust. Returns 204.                                                                                                                                              |
+| `POST`   | `/api/v1/me/mfa/backup-codes/regenerate` | Invalidate unused codes and issue 10 new ones. Body: `{ password, code, isBackupCode? }`. Returns `{ backupCodes: string[] }`.                                                                                                                                                  |
+| `GET`    | `/api/v1/me/mfa/trusted-devices`         | List devices exempted from the MFA step at login.                                                                                                                                                                                                                               |
+| `DELETE` | `/api/v1/me/mfa/trusted-devices/:id`     | Revoke a trusted device. Returns 204.                                                                                                                                                                                                                                           |
+
+Trusted-device duration is a per-user preference: `mfaTrustedDeviceDays` in `PUT /api/v1/me/preferences`, 1-90 (default 30), clamped server-side.
+
+!!! note
+An `mfaToken` returned by `/auth/login` is single-purpose (JWT `purpose: "mfa_pending"`) and is rejected by every other endpoint — it cannot be used as a normal `Authorization: Bearer` token.
 
 ---
 
@@ -63,14 +86,15 @@ endpoint not in the allowlist is admin-only.
 
 **Standard write allowlist** (the only mutations a `standard` may perform):
 
-| Method        | Path                                                          | Purpose               |
-| ------------- | ------------------------------------------------------------- | --------------------- |
-| POST          | `/api/v1/equipments/:id/orders/:alias`                        | Actuate an equipment  |
-| POST          | `/api/v1/zones/:id/orders/:orderKey`                          | Zone command          |
-| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password` | Own account           |
-| POST / DELETE | `/api/v1/me/tokens[/:id]`                                     | Own API tokens        |
-| POST / DELETE | `/api/v1/push/subscriptions`                                  | Own push subscription |
-| POST          | `/api/v1/auth/logout`                                         | End own session       |
+| Method        | Path                                                                                                      | Purpose               |
+| ------------- | --------------------------------------------------------------------------------------------------------- | --------------------- |
+| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment  |
+| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command          |
+| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account           |
+| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens        |
+| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 149)    |
+| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Own push subscription |
+| POST          | `/api/v1/auth/logout`                                                                                     | End own session       |
 
 An API token inherits its creator's role, so a standard-scoped token is subject to
 the same gate (no privilege escalation).
@@ -95,12 +119,13 @@ Authenticated user's own profile and tokens.
 
 All user management routes require admin role.
 
-| Method   | Path                | Description                                                     |
-| -------- | ------------------- | --------------------------------------------------------------- |
-| `GET`    | `/api/v1/users`     | List all users.                                                 |
-| `POST`   | `/api/v1/users`     | Create user. Body: `{ username, password, displayName, role }`. |
-| `PUT`    | `/api/v1/users/:id` | Update user. Body: `{ displayName?, role?, enabled? }`.         |
-| `DELETE` | `/api/v1/users/:id` | Delete user. Cannot delete self or last admin. Returns 204.     |
+| Method   | Path                    | Description                                                                                                                                                       |
+| -------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/users`         | List all users.                                                                                                                                                   |
+| `POST`   | `/api/v1/users`         | Create user. Body: `{ username, password, displayName, role }`.                                                                                                   |
+| `PUT`    | `/api/v1/users/:id`     | Update user. Body: `{ displayName?, role?, enabled? }`.                                                                                                           |
+| `DELETE` | `/api/v1/users/:id`     | Delete user. Cannot delete self or last admin. Returns 204.                                                                                                       |
+| `DELETE` | `/api/v1/users/:id/mfa` | Force-disable another user's MFA (spec 149 FR6) — recovery path when they lost both their TOTP device and backup codes. No challenge from the admin. Returns 204. |
 
 ---
 

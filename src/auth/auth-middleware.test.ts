@@ -15,13 +15,15 @@ const logger = createLogger("silent").logger;
 
 describe("auth-middleware", () => {
   describe("PUBLIC_ROUTES", () => {
-    it("contains the 5 expected public routes", () => {
+    it("contains the 6 expected public routes", () => {
       expect(PUBLIC_ROUTES.has("/api/v1/health")).toBe(true);
       expect(PUBLIC_ROUTES.has("/api/v1/auth/status")).toBe(true);
       expect(PUBLIC_ROUTES.has("/api/v1/auth/setup")).toBe(true);
       expect(PUBLIC_ROUTES.has("/api/v1/auth/login")).toBe(true);
       expect(PUBLIC_ROUTES.has("/api/v1/auth/refresh")).toBe(true);
-      expect(PUBLIC_ROUTES.size).toBe(5);
+      // Spec 149 — authenticated via mfaToken in the body, not a bearer token.
+      expect(PUBLIC_ROUTES.has("/api/v1/auth/mfa/verify")).toBe(true);
+      expect(PUBLIC_ROUTES.size).toBe(6);
     });
 
     it("does NOT include sensitive routes that were previously unprotected", () => {

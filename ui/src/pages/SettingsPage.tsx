@@ -12,6 +12,8 @@ import {
   ArrowUpCircle,
   ExternalLink,
   RefreshCw,
+  ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { useAuth } from "../store/useAuth";
 import { useWebSocket } from "../store/useWebSocket";
@@ -23,6 +25,14 @@ import {
   getMyTokens,
   createMyToken,
   deleteMyToken,
+  getMyMfaStatus,
+  beginMfaEnrollment,
+  confirmMfaEnrollment,
+  disableMfa,
+  regenerateMfaBackupCodes,
+  getMyMfaTrustedDevices,
+  revokeMyMfaTrustedDevice,
+  adminResetUserMfa,
   getUsers,
   createUser,
   updateUser,
@@ -36,7 +46,7 @@ import {
 import type { SystemVersionInfo } from "../api";
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
-import type { ApiToken, User, UserRole } from "../types";
+import type { ApiToken, User, UserRole, MfaStatus, MfaTrustedDevice } from "../types";
 import { TariffSettings } from "../components/settings/TariffSettings";
 import { ArbiterSettings } from "../components/settings/ArbiterSettings";
 
@@ -134,6 +144,7 @@ export function SettingsPage() {
               }}
             />
             <ChangePasswordSection />
+            <TwoFactorSection />
             <ApiTokensSection />
           </div>
         )}
@@ -801,6 +812,491 @@ function VersionBadge() {
 }
 
 // ============================================================
+// Two-Factor Authentication (spec 149)
+// ============================================================
+
+function BackupCodesDisplay({ codes }: { codes: string[] }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAll = async () => {
+    await navigator.clipboard.writeText(codes.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="p-3 bg-success/10 border border-success/30 rounded-[6px]">
+      <p className="text-[12px] text-success mb-2">{t("settings.mfa.backupCodesShownOnce")}</p>
+      <div className="grid grid-cols-2 gap-1.5 mb-2">
+        {codes.map((code) => (
+          <code
+            key={code}
+            className="text-[12px] font-mono bg-background px-2 py-1 rounded border border-border text-center"
+          >
+            {code}
+          </code>
+        ))}
+      </div>
+      <button
+        onClick={handleCopyAll}
+        className="flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-text cursor-pointer"
+      >
+        {copied ? <Check size={13} /> : <Copy size={13} />}
+        {t("settings.mfa.copyAllCodes")}
+      </button>
+    </div>
+  );
+}
+
+/** Re-auth challenge (password + a live TOTP/backup code) shared by disable and regenerate. */
+function MfaReauthModal({
+  title,
+  submitLabel,
+  danger,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  submitLabel: string;
+  danger?: boolean;
+  onConfirm: (password: string, code: string, isBackupCode: boolean) => Promise<void>;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [isBackupCode, setIsBackupCode] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setError("");
+    setSubmitting(true);
+    try {
+      await onConfirm(password, code, isBackupCode);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={() => !submitting && onClose()}
+    >
+      <div
+        className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-[16px] font-semibold text-text mb-4">{title}</h3>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              {t("settings.currentPassword")}
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoFocus
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              {isBackupCode ? t("settings.mfa.backupCode") : t("settings.mfa.totpCode")}
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={() => setIsBackupCode(!isBackupCode)}
+              className="mt-1 text-[12px] text-primary hover:text-primary-hover cursor-pointer"
+            >
+              {isBackupCode
+                ? t("settings.mfa.useTotpInstead")
+                : t("settings.mfa.useBackupCodeInstead")}
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="text-[13px] text-error mt-3">{error}</p>}
+
+        <div className="flex gap-2 justify-end mt-5">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !password || !code}
+            className={`px-4 py-2 text-[13px] font-medium text-white rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
+              danger ? "bg-error hover:bg-error/80" : "bg-primary hover:bg-primary-hover"
+            }`}
+          >
+            {submitting ? t("common.saving") : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [step, setStep] = useState<"loading" | "scan" | "codes">("loading");
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
+  const [secret, setSecret] = useState("");
+  const [code, setCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    beginMfaEnrollment()
+      .then((setup) => {
+        setQrCodeDataUrl(setup.qrCodeDataUrl);
+        setSecret(setup.secret);
+        setStep("scan");
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : t("common.error")));
+  }, [t]);
+
+  const handleConfirm = async () => {
+    setError("");
+    setSubmitting(true);
+    try {
+      const result = await confirmMfaEnrollment(code);
+      setBackupCodes(result.backupCodes);
+      setStep("codes");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full">
+        <h3 className="text-[16px] font-semibold text-text mb-4">{t("settings.mfa.enableTitle")}</h3>
+
+        {step === "loading" && <Loader2 size={20} className="animate-spin text-text-tertiary" />}
+
+        {step === "scan" && (
+          <div className="space-y-3">
+            <p className="text-[13px] text-text-secondary">{t("settings.mfa.scanInstructions")}</p>
+            {qrCodeDataUrl && (
+              <img
+                src={qrCodeDataUrl}
+                alt={t("settings.mfa.qrAlt")}
+                className="mx-auto rounded-[6px] border border-border"
+                width={200}
+                height={200}
+              />
+            )}
+            <details className="text-[12px] text-text-tertiary">
+              <summary className="cursor-pointer">{t("settings.mfa.cantScan")}</summary>
+              <code className="block mt-1 font-mono break-all bg-background px-2 py-1 rounded border border-border">
+                {secret}
+              </code>
+            </details>
+            <div>
+              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+                {t("settings.mfa.totpCode")}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                autoFocus
+                className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              />
+            </div>
+            {error && <p className="text-[13px] text-error">{error}</p>}
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={onClose}
+                disabled={submitting}
+                className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={submitting || !code}
+                className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? t("common.saving") : t("common.next")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "codes" && (
+          <div className="space-y-3">
+            <BackupCodesDisplay codes={backupCodes} />
+            <label className="flex items-center gap-2 text-[13px] text-text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+              />
+              {t("settings.mfa.savedCodesAck")}
+            </label>
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={onDone}
+                disabled={!acknowledged}
+                className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TwoFactorSection() {
+  const { t } = useTranslation();
+  const user = useAuth((s) => s.user);
+  const updatePreferences = useAuth((s) => s.updatePreferences);
+  const [status, setStatus] = useState<MfaStatus | null>(null);
+  const [devices, setDevices] = useState<MfaTrustedDevice[]>([]);
+  const [showEnroll, setShowEnroll] = useState(false);
+  const [showDisable, setShowDisable] = useState(false);
+  const [showRegenerate, setShowRegenerate] = useState(false);
+  const [regeneratedCodes, setRegeneratedCodes] = useState<string[] | null>(null);
+  const [trustDays, setTrustDays] = useState(user?.preferences?.mfaTrustedDeviceDays ?? 30);
+
+  const load = async () => {
+    try {
+      const [s, d] = await Promise.all([getMyMfaStatus(), getMyMfaTrustedDevices()]);
+      setStatus(s);
+      setDevices(d);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getMyMfaStatus(), getMyMfaTrustedDevices()])
+      .then(([s, d]) => {
+        if (cancelled) return;
+        setStatus(s);
+        setDevices(d);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleTrustDaysBlur = async () => {
+    if (!user) return;
+    const clamped = Math.min(90, Math.max(1, Math.round(trustDays) || 30));
+    setTrustDays(clamped);
+    if (clamped === (user.preferences?.mfaTrustedDeviceDays ?? 30)) return;
+    await updatePreferences({ ...user.preferences, mfaTrustedDeviceDays: clamped });
+  };
+
+  const handleRevokeDevice = async (id: string) => {
+    await revokeMyMfaTrustedDevice(id);
+    await load();
+  };
+
+  if (!status) {
+    return (
+      <section className="bg-surface rounded-[10px] border border-border p-5">
+        <Loader2 size={16} className="animate-spin text-text-tertiary" />
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-surface rounded-[10px] border border-border p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[14px] font-semibold text-text flex items-center gap-2">
+          <ShieldCheck size={16} className="text-text-tertiary" />
+          {t("settings.mfa.title")}
+        </h2>
+        {status.enabled ? (
+          <button
+            onClick={() => setShowDisable(true)}
+            className="text-[13px] text-error hover:text-error/80 font-medium cursor-pointer"
+          >
+            {t("common.disable")}
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowEnroll(true)}
+            className="text-[13px] text-primary hover:text-primary-hover font-medium cursor-pointer"
+          >
+            {t("common.enable")}
+          </button>
+        )}
+      </div>
+
+      {!status.enabled && <p className="text-[13px] text-text-tertiary">{t("settings.mfa.disabledHint")}</p>}
+
+      {status.enabled && (
+        <div className="mt-3 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[13px] text-text-secondary">
+              {t("settings.mfa.backupCodesRemaining", { count: status.backupCodesRemaining })}
+            </p>
+            <button
+              onClick={() => setShowRegenerate(true)}
+              className="text-[12px] text-primary hover:text-primary-hover font-medium cursor-pointer"
+            >
+              {t("settings.mfa.regenerateCodes")}
+            </button>
+          </div>
+          {status.backupCodesRemaining <= 2 && (
+            <p className="text-[12px] text-error">{t("settings.mfa.lowBackupCodesWarning")}</p>
+          )}
+
+          <div>
+            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              {t("settings.mfa.trustedDeviceDuration")}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={90}
+                value={trustDays}
+                onChange={(e) => setTrustDays(Number(e.target.value))}
+                onBlur={handleTrustDaysBlur}
+                className="w-20 px-3 py-1.5 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              />
+              <span className="text-[13px] text-text-tertiary">{t("settings.mfa.days")}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[12px] text-text-tertiary uppercase tracking-widest mb-1.5">
+              {t("settings.mfa.trustedDevices")}
+            </p>
+            {devices.length === 0 ? (
+              <p className="text-[13px] text-text-tertiary">{t("settings.mfa.noTrustedDevices")}</p>
+            ) : (
+              <div className="space-y-2">
+                {devices.map((device) => (
+                  <div
+                    key={device.id}
+                    className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Smartphone size={14} className="text-text-tertiary shrink-0" />
+                      <span className="text-[13px] text-text truncate">
+                        {device.userAgent ?? t("settings.mfa.unknownDevice")}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleRevokeDevice(device.id)}
+                      className="text-[12px] text-error hover:text-error/80 font-medium cursor-pointer shrink-0 ml-2"
+                    >
+                      {t("common.remove")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showEnroll && (
+        <MfaEnrollModal
+          onDone={() => {
+            setShowEnroll(false);
+            load();
+          }}
+          onClose={() => setShowEnroll(false)}
+        />
+      )}
+
+      {showDisable && (
+        <MfaReauthModal
+          title={t("settings.mfa.disableTitle")}
+          submitLabel={t("common.disable")}
+          danger
+          onClose={() => setShowDisable(false)}
+          onConfirm={async (password, code, isBackupCode) => {
+            await disableMfa(password, code, isBackupCode);
+            setShowDisable(false);
+            await load();
+          }}
+        />
+      )}
+
+      {showRegenerate && !regeneratedCodes && (
+        <MfaReauthModal
+          title={t("settings.mfa.regenerateTitle")}
+          submitLabel={t("settings.mfa.regenerateCodes")}
+          onClose={() => setShowRegenerate(false)}
+          onConfirm={async (password, code, isBackupCode) => {
+            const result = await regenerateMfaBackupCodes(password, code, isBackupCode);
+            setRegeneratedCodes(result.backupCodes);
+          }}
+        />
+      )}
+
+      {showRegenerate && regeneratedCodes && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => {
+            setShowRegenerate(false);
+            setRegeneratedCodes(null);
+            load();
+          }}
+        >
+          <div
+            className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-[16px] font-semibold text-text mb-4">
+              {t("settings.mfa.regenerateTitle")}
+            </h3>
+            <BackupCodesDisplay codes={regeneratedCodes} />
+            <div className="flex justify-end pt-4">
+              <button
+                onClick={() => {
+                  setShowRegenerate(false);
+                  setRegeneratedCodes(null);
+                  load();
+                }}
+                className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ============================================================
 // API Tokens
 // ============================================================
 
@@ -998,6 +1494,12 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
     await load();
   };
 
+  // Spec 149 FR6 — admin-assisted MFA reset for a locked-out user.
+  const handleResetMfa = async (u: User) => {
+    if (!confirm(t("settings.mfa.adminResetConfirm", { name: u.displayName }))) return;
+    await adminResetUserMfa(u.id);
+  };
+
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
       <div className="flex items-center justify-between mb-4">
@@ -1113,15 +1615,24 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                   {u.enabled ? t("settings.enabled") : t("common.disabled")}
                 </button>
               </div>
-              {u.id !== currentUserId && (
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => handleDelete(u)}
-                  className="p-1.5 text-text-tertiary hover:text-error rounded cursor-pointer"
-                  title={t("common.delete")}
+                  onClick={() => handleResetMfa(u)}
+                  className="p-1.5 text-text-tertiary hover:text-text rounded cursor-pointer"
+                  title={t("settings.mfa.adminResetTitle")}
                 >
-                  <Trash2 size={14} />
+                  <ShieldCheck size={14} />
                 </button>
-              )}
+                {u.id !== currentUserId && (
+                  <button
+                    onClick={() => handleDelete(u)}
+                    className="p-1.5 text-text-tertiary hover:text-error rounded cursor-pointer"
+                    title={t("common.delete")}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

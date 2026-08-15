@@ -1,8 +1,9 @@
 import { create } from "zustand";
-import type { User, UserPreferences } from "../types";
+import type { User, UserPreferences, MfaChallenge } from "../types";
 import {
   getAuthStatus,
   authLogin,
+  authMfaVerify,
   authSetup,
   authRefresh,
   authLogout,
@@ -18,10 +19,20 @@ interface AuthState {
   setupRequired: boolean | null; // null = loading
   loading: boolean;
   accessToken: string | null;
+  /** Spec 149 — set by login() instead of authenticating when the account has
+   *  MFA enabled and no valid trusted-device token was presented. */
+  mfaChallenge: MfaChallenge | null;
 
   // Actions
   checkStatus: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
+  /** Second factor for the pending mfaChallenge. Throws on an invalid code. */
+  verifyMfa: (
+    code: string,
+    options?: { isBackupCode?: boolean; trustDevice?: boolean },
+  ) => Promise<void>;
+  /** Abandon the pending MFA challenge and return to the username/password form. */
+  cancelMfaChallenge: () => void;
   setup: (data: { username: string; password: string; displayName: string; language?: "fr" | "en" }) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
@@ -31,6 +42,7 @@ interface AuthState {
 
 const STORAGE_KEY_ACCESS = "sowel_access_token";
 const STORAGE_KEY_REFRESH = "sowel_refresh_token";
+const TRUSTED_DEVICE_PREFIX = "sowel_trusted_device_";
 
 function saveTokens(accessToken: string, refreshToken: string): void {
   localStorage.setItem(STORAGE_KEY_ACCESS, accessToken);
@@ -50,6 +62,16 @@ function getStoredRefreshToken(): string | null {
   return localStorage.getItem(STORAGE_KEY_REFRESH);
 }
 
+// Spec 149 — keyed by username, not global: a shared browser/tablet may see
+// logins from multiple household accounts, each with its own device trust.
+function getStoredTrustedDeviceToken(username: string): string | null {
+  return localStorage.getItem(TRUSTED_DEVICE_PREFIX + username);
+}
+
+function saveTrustedDeviceToken(username: string, token: string): void {
+  localStorage.setItem(TRUSTED_DEVICE_PREFIX + username, token);
+}
+
 export const useAuth = create<AuthState>((set, get) => {
   // Restore access token from localStorage on init
   const storedToken = localStorage.getItem(STORAGE_KEY_ACCESS);
@@ -66,12 +88,19 @@ export const useAuth = create<AuthState>((set, get) => {
     return success;
   });
 
+  // Spec 149 — the username behind the current mfaChallenge, so verifyMfa()
+  // knows which per-username localStorage key to write a trusted-device
+  // token into. Not part of AuthState: it's an implementation detail of the
+  // login/verifyMfa handoff, not something a component should read.
+  let pendingUsername: string | null = null;
+
   return {
     user: null,
     isAuthenticated: false,
     setupRequired: null,
     loading: true,
     accessToken: storedToken,
+    mfaChallenge: null,
 
     checkStatus: async () => {
       set({ loading: true });
@@ -98,9 +127,37 @@ export const useAuth = create<AuthState>((set, get) => {
     },
 
     login: async (username, password) => {
-      const tokens = await authLogin(username, password);
-      saveTokens(tokens.accessToken, tokens.refreshToken);
-      set({ user: tokens.user, isAuthenticated: true, loading: false });
+      const trustedDeviceToken = getStoredTrustedDeviceToken(username) ?? undefined;
+      const result = await authLogin(username, password, trustedDeviceToken);
+
+      if ("mfaRequired" in result) {
+        pendingUsername = username;
+        set({ mfaChallenge: result });
+        return;
+      }
+
+      set({ mfaChallenge: null });
+      saveTokens(result.accessToken, result.refreshToken);
+      set({ user: result.user, isAuthenticated: true, loading: false });
+    },
+
+    verifyMfa: async (code, options) => {
+      const { mfaChallenge } = get();
+      if (!mfaChallenge) throw new Error("No pending MFA challenge");
+
+      const result = await authMfaVerify(mfaChallenge.mfaToken, code, options);
+      if (result.trustedDeviceToken && pendingUsername) {
+        saveTrustedDeviceToken(pendingUsername, result.trustedDeviceToken);
+      }
+      pendingUsername = null;
+
+      saveTokens(result.accessToken, result.refreshToken);
+      set({ user: result.user, isAuthenticated: true, loading: false, mfaChallenge: null });
+    },
+
+    cancelMfaChallenge: () => {
+      pendingUsername = null;
+      set({ mfaChallenge: null });
     },
 
     setup: async (data) => {

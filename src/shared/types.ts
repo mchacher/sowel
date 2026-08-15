@@ -303,7 +303,7 @@ export interface Equipment {
   /** Flexible-load declaration (spec 140). Present only when the admin
    *  enabled arbitration for this equipment. */
   energyProfile?: EnergyLoadProfile;
-  /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
+  /** Spec 149 — opt-in confirmation before actuating on the mobile dashboard.
    *  `true` only when an admin enabled it. Gate equipments only in v1. */
   requireConfirmation?: boolean;
 }
@@ -890,6 +890,9 @@ export interface UserPreferences {
   language: "fr" | "en";
   theme?: "light" | "dark" | "system";
   defaultZoneId?: string;
+  /** Spec 149 — days a trusted device stays valid once issued. 1-90, default
+   *  30 when absent. Clamped server-side in `PUT /me/preferences`. */
+  mfaTrustedDeviceDays?: number;
 }
 
 export interface ApiToken {
@@ -898,6 +901,40 @@ export interface ApiToken {
   lastUsedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+}
+
+// ============================================================
+// Two-factor authentication (Spec 149)
+// ============================================================
+
+export interface MfaStatus {
+  enabled: boolean;
+  confirmedAt: string | null;
+  backupCodesRemaining: number;
+}
+
+export interface MfaSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+  qrCodeDataUrl: string;
+}
+
+export interface MfaConfirmResponse {
+  backupCodes: string[];
+}
+
+export interface MfaTrustedDevice {
+  id: string;
+  userAgent: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/** Returned by `POST /auth/login` instead of `AuthTokens` when the account
+ *  has confirmed TOTP MFA and no valid trusted-device token was presented. */
+export interface MfaChallenge {
+  mfaRequired: true;
+  mfaToken: string;
 }
 
 // ============================================================

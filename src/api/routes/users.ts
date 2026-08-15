@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { UserManager } from "../../auth/user-manager.js";
+import type { MfaService } from "../../auth/mfa-service.js";
 import type { Logger } from "../../core/logger.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
 import type { UserRole } from "../../shared/types.js";
@@ -28,12 +29,13 @@ const createUserBodySchema = {
 
 interface UsersDeps {
   userManager: UserManager;
+  mfaService: MfaService;
   auditLogger: AuditLogger;
   logger: Logger;
 }
 
 export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void {
-  const { userManager, auditLogger } = deps;
+  const { userManager, mfaService, auditLogger } = deps;
 
   // All user management routes require admin role
   app.addHook("onRequest", async (request, reply) => {
@@ -160,6 +162,28 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
       targetId: request.params.id,
       ip: request.ip,
       meta: { username: existing.username, role: existing.role },
+    });
+    return reply.code(204).send();
+  });
+
+  // DELETE /api/v1/users/:id/mfa — Spec 149 FR6: admin-assisted MFA reset.
+  // No password/code challenge from the admin — same trust level already
+  // granted over other accounts (e.g. disabling a user). Recovery path for a
+  // user who lost both their TOTP device and backup codes.
+  app.delete<{
+    Params: { id: string };
+  }>("/api/v1/users/:id/mfa", async (request, reply) => {
+    const existing = userManager.getById(request.params.id);
+    if (!existing) return reply.code(404).send({ error: "User not found" });
+
+    mfaService.disable(request.params.id);
+    auditLogger.log({
+      ...buildActor(request, userManager),
+      action: "mfa.disabled.by_admin",
+      targetType: "user",
+      targetId: request.params.id,
+      ip: request.ip,
+      meta: { username: existing.username },
     });
     return reply.code(204).send();
   });

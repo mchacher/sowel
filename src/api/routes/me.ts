@@ -5,16 +5,18 @@ import type { Logger } from "../../core/logger.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
 import type { UserPreferences } from "../../shared/types.js";
 import { buildActor } from "../audit-context.js";
+import { clampTrustedDeviceDays, type MfaService } from "../../auth/mfa-service.js";
 
 interface MeDeps {
   authService: AuthService;
+  mfaService: MfaService;
   userManager: UserManager;
   auditLogger: AuditLogger;
   logger: Logger;
 }
 
 export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
-  const { authService, userManager, auditLogger } = deps;
+  const { authService, mfaService, userManager, auditLogger } = deps;
 
   // GET /api/v1/me — Current user profile
   app.get("/api/v1/me", async (request, reply) => {
@@ -55,6 +57,12 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
     if (!preferences || typeof preferences !== "object") {
       return reply.code(400).send({ error: "preferences object is required" });
     }
+    // Spec 149 — trusted-device duration is a stored preference, not a
+    // per-request parameter: clamp here so a tampered/stale value can never
+    // push a trusted-device expiry outside the allowed range.
+    if (preferences.mfaTrustedDeviceDays !== undefined) {
+      preferences.mfaTrustedDeviceDays = clampTrustedDeviceDays(preferences.mfaTrustedDeviceDays);
+    }
 
     userManager.updatePreferences(request.auth.userId, preferences);
     const user = userManager.getById(request.auth.userId);
@@ -82,6 +90,9 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
     if (!valid) return reply.code(401).send({ error: "Current password is incorrect" });
 
     await userManager.updatePassword(request.auth.userId, newPassword);
+    // Spec 149 — defense in depth: a new password invalidates any browser
+    // previously trusted to skip the MFA step.
+    mfaService.revokeAllTrustedDevices(request.auth.userId);
     auditLogger.log({
       ...buildActor(request, userManager),
       action: "user.password_change",

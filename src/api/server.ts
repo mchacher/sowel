@@ -24,6 +24,7 @@ import type { ModeManager } from "../modes/mode-manager.js";
 import type { CalendarManager } from "../modes/calendar-manager.js";
 import type { UserManager } from "../auth/user-manager.js";
 import type { AuthService } from "../auth/auth-service.js";
+import type { MfaService } from "../auth/mfa-service.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { ButtonActionManager } from "../buttons/button-action-manager.js";
 import type { HistoryWriter } from "../history/history-writer.js";
@@ -47,6 +48,7 @@ import { registerCameraRoutes } from "./routes/camera.js";
 import { registerRecipeRoutes } from "./routes/recipes.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerMeRoutes } from "./routes/me.js";
+import { registerMfaRoutes } from "./routes/mfa.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerBackupRoutes } from "./routes/backup.js";
 import { registerSettingsRoutes } from "./routes/settings.js";
@@ -84,6 +86,7 @@ interface ServerDeps {
   calendarManager: CalendarManager;
   userManager: UserManager;
   authService: AuthService;
+  mfaService: MfaService;
   settingsManager: SettingsManager;
   buttonActionManager: ButtonActionManager;
   historyWriter: HistoryWriter;
@@ -137,6 +140,7 @@ export async function createServer(deps: ServerDeps) {
     calendarManager,
     userManager,
     authService,
+    mfaService,
     settingsManager,
     buttonActionManager,
     historyWriter,
@@ -309,8 +313,9 @@ export async function createServer(deps: ServerDeps) {
   // Register routes
   registerHealthRoutes(app, { deviceManager, integrationRegistry, logger });
   registerAuthRoutes(app, { authService, userManager, auditLogger, logger });
-  registerMeRoutes(app, { authService, userManager, auditLogger, logger });
-  registerUserRoutes(app, { userManager, auditLogger, logger });
+  registerMeRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
+  registerMfaRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
+  registerUserRoutes(app, { userManager, mfaService, auditLogger, logger });
   registerDeviceRoutes(app, { deviceManager, batteryMonitor, logger });
   registerZoneRoutes(app, { zoneManager, zoneAggregator, equipmentManager, logger });
   registerEquipmentRoutes(app, { equipmentManager, logger });

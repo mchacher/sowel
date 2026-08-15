@@ -13,7 +13,13 @@ import { nonEmptyString } from "../schemas.js";
 const loginBodySchema = {
   type: "object",
   required: ["username", "password"],
-  properties: { username: nonEmptyString, password: nonEmptyString },
+  properties: {
+    username: nonEmptyString,
+    password: nonEmptyString,
+    // Spec 149 — opaque token proving this browser was previously trusted;
+    // skips the MFA step when it matches a live mfa_trusted_devices row.
+    trustedDeviceToken: { type: "string" },
+  },
 };
 
 const refreshBodySchema = {
@@ -68,7 +74,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
 
   // POST /api/v1/auth/login (stricter rate limit: 10 req/min)
   app.post<{
-    Body: { username: string; password: string };
+    Body: { username: string; password: string; trustedDeviceToken?: string };
   }>(
     "/api/v1/auth/login",
     {
@@ -76,10 +82,12 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       schema: { body: loginBodySchema },
     },
     async (request, reply) => {
-      const { username, password } = request.body;
+      const { username, password, trustedDeviceToken } = request.body;
 
       try {
-        const tokens = await authService.login(username, password);
+        // Spec 149 — may return an MfaChallenge instead of full tokens when
+        // the account has TOTP enabled and no valid trusted device is presented.
+        const result = await authService.login(username, password, trustedDeviceToken);
         const user = userManager.getByUsername(username);
         auditLogger.log({
           actorKind: "user",
@@ -90,7 +98,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
           targetId: user?.id ?? null,
           ip: request.ip,
         });
-        return tokens;
+        return result;
       } catch (err) {
         auditLogger.log({
           actorKind: "user",

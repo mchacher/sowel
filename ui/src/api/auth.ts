@@ -8,6 +8,11 @@ import type {
   UserPreferences,
   ApiToken,
   AuthTokens,
+  MfaStatus,
+  MfaSetupResponse,
+  MfaConfirmResponse,
+  MfaTrustedDevice,
+  MfaChallenge,
 } from "../types";
 import { fetchJSON, fetchPublic, API_BASE } from "./client";
 
@@ -31,10 +36,32 @@ export async function authSetup(data: {
   });
 }
 
-export async function authLogin(username: string, password: string): Promise<AuthTokens> {
+export async function authLogin(
+  username: string,
+  password: string,
+  trustedDeviceToken?: string,
+): Promise<AuthTokens | MfaChallenge> {
   return fetchPublic(`${API_BASE}/auth/login`, {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, trustedDeviceToken }),
+  });
+}
+
+/** Spec 149 — login second factor. `trustDevice` issues a trustedDeviceToken
+ *  in the response, valid for the account's configured duration (default 30 days). */
+export async function authMfaVerify(
+  mfaToken: string,
+  code: string,
+  options?: { isBackupCode?: boolean; trustDevice?: boolean },
+): Promise<AuthTokens & { trustedDeviceToken?: string; trustedDeviceExpiresAt?: string }> {
+  return fetchPublic(`${API_BASE}/auth/mfa/verify`, {
+    method: "POST",
+    body: JSON.stringify({
+      mfaToken,
+      code,
+      isBackupCode: options?.isBackupCode,
+      trustDevice: options?.trustDevice,
+    }),
   });
 }
 
@@ -103,6 +130,55 @@ export async function deleteMyToken(id: string): Promise<void> {
 }
 
 // ============================================================
+// Two-factor authentication (spec 149)
+// ============================================================
+
+export async function getMyMfaStatus(): Promise<MfaStatus> {
+  return fetchJSON<MfaStatus>(`${API_BASE}/me/mfa`);
+}
+
+export async function beginMfaEnrollment(): Promise<MfaSetupResponse> {
+  return fetchJSON<MfaSetupResponse>(`${API_BASE}/me/mfa/totp/setup`, { method: "POST" });
+}
+
+export async function confirmMfaEnrollment(code: string): Promise<MfaConfirmResponse> {
+  return fetchJSON<MfaConfirmResponse>(`${API_BASE}/me/mfa/totp/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function disableMfa(
+  password: string,
+  code: string,
+  isBackupCode?: boolean,
+): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/me/mfa/totp`, {
+    method: "DELETE",
+    body: JSON.stringify({ password, code, isBackupCode }),
+  });
+}
+
+export async function regenerateMfaBackupCodes(
+  password: string,
+  code: string,
+  isBackupCode?: boolean,
+): Promise<MfaConfirmResponse> {
+  return fetchJSON<MfaConfirmResponse>(`${API_BASE}/me/mfa/backup-codes/regenerate`, {
+    method: "POST",
+    body: JSON.stringify({ password, code, isBackupCode }),
+  });
+}
+
+export async function getMyMfaTrustedDevices(): Promise<MfaTrustedDevice[]> {
+  return fetchJSON<MfaTrustedDevice[]>(`${API_BASE}/me/mfa/trusted-devices`);
+}
+
+export async function revokeMyMfaTrustedDevice(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/me/mfa/trusted-devices/${id}`, { method: "DELETE" });
+}
+
+// ============================================================
 // User management (admin)
 // ============================================================
 
@@ -138,6 +214,11 @@ export async function updateUser(
 
 export async function deleteUser(id: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/users/${id}`, { method: "DELETE" });
+}
+
+/** Spec 149 FR6 — admin-assisted MFA reset for another user's account. */
+export async function adminResetUserMfa(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/users/${id}/mfa`, { method: "DELETE" });
 }
 
 export interface DeviceWithData extends Device {

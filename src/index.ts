@@ -32,6 +32,7 @@ import { UpdateManager } from "./core/update-manager.js";
 import { BackupManager } from "./backup/backup-manager.js";
 import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
+import { MfaService } from "./auth/mfa-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { resolveInstanceIdentity, confirmTakeover } from "./core/instance-identity.js";
 import { ModeManager } from "./modes/mode-manager.js";
@@ -414,7 +415,8 @@ async function main() {
 
   // 13. Create Auth modules
   const userManager = new UserManager(db, logger);
-  const authService = new AuthService(db, userManager, config.jwt, logger);
+  const mfaService = new MfaService(db, userManager, logger);
+  const authService = new AuthService(db, userManager, mfaService, config.jwt, logger);
 
   // 13b. Audit logger (spec 113) — instantiate and purge entries > 365 days
   const auditLogger = new AuditLogger(db, logger);
@@ -482,6 +484,7 @@ async function main() {
     calendarManager,
     userManager,
     authService,
+    mfaService,
     settingsManager,
     buttonActionManager,
     historyWriter,

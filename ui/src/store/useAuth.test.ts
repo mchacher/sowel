@@ -7,6 +7,7 @@ import type { AuthTokens, User } from "../types";
 const api = vi.hoisted(() => ({
   getAuthStatus: vi.fn(),
   authLogin: vi.fn(),
+  authMfaVerify: vi.fn(),
   authSetup: vi.fn(),
   authRefresh: vi.fn(),
   authLogout: vi.fn(),
@@ -92,6 +93,129 @@ describe("login", () => {
     expect(localStorage.getItem(ACCESS_KEY)).toBe("acc-1");
     expect(localStorage.getItem(REFRESH_KEY)).toBe("ref-1");
     expect(api.setAccessToken).toHaveBeenCalledWith("acc-1");
+  });
+});
+
+describe("login — MFA challenge (spec 149)", () => {
+  it("sets mfaChallenge and does not authenticate when the account has MFA enabled", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+
+    await useAuth.getState().login("alice", "pw");
+
+    const s = useAuth.getState();
+    expect(s.mfaChallenge).toEqual({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    expect(s.isAuthenticated).toBe(false);
+    expect(s.user).toBeNull();
+    expect(localStorage.getItem(ACCESS_KEY)).toBeNull();
+    expect(api.setAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("passes the per-username stored trusted-device token to authLogin", async () => {
+    localStorage.setItem("sowel_trusted_device_alice", "trusted-tok-1");
+    api.authLogin.mockResolvedValue(tokens());
+
+    await useAuth.getState().login("alice", "pw");
+
+    expect(api.authLogin).toHaveBeenCalledWith("alice", "pw", "trusted-tok-1");
+  });
+
+  it("passes undefined when no trusted-device token is stored for that username", async () => {
+    api.authLogin.mockResolvedValue(tokens());
+
+    await useAuth.getState().login("alice", "pw");
+
+    expect(api.authLogin).toHaveBeenCalledWith("alice", "pw", undefined);
+  });
+
+  it("a plain successful login clears any stale mfaChallenge", async () => {
+    api.authLogin.mockResolvedValueOnce({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+    expect(useAuth.getState().mfaChallenge).not.toBeNull();
+
+    useAuth.getState().cancelMfaChallenge();
+    api.authLogin.mockResolvedValueOnce(tokens());
+    await useAuth.getState().login("alice", "pw");
+
+    expect(useAuth.getState().mfaChallenge).toBeNull();
+    expect(useAuth.getState().isAuthenticated).toBe(true);
+  });
+});
+
+describe("verifyMfa", () => {
+  it("throws without a pending mfaChallenge", async () => {
+    await expect(useAuth.getState().verifyMfa("123456")).rejects.toThrow(
+      "No pending MFA challenge",
+    );
+    expect(api.authMfaVerify).not.toHaveBeenCalled();
+  });
+
+  it("authenticates and stores tokens on a correct code", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+
+    api.authMfaVerify.mockResolvedValue(tokens());
+    await useAuth.getState().verifyMfa("123456");
+
+    expect(api.authMfaVerify).toHaveBeenCalledWith("mfa-tok-1", "123456", undefined);
+    const s = useAuth.getState();
+    expect(s.isAuthenticated).toBe(true);
+    expect(s.user).toEqual(USER);
+    expect(s.mfaChallenge).toBeNull();
+    expect(localStorage.getItem(ACCESS_KEY)).toBe("acc-1");
+  });
+
+  it("forwards isBackupCode/trustDevice options", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+
+    api.authMfaVerify.mockResolvedValue(tokens());
+    await useAuth.getState().verifyMfa("ABCDE-12345", { isBackupCode: true, trustDevice: true });
+
+    expect(api.authMfaVerify).toHaveBeenCalledWith("mfa-tok-1", "ABCDE-12345", {
+      isBackupCode: true,
+      trustDevice: true,
+    });
+  });
+
+  it("saves the returned trustedDeviceToken under the username that just logged in", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+
+    api.authMfaVerify.mockResolvedValue({ ...tokens(), trustedDeviceToken: "new-trusted-tok" });
+    await useAuth.getState().verifyMfa("123456", { trustDevice: true });
+
+    expect(localStorage.getItem("sowel_trusted_device_alice")).toBe("new-trusted-tok");
+  });
+
+  it("does not touch trusted-device storage when trustDevice was not requested", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+
+    api.authMfaVerify.mockResolvedValue(tokens());
+    await useAuth.getState().verifyMfa("123456");
+
+    expect(localStorage.getItem("sowel_trusted_device_alice")).toBeNull();
+  });
+
+  it("propagates a wrong-code error and leaves the challenge unresolved", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+
+    api.authMfaVerify.mockRejectedValue(new Error("Invalid code"));
+    await expect(useAuth.getState().verifyMfa("000000")).rejects.toThrow("Invalid code");
+    expect(useAuth.getState().isAuthenticated).toBe(false);
+  });
+});
+
+describe("cancelMfaChallenge", () => {
+  it("clears the pending challenge without authenticating", async () => {
+    api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
+    await useAuth.getState().login("alice", "pw");
+
+    useAuth.getState().cancelMfaChallenge();
+
+    expect(useAuth.getState().mfaChallenge).toBeNull();
+    expect(useAuth.getState().isAuthenticated).toBe(false);
   });
 });
 

@@ -81,6 +81,8 @@ Cela crée le premier compte administrateur. Vous pourrez ajouter d'autres utili
 !!! warning
 Il n'existe aucun mécanisme de récupération de mot de passe. Assurez-vous de bien retenir vos identifiants admin.
 
+Une fois connecté, vous pouvez activer l'**authentification à deux facteurs** (code d'une application d'authentification, plus des codes de secours à usage unique) depuis **Réglages → Compte → Authentification à deux facteurs**. Elle est optionnelle et désactivée par défaut. Comme pour le mot de passe ci-dessus, il n'y a pas de récupération par email : si vous perdez à la fois votre application d'authentification et vos codes de secours, un autre admin peut réinitialiser votre authentification à deux facteurs depuis Réglages → Administration → Utilisateurs, ou — si vous êtes le seul admin — depuis l'hôte via `docker exec sowel node scripts/auth/reset-mfa.mjs <username>`.
+
 Une fois le premier compte créé, l'**écran de connexion** classique vous accueille à chaque visite suivante :
 
 ![Écran de connexion](../screenshots/getting-started-login-fr.png)

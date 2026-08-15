@@ -311,9 +311,21 @@ Full design, review log and rationale: `specs/140-energy-capacity-arbiter/`.
 - **Passwords**: bcrypt (cost 12).
 - **JWT**: HS256 via `jsonwebtoken`. Access token TTL: 15 min. Refresh token TTL: 30 days.
 - **API tokens**: `swl_` prefix, SHA-256 hash stored, generated via `crypto.randomBytes(32)`. Legacy prefixes `wch_` and `cbl_` also accepted.
-- **Auth-by-default** (spec 105): a global Fastify `onRequest` hook enforces authentication on every `/api/v1/*` route. The list of public routes is the `PUBLIC_ROUTES` constant in `src/auth/auth-middleware.ts` (`/health`, `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/refresh`) plus OAuth callback paths. Any new route is protected unless explicitly added to that whitelist.
+- **Auth-by-default** (spec 105): a global Fastify `onRequest` hook enforces authentication on every `/api/v1/*` route. The list of public routes is the `PUBLIC_ROUTES` constant in `src/auth/auth-middleware.ts` (`/health`, `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/refresh`, `/auth/mfa/verify`) plus OAuth callback paths. Any new route is protected unless explicitly added to that whitelist.
 - **Roles**: `admin` > `standard` > `viewer` (hierarchical permissions).
 - **First-run setup**: `POST /api/v1/auth/setup` creates the first admin user.
+
+### Two-factor authentication (spec 149)
+
+Optional per-user TOTP (RFC 6238, `otplib`) second factor, opt-in from Settings → Account. `MfaService` (`src/auth/mfa-service.ts`) owns enrollment, verification, single-use backup codes (10, SHA-256 hashed, regenerable), and trusted devices.
+
+- **Login flow**: `AuthService.login()` returns an `MfaChallenge` (`{ mfaRequired: true, mfaToken }`) instead of full tokens when the account has confirmed MFA and no valid trusted-device token was presented. `POST /auth/mfa/verify` (public) exchanges a TOTP/backup code for full tokens.
+- **Token purpose isolation**: `JwtPayload` carries `purpose: "access" | "mfa_pending"`. `AuthService.verifyAccessToken()` — used by the global auth hook on every protected route — rejects any `mfa_pending` token outright, so a replayed `mfaToken` can never grant partial API access before the second factor is checked.
+- **Trusted devices**: an opaque token (SHA-256 hashed server-side) lets a later login skip the MFA step. Duration is a per-user preference, `UserPreferences.mfaTrustedDeviceDays` (1-90, default 30), clamped in `PUT /me/preferences`. Changing the account password revokes all trusted devices for that account.
+- **Recovery**: no email/SMS fallback. An admin can force-disable another user's MFA (`DELETE /users/:id/mfa`); a self-locked-out admin uses the break-glass CLI, `scripts/auth/reset-mfa.mjs <username>` (via `docker exec`).
+- **Data model**: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices` tables (migration `018_mfa_totp.sql`) — no columns added to `users`.
+
+See `specs/149-mfa-totp/` for the full design.
 
 ### WebSocket authentication (spec 105)
 
