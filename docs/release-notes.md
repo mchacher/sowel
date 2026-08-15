@@ -11,6 +11,19 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.46.x: Analyse page polish, resilient activity, and a clearer arbiter timeline
+
+### v1.46.0 — 2026-08-15 { #v1-46-0 }
+
+- Feat (energy): **the arbiter timeline is redesigned as a signed surplus/deficit curve with per-load ribbons and a decision journal**. The available-surplus view now reads as one continuous curve, green above the line when there is surplus and red below when the house is pulling from the grid, with a lane per profiled load and a running log of the arbiter's grant and revoke decisions. The surplus curve reuses the auto-consumption green so the timeline keeps a single green. (#495, #500, #508)
+- Feat (core): **the activity feed and the arbiter decision journal now survive a restart**. Both were kept in memory and wiped whenever Sowel restarted; they are now persisted, so the recent history is still there after an update or a reboot. (#494, #499)
+- Feat (equipments): **actuating a gate from a phone now asks for a confirming swipe**. A gate is slow and physical, so an accidental tap (a phone in a pocket) should not open it; a slide-to-confirm guards the action on mobile. (#320, #497)
+- Feat (ui): **the Analyse page opens on your first saved chart, on today**. Visiting Analyse used to land on an empty chart builder; it now opens the first saved chart on today's date with the zone and equipment picker collapsed for a cleaner screen. A "New chart" entry (sidebar and mobile drawer) still reaches the empty builder. Reported by Adrien Jouve (computingify). (#498, #505)
+- Fix (ui): **the chart point-detail tooltip fits the screen on mobile**. The long "Zone / Equipment / Metric" labels made the tooltip overflow the viewport; it is now a compact card that wraps its labels and stays on-screen. Reported by Adrien Jouve (computingify). (#498, #506)
+- Fix (energy): **a relay On/Off curve is now drawn across the whole window**. A state series is only sampled when it changes, so a state that changed once, or not at all, inside the window was drawn from the first sample and stopped at the last one. The step line now starts at the window's left edge in the correct prior state and extends its last value to the right edge. Reported by Adrien Jouve (computingify). (#498, #507)
+- Feat (auth): **API token management moved to Settings > Account, and the unused mobile QR login was removed**. Personal API tokens (used by external integrations such as the energy display) now sit next to the password on the Account tab, and the confusing, undocumented QR login on the System tab is gone. (#501)
+- Fix (ui): **the dashboard edit button no longer overlaps the bottom navigation on mobile**. On devices with a home indicator the floating edit button dropped onto the "More" / Settings button; its offset now clears the safe-area inset. Reported by Adrien Jouve (computingify). (#496, #504)
+
 ## 1.45.x: Arbitration display fixes and UI cleanup
 
 ### v1.45.0 — 2026-08-13 { #v1-45-0 }

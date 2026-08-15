@@ -11,6 +11,19 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.46.x : Finitions de la page Analyse, activité persistante et frise d'arbitrage plus claire
+
+### v1.46.0 — 2026-08-15 { #v1-46-0 }
+
+- Feat (énergie) : **la frise d'arbitrage est redessinée en une courbe signée surplus/déficit, avec un ruban par charge et un journal des décisions**. La vue du surplus disponible se lit désormais comme une seule courbe continue, verte au-dessus de la ligne quand il y a du surplus et rouge en dessous quand la maison puise sur le réseau, avec une voie par charge profilée et un journal des décisions d'accord et de retrait de l'arbitre. La courbe de surplus réutilise le vert de l'auto-consommation pour que la frise garde un seul vert. (#495, #500, #508)
+- Feat (core) : **le fil d'activité et le journal de décisions de l'arbitre survivent maintenant à un redémarrage**. Tous deux étaient gardés en mémoire et effacés à chaque redémarrage de Sowel ; ils sont désormais persistés, si bien que l'historique récent est toujours là après une mise à jour ou un reboot. (#494, #499)
+- Feat (équipements) : **actionner un portail depuis un téléphone demande maintenant un glissement de confirmation**. Un portail est lent et physique : un appui involontaire (téléphone en poche) ne doit pas l'ouvrir ; un glisser-pour-confirmer protège l'action sur mobile. (#320, #497)
+- Feat (ui) : **la page Analyse s'ouvre sur votre premier graphique enregistré, sur aujourd'hui**. Ouvrir Analyse arrivait sur un constructeur de graphique vide ; elle ouvre désormais le premier graphique enregistré à la date du jour, avec le sélecteur zone/équipement replié pour un écran plus clair. Une entrée « Nouveau graphique » (barre latérale et tiroir mobile) permet toujours d'atteindre le constructeur vide. Signalé par Adrien Jouve (computingify). (#498, #505)
+- Correctif (ui) : **l'infobulle de détail d'un point tient à l'écran sur mobile**. Les longs libellés « Zone / Équipement / Mesure » faisaient déborder l'infobulle ; c'est maintenant une carte compacte qui renvoie ses libellés à la ligne et reste dans l'écran. Signalé par Adrien Jouve (computingify). (#498, #506)
+- Correctif (énergie) : **une courbe de relais Marche/Arrêt est désormais tracée sur toute la fenêtre**. Une série d'état n'est échantillonnée qu'au changement : un état qui n'a changé qu'une fois, ou pas du tout, dans la fenêtre était tracé à partir du premier échantillon et s'arrêtait au dernier. La ligne en escalier démarre maintenant au bord gauche dans le bon état précédent et prolonge sa dernière valeur jusqu'au bord droit. Signalé par Adrien Jouve (computingify). (#498, #507)
+- Feat (auth) : **la gestion des tokens API a été déplacée dans Réglages > Compte, et le login QR mobile inutilisé a été retiré**. Les tokens API personnels (utilisés par des intégrations externes comme l'afficheur d'énergie) se trouvent désormais à côté du mot de passe dans l'onglet Compte, et le login QR de l'onglet Système, source de confusion et non documenté, a disparu. (#501)
+- Correctif (ui) : **le bouton d'édition du tableau de bord ne chevauche plus la navigation du bas sur mobile**. Sur les appareils avec un home indicator, le bouton d'édition flottant retombait sur le bouton « Plus » / Réglages ; son décalage tient maintenant compte de la zone de sécurité (safe-area). Signalé par Adrien Jouve (computingify). (#496, #504)
+
 ## 1.45.x : Corrections d'affichage de l'arbitrage et nettoyage de l'UI
 
 ### v1.45.0 — 2026-08-13 { #v1-45-0 }
