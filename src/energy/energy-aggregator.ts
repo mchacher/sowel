@@ -16,7 +16,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { InfluxClient } from "../core/influx-client.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
-import { isSubmeterEquipment } from "../equipments/metering.js";
+import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../equipments/metering.js";
 import type { ComputedDataEntry } from "../shared/types.js";
 
 /** Minimum interval between two InfluxDB refreshes per equipment (ms). */
@@ -84,10 +84,13 @@ export class EnergyAggregator {
           return;
         }
         if (event.type === "equipment.created" || event.type === "equipment.updated") {
-          const id = event.equipment.id;
+          const { id, type } = event.equipment;
           if (this.energyEquipmentIds.has(id)) return;
+          // Only submeter-capable types can qualify; skip lights/sensors/etc.
+          // before touching the DB for their bindings.
+          if (type !== "energy_meter" && !METERING_RELAY_TYPES.has(type)) return;
           const bindings = this.equipmentManager.getDataBindingsWithValues(id);
-          if (isSubmeterEquipment(event.equipment.type, bindings)) {
+          if (isSubmeterEquipment(type, bindings)) {
             this.enrol(id);
             this.scheduleRefresh(id);
           }

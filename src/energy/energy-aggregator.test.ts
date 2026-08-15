@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { EnergyAggregator } from "./energy-aggregator.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
@@ -37,7 +37,14 @@ describe("EnergyAggregator submeter enrolment (#527)", () => {
   let bus: EventBus;
 
   beforeEach(() => {
+    // scheduleRefresh arms a real 5s setTimeout; fake timers keep it from leaking.
+    vi.useFakeTimers();
     bus = new EventBus(logger);
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it("seeds zeroed cumuls for a power-only submeter so its meter UI renders before any consumption", async () => {
