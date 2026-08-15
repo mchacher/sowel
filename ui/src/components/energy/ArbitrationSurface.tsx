@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Scale, Zap, Clock } from "lucide-react";
 import { ArbiterTimeline } from "./ArbiterTimeline";
+import { surplusStickerColor } from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
 
 /**
@@ -47,6 +48,7 @@ export function ArbitrationSurface() {
   if (!state || !state.enabled) return null;
 
   const available = state.availableSurplusW;
+  const stickerColor = surplusStickerColor(available);
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
@@ -57,11 +59,11 @@ export function ArbitrationSurface() {
           <p className="text-[12px] text-text-secondary">{t("arbiter.surfaceHint")}</p>
         </div>
         <span
-          className={`ml-auto flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-0.5 rounded-full border ${
-            state.state === "active"
-              ? "text-success border-success/40"
-              : "text-warning border-warning/40"
-          }`}
+          className="ml-auto flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+          style={{
+            color: stickerColor,
+            background: `color-mix(in srgb, ${stickerColor} 12%, transparent)`,
+          }}
           title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
         >
           {t(`arbiter.state.${state.state}`)}

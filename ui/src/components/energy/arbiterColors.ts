@@ -24,3 +24,13 @@ export function journalDotColor(kind: ArbiterDecision["kind"]): string {
       return "var(--color-text-tertiary)";
   }
 }
+
+/**
+ * Colour token for the arbiter state sticker, matching the timeline curve:
+ * the surplus green when there is surplus to give, red on a deficit, and a
+ * neutral tint while the reading is degraded/stale (`availableSurplusW` null).
+ */
+export function surplusStickerColor(availableSurplusW: number | null): string {
+  if (availableSurplusW === null) return "var(--color-text-tertiary)";
+  return availableSurplusW > 0 ? "var(--color-solar-auto)" : "var(--color-error)";
+}

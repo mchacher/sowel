@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { journalDotColor } from "./arbiterColors";
+import { journalDotColor, surplusStickerColor } from "./arbiterColors";
 
 describe("journalDotColor (spec 148)", () => {
   it("maps granted/resumed to the auto-consumption green token", () => {
@@ -21,5 +21,21 @@ describe("journalDotColor (spec 148)", () => {
   it("falls back to a neutral token for other kinds", () => {
     expect(journalDotColor("unclaimed-run-ended")).toBe("var(--color-text-tertiary)");
     expect(journalDotColor("denied")).toBe("var(--color-text-tertiary)");
+  });
+});
+
+describe("surplusStickerColor", () => {
+  it("uses the surplus green when there is surplus to give", () => {
+    expect(surplusStickerColor(300)).toBe("var(--color-solar-auto)");
+    expect(surplusStickerColor(1)).toBe("var(--color-solar-auto)");
+  });
+
+  it("uses red on a deficit (zero or negative surplus)", () => {
+    expect(surplusStickerColor(0)).toBe("var(--color-error)");
+    expect(surplusStickerColor(-1091)).toBe("var(--color-error)");
+  });
+
+  it("uses a neutral tint while degraded/stale (null)", () => {
+    expect(surplusStickerColor(null)).toBe("var(--color-text-tertiary)");
   });
 });
