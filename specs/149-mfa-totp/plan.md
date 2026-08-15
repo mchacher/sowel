@@ -4,7 +4,7 @@
 
 ### Slice A — Data model + core MFA service (no routes yet)
 
-- A.1 — `migrations/018_mfa_totp.sql`: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices`
+- A.1 — `migrations/021_mfa_totp.sql`: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices`
 - A.2 — Add `otplib` + `qrcode` to `package.json`
 - A.3 — `src/shared/types.ts`: `MfaStatus`, `MfaSetupResponse`, `MfaConfirmResponse`, `MfaTrustedDevice`, `MfaChallenge`, `UserPreferences.mfaTrustedDeviceDays`
 - A.4 — `src/auth/mfa-service.ts`: `MfaService` (enrollment, confirm, verify TOTP/backup code, disable, regenerate codes, trusted-device issue/check/revoke — `issueTrustedDevice` reads `mfaTrustedDeviceDays` from the user's preferences, default 30)

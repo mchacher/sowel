@@ -323,7 +323,7 @@ Optional per-user TOTP (RFC 6238, `otplib`) second factor, opt-in from Settings 
 - **Token purpose isolation**: `JwtPayload` carries `purpose: "access" | "mfa_pending"`. `AuthService.verifyAccessToken()` — used by the global auth hook on every protected route — rejects any `mfa_pending` token outright, so a replayed `mfaToken` can never grant partial API access before the second factor is checked.
 - **Trusted devices**: an opaque token (SHA-256 hashed server-side) lets a later login skip the MFA step. Duration is a per-user preference, `UserPreferences.mfaTrustedDeviceDays` (1-90, default 30), clamped in `PUT /me/preferences`. Changing the account password revokes all trusted devices for that account.
 - **Recovery**: no email/SMS fallback. An admin can force-disable another user's MFA (`DELETE /users/:id/mfa`); a self-locked-out admin uses the break-glass CLI, `scripts/auth/reset-mfa.mjs <username>` (via `docker exec`).
-- **Data model**: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices` tables (migration `018_mfa_totp.sql`) — no columns added to `users`.
+- **Data model**: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices` tables (migration `021_mfa_totp.sql`) — no columns added to `users`.
 
 See `specs/149-mfa-totp/` for the full design.
 
