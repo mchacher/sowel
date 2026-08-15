@@ -16,6 +16,7 @@ import {
   flattenZonesWithPath,
   zoneChainMap,
 } from "../../lib/zone-path";
+import { isSubmeterEquipment } from "../../lib/metering";
 
 const AUTOCONSO_COLOR = "#6BCB77";
 
@@ -55,7 +56,8 @@ export function EnergyPage() {
     getEquipments()
       .then((list) => {
         if (cancelled) return;
-        setHasSubmeters(list.some((e) => e.type === "energy_meter" && e.enabled));
+        // Submeters = energy_meter + metering relays (switch/water_heater, #521).
+        setHasSubmeters(list.some((e) => isSubmeterEquipment(e) && e.enabled));
         setSubmeterLookup(list.map((e) => ({ id: e.id, name: e.name, zoneId: e.zoneId })));
       })
       .catch(() => {});

@@ -6,7 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
-import { isSubmeterEquipment } from "../../equipments/metering.js";
+import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   EnergyPoint,
@@ -239,11 +239,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     }
 
     // Dedicated energy_meters + metering relays (switch/water_heater, spec 129/#521).
-    const submeterEquipments = equipmentManager
-      .getAll()
-      .filter((eq) =>
-        isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id)),
-      );
+    // energy_meter qualifies on type alone; only metering-relay types need their
+    // bindings inspected, so lights/sensors never trigger a binding fetch.
+    const submeterEquipments = equipmentManager.getAll().filter((eq) => {
+      if (eq.type === "energy_meter") return true;
+      if (!METERING_RELAY_TYPES.has(eq.type)) return false;
+      return isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id));
+    });
     const mainEquipmentId = findEnergyEquipmentId(equipmentManager);
 
     const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);
