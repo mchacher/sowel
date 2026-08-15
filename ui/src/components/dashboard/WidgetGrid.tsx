@@ -1,4 +1,5 @@
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   DndContext,
@@ -201,6 +202,30 @@ function getEquipmentType(widget: DashboardWidget, equipmentMap: Map<string, Equ
   return undefined;
 }
 
+/** Wrapper for the edit-mode popovers (icon + bindings pickers). On mobile the
+ *  card carries the `animate-jiggle` transform, and a transformed ancestor
+ *  becomes the containing block + stacking context for its `fixed` descendants
+ *  — which trapped the full-screen overlay behind sibling cards and shrank its
+ *  backdrop to the card (#538). Portal the mobile overlay to <body> so it
+ *  escapes; the desktop popover stays anchored under its trigger button. */
+export function PickerOverlay({
+  mobile,
+  onDismiss,
+  children,
+}: {
+  mobile: boolean;
+  onDismiss: () => void;
+  children: ReactNode;
+}) {
+  const overlay = (
+    <div className={mobile ? "fixed inset-0 z-50 flex items-start justify-center pt-24" : "absolute top-7 left-0 right-0 z-20"}>
+      {mobile && <div className="fixed inset-0 bg-black/20" onClick={onDismiss} />}
+      {children}
+    </div>
+  );
+  return mobile ? createPortal(overlay, document.body) : overlay;
+}
+
 function SortableWidget({
   widget,
   equipmentMap,
@@ -341,8 +366,7 @@ function SortableWidget({
       )}
       {/* Bindings picker popover */}
       {showBindingsPicker && sensorBindings.length > 0 && (
-        <div className={isMobile ? "fixed inset-0 z-50 flex items-start justify-center pt-24" : "absolute top-7 left-0 right-0 z-20"}>
-          {isMobile && <div className="fixed inset-0 bg-black/20" onClick={() => setShowBindingsPicker(false)} />}
+        <PickerOverlay mobile={isMobile} onDismiss={() => setShowBindingsPicker(false)}>
           <BindingsPicker
             bindings={sensorBindings}
             visibleAliases={widget.config?.visibleBindings}
@@ -354,12 +378,11 @@ function SortableWidget({
             onClose={() => setShowBindingsPicker(false)}
             mobile={isMobile}
           />
-        </div>
+        </PickerOverlay>
       )}
       {/* Icon picker popover */}
       {showIconPicker && (
-        <div className={isMobile ? "fixed inset-0 z-50 flex items-start justify-center pt-24" : "absolute top-7 left-0 right-0 z-20"}>
-          {isMobile && <div className="fixed inset-0 bg-black/20" onClick={() => setShowIconPicker(false)} />}
+        <PickerOverlay mobile={isMobile} onDismiss={() => setShowIconPicker(false)}>
           <IconPicker
             currentIcon={widget.icon}
             equipmentType={eqType}
@@ -369,7 +392,7 @@ function SortableWidget({
             onClose={() => setShowIconPicker(false)}
             mobile={isMobile}
           />
-        </div>
+        </PickerOverlay>
       )}
       <WidgetRenderer
         widget={widget}
