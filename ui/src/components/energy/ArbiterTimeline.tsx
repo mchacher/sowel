@@ -253,7 +253,7 @@ export function ArbiterTimeline() {
               <>
                 <polygon
                   points={area}
-                  fill="var(--color-solar-injection)"
+                  fill="var(--color-solar-auto)"
                   opacity="0.16"
                   clipPath={`url(#up-${uid})`}
                 />
@@ -266,7 +266,7 @@ export function ArbiterTimeline() {
                 <polyline
                   points={pts}
                   fill="none"
-                  stroke="var(--color-solar-injection)"
+                  stroke="var(--color-solar-auto)"
                   strokeWidth="1.5"
                   strokeLinejoin="round"
                   strokeLinecap="round"
