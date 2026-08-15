@@ -81,11 +81,32 @@ function makeHarness(opts?: {
     ["lamp", base("lamp", "Lampe", "light_onoff")],
   ]);
 
+  // Loads expose their power measurement plus a conventional "state" binding
+  // (plugs/switches categorise state as generic) — isStateAlias resolves the
+  // latter, so feedState() drives the arbiter's on/off observation (#535).
   const bindings = new Map<string, Array<{ alias: string; category: string }>>([
     ["grid", [{ alias: "power", category: "power" }]],
-    ["pac", [{ alias: "power", category: "power" }]],
-    ["pump", [{ alias: "power", category: "power" }]],
-    ["heater", [{ alias: "power", category: "power" }]],
+    [
+      "pac",
+      [
+        { alias: "power", category: "power" },
+        { alias: "state", category: "generic" },
+      ],
+    ],
+    [
+      "pump",
+      [
+        { alias: "power", category: "power" },
+        { alias: "state", category: "generic" },
+      ],
+    ],
+    [
+      "heater",
+      [
+        { alias: "power", category: "power" },
+        { alias: "state", category: "generic" },
+      ],
+    ],
   ]);
 
   const learnedCalls: Array<{ id: string; watts: number; runs: number }> = [];
@@ -680,6 +701,24 @@ describe("capacity arbiter", () => {
     h.feedState("pac", true); // on by itself, no grant, no recipe order
     h.run(-100, 80); // > divergenceConfirmS
     expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  it("a boolean value on a non-state alias is not read as the run state", () => {
+    // A load can expose other boolean aliases (window detection, child lock…);
+    // only the state binding may close a run or feed the running flag.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.order("pac", true, { kind: "recipe", instanceId: "i1" }); // unclaimed run
+    h.eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId: "pac",
+      alias: "window_detection",
+      value: "OFF",
+      previous: null,
+    });
+    expect(h.arbiter.getPublicState().journal.map((j) => j.kind)).not.toContain(
+      "unclaimed-run-ended",
+    );
   });
 
   // ── Tolerated import & slack (FR-3) ───────────────────────

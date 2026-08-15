@@ -147,9 +147,10 @@ export class CapacityArbiter {
   private runSamples = new Map<string, number[]>();
   private unclaimedRunning = new Set<string>();
   private recipeWantsOn = new Map<string, boolean>();
-  /** Last reported on/off STATE per profiled deferrable load. The confirm
-   *  timing lives in `divergenceSince`, not here — this is only the current
-   *  state to compare the grant expectation against. */
+  /** Last reported on/off STATE per profiled load, every class (#535). The
+   *  confirm timing lives in `divergenceSince`, not here — this is only the
+   *  current state to compare the grant expectation against, and the source
+   *  of the `running` flag journaled on suspended/resumed. */
   private reportedOnOff = new Map<string, boolean>();
   /** When the current (grant-expectation vs reported-state) contradiction
    *  began — the confirm window is measured from here, NOT from the last
@@ -400,12 +401,14 @@ export class CapacityArbiter {
     // comfort loads (the PAC) stop on their own regulation too, and that state
     // report is the only signal the arbiter gets — no order is emitted. The
     // wall-switch divergence REACTION (FR-6) stays deferrable-only in
-    // checkStateDivergence; only the observation is class-wide. A genuine
-    // on/off STATE value only: measurement bindings a load exposes (current,
-    // voltage, power) report numeric 0 when a thermostat opens mid-run, which
-    // must NOT read as a wall-switch OFF. `isBooleanState` accepts boolean /
-    // "on"|"off" strings and rejects numbers precisely to exclude those.
-    if (isBooleanState(value)) {
+    // checkStateDivergence; only the observation is class-wide. Two gates keep
+    // the observation honest: `isBooleanState` accepts boolean / "on"|"off"
+    // strings and rejects numbers (measurement bindings report numeric 0 when
+    // a thermostat opens mid-run, which must NOT read as a wall-switch OFF),
+    // and `isStateAlias` pins the equipment's actual state binding (a load can
+    // expose other boolean aliases — window detection, child lock — that must
+    // not be read as its run state).
+    if (isBooleanState(value) && this.isStateAlias(equipmentId, alias)) {
       const on = isOnLike(value);
       this.reportedOnOff.set(equipmentId, on);
       // Closed on the FIRST OFF report, no confirm window (decision): a
@@ -514,7 +517,7 @@ export class CapacityArbiter {
   /**
    * Best-effort on/off state of a load as the arbiter knows it (#535): a
    * granted claim or an unclaimed run means ON; otherwise the last reported
-   * boolean state (only tracked on deferrable loads — undefined if never seen).
+   * boolean state (undefined if never seen).
    */
   private observedRunning(equipmentId: string): boolean | undefined {
     if (this.grantedClaimFor(equipmentId) !== undefined) return true;
@@ -1189,6 +1192,19 @@ export class CapacityArbiter {
     const powerBinding =
       bindings.find((b) => b.category === "power") ?? bindings.find((b) => b.alias === "power");
     return powerBinding?.alias === alias;
+  }
+
+  /**
+   * Whether `alias` is the equipment's on/off STATE binding (#535 review):
+   * mirrors isPowerAlias — prefer a state-categorised binding, fall back to
+   * the conventional "state" alias (plugs/switches categorise as generic).
+   */
+  private isStateAlias(equipmentId: string, alias: string): boolean {
+    const bindings = this.equipments.getDataBindingsWithValues(equipmentId);
+    const stateBinding =
+      bindings.find((b) => b.category === "appliance_state" || b.category === "light_state") ??
+      bindings.find((b) => b.alias === "state");
+    return stateBinding?.alias === alias;
   }
 
   private grantedClaims(): ClaimRecord[] {
