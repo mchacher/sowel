@@ -150,6 +150,75 @@ export function buildFluxQuery(params: {
   return query;
 }
 
+/** How far before the window start we look for a discrete series' prior state
+ *  (#498 carry-in). Bounded so the query stays cheap; the raw bucket only
+ *  retains ~7 days anyway. */
+export const DISCRETE_CARRY_IN_LOOKBACK_MS = 30 * 86_400_000;
+
+/**
+ * Flux for the last recorded value strictly before `from` — the state a
+ * discrete series was in when the window opened (#498 carry-in). `range` stop
+ * is exclusive, so a sample exactly at `from` is not returned here (the main
+ * query already has it).
+ */
+export function buildLastBeforeQuery(params: {
+  bucket: string;
+  equipmentId: string;
+  alias: string;
+  from: Date;
+  lookbackMs: number;
+}): string {
+  const { bucket, equipmentId, alias, from, lookbackMs } = params;
+  const start = new Date(from.getTime() - lookbackMs).toISOString();
+  const stop = from.toISOString();
+  return `from(bucket: "${bucket}")
+  |> range(start: ${start}, stop: ${stop})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> last()`;
+}
+
+/**
+ * Extend a discrete (boolean/enum) series across the whole chart window so its
+ * step line is continuous (#498). InfluxDB only returns points inside
+ * `[from, to]`, so without this a state that changed once — or not at all —
+ * inside the window is drawn from the first in-window sample and stops at the
+ * last one, leaving the head and tail of the graph blank.
+ *
+ * - Carry-in: when the first point is after `fromIso`, prepend the last known
+ *   state before the window (`priorValue`) stamped at `fromIso`.
+ * - Extend: repeat the last known value at `toIso` so the line reaches the
+ *   window end.
+ *
+ * `points` must be sorted ascending by time. Times are compared numerically to
+ * be robust to RFC3339 vs `toISOString()` formatting differences. Pure — no I/O.
+ */
+export function applyDiscreteBoundaries(
+  points: HistoryPoint[],
+  fromIso: string,
+  toIso: string,
+  priorValue: number | null,
+): HistoryPoint[] {
+  const result = points.slice();
+  const fromMs = Date.parse(fromIso);
+  const toMs = Date.parse(toIso);
+
+  if (priorValue !== null && (result.length === 0 || Date.parse(result[0].time) > fromMs)) {
+    result.unshift({ time: fromIso, value: priorValue });
+  }
+
+  if (result.length > 0) {
+    const last = result[result.length - 1];
+    if (Date.parse(last.time) < toMs) {
+      result.push({ time: toIso, value: last.value });
+    }
+  }
+
+  return result;
+}
+
 /**
  * Build a Flux query that returns min/max alongside mean for aggregated data.
  * When querying a downsampled bucket (hourly/daily), reads pre-computed mean/min/max fields.
@@ -264,6 +333,43 @@ export async function queryHistory(
         if (time && typeof value === "number") {
           points.push({ time, value });
         }
+      }
+
+      // #498 — a discrete (boolean/enum) state series is only sampled on change,
+      // so the window can open and close between two changes. Anchor the step
+      // line at the window start with the last state before it, and extend the
+      // last known value to the window end (or now, whichever is earlier — never
+      // draw a state into the future) so the line spans the whole graph.
+      if (isDiscrete) {
+        let priorValue: number | null = null;
+        try {
+          const carryFlux = buildLastBeforeQuery({
+            bucket: config.bucket,
+            equipmentId: params.equipmentId,
+            alias: params.alias,
+            from: fromDate,
+            lookbackMs: DISCRETE_CARRY_IN_LOOKBACK_MS,
+          });
+          for await (const { values, tableMeta } of queryApi.iterateRows(carryFlux)) {
+            const o = tableMeta.toObject(values);
+            const v = o._value as number | undefined;
+            if (typeof v === "number") priorValue = v;
+          }
+        } catch (err) {
+          logger.debug(
+            { err, equipmentId: params.equipmentId, alias: params.alias },
+            "Discrete carry-in query failed",
+          );
+        }
+        const extendTo = new Date(Math.min(toDate.getTime(), Date.now()));
+        const bounded = applyDiscreteBoundaries(
+          points,
+          fromDate.toISOString(),
+          extendTo.toISOString(),
+          priorValue,
+        );
+        points.length = 0;
+        points.push(...bounded);
       }
     } else if (CUMULATIVE_CATEGORIES.has(params.category ?? "")) {
       // Cumulative categories (energy, rain): read the pre-aggregated mean field directly

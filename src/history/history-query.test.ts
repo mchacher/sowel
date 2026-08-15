@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFluxQuery,
+  buildLastBeforeQuery,
+  applyDiscreteBoundaries,
   queryHistory,
   querySparkline,
   queryZoneSparkline,
   queryHistorizedAliases,
 } from "./history-query";
+import type { HistoryPoint } from "../shared/types";
 import { createLogger } from "../core/logger";
 import type { InfluxClient } from "../core/influx-client";
 
@@ -26,19 +29,24 @@ const baseParams = {
  */
 function makeInflux(options: {
   rows?: Record<string, unknown>[];
+  /** Rows returned specifically for the discrete carry-in `last()` query, so a
+   *  test can prove the anchor value comes from *before* the window rather than
+   *  leaking the in-window rows. Falls back to `rows` when omitted. */
+  lastRows?: Record<string, unknown>[];
   capture?: string[];
   configured?: boolean;
   throwOnQuery?: boolean;
 }): InfluxClient {
-  const { rows = [], capture, configured = true, throwOnQuery = false } = options;
+  const { rows = [], lastRows, capture, configured = true, throwOnQuery = false } = options;
 
   const queryApi = {
     iterateRows(flux: string) {
       capture?.push(flux);
       if (throwOnQuery) throw new Error("influx boom");
+      const out = lastRows && flux.includes("|> last()") ? lastRows : rows;
       return {
         async *[Symbol.asyncIterator]() {
-          for (const row of rows) {
+          for (const row of out) {
             yield { values: row, tableMeta: { toObject: (v: unknown) => v } };
           }
         },
@@ -361,5 +369,111 @@ describe("queryHistorizedAliases", () => {
   it("returns [] on error", async () => {
     const influx = makeInflux({ throwOnQuery: true });
     expect(await queryHistorizedAliases(influx, "eq-1", logger)).toEqual([]);
+  });
+});
+
+// ============================================================
+// #498 — discrete (state) series span the whole window
+// ============================================================
+
+const p = (time: string, value: number): HistoryPoint => ({ time, value });
+
+describe("buildLastBeforeQuery (#498 carry-in)", () => {
+  it("looks for the last value strictly before the window start", () => {
+    const flux = buildLastBeforeQuery({
+      bucket: "sowel",
+      equipmentId: "eq-1",
+      alias: "state",
+      from: new Date("2026-05-01T00:00:00Z"),
+      lookbackMs: 30 * 86_400_000,
+    });
+    expect(flux).toContain(
+      "range(start: 2026-04-01T00:00:00.000Z, stop: 2026-05-01T00:00:00.000Z)",
+    );
+    expect(flux).toContain('r.equipmentId == "eq-1"');
+    expect(flux).toContain('r.alias == "state"');
+    expect(flux).toContain('r._field == "value_number"');
+    expect(flux).toContain("|> last()");
+  });
+});
+
+describe("applyDiscreteBoundaries (#498)", () => {
+  const from = "2026-05-01T00:00:00.000Z";
+  const to = "2026-05-01T23:59:59.000Z";
+
+  it("anchors the line at the window start with the prior state", () => {
+    const out = applyDiscreteBoundaries([p("2026-05-01T12:00:00Z", 1)], from, to, 0);
+    expect(out[0]).toEqual(p(from, 0)); // carry-in: was Off before the window
+    expect(out[out.length - 1]).toEqual(p(to, 1)); // extend the last state On to the end
+  });
+
+  it("does not prepend when a sample already sits at the window start", () => {
+    const out = applyDiscreteBoundaries([p(from, 1), p("2026-05-01T10:00:00Z", 0)], from, to, 1);
+    expect(out.filter((x) => x.time === from)).toHaveLength(1);
+    expect(out[0]).toEqual(p(from, 1));
+  });
+
+  it("draws a flat line across the window when the state never changed inside it", () => {
+    const out = applyDiscreteBoundaries([], from, to, 0);
+    expect(out).toEqual([p(from, 0), p(to, 0)]);
+  });
+
+  it("returns nothing when there is no in-window data and no prior state", () => {
+    expect(applyDiscreteBoundaries([], from, to, null)).toEqual([]);
+  });
+
+  it("does not extend when the last sample is already at the window end", () => {
+    const out = applyDiscreteBoundaries([p("2026-05-01T08:00:00Z", 1), p(to, 0)], from, to, 1);
+    expect(out.filter((x) => x.time === to)).toHaveLength(1);
+  });
+});
+
+describe("queryHistory — discrete boundaries (#498)", () => {
+  it("anchors a discrete series with the state from before the window, then extends it", async () => {
+    const capture: string[] = [];
+    // In-window: a single On (1) at noon. Before the window: Off (0). The
+    // carry-in must anchor at Off, proving the value comes from the
+    // strictly-before `last()` query, not the in-window sample.
+    const influx = makeInflux({
+      rows: [{ _time: "2026-05-01T12:00:00Z", _value: 1 }],
+      lastRows: [{ _time: "2026-04-30T20:00:00Z", _value: 0 }],
+      capture,
+    });
+    const result = await queryHistory(
+      influx,
+      {
+        equipmentId: "eq-1",
+        alias: "state",
+        from: "2026-05-01T00:00:00Z",
+        to: "2026-05-01T23:59:59Z",
+        aggregation: "raw",
+        dataType: "boolean",
+      },
+      logger,
+    );
+    expect(capture.some((q) => q.includes("|> last()"))).toBe(true);
+    expect(result.points).toEqual([
+      { time: "2026-05-01T00:00:00.000Z", value: 0 }, // carry-in: Off, from before the window
+      { time: "2026-05-01T12:00:00Z", value: 1 }, // in-window change to On
+      { time: "2026-05-01T23:59:59.000Z", value: 1 }, // extend the last state to the window end
+    ]);
+  });
+
+  it("does not issue a carry-in query for a continuous series", async () => {
+    const capture: string[] = [];
+    const influx = makeInflux({ rows: [{ _time: "2026-05-01T02:00:00Z", _value: 20 }], capture });
+    await queryHistory(
+      influx,
+      {
+        equipmentId: "eq-1",
+        alias: "temp",
+        from: "2026-05-01T00:00:00Z",
+        to: "2026-05-01T06:00:00Z",
+        aggregation: "raw",
+        dataType: "number",
+      },
+      logger,
+    );
+    expect(capture.some((q) => q.includes("|> last()"))).toBe(false);
   });
 });
