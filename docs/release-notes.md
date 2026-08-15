@@ -11,6 +11,18 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.47.x: Water-heater submetering and arbiter UI polish
+
+### v1.47.0 — 2026-08-15 { #v1-47-0 }
+
+- Feat (energy): **a water heater that only measures power is now counted in the energy balance**. A water_heater equipment bound to a power measurement, with no on/off command required, is now treated as a consumption submeter like a dedicated energy meter: its watts are integrated into energy, it appears in the by-usage breakdown, and its day energy shows on its card and detail view. Energy accrues forward from the moment the measurement is bound, with no retroactive backfill. Metering smart plugs (spec 129) also enter the by-usage breakdown for the first time. (#521, #522)
+- Fix (energy): **the arbiter surplus curve stays live instead of freezing on a snapshot taken when the page opened**. (#514, #515)
+- Fix (energy): **the arbiter state sticker is smaller and coloured by surplus or deficit**. (#511)
+- Fix (ui): **the arbiter decision journal reasons follow the app language**. The grant and revoke reasons were shown in English only; they are now localised (FR/EN). (#518, #519)
+- Fix (deployment): **container logs are capped and InfluxDB stdout is quieted**. Compose now bounds each container's log file size and sets INFLUXD_LOG_LEVEL so InfluxDB stops flooding stdout, keeping disk use and log noise down on a long-running instance. (#512, #516, #517)
+- Internal (ui): the dashboard widget presentation now flows through a shared resolver, with switch, media_player and pool_pump migrated; no user-facing change. (#325, #513)
+- Internal (tooling): the Sowel issue skill gained an agent-review phase before the PR is opened. (#520)
+
 ## 1.46.x: Analyse page polish, resilient activity, and a clearer arbiter timeline
 
 ### v1.46.0 — 2026-08-15 { #v1-46-0 }

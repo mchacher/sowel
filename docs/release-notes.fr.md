@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.47.x : Sous-comptage des chauffe-eau et finitions de l'arbitrage
+
+### v1.47.0 — 2026-08-15 { #v1-47-0 }
+
+- Feat (énergie) : **un chauffe-eau qui ne mesure que la puissance est désormais compté dans le bilan énergie**. Un équipement water_heater relié à une mesure de puissance, sans commande Marche/Arrêt nécessaire, est maintenant traité comme un sous-compteur de consommation, comme un compteur d'énergie dédié : ses watts sont intégrés en énergie, il apparaît dans la répartition par usage, et son énergie du jour s'affiche sur sa carte et sa vue détail. L'énergie se cumule à partir du moment où la mesure est reliée, sans rattrapage rétroactif. Les prises connectées avec mesure (spec 129) entrent elles aussi pour la première fois dans la répartition par usage. (#521, #522)
+- Correctif (énergie) : **la courbe de surplus de l'arbitre reste vivante au lieu de se figer sur un instantané pris à l'ouverture de la page**. (#514, #515)
+- Correctif (énergie) : **la pastille d'état de l'arbitre est plus petite et colorée selon le surplus ou le déficit**. (#511)
+- Correctif (ui) : **les motifs du journal de décisions de l'arbitre suivent la langue de l'application**. Les motifs d'accord et de retrait n'étaient affichés qu'en anglais ; ils sont désormais localisés (FR/EN). (#518, #519)
+- Correctif (déploiement) : **les journaux des conteneurs sont plafonnés et la sortie standard d'InfluxDB est réduite au silence**. Compose borne désormais la taille du fichier de log de chaque conteneur et fixe INFLUXD_LOG_LEVEL pour qu'InfluxDB cesse d'inonder la sortie standard, ce qui limite l'usage disque et le bruit des logs sur une instance qui tourne longtemps. (#512, #516, #517)
+- Interne (ui) : la présentation des widgets du tableau de bord passe maintenant par un résolveur partagé (switch, media_player et pool_pump migrés), sans changement visible. (#325, #513)
+- Interne (outillage) : la skill de gestion des issues Sowel a gagné une phase de revue par agent avant l'ouverture de la PR. (#520)
+
 ## 1.46.x : Finitions de la page Analyse, activité persistante et frise d'arbitrage plus claire
 
 ### v1.46.0 — 2026-08-15 { #v1-46-0 }
