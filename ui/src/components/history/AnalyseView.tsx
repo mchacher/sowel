@@ -60,6 +60,7 @@ import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
 import { SeriesColorPicker } from "./SeriesColorPicker";
 import { fitYAxis } from "./y-axis";
 import { firstChartTarget } from "./analyse-nav";
+import { ChartTooltip } from "./ChartTooltip";
 
 // ============================================================
 // Types
@@ -123,16 +124,6 @@ function formatTime(iso: string, period: Period): string {
 function formatAxisTick(value: number, unit: string): string {
   const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
   return unit ? `${formatted} ${unit}` : formatted;
-}
-
-function formatTooltipTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 // ============================================================
@@ -1107,90 +1098,18 @@ export function AnalyseView() {
                     onClick={openColorPickerFromLegend}
                   />
                 );
-                const labelFormatter = (_: unknown, payload?: readonly { payload?: Record<string, unknown> }[]) => {
-                  const ts = payload?.[0]?.payload?.time;
-                  if (typeof ts === "number") {
-                    return formatTooltipTime(new Date(ts).toISOString());
-                  }
-                  return "";
-                };
-                const measurementFormatter = (
-                  value?: number | string,
-                  name?: string,
-                  item?: { payload?: Record<string, number> },
-                ) => {
-                  const num = typeof value === "number" ? value : Number(value);
-                  if (!Number.isFinite(num)) return ["", ""];
-                  // Skip min/max keys — only the mean shows in the tooltip row;
-                  // the band values are appended next to it.
-                  if (name?.endsWith(":min") || name?.endsWith(":max")) return [null, null] as unknown as [string, string];
-                  const s = series.find((ser) => ser.id === name);
-                  const unit = s ? CATEGORY_UNITS[s.category] : "";
-                  const formatted = Number.isInteger(num) ? String(num) : num.toFixed(1);
-                  let valueText = unit ? `${formatted} ${unit}` : formatted;
-                  if (s && item?.payload) {
-                    const min = item.payload[`${s.id}:min`];
-                    const max = item.payload[`${s.id}:max`];
-                    if (typeof min === "number" && typeof max === "number") {
-                      const fmt = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
-                      valueText += ` (${fmt(min)} / ${fmt(max)})`;
-                    }
-                  }
-                  const metricLabel = s && s.category
-                    ? humanBindingLabel(
-                        { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                        t,
-                      )
-                    : (s?.alias ?? (name ?? ""));
-                  const label = s
-                    ? (s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}` : `${s.equipmentName} / ${metricLabel}`)
-                    : (name ?? "");
-                  return [valueText, label];
-                };
-                const booleanFormatter = (value?: number | string, name?: string) => {
-                  const s = series.find((ser) => ser.id === name);
-                  if (!s) return [String(value ?? ""), name ?? ""];
-                  const num = typeof value === "number" ? value : Number(value);
-                  const [offKey, onKey] = booleanTickLabels(s.category);
-                  let stateText: string;
-                  if (!Number.isFinite(num)) {
-                    stateText = "";
-                  } else if (num <= 0.05) {
-                    stateText = t(offKey);
-                  } else if (num >= 0.95) {
-                    stateText = t(onKey);
-                  } else {
-                    // Aggregated bucket: mean ∈ (0, 1) → percent of active time.
-                    stateText = `${Math.round(num * 100)}% ${t(onKey)}`;
-                  }
-                  const metricLabel = humanBindingLabel(
-                    { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                    t,
-                  );
-                  const label = s.zoneName
-                    ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
-                    : `${s.equipmentName} / ${metricLabel}`;
-                  return [stateText, label];
-                };
-                // Spec 144 — a mixed chart carries both kinds of series, so the
-                // tooltip picks the formatter per series instead of per chart.
-                const mixedFormatter = (
-                  value?: number | string,
-                  name?: string,
-                  item?: { payload?: Record<string, number> },
-                ) => {
-                  const s = series.find((ser) => ser.id === name);
-                  return s && isBooleanCategory(s.category)
-                    ? booleanFormatter(value, name)
-                    : measurementFormatter(value, name, item);
-                };
-                const tooltipStyle = {
-                  backgroundColor: "var(--color-surface)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  color: "var(--color-text)",
-                };
+                // #498, point 4 — one responsive tooltip for every family. The
+                // custom card caps its width and wraps the long labels so it
+                // never overflows on mobile; per-series value formatting
+                // (measurement unit, boolean state, envelope band) lives in
+                // ChartTooltip / tooltip-format.
+                const tooltip = (
+                  <Tooltip
+                    content={<ChartTooltip series={styledSeries} />}
+                    allowEscapeViewBox={{ x: false, y: false }}
+                    wrapperStyle={{ zIndex: 20 }}
+                  />
+                );
 
                 if (chartFamilies.has("cumulative")) {
                   // F2 — bar chart for rain / energy.
@@ -1205,11 +1124,7 @@ export function AnalyseView() {
                         width={52}
                         tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
                       />
-                      <Tooltip
-                        contentStyle={tooltipStyle}
-                        labelFormatter={labelFormatter}
-                        formatter={measurementFormatter}
-                      />
+                      {tooltip}
                       {commonLegend}
                       {styledSeries.map((s) => (
                         <Bar
@@ -1246,11 +1161,7 @@ export function AnalyseView() {
                         width={68}
                         tickFormatter={(v: number) => (v >= 0.5 ? t(stateOnKey) : t(stateOffKey))}
                       />
-                      <Tooltip
-                        contentStyle={tooltipStyle}
-                        labelFormatter={labelFormatter}
-                        formatter={booleanFormatter}
-                      />
+                      {tooltip}
                       {commonLegend}
                       {styledSeries.map((s) => (
                         <Line
@@ -1323,11 +1234,7 @@ export function AnalyseView() {
                         tickFormatter={(v: number) => (v >= 0.5 ? t(stateOnKey) : t(stateOffKey))}
                       />
                     )}
-                    <Tooltip
-                      contentStyle={tooltipStyle}
-                      labelFormatter={labelFormatter}
-                      formatter={hasStateSeries ? mixedFormatter : measurementFormatter}
-                    />
+                    {tooltip}
                     {commonLegend}
                     {showBand &&
                       styledSeries
