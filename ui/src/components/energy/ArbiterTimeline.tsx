@@ -5,6 +5,7 @@ import type { ArbiterQuarterState, ArbiterTimeline as ArbiterTimelineData } from
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
 import { journalDotColor } from "./arbiterColors";
+import { journalReasonLabel } from "./arbiterReason";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
 // surplus/deficit curve above per-load quarter-hour ribbons, paged back to 48h,
@@ -452,6 +453,7 @@ export function ArbiterTimeline() {
             data.journal.map((e, i) => {
               const at = Date.parse(e.atIso);
               const hl = highlighted.has(at);
+              const reasonLabel = journalReasonLabel(e.reason, t);
               return (
                 <div
                   key={i}
@@ -468,7 +470,7 @@ export function ArbiterTimeline() {
                   <span className="font-semibold text-text">{e.equipmentName ?? ""}</span>
                   <span className="text-text-secondary truncate">
                     {t(`arbiter.kind.${e.kind}`)}
-                    {e.reason ? ` · ${e.reason}` : ""}
+                    {reasonLabel ? ` · ${reasonLabel}` : ""}
                   </span>
                 </div>
               );
