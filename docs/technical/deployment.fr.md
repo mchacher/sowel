@@ -253,6 +253,13 @@ plafond à la **création** du conteneur : sur une install existante, il prendra
 donc effet au prochain `docker compose up -d` (ou au prochain auto-update, qui
 recrée le conteneur).
 
+InfluxDB est le service le plus bavard : il journalise chaque requête HTTP au
+niveau `info` par défaut (écritures, requêtes charts/history, exécutions des
+tâches de downsampling), ce qui remplit son log. `docker-compose.yml` lui fixe
+donc `INFLUXD_LOG_LEVEL=warn`, ce qui réduit le volume à la source tandis que le
+plafond de taille ci-dessus reste le garde-fou. Passe à `error` pour un InfluxDB
+encore plus silencieux.
+
 Pour récupérer l'espace déjà perdu sur un hôte en marche, et repérer les autres
 coupables :
 

@@ -60,6 +60,12 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=sowel
       - DOCKER_INFLUXDB_INIT_BUCKET=sowel
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-auto-token
+      # InfluxDB logs every HTTP request at the default `info` level (writes +
+      # chart/history queries + the downsampling task runs Sowel creates on
+      # startup), which is what fills the container log. `warn` keeps warnings
+      # and errors but drops that per-request firehose at the source, so the
+      # json-file cap below rotates far less.
+      - INFLUXD_LOG_LEVEL=warn
     logging:
       driver: json-file
       options:

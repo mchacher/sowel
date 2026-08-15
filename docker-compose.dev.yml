@@ -41,6 +41,8 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=sowel
       - DOCKER_INFLUXDB_INIT_BUCKET=sowel
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-dev-token
+      # Quiet the per-request `info` firehose (see docker-compose.yml).
+      - INFLUXD_LOG_LEVEL=warn
     logging:
       driver: json-file
       options:

@@ -258,6 +258,12 @@ service on the machine — Sowel included. Compose applies the cap when a contai
 is **created**, so on an existing install it takes effect at the next
 `docker compose up -d` (or the next self-update, which recreates the container).
 
+InfluxDB is the chattiest service: it logs every HTTP request at the default
+`info` level (writes, chart/history queries, downsampling task runs), which is
+what fills its log. `docker-compose.yml` therefore sets `INFLUXD_LOG_LEVEL=warn`
+on it, cutting the volume at the source while the size cap above stays as the
+ceiling. Use `error` for an even quieter InfluxDB.
+
 To reclaim space already lost on a running host, and check for other offenders:
 
 ```bash
