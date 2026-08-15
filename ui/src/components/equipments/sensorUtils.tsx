@@ -157,11 +157,35 @@ export function getSensorCategoryLabel(category: DataCategory, t?: TFunction): s
 }
 
 /** Check if a boolean sensor value is in the "active" state (e.g. motion detected, contact open). */
-export function isBooleanActive(category: string, value: unknown): boolean {
+/**
+ * Normalize the boolean-ish wire values integrations emit (true/false,
+ * ON/OFF/TRUE/FALSE in any case, 1/0, and OPEN/CLOSED for contacts) to the
+ * raw boolean convention of the category. For contacts the z2m convention is
+ * `false = open`, so the explicit "OPEN"/"CLOSED" strings map to that
+ * polarity. Returns null when the value is not recognizably boolean.
+ * Issue #325 — single authority shared by the desktop SensorValues and the
+ * mobile card, so a string-emitting sensor renders the same on both.
+ */
+function coerceBooleanish(category: string, value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === 0) return value === 1;
+  if (typeof value !== "string") return null;
+  const v = value.trim().toUpperCase();
   if (category === "contact_door" || category === "contact_window") {
-    return value === false || value === "OFF"; // contact=false means open
+    if (v === "OPEN") return false; // contact=false means open
+    if (v === "CLOSED") return true;
   }
-  return value === true || value === "ON";
+  if (v === "ON" || v === "TRUE" || v === "1") return true;
+  if (v === "OFF" || v === "FALSE" || v === "0") return false;
+  return null;
+}
+
+export function isBooleanActive(category: string, value: unknown): boolean {
+  const raw = coerceBooleanish(category, value);
+  if (category === "contact_door" || category === "contact_window") {
+    return raw === false; // contact=false means open
+  }
+  return raw === true;
 }
 
 /** Check if a category represents a boolean sensor (motion, contact, water_leak, smoke). */
@@ -216,14 +240,18 @@ export function formatSensorValue(value: unknown, unit?: string, t?: TFunction):
 
 /** Format a boolean sensor value as a translated label. */
 export function formatBooleanSensor(category: DataCategory, value: unknown, t?: TFunction): string {
-  const isActive = value === true || value === "ON";
+  const raw = coerceBooleanish(category, value);
+  const isActive = raw === true;
+  // Contact convention: raw false = open. An unrecognized value keeps the
+  // historical "closed" fallback so odd strings never invert the label.
+  const contactOpen = raw === false;
   if (t) {
     switch (category) {
       case "motion":
         return isActive ? t("category.value.motion.detected") : t("category.value.motion.clear");
       case "contact_door":
       case "contact_window":
-        return value === false || value === "OFF" ? t("controls.opened") : t("controls.closed");
+        return contactOpen ? t("controls.opened") : t("controls.closed");
       case "water_leak":
         return isActive ? t("category.value.water_leak.active") : t("category.value.water_leak.ok");
       case "smoke":
@@ -238,7 +266,7 @@ export function formatBooleanSensor(category: DataCategory, value: unknown, t?: 
       return isActive ? "Detected" : "Clear";
     case "contact_door":
     case "contact_window":
-      return value === false || value === "OFF" ? "Open" : "Closed";
+      return contactOpen ? "Open" : "Closed";
     case "water_leak":
       return isActive ? "Leak!" : "OK";
     case "smoke":

@@ -15,7 +15,6 @@ import {
   WashingMachine,
   Timer,
   Camera,
-  Tv,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import type { DashboardWidget } from "../../types";
@@ -31,7 +30,6 @@ import { solarWidgetState } from "./solarWidget";
 import { createElement, type ReactNode } from "react";
 import {
   LightBulbIcon,
-  PlugWidgetIcon,
   ShutterWidgetIcon,
   AwningWidgetIcon,
   ThermometerIcon,
@@ -42,13 +40,14 @@ import {
   SlidingGateIcon,
   GarageDoorIcon,
   EnergyMeterIcon,
-  PoolPumpIcon,
   PoolCoverIcon,
   WaterValveWidgetIcon,
 } from "./WidgetIcons";
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
+import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
+import { PresentationWidget } from "./presentation/PresentationWidget";
 
 /** Render the widget's custom icon (widget.icon -> CUSTOM_ICON_REGISTRY) when set,
  *  otherwise the equipment-type default. Mirrors the mobile card so a custom icon
@@ -75,6 +74,7 @@ export function EquipmentWidget({
   onExecuteOrder,
   onOpenDetail,
 }: EquipmentWidgetProps) {
+  const { t } = useTranslation();
   const {
     isLight,
     isShutterFamily,
@@ -86,10 +86,8 @@ export function EquipmentWidget({
     isGate,
     isAppliance,
     isWaterValve,
-    isPoolPump,
     isPoolCover,
     isPoolHeatPump,
-    isMediaPlayer,
   } = useEquipmentState(equipment);
 
   // A hand-picked label replaces the whole thing, zone line included: the user
@@ -97,6 +95,20 @@ export function EquipmentWidget({
   const label = widget.label || equipment.name;
   const sublabel = widget.label ? undefined : equipmentZone;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
+
+  // Spec 149 — migrated types render their presentation descriptor through the
+  // shared shell; a null descriptor falls through to the legacy per-type path.
+  const presentation = resolveWidgetPresentation(widget, equipment, t);
+  if (presentation)
+    return (
+      <PresentationWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        presentation={presentation}
+        onExecuteOrder={execOrder}
+      />
+    );
 
   if (isLight)
     return (
@@ -154,16 +166,6 @@ export function EquipmentWidget({
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
   if (equipment.type === "solar_panel")
     return <SolarPanelEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
-  if (equipment.type === "switch")
-    return (
-      <SwitchEquipmentWidget
-        label={label}
-        sublabel={sublabel}
-        equipment={equipment}
-        onExecuteOrder={execOrder}
-        iconKey={widget.icon}
-      />
-    );
   if (equipment.type === "water_heater")
     return (
       <WaterHeaterEquipmentWidget
@@ -181,16 +183,6 @@ export function EquipmentWidget({
   if (isWaterValve)
     return (
       <WaterValveEquipmentWidget
-        label={label}
-        sublabel={sublabel}
-        equipment={equipment}
-        onExecuteOrder={execOrder}
-        iconKey={widget.icon}
-      />
-    );
-  if (isPoolPump)
-    return (
-      <PoolPumpEquipmentWidget
         label={label}
         sublabel={sublabel}
         equipment={equipment}
@@ -220,16 +212,6 @@ export function EquipmentWidget({
     );
   if (equipment.type === "camera")
     return <CameraEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
-  if (isMediaPlayer)
-    return (
-      <MediaPlayerEquipmentWidget
-        label={label}
-        sublabel={sublabel}
-        equipment={equipment}
-        onExecuteOrder={execOrder}
-        iconKey={widget.icon}
-      />
-    );
 
   return <GenericEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
 }
@@ -362,95 +344,8 @@ function LightEquipmentWidget({
 }
 
 // ============================================================
-// Switch (smart plug) widget — plug picto + ON/OFF state + toggle.
-// Mirrors LightEquipmentWidget without the brightness slider. The plug's
-// on/off command is a `light_toggle` order (enum ON/OFF or boolean state),
-// and the state indicator reads the `light_state` data binding.
-// ============================================================
-
-function SwitchEquipmentWidget({
-  label,
-  sublabel,
-  equipment,
-  onExecuteOrder,
-  iconKey,
-}: {
-  label: string;
-  sublabel?: string;
-  equipment: EquipmentWithDetails;
-  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
-  iconKey?: string;
-}) {
-  const { t } = useTranslation();
-  const [executing, setExecuting] = useState(false);
-
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state",
-  );
-  const isOn = stateBinding
-    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-    : false;
-
-  const toggleBinding = equipment.orderBindings.find(
-    (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum"),
-  );
-  const hasToggle = !!toggleBinding;
-
-  const handleToggle = async () => {
-    if (executing || !toggleBinding) return;
-    setExecuting(true);
-    try {
-      const alias = toggleBinding.alias;
-      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
-      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value =
-        toggleBinding.type === "boolean" && alias !== "state" ? !isOn : isOn ? offVal : onVal;
-      await onExecuteOrder(alias, value);
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  return (
-    <WidgetCard label={label} sublabel={sublabel}>
-      {/* Zone 2: Picto + état */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
-        <div />
-        {resolveWidgetIcon(iconKey, <PlugWidgetIcon on={isOn} />)}
-        <div className="flex items-center gap-2 pl-2">
-          <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
-              isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
-            }`}
-          >
-            {isOn ? "ON" : "OFF"}
-          </span>
-        </div>
-      </div>
-
-      {/* Zone 3: Bouton — toggle */}
-      {hasToggle && equipment.enabled && (
-        <div className="flex justify-center gap-3 mt-auto pt-1">
-          <button
-            onClick={handleToggle}
-            disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
-            }`}
-            title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
-          >
-            {executing ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Power size={16} strokeWidth={1.5} />
-            )}
-          </button>
-        </div>
-      )}
-    </WidgetCard>
-  );
-}
-
+// Switch / media player / pool pump widgets migrated to the presentation
+// resolver (spec 149) — see presentation/resolveWidgetPresentation.tsx.
 // ============================================================
 // Water heater equipment widget (spec 135)
 // ============================================================
@@ -853,7 +748,7 @@ function GateEquipmentWidget({
   iconKey?: string;
 }) {
   const { t } = useTranslation();
-  const [executing, setExecuting] = useState(false);
+  const [executing, setExecuting] = useState<string | null>(null);
 
   const stateBinding = equipment.dataBindings.find((db) => db.category === "gate_state");
   const gateState = (stateBinding?.value as string) ?? "unknown";
@@ -869,14 +764,17 @@ function GateEquipmentWidget({
   const hasCommand = !!commandBinding;
   const enumValues = commandBinding?.enumValues ?? [];
   const hasSingleAction = hasCommand && enumValues.length <= 1;
+  // Issue #325 — multi-action gates used to expose NO way to act on desktop
+  // (the mobile detail sheet had one button per enum action, the card none).
+  const hasMultiAction = hasCommand && enumValues.length > 1 && equipment.enabled;
 
-  const handleCommand = async () => {
-    if (executing || !commandBinding || !hasSingleAction) return;
-    setExecuting(true);
+  const handleCommand = async (value: string | null) => {
+    if (executing || !commandBinding) return;
+    setExecuting(value ?? "command");
     try {
-      await onExecuteOrder(commandBinding.alias, null);
+      await onExecuteOrder(commandBinding.alias, value);
     } finally {
-      setExecuting(false);
+      setExecuting(null);
     }
   };
 
@@ -886,7 +784,7 @@ function GateEquipmentWidget({
     <WidgetCard
       label={label}
       sublabel={sublabel}
-      onClick={hasSingleAction ? handleCommand : undefined}
+      onClick={hasSingleAction ? () => handleCommand(null) : undefined}
       className={hasSingleAction ? "cursor-pointer active:scale-[0.98] transition-transform" : ""}
     >
       {/* Icon centered */}
@@ -912,6 +810,22 @@ function GateEquipmentWidget({
           {t(`controls.gate.${gateState}`)}
         </span>
       </div>
+
+      {/* Multi-action buttons — same actions as the mobile GateDetailContent */}
+      {hasMultiAction && (
+        <div className="flex justify-center flex-wrap gap-2 mt-1 pt-1">
+          {enumValues.map((val) => (
+            <button
+              key={val}
+              onClick={() => handleCommand(val)}
+              disabled={executing !== null}
+              className="h-8 px-2.5 flex items-center justify-center rounded-[6px] text-[11px] font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {val}
+            </button>
+          ))}
+        </div>
+      )}
     </WidgetCard>
   );
 }
@@ -1444,112 +1358,6 @@ function WaterValveEquipmentWidget({
 }
 
 // ============================================================
-// Pool pump equipment widget — ON/OFF toggle + daily runtime
-// ============================================================
-
-function formatRuntime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${String(m).padStart(2, "0")}m`;
-}
-
-function PoolPumpEquipmentWidget({
-  label,
-  sublabel,
-  equipment,
-  onExecuteOrder,
-  iconKey,
-}: {
-  label: string;
-  sublabel?: string;
-  equipment: EquipmentWithDetails;
-  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
-  iconKey?: string;
-}) {
-  const { t } = useTranslation();
-  const [executing, setExecuting] = useState(false);
-
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state",
-  );
-  const isOn = stateBinding
-    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-    : false;
-
-  const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
-  const runtimeSeconds = typeof runtime?.value === "number" ? runtime.value : 0;
-
-  // Category-first resolver (spec 110). Putting category last in a hybrid
-  // chain would let an unrelated boolean order on multi-relay pool pumps
-  // (e.g. `auto_mode`) win over the real toggle.
-  const toggleBinding =
-    findOrderByCategory(
-      equipment.orderBindings,
-      ["pool_pump_toggle", "light_toggle", "toggle_power"],
-      ["state"],
-    ) ??
-    equipment.orderBindings.find(
-      (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum"),
-    );
-  const hasToggle = !!toggleBinding;
-
-  const handleToggle = async () => {
-    if (executing || !toggleBinding) return;
-    setExecuting(true);
-    try {
-      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
-      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-      const value = toggleBinding.type === "boolean" ? !isOn : isOn ? offVal : onVal;
-      await onExecuteOrder(toggleBinding.alias, value);
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  return (
-    <WidgetCard label={label} sublabel={sublabel}>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
-        <div />
-        {resolveWidgetIcon(iconKey, <PoolPumpIcon on={isOn} />)}
-        <div className="flex flex-col items-start gap-1 pl-2">
-          <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
-              isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
-            }`}
-          >
-            {isOn ? "ON" : "OFF"}
-          </span>
-          <span className="text-[11px] text-text-tertiary tabular-nums font-mono">
-            {formatRuntime(runtimeSeconds)}
-          </span>
-        </div>
-      </div>
-
-      {hasToggle && equipment.enabled && (
-        <div className="flex justify-center gap-3 mt-auto pt-1">
-          <button
-            onClick={handleToggle}
-            disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
-            }`}
-            title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
-          >
-            {executing ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Power size={16} strokeWidth={1.5} />
-            )}
-          </button>
-        </div>
-      )}
-    </WidgetCard>
-  );
-}
-
-// ============================================================
 // Pool cover equipment widget — Open/Stop/Close + position
 // ============================================================
 
@@ -1735,85 +1543,6 @@ function CameraEquipmentWidget({
             ? t("cameras.monitoring.on")
             : t("cameras.monitoring.off")}
         </span>
-      )}
-    </WidgetCard>
-  );
-}
-
-// ============================================================
-// Media player widget (issue #324) — mirrors the mobile card: Tv icon,
-// input source line, and a power toggle when an orders binding exposes it.
-// Without this branch a media_player fell through to the generic widget.
-// ============================================================
-
-function MediaPlayerEquipmentWidget({
-  label,
-  sublabel,
-  equipment,
-  onExecuteOrder,
-  iconKey,
-}: {
-  label: string;
-  sublabel?: string;
-  equipment: EquipmentWithDetails;
-  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
-  iconKey?: string;
-}) {
-  const [executing, setExecuting] = useState(false);
-
-  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
-  const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
-  const tvOn = powerBinding?.value === true;
-  const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
-
-  const toggleBinding = equipment.orderBindings.find((ob) => ob.alias === "power");
-  const hasToggle = !!toggleBinding;
-
-  const handleToggle = async () => {
-    if (executing || !toggleBinding) return;
-    setExecuting(true);
-    try {
-      await onExecuteOrder(toggleBinding.alias, !tvOn);
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  return (
-    <WidgetCard label={label} sublabel={sublabel}>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
-        <div />
-        {resolveWidgetIcon(
-          iconKey,
-          <Tv size={64} strokeWidth={1} className={tvOn ? "text-primary" : "text-text-tertiary"} />,
-        )}
-        <div className="flex items-center gap-2 pl-2">
-          <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
-              tvOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
-            }`}
-          >
-            {tvOn ? (source ?? "ON") : "OFF"}
-          </span>
-        </div>
-      </div>
-
-      {hasToggle && equipment.enabled && (
-        <div className="flex justify-center gap-3 mt-auto pt-1">
-          <button
-            onClick={handleToggle}
-            disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              tvOn ? "!border-active/40 !text-active !bg-active/5" : ""
-            }`}
-          >
-            {executing ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Power size={16} strokeWidth={1.5} />
-            )}
-          </button>
-        </div>
       )}
     </WidgetCard>
   );

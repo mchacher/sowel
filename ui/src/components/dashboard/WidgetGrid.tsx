@@ -28,8 +28,7 @@ import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, Mu
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
 import { ConfirmActionSheet } from "./ConfirmActionSheet";
-import { gateNeedsConfirm } from "./gate-confirm";
-import { needsDetailSheet } from "./widget-utils";
+import { getMobileClickAction } from "./mobile-click-action";
 import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { getSensorBindings } from "../equipments/sensorUtils";
@@ -412,6 +411,7 @@ function WidgetRenderer({
   onConfirmAction?: () => void;
   editMode?: boolean;
 }) {
+  const { t } = useTranslation();
   if (widget.type === "equipment" && widget.equipmentId) {
     const equipment = equipmentMap.get(widget.equipmentId);
     if (!equipment) return null;
@@ -419,7 +419,7 @@ function WidgetRenderer({
 
     // On mobile: ALL equipment widgets use compact MobileWidgetCard
     if (isMobile) {
-      const mobileClick = editMode ? undefined : getMobileClickAction(equipment, onExecuteOrder, onOpenDetail, onConfirmAction);
+      const mobileClick = editMode ? undefined : getMobileClickAction(widget, equipment, t, onExecuteOrder, onOpenDetail, onConfirmAction);
       return (
         <MobileWidgetCard
           widget={widget}
@@ -610,70 +610,4 @@ function MobileZoneCard({
   );
 }
 
-// Determine the click action for a mobile equipment widget card
-function getMobileClickAction(
-  equipment: EquipmentWithDetails,
-  onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>,
-  onOpenDetail?: () => void,
-  onConfirmAction?: () => void,
-): (() => void) | undefined {
-  const type = equipment.type;
-
-  // Complex widgets → open detail sheet
-  if (needsDetailSheet(type)) return onOpenDetail;
-
-  // Gate: single action = direct toggle, multiple = detail sheet
-  if (type === "gate") {
-    const commandBinding = findOrderByCategory(
-      equipment.orderBindings,
-      ["gate_trigger"],
-      ["command"],
-    );
-    const enumValues = commandBinding?.enumValues ?? [];
-    if (commandBinding && enumValues.length <= 1) {
-      // Spec 146 — guarded gate: open the slide-to-confirm sheet instead of
-      // actuating on a single tap (issue #320).
-      if (gateNeedsConfirm(equipment) && onConfirmAction) return onConfirmAction;
-      return () => { onExecuteOrder(equipment.id, commandBinding.alias, null); };
-    }
-    return onOpenDetail;
-  }
-
-  // Simple on/off (light_onoff, switch, water_heater, pool_pump, water_valve) → direct toggle
-  if (
-    type === "light_onoff" ||
-    type === "switch" ||
-    type === "water_heater" ||
-    type === "pool_pump" ||
-    type === "water_valve"
-  ) {
-    const stateBindingRaw = findOrderByCategory(
-      equipment.orderBindings,
-      ["light_toggle", "pool_pump_toggle", "valve_toggle", "toggle_power"],
-      ["state"],
-    );
-    const stateBinding =
-      stateBindingRaw &&
-      (stateBindingRaw.type === "enum" || stateBindingRaw.type === "boolean")
-        ? stateBindingRaw
-        : undefined;
-    if (stateBinding) {
-      const dataBinding = equipment.dataBindings.find((db) => db.category === "light_state");
-      const isOn = dataBinding
-        ? dataBinding.value === true || dataBinding.value === "ON" || dataBinding.value === 1
-        : false;
-      return () => {
-        const onVal = stateBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
-        const offVal = stateBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-        onExecuteOrder(equipment.id, stateBinding.alias, isOn ? offVal : onVal);
-      };
-    }
-  }
-
-  // Sensor / weather → open detail sheet to see all data
-  if (type === "sensor" || type === "weather") {
-    return onOpenDetail;
-  }
-
-  return undefined;
-}
+// The mobile tap-action derivation lives in mobile-click-action.ts (spec 149).

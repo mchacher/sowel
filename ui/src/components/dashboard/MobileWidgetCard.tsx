@@ -7,6 +7,7 @@ import {
   getSensorBindings,
   formatSensorValue,
   formatBooleanSensor,
+  isBooleanSensorCategory,
 } from "../equipments/sensorUtils";
 import {
   LightBulbIcon,
@@ -19,12 +20,11 @@ import {
   WaterHeaterIcon,
   SlidingGateIcon,
   GarageDoorIcon,
-  PlugWidgetIcon,
-  PoolPumpIcon,
   PoolCoverIcon,
   WaterValveWidgetIcon,
   EnergyMeterIcon,
 } from "./WidgetIcons";
+import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
@@ -35,7 +35,7 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { TempExtremes } from "../TempExtremes";
-import { Cloud, WashingMachine, Tv, Camera, ShieldCheck } from "lucide-react";
+import { Cloud, WashingMachine, Camera, ShieldCheck } from "lucide-react";
 import { gateNeedsConfirm } from "./gate-confirm";
 
 interface MobileWidgetCardProps {
@@ -122,15 +122,23 @@ function useMobileState(
     isHeater,
     isSensor,
     isWeatherForecast,
-    isMediaPlayer,
     isEnergyMeter,
     isAppliance,
     isWaterValve,
-    isPoolPump,
     isPoolCover,
     isPoolHeatPump,
     isOn,
   } = useEquipmentState(equipment);
+
+  // Spec 149 — migrated types read the presentation descriptor; a null
+  // descriptor falls through to the legacy per-type branches below.
+  const presentation = resolveWidgetPresentation(widget, equipment, t);
+  if (presentation) {
+    return {
+      icon: presentation.icon({ surface: "mobile-card" }),
+      stateLines: [presentation.state.primary, ...(presentation.state.secondary ?? [])],
+    };
+  }
 
   // Custom icon from registry
   const customEntry = widget.icon ? CUSTOM_ICON_REGISTRY[widget.icon] : undefined;
@@ -344,11 +352,12 @@ function useMobileState(
     const lines: string[] = [];
     for (const b of sensorBindings.slice(0, 2)) {
       if (b.value !== null && b.value !== undefined) {
-        // Category-aware for booleans (contact_door -> Ouvert/Fermé, motion ->
-        // Détecté/…) like the desktop card; the generic formatter would render
-        // any boolean as a bare Oui/Non.
+        // Category-driven like the desktop SensorValues (#315, #325): a
+        // boolean-category value goes through the category-aware formatter
+        // whatever its runtime type, so a string "ON"/"OFF" contact renders
+        // the same localized label as a real boolean instead of raw text.
         lines.push(
-          typeof b.value === "boolean"
+          isBooleanSensorCategory(b.category)
             ? formatBooleanSensor(b.category, b.value, t)
             : formatSensorValue(b.value, b.unit ?? undefined, t),
         );
@@ -417,19 +426,6 @@ function useMobileState(
     };
   }
 
-  if (isMediaPlayer) {
-    const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
-    const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
-    const tvOn = powerBinding?.value === true;
-    const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
-    return {
-      icon: (
-        <Tv size={96} strokeWidth={1} className={tvOn ? "text-primary" : "text-text-tertiary"} />
-      ),
-      stateLines: tvOn && source ? [source] : ["OFF"],
-    };
-  }
-
   if (equipment.type === "solar_panel") {
     const { producing, lines } = solarWidgetState(equipment, t);
     return {
@@ -441,18 +437,6 @@ function useMobileState(
         />
       ),
       stateLines: lines,
-    };
-  }
-
-  // Switch / generic
-  if (equipment.type === "switch") {
-    return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <PlugWidgetIcon on={isOn} />
-      ),
-      stateLines: [isOn ? "ON" : "OFF"],
     };
   }
 
@@ -480,17 +464,6 @@ function useMobileState(
         <WaterValveWidgetIcon open={isOn} />
       ),
       stateLines: [isOn ? t("water.open") : t("water.closed")],
-    };
-  }
-
-  if (isPoolPump) {
-    return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <PoolPumpIcon on={isOn} />
-      ),
-      stateLines: [isOn ? "ON" : "OFF"],
     };
   }
 

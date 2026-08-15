@@ -229,4 +229,134 @@ describe("EquipmentWidget", () => {
     await userEvent.click(screen.getByRole("button"));
     expect(onExecuteOrder).toHaveBeenCalledWith("tv-1", "power", false);
   });
+
+  // Spec 149 — the pool pump descriptor exposes the daily runtime as a
+  // secondary state line (was desktop-only before the resolver migration).
+  it("renders a pool_pump with its ON state and daily runtime", () => {
+    const pump = makeEquipment({
+      id: "pp-1",
+      name: "Pool pump",
+      type: "pool_pump",
+      computedData: [
+        { alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" },
+      ],
+    });
+    pump.dataBindings[0].value = true;
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "pp-1" })}
+        equipment={pump}
+        onExecuteOrder={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("ON")).toBeTruthy();
+    expect(screen.getByText("1h 30m")).toBeTruthy();
+  });
+
+  // Issue #325 — a multi-action gate exposed NO way to act on desktop (the
+  // mobile detail sheet had one button per enum action, the desktop card none).
+  it("renders one button per action on a multi-action gate and fires the enum value", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    const gate = makeEquipment({
+      id: "g-1",
+      name: "Portail",
+      type: "gate",
+      dataBindings: [
+        {
+          id: "db-g",
+          equipmentId: "g-1",
+          deviceDataId: "dd-g",
+          alias: "state",
+          deviceId: "dev-g",
+          deviceName: "Gate",
+          key: "state",
+          type: "enum",
+          category: "gate_state",
+          value: "closed",
+          lastUpdated: "2026-01-01T00:00:00Z",
+          lastChanged: "2026-01-01T00:00:00Z",
+          stale: false,
+        },
+      ] as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        {
+          id: "ob-g",
+          equipmentId: "g-1",
+          deviceOrderId: "do-g",
+          alias: "command",
+          deviceId: "dev-g",
+          deviceName: "Gate",
+          key: "command",
+          type: "enum",
+          category: "gate_trigger",
+          enumValues: ["OPEN", "CLOSE", "PEDESTRIAN"],
+        },
+      ] as EquipmentWithDetails["orderBindings"],
+    });
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "g-1" })}
+        equipment={gate}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    expect(screen.getByText("OPEN")).toBeTruthy();
+    expect(screen.getByText("CLOSE")).toBeTruthy();
+    await userEvent.click(screen.getByText("PEDESTRIAN"));
+    expect(onExecuteOrder).toHaveBeenCalledWith("g-1", "command", "PEDESTRIAN");
+  });
+
+  it("keeps the single-action gate as a tap-the-card action (no button row)", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    const gate = makeEquipment({
+      id: "g-2",
+      name: "Garage",
+      type: "gate",
+      dataBindings: [
+        {
+          id: "db-g2",
+          equipmentId: "g-2",
+          deviceDataId: "dd-g2",
+          alias: "state",
+          deviceId: "dev-g2",
+          deviceName: "Gate",
+          key: "state",
+          type: "enum",
+          category: "gate_state",
+          value: "closed",
+          lastUpdated: "2026-01-01T00:00:00Z",
+          lastChanged: "2026-01-01T00:00:00Z",
+          stale: false,
+        },
+      ] as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        {
+          id: "ob-g2",
+          equipmentId: "g-2",
+          deviceOrderId: "do-g2",
+          alias: "command",
+          deviceId: "dev-g2",
+          deviceName: "Gate",
+          key: "command",
+          type: "enum",
+          category: "gate_trigger",
+          enumValues: ["TRIGGER"],
+        },
+      ] as EquipmentWithDetails["orderBindings"],
+    });
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "g-2" })}
+        equipment={gate}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    // No per-enum button row for a single action…
+    expect(screen.queryByText("TRIGGER")).toBeNull();
+    // …the whole card is the action.
+    await userEvent.click(screen.getByText("Garage"));
+    expect(onExecuteOrder).toHaveBeenCalledWith("g-2", "command", null);
+  });
 });
