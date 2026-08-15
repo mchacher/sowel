@@ -99,7 +99,20 @@ git checkout -b fix/issue-<n>-<slug>     # or feat/issue-<n>-<slug>
 
 ---
 
-## Phase 5: Pull Request
+## Phase 5: Agent Review
+
+Before opening the PR, get an **independent agent** to review the change. A second pass catches correctness bugs, altitude problems (band-aid vs root fix), test gaps, and i18n/convention slips the implementer is blind to.
+
+- Launch a `general-purpose` agent (or run the `code-review` skill) on the branch diff (`git diff main...HEAD`). Give it the issue and the change, and ask it to review for: **correctness** (edge cases, races, inverted conditions, null/await), **altitude** (right depth or a band-aid over a deeper cause), **test soundness** (does the test actually fail without the fix), and **convention/i18n slips** (CLAUDE.md rules, mixed-language strings).
+- Prefer **empirical** verification when the change has a runtime surface the agent can exercise (drive the component, spin the container, run the flow) over reading alone.
+- Triage the findings: apply the confirmed ones on the branch as a follow-up commit; explicitly note anything deliberately deferred and why.
+- Re-run the Phase 4 validation after applying fixes.
+
+> **GATE 5**: Agent review run; confirmed findings fixed (or deferred with a reason); the review outcome surfaced to the user.
+
+---
+
+## Phase 6: Pull Request
 
 ```bash
 gh pr create --title "<conventional title> (#<n>)" --body "...
@@ -110,11 +123,11 @@ Closes #<n>"
 - The body must explain the root cause (for a bug) or the design (for a feature), list the tests added, and contain the `Closes #<n>` line so the merge auto-closes the issue.
 - Present the PR to the user and **wait for explicit approval before merging**. Never merge on your own.
 
-> **GATE 5**: PR presented; user has explicitly approved the merge ("oui", "merge", "go").
+> **GATE 6**: PR presented; user has explicitly approved the merge ("oui", "merge", "go").
 
 ---
 
-## Phase 6: Close the Loop
+## Phase 7: Close the Loop
 
 After the merge:
 
@@ -122,4 +135,4 @@ After the merge:
 2. Post a final comment on the issue summarizing the fix in one or two sentences and naming the PR, so the reporter knows what shipped. If a release is planned, mention that the fix lands in the next release.
 3. If the fix changed user-facing behavior, update the docs (`sowel-docs` skill) and make sure the change will be covered by the next release notes entry (spec 108).
 
-> **GATE 6**: Issue closed, reporter informed, docs/release-notes follow-up identified.
+> **GATE 7**: Issue closed, reporter informed, docs/release-notes follow-up identified.
