@@ -10,6 +10,7 @@ import { WidgetGrid } from "../components/dashboard/WidgetGrid";
 import { AddWidgetModal } from "../components/dashboard/AddWidgetModal";
 import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../types";
 import { equipmentZoneQualifiers, flattenZonesWithPath, zoneChainMap } from "../lib/zone-path";
+import { MOBILE_FAB_BOTTOM } from "../lib/mobile-fab";
 
 export function DashboardPage() {
   useWsSubscription(["equipments", "zones"]);
@@ -174,9 +175,12 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Mobile FAB — bottom right, above bottom nav */}
+        {/* Mobile FAB — bottom right, above bottom nav (safe-area aware, #496) */}
         {isAdmin && (
-          <div className="sm:hidden fixed bottom-[72px] right-4 z-30 flex flex-col items-end gap-2">
+          <div
+            className="sm:hidden fixed right-4 z-30 flex flex-col items-end gap-2"
+            style={{ bottom: MOBILE_FAB_BOTTOM }}
+          >
             {editMode && (
               <button
                 onClick={() => setShowAddModal(true)}
