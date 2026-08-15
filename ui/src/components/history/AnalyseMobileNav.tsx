@@ -34,6 +34,10 @@ export function AnalyseMobileNav() {
 
   const isNewActive = location.pathname === "/analyse";
 
+  // `?new` reaches the empty builder without being bounced to the first saved
+  // chart by AnalyseView's default-landing redirect (#498, point 1).
+  const NEW_CHART_PATH = "/analyse?new";
+
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-black/40" onClick={close} />
@@ -49,7 +53,7 @@ export function AnalyseMobileNav() {
           {/* New chart */}
           <button
             type="button"
-            onClick={() => goto("/analyse")}
+            onClick={() => goto(NEW_CHART_PATH)}
             className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-colors duration-150 text-left ${
               isNewActive ? "bg-primary-light text-primary" : "text-text hover:bg-border-light"
             }`}

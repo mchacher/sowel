@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -59,6 +59,7 @@ import {
 import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
 import { SeriesColorPicker } from "./SeriesColorPicker";
 import { fitYAxis } from "./y-axis";
+import { firstChartTarget } from "./analyse-nav";
 
 // ============================================================
 // Types
@@ -142,10 +143,17 @@ export function AnalyseView() {
   const { t } = useTranslation();
   const { chartId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // `?new` = the user explicitly asked for the empty "build a new chart"
+  // workspace (sidebar / mobile-drawer "New chart"). Without it, the bare
+  // /analyse route redirects to the first saved chart (#498, point 1).
+  const isNewWorkspace = searchParams.has("new");
   const createChart = useCharts((s) => s.createChart);
   const updateChartStore = useCharts((s) => s.updateChart);
   const deleteChartStore = useCharts((s) => s.deleteChart);
   const fetchCharts = useCharts((s) => s.fetchCharts);
+  const savedCharts = useCharts((s) => s.charts);
+  const chartsLoading = useCharts((s) => s.loading);
   // Saving/deleting charts is a config mutation (rejected server-side for
   // standard users); hide those controls. Building and viewing a chart stays
   // available to everyone (series add/remove are local until saved).
@@ -191,9 +199,13 @@ export function AnalyseView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // --- Add series form ---
-  // Open by default on the empty workspace (`/analyse` with no chartId) so
-  // the user immediately sees the zone / equipment / metric pickers instead
-  // of an inscrutable empty chart placeholder.
+  // Open on the empty workspace (`/analyse` / `/analyse?new`, no chartId) so
+  // the user immediately sees the zone / equipment / metric pickers; collapsed
+  // when viewing a saved chart for a cleaner screen (#498, point 3). Synced to
+  // `chartId` below — `/analyse` and `/analyse/:id` share one AnalysePage
+  // element (no route key), so the default-landing redirect (#498, point 1)
+  // changes chartId without remounting, and an init-only value would stay
+  // stale (add panel left open on the first chart).
   const [showAddForm, setShowAddForm] = useState(() => !chartId);
   const [selectedZoneId, setSelectedZoneId] = useState<string>("");
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>("");
@@ -248,19 +260,16 @@ export function AnalyseView() {
         const chart = await getChart(chartId);
         setCurrentChart(chart);
         loadedChartIdRef.current = chartId;
-        // New format (period + date) takes precedence. Legacy charts saved
-        // with `timeRange` are mapped to the closest period on today, so the
-        // user can pick the date back to whatever they had in mind.
-        if (chart.config.period && chart.config.date) {
+        // Keep the saved period (day/week/month/year) but always open on
+        // today rather than the date the chart was saved on (#498, point 2) —
+        // a saved chart is a view template, users want the latest data.
+        if (chart.config.period) {
           setPeriod(chart.config.period);
-          setDate(chart.config.date);
         } else {
           const legacy = chart.config.timeRange;
-          const mapped: Period =
-            legacy === "30d" ? "month" : legacy === "7d" ? "week" : "day";
-          setPeriod(mapped);
-          setDate(periodTodayStr());
+          setPeriod(legacy === "30d" ? "month" : legacy === "7d" ? "week" : "day");
         }
+        setDate(periodTodayStr());
         // Spec 145 — absent on pre-145 charts, which then keep the
         // zero-anchored axis they were saved with.
         setYAxisFit(chart.config.yAxisFit ?? false);
@@ -517,6 +526,27 @@ export function AnalyseView() {
   useEffect(() => {
     fetchCharts();
   }, [fetchCharts]);
+
+  // #498, point 1 — the bare /analyse workspace opens on the first saved chart
+  // instead of the empty builder. `?new` (sidebar / mobile "New chart") opts
+  // out; with no saved charts the empty workspace stays.
+  useEffect(() => {
+    if (chartId) return;
+    const target = firstChartTarget({
+      isNew: isNewWorkspace,
+      loading: chartsLoading,
+      charts: savedCharts,
+    });
+    if (target) navigate(target, { replace: true });
+  }, [chartId, isNewWorkspace, chartsLoading, savedCharts, navigate]);
+
+  // Keep the add panel collapsed on a saved chart and open on the empty
+  // builder as chartId changes (the redirect above mutates it without a
+  // remount). Runs only on chartId transitions, so it never fights the
+  // user's manual toggle while they stay on one view.
+  useEffect(() => {
+    setShowAddForm(!chartId);
+  }, [chartId]);
 
   // --- Merge all series into a unified chart dataset ---
   // The X axis is a continuous time-scale (epoch milliseconds), not a
