@@ -10,6 +10,12 @@ import { getArbiterState } from "../api";
 interface ArbiterStore {
   state: ArbiterPublicState | null;
   loading: boolean;
+  /**
+   * Bumped once per debounced arbiter refresh so live views (the timeline
+   * surplus curve + ribbons) can refetch in step with the badge instead of
+   * staying frozen on their mount snapshot (issue #514).
+   */
+  timelineRev: number;
   fetch: () => Promise<void>;
   /** Patch the live number without a round-trip (status events). */
   patchStatus: (runState: ArbiterRunState, availableSurplusW: number | null) => void;
@@ -22,6 +28,7 @@ let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 export const useArbiter = create<ArbiterStore>((set, get) => ({
   state: null,
   loading: false,
+  timelineRev: 0,
 
   fetch: async () => {
     set({ loading: true });
@@ -44,6 +51,8 @@ export const useArbiter = create<ArbiterStore>((set, get) => ({
     refreshTimer = setTimeout(() => {
       refreshTimer = null;
       void get().fetch();
+      // Signal live timeline views to refetch — once per burst, not per event.
+      set((s) => ({ timelineRev: s.timelineRev + 1 }));
     }, 400);
   },
 }));

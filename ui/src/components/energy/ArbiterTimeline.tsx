@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ArbiterQuarterState, ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
+import { useArbiter } from "../../store/useArbiter";
 import { journalDotColor } from "./arbiterColors";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
@@ -16,6 +17,13 @@ const WINDOW_HOURS_MOBILE = 6;
 const WINDOW_HOURS_DESKTOP = 12;
 const DEPTH_HOURS = 48;
 const DESKTOP_QUERY = "(min-width: 1024px)";
+
+// Issue #514 — the curve must track the live arbiter state instead of staying
+// frozen on the mount snapshot. On the live window we refetch when the arbiter
+// emits activity (via useArbiter.timelineRev), throttled: a new curve point only
+// lands every ~5 min while status events can fire every few seconds on a
+// jittering surplus, so at most one refetch per this window is worthwhile.
+const LIVE_REFRESH_THROTTLE_MS = 20_000;
 
 /** Live 6h/12h window width from the viewport (SSR- and jsdom-safe, resize-aware). */
 function useWindowHours(): number {
@@ -62,13 +70,21 @@ export function ArbiterTimeline() {
   const [failed, setFailed] = useState(false);
   const [selTime, setSelTime] = useState<number | null>(null);
   const jscrollRef = useRef<HTMLDivElement>(null);
+  const lastFetchAtRef = useRef(0);
+  const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Live-refresh signal: bumped once per debounced arbiter burst (issue #514).
+  const timelineRev = useArbiter((s) => s.timelineRev);
 
   // Crossing the breakpoint can shrink maxOffset below the current page —
   // clamp before it reaches the fetch so we never ask past the 48h depth.
   const pageOffset = Math.min(offset, maxOffset);
 
+  // Authoritative load: mount, viewport width change, or paging. Resets the
+  // cell selection (the window moved) and clears any queued live refetch.
   useEffect(() => {
     let cancelled = false;
+    lastFetchAtRef.current = Date.now();
     getArbiterTimeline(windowHours, pageOffset, 15)
       .then((d) => {
         if (!cancelled) {
@@ -84,8 +100,34 @@ export function ArbiterTimeline() {
       });
     return () => {
       cancelled = true;
+      if (liveTimerRef.current) {
+        clearTimeout(liveTimerRef.current);
+        liveTimerRef.current = null;
+      }
     };
   }, [windowHours, pageOffset]);
+
+  // Live refresh (issue #514): when the arbiter emits activity, refetch the
+  // curve + ribbons so they track the badge — but only on the live window
+  // (offset 0, never while paging history) and throttled to one refetch per
+  // LIVE_REFRESH_THROTTLE_MS. The selection is preserved across a live refetch.
+  useEffect(() => {
+    if (pageOffset !== 0 || timelineRev === 0) return;
+    if (liveTimerRef.current) return; // a refetch is already queued for this burst
+    const wait = Math.max(0, LIVE_REFRESH_THROTTLE_MS - (Date.now() - lastFetchAtRef.current));
+    liveTimerRef.current = setTimeout(() => {
+      liveTimerRef.current = null;
+      lastFetchAtRef.current = Date.now();
+      getArbiterTimeline(windowHours, 0, 15)
+        .then((d) => {
+          setData(d);
+          setFailed(false);
+        })
+        .catch(() => {
+          // Transient error: keep the last good curve rather than blanking it.
+        });
+    }, wait);
+  }, [timelineRev, pageOffset, windowHours]);
 
   const geom = useMemo(() => {
     if (!data) return null;
