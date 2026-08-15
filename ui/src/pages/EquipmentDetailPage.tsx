@@ -23,6 +23,7 @@ import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBa
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_LABELS } from "../components/equipments/EquipmentCard";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
+import { isSubmeterEquipment } from "../lib/metering";
 import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";
 import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
@@ -403,10 +404,10 @@ export function EquipmentDetailPage() {
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
-      {/* Energy cumuls */}
+      {/* Energy cumuls — meters + metering relays (switch/water_heater, #521) */}
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
-        equipment.type === "energy_meter") && equipment.computedData && (
+        isSubmeterEquipment(equipment)) && equipment.computedData && (
         <EnergyDataPanel
           computedData={equipment.computedData}
           status={equipment.status}
@@ -414,10 +415,10 @@ export function EquipmentDetailPage() {
         />
       )}
 
-      {/* Live electrical measures — P/U/I/PF when bound (issue #376) */}
+      {/* Live electrical measures — P/U/I/PF when bound (issue #376, #521) */}
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
-        equipment.type === "energy_meter") && (
+        isSubmeterEquipment(equipment)) && (
         <ElectricalMeteringPanel bindings={equipment.dataBindings} />
       )}
 

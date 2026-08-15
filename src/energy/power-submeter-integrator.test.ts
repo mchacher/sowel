@@ -137,6 +137,48 @@ describe("PowerSubmeterIntegrator", () => {
     integ.stop();
   });
 
+  it("integrates a water_heater reporting power but no command (#521)", () => {
+    db.prepare(
+      `INSERT INTO equipments (id, name, zone_id, type, enabled) VALUES (?, ?, ?, ?, 1)`,
+    ).run("eq-cet", "Chauffe-eau", "zone-1", "water_heater");
+    const equipmentManager = {
+      getById: vi.fn((id: string) =>
+        id === "eq-cet"
+          ? { id, name: "Chauffe-eau", zoneId: "zone-1", type: "water_heater", enabled: true }
+          : null,
+      ),
+      getAll: vi.fn(() => [
+        {
+          id: "eq-cet",
+          name: "Chauffe-eau",
+          zoneId: "zone-1",
+          type: "water_heater",
+          enabled: true,
+        },
+      ]),
+      getDataBindingsWithValues: vi.fn(() => [{ alias: "power", category: "power", value: 2000 }]),
+    } as unknown as EquipmentManager;
+    const writePoint = vi.fn();
+    const influxClient = { isConnected: vi.fn(() => true), writePoint } as unknown as InfluxClient;
+
+    let now = 1_700_000_000_000;
+    const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+      now: () => now,
+      flushIntervalMs: 60_000,
+    });
+    integ.init();
+    integ.start();
+    emitPower(bus, "eq-cet", 2000);
+    now += 60_000;
+    emitPower(bus, "eq-cet", 2000);
+    integ.flushAll();
+    expect(writePoint).toHaveBeenCalledOnce();
+    // Surfaced as computed energy so the equipment card sees a growing Wh value.
+    const computed = integ.getComputedDataForEquipment("eq-cet");
+    expect(computed[0]?.alias).toBe("energy");
+    integ.stop();
+  });
+
   it("ignores a bare switch with no power binding (spec 129)", () => {
     db.prepare(
       `INSERT INTO equipments (id, name, zone_id, type, enabled) VALUES (?, ?, ?, ?, 1)`,

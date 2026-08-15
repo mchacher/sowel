@@ -22,10 +22,18 @@ describe("metering helpers (spec 129)", () => {
     expect(isMeteringSwitch("energy_meter", power)).toBe(false); // not a switch
   });
 
-  it("isSubmeterEquipment: energy_meter OR metering switch", () => {
+  it("isMeteringSwitch: water_heater with power/energy is a metering relay (#521)", () => {
+    expect(isMeteringSwitch("water_heater", power)).toBe(true);
+    expect(isMeteringSwitch("water_heater", energy)).toBe(true);
+    expect(isMeteringSwitch("water_heater", state)).toBe(false); // bare relay, no metering
+  });
+
+  it("isSubmeterEquipment: energy_meter OR metering relay", () => {
     expect(isSubmeterEquipment("energy_meter", [])).toBe(true);
     expect(isSubmeterEquipment("switch", power)).toBe(true);
     expect(isSubmeterEquipment("switch", state)).toBe(false); // bare relay
+    expect(isSubmeterEquipment("water_heater", power)).toBe(true); // #521
+    expect(isSubmeterEquipment("water_heater", state)).toBe(false); // no metering binding
     expect(isSubmeterEquipment("main_energy_meter", power)).toBe(false); // house total, not a submeter
     expect(isSubmeterEquipment("light_onoff", power)).toBe(false);
   });

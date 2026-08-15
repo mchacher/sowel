@@ -19,6 +19,18 @@ export const METERING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCatego
   "current",
 ]);
 
+/**
+ * On/off relay equipment types that carry the same candidate shape as a
+ * `switch` (spec 129) and can therefore double as a consumption submeter when
+ * they report power/energy. A `water_heater` (spec 135) is a relay with an
+ * optional metering attach, exactly like a metering plug (#521). Extend this
+ * set to enroll further pilotable loads (`heater`, `pool_pump`, `appliance`).
+ */
+export const METERING_RELAY_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
+  "switch",
+  "water_heater",
+]);
+
 interface BindingLike {
   alias?: string | null;
   category?: string | null;
@@ -35,9 +47,9 @@ export function hasMeteringBinding(bindings: readonly BindingLike[]): boolean {
   );
 }
 
-/** A `switch` that also reports power/energy — a metering smart plug. */
+/** A metering relay (`switch`, `water_heater`, ...) that also reports power/energy. */
 export function isMeteringSwitch(type: EquipmentType, bindings: readonly BindingLike[]): boolean {
-  return type === "switch" && hasMeteringBinding(bindings);
+  return METERING_RELAY_TYPES.has(type) && hasMeteringBinding(bindings);
 }
 
 /**

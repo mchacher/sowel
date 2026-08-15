@@ -6,6 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
+import { isSubmeterEquipment } from "../../equipments/metering.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   EnergyPoint,
@@ -237,7 +238,12 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.status(503).send({ error: "InfluxDB not configured" });
     }
 
-    const submeterEquipments = equipmentManager.getAll().filter((eq) => eq.type === "energy_meter");
+    // Dedicated energy_meters + metering relays (switch/water_heater, spec 129/#521).
+    const submeterEquipments = equipmentManager
+      .getAll()
+      .filter((eq) =>
+        isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id)),
+      );
     const mainEquipmentId = findEnergyEquipmentId(equipmentManager);
 
     const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);

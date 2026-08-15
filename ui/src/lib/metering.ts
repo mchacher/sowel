@@ -12,9 +12,16 @@ export const METERING_CATEGORIES: ReadonlySet<string> = new Set([
   "current",
 ]);
 
+/**
+ * On/off relay types that can double as a consumption submeter when they
+ * report power/energy: a metering plug (spec 129) and a water_heater relay
+ * (spec 135 / #521). Mirror of METERING_RELAY_TYPES in src/equipments/metering.ts.
+ */
+export const METERING_RELAY_TYPES: ReadonlySet<string> = new Set(["switch", "water_heater"]);
+
 export function isMeteringSwitch(eq: EquipmentWithDetails): boolean {
   return (
-    eq.type === "switch" &&
+    METERING_RELAY_TYPES.has(eq.type) &&
     eq.dataBindings.some(
       (b) =>
         b.category === "power" ||

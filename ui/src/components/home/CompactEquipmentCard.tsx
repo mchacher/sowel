@@ -126,6 +126,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         return typeof p?.value === "number" ? p.value : null;
       })()
     : null;
+  // Metering water heater (#521): day energy from computedData, shown next to
+  // the live power like an automatic energy meter. Null when not submetered.
+  const waterHeaterDayWh = isWaterHeater
+    ? (() => {
+        const e = equipment.computedData?.find((c) => c.alias === "energy_day");
+        return typeof e?.value === "number" ? e.value : null;
+      })()
+    : null;
   const primaryBinding = !isKnownType
     ? equipment.dataBindings[0] ?? null
     : null;
@@ -248,6 +256,16 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               {switchPowerW >= 1000
                 ? `${(switchPowerW / 1000).toFixed(2)} kW`
                 : `${Math.round(switchPowerW)} W`}
+            </span>
+          )}
+          {waterHeaterDayWh !== null && (
+            <span className="text-[13px] text-accent tabular-nums font-mono font-semibold">
+              {waterHeaterDayWh >= 1000
+                ? (waterHeaterDayWh / 1000).toFixed(2)
+                : Math.round(waterHeaterDayWh)}
+              <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
+                {waterHeaterDayWh >= 1000 ? "kWh" : "Wh"} {t("energy.today").toLowerCase()}
+              </span>
             </span>
           )}
           <LightControl

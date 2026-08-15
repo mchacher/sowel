@@ -42,10 +42,18 @@ describe("metering (UI) — spec 129", () => {
     expect(isMeteringSwitch(eq("light_onoff", [{ alias: "power", category: "power" }]))).toBe(false);
   });
 
-  it("isSubmeterEquipment: energy_meter or metering switch", () => {
+  it("isMeteringSwitch: water_heater with power/energy is a metering relay (#521)", () => {
+    expect(isMeteringSwitch(eq("water_heater", [{ alias: "power", category: "power" }]))).toBe(true);
+    expect(isMeteringSwitch(eq("water_heater", [{ alias: "energy", category: "energy" }]))).toBe(true);
+    expect(isMeteringSwitch(eq("water_heater", [{ alias: "state", category: "light_state" }]))).toBe(false);
+  });
+
+  it("isSubmeterEquipment: energy_meter or metering relay", () => {
     expect(isSubmeterEquipment(eq("energy_meter", []))).toBe(true);
     expect(isSubmeterEquipment(eq("switch", [{ alias: "power", category: "power" }]))).toBe(true);
     expect(isSubmeterEquipment(eq("switch", [{ alias: "state", category: "light_state" }]))).toBe(false);
+    expect(isSubmeterEquipment(eq("water_heater", [{ alias: "power", category: "power" }]))).toBe(true);
+    expect(isSubmeterEquipment(eq("water_heater", [{ alias: "state", category: "light_state" }]))).toBe(false);
     expect(isSubmeterEquipment(eq("main_energy_meter", [{ alias: "power", category: "power" }]))).toBe(false);
   });
 });
