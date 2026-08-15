@@ -71,6 +71,18 @@ describe("ArbiterJournalStore", () => {
     expect(row.reason).toBeUndefined();
   });
 
+  it("round-trips the running flag (#535): true, false, and unknown", () => {
+    store.insert(decision({ atIso: "2026-08-14T09:00:00.000Z", kind: "suspended", running: true }));
+    store.insert(
+      decision({ atIso: "2026-08-14T09:01:00.000Z", kind: "suspended", running: false }),
+    );
+    store.insert(decision({ atIso: "2026-08-14T09:02:00.000Z", kind: "resumed" }));
+    const rows = store.loadRecent(10);
+    expect(rows.map((r) => r.running)).toEqual([true, false, undefined]);
+    const ranged = store.range("2026-08-14T09:00:00.000Z", "2026-08-14T09:02:00.000Z");
+    expect(ranged.map((r) => r.running)).toEqual([true, false, undefined]);
+  });
+
   it("loadRecent returns ascending (oldest-first), matching the ring order", () => {
     store.insert(decision({ atIso: "2026-08-14T08:00:00.000Z", reason: "older" }));
     store.insert(decision({ atIso: "2026-08-14T09:00:00.000Z", reason: "newer" }));

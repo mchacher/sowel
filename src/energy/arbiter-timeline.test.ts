@@ -8,8 +8,13 @@ const START = Date.parse("2026-08-14T12:00:00.000Z");
 const END = Date.parse("2026-08-14T13:00:00.000Z");
 const iso = (min: number) => new Date(START + min * 60_000).toISOString();
 
-function dec(min: number, kind: ArbiterDecision["kind"], equipmentId = "pac"): ArbiterDecision {
-  return { atIso: iso(min), kind, equipmentId, equipmentName: "PAC" };
+function dec(
+  min: number,
+  kind: ArbiterDecision["kind"],
+  equipmentId = "pac",
+  running?: boolean,
+): ArbiterDecision {
+  return { atIso: iso(min), kind, equipmentId, equipmentName: "PAC", running };
 }
 const LOADS = [{ equipmentId: "pac", name: "PAC" }];
 
@@ -79,6 +84,44 @@ describe("buildLoadTimelines (spec 148)", () => {
 
   it("returns idle everywhere for a load with no decisions, and ignores other equipments", () => {
     const [load] = buildLoadTimelines([dec(20, "granted", "pompe")], LOADS, START, END);
+    expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
+  });
+});
+
+describe("buildLoadTimelines (issue #535) — an OFF load must not read 'unmanaged'", () => {
+  it("maps a suspension that switched the load off (running=false) to idle", () => {
+    // A manual OFF order suspends arbitration — but the load is stopped, so
+    // the lane must not paint "on outside arbitration" for the whole TTL.
+    const [load] = buildLoadTimelines([dec(5, "suspended", "pac", false)], LOADS, START, END);
+    expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
+  });
+
+  it("keeps a suspension that left the load on (running=true) as unmanaged", () => {
+    const [load] = buildLoadTimelines([dec(5, "suspended", "pac", true)], LOADS, START, END);
+    expect(load.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
+  });
+
+  it("maps resumed on an OFF load to idle, not granted", () => {
+    // Suspension left the load on, then the TTL expires while it is off:
+    // control returns to the arbiter, nothing is granted yet.
+    const [load] = buildLoadTimelines(
+      [dec(-10, "suspended", "pac", true), dec(20, "resumed", "pac", false)],
+      LOADS,
+      START,
+      END,
+    );
+    expect(load.quarters).toEqual(["unmanaged", "idle", "idle", "idle"]);
+  });
+
+  it("maps resumed on a still-running load to unmanaged (no grant yet)", () => {
+    const [load] = buildLoadTimelines([dec(5, "resumed", "pac", true)], LOADS, START, END);
+    expect(load.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
+  });
+
+  it("maps a legacy resumed entry (no running field) to idle", () => {
+    // Pre-#535 rows have no `running`; the preceding suspend revoked any
+    // grant, so idle is the only defensible reading (was: granted).
+    const [load] = buildLoadTimelines([dec(5, "resumed")], LOADS, START, END);
     expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
   });
 });

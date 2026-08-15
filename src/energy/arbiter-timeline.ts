@@ -23,18 +23,28 @@ export interface TimelineLoad {
 }
 
 /** The sustained state a decision transitions a load into. */
-function sustainedAfter(kind: ArbiterDecision["kind"]): QuarterState | null {
+function sustainedAfter(kind: ArbiterDecision["kind"], running?: boolean): QuarterState | null {
   switch (kind) {
     case "granted":
-    case "resumed":
       return "granted";
+    // A resume (manual or TTL expiry) hands control back to the arbiter but
+    // grants nothing by itself — a re-grant journals its own `granted`. The
+    // load is either still running outside arbitration or simply off (#535).
+    // Legacy entries (no `running`) default to idle: the suspend that preceded
+    // them revoked any grant, so idle is the only defensible fallback.
+    case "resumed":
+      return running === true ? "unmanaged" : "idle";
     case "revoked":
     case "revoke-not-honored":
     case "released":
     case "denied":
     case "unclaimed-run-ended":
       return "idle";
+    // A suspension caused by an OFF order (manual OFF, wall-switch-off) leaves
+    // the load stopped — painting it "on outside arbitration" was issue #535.
+    // Legacy entries (no `running`) keep the historical "unmanaged" reading.
     case "suspended":
+      return running === false ? "idle" : "unmanaged";
     case "unclaimed-run":
       return "unmanaged";
     // Audit-only events emitted *while another state already holds* — NOT
@@ -70,14 +80,17 @@ export function buildLoadTimelines(
   const nQuarters = Math.max(0, Math.round((windowEnd - windowStart) / stepMs));
 
   // Decisions per equipment, chronological.
-  const byEq = new Map<string, { at: number; kind: ArbiterDecision["kind"] }[]>();
+  const byEq = new Map<
+    string,
+    { at: number; kind: ArbiterDecision["kind"]; running?: boolean }[]
+  >();
   for (const d of decisions) {
     if (!d.equipmentId) continue;
     const at = Date.parse(d.atIso);
     if (Number.isNaN(at)) continue;
     let list = byEq.get(d.equipmentId);
     if (!list) byEq.set(d.equipmentId, (list = []));
-    list.push({ at, kind: d.kind });
+    list.push({ at, kind: d.kind, running: d.running });
   }
   for (const list of byEq.values()) list.sort((a, b) => a.at - b.at);
 
@@ -89,7 +102,7 @@ export function buildLoadTimelines(
 
     // Establish the state entering the window (events strictly before it).
     while (idx < events.length && events[idx].at < windowStart) {
-      const s = sustainedAfter(events[idx].kind);
+      const s = sustainedAfter(events[idx].kind, events[idx].running);
       if (s) sustained = s;
       idx += 1;
     }
@@ -99,7 +112,7 @@ export function buildLoadTimelines(
       let revokeHere = false;
       while (idx < events.length && events[idx].at < qEnd) {
         if (isRevoke(events[idx].kind)) revokeHere = true;
-        const s = sustainedAfter(events[idx].kind);
+        const s = sustainedAfter(events[idx].kind, events[idx].running);
         if (s) sustained = s;
         idx += 1;
       }

@@ -700,6 +700,12 @@ export interface ArbiterDecision {
   watts?: number;
   reason?: string;
   note?: string;
+  /**
+   * Whether the load was ON at the time of the decision, when known (#535).
+   * Set on `suspended`/`resumed`: a suspension triggered by an OFF order must
+   * not paint the timeline "on outside arbitration". Absent on legacy entries.
+   */
+  running?: boolean;
 }
 
 export interface ArbiterGrantInfo {

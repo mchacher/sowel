@@ -27,6 +27,8 @@ export const REASON_SLUG: Record<string, string> = {
   "user-order": "user-order",
   "wall-switch-off": "wall-switch-off",
   "wall-switch-on": "wall-switch-on",
+  // resumed — automatic hand-back when the suspension TTL lapses (#535)
+  "override-expired": "override-expired",
   // informative free-text
   "export did not recover (a cloud can mask this)": "export-not-recovered",
 };

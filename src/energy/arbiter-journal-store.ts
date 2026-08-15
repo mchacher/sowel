@@ -21,6 +21,7 @@ interface ArbiterDecisionRow {
   watts: number | null;
   reason: string | null;
   note: string | null;
+  running: number | null; // 0/1, NULL = unknown (#535, legacy rows)
 }
 
 export class ArbiterJournalStore {
@@ -35,11 +36,11 @@ export class ArbiterJournalStore {
     this.logger = logger.child({ module: "arbiter-journal-store" });
     this.insertStmt = db.prepare(
       `INSERT INTO arbiter_decision_log
-        (id, at_iso, kind, equipment_id, equipment_name, watts, reason, note)
-       VALUES (@id, @atIso, @kind, @equipmentId, @equipmentName, @watts, @reason, @note)`,
+        (id, at_iso, kind, equipment_id, equipment_name, watts, reason, note, running)
+       VALUES (@id, @atIso, @kind, @equipmentId, @equipmentName, @watts, @reason, @note, @running)`,
     );
     this.loadRecentStmt = db.prepare(
-      "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note" +
+      "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note, running" +
         // rowid (insertion order) is a stable tiebreak for same-ms timestamps.
         " FROM arbiter_decision_log ORDER BY at_iso DESC, rowid DESC LIMIT ?",
     );
@@ -47,7 +48,7 @@ export class ArbiterJournalStore {
       "DELETE FROM arbiter_decision_log WHERE at_iso < datetime('now', '-' || ? || ' days')",
     );
     this.rangeStmt = db.prepare(
-      "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note" +
+      "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note, running" +
         " FROM arbiter_decision_log WHERE at_iso >= ? AND at_iso <= ?" +
         " ORDER BY at_iso ASC, rowid ASC",
     );
@@ -66,6 +67,7 @@ export class ArbiterJournalStore {
         watts: d.watts ?? null,
         reason: d.reason ?? null,
         note: d.note ?? null,
+        running: d.running === undefined ? null : d.running ? 1 : 0,
       });
     } catch (err) {
       this.logger.error({ err, kind: d.kind }, "Failed to persist arbiter decision");
@@ -89,6 +91,7 @@ export class ArbiterJournalStore {
         watts: r.watts ?? undefined,
         reason: r.reason ?? undefined,
         note: r.note ?? undefined,
+        running: r.running === null ? undefined : r.running === 1,
       }));
     } catch (err) {
       this.logger.error({ err }, "Failed to load recent arbiter decisions");
@@ -108,6 +111,7 @@ export class ArbiterJournalStore {
         watts: r.watts ?? undefined,
         reason: r.reason ?? undefined,
         note: r.note ?? undefined,
+        running: r.running === null ? undefined : r.running === 1,
       }));
     } catch (err) {
       this.logger.error({ err }, "Failed to read arbiter decision range");

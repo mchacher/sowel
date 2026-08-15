@@ -403,7 +403,12 @@ export class CapacityArbiter {
     // wall-switch OFF. `isBooleanState` accepts boolean / "on"|"off" strings
     // and rejects numbers precisely to exclude those measurements.
     if (profile.class === "deferrable" && isBooleanState(value)) {
-      this.reportedOnOff.set(equipmentId, isOnLike(value));
+      const on = isOnLike(value);
+      this.reportedOnOff.set(equipmentId, on);
+      // A load that stops on its own regulation (the PAC reaching temperature)
+      // emits no order at all — the reported OFF is the only signal that the
+      // unclaimed run is over (#535).
+      if (!on) this.endUnclaimedRun(equipmentId);
     }
   }
 
@@ -423,12 +428,25 @@ export class CapacityArbiter {
     // Sowel's OWN last unconfirmed order after a device reconnect (typically a
     // recipe order), not a person — counting it as a manual override spuriously
     // suspended flexible loads on flaky links (#420).
+    // An unclaimed run ends on ANY observed OFF order, whatever its source:
+    // only the recipe branch used to close it, so a manual OFF (which returns
+    // through the suspend path below) left the load painted "on outside
+    // arbitration" on the timeline indefinitely (#535).
+    if (isOffLike(value)) this.endUnclaimedRun(equipmentId);
+
     if (
       source?.kind === "manual" ||
       source?.kind === "button" ||
       (source?.kind === "external" && source.channel !== RETRY_CHANNEL)
     ) {
-      this.suspend(equipmentId, "user-order");
+      // The order value tells the resulting on/off state; an order that is
+      // neither (e.g. a setpoint) falls back to the last observed state.
+      const running = isOnLike(value)
+        ? true
+        : isOffLike(value)
+          ? false
+          : this.observedRunning(equipmentId);
+      this.suspend(equipmentId, "user-order", running);
       return;
     }
 
@@ -465,19 +483,38 @@ export class CapacityArbiter {
           });
         }
       }
-      if (isOffLike(value) && this.unclaimedRunning.has(equipmentId)) {
-        this.unclaimedRunning.delete(equipmentId);
-        // Journaled so the run reads as a span on the timeline. Without an end
-        // the lane could only ever show where it started, which says nothing
-        // about how long the load held power outside arbitration.
-        this.journal({
-          kind: "unclaimed-run-ended",
-          equipmentId,
-          reason: "run outside arbitration finished",
-        });
-        this.finishLearnerRun(equipmentId);
-      }
+      // The unclaimed-run END is handled above for orders of every source, not
+      // just recipes (#535).
     }
+  }
+
+  /**
+   * Close an unclaimed run (#535): journaled so the run reads as a span on the
+   * timeline — without an end the lane could only ever show where it started,
+   * which says nothing about how long the load held power outside arbitration.
+   * Called on any observed OFF: an order from any source, or a reported OFF
+   * state (a load stopping on its own regulation never emits an order).
+   */
+  private endUnclaimedRun(equipmentId: string): void {
+    if (!this.unclaimedRunning.has(equipmentId)) return;
+    this.unclaimedRunning.delete(equipmentId);
+    this.journal({
+      kind: "unclaimed-run-ended",
+      equipmentId,
+      reason: "run outside arbitration finished",
+    });
+    this.finishLearnerRun(equipmentId);
+  }
+
+  /**
+   * Best-effort on/off state of a load as the arbiter knows it (#535): a
+   * granted claim or an unclaimed run means ON; otherwise the last reported
+   * boolean state (only tracked on deferrable loads — undefined if never seen).
+   */
+  private observedRunning(equipmentId: string): boolean | undefined {
+    if (this.grantedClaimFor(equipmentId) !== undefined) return true;
+    if (this.unclaimedRunning.has(equipmentId)) return true;
+    return this.reportedOnOff.get(equipmentId);
   }
 
   private onEquipmentRemoved(equipmentId: string): void {
@@ -580,7 +617,12 @@ export class CapacityArbiter {
     // Also drop any half-armed divergence timer, so a resume never re-suspends
     // on a contradiction that started before the manual override was lifted.
     this.divergenceSince.delete(equipmentId);
-    this.journal({ kind: "resumed", equipmentId, reason: "resume control" });
+    this.journal({
+      kind: "resumed",
+      equipmentId,
+      reason: "resume control",
+      running: this.observedRunning(equipmentId),
+    });
     this.forceStatusEmit(); // let the UI drop the "Manual until…" chip live
     this.evaluate();
     return true;
@@ -751,9 +793,19 @@ export class CapacityArbiter {
     if (!this.config.enabled) return;
     const now = Date.now();
 
-    // Expire suspensions silently (the explicit resume path journals).
+    // Expire suspensions. Journaled (#535): a silent lapse left the timeline
+    // painting the pre-expiry state indefinitely — the hand-back must be an
+    // event the timeline can key on, exactly like an explicit resume.
     for (const [eq, until] of this.overridesUntil) {
-      if (until <= now) this.overridesUntil.delete(eq);
+      if (until <= now) {
+        this.overridesUntil.delete(eq);
+        this.journal({
+          kind: "resumed",
+          equipmentId: eq,
+          reason: "override-expired",
+          running: this.observedRunning(eq),
+        });
+      }
     }
     for (const [eq, until] of this.unresponsiveUntil) {
       if (until <= now) this.unresponsiveUntil.delete(eq);
@@ -1020,12 +1072,14 @@ export class CapacityArbiter {
     for (const claim of this.grantedClaims()) this.revoke(claim, reason);
   }
 
-  private suspend(equipmentId: string, why: string): void {
+  private suspend(equipmentId: string, why: string, running?: boolean): void {
     const until = Date.now() + this.config.overrideTtlS * 1000;
     this.overridesUntil.set(equipmentId, until);
     const granted = this.grantedClaimFor(equipmentId);
     if (granted) this.revoke(granted, "manual-override");
-    this.journal({ kind: "suspended", equipmentId, reason: why });
+    // `running` reaches the journal so the timeline can tell an OFF-triggered
+    // suspension (load stopped → idle) from a takeover that left it on (#535).
+    this.journal({ kind: "suspended", equipmentId, reason: why, running });
     this.logger.info({ equipmentId, why }, "Arbitration suspended (manual override)");
     // Force a status event: suspending an IDLE (ungranted) load revokes
     // nothing, so without this the UI (which refreshes on energy.* events)
@@ -1088,7 +1142,8 @@ export class CapacityArbiter {
       if (now - since < confirmMs) continue;
       this.divergenceSince.delete(equipmentId);
       // Stable codes (not free text) so the UI journal can translate them.
-      this.suspend(equipmentId, wallOff ? "wall-switch-off" : "wall-switch-on");
+      // wallOn ⇔ the load is on: exactly one of wallOff/wallOn holds here.
+      this.suspend(equipmentId, wallOff ? "wall-switch-off" : "wall-switch-on", wallOn);
     }
   }
 

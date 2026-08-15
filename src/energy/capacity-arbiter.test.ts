@@ -599,6 +599,70 @@ describe("capacity arbiter", () => {
     expect(kinds).not.toContain("unclaimed-run-ended");
   });
 
+  // ── Issue #535 — OFF loads must not stay "on outside arbitration" ──
+
+  it("a manual OFF order closes an unclaimed run and journals suspended with running=false", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" }); // unclaimed run starts
+    h.order("pump", false, { kind: "manual" }); // human switches it off
+    const journal = h.arbiter.getPublicState().journal;
+    // The run is closed even though the OFF came from a manual order, and the
+    // suspension records that the load is stopped — both feed the timeline.
+    expect(journal.map((j) => j.kind)).toContain("unclaimed-run-ended");
+    expect(journal.find((j) => j.kind === "suspended")?.running).toBe(false);
+  });
+
+  it("a manual ON order journals suspended with running=true", () => {
+    const h = makeHarness();
+    h.order("pump", true, { kind: "manual" });
+    expect(h.arbiter.getPublicState().journal.find((j) => j.kind === "suspended")?.running).toBe(
+      true,
+    );
+  });
+
+  it("a reported OFF state closes an unclaimed run (load stopping on its own)", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    h.feedState("pump", false); // the load's own regulation stopped it — no order
+    expect(h.arbiter.getPublicState().journal.map((j) => j.kind)).toContain("unclaimed-run-ended");
+  });
+
+  it("a wall-switch-off suspension journals running=false", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    h.feedState("pump", false); // flipped off at the box
+    h.run(-400, 80); // > divergenceConfirmS
+    const suspended = h.arbiter.getPublicState().journal.find((j) => j.kind === "suspended");
+    expect(suspended?.reason).toBe("wall-switch-off");
+    expect(suspended?.running).toBe(false);
+  });
+
+  it("suspension TTL expiry journals a resumed hand-back with the load state", () => {
+    const h = makeHarness({ settings: { "energy.arbiter.overrideTtlS": "60" } });
+    h.feedState("pump", false);
+    h.order("pump", false, { kind: "manual" }); // suspends for 60 s
+    h.run(-100, 80); // ticks past the TTL
+    const resumed = h.arbiter.getPublicState().journal.find((j) => j.kind === "resumed");
+    // A silent lapse left the timeline painting the pre-expiry state forever.
+    expect(resumed?.reason).toBe("override-expired");
+    expect(resumed?.running).toBe(false);
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  it("an explicit resume journals the observed load state", () => {
+    const h = makeHarness();
+    h.feedState("pump", true);
+    h.order("pump", true, { kind: "manual" });
+    h.arbiter.resumeEquipment("pump");
+    const resumed = h.arbiter.getPublicState().journal.find((j) => j.kind === "resumed");
+    expect(resumed?.reason).toBe("resume control");
+    expect(resumed?.running).toBe(true);
+  });
+
   // ── Tolerated import & slack (FR-3) ───────────────────────
 
   it("toleratedImportW widens engage and narrows release by exactly that amount", () => {

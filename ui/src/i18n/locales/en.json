@@ -1240,6 +1240,7 @@
   "arbiter.reason.user-order": "user command",
   "arbiter.reason.wall-switch-off": "wall switch off",
   "arbiter.reason.wall-switch-on": "wall switch on",
+  "arbiter.reason.override-expired": "suspension expired, control resumed",
   "arbiter.reason.export-not-recovered": "export did not recover (a cloud can mask this)",
   "arbiter.reason.watts-divergence": "declared {{watts}} W",
   "arbiter.waitReason.insufficient": "waiting for surplus (needs {{watts}} W)",

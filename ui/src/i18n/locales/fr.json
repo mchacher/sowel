@@ -1240,6 +1240,7 @@
   "arbiter.reason.user-order": "commande utilisateur",
   "arbiter.reason.wall-switch-off": "interrupteur mural (arrêt)",
   "arbiter.reason.wall-switch-on": "interrupteur mural (marche)",
+  "arbiter.reason.override-expired": "suspension expirée, pilotage repris",
   "arbiter.reason.export-not-recovered": "l'export n'est pas revenu (un nuage peut le masquer)",
   "arbiter.reason.watts-divergence": "déclarée {{watts}} W",
   "arbiter.waitReason.insufficient": "en attente de surplus (besoin de {{watts}} W)",

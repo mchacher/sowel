@@ -313,6 +313,8 @@ export interface ArbiterDecision {
   watts?: number;
   reason?: string;
   note?: string;
+  /** Load ON at decision time, when known (#535). Absent on legacy entries. */
+  running?: boolean;
 }
 
 export interface ArbiterPublicState {
