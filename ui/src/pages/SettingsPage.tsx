@@ -46,6 +46,7 @@ import {
 import type { SystemVersionInfo } from "../api";
 import { setTheme } from "../theme";
 import type { ThemeSetting } from "../theme";
+import { copyToClipboard } from "../lib/clipboard";
 import type { ApiToken, User, UserRole, MfaStatus, MfaTrustedDevice } from "../types";
 import { TariffSettings } from "../components/settings/TariffSettings";
 import { ArbiterSettings } from "../components/settings/ArbiterSettings";
@@ -818,11 +819,17 @@ function VersionBadge() {
 function BackupCodesDisplay({ codes }: { codes: string[] }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const handleCopyAll = async () => {
-    await navigator.clipboard.writeText(codes.join("\n"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopyFailed(false);
+    const succeeded = await copyToClipboard(codes.join("\n"));
+    if (succeeded) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopyFailed(true);
+    }
   };
 
   return (
@@ -845,6 +852,9 @@ function BackupCodesDisplay({ codes }: { codes: string[] }) {
         {copied ? <Check size={13} /> : <Copy size={13} />}
         {t("settings.mfa.copyAllCodes")}
       </button>
+      {copyFailed && (
+        <p className="text-[11px] text-error mt-1">{t("settings.mfa.copyFailed")}</p>
+      )}
     </div>
   );
 }
@@ -1343,9 +1353,11 @@ function ApiTokensSection() {
   };
 
   const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const succeeded = await copyToClipboard(text);
+    if (succeeded) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (

@@ -549,6 +549,7 @@
   "settings.mfa.useBackupCodeInstead": "Utiliser un code de secours à la place",
   "settings.mfa.backupCodesShownOnce": "Sauvegardez ces codes de secours maintenant — ils ne seront plus jamais affichés.",
   "settings.mfa.copyAllCodes": "Tout copier",
+  "settings.mfa.copyFailed": "Copie automatique impossible — sélectionnez les codes ci-dessus et copiez-les manuellement.",
   "settings.mfa.savedCodesAck": "J'ai sauvegardé ces codes en lieu sûr.",
   "settings.mfa.backupCodesRemaining": "{{count}} codes de secours restants",
   "settings.mfa.regenerateCodes": "Régénérer les codes de secours",

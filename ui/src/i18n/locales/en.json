@@ -549,6 +549,7 @@
   "settings.mfa.useBackupCodeInstead": "Use a backup code instead",
   "settings.mfa.backupCodesShownOnce": "Save these backup codes now — they won't be shown again.",
   "settings.mfa.copyAllCodes": "Copy all",
+  "settings.mfa.copyFailed": "Couldn't copy automatically — select the codes above and copy manually.",
   "settings.mfa.savedCodesAck": "I've saved these codes somewhere safe.",
   "settings.mfa.backupCodesRemaining": "{{count}} backup codes remaining",
   "settings.mfa.regenerateCodes": "Regenerate backup codes",
