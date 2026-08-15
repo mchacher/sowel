@@ -663,6 +663,25 @@ describe("capacity arbiter", () => {
     expect(resumed?.running).toBe(true);
   });
 
+  it("a comfort load (PAC) reported OFF closes its unclaimed run — the prod #535 scenario", () => {
+    // Smart Cooling starts the PAC as a raw-export fallback (no grant), the
+    // PAC reaches temperature and stops itself: a state report, never an
+    // order. The state observation must not be gated on the deferrable class.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.order("pac", true, { kind: "recipe", instanceId: "i1" }); // unclaimed run
+    h.feedState("pac", false);
+    expect(h.arbiter.getPublicState().journal.map((j) => j.kind)).toContain("unclaimed-run-ended");
+  });
+
+  it("a comfort load's reported state never triggers a wall-switch suspension (FR-6 stays deferrable-only)", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pac", true); // on by itself, no grant, no recipe order
+    h.run(-100, 80); // > divergenceConfirmS
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
   // ── Tolerated import & slack (FR-3) ───────────────────────
 
   it("toleratedImportW widens engage and narrows release by exactly that amount", () => {

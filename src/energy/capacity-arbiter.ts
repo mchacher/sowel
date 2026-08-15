@@ -396,18 +396,23 @@ export class CapacityArbiter {
       return;
     }
 
-    // Reported on/off state → wall-switch divergence tracking (FR-6), on
-    // deferrable loads only. Only a genuine on/off STATE value is tracked:
-    // measurement bindings a load exposes (current, voltage, power) report
-    // numeric 0 when a thermostat opens mid-run, which must NOT read as a
-    // wall-switch OFF. `isBooleanState` accepts boolean / "on"|"off" strings
-    // and rejects numbers precisely to exclude those measurements.
-    if (profile.class === "deferrable" && isBooleanState(value)) {
+    // Reported on/off state, tracked for EVERY profiled load (#535 review):
+    // comfort loads (the PAC) stop on their own regulation too, and that state
+    // report is the only signal the arbiter gets — no order is emitted. The
+    // wall-switch divergence REACTION (FR-6) stays deferrable-only in
+    // checkStateDivergence; only the observation is class-wide. A genuine
+    // on/off STATE value only: measurement bindings a load exposes (current,
+    // voltage, power) report numeric 0 when a thermostat opens mid-run, which
+    // must NOT read as a wall-switch OFF. `isBooleanState` accepts boolean /
+    // "on"|"off" strings and rejects numbers precisely to exclude those.
+    if (isBooleanState(value)) {
       const on = isOnLike(value);
       this.reportedOnOff.set(equipmentId, on);
-      // A load that stops on its own regulation (the PAC reaching temperature)
-      // emits no order at all — the reported OFF is the only signal that the
-      // unclaimed run is over (#535).
+      // Closed on the FIRST OFF report, no confirm window (decision): a
+      // boolean state report is authoritative, unlike a power reading — and
+      // keeping the span open was exactly issue #535. A stale retained OFF
+      // replayed on reconnect closes the span early; the next recipe ON
+      // order simply opens a fresh unclaimed run.
       if (!on) this.endUnclaimedRun(equipmentId);
     }
   }
@@ -1120,6 +1125,11 @@ export class CapacityArbiter {
   private checkStateDivergence(now: number): void {
     const confirmMs = this.config.divergenceConfirmS * 1000;
     for (const [equipmentId, reportedOn] of this.reportedOnOff) {
+      // FR-6 reacts on deferrable loads only: a comfort load (thermostat-led)
+      // legitimately switches itself on and off, so a mismatch with the
+      // arbiter's book is regulation, not a human at a wall switch. Its state
+      // is still OBSERVED above for #535 (unclaimed-run end, `running`).
+      if (this.profileOf(equipmentId)?.class !== "deferrable") continue;
       if (this.isSuspended(equipmentId)) {
         this.divergenceSince.delete(equipmentId);
         continue;
