@@ -56,19 +56,23 @@ Every MFA state change and verification attempt is recorded via the existing `Au
 
 ## Acceptance Criteria
 
-- [ ] A user can enroll TOTP: setup → scan QR → confirm code → receive 10 backup codes.
-- [ ] A user with MFA enabled cannot obtain full tokens from `/auth/login` alone — `/auth/mfa/verify` with a valid code is required.
-- [ ] A wrong TOTP/backup code at `/auth/mfa/verify` is rejected and logged (`mfa.verify.failure`); the endpoint is rate-limited like `/auth/login`.
-- [ ] A backup code can be used exactly once; a second use is rejected.
-- [ ] Regenerating backup codes invalidates the previous set and requires password + a valid code.
-- [ ] Trusting a device at login lets a later login from that device skip the MFA step until the trust expires (per-user configurable duration, default 30 days) or is revoked.
-- [ ] A user can change their trusted-device duration preference (1-90 days) from Settings; the change applies only to devices trusted afterward.
-- [ ] Changing the account password revokes all of that account's trusted devices.
-- [ ] Disabling MFA requires password + a valid code and removes TOTP secret, backup codes, and trusted devices.
-- [ ] An admin can force-disable MFA on a standard user's account from the UI.
-- [ ] `scripts/auth/reset-mfa.mjs <username>` clears MFA state for a locked-out admin with no other admin available.
-- [ ] Every MFA lifecycle event appears in `GET /api/v1/audit`.
-- [ ] A user without MFA enabled sees zero behavior change at login.
+Verified twice: by the automated test suite (1355 backend + 392 UI tests, `src/api/routes/mfa.test.ts` covers the HTTP layer end-to-end against a real in-memory DB) and, on 2026-08-15, against a real deployment on the dev VM (Sowel v1.46.0 + this branch hot-deployed) — 30/30 scenarios passed via a throwaway API-level test script (TOTP codes computed with `otplib` from the real enrollment secret, since scanning a QR code with a physical authenticator app requires a human with a phone — not done in that first pass, closed afterward, see below). Zero regression: 6/6 integrations connected, 48/48 devices online before and after.
+
+- [x] A user can enroll TOTP: setup → scan QR → confirm code → receive 10 backup codes. (QR verified as a valid `data:image/png` — the scan step itself needs a human with a phone, not done)
+- [x] A user with MFA enabled cannot obtain full tokens from `/auth/login` alone — `/auth/mfa/verify` with a valid code is required.
+- [x] A wrong TOTP/backup code at `/auth/mfa/verify` is rejected and logged (`mfa.verify.failure`); the endpoint is rate-limited like `/auth/login`. (rate limit genuinely triggered by the real test script, confirming it's live)
+- [x] A backup code can be used exactly once; a second use is rejected.
+- [x] Regenerating backup codes invalidates the previous set and requires password + a valid code.
+- [x] Trusting a device at login lets a later login from that device skip the MFA step until the trust expires (per-user configurable duration, default 30 days) or is revoked.
+- [x] A user can change their trusted-device duration preference (1-90 days) from Settings; the change applies only to devices trusted afterward. (verified via `PUT /me/preferences` against the real server: set to 7, clamp-tested at 500→90, then a freshly-issued trusted device's `expiresAt` measured at 7.00 days out)
+- [x] Changing the account password revokes all of that account's trusted devices.
+- [x] Disabling MFA requires password + a valid code and removes TOTP secret, backup codes, and trusted devices.
+- [x] An admin can force-disable MFA on a standard user's account from the UI. (route verified via API)
+- [x] `scripts/auth/reset-mfa.mjs <username>` clears MFA state for a locked-out admin with no other admin available. (verified by spawning the actual script against a real file-backed SQLite DB, `src/auth/reset-mfa-cli.test.ts`; not additionally re-run on the dev VM itself)
+- [x] Every MFA lifecycle event appears in `GET /api/v1/audit`. (all 7 `mfa.*` actions observed for real: `mfa.enabled`, `mfa.disabled`, `mfa.disabled.by_admin`, `mfa.verify.success`, `mfa.verify.failure`, `mfa.backup_codes.regenerated`, `mfa.trusted_device.revoked`)
+- [x] A user without MFA enabled sees zero behavior change at login.
+
+**Closed on 2026-08-15** (Romain, manual test on the dev VM, Chrome and Firefox): enrolled with a real authenticator app (QR scan), then confirmed login both ways — username + password + the app's live OTP code, and separately username + password + a backup code. Both browsers, both paths, confirmed working. One real bug found and fixed in the process: the "Copy all" backup codes button did nothing over plain HTTP (`navigator.clipboard` is unavailable outside a secure context) — fixed with an `execCommand` fallback (`ui/src/lib/clipboard.ts`), same fix applied to the pre-existing API token copy button. No remaining known gaps.
 
 ## Edge Cases
 
