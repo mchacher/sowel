@@ -264,6 +264,20 @@ describe("mergeSeriesData", () => {
     expect(times[1]).toBeGreaterThan(times[0]);
   });
 
+  it("collapses two points of the same series at the same instant (last value wins)", () => {
+    const out = mergeSeriesData([
+      {
+        id: "temp",
+        points: [
+          { time: "2026-08-15T10:00:00Z", value: 20 },
+          { time: "2026-08-15T10:00:00.000Z", value: 22 },
+        ],
+      },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].temp).toBe(22);
+  });
+
   it("skips points with an unparseable timestamp", () => {
     const out = mergeSeriesData([
       {
