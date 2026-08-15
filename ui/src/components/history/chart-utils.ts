@@ -1,6 +1,51 @@
 import type { HistoryPoint } from "../../types";
 import type { TimeRange } from "./history-utils";
 
+/** One row of the merged Analyse dataset: an epoch-ms `time` plus one entry
+ *  per series id, and the `id:min` / `id:max` envelope keys when present. */
+export type ChartRow = Record<string, number>;
+
+/** Minimal projection of a series the merge needs: its id and its points. */
+export interface MergeSeries {
+  id: string;
+  points: HistoryPoint[];
+}
+
+/**
+ * Merge every series' points into a single chart dataset indexed by instant.
+ *
+ * Rows are keyed by **epoch milliseconds**, not by the raw ISO string. The
+ * same instant can reach us under two different ISO spellings across series
+ * (an hourly bucket `…T00:00:00Z` vs a raw state event `…T00:00:00.000Z`, or
+ * a `+02:00` offset form of the same UTC instant), and keying by string would
+ * emit two rows at the same X coordinate. That duplicate is not merely
+ * cosmetic: Recharts derives its tick-culling direction from
+ * `sign(tick1.coordinate - tick0.coordinate)`, so two leading rows sharing a
+ * coordinate yield `sign === 0`, which disables `minTickGap` culling and
+ * paints every single label (issue #537). Keying by epoch collapses the
+ * duplicate and keeps the axis legible. Rows are returned sorted
+ * chronologically; points with an unparseable timestamp are skipped.
+ */
+export function mergeSeriesData(series: MergeSeries[]): ChartRow[] {
+  const rows = new Map<number, ChartRow>();
+
+  for (const { id, points } of series) {
+    for (const p of points) {
+      const key = new Date(p.time).getTime();
+      if (Number.isNaN(key)) continue;
+      const row = rows.get(key) ?? { time: key };
+      row[id] = p.value;
+      // F1 — carry the envelope band keys when the API returned them
+      // (downsampled buckets at 1h / 1d resolution).
+      if (typeof p.min === "number") row[`${id}:min`] = p.min;
+      if (typeof p.max === "number") row[`${id}:max`] = p.max;
+      rows.set(key, row);
+    }
+  }
+
+  return Array.from(rows.values()).sort((a, b) => a.time - b.time);
+}
+
 /**
  * Group raw history points into time buckets sized for the range:
  *   - 6h / 24h → hourly buckets

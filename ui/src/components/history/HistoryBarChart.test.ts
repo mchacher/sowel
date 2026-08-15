@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aggregateToBuckets, formatLabel, pickTickInterval } from "./chart-utils";
+import { aggregateToBuckets, formatLabel, pickTickInterval, mergeSeriesData } from "./chart-utils";
 
 describe("pickTickInterval", () => {
   describe("without a range (viewport-only cap)", () => {
@@ -181,5 +181,100 @@ describe("formatLabel", () => {
     const labels = days.map((d) => formatLabel(d, "7d").line1);
     expect(new Set(labels).size).toBeLessThan(labels.length);
     expect(new Set(days).size).toBe(days.length);
+  });
+});
+
+describe("mergeSeriesData", () => {
+  it("returns an empty array on empty input", () => {
+    expect(mergeSeriesData([])).toEqual([]);
+    expect(mergeSeriesData([{ id: "a", points: [] }])).toEqual([]);
+  });
+
+  it("keys each row on epoch ms and carries every series value", () => {
+    const out = mergeSeriesData([
+      { id: "temp", points: [{ time: "2026-08-15T10:00:00.000Z", value: 21 }] },
+      { id: "hum", points: [{ time: "2026-08-15T10:00:00.000Z", value: 55 }] },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].time).toBe(new Date("2026-08-15T10:00:00.000Z").getTime());
+    expect(out[0].temp).toBe(21);
+    expect(out[0].hum).toBe(55);
+  });
+
+  it("carries the min/max envelope keys when present", () => {
+    const out = mergeSeriesData([
+      { id: "temp", points: [{ time: "2026-08-15T10:00:00.000Z", value: 21, min: 19, max: 24 }] },
+    ]);
+    expect(out[0]["temp:min"]).toBe(19);
+    expect(out[0]["temp:max"]).toBe(24);
+  });
+
+  it("sorts rows chronologically regardless of input order", () => {
+    const out = mergeSeriesData([
+      {
+        id: "temp",
+        points: [
+          { time: "2026-08-15T12:00:00.000Z", value: 3 },
+          { time: "2026-08-15T08:00:00.000Z", value: 1 },
+          { time: "2026-08-15T10:00:00.000Z", value: 2 },
+        ],
+      },
+    ]);
+    expect(out.map((r) => r.temp)).toEqual([1, 2, 3]);
+    const times = out.map((r) => r.time);
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  it("dedupes the same instant expressed with different ISO spellings (#537)", () => {
+    // A state event and a measurement bucket can land on the exact same instant
+    // spelled differently. Keying by the raw string would emit two rows at the
+    // same X coordinate; keying by epoch collapses them into one.
+    const out = mergeSeriesData([
+      { id: "state", points: [{ time: "2026-08-15T00:00:00Z", value: 1 }] },
+      { id: "temp", points: [{ time: "2026-08-15T00:00:00.000Z", value: 21 }] },
+      // Same UTC instant via a +02:00 offset — must also collapse.
+      { id: "hum", points: [{ time: "2026-08-15T02:00:00+02:00", value: 55 }] },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ state: 1, temp: 21, hum: 55 });
+  });
+
+  it("guarantees unique, strictly increasing X coordinates (keeps Recharts tick culling alive)", () => {
+    // The concrete #537 failure: two leading rows sharing a coordinate make
+    // Recharts compute sign(tick1.x - tick0.x) === 0, which disables minTickGap
+    // culling and paints every label. Distinct coordinates prevent that.
+    const out = mergeSeriesData([
+      {
+        id: "state",
+        points: [
+          { time: "2026-08-15T00:00:00Z", value: 1 },
+          { time: "2026-08-15T06:00:00Z", value: 0 },
+        ],
+      },
+      {
+        id: "temp",
+        points: [
+          { time: "2026-08-15T00:00:00.000Z", value: 20 },
+          { time: "2026-08-15T06:00:00.000Z", value: 22 },
+        ],
+      },
+    ]);
+    const times = out.map((r) => r.time);
+    expect(new Set(times).size).toBe(times.length);
+    expect(times[1]).toBeGreaterThan(times[0]);
+  });
+
+  it("skips points with an unparseable timestamp", () => {
+    const out = mergeSeriesData([
+      {
+        id: "temp",
+        points: [
+          { time: "not-a-date", value: 1 },
+          { time: "2026-08-15T10:00:00.000Z", value: 2 },
+        ],
+      },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].temp).toBe(2);
   });
 });

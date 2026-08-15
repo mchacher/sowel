@@ -61,6 +61,7 @@ import { SeriesColorPicker } from "./SeriesColorPicker";
 import { fitYAxis } from "./y-axis";
 import { firstChartTarget } from "./analyse-nav";
 import { ChartTooltip } from "./ChartTooltip";
+import { mergeSeriesData } from "./chart-utils";
 
 // ============================================================
 // Types
@@ -548,31 +549,12 @@ export function AnalyseView() {
   // places a tick, and minTickGap controls the spacing.
   // Each row is `{ time, [seriesId]: value, [seriesId:min]: …, [seriesId:max]: … }`
   // — annotated so the fitted-axis pass can read the series keys back out.
-  const chartData = useMemo<Record<string, number>[]>(() => {
-    if (series.length === 0) return [];
-
-    const timeMap = new Map<string, Record<string, number>>();
-
-    for (const s of series) {
-      const data = seriesData[s.id];
-      if (!data?.points) continue;
-      for (const p of data.points) {
-        const existing = timeMap.get(p.time) ?? {};
-        existing[s.id] = p.value;
-        // F1 — carry the envelope band keys when the API returned them
-        // (downsampled buckets at 1h / 1d resolution).
-        if (typeof p.min === "number") existing[`${s.id}:min`] = p.min;
-        if (typeof p.max === "number") existing[`${s.id}:max`] = p.max;
-        timeMap.set(p.time, existing);
-      }
-    }
-
-    const sorted = Array.from(timeMap.entries()).sort(([a], [b]) => a.localeCompare(b));
-    return sorted.map(([time, values]) => ({
-      time: new Date(time).getTime(),
-      ...values,
-    }));
-  }, [series, seriesData]);
+  // Merge + dedup live in `mergeSeriesData` (see #537 for why epoch keying,
+  // not ISO strings, is what keeps the tick culling alive).
+  const chartData = useMemo<Record<string, number>[]>(
+    () => mergeSeriesData(series.map((s) => ({ id: s.id, points: seriesData[s.id]?.points ?? [] }))),
+    [series, seriesData],
+  );
 
   // Families present in the chart. Spec 144 — `measurements` and `states` may
   // coexist (states get their own 0/1 axis); `cumulative` stays alone. An
