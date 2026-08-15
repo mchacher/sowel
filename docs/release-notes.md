@@ -11,6 +11,17 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.48.x: Typed device values and universal gate relays
+
+### v1.48.0 — 2026-08-15 { #v1-48-0 }
+
+- Feat (devices): **device values are now normalized once at ingestion, closing the "works in Zigbee2MQTT, fails in Sowel" family of bugs**. A boolean data point always carries a real boolean whatever the device sent ("ON", "true", 1...), numeric strings become numbers, and enum values are recased to their declared form, so every consumer (dashboard, zones, history, recipes, order confirmation) sees one stable type. A value that cannot be safely coerced is kept raw and logged once; polarity-ambiguous vocabularies like OPEN/CLOSED are never guessed. A declaration whose type contradicts its category (a contact sensor declared as text, for instance) is flagged in the log at discovery. No plugin update required: every protocol benefits. (spec 150, #530)
+- Feat (equipments): **a gate can now be driven by any on/off relay, including Zigbee dry-contact modules such as the SONOFF MINI-ZBD**. Until now only LoRa relay channels and Somfy RTS remotes were offered as gate actuators; the device picker now proposes any on/off relay as the gate command (momentary action; configure the pulse/inching on the module itself), contact sensors remain bindable on the same equipment for the open/closed state, and the command button now actuates boolean relays (it silently dispatched nothing on them before). (spec 150, #530)
+- Fix (ui): **dimmable and colour lights auto-bind again from the equipment creation flow**. The device selector's binding logic had drifted from the backend's and offered zero candidates for these two types; both sides now share a single implementation. (spec 150, #530)
+- Fix (energy): **a freshly created power-only submeter shows its energy cumuls at 0 from creation**. A metering water heater that had never run showed its live power panel but no cumuls; it is now enrolled with zeroed counters at creation, and real values take over from the first measurements. (#527, #529)
+- Fix (api): **the energy display's submeter query now returns metering relays**. The sowel-energy-display firmware fetches its breakdown via `?type=energy_meter`; since metering relays became consumption submeters that literal filter dropped them. A `?role=submeter` filter was added and the legacy value keeps returning the same submeter set, so an unflashed display picks up a metering water heater with no reflash. (#526, #528)
+- Note (equipments): LoRa reed values arriving as strings ("0") previously derived a gate state of closed; normalization now derives open correctly (polarity fix).
+
 ## 1.47.x: Water-heater submetering and arbiter UI polish
 
 ### v1.47.0 — 2026-08-15 { #v1-47-0 }

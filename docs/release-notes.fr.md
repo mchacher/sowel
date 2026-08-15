@@ -11,6 +11,17 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.48.x : Valeurs typées et portails sur tout relais
+
+### v1.48.0 — 2026-08-15 { #v1-48-0 }
+
+- Feat (devices) : **les valeurs des devices sont désormais normalisées une seule fois à l'ingestion, ce qui clôt la famille de bugs "ça marche dans Zigbee2MQTT, pas dans Sowel"**. Une donnée booléenne porte toujours un vrai booléen quelle que soit la forme envoyée par le device ("ON", "true", 1...), les nombres reçus en texte deviennent des nombres, et les valeurs d'énumération retrouvent leur casse déclarée : tous les consommateurs (dashboard, zones, historique, recettes, confirmation d'ordres) voient un type stable. Une valeur impossible à convertir sûrement est conservée telle quelle et signalée une fois dans le log ; les vocabulaires ambigus comme OPEN/CLOSED ne sont jamais devinés. Une déclaration dont le type contredit sa catégorie (un capteur de contact déclaré en texte, par exemple) est signalée au discovery. Aucune mise à jour de plugin nécessaire : tous les protocoles en bénéficient. (spec 150, #530)
+- Feat (equipments) : **un portail peut désormais être piloté par n'importe quel relais on/off, y compris les modules contact sec Zigbee comme le SONOFF MINI-ZBD**. Jusqu'ici seuls les canaux de relais LoRa et les télécommandes Somfy RTS étaient proposés comme actionneurs de portail ; le sélecteur de devices propose maintenant tout relais on/off comme commande du portail (action impulsionnelle ; configurez l'impulsion/inching sur le module lui-même), les capteurs d'ouverture restent associables au même équipement pour l'état ouvert/fermé, et le bouton de commande actionne désormais les relais booléens (il n'envoyait silencieusement rien sur ceux-ci auparavant). (spec 150, #530)
+- Fix (ui) : **les lumières variateur et couleur se lient à nouveau automatiquement à la création d'équipement**. La logique de liaison du sélecteur de devices avait divergé de celle du backend et ne proposait aucun candidat pour ces deux types ; les deux côtés partagent maintenant une implémentation unique. (spec 150, #530)
+- Fix (energy) : **un sous-compteur en puissance seule affiche ses cumuls d'énergie à 0 dès sa création**. Un chauffe-eau mesuré qui n'avait jamais fonctionné montrait son panneau de puissance en direct mais aucun cumul ; il est désormais enrôlé avec des compteurs à zéro à la création, les vraies valeurs prenant le relais dès les premières mesures. (#527, #529)
+- Fix (api) : **la requête des sous-compteurs de l'afficheur d'énergie renvoie maintenant les relais mesureurs**. Le firmware sowel-energy-display récupère sa ventilation via `?type=energy_meter` ; depuis que les relais mesureurs sont devenus des sous-compteurs, ce filtre littéral les excluait. Un filtre `?role=submeter` a été ajouté et la valeur historique continue de renvoyer le même ensemble, si bien qu'un afficheur non reflashé voit un chauffe-eau mesureur sans mise à jour. (#526, #528)
+- Note (equipments) : les valeurs de reed LoRa arrivant en texte ("0") dérivaient auparavant un état de portail fermé ; la normalisation dérive maintenant ouvert correctement (correction de polarité).
+
 ## 1.47.x : Sous-comptage des chauffe-eau et finitions de l'arbitrage
 
 ### v1.47.0 — 2026-08-15 { #v1-47-0 }
