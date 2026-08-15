@@ -16,6 +16,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { InfluxClient } from "../core/influx-client.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import { isSubmeterEquipment } from "../equipments/metering.js";
 import type { ComputedDataEntry } from "../shared/types.js";
 
 /** Minimum interval between two InfluxDB refreshes per equipment (ms). */
@@ -71,30 +72,64 @@ export class EnergyAggregator {
       await this.refreshFromInfluxDB(equipmentId);
     }
 
-    // Subscribe to equipment data changes — used as trigger only
+    // Subscribe to equipment data changes — used as trigger only. Also watch
+    // create/update so a freshly created submeter (or one that just gained a
+    // power binding) is enrolled and shows zeroed cumuls immediately (#527).
     this.eventBus.on((event) => {
-      if (event.type !== "equipment.data.changed") return;
-      if (event.alias !== "energy") return;
-
-      if (!this.energyEquipmentIds.has(event.equipmentId)) {
-        this.energyEquipmentIds.add(event.equipmentId);
+      try {
+        if (event.type === "equipment.data.changed") {
+          if (event.alias !== "energy") return;
+          this.enrol(event.equipmentId);
+          this.scheduleRefresh(event.equipmentId);
+          return;
+        }
+        if (event.type === "equipment.created" || event.type === "equipment.updated") {
+          const id = event.equipment.id;
+          if (this.energyEquipmentIds.has(id)) return;
+          const bindings = this.equipmentManager.getDataBindingsWithValues(id);
+          if (isSubmeterEquipment(event.equipment.type, bindings)) {
+            this.enrol(id);
+            this.scheduleRefresh(id);
+          }
+        }
+      } catch (err) {
+        this.logger.warn({ err }, "Error in energy aggregator event handler");
       }
-
-      this.scheduleRefresh(event.equipmentId);
     });
 
     this.logger.info({ equipmentCount: this.energyEquipmentIds.size }, "Energy aggregator started");
   }
 
-  /** Scan all equipments for energy data bindings. */
+  /**
+   * Enrol an equipment as an energy source. Seeds zeroed cumuls so a submeter's
+   * meter UI renders from creation instead of only after its first consumption
+   * (#527); a later InfluxDB refresh overwrites them with real values.
+   */
+  private enrol(equipmentId: string): void {
+    this.energyEquipmentIds.add(equipmentId);
+    if (!this.cumuls.has(equipmentId)) {
+      this.cumuls.set(equipmentId, {
+        energyHourWh: 0,
+        energyDayWh: 0,
+        energyMonthWh: 0,
+        energyYearWh: 0,
+      });
+    }
+  }
+
+  /**
+   * Scan all equipments for energy sources: an `energy` data binding, or being a
+   * consumption submeter (metering water_heater/switch, energy_meter) whose Wh is
+   * derived from power by the PowerSubmeterIntegrator (#527).
+   */
   private discoverEnergyEquipments(): void {
     const allEquipments = this.equipmentManager.getAllWithDetails();
     for (const eq of allEquipments) {
-      for (const binding of eq.dataBindings) {
-        if (binding.alias === "energy" && binding.category === "energy") {
-          this.energyEquipmentIds.add(eq.id);
-          break;
-        }
+      const hasEnergyBinding = eq.dataBindings.some(
+        (b) => b.alias === "energy" && b.category === "energy",
+      );
+      if (hasEnergyBinding || isSubmeterEquipment(eq.type, eq.dataBindings)) {
+        this.enrol(eq.id);
       }
     }
   }
