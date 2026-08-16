@@ -11,6 +11,12 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.50.x : Tolérance de surplus par équipement
+
+### v1.50.0 — 2026-08-16 { #v1-50-0 }
+
+- Feat (énergie) : **la quantité d'import réseau qu'une charge pilotable accepte pour tourner sur un surplus partiel se règle désormais sur l'équipement, à côté de sa puissance nominale**. L'arbitre de capacité engage une charge dès que le surplus couvre « puissance nominale + marge - import toléré » ; cette tolérance était jusqu'ici fixée par chaque recette, elle vit maintenant sur le profil énergie de l'équipement (panneau Pilotage énergie), comme la puissance nominale et les durées mini de marche/arrêt. Une automatisation peut toujours la surcharger pour un besoin ponctuel, mais l'équipement est la source de vérité par défaut, si bien que la même charge se comporte de façon cohérente quelle que soit la recette qui la pilote. Le défaut 0 conserve le comportement précédent. (#550, #551)
+
 ## 1.49.x : Sous-comptage universel
 
 ### v1.49.0 — 2026-08-16 { #v1-49-0 }

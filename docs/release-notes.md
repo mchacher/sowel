@@ -11,6 +11,12 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.50.x: Per-equipment surplus tolerance
+
+### v1.50.0 — 2026-08-16 { #v1-50-0 }
+
+- Feat (energy): **how much grid import a flexible load will accept to run on a partial surplus is now set on the equipment, next to its nominal power**. The capacity arbiter engages a load once the surplus covers `nominal power + margin - tolerated import`; that tolerance used to be fixed by each recipe, and now lives on the equipment's energy profile (Pilotage énergie panel) alongside the nominal power and the minimum on/off times. An automation may still override it for a specific claim, but the equipment is the default source of truth, so the same load behaves consistently whatever drives it. Default 0 keeps the previous behaviour. (#550, #551)
+
 ## 1.49.x: Universal submetering
 
 ### v1.49.0 — 2026-08-16 { #v1-49-0 }
