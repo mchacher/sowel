@@ -344,9 +344,11 @@ describe("capacity arbiter", () => {
       },
     });
     h.claim("i1", { equipmentId: "pump", toleratedImportW: 0 }); // override: no tolerance
-    h.feedMeter(-300);
-    h.run(-300, 300);
-    expect(h.grantedEvents()).toHaveLength(0); // needs 700, only 300 exported
+    // 500 W export WOULD engage the profile's 400 W tolerance (need 300), but the
+    // claim overrides to 0 (need 700) so it stays pending — the override wins over
+    // a would-engage profile (guards the `claim ?? profile` order, not `profile ?? claim`).
+    h.run(-500, 300);
+    expect(h.grantedEvents()).toHaveLength(0);
     const [pending] = h.arbiter.getPublicState().pending;
     expect(pending?.toleratedImportW).toBe(0);
     expect(pending?.needW).toBe(700); // 600 + 100 - 0, the profile's 400 is ignored

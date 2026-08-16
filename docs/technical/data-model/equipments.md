@@ -44,7 +44,7 @@ interface Equipment {
   icon?: string; // Lucide icon name (overrides type default)
   description?: string;
   enabled: boolean; // Disabled equipments are ignored by the engine
-  energyProfile?: EnergyLoadProfile; // Spec 140 — flexible-load declaration (class, nominal W, min-on/off, learned)
+  energyProfile?: EnergyLoadProfile; // Spec 140 — flexible-load declaration (class, nominal W, min-on/off, tolerated import W, learned)
   createdAt: string;
   updatedAt: string;
 }
