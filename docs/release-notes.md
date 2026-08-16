@@ -13,6 +13,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.48.x: Typed device values and universal gate relays
 
+### v1.48.1 — 2026-08-16 { #v1-48-1 }
+
+- Fix (energy): **a load that is off is no longer painted as "running (unmanaged)" on the arbiter timeline**. A load switched off manually, by a button, or by its own regulation could stay drawn as an unmanaged run indefinitely: an off-triggered suspension mapped unconditionally to unmanaged, the end-of-run close only fired for recipe orders, and a suspension expiry lapsed silently. Decisions now carry the load's on/off state, any observed off (an order from any source or a reported off state, including a comfort load that stops on its own regulation) closes the unmanaged run, and a suspension expiry is journaled with the observed state. (#535, #536)
+- Fix (ui): **the Analyse chart X axis stays legible when measurements and states are mixed**. Two series landing on the same instant under different timestamp spellings created two points at the same position, which disabled the axis label thinning and painted every label into an overlapping strip. Reported by Adrien Jouve (computingify). (#537, #539)
+- Fix (ui): **the mobile dashboard icon picker opens above the cards in edit mode**. The edit-mode jiggle animation trapped the picker behind the cards below it, with a backdrop that only dimmed its own card; the picker now opens over the whole screen with a full-screen backdrop. Reported by Adrien Jouve (computingify). (#538, #540)
+- Chore (registry): pool-pump-schedule bumped to 1.4.2. (#533)
+
 ### v1.48.0 — 2026-08-15 { #v1-48-0 }
 
 - Feat (devices): **device values are now normalized once at ingestion, closing the "works in Zigbee2MQTT, fails in Sowel" family of bugs**. A boolean data point always carries a real boolean whatever the device sent ("ON", "true", 1...), numeric strings become numbers, and enum values are recased to their declared form, so every consumer (dashboard, zones, history, recipes, order confirmation) sees one stable type. A value that cannot be safely coerced is kept raw and logged once; polarity-ambiguous vocabularies like OPEN/CLOSED are never guessed. A declaration whose type contradicts its category (a contact sensor declared as text, for instance) is flagged in the log at discovery. No plugin update required: every protocol benefits. (spec 150, #530)
