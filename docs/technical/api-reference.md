@@ -47,7 +47,7 @@ Public endpoints -- no auth required for `status` and `setup`.
 | ------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | `/api/v1/auth/status`  | Check if first-run setup is required. Returns `{ setupRequired: boolean }`.                                                                                                                                                                                           |
 | `POST` | `/api/v1/auth/setup`   | Create the first admin user (first-run only). Body: `{ username, password, displayName, language? }`. Returns JWT tokens.                                                                                                                                             |
-| `POST` | `/api/v1/auth/login`   | Authenticate. Body: `{ username, password, trustedDeviceToken? }`. Returns `{ accessToken, refreshToken }`, or `{ mfaRequired: true, mfaToken }` if the account has TOTP MFA enabled and `trustedDeviceToken` is absent/invalid (spec 149). Rate limited: 10 req/min. |
+| `POST` | `/api/v1/auth/login`   | Authenticate. Body: `{ username, password, trustedDeviceToken? }`. Returns `{ accessToken, refreshToken }`, or `{ mfaRequired: true, mfaToken }` if the account has TOTP MFA enabled and `trustedDeviceToken` is absent/invalid (spec 151). Rate limited: 10 req/min. |
 | `POST` | `/api/v1/auth/refresh` | Refresh access token. Body: `{ refreshToken }`. Returns new token pair.                                                                                                                                                                                               |
 | `POST` | `/api/v1/auth/logout`  | Invalidate refresh token. Body: `{ refreshToken }`. Returns 204.                                                                                                                                                                                                      |
 
@@ -55,7 +55,7 @@ Public endpoints -- no auth required for `status` and `setup`.
 
 ## Two-Factor Authentication (MFA)
 
-Spec 149 — optional per-user TOTP (RFC 6238) second factor with single-use backup codes. Public endpoint (login second factor) plus authenticated self-service management under `/me/mfa`.
+Spec 151 — optional per-user TOTP (RFC 6238) second factor with single-use backup codes. Public endpoint (login second factor) plus authenticated self-service management under `/me/mfa`.
 
 | Method   | Path                                     | Description                                                                                                                                                                                                                                                                     |
 | -------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -92,7 +92,7 @@ endpoint not in the allowlist is admin-only.
 | POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command          |
 | PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account           |
 | POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens        |
-| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 149)    |
+| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)    |
 | POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Own push subscription |
 | POST          | `/api/v1/auth/logout`                                                                                     | End own session       |
 
@@ -125,7 +125,7 @@ All user management routes require admin role.
 | `POST`   | `/api/v1/users`         | Create user. Body: `{ username, password, displayName, role }`.                                                                                                   |
 | `PUT`    | `/api/v1/users/:id`     | Update user. Body: `{ displayName?, role?, enabled? }`.                                                                                                           |
 | `DELETE` | `/api/v1/users/:id`     | Delete user. Cannot delete self or last admin. Returns 204.                                                                                                       |
-| `DELETE` | `/api/v1/users/:id/mfa` | Force-disable another user's MFA (spec 149 FR6) — recovery path when they lost both their TOTP device and backup codes. No challenge from the admin. Returns 204. |
+| `DELETE` | `/api/v1/users/:id/mfa` | Force-disable another user's MFA (spec 151 FR6) — recovery path when they lost both their TOTP device and backup codes. No challenge from the admin. Returns 204. |
 
 ---
 

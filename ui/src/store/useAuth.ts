@@ -19,7 +19,7 @@ interface AuthState {
   setupRequired: boolean | null; // null = loading
   loading: boolean;
   accessToken: string | null;
-  /** Spec 149 — set by login() instead of authenticating when the account has
+  /** Spec 151 — set by login() instead of authenticating when the account has
    *  MFA enabled and no valid trusted-device token was presented. */
   mfaChallenge: MfaChallenge | null;
 
@@ -62,7 +62,7 @@ function getStoredRefreshToken(): string | null {
   return localStorage.getItem(STORAGE_KEY_REFRESH);
 }
 
-// Spec 149 — keyed by username, not global: a shared browser/tablet may see
+// Spec 151 — keyed by username, not global: a shared browser/tablet may see
 // logins from multiple household accounts, each with its own device trust.
 function getStoredTrustedDeviceToken(username: string): string | null {
   return localStorage.getItem(TRUSTED_DEVICE_PREFIX + username);
@@ -88,7 +88,7 @@ export const useAuth = create<AuthState>((set, get) => {
     return success;
   });
 
-  // Spec 149 — the username behind the current mfaChallenge, so verifyMfa()
+  // Spec 151 — the username behind the current mfaChallenge, so verifyMfa()
   // knows which per-username localStorage key to write a trusted-device
   // token into. Not part of AuthState: it's an implementation detail of the
   // login/verifyMfa handoff, not something a component should read.

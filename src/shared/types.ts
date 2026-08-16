@@ -303,7 +303,7 @@ export interface Equipment {
   /** Flexible-load declaration (spec 140). Present only when the admin
    *  enabled arbitration for this equipment. */
   energyProfile?: EnergyLoadProfile;
-  /** Spec 149 — opt-in confirmation before actuating on the mobile dashboard.
+  /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
    *  `true` only when an admin enabled it. Gate equipments only in v1. */
   requireConfirmation?: boolean;
 }
@@ -890,7 +890,7 @@ export interface UserPreferences {
   language: "fr" | "en";
   theme?: "light" | "dark" | "system";
   defaultZoneId?: string;
-  /** Spec 149 — days a trusted device stays valid once issued. 1-90, default
+  /** Spec 151 — days a trusted device stays valid once issued. 1-90, default
    *  30 when absent. Clamped server-side in `PUT /me/preferences`. */
   mfaTrustedDeviceDays?: number;
 }
@@ -904,7 +904,7 @@ export interface ApiToken {
 }
 
 // ============================================================
-// Two-factor authentication (Spec 149)
+// Two-factor authentication (Spec 151)
 // ============================================================
 
 export interface MfaStatus {

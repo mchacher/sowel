@@ -744,7 +744,7 @@ export interface UserPreferences {
   language: "fr" | "en";
   theme?: "light" | "dark" | "system";
   defaultZoneId?: string;
-  /** Spec 149 — days a trusted device stays valid once issued. 1-90, default
+  /** Spec 151 — days a trusted device stays valid once issued. 1-90, default
    *  30 when absent. Clamped server-side in `PUT /me/preferences`. */
   mfaTrustedDeviceDays?: number;
 }
@@ -765,7 +765,7 @@ export interface AuthTokens {
 }
 
 // ============================================================
-// Two-factor authentication (spec 149)
+// Two-factor authentication (spec 151)
 // ============================================================
 
 export interface MfaStatus {

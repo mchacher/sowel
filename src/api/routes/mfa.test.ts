@@ -39,14 +39,14 @@ async function buildApp() {
   const user = await userManager.createUser({
     username: "alice",
     displayName: "Alice",
-    password: "s3cret-pass",
+    password: "test-fixture-password",
     role: "admin",
   });
 
   return { app, db, userManager, mfaService, userId: user.id };
 }
 
-describe("MFA routes (spec 149)", () => {
+describe("MFA routes (spec 151)", () => {
   let ctx: Awaited<ReturnType<typeof buildApp>>;
 
   beforeEach(async () => {
@@ -62,7 +62,7 @@ describe("MFA routes (spec 149)", () => {
     const res = await ctx.app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
-      payload: { username: "alice", password: "s3cret-pass" },
+      payload: { username: "alice", password: "test-fixture-password" },
     });
     return res.json();
   }
@@ -102,9 +102,61 @@ describe("MFA routes (spec 149)", () => {
     const secondLogin = await ctx.app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
-      payload: { username: "alice", password: "s3cret-pass" },
+      payload: { username: "alice", password: "test-fixture-password" },
     });
     expect(secondLogin.json()).toEqual({ mfaRequired: true, mfaToken: expect.any(String) });
+  });
+
+  it("re-running setup on an already-enrolled account requires re-auth (prevents silent MFA disable)", async () => {
+    // Security regression guard: beginEnrollment() upserts and resets
+    // confirmed_at to NULL, so calling setup again with no challenge would
+    // otherwise silently disable a confirmed account's MFA — a stolen
+    // 15-minute access token (or an XSS) would be enough. See the mfa.ts
+    // route comment for the fix.
+    const { accessToken } = await login();
+    const { secret } = await enrollAndConfirm(accessToken);
+    expect(ctx.mfaService.isMfaEnabled(ctx.userId)).toBe(true);
+
+    const noAuthRes = await ctx.app.inject({
+      method: "POST",
+      url: "/api/v1/me/mfa/totp/setup",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(noAuthRes.statusCode).toBe(400);
+    expect(ctx.mfaService.isMfaEnabled(ctx.userId)).toBe(true);
+
+    const wrongPwRes = await ctx.app.inject({
+      method: "POST",
+      url: "/api/v1/me/mfa/totp/setup",
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { password: "wrong-password", code: await totp.generate({ secret }) },
+    });
+    expect(wrongPwRes.statusCode).toBe(401);
+    expect(ctx.mfaService.isMfaEnabled(ctx.userId)).toBe(true);
+
+    const okRes = await ctx.app.inject({
+      method: "POST",
+      url: "/api/v1/me/mfa/totp/setup",
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { password: "test-fixture-password", code: await totp.generate({ secret }) },
+    });
+    expect(okRes.statusCode).toBe(200);
+    expect(okRes.json().secret).not.toBe(secret);
+    // A successful re-enrollment does put the account back into "pending"
+    // (matches beginEnrollment's existing, intended behavior) — the guard is
+    // that this now requires the same re-auth as disable, not that it never happens.
+    expect(ctx.mfaService.isMfaEnabled(ctx.userId)).toBe(false);
+  });
+
+  it("first-time setup needs no re-auth challenge (account has no MFA yet)", async () => {
+    const { accessToken } = await login();
+    const res = await ctx.app.inject({
+      method: "POST",
+      url: "/api/v1/me/mfa/totp/setup",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().secret).toBeTruthy();
   });
 
   it("rejects a wrong code at /auth/mfa/verify", async () => {
@@ -152,7 +204,7 @@ describe("MFA routes (spec 149)", () => {
     const thirdLogin = await ctx.app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
-      payload: { username: "alice", password: "s3cret-pass", trustedDeviceToken },
+      payload: { username: "alice", password: "test-fixture-password", trustedDeviceToken },
     });
     expect(thirdLogin.json()).toHaveProperty("accessToken");
   });
@@ -195,7 +247,7 @@ describe("MFA routes (spec 149)", () => {
       method: "DELETE",
       url: "/api/v1/me/mfa/totp",
       headers: { authorization: `Bearer ${accessToken}` },
-      payload: { password: "s3cret-pass", code: await totp.generate({ secret }) },
+      payload: { password: "test-fixture-password", code: await totp.generate({ secret }) },
     });
     expect(ok.statusCode).toBe(204);
     expect(ctx.mfaService.isMfaEnabled(ctx.userId)).toBe(false);
@@ -209,7 +261,7 @@ describe("MFA routes (spec 149)", () => {
       method: "POST",
       url: "/api/v1/me/mfa/backup-codes/regenerate",
       headers: { authorization: `Bearer ${accessToken}` },
-      payload: { password: "s3cret-pass", code: await totp.generate({ secret }) },
+      payload: { password: "test-fixture-password", code: await totp.generate({ secret }) },
     });
     expect(res.statusCode).toBe(200);
     const { backupCodes: newCodes } = res.json();
@@ -259,7 +311,7 @@ describe("MFA routes (spec 149)", () => {
     const bob = await ctx.userManager.createUser({
       username: "bob",
       displayName: "Bob",
-      password: "s3cret-pass",
+      password: "test-fixture-password",
       role: "standard",
     });
     void bob;
@@ -277,13 +329,13 @@ describe("MFA routes (spec 149)", () => {
     await ctx.userManager.createUser({
       username: "bob",
       displayName: "Bob",
-      password: "s3cret-pass",
+      password: "test-fixture-password",
       role: "standard",
     });
     const bobLogin = await ctx.app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
-      payload: { username: "bob", password: "s3cret-pass" },
+      payload: { username: "bob", password: "test-fixture-password" },
     });
     const { accessToken } = bobLogin.json();
 

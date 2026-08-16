@@ -1,4 +1,4 @@
-# Spec 149 — Two-Factor Authentication (TOTP + Backup Codes)
+# Spec 151 — Two-Factor Authentication (TOTP + Backup Codes)
 
 ## Context
 
@@ -81,3 +81,4 @@ Verified twice: by the automated test suite (1355 backend + 392 UI tests, `src/a
 - Trusted-device token stolen: it only skips the _second factor at login_; it does not grant enough trust to disable MFA or regenerate backup codes, which always re-check password + a live code regardless of session/device trust.
 - Clock drift between server and authenticator app: verification accepts one 30-second step of drift on either side (standard TOTP tolerance).
 - Standard user (non-admin) tries to reset another user's MFA: rejected — FR6 is admin-only, enforced by the existing role gate (spec 131).
+- **Deferred (flagged in PR #541 review, non-blocking)**: no anti-replay tracking of consumed TOTP codes. `verifyTotpCode` checks a code against the current step ± the drift tolerance above, but does not record the last successfully-used step per user, so the same valid code could in principle be accepted more than once within its ~30-90s validity window (e.g. captured by a shoulder-surfing observer or a compromised clipboard during that window). Standard mitigation is a `last_used_step` column on `user_mfa_totp`, checked and updated atomically inside `verifyTotp`, rejecting any code whose step is ≤ the stored value. Left out of this phase — no exploit reported, and backup codes (already single-use, FR3) cover the higher-value case of a fully compromised second factor. Tracked as a follow-up, not a blocker for this PR.

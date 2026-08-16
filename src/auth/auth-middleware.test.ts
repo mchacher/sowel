@@ -21,7 +21,7 @@ describe("auth-middleware", () => {
       expect(PUBLIC_ROUTES.has("/api/v1/auth/setup")).toBe(true);
       expect(PUBLIC_ROUTES.has("/api/v1/auth/login")).toBe(true);
       expect(PUBLIC_ROUTES.has("/api/v1/auth/refresh")).toBe(true);
-      // Spec 149 — authenticated via mfaToken in the body, not a bearer token.
+      // Spec 151 — authenticated via mfaToken in the body, not a bearer token.
       expect(PUBLIC_ROUTES.has("/api/v1/auth/mfa/verify")).toBe(true);
       expect(PUBLIC_ROUTES.size).toBe(6);
     });

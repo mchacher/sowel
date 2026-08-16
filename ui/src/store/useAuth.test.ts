@@ -96,7 +96,7 @@ describe("login", () => {
   });
 });
 
-describe("login — MFA challenge (spec 149)", () => {
+describe("login — MFA challenge (spec 151)", () => {
   it("sets mfaChallenge and does not authenticate when the account has MFA enabled", async () => {
     api.authLogin.mockResolvedValue({ mfaRequired: true, mfaToken: "mfa-tok-1" });
 

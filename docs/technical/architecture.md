@@ -315,7 +315,7 @@ Full design, review log and rationale: `specs/140-energy-capacity-arbiter/`.
 - **Roles**: `admin` > `standard` > `viewer` (hierarchical permissions).
 - **First-run setup**: `POST /api/v1/auth/setup` creates the first admin user.
 
-### Two-factor authentication (spec 149)
+### Two-factor authentication (spec 151)
 
 Optional per-user TOTP (RFC 6238, `otplib`) second factor, opt-in from Settings → Account. `MfaService` (`src/auth/mfa-service.ts`) owns enrollment, verification, single-use backup codes (10, SHA-256 hashed, regenerable), and trusted devices.
 
@@ -323,9 +323,9 @@ Optional per-user TOTP (RFC 6238, `otplib`) second factor, opt-in from Settings 
 - **Token purpose isolation**: `JwtPayload` carries `purpose: "access" | "mfa_pending"`. `AuthService.verifyAccessToken()` — used by the global auth hook on every protected route — rejects any `mfa_pending` token outright, so a replayed `mfaToken` can never grant partial API access before the second factor is checked.
 - **Trusted devices**: an opaque token (SHA-256 hashed server-side) lets a later login skip the MFA step. Duration is a per-user preference, `UserPreferences.mfaTrustedDeviceDays` (1-90, default 30), clamped in `PUT /me/preferences`. Changing the account password revokes all trusted devices for that account.
 - **Recovery**: no email/SMS fallback. An admin can force-disable another user's MFA (`DELETE /users/:id/mfa`); a self-locked-out admin uses the break-glass CLI, `scripts/auth/reset-mfa.mjs <username>` (via `docker exec`).
-- **Data model**: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices` tables (migration `021_mfa_totp.sql`) — no columns added to `users`.
+- **Data model**: `user_mfa_totp`, `user_mfa_backup_codes`, `mfa_trusted_devices` tables (migration `022_mfa_totp.sql`) — no columns added to `users`.
 
-See `specs/149-mfa-totp/` for the full design.
+See `specs/151-mfa-totp/` for the full design.
 
 ### WebSocket authentication (spec 105)
 

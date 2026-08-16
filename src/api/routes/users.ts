@@ -166,7 +166,7 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
     return reply.code(204).send();
   });
 
-  // DELETE /api/v1/users/:id/mfa — Spec 149 FR6: admin-assisted MFA reset.
+  // DELETE /api/v1/users/:id/mfa — Spec 151 FR6: admin-assisted MFA reset.
   // No password/code challenge from the admin — same trust level already
   // granted over other accounts (e.g. disabling a user). Recovery path for a
   // user who lost both their TOTP device and backup codes.

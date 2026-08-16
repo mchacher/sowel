@@ -813,7 +813,7 @@ function VersionBadge() {
 }
 
 // ============================================================
-// Two-Factor Authentication (spec 149)
+// Two-Factor Authentication (spec 151)
 // ============================================================
 
 function BackupCodesDisplay({ codes }: { codes: string[] }) {
@@ -1506,7 +1506,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
     await load();
   };
 
-  // Spec 149 FR6 — admin-assisted MFA reset for a locked-out user.
+  // Spec 151 FR6 — admin-assisted MFA reset for a locked-out user.
   const handleResetMfa = async (u: User) => {
     if (!confirm(t("settings.mfa.adminResetConfirm", { name: u.displayName }))) return;
     await adminResetUserMfa(u.id);

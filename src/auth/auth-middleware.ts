@@ -25,7 +25,7 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   "/api/v1/auth/login",
   "/api/v1/auth/refresh",
   "/api/v1/health",
-  // Spec 149 — authenticated via `mfaToken` in the body, not a bearer header.
+  // Spec 151 — authenticated via `mfaToken` in the body, not a bearer header.
   "/api/v1/auth/mfa/verify",
 ]);
 
@@ -64,7 +64,7 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   { method: "DELETE", re: /^\/api\/v1\/push\/subscriptions$/ },
   // Personal: end own session
   { method: "POST", re: /^\/api\/v1\/auth\/logout$/ },
-  // Personal: own MFA enrollment/management (spec 149)
+  // Personal: own MFA enrollment/management (spec 151)
   { method: "POST", re: /^\/api\/v1\/me\/mfa\/totp\/setup$/ },
   { method: "POST", re: /^\/api\/v1\/me\/mfa\/totp\/confirm$/ },
   { method: "DELETE", re: /^\/api\/v1\/me\/mfa\/totp$/ },

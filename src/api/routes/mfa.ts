@@ -109,14 +109,30 @@ export function registerMfaRoutes(app: FastifyInstance, deps: MfaDeps): void {
   });
 
   // POST /api/v1/me/mfa/totp/setup — start (or restart) enrollment
-  app.post("/api/v1/me/mfa/totp/setup", async (request, reply) => {
-    if (!request.auth) return reply.code(401).send({ error: "Not authenticated" });
-    const user = userManager.getById(request.auth.userId);
-    if (!user) return reply.code(404).send({ error: "User not found" });
+  app.post<{ Body: { password?: string; code?: string; isBackupCode?: boolean } }>(
+    "/api/v1/me/mfa/totp/setup",
+    async (request, reply) => {
+      if (!request.auth) return reply.code(401).send({ error: "Not authenticated" });
+      const user = userManager.getById(request.auth.userId);
+      if (!user) return reply.code(404).send({ error: "User not found" });
 
-    const setup = await mfaService.beginEnrollment(user.id, user.username);
-    return setup;
-  });
+      // Security-critical: beginEnrollment() resets confirmed_at to NULL on the
+      // upsert, so re-running setup on an account with MFA already CONFIRMED
+      // would otherwise silently disable protection with no challenge at all —
+      // a stolen access token or an XSS would be enough. Require the same
+      // password + live code re-auth as disable/regenerate whenever MFA is
+      // already enabled. First-time enrollment (not yet enabled) needs none.
+      if (mfaService.isMfaEnabled(user.id)) {
+        const reauthError = await requireReauth(request, userManager, mfaService);
+        if (reauthError) {
+          return reply.code(reauthError.status).send({ error: reauthError.message });
+        }
+      }
+
+      const setup = await mfaService.beginEnrollment(user.id, user.username);
+      return setup;
+    },
+  );
 
   // POST /api/v1/me/mfa/totp/confirm — confirm enrollment, receive backup codes once
   app.post<{ Body: { code: string } }>("/api/v1/me/mfa/totp/confirm", async (request, reply) => {
@@ -211,11 +227,13 @@ export function registerMfaRoutes(app: FastifyInstance, deps: MfaDeps): void {
 /**
  * Shared re-auth challenge for disable/regenerate: current password + a live
  * TOTP/backup code, regardless of the calling session's own trust level —
- * see spec 149 edge cases (a stolen/idle session or a trusted device alone
+ * see spec 151 edge cases (a stolen/idle session or a trusted device alone
  * must never be enough to turn off protection).
  */
 async function requireReauth(
-  request: FastifyRequest<{ Body: { password: string; code: string; isBackupCode?: boolean } }>,
+  request: FastifyRequest<{
+    Body: { password?: string; code?: string; isBackupCode?: boolean };
+  }>,
   userManager: UserManager,
   mfaService: MfaService,
 ): Promise<{ status: number; message: string } | null> {

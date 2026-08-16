@@ -30,7 +30,7 @@ describe("MfaService", () => {
     const user = await userManager.createUser({
       username: "alice",
       displayName: "Alice",
-      password: "s3cret-pass",
+      password: "test-fixture-password",
       role: "admin",
     });
     userId = user.id;
@@ -194,7 +194,7 @@ describe("MfaService", () => {
       const other = await userManager.createUser({
         username: "bob",
         displayName: "Bob",
-        password: "s3cret-pass",
+        password: "test-fixture-password",
         role: "standard",
       });
       const mine = mfa.issueTrustedDevice(userId, null);

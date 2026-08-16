@@ -91,7 +91,7 @@ export function LoginPage() {
   );
 }
 
-/** Spec 149 — second-factor step shown when useAuth.login() sets mfaChallenge. */
+/** Spec 151 — second-factor step shown when useAuth.login() sets mfaChallenge. */
 function MfaStep() {
   const { t } = useTranslation();
   const verifyMfa = useAuth((s) => s.verifyMfa);

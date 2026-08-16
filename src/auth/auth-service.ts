@@ -12,7 +12,7 @@ import { toISOUtc } from "../core/database.js";
 // ============================================================
 
 /**
- * Spec 149 — token purpose isolation. `"access"` is a normal bearer token,
+ * Spec 151 — token purpose isolation. `"access"` is a normal bearer token,
  * legitimate on every protected route. `"mfa_pending"` is issued instead of
  * full tokens when a second factor is still required; it MUST be rejected by
  * `verifyAccessToken` (see below) or a replayed `mfaToken` would grant partial
@@ -205,7 +205,7 @@ export class AuthService {
     } catch {
       throw new AuthError("Invalid or expired token", 401);
     }
-    // Spec 149 — an mfa_pending token (issued while a second factor is still
+    // Spec 151 — an mfa_pending token (issued while a second factor is still
     // outstanding) must never be usable as a normal bearer token.
     if (payload.purpose === "mfa_pending") {
       throw new AuthError("Invalid or expired token", 401);

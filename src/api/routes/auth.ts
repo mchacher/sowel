@@ -16,7 +16,7 @@ const loginBodySchema = {
   properties: {
     username: nonEmptyString,
     password: nonEmptyString,
-    // Spec 149 — opaque token proving this browser was previously trusted;
+    // Spec 151 — opaque token proving this browser was previously trusted;
     // skips the MFA step when it matches a live mfa_trusted_devices row.
     trustedDeviceToken: { type: "string" },
   },
@@ -85,7 +85,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       const { username, password, trustedDeviceToken } = request.body;
 
       try {
-        // Spec 149 — may return an MfaChallenge instead of full tokens when
+        // Spec 151 — may return an MfaChallenge instead of full tokens when
         // the account has TOTP enabled and no valid trusted device is presented.
         const result = await authService.login(username, password, trustedDeviceToken);
         const user = userManager.getByUsername(username);

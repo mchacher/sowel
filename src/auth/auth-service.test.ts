@@ -33,7 +33,7 @@ describe("AuthService", () => {
     const user = await userManager.createUser({
       username: "alice",
       displayName: "Alice",
-      password: "s3cret-pass",
+      password: "test-fixture-password",
       role: "admin",
     });
     userId = user.id;
@@ -45,7 +45,7 @@ describe("AuthService", () => {
 
   describe("login", () => {
     it("returns full AuthTokens unchanged when the account has no MFA (retro-compat)", async () => {
-      const result = await auth.login("alice", "s3cret-pass");
+      const result = await auth.login("alice", "test-fixture-password");
       expect(result).toHaveProperty("accessToken");
       expect(result).toHaveProperty("refreshToken");
       expect((result as { mfaRequired?: boolean }).mfaRequired).toBeUndefined();
@@ -56,7 +56,7 @@ describe("AuthService", () => {
       const code = await totp.generate({ secret: setup.secret });
       await mfa.confirmEnrollment(userId, code);
 
-      const result = await auth.login("alice", "s3cret-pass");
+      const result = await auth.login("alice", "test-fixture-password");
       expect(result).toEqual({ mfaRequired: true, mfaToken: expect.any(String) });
     });
 
@@ -66,7 +66,7 @@ describe("AuthService", () => {
       await mfa.confirmEnrollment(userId, code);
 
       const { token } = mfa.issueTrustedDevice(userId, "test-agent");
-      const result = await auth.login("alice", "s3cret-pass", token);
+      const result = await auth.login("alice", "test-fixture-password", token);
 
       expect(result).toHaveProperty("accessToken");
       expect((result as { mfaRequired?: boolean }).mfaRequired).toBeUndefined();
@@ -77,7 +77,7 @@ describe("AuthService", () => {
       const code = await totp.generate({ secret: setup.secret });
       await mfa.confirmEnrollment(userId, code);
 
-      const result = await auth.login("alice", "s3cret-pass", "not-a-real-token");
+      const result = await auth.login("alice", "test-fixture-password", "not-a-real-token");
       expect(result).toEqual({ mfaRequired: true, mfaToken: expect.any(String) });
     });
   });
@@ -102,24 +102,28 @@ describe("AuthService", () => {
       const code = await totp.generate({ secret: setup.secret });
       await mfa.confirmEnrollment(userId, code);
 
-      const challenge = (await auth.login("alice", "s3cret-pass")) as { mfaToken: string };
+      const challenge = (await auth.login("alice", "test-fixture-password")) as {
+        mfaToken: string;
+      };
       const { userId: verifiedUserId } = auth.verifyMfaToken(challenge.mfaToken);
       expect(verifiedUserId).toBe(userId);
     });
   });
 
-  describe("verifyAccessToken — token purpose isolation (spec 149)", () => {
+  describe("verifyAccessToken — token purpose isolation (spec 151)", () => {
     it("rejects an mfa_pending token used as a normal bearer token", async () => {
       const setup = await mfa.beginEnrollment(userId, "alice");
       const code = await totp.generate({ secret: setup.secret });
       await mfa.confirmEnrollment(userId, code);
 
-      const challenge = (await auth.login("alice", "s3cret-pass")) as { mfaToken: string };
+      const challenge = (await auth.login("alice", "test-fixture-password")) as {
+        mfaToken: string;
+      };
       expect(() => auth.verifyAccessToken(challenge.mfaToken)).toThrow(AuthError);
     });
 
     it("accepts a normal access token", async () => {
-      const tokens = await auth.login("alice", "s3cret-pass");
+      const tokens = await auth.login("alice", "test-fixture-password");
       const { accessToken } = tokens as { accessToken: string };
       const payload = auth.verifyAccessToken(accessToken);
       expect(payload.userId).toBe(userId);

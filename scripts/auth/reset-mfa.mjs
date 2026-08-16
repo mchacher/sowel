@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Spec 149 FR7 — break-glass MFA reset. Clears TOTP secret, backup codes, and
+// Spec 151 FR7 — break-glass MFA reset. Clears TOTP secret, backup codes, and
 // trusted devices for one account directly in SQLite. Covers the case an
 // admin locks themselves out (lost TOTP device + backup codes) with no other
 // admin available to help via Administration → Utilisateurs.

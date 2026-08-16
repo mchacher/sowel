@@ -47,7 +47,7 @@ export async function authLogin(
   });
 }
 
-/** Spec 149 — login second factor. `trustDevice` issues a trustedDeviceToken
+/** Spec 151 — login second factor. `trustDevice` issues a trustedDeviceToken
  *  in the response, valid for the account's configured duration (default 30 days). */
 export async function authMfaVerify(
   mfaToken: string,
@@ -130,7 +130,7 @@ export async function deleteMyToken(id: string): Promise<void> {
 }
 
 // ============================================================
-// Two-factor authentication (spec 149)
+// Two-factor authentication (spec 151)
 // ============================================================
 
 export async function getMyMfaStatus(): Promise<MfaStatus> {
@@ -216,7 +216,7 @@ export async function deleteUser(id: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/users/${id}`, { method: "DELETE" });
 }
 
-/** Spec 149 FR6 — admin-assisted MFA reset for another user's account. */
+/** Spec 151 FR6 — admin-assisted MFA reset for another user's account. */
 export async function adminResetUserMfa(id: string): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/users/${id}/mfa`, { method: "DELETE" });
 }

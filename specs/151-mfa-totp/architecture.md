@@ -1,4 +1,4 @@
-# Architecture — Spec 149 (TOTP MFA + Backup Codes)
+# Architecture — Spec 151 (TOTP MFA + Backup Codes)
 
 ## Flow diagram
 
@@ -185,7 +185,7 @@ No new `EngineEvent` types. MFA is not part of the device/equipment reactive pip
 
 | Domain  | File                                                                          | Change                                                                                                      |
 | ------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| db      | `migrations/021_mfa_totp.sql`                                                 | New: 3 tables (above)                                                                                       |
+| db      | `migrations/022_mfa_totp.sql`                                                 | New: 3 tables (above)                                                                                       |
 | auth    | `src/auth/mfa-service.ts`                                                     | New: `MfaService`                                                                                           |
 | auth    | `src/auth/auth-service.ts`                                                    | `login()` branches on MFA; token `purpose` claim; `verifyMfaToken()`                                        |
 | auth    | `src/auth/auth-middleware.ts`                                                 | Reject `mfa_pending` tokens on protected routes; new public route; allowlist additions                      |

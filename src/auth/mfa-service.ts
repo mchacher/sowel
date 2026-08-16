@@ -30,7 +30,7 @@ export interface MfaSetup {
 
 // ============================================================
 // MfaService — TOTP enrollment, verification, backup codes,
-// trusted devices (Spec 149)
+// trusted devices (Spec 151)
 // ============================================================
 
 export class MfaService {

@@ -9,7 +9,7 @@ import { MfaService } from "./mfa-service.js";
 import { createLogger } from "../core/logger.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 
-// Spec 149 FR7 — the break-glass CLI is a standalone script (not part of the
+// Spec 151 FR7 — the break-glass CLI is a standalone script (not part of the
 // TS build), invoked in production via `docker exec sowel node
 // scripts/auth/reset-mfa.mjs <username>`. This test runs the REAL script as a
 // child process against a real file-backed SQLite database seeded through the
@@ -35,7 +35,7 @@ function runScript(
   }
 }
 
-describe("scripts/auth/reset-mfa.mjs (spec 149 FR7 — break-glass CLI)", () => {
+describe("scripts/auth/reset-mfa.mjs (spec 151 FR7 — break-glass CLI)", () => {
   let dir: string;
   let dbPath: string;
 
@@ -66,7 +66,7 @@ describe("scripts/auth/reset-mfa.mjs (spec 149 FR7 — break-glass CLI)", () => 
     const user = await userManager.createUser({
       username,
       displayName: username,
-      password: "s3cret-pass",
+      password: "test-fixture-password",
       role: "admin",
     });
 
@@ -134,7 +134,7 @@ describe("scripts/auth/reset-mfa.mjs (spec 149 FR7 — break-glass CLI)", () => 
     await userManager.createUser({
       username: "carol",
       displayName: "Carol",
-      password: "s3cret-pass",
+      password: "test-fixture-password",
       role: "standard",
     });
     db.close();
