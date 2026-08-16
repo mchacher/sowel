@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 import { PlugZap, Loader2 } from "lucide-react";
 import { updateEquipment, resumeArbiterEquipment } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
-import { defaultEnergyClassFor, defaultEnergyTimingsFor } from "../../lib/energy-profile";
+import {
+  defaultEnergyClassFor,
+  defaultEnergyTimingsFor,
+  minutesToSeconds,
+  secondsToMinutes,
+} from "../../lib/energy-profile";
 import type { EnergyLoadClass, EnergyLoadProfile, EquipmentWithDetails } from "../../types";
 
 /**
@@ -209,8 +214,9 @@ export function EnergyManagementPanel({
                 id="ep-minon"
                 type="number"
                 min={0}
-                value={minOnS}
-                onChange={(e) => setMinOnS(Number(e.target.value))}
+                step={0.1}
+                value={secondsToMinutes(minOnS)}
+                onChange={(e) => setMinOnS(minutesToSeconds(Number(e.target.value)))}
                 onBlur={() => commitEdit({ minOnS })}
                 className={inputCls}
               />
@@ -223,8 +229,9 @@ export function EnergyManagementPanel({
                 id="ep-minoff"
                 type="number"
                 min={0}
-                value={minOffS}
-                onChange={(e) => setMinOffS(Number(e.target.value))}
+                step={0.1}
+                value={secondsToMinutes(minOffS)}
+                onChange={(e) => setMinOffS(minutesToSeconds(Number(e.target.value)))}
                 onBlur={() => commitEdit({ minOffS })}
                 className={inputCls}
               />

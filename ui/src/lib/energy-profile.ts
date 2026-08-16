@@ -22,6 +22,19 @@ export function defaultEnergyClassFor(type: EquipmentType): EnergyLoadClass | nu
   }
 }
 
+/**
+ * Issue #546 — the form edits minOn/minOff in minutes; storage and API stay
+ * in seconds (`minOnS`/`minOffS`). One decimal on display so legacy values
+ * that are not a multiple of 60 s (e.g. 90 s → 1.5 min) round-trip unchanged.
+ */
+export function secondsToMinutes(seconds: number): number {
+  return Math.round((seconds / 60) * 10) / 10;
+}
+
+export function minutesToSeconds(minutes: number): number {
+  return Math.round(minutes * 60);
+}
+
 export function defaultEnergyTimingsFor(type: EquipmentType): { minOnS: number; minOffS: number } {
   switch (type) {
     case "water_heater":
