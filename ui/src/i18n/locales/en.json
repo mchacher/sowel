@@ -1164,6 +1164,7 @@
   "energyProfile.deferrable": "Deferrable",
   "energyProfile.comfort": "Comfort",
   "energyProfile.nominalW": "Nominal power (W)",
+  "energyProfile.toleratedImport": "Tolerated import (W)",
   "energyProfile.minOn": "Min run (min)",
   "energyProfile.minOff": "Min rest (min)",
   "energyProfile.learned": "Measured: {{watts}} W over {{runs}} runs",

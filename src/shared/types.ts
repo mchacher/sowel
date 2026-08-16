@@ -623,6 +623,10 @@ export interface EnergyLoadProfile {
   nominalPowerW: number;
   minOnS: number;
   minOffS: number;
+  /** Grid import (W) this load will accept to run on a partial surplus (#550).
+   *  The arbiter engages it at `watts + engageMarginW - toleratedImportW`. A
+   *  capacity claim may still override per call; absent = 0 (no tolerance). */
+  toleratedImportW?: number;
   learned?: EnergyLoadProfileLearned;
 }
 

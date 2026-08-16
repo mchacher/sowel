@@ -663,7 +663,10 @@ export class CapacityArbiter {
       equipmentId: req.equipmentId,
       instanceId,
       watts: req.watts ?? profile.nominalPowerW,
-      toleratedImportW: Math.max(0, req.toleratedImportW ?? 0),
+      // #550 — the tolerance is a property of the load: the claim may override
+      // it, but the equipment's energyProfile is the default source of truth
+      // (mirrors how `watts` falls back to nominalPowerW above).
+      toleratedImportW: Math.max(0, req.toleratedImportW ?? profile.toleratedImportW ?? 0),
       slack: req.slack ?? "none",
       note: req.note,
       status: "pending",

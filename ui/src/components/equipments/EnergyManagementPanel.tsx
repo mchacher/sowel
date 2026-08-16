@@ -60,6 +60,7 @@ export function EnergyManagementPanel({
   const [error, setError] = useState<string | null>(null);
   const [cls, setCls] = useState<EnergyLoadClass | "">(profile?.class ?? defaults.class ?? "");
   const [watts, setWatts] = useState<number>(profile?.nominalPowerW ?? defaults.nominalPowerW);
+  const [toleratedImportW, setToleratedImportW] = useState<number>(profile?.toleratedImportW ?? 0);
   const [minOnS, setMinOnS] = useState<number>(profile?.minOnS ?? defaults.minOnS);
   const [minOffS, setMinOffS] = useState<number>(profile?.minOffS ?? defaults.minOffS);
 
@@ -71,6 +72,7 @@ export function EnergyManagementPanel({
   const commit = async (p: {
     cls: EnergyLoadClass | "";
     watts: number;
+    toleratedImportW: number;
     minOnS: number;
     minOffS: number;
   }) => {
@@ -81,6 +83,7 @@ export function EnergyManagementPanel({
       const next: EnergyLoadProfile = {
         class: p.cls,
         nominalPowerW: p.watts,
+        toleratedImportW: Number.isFinite(p.toleratedImportW) ? Math.max(0, p.toleratedImportW) : 0,
         minOnS: p.minOnS,
         minOffS: p.minOffS,
       };
@@ -94,9 +97,17 @@ export function EnergyManagementPanel({
   };
 
   /** Live-save an edit, but only once a profile already exists. */
-  const commitEdit = (overrides: Partial<{ cls: EnergyLoadClass | ""; watts: number; minOnS: number; minOffS: number }>) => {
+  const commitEdit = (
+    overrides: Partial<{
+      cls: EnergyLoadClass | "";
+      watts: number;
+      toleratedImportW: number;
+      minOnS: number;
+      minOffS: number;
+    }>,
+  ) => {
     if (!profile) return;
-    void commit({ cls, watts, minOnS, minOffS, ...overrides });
+    void commit({ cls, watts, toleratedImportW, minOnS, minOffS, ...overrides });
   };
 
   const clear = async () => {
@@ -207,6 +218,20 @@ export function EnergyManagementPanel({
               />
             </div>
             <div>
+              <label htmlFor="ep-tolimport" className="block text-[12px] text-text-secondary mb-1">
+                {t("energyProfile.toleratedImport")}
+              </label>
+              <input
+                id="ep-tolimport"
+                type="number"
+                min={0}
+                value={toleratedImportW || ""}
+                onChange={(e) => setToleratedImportW(Number(e.target.value))}
+                onBlur={() => commitEdit({ toleratedImportW })}
+                className={inputCls}
+              />
+            </div>
+            <div>
               <label htmlFor="ep-minon" className="block text-[12px] text-text-secondary mb-1">
                 {t("energyProfile.minOn")}
               </label>
@@ -253,7 +278,7 @@ export function EnergyManagementPanel({
           {!profile &&
             (complete ? (
               <button
-                onClick={() => void commit({ cls, watts, minOnS, minOffS })}
+                onClick={() => void commit({ cls, watts, toleratedImportW, minOnS, minOffS })}
                 disabled={saving}
                 className="mt-3 px-3 py-1.5 bg-primary text-white text-[13px] font-medium rounded-md hover:bg-primary-hover disabled:opacity-50"
               >

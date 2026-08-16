@@ -286,6 +286,8 @@ export interface EnergyLoadProfile {
   nominalPowerW: number;
   minOnS: number;
   minOffS: number;
+  /** Grid import (W) this load accepts to run on a partial surplus (#550). */
+  toleratedImportW?: number;
   /** Core-maintained measured estimate; read-only in the UI. */
   learned?: { watts: number; atIso: string; runs: number };
 }

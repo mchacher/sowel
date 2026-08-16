@@ -43,6 +43,7 @@ const updateEquipmentBodySchema = {
         nominalPowerW: { type: "number", exclusiveMinimum: 0, maximum: 30000 },
         minOnS: { type: "number", minimum: 0 },
         minOffS: { type: "number", minimum: 0 },
+        toleratedImportW: { type: "number", minimum: 0, maximum: 30000 },
       },
     },
     requireConfirmation: { type: "boolean" },
@@ -186,6 +187,8 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           nominalPowerW: Math.round(p.nominalPowerW),
           minOnS: Math.round(p.minOnS),
           minOffS: Math.round(p.minOffS),
+          toleratedImportW:
+            p.toleratedImportW !== undefined ? Math.round(p.toleratedImportW) : undefined,
           learned: existing?.energyProfile?.learned,
         };
       }
