@@ -330,7 +330,7 @@
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "tags": ["pool", "pump", "heating", "schedule", "automation", "temperature", "solar", "energy"],
     "i18n": {
       "fr": {
@@ -338,9 +338,9 @@
         "description": "Pilotage de pompe de piscine : créneaux horaires quotidiens, cible de temps de filtration selon la température de l'eau (option), fonctionnement sur surplus solaire (option) et chauffage PAC sur surplus solaire (option)."
       }
     },
-    "sowelVersion": ">=1.3.0",
+    "sowelVersion": ">=1.50.0",
     "owner": "mchacher",
-    "sha256": "c7096695c5931772af0c105ffd607fb6ac29b56095f2c973f2c01158d903dddb"
+    "sha256": "1b2c85a84eb1a0af1b746f130945e83c7356693023d2fa7494a167193b4a9244"
   },
   {
     "id": "freecooling",
@@ -511,11 +511,11 @@
     "type": "recipe",
     "category": "climate",
     "name": "Smart Cooling",
-    "description": "Solar-aware AC optimizer: morning airing notifications, pre-cooling on solar surplus, comfort setpoint, fixed-time night cut",
+    "description": "Solar-aware AC optimizer: morning airing notifications, surplus-proportional pre-cooling that tracks the available solar, comfort setpoint, fixed-time night cut",
     "icon": "Snowflake",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-smart-cooling",
-    "version": "1.4.0",
+    "version": "2.0.0",
     "tags": ["cooling", "ac", "solar", "energy", "automation"],
     "i18n": {
       "fr": {
@@ -523,9 +523,9 @@
         "description": "Optimise la climatisation avec le solaire : notifications d'aération le matin, pré-refroidissement sur surplus solaire, consigne confort, extinction nocturne à heure fixe."
       }
     },
-    "sowelVersion": ">=1.31.1",
+    "sowelVersion": ">=1.50.0",
     "owner": "mchacher",
-    "sha256": "bde6257f27bbffb9a8560a9f7fc2854e6199fbe865c781d2236906c9eb1fcaa2"
+    "sha256": "19dd93fb29476e7a5a4db9180a48c5f6e86b15d0dc1b9f06cea8624bf1c2ea68"
   },
   {
     "id": "netatmo_camera",
