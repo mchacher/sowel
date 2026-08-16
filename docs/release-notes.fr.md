@@ -11,6 +11,15 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.49.x : Sous-comptage universel
+
+### v1.49.0 — 2026-08-16 { #v1-49-0 }
+
+- Feat (énergie) : **tout équipement qui mesure une puissance ou une énergie est désormais compté dans le bilan, quel que soit son type**. L'enrôlement en sous-compteur reposait sur une liste blanche par type (compteurs dédiés, prises et chauffe-eau mesureurs) ; c'est maintenant l'inverse, si bien qu'un thermostat mesuré (une climatisation sur sa propre pince de mesure), une pompe de piscine, un électroménager ou une lumière variateur avec mesure entrent tous dans la répartition par usage et voient leur puissance intégrée en énergie, sans liste par type à maintenir. Seuls le compteur principal et les compteurs de production sont exclus. Une liaison doit porter une vraie mesure numérique : un état Marche/Arrêt exposé en « power » (un lecteur multimédia, l'interrupteur d'un thermostat) est un état, pas une mesure, et n'est jamais pris pour un sous-compteur à 0 W. La liste des sous-compteurs de l'afficheur d'énergie est désormais ordonnée compteurs dédiés d'abord pour que sa capacité fixe de 8 conserve les vraies pinces. (#523, #548)
+- Feat (ui) : **les durées minimales de marche et d'arrêt du profil énergie s'éditent en minutes** au lieu de secondes, au plus près de la façon dont on raisonne ces valeurs. (#546, #547)
+- Correctif (énergie) : **les runs hors pilotage ouverts sont restaurés depuis le journal au démarrage**, si bien qu'une charge laissée en marche hors arbitrage garde sa timeline correcte après un redémarrage au lieu d'être peinte hors pilotage jusqu'à son prochain cycle complet. (#543, #544)
+- Chore (registry) : pool-pump-schedule passé en 1.5.0 (la pompe à chaleur de piscine peut désormais chauffer sur le surplus solaire via sa consigne). (#545)
+
 ## 1.48.x : Valeurs typées et portails sur tout relais
 
 ### v1.48.1 — 2026-08-16 { #v1-48-1 }

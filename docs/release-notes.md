@@ -11,6 +11,15 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.49.x: Universal submetering
+
+### v1.49.0 — 2026-08-16 { #v1-49-0 }
+
+- Feat (energy): **any equipment that measures power or energy now counts in the energy balance, whatever its type**. Submeter enrolment used to be a per-type whitelist (dedicated meters plus metering switches and water heaters); it is now the inverse, so a metering thermostat (an air conditioner on its own energy clamp), a pool pump, an appliance or a metering dimmable light all enter the by-usage breakdown and have their power integrated to energy, with no per-type list to maintain. Only the house total and the production meters are excluded. A binding must carry a real numeric measurement: a boolean on/off reading exposed as "power" (a media player, a thermostat's own switch) is a state, not a measurement, and is never mistaken for a 0 W submeter. The energy display's submeter list is now ordered dedicated meters first so its fixed 8-meter capacity keeps the real clamps. (#523, #548)
+- Feat (ui): **the energy profile minimum on and off durations are edited in minutes** instead of seconds, matching how the values are actually reasoned about. (#546, #547)
+- Fix (energy): **open unmanaged runs are restored from the journal on startup**, so a load left running outside arbitration keeps its correct timeline after a restart instead of being painted unmanaged until its next full cycle. (#543, #544)
+- Chore (registry): pool-pump-schedule bumped to 1.5.0 (the pool heat pump can now heat on solar surplus via its setpoint). (#545)
+
 ## 1.48.x: Typed device values and universal gate relays
 
 ### v1.48.1 — 2026-08-16 { #v1-48-1 }
