@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
-import { isSubmeterEquipment } from "../../equipments/metering.js";
+import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
 import type { EnergyLoadProfile, EquipmentType } from "../../shared/types.js";
 import type { Logger } from "../../core/logger.js";
 
@@ -71,15 +71,20 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
 
   // GET /api/v1/equipments — List all equipments with bindings and current data.
   // Optional ?type=<EquipmentType> narrows the response to a single type.
-  // Optional ?role=submeter returns the consumption submeter set — dedicated
-  // energy_meters plus metering relays (water_heater, switch...), i.e. every
-  // equipment isSubmeterEquipment considers a per-usage meter (#526).
+  // Optional ?role=submeter returns the consumption submeter set: ANY equipment
+  // carrying a numeric power/energy channel except the house total / production
+  // meters (#523 — a metering thermostat, appliance, pool_pump, ... all qualify),
+  // i.e. every equipment isSubmeterEquipment considers a per-usage meter.
   //
   // The energy display (#224) has long queried ?type=energy_meter to get "the
-  // submeter clamps". Since metering relays became submeters (#521) that literal
-  // type filter dropped them, so ?type=energy_meter is honoured as the submeter
-  // role too — the unflashed display picks up a metering water_heater without a
-  // reflash. New clients should use ?role=submeter.
+  // submeter clamps". Since metering relays (#521) and then any metered load
+  // (#523) became submeters, that literal type filter would drop them, so
+  // ?type=energy_meter is honoured as the submeter role too — the unflashed
+  // display picks up the broader set without a reflash. New clients should use
+  // ?role=submeter. The result is ORDERED so a fixed-capacity client (the
+  // display caps at 8) keeps dedicated meters/clamps first, then metering
+  // relays, then other metered loads, each group by name — a deterministic
+  // truncation instead of unstable insertion order.
   //
   // Unknown ?type values yield an empty list rather than 400 so callers can
   // safely pass-through user input without their own validation.
@@ -89,7 +94,11 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       const all = equipmentManager.getAllWithDetails();
       const { type, role } = request.query;
       if (role === "submeter" || type === "energy_meter") {
-        return all.filter((eq) => isSubmeterEquipment(eq.type, eq.dataBindings));
+        const rank = (t: EquipmentType): number =>
+          t === "energy_meter" ? 0 : METERING_RELAY_TYPES.has(t) ? 1 : 2;
+        return all
+          .filter((eq) => isSubmeterEquipment(eq.type, eq.dataBindings))
+          .sort((a, b) => rank(a.type) - rank(b.type) || a.name.localeCompare(b.name));
       }
       return type ? all.filter((eq) => eq.type === type) : all;
     },

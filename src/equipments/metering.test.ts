@@ -53,6 +53,10 @@ describe("metering helpers (spec 129 / #523)", () => {
     expect(isSubmeterEquipment("thermostat", [])).toBe(false);
     expect(isSubmeterEquipment("switch", state)).toBe(false);
     expect(isSubmeterEquipment("media_player", booleanPower)).toBe(false);
+    // The real old-vs-new regression guard: under the OLD code a metering
+    // `switch` with a boolean `power` was a submeter (no numeric gate); the
+    // #523 numeric gate now excludes it.
+    expect(isSubmeterEquipment("switch", booleanPower)).toBe(false);
 
     // The three exclusions: house total + production must never be submeters.
     expect(isSubmeterEquipment("main_energy_meter", power)).toBe(false);

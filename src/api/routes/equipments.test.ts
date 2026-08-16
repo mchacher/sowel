@@ -9,8 +9,9 @@ import { installValidationErrorHandler, validationAjvOptions } from "../error-ha
 // tests. A mocked EquipmentManager keeps this test fast and isolated.
 interface FixtureEq {
   id: string;
+  name: string;
   type: string;
-  dataBindings?: Array<{ alias?: string; category?: string }>;
+  dataBindings?: Array<{ alias?: string; category?: string; type?: string }>;
 }
 function makeManager(fixture: FixtureEq[]) {
   return {
@@ -25,16 +26,23 @@ function makeManager(fixture: FixtureEq[]) {
 describe("GET /api/v1/equipments — ?type / ?role filter", () => {
   let app: ReturnType<typeof Fastify>;
 
-  const power = [{ alias: "power", category: "power" }];
-  const state = [{ alias: "state", category: "light_state" }];
+  const power = [{ alias: "power", category: "power", type: "number" }];
+  const energyCh = [{ alias: "energy", category: "energy", type: "number" }];
+  const state = [{ alias: "state", category: "light_state", type: "boolean" }];
+  const booleanPower = [{ alias: "power", category: "power", type: "boolean" }];
   const fixture: FixtureEq[] = [
-    { id: "1", type: "light_onoff", dataBindings: [] },
-    { id: "2", type: "energy_meter", dataBindings: [] },
-    { id: "3", type: "energy_meter", dataBindings: [] },
-    { id: "4", type: "main_energy_meter", dataBindings: power }, // house total, never a submeter
-    { id: "5", type: "water_heater", dataBindings: power }, // metering relay (#521) → submeter
-    { id: "6", type: "switch", dataBindings: power }, // metering plug (spec 129) → submeter
-    { id: "7", type: "switch", dataBindings: state }, // bare relay → not a submeter
+    { id: "1", name: "Lampe", type: "light_onoff", dataBindings: [] },
+    { id: "2", name: "Cuisine", type: "energy_meter", dataBindings: [] },
+    { id: "3", name: "Salon", type: "energy_meter", dataBindings: [] },
+    { id: "4", name: "Compteur", type: "main_energy_meter", dataBindings: power }, // house total, never a submeter
+    { id: "5", name: "Chauffe-eau", type: "water_heater", dataBindings: power }, // metering relay (#521) → submeter
+    { id: "6", name: "Prise", type: "switch", dataBindings: power }, // metering plug (spec 129) → submeter
+    { id: "7", name: "Relais", type: "switch", dataBindings: state }, // bare relay → not a submeter
+    { id: "8", name: "Clim", type: "thermostat", dataBindings: power }, // #523 metered load → submeter
+    { id: "9", name: "Clim ecran", type: "thermostat", dataBindings: booleanPower }, // boolean gate → NOT
+    { id: "10", name: "TV", type: "media_player", dataBindings: booleanPower }, // boolean gate → NOT
+    { id: "11", name: "Solaire", type: "solar_panel", dataBindings: power }, // production, never a submeter
+    { id: "12", name: "Seche-linge", type: "appliance", dataBindings: energyCh }, // #523 metered load → submeter
   ];
 
   beforeEach(async () => {
@@ -53,7 +61,7 @@ describe("GET /api/v1/equipments — ?type / ?role filter", () => {
   it("returns all equipments when ?type is omitted", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/equipments" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toHaveLength(7);
+    expect(res.json()).toHaveLength(12);
   });
 
   it("narrows the result set to a single type for a non-meter ?type", async () => {
@@ -63,20 +71,23 @@ describe("GET /api/v1/equipments — ?type / ?role filter", () => {
     expect(body.map((e) => e.id)).toEqual(["1"]);
   });
 
-  it("?role=submeter returns energy_meters + metering relays, never the house total or bare relays (#526)", async () => {
+  it("?role=submeter returns ANY numeric-metered load except house/production, ordered clamps-first (#523)", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/equipments?role=submeter" });
     expect(res.statusCode).toBe(200);
     const body = res.json() as FixtureEq[];
-    // energy_meter x2 + metering water_heater + metering switch; NOT main_energy_meter, NOT bare switch, NOT light
-    expect(body.map((e) => e.id).sort()).toEqual(["2", "3", "5", "6"]);
+    // energy_meters (2,3) → metering relays (5 water_heater, 6 switch) → other
+    // metered loads (8 thermostat #523, 12 appliance #523), each group by name.
+    // NOT: main_energy_meter (4), solar_panel (11), bare relay (7), no-channel
+    // light (1), or boolean-`power` loads (9 thermostat, 10 media_player).
+    // Deterministic order so the display's 8-slot cap keeps clamps first.
+    expect(body.map((e) => e.id)).toEqual(["2", "3", "5", "6", "8", "12"]);
   });
 
-  it("?type=energy_meter is honoured as the submeter role for the legacy display client (#224/#526)", async () => {
+  it("?type=energy_meter is honoured as the submeter role for the legacy display client, same ordered set (#224/#523)", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/equipments?type=energy_meter" });
     expect(res.statusCode).toBe(200);
     const body = res.json() as FixtureEq[];
-    // Includes the metering water_heater so the unflashed energy display sees it.
-    expect(body.map((e) => e.id).sort()).toEqual(["2", "3", "5", "6"]);
+    expect(body.map((e) => e.id)).toEqual(["2", "3", "5", "6", "8", "12"]);
   });
 
   it("returns an empty list for an unknown type (pass-through, no 400)", async () => {
