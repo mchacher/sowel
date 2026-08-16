@@ -269,11 +269,14 @@ reacts to callbacks:
 const claim = ctx.helpers.energy?.claimCapacity({
   equipmentId: pumpId,
   watts: 600, // sizes the engage decision only
-  toleratedImportW: 0, // grid draw you accept to buy (resistive loads)
+  // Omit `toleratedImportW`: since core 1.50 (#550) the surplus-import
+  // tolerance is a property of the equipment (its energy profile's
+  // "Tolerated import (W)"), set once by the user and read by the arbiter.
+  // Pass it here only to override the profile for a specific claim.
   slack: "none", // "some"/"high" steps DOWN the user's list, never up
   note: "filtration on surplus",
   onGranted: () => pumpOn(),
-  onRevoked: (reason) => pumpOff(), // comfort loads degrade instead — never off
+  onRevoked: (reason) => pumpOff(), // a comfort-class recipe drops its surplus boost instead of switching off
 });
 // later: claim.release() when the need disappears
 ```

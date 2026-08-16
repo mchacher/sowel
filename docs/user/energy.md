@@ -160,8 +160,9 @@ It is **off by default** and changes nothing until you enable it. On a home with
 
 On an equipment that can be switched on and off (pool pump, water heater, a switch driving a heater), open its page and turn on **Energy management**. You choose:
 
-- **Class** — _Deferrable_ (can be switched off and caught up later, like a pool pump) or _Comfort_ (only ever gets a bonus on top of its normal operation, never switched off by the arbiter, like an air conditioner). Sowel pre-selects the right class from the equipment type; you can override it.
+- **Class** — _Deferrable_ (a relay whose on/off is a command, like a pool pump or a water heater: the arbiter can switch it off and run it later, and an unexpected on/off is read as you taking manual control) or _Comfort_ (a self-regulating load, like an air conditioner: the surplus only complements its normal operation, and the arbiter does not read its own on/off cycling as an action from you). Sowel pre-selects the right class from the equipment type; you can override it.
 - **Nominal power** — pre-filled from the equipment's own measurement when a clamp is bound.
+- **Tolerated import (W)** — how much grid import this load will accept to start on a **partial surplus**. The arbiter engages it once the surplus covers "nominal power + margin − tolerated import". At `0` (default) it waits for a full surplus; raising it makes the load start sooner, accepting to buy a little grid. It is the load's comfort / economy dial, set once here and honoured by whatever automation drives it.
 - **Minimum on / off** — how long it must stay on once started, and rest before restarting (protects a compressor from short-cycling).
 
 Enabling this only _declares_ the load. Nothing acts on it until the arbiter itself is enabled.

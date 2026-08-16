@@ -160,8 +160,9 @@ Il est **désactivé par défaut** et ne change rien tant que vous ne l'activez 
 
 Sur un équipement qui peut s'allumer et s'éteindre (pompe de piscine, chauffe-eau, un interrupteur pilotant un radiateur), ouvrez sa fiche et activez **Pilotage énergie**. Vous choisissez :
 
-- **Classe** — _Différable_ (peut être coupée puis rattrapée plus tard, comme une pompe de piscine) ou _Confort_ (ne reçoit qu'un bonus par-dessus son fonctionnement normal, jamais coupée par l'arbitre, comme une climatisation). Sowel présélectionne la bonne classe selon le type d'équipement ; vous pouvez la corriger.
+- **Classe** — _Différable_ (un relais dont marche/arrêt est une commande, comme une pompe de piscine ou un chauffe-eau : l'arbitre peut la couper et la relancer plus tard, et un on/off inattendu est lu comme une reprise en main manuelle) ou _Confort_ (une charge qui se régule seule, comme une climatisation : le surplus ne fait que compléter son fonctionnement, et l'arbitre n'interprète pas son cycling normal comme une action de votre part). Sowel présélectionne la bonne classe selon le type d'équipement ; vous pouvez la corriger.
 - **Puissance nominale** — pré-remplie depuis la mesure de l'équipement quand une pince est associée.
+- **Import toléré (W)** — combien d'import réseau cette charge accepte pour démarrer sur un **surplus partiel**. L'arbitre l'engage dès que le surplus couvre « puissance nominale + marge − import toléré ». À `0` (défaut), elle n'attend qu'un surplus complet ; monter cette valeur la fait démarrer plus tôt, en acceptant d'acheter un peu de réseau. C'est le curseur confort / économie de la charge, réglé une fois ici et respecté par toute automatisation qui la pilote.
 - **Marche / arrêt minimum** — durée minimale de marche une fois démarré, et de repos avant redémarrage (protège un compresseur des cycles courts).
 
 Activer ceci ne fait que _déclarer_ la charge. Rien ne la pilote tant que l'arbitre lui-même n'est pas activé.
