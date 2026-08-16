@@ -6,7 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
-import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
+import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../../equipments/metering.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   EnergyPoint,
@@ -238,12 +238,11 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.status(503).send({ error: "InfluxDB not configured" });
     }
 
-    // Dedicated energy_meters + metering relays (switch/water_heater, spec 129/#521).
-    // energy_meter qualifies on type alone; only metering-relay types need their
-    // bindings inspected, so lights/sensors never trigger a binding fetch.
+    // Any equipment carrying a numeric power/energy channel, except the house
+    // total / production meters (#523). Only the non-excluded types trigger a
+    // binding fetch, which isSubmeterEquipment inspects for a numeric channel.
     const submeterEquipments = equipmentManager.getAll().filter((eq) => {
-      if (eq.type === "energy_meter") return true;
-      if (!METERING_RELAY_TYPES.has(eq.type)) return false;
+      if (NON_SUBMETER_TYPES.has(eq.type)) return false;
       return isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id));
     });
     const mainEquipmentId = findEnergyEquipmentId(equipmentManager);

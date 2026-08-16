@@ -4,7 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { Logger } from "../core/logger.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { InfluxClient } from "../core/influx-client.js";
-import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../equipments/metering.js";
+import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../equipments/metering.js";
 
 /**
  * Power-only submeter integration.
@@ -140,11 +140,11 @@ export class PowerSubmeterIntegrator {
    * the energy counter moving when the device only reports on change.
    */
   private catchUpFromBindings(): void {
-    // energy_meter submeters + metering relays (switch/water_heater, spec 129/#521).
-    // Bare relays are filtered out by isPowerOnlySubmeter (no power binding).
+    // Any equipment except the house/production meters (#523); isPowerOnlySubmeter
+    // then refines to those actually carrying a power-but-no-energy channel.
     const equipments = this.equipmentManager
       .getAll()
-      .filter((e) => e.type === "energy_meter" || METERING_RELAY_TYPES.has(e.type));
+      .filter((e) => !NON_SUBMETER_TYPES.has(e.type));
     for (const eq of equipments) {
       if (!this.isPowerOnlySubmeter(eq.id)) continue;
       const bindings = this.equipmentManager.getDataBindingsWithValues(eq.id);

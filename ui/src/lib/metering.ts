@@ -13,25 +13,43 @@ export const METERING_CATEGORIES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * On/off relay types that can double as a consumption submeter when they
- * report power/energy: a metering plug (spec 129) and a water_heater relay
- * (spec 135 / #521). Mirror of METERING_RELAY_TYPES in src/equipments/metering.ts.
+ * On/off relay types kept ONLY for the card-display concern (`isMeteringSwitch`,
+ * spec 129/#521). Mirror of METERING_RELAY_TYPES in src/equipments/metering.ts.
+ * Since #523, submeter enrolment keys off NON_SUBMETER_TYPES below, not this list.
  */
 export const METERING_RELAY_TYPES: ReadonlySet<string> = new Set(["switch", "water_heater"]);
 
-export function isMeteringSwitch(eq: EquipmentWithDetails): boolean {
-  return (
-    METERING_RELAY_TYPES.has(eq.type) &&
-    eq.dataBindings.some(
-      (b) =>
-        b.category === "power" ||
+/**
+ * Types that carry a power/energy channel but must never count as a consumption
+ * submeter (#523): the grid total and the two production surfaces. Mirror of
+ * NON_SUBMETER_TYPES in src/equipments/metering.ts.
+ */
+export const NON_SUBMETER_TYPES: ReadonlySet<string> = new Set([
+  "main_energy_meter",
+  "energy_production_meter",
+  "solar_panel",
+]);
+
+/** A meaningful, NUMERIC power/energy channel (#523): a boolean on/off reading
+ *  mis-categorised as `power` (a media_player, a thermostat's own switch) is a
+ *  STATE, not a measurement, and must not enrol as a submeter. */
+function hasMeteringBinding(eq: EquipmentWithDetails): boolean {
+  return eq.dataBindings.some(
+    (b) =>
+      (b.category === "power" ||
         b.category === "energy" ||
         b.alias === "power" ||
-        b.alias === "energy",
-    )
+        b.alias === "energy") &&
+      b.type === "number",
   );
 }
 
+export function isMeteringSwitch(eq: EquipmentWithDetails): boolean {
+  return METERING_RELAY_TYPES.has(eq.type) && hasMeteringBinding(eq);
+}
+
 export function isSubmeterEquipment(eq: EquipmentWithDetails): boolean {
-  return eq.type === "energy_meter" || isMeteringSwitch(eq);
+  if (NON_SUBMETER_TYPES.has(eq.type)) return false;
+  // A declared energy_meter qualifies on type alone (card renders at 0, #527).
+  return eq.type === "energy_meter" || hasMeteringBinding(eq);
 }

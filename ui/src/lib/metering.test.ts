@@ -4,7 +4,7 @@ import { isMeteringSwitch, isSubmeterEquipment } from "./metering";
 
 function eq(
   type: EquipmentWithDetails["type"],
-  bindings: { alias: string; category?: string }[],
+  bindings: { alias: string; category?: string; type?: "number" | "boolean" }[],
 ): EquipmentWithDetails {
   return {
     id: "e",
@@ -22,7 +22,7 @@ function eq(
       deviceName: "D",
       key: b.alias,
       alias: b.alias,
-      type: "number",
+      type: b.type ?? "number",
       category: (b.category ?? "generic") as EquipmentWithDetails["dataBindings"][number]["category"],
       value: 0,
       lastUpdated: null,
@@ -34,26 +34,45 @@ function eq(
   } as EquipmentWithDetails;
 }
 
-describe("metering (UI) — spec 129", () => {
-  it("isMeteringSwitch: switch with power/energy only", () => {
-    expect(isMeteringSwitch(eq("switch", [{ alias: "power", category: "power" }]))).toBe(true);
-    expect(isMeteringSwitch(eq("switch", [{ alias: "energy", category: "energy" }]))).toBe(true);
-    expect(isMeteringSwitch(eq("switch", [{ alias: "state", category: "light_state" }]))).toBe(false);
-    expect(isMeteringSwitch(eq("light_onoff", [{ alias: "power", category: "power" }]))).toBe(false);
+const power = [{ alias: "power", category: "power" }];
+const energy = [{ alias: "energy", category: "energy" }];
+const relayState = [{ alias: "state", category: "light_state", type: "boolean" as const }];
+const booleanPower = [{ alias: "power", category: "power", type: "boolean" as const }];
+
+describe("metering (UI) — spec 129 / #523", () => {
+  it("isMeteringSwitch: switch/water_heater card concern is unchanged (spec 129)", () => {
+    expect(isMeteringSwitch(eq("switch", power))).toBe(true);
+    expect(isMeteringSwitch(eq("switch", energy))).toBe(true);
+    expect(isMeteringSwitch(eq("switch", relayState))).toBe(false);
+    expect(isMeteringSwitch(eq("light_onoff", power))).toBe(false);
+    expect(isMeteringSwitch(eq("water_heater", power))).toBe(true); // #521
+    expect(isMeteringSwitch(eq("water_heater", relayState))).toBe(false);
   });
 
-  it("isMeteringSwitch: water_heater with power/energy is a metering relay (#521)", () => {
-    expect(isMeteringSwitch(eq("water_heater", [{ alias: "power", category: "power" }]))).toBe(true);
-    expect(isMeteringSwitch(eq("water_heater", [{ alias: "energy", category: "energy" }]))).toBe(true);
-    expect(isMeteringSwitch(eq("water_heater", [{ alias: "state", category: "light_state" }]))).toBe(false);
-  });
+  it("isSubmeterEquipment: ANY numeric-metered load except house/production (#523)", () => {
+    // The headline: a metering thermostat (the AC on its clamp) now enrols.
+    expect(isSubmeterEquipment(eq("thermostat", power))).toBe(true);
+    // Numeric gate: the thermostat's own boolean on/off must NOT enrol it.
+    expect(isSubmeterEquipment(eq("thermostat", booleanPower))).toBe(false);
 
-  it("isSubmeterEquipment: energy_meter or metering relay", () => {
+    // Generic metered loads enrol without a per-type whitelist.
+    expect(isSubmeterEquipment(eq("appliance", energy))).toBe(true);
+    expect(isSubmeterEquipment(eq("pool_pump", power))).toBe(true);
+
+    // Still-valid prior cases.
+    expect(isSubmeterEquipment(eq("energy_meter", power))).toBe(true);
+    expect(isSubmeterEquipment(eq("switch", power))).toBe(true);
+    expect(isSubmeterEquipment(eq("water_heater", power))).toBe(true);
+    // A declared energy_meter qualifies on type alone (card renders at 0, #527).
     expect(isSubmeterEquipment(eq("energy_meter", []))).toBe(true);
-    expect(isSubmeterEquipment(eq("switch", [{ alias: "power", category: "power" }]))).toBe(true);
-    expect(isSubmeterEquipment(eq("switch", [{ alias: "state", category: "light_state" }]))).toBe(false);
-    expect(isSubmeterEquipment(eq("water_heater", [{ alias: "power", category: "power" }]))).toBe(true);
-    expect(isSubmeterEquipment(eq("water_heater", [{ alias: "state", category: "light_state" }]))).toBe(false);
-    expect(isSubmeterEquipment(eq("main_energy_meter", [{ alias: "power", category: "power" }]))).toBe(false);
+
+    // A non-meter load with no numeric channel → not a submeter.
+    expect(isSubmeterEquipment(eq("thermostat", []))).toBe(false);
+    expect(isSubmeterEquipment(eq("switch", relayState))).toBe(false);
+
+    // The three exclusions.
+    expect(isSubmeterEquipment(eq("main_energy_meter", power))).toBe(false);
+    expect(isSubmeterEquipment(eq("energy_production_meter", power))).toBe(false);
+    expect(isSubmeterEquipment(eq("solar_panel", power))).toBe(false);
   });
 });

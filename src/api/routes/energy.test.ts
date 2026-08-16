@@ -93,10 +93,16 @@ async function buildApp(opts: BuildOpts = {}) {
       }) as never,
   };
 
-  // Mock EquipmentManager — only `getAll()` is consumed by the routes.
+  // Mock EquipmentManager. Since #523 the by-usage route inspects each
+  // non-excluded equipment's bindings for a numeric power/energy channel;
+  // return one so the test's energy_meter submeters qualify (the excluded
+  // main/production types never reach this fetch).
   const equipments = opts.equipments ?? [];
   const equipmentManager = {
     getAll: () => equipments,
+    getDataBindingsWithValues: () => [
+      { alias: "power", category: "power", type: "number", value: 0 },
+    ],
   } as never;
 
   // tariffClassifier returns the injected config (spec 123 — used for cost wiring).
