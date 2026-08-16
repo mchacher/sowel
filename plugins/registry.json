@@ -515,7 +515,7 @@
     "icon": "Snowflake",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-smart-cooling",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "tags": ["cooling", "ac", "solar", "energy", "automation"],
     "i18n": {
       "fr": {
@@ -525,7 +525,7 @@
     },
     "sowelVersion": ">=1.50.0",
     "owner": "mchacher",
-    "sha256": "19dd93fb29476e7a5a4db9180a48c5f6e86b15d0dc1b9f06cea8624bf1c2ea68"
+    "sha256": "a94af30942b2403e3f25fbe7dfc78c37b8db4b413e9a18bcd7a7d7c118c65718"
   },
   {
     "id": "netatmo_camera",
