@@ -40,9 +40,10 @@ import type {
 const SETTING_PREFIX = "energy.arbiter.";
 const JOURNAL_CAP = 200;
 // #543 — how far back start() scans the persisted journal for open unclaimed
-// runs: the deepest timeline view (48h window) plus its 24h entering-state
-// lookback. Anything older can no longer paint a quarter.
-const REHYDRATE_LOOKBACK_MS = 72 * 3_600_000;
+// runs. The deepest timeline page ends 48h back (route depth cap), spans up
+// to 12h, and getTimeline adds a 24h entering-state lookback — decisions up
+// to 84h old can still paint a quarter.
+const REHYDRATE_LOOKBACK_MS = (48 + 12 + 24) * 3_600_000;
 const LIVE_DRAW_TAU_S = 30; // per-load EMA time constant
 const LIVE_DRAW_FRESH_MS = 120_000; // tier-1 freshness window
 const LEARN_SAMPLE_FLOOR = 0.25; // learner ignores samples below 25 % of nominal
@@ -515,6 +516,9 @@ export class CapacityArbiter {
    */
   private rehydrateUnclaimedRuns(): void {
     const now = Date.now();
+    // Accepted degradation: range() returns [] on a DB error (it never
+    // throws), and the ring is NOT used as a fallback then — it may hold
+    // entries older than the lookback, which must not rehydrate.
     const decisions =
       this.journalStore?.range(
         new Date(now - REHYDRATE_LOOKBACK_MS).toISOString(),
@@ -542,6 +546,12 @@ export class CapacityArbiter {
         // `unclaimed-run-ended` — without this case the scan would rehydrate
         // a load that is known off.
         case "suspended":
+          if (d.running === false) open.delete(d.equipmentId);
+          break;
+        // Same reasoning for a TTL/manual resume observed with the load OFF:
+        // the timeline already paints it idle, so a stale open flag would
+        // only suppress the journaling of the next genuine unclaimed run.
+        case "resumed":
           if (d.running === false) open.delete(d.equipmentId);
           break;
         default:

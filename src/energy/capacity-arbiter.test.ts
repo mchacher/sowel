@@ -138,6 +138,19 @@ function makeHarness(opts?: {
     if (e.type.startsWith("energy.")) events.push(e);
   });
 
+  // The arbiter gets a capturing logger so tests can observe behavior that
+  // has no other public surface (#543 — the deleted-equipment skip).
+  const logLines: Array<{ ctx: unknown; msg: string | undefined }> = [];
+  const capturingLogger = {
+    child: () => capturingLogger,
+    info: (ctx: unknown, msg?: string) => logLines.push({ ctx, msg }),
+    warn: () => {},
+    error: () => {},
+    debug: () => {},
+    trace: () => {},
+    fatal: () => {},
+  } as never;
+
   const journalRows: ArbiterDecision[] = [...(opts?.journal ?? [])];
   const journalStore = opts?.journal
     ? ({
@@ -153,7 +166,7 @@ function makeHarness(opts?: {
     eventBus,
     settingsManager,
     equipmentManager,
-    silentLogger,
+    capturingLogger,
     opts?.shadow ?? false,
     journalStore,
   );
@@ -230,6 +243,7 @@ function makeHarness(opts?: {
     settingsMap,
     equipments,
     journalRows,
+    logLines,
     learnedCalls,
     feedMeter,
     feedLoadPower,
@@ -1315,6 +1329,7 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
     ["unclaimed-run-ended", dec("unclaimed-run-ended", "pump", "2026-08-12T08:30:00.000Z")],
     ["granted", dec("granted", "pump", "2026-08-12T08:30:00.000Z")],
     ["suspended running=false", dec("suspended", "pump", "2026-08-12T08:30:00.000Z", false)],
+    ["resumed running=false", dec("resumed", "pump", "2026-08-12T08:30:00.000Z", false)],
   ])("a run already closed in the journal by %s is not rehydrated", (_label, closing) => {
     const h = makeHarness({
       journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"), closing],
@@ -1325,14 +1340,13 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
   });
 
   it.each([
-    ["running=true", true],
-    ["legacy running unknown", undefined],
-  ])("a suspended entry with %s does NOT close the pending run", (_label, running) => {
+    ["suspended running=true", dec("suspended", "pump", "2026-08-12T08:30:00.000Z", true)],
+    ["suspended legacy running unknown", dec("suspended", "pump", "2026-08-12T08:30:00.000Z")],
+    ["resumed running=true", dec("resumed", "pump", "2026-08-12T08:30:00.000Z", true)],
+    ["resumed legacy running unknown", dec("resumed", "pump", "2026-08-12T08:30:00.000Z")],
+  ])("a %s entry does NOT close the pending run", (_label, entry) => {
     const h = makeHarness({
-      journal: [
-        dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"),
-        dec("suspended", "pump", "2026-08-12T08:30:00.000Z", running),
-      ],
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"), entry],
     });
     h.feedState("pump", false);
     expect(endedCount(h)).toBe(1); // still open → the OFF closes it
@@ -1359,7 +1373,7 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
       dec(
         "denied",
         "heater",
-        `2026-08-12T09:00:${String(i % 60).padStart(2, "0")}.${String(i).padStart(3, "0")}Z`,
+        `2026-08-12T09:${String(Math.floor(i / 60)).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}.000Z`,
       ),
     );
     const h = makeHarness({
@@ -1369,11 +1383,13 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
     expect(h.journalRows.filter((j) => j.kind === "unclaimed-run-ended")).toHaveLength(1);
   });
 
-  it("an open run for an equipment that no longer exists is skipped without crashing", () => {
+  it("an open run for an equipment that no longer exists is skipped", () => {
     const h = makeHarness({
       journal: [dec("unclaimed-run", "ghost", "2026-08-12T08:00:00.000Z")],
     });
-    // Nothing to observe for a deleted equipment — just no spurious journaling.
+    // The Set stayed empty: the rehydration log line (emitted only when at
+    // least one run was rehydrated) is absent, and nothing was journaled.
+    expect(h.logLines.filter((l) => l.msg?.includes("rehydrated"))).toHaveLength(0);
     expect(h.journalRows).toHaveLength(1);
     h.feedState("pump", false);
     expect(endedCount(h)).toBe(0);
@@ -1390,11 +1406,19 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
     expect(endedCount(h)).toBe(1); // the original span finally closes
   });
 
-  it("entries older than the 72h lookback are ignored", () => {
+  it("entries older than the 84h lookback are ignored, entries inside it count", () => {
     const h = makeHarness({
-      journal: [dec("unclaimed-run", "pump", "2026-08-08T08:00:00.000Z")], // 4 days old
+      journal: [dec("unclaimed-run", "pump", "2026-08-08T08:00:00.000Z")], // 98h old
     });
     h.feedState("pump", false);
     expect(endedCount(h)).toBe(0); // not rehydrated → nothing to close
+
+    // 80h old — still paintable by the deepest timeline page (48h depth +
+    // 12h window + 24h entering-state lookback), so it must rehydrate.
+    const h2 = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-09T02:00:00.000Z")],
+    });
+    h2.feedState("pump", false);
+    expect(endedCount(h2)).toBe(1);
   });
 });
