@@ -3,6 +3,8 @@ import { CapacityArbiter, trimmedMedian } from "./capacity-arbiter.js";
 import { EventBus } from "../core/event-bus.js";
 import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
+  ArbiterDecision,
+  ArbiterDecisionKind,
   CapacityClaimHandle,
   CapacityClaimRequest,
   EnergyLoadProfile,
@@ -36,6 +38,10 @@ function makeHarness(opts?: {
   profiles?: Record<string, EnergyLoadProfile | undefined>;
   bindings?: Record<string, Array<{ alias: string; category: string; value?: unknown }>>;
   shadow?: boolean;
+  /** Seed a fake persisted journal store (#543 restart tests). Entries must be
+   *  chronological; the fake mimics ArbiterJournalStore ordering (loadRecent =
+   *  most recent `limit` ascending, range = ascending within [from, to]). */
+  journal?: ArbiterDecision[];
 }) {
   const settingsMap = new Map<string, string>(
     Object.entries({
@@ -132,12 +138,24 @@ function makeHarness(opts?: {
     if (e.type.startsWith("energy.")) events.push(e);
   });
 
+  const journalRows: ArbiterDecision[] = [...(opts?.journal ?? [])];
+  const journalStore = opts?.journal
+    ? ({
+        insert: (d: ArbiterDecision) => journalRows.push(d),
+        loadRecent: (limit: number) => journalRows.slice(-limit),
+        range: (fromIso: string, toIso: string) =>
+          journalRows.filter((d) => d.atIso >= fromIso && d.atIso <= toIso),
+        purgeOlderThan: () => 0,
+      } as never)
+    : undefined;
+
   const arbiter = new CapacityArbiter(
     eventBus,
     settingsManager,
     equipmentManager,
     silentLogger,
     opts?.shadow ?? false,
+    journalStore,
   );
   arbiter.start();
 
@@ -211,6 +229,7 @@ function makeHarness(opts?: {
     events,
     settingsMap,
     equipments,
+    journalRows,
     learnedCalls,
     feedMeter,
     feedLoadPower,
@@ -1231,5 +1250,151 @@ describe("capacity arbiter — review hardening", () => {
     // Smoothed: still sees most of the surplus one sample later, not snapped to 0.
     expect(afterStep).toBeGreaterThan(1000);
     expect(afterStep).toBeLessThan(settled);
+  });
+});
+
+// ============================================================
+// #543 — restart during an unclaimed run: rehydration from the
+// persisted journal so the first observed OFF closes the span.
+// ============================================================
+
+describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const dec = (
+    kind: ArbiterDecisionKind,
+    equipmentId: string,
+    atIso: string,
+    running?: boolean,
+  ): ArbiterDecision => ({ kind, equipmentId, equipmentName: equipmentId, atIso, running });
+
+  const endedCount = (h: ReturnType<typeof makeHarness>) =>
+    h.arbiter.getPublicState().journal.filter((j) => j.kind === "unclaimed-run-ended").length;
+
+  it("a reported OFF after restart closes a rehydrated open run and repaints the timeline", () => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z")],
+    });
+    // Rehydration itself journals nothing.
+    expect(h.journalRows).toHaveLength(1);
+
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(1);
+
+    // The span now has an end: quarters after the OFF paint idle, the run
+    // before it stays unmanaged. (Advance past the quarter boundary — the
+    // window is quantized to :15 steps and a cell only shows events strictly
+    // before its end.)
+    vi.advanceTimersByTime(15 * 60_000);
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    const pump = tl.loads.find((l) => l.equipmentId === "pump");
+    expect(pump?.quarters.at(-1)).toBe("idle");
+    // Mid-run quarter (window 04:15-10:15, run 08:00-10:00): still unmanaged.
+    expect(pump?.quarters[16]).toBe("unmanaged");
+  });
+
+  it("an OFF order after restart closes a rehydrated open run (manual OFF journals suspended running=false after it)", () => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z")],
+    });
+    h.order("pump", false, { kind: "manual" });
+    // Newest-first public journal: the suspension is journaled after the close.
+    const kinds = h.arbiter.getPublicState().journal.map((j) => j.kind);
+    expect(kinds.slice(0, 2)).toEqual(["suspended", "unclaimed-run-ended"]);
+    const suspended = h.arbiter.getPublicState().journal.find((j) => j.kind === "suspended");
+    expect(suspended?.running).toBe(false);
+  });
+
+  it.each([
+    ["unclaimed-run-ended", dec("unclaimed-run-ended", "pump", "2026-08-12T08:30:00.000Z")],
+    ["granted", dec("granted", "pump", "2026-08-12T08:30:00.000Z")],
+    ["suspended running=false", dec("suspended", "pump", "2026-08-12T08:30:00.000Z", false)],
+  ])("a run already closed in the journal by %s is not rehydrated", (_label, closing) => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"), closing],
+    });
+    const before = endedCount(h);
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(before); // OFF journals nothing — no open run
+  });
+
+  it.each([
+    ["running=true", true],
+    ["legacy running unknown", undefined],
+  ])("a suspended entry with %s does NOT close the pending run", (_label, running) => {
+    const h = makeHarness({
+      journal: [
+        dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"),
+        dec("suspended", "pump", "2026-08-12T08:30:00.000Z", running),
+      ],
+    });
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(1); // still open → the OFF closes it
+  });
+
+  it("only the last unresolved unclaimed-run per equipment counts across cycles", () => {
+    const h = makeHarness({
+      journal: [
+        dec("unclaimed-run", "pump", "2026-08-12T07:00:00.000Z"),
+        dec("unclaimed-run-ended", "pump", "2026-08-12T07:30:00.000Z"),
+        dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"),
+      ],
+    });
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(2); // the seeded one + exactly one new close
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(2); // idempotent — the set is empty now
+  });
+
+  it("rehydrates from the store even when the opening entry fell off the in-memory ring cap", () => {
+    // 250 later entries for another equipment push the pump's opening entry
+    // beyond loadRecent(200) — the store range scan must still see it.
+    const filler = Array.from({ length: 250 }, (_, i) =>
+      dec(
+        "denied",
+        "heater",
+        `2026-08-12T09:00:${String(i % 60).padStart(2, "0")}.${String(i).padStart(3, "0")}Z`,
+      ),
+    );
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z"), ...filler],
+    });
+    h.feedState("pump", false);
+    expect(h.journalRows.filter((j) => j.kind === "unclaimed-run-ended")).toHaveLength(1);
+  });
+
+  it("an open run for an equipment that no longer exists is skipped without crashing", () => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "ghost", "2026-08-12T08:00:00.000Z")],
+    });
+    // Nothing to observe for a deleted equipment — just no spurious journaling.
+    expect(h.journalRows).toHaveLength(1);
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(0);
+  });
+
+  it("a load still running across the restart does not journal a duplicate unclaimed-run on the next recipe ON", () => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z")],
+    });
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    const runs = h.arbiter.getPublicState().journal.filter((j) => j.kind === "unclaimed-run");
+    expect(runs).toHaveLength(1); // the rehydrated one, no duplicate
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(1); // the original span finally closes
+  });
+
+  it("entries older than the 72h lookback are ignored", () => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-08T08:00:00.000Z")], // 4 days old
+    });
+    h.feedState("pump", false);
+    expect(endedCount(h)).toBe(0); // not rehydrated → nothing to close
   });
 });

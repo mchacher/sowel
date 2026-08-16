@@ -39,6 +39,10 @@ import type {
 
 const SETTING_PREFIX = "energy.arbiter.";
 const JOURNAL_CAP = 200;
+// #543 — how far back start() scans the persisted journal for open unclaimed
+// runs: the deepest timeline view (48h window) plus its 24h entering-state
+// lookback. Anything older can no longer paint a quarter.
+const REHYDRATE_LOOKBACK_MS = 72 * 3_600_000;
 const LIVE_DRAW_TAU_S = 30; // per-load EMA time constant
 const LIVE_DRAW_FRESH_MS = 120_000; // tier-1 freshness window
 const LEARN_SAMPLE_FLOOR = 0.25; // learner ignores samples below 25 % of nominal
@@ -203,6 +207,7 @@ export class CapacityArbiter {
         this.logger.info({ count: recent.length }, "Arbiter decision journal restored from store");
       }
     }
+    this.rehydrateUnclaimedRuns();
     this.resolveMeter();
     this.unsubscribes.push(
       this.eventBus.onType("equipment.data.changed", (e) => {
@@ -493,6 +498,66 @@ export class CapacityArbiter {
       }
       // The unclaimed-run END is handled above for orders of every source, not
       // just recipes (#535).
+    }
+  }
+
+  /**
+   * Rebuild the open unclaimed runs from the persisted journal (#543): the
+   * Set is live control state and starts empty after a restart, so without
+   * this the first observed OFF early-returns in endUnclaimedRun and the
+   * matching `unclaimed-run-ended` is never journaled — the timeline keeps
+   * painting the load "unmanaged" until its next full run cycle.
+   *
+   * Scans the store, not the in-memory ring: the ring is capped at
+   * JOURNAL_CAP entries and a chatty journal can evict the opening entry
+   * while the timeline (which reads the store directly) still paints it.
+   * Journals nothing — it only refills the Set.
+   */
+  private rehydrateUnclaimedRuns(): void {
+    const now = Date.now();
+    const decisions =
+      this.journalStore?.range(
+        new Date(now - REHYDRATE_LOOKBACK_MS).toISOString(),
+        new Date(now).toISOString(),
+      ) ?? this.journalEntries;
+    const open = new Set<string>();
+    for (const d of decisions) {
+      if (!d.equipmentId) continue;
+      switch (d.kind) {
+        case "unclaimed-run":
+          open.add(d.equipmentId);
+          break;
+        case "unclaimed-run-ended":
+          open.delete(d.equipmentId);
+          break;
+        // Deliberate divergence from live semantics (grant() leaves the Set
+        // untouched): after a `granted` the timeline paints the load as
+        // managed anyway, and a stale open flag would only suppress the
+        // journaling of its next genuine unclaimed run.
+        case "granted":
+          open.delete(d.equipmentId);
+          break;
+        // An OFF-triggered suspension left the load stopped (#536). Rows
+        // written before v1.48.1 carry it WITHOUT a preceding
+        // `unclaimed-run-ended` — without this case the scan would rehydrate
+        // a load that is known off.
+        case "suspended":
+          if (d.running === false) open.delete(d.equipmentId);
+          break;
+        default:
+          break;
+      }
+    }
+    for (const id of open) {
+      // Deleted since the entry was journaled — mirror forgetEquipment.
+      if (!this.equipments.getById(id)) continue;
+      this.unclaimedRunning.add(id);
+    }
+    if (this.unclaimedRunning.size > 0) {
+      this.logger.info(
+        { count: this.unclaimedRunning.size },
+        "Open unclaimed runs rehydrated from journal",
+      );
     }
   }
 
