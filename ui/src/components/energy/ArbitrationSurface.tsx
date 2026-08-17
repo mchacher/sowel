@@ -102,7 +102,9 @@ export function ArbitrationSurface() {
       // While dormant (night, no surplus), a non-running claim is at rest, not
       // "waiting" for a surplus that cannot come before sunrise (#577).
       stateKey: p.running ? "running" : dormant ? "idle" : "waiting",
-      needW: p.running ? null : p.needW,
+      // At rest (running fallback, or dormant night) has no pending "need" to
+      // show — a Need figure next to an "at rest" label reads as a contradiction.
+      needW: p.running || dormant ? null : p.needW,
       loadW: p.watts,
       toleratedW: tolerated(p.toleratedImportW),
     })),
