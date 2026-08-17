@@ -305,7 +305,8 @@ export type ArbiterDecisionKind =
   | "comfort-off-after-revoke"
   | "watts-divergence"
   | "unclaimed-run"
-  | "unclaimed-run-ended";
+  | "unclaimed-run-ended"
+  | "waiting";
 
 export interface ArbiterDecision {
   atIso: string;
@@ -347,12 +348,24 @@ export interface ArbiterPublicState {
     running: boolean;
   }>;
   suspensions: Array<{ equipmentId: string; equipmentName: string; untilIso: string }>;
+  /** #561 — declared flexible loads with no active claim (at rest / running
+   *  outside arbitration). Completes the roster so every priority load shows. */
+  idle: Array<{
+    equipmentId: string;
+    equipmentName: string;
+    watts: number;
+    toleratedImportW: number;
+    /** No claim yet running as a recipe must-run fallback — "running outside
+     *  arbitration", not "at rest" (mirrors #491). */
+    runningUnmanaged: boolean;
+  }>;
   journal: ArbiterDecision[];
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
-/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model. */
-export type ArbiterQuarterState = "granted" | "revoked" | "unmanaged" | "idle";
+/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model.
+ *  `pending` (#561) — the load was waiting for surplus (claiming, not granted). */
+export type ArbiterQuarterState = "granted" | "pending" | "revoked" | "unmanaged" | "idle";
 
 export interface ArbiterTimelineLoad {
   equipmentId: string;

@@ -5,6 +5,7 @@ import type { ArbiterDecision } from "../shared/types.js";
 //
 // Displayed ribbon state per quarter:
 //   "granted"   — accordé (running on surplus)
+//   "pending"   — en attente (claiming surplus, none granted yet) — #561
 //   "revoked"   — surplus retiré (a revoke happened in this quarter)
 //   "unmanaged" — On (hors pilotage): manual override or unclaimed run
 //   "idle"      — off / not managed
@@ -14,7 +15,7 @@ import type { ArbiterDecision } from "../shared/types.js";
 // load ends idle — that's the notable event; the exact intra-quarter detail
 // stays in the journal (the UI links a cell click to the journal).
 
-export type QuarterState = "granted" | "revoked" | "unmanaged" | "idle";
+export type QuarterState = "granted" | "pending" | "revoked" | "unmanaged" | "idle";
 
 export interface TimelineLoad {
   equipmentId: string;
@@ -27,6 +28,12 @@ function sustainedAfter(kind: ArbiterDecision["kind"], running?: boolean): Quart
   switch (kind) {
     case "granted":
       return "granted";
+    // #561 — the load is claiming surplus but none is granted. Holds until a
+    // grant, a release, a suspension, or a revoke-without-reclaim ends it. A
+    // revoke for a genuine surplus reason re-journals `waiting`, so a "pending"
+    // span reopens after the "revoked" cell.
+    case "waiting":
+      return "pending";
     // A resume (manual or TTL expiry) hands control back to the arbiter but
     // grants nothing by itself — a re-grant journals its own `granted`. The
     // load is either still running outside arbitration or simply off (#535).

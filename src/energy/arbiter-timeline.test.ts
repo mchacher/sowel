@@ -47,6 +47,25 @@ describe("buildLoadTimelines (spec 148)", () => {
     expect(load.quarters).toEqual(["granted", "granted", "revoked", "granted"]);
   });
 
+  it("maps a waiting decision to 'pending' until a grant ends it (#561)", () => {
+    const [load] = buildLoadTimelines([dec(-5, "waiting"), dec(35, "granted")], LOADS, START, END);
+    // pending from before the window through q0/q1; q2 (12:30-12:45) has the
+    // 12:35 grant → granted, then granted.
+    expect(load.quarters).toEqual(["pending", "pending", "granted", "granted"]);
+  });
+
+  it("reopens a 'pending' span after a revoke that re-journals waiting (#561)", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-10, "granted"), dec(20, "revoked"), dec(20, "waiting")],
+      LOADS,
+      START,
+      END,
+    );
+    // q0 granted; q1 (12:15-12:30) holds both the revoke and the re-wait →
+    // flagged revoked, sustained becomes pending; q2/q3 pending.
+    expect(load.quarters).toEqual(["granted", "revoked", "pending", "pending"]);
+  });
+
   it("maps suspended and unclaimed-run to 'unmanaged'", () => {
     const [a] = buildLoadTimelines([dec(5, "suspended")], LOADS, START, END);
     expect(a.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);

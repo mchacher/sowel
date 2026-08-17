@@ -49,6 +49,8 @@ function cellColor(s: ArbiterQuarterState): string {
   switch (s) {
     case "granted":
       return "var(--color-solar-auto)"; // accordé (auto-conso)
+    case "pending":
+      return "var(--color-warning)"; // en attente de surplus (#561, jaune a-500)
     case "revoked":
       return "var(--color-error)"; // surplus retiré
     case "unmanaged":
@@ -424,6 +426,13 @@ export function ArbiterTimeline() {
             style={{ backgroundColor: "var(--color-solar-auto)" }}
           />
           {t("arbiter.legend.granted")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="w-3 h-2.5 rounded-sm flex-none"
+            style={{ backgroundColor: "var(--color-warning)" }}
+          />
+          {t("arbiter.legend.pending")}
         </span>
         <span className="flex items-center gap-1.5">
           <span

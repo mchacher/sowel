@@ -679,6 +679,14 @@ export class CapacityArbiter {
     this.claims.set(record.id, record);
     this.evaluate();
 
+    // #561 — a claim still pending after the first evaluation is waiting for
+    // surplus. Journal it once so the timeline can paint a "pending" span (and
+    // the roster's read model reflects a live claim). A claim granted straight
+    // away by the evaluate above already journaled `granted` and is skipped.
+    if (record.status === "pending") {
+      this.journal({ kind: "waiting", equipmentId: record.equipmentId, watts: record.watts });
+    }
+
     return {
       id: record.id,
       status: () => record.status,
@@ -818,6 +826,39 @@ export class CapacityArbiter {
         equipmentName: this.nameOf(equipmentId),
         untilIso: new Date(until).toISOString(),
       }));
+    // #561 — declared flexible loads (priority order) that hold no claim and are
+    // not suspended: neither granted nor pending. They have a timeline lane but
+    // were absent from the read model, so the UI could not show them "at rest".
+    const claimedIds = new Set(
+      [...this.claims.values()]
+        .filter((c) => c.status === "granted" || c.status === "pending")
+        .map((c) => c.equipmentId),
+    );
+    const suspendedIds = new Set(suspensions.map((s) => s.equipmentId));
+    const idle = this.config.priority
+      .filter((id) => !claimedIds.has(id) && !suspendedIds.has(id))
+      // Still declared flexible and still present (profile dropped / deleted →
+      // no longer part of the roster).
+      .filter((id) => this.profileOf(id) !== undefined)
+      .map((id) => {
+        const profile = this.profileOf(id) as EnergyLoadProfile;
+        const runningUnmanaged = this.unclaimedRunning.has(id);
+        // At rest, show the load's RATING (learned, else nominal), not its live
+        // draw: a metered load that is off reports ~0 W on its power binding, and
+        // `drawEstimate` would surface that 0 W and misrepresent the load as "0 W"
+        // rather than "what it draws when it runs" (#561). When it is actually
+        // running outside arbitration, the live draw is the honest figure.
+        const watts = runningUnmanaged
+          ? Math.round(this.drawEstimate(id))
+          : Math.round(profile.learned?.watts ?? profile.nominalPowerW);
+        return {
+          equipmentId: id,
+          equipmentName: this.nameOf(id),
+          watts,
+          toleratedImportW: Math.max(0, profile.toleratedImportW ?? 0),
+          runningUnmanaged,
+        };
+      });
     return {
       // Display flag — reflects the configured setting, NOT the control gate.
       // On a shadow instance `config.enabled` is forced false so the arbiter
@@ -835,6 +876,7 @@ export class CapacityArbiter {
       grants,
       pending,
       suspensions,
+      idle,
       journal: [...this.journalEntries].reverse(),
       surplusSeries: this.surplusSeries.map((s) => ({
         atIso: new Date(s.at).toISOString(),
@@ -1136,6 +1178,18 @@ export class CapacityArbiter {
       reason,
     });
     this.guarded(() => claim.onRevoked(reason), claim, "onRevoked");
+    // #561 — a revoke for a genuine surplus reason returns the claim to
+    // pending. Unless the recipe released it in the onRevoked callback above,
+    // the load is now waiting for surplus again: journal it so the timeline
+    // reopens a "pending" span right after the "revoked" cell. Disabled /
+    // meter-stale / manual-override revokes are excluded — those are not a
+    // "still wants it, waiting" situation.
+    if (
+      (reason === "surplus-deficit" || reason === "priority-preempted") &&
+      claim.status === "pending"
+    ) {
+      this.journal({ kind: "waiting", equipmentId: claim.equipmentId, watts: claim.watts });
+    }
   }
 
   private release(claim: ClaimRecord): void {

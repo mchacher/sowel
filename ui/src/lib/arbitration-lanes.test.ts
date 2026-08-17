@@ -27,6 +27,7 @@ function state(journal: ArbiterDecision[], pending: string[] = []): ArbiterPubli
       reasonWaiting: "insufficient-surplus:0",
     })),
     suspensions: [],
+    idle: [],
     journal, // newest-first
     surplusSeries: [],
   };

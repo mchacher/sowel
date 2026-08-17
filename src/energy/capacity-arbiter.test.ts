@@ -1465,3 +1465,136 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
     expect(endedCount(h2)).toBe(1);
   });
 });
+
+describe("idle roster (#561)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("lists every declared priority load that holds no claim, at its rating", () => {
+    const h = makeHarness();
+    const { idle } = h.arbiter.getPublicState();
+    expect(idle.map((i) => i.equipmentId).sort()).toEqual(["heater", "pac", "pump"]);
+    expect(idle.find((i) => i.equipmentId === "pump")).toMatchObject({
+      equipmentName: "Pompe Piscine",
+      watts: 600,
+      toleratedImportW: 0,
+      runningUnmanaged: false,
+    });
+  });
+
+  it("reports an at-rest load's rating, not its ~0 W live draw (#561 review)", () => {
+    const h = makeHarness();
+    // A metered load that is off reports ~0 W on its power binding; the roster
+    // must still show its rating, not "0 W".
+    h.feedLoadPower("pump", 3);
+    const idle = h.arbiter.getPublicState().idle.find((i) => i.equipmentId === "pump");
+    expect(idle?.watts).toBe(600); // nominal, not the 3 W live reading
+    expect(idle?.runningUnmanaged).toBe(false);
+  });
+
+  it("reflects the live draw for a load running outside arbitration", () => {
+    const h = makeHarness();
+    h.order("heater", "ON", { kind: "recipe", instanceId: "r1" }); // unclaimed run
+    h.feedLoadPower("heater", 2100); // real draw diverges from the 2200 nominal
+    const idle = h.arbiter.getPublicState().idle.find((i) => i.equipmentId === "heater");
+    expect(idle?.runningUnmanaged).toBe(true);
+    expect(idle?.watts).toBe(2100); // live draw, not the nominal
+  });
+
+  it("carries the load's tolerated import from its energy profile", () => {
+    const h = makeHarness({
+      profiles: {
+        pump: {
+          class: "deferrable",
+          nominalPowerW: 600,
+          minOnS: 900,
+          minOffS: 300,
+          toleratedImportW: 300,
+        },
+      },
+    });
+    expect(
+      h.arbiter.getPublicState().idle.find((i) => i.equipmentId === "pump")?.toleratedImportW,
+    ).toBe(300);
+  });
+
+  it("drops a load from idle once it is pending, then once it is granted", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.feedMeter(-100); // below need → pending
+    let state = h.arbiter.getPublicState();
+    expect(state.idle.some((i) => i.equipmentId === "pump")).toBe(false);
+    expect(state.pending.some((p) => p.equipmentId === "pump")).toBe(true);
+    h.run(-1000, 200); // ample surplus → grant
+    state = h.arbiter.getPublicState();
+    expect(state.grants.some((g) => g.equipmentId === "pump")).toBe(true);
+    expect(state.idle.some((i) => i.equipmentId === "pump")).toBe(false);
+  });
+
+  it("flags a claimless load a recipe is running as running outside arbitration", () => {
+    const h = makeHarness();
+    h.order("heater", "ON", { kind: "recipe", instanceId: "r1" });
+    expect(
+      h.arbiter.getPublicState().idle.find((i) => i.equipmentId === "heater")?.runningUnmanaged,
+    ).toBe(true);
+  });
+
+  it("excludes a suspended load from idle", () => {
+    const h = makeHarness();
+    h.order("pump", "OFF", { kind: "manual" }); // manual → suspend
+    const state = h.arbiter.getPublicState();
+    expect(state.suspensions.some((s) => s.equipmentId === "pump")).toBe(true);
+    expect(state.idle.some((i) => i.equipmentId === "pump")).toBe(false);
+  });
+});
+
+describe("waiting journal (#561)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("journals a waiting decision when a fresh claim stays pending", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.feedMeter(-100); // not enough (needs 700)
+    expect(
+      h.arbiter
+        .getPublicState()
+        .journal.some((j) => j.kind === "waiting" && j.equipmentId === "pump"),
+    ).toBe(true);
+  });
+
+  it("skips the waiting journal when the claim is granted on the spot", () => {
+    const h = makeHarness({ settings: { "energy.arbiter.engageHoldS": "0" } });
+    h.feedMeter(-1000); // 1 kW export already present
+    h.claim("i1", { equipmentId: "pump" }); // hold 0 + ample surplus → granted inside claim()
+    const state = h.arbiter.getPublicState();
+    expect(state.grants.some((g) => g.equipmentId === "pump")).toBe(true);
+    expect(
+      state.journal.filter((j) => j.kind === "waiting" && j.equipmentId === "pump"),
+    ).toHaveLength(0);
+  });
+
+  it("re-journals waiting after a surplus-deficit revoke leaves the claim pending", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150); // grant (~t=130s)
+    expect(h.grantedEvents()).toHaveLength(1);
+    // Sustained import: past releaseHold (600 s) AND past minOnS (900 s from the
+    // grant) so the anti-short-cycle guard no longer blocks the revoke.
+    h.run(700, 1100);
+    const journal = h.arbiter.getPublicState().journal;
+    expect(journal.some((j) => j.kind === "revoked" && j.equipmentId === "pump")).toBe(true);
+    // Two waiting entries: the initial claim, and the reopen after the revoke.
+    expect(journal.filter((j) => j.kind === "waiting" && j.equipmentId === "pump").length).toBe(2);
+  });
+});

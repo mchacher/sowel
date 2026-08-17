@@ -13,72 +13,155 @@ vi.mock("../../api", async (orig) => ({
   getArbiterState: vi.fn().mockRejectedValue(new Error("no network in test")),
 }));
 
-// #491: a pending claim whose load a recipe runs as a must-run fallback
-// (running: true) must read as "running (no surplus)", never "waiting for
-// surplus" — while a genuinely idle pending claim (running: false) still shows
-// the waiting reason.
-function pendingEntry(over: Partial<ArbiterPublicState["pending"][number]> = {}): ArbiterPublicState["pending"][number] {
+function fullState(over: Partial<ArbiterPublicState> = {}): ArbiterPublicState {
   return {
-    equipmentId: "pump",
-    equipmentName: "Pompe Piscine",
-    instanceId: "i-pump",
-    watts: 600,
-    needW: 300,
-    toleratedImportW: 0,
-    reasonWaiting: "insufficient-surplus:0",
-    running: false,
-    ...over,
-  };
-}
-
-function seedState(pending: ArbiterPublicState["pending"]): void {
-  const state: ArbiterPublicState = {
     enabled: true,
     state: "active",
     availableSurplusW: -1091,
     productionDetected: true,
     grants: [],
-    pending,
+    pending: [],
     suspensions: [],
+    idle: [],
     journal: [],
     surplusSeries: [],
+    ...over,
   };
-  useArbiter.setState({ state, loading: false });
+}
+
+function seed(over: Partial<ArbiterPublicState>): void {
+  useArbiter.setState({ state: fullState(over), loading: false });
   useEquipments.setState({ equipments: [] });
   useZones.setState({ tree: [] });
 }
 
-describe("ArbitrationSurface pending rows (#491)", () => {
+describe("ArbitrationSurface roster (#561)", () => {
   beforeEach(() => {
     useArbiter.setState({ state: null, loading: false });
   });
 
-  it("shows a running must-run fallback as 'running (no surplus)', not 'waiting'", () => {
-    seedState([pendingEntry({ equipmentId: "pac", equipmentName: "PAC", watts: 2000, needW: 2000, running: true })]);
+  it("renders a waiting pending load with its need/load/tolerated figures", () => {
+    seed({
+      pending: [
+        {
+          equipmentId: "pump",
+          equipmentName: "Pompe Piscine",
+          instanceId: "i-pump",
+          watts: 600,
+          needW: 400,
+          toleratedImportW: 300,
+          reasonWaiting: "insufficient-surplus:0",
+          running: false,
+        },
+      ],
+    });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("running (no surplus)")).toBeTruthy();
-    expect(screen.getByText("running on grid; will switch to surplus when available")).toBeTruthy();
-    // It must NOT be presented as waiting for surplus.
-    expect(screen.queryByText(/waiting for surplus/)).toBeNull();
+    expect(screen.getByText("Pompe Piscine")).toBeTruthy();
+    expect(screen.getByText("Waiting")).toBeTruthy();
+    expect(screen.getByText("400 W")).toBeTruthy(); // need
+    expect(screen.getByText("600 W")).toBeTruthy(); // load
+    expect(screen.getByText("300 W")).toBeTruthy(); // tolerated
   });
 
-  it("keeps an idle pending claim showing the waiting reason", () => {
-    seedState([pendingEntry({ running: false })]);
+  it("shows a running must-run fallback as 'No surplus', never 'Waiting' (#491)", () => {
+    seed({
+      pending: [
+        {
+          equipmentId: "pac",
+          equipmentName: "PAC Piscine",
+          instanceId: "i-pac",
+          watts: 1800,
+          needW: 1700,
+          toleratedImportW: 200,
+          reasonWaiting: "insufficient-surplus:0",
+          running: true,
+        },
+      ],
+    });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText(/waiting for surplus \(needs 300 W\)/)).toBeTruthy();
-    expect(screen.queryByText("running (no surplus)")).toBeNull();
+    expect(screen.getByText("No surplus")).toBeTruthy();
+    expect(screen.queryByText("Waiting")).toBeNull();
   });
 
-  it("renders each pending load with its own label when both states coexist", () => {
-    seedState([
-      pendingEntry({ equipmentId: "pac", equipmentName: "PAC", watts: 2000, needW: 2000, running: true }),
-      pendingEntry({ running: false }),
-    ]);
+  it("renders a declared load with no claim as 'At rest' with its rating (#561)", () => {
+    seed({
+      idle: [
+        {
+          equipmentId: "pac",
+          equipmentName: "PAC",
+          watts: 1500,
+          toleratedImportW: 0,
+          runningUnmanaged: false,
+        },
+      ],
+    });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("running (no surplus)")).toBeTruthy();
-    expect(screen.getByText(/waiting for surplus \(needs 300 W\)/)).toBeTruthy();
+    expect(screen.getByText("PAC")).toBeTruthy();
+    expect(screen.getByText("At rest")).toBeTruthy();
+    expect(screen.getByText("1500 W")).toBeTruthy(); // load
+  });
+
+  it("reads a claimless-but-running load as 'Unmanaged', not 'At rest'", () => {
+    seed({
+      idle: [
+        {
+          equipmentId: "heater",
+          equipmentName: "Chauffe-eau",
+          watts: 2200,
+          toleratedImportW: 0,
+          runningUnmanaged: true,
+        },
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Unmanaged")).toBeTruthy();
+    expect(screen.queryByText("At rest")).toBeNull();
+  });
+
+  it("renders granted, waiting and at-rest loads together, each with its state", () => {
+    seed({
+      grants: [
+        {
+          equipmentId: "pump",
+          equipmentName: "Pompe Piscine",
+          instanceId: "i-pump",
+          watts: 600,
+          sinceIso: "2026-08-17T08:00:00.000Z",
+        },
+      ],
+      pending: [
+        {
+          equipmentId: "pacp",
+          equipmentName: "PAC Piscine",
+          instanceId: "i-pacp",
+          watts: 1800,
+          needW: 1700,
+          toleratedImportW: 200,
+          reasonWaiting: "insufficient-surplus:0",
+          running: false,
+        },
+      ],
+      idle: [
+        { equipmentId: "pac", equipmentName: "PAC", watts: 1500, toleratedImportW: 0, runningUnmanaged: false },
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Granted")).toBeTruthy();
+    expect(screen.getByText("Waiting")).toBeTruthy();
+    expect(screen.getByText("At rest")).toBeTruthy();
+  });
+
+  it("spells out the deficit context when the meter is importing", () => {
+    seed({ availableSurplusW: -1091, idle: [
+      { equipmentId: "pac", equipmentName: "PAC", watts: 1500, toleratedImportW: 0, runningUnmanaged: false },
+    ] });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Importing 1.1 kW, no load can start yet.")).toBeTruthy();
   });
 });

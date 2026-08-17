@@ -693,7 +693,12 @@ export type ArbiterDecisionKind =
   | "unclaimed-run"
   /** Closes the `unclaimed-run` above, so the timeline can draw a span
    *  rather than a lone start marker. */
-  | "unclaimed-run-ended";
+  | "unclaimed-run-ended"
+  /** #561 — the load entered (or re-entered) the pending-waiting state: a
+   *  recipe is claiming surplus for it but none is granted yet. Opens a
+   *  "pending" span on the timeline; the next `granted`/`released`/`suspended`
+   *  (or a `revoked` with no re-claim) closes it. */
+  | "waiting";
 
 /** One line of the decision journal (FR-8/FR-9). Bounded ring buffer. */
 export interface ArbiterDecision {
@@ -756,6 +761,29 @@ export interface ArbiterSuspensionInfo {
   untilIso: string;
 }
 
+/**
+ * #561 — a declared flexible load (in the arbiter priority) that currently
+ * holds no claim: neither granted, nor pending, nor suspended. It has a
+ * timeline lane but was previously invisible in the read model, leaving "why
+ * isn't this load listed?" unanswerable. Surfaced so the UI roster can show it
+ * "at rest" with its rating.
+ */
+export interface ArbiterIdleInfo {
+  equipmentId: string;
+  equipmentName: string;
+  /** Best estimate of what it draws when it runs (live → learned → nominal). */
+  watts: number;
+  /** Grid it would accept to buy, from its energy profile. */
+  toleratedImportW: number;
+  /**
+   * No claim, yet a recipe is running it as a must-run fallback
+   * (`unclaimedRunning`): it is drawing power outside arbitration, not idle —
+   * the UI must read it "running outside arbitration", not "at rest" (mirrors
+   * the #491 treatment on pending loads).
+   */
+  runningUnmanaged: boolean;
+}
+
 /** Read model of the arbiter for the API route and the UI (FR-10). */
 export interface ArbiterPublicState {
   enabled: boolean;
@@ -765,14 +793,18 @@ export interface ArbiterPublicState {
   grants: ArbiterGrantInfo[];
   pending: ArbiterPendingInfo[];
   suspensions: ArbiterSuspensionInfo[];
+  /** #561 — declared flexible loads with no active claim (at rest / running
+   *  outside arbitration). Completes the roster so every priority load shows. */
+  idle: ArbiterIdleInfo[];
   journal: ArbiterDecision[];
   /** Today's available-surplus samples (~5 min cadence, in-memory, bounded)
    *  — the curve of the FR-10 day timeline. */
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
-/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model. */
-export type ArbiterQuarterState = "granted" | "revoked" | "unmanaged" | "idle";
+/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model.
+ *  `pending` (#561) — the load was waiting for surplus (claiming, not granted). */
+export type ArbiterQuarterState = "granted" | "pending" | "revoked" | "unmanaged" | "idle";
 
 export interface ArbiterTimelineLoad {
   equipmentId: string;
