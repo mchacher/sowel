@@ -146,7 +146,7 @@ describe("buildSubmeterRows", () => {
     expect(rows.map((r) => r.name)).toEqual(["High", "Mid", "Low"]);
   });
 
-  it("places null-power rows last (offline / no data)", () => {
+  it("places offline (null-power) rows last", () => {
     const rows = buildSubmeterRows([
       makeEquipment("a", "Online1", { power: 100 }),
       makeEquipment("b", "OfflineOne", { power: 500, status: "offline" }),
@@ -154,6 +154,24 @@ describe("buildSubmeterRows", () => {
     ]);
     expect(rows.map((r) => r.name)).toEqual(["Online1", "Online2", "OfflineOne"]);
     expect(rows[2].power).toBeNull();
+  });
+
+  it("drops online submeters with no power measurement (#560)", () => {
+    const rows = buildSubmeterRows([
+      makeEquipment("a", "PAC", { power: 100 }),
+      makeEquipment("b", "Lave-linge", { power: null }),
+    ]);
+    // The washing machine has no power binding while online → omitted.
+    expect(rows.map((r) => r.name)).toEqual(["PAC"]);
+  });
+
+  it("keeps offline submeters even without a power value (#560)", () => {
+    const rows = buildSubmeterRows([
+      makeEquipment("a", "PAC", { power: 100 }),
+      makeEquipment("b", "Piscine", { power: null, status: "offline" }),
+    ]);
+    expect(rows.map((r) => r.name)).toEqual(["PAC", "Piscine"]);
+    expect(rows[1].power).toBeNull();
   });
 
   it("wraps palette when more than 8 submeters", () => {

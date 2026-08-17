@@ -259,7 +259,6 @@ function LegendRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const isOffline = row.status === "offline";
-  const noData = row.power === null && !isOffline;
   const pct =
     row.power !== null && total > 0
       ? Math.round((row.power / total) * 100)
@@ -269,7 +268,7 @@ function LegendRow({
   return (
     <div
       className={`grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-[13px] ${
-        isOffline || noData ? "opacity-60" : ""
+        isOffline ? "opacity-60" : ""
       }`}
     >
       <span
@@ -282,11 +281,6 @@ function LegendRow({
           <span className="text-[11px] text-text-tertiary">
             {t("energy.live.breakdown.offline")}
             {row.offlineSince && ` · ${formatRelative(row.offlineSince)}`}
-          </span>
-        )}
-        {noData && (
-          <span className="text-[11px] text-text-tertiary">
-            {t("energy.live.breakdown.noData")}
           </span>
         )}
       </div>

@@ -1029,7 +1029,6 @@
   "energy.live.breakdown.title": "Décomposition consommation",
   "energy.live.breakdown.other": "Autre",
   "energy.live.breakdown.offline": "hors-ligne",
-  "energy.live.breakdown.noData": "pas de mesure",
   "energy.live.breakdown.houseIdle": "Maison à l'arrêt",
   "energy.live.breakdown.overshoot": "Σ sous-compteurs ≥ total maison",
   "energy.live.phases.title": "Répartition par phase",

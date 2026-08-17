@@ -40,8 +40,12 @@ export function readSubmeterPower(eq: EquipmentWithDetails): number | null {
  *   2. Sort by `id` ascending and assign a palette color by index — this is
  *      the SAME indexing rule the backend uses for the historical By-usage
  *      chart, so a given equipment gets the same color in both views.
- *   3. Re-sort the rows for display: by power descending, then null-power
- *      (offline / no data) last.
+ *   3. Drop rows that carry no power measurement at all (null power while the
+ *      equipment is *online*): a declared submeter with no `power` binding
+ *      contributes nothing and is pure noise in the legend (#560). Offline
+ *      rows keep their null power — they are meaningful and stay.
+ *   4. Re-sort the rows for display: by power descending, then null-power
+ *      (offline) last.
  *
  * `labels` optionally overrides display names by equipment id (spec 139 —
  * `name — zone` for homonym submeters); sorting uses the displayed name.
@@ -54,14 +58,17 @@ export function buildSubmeterRows(
     .filter((eq) => isSubmeterEquipment(eq))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  const rows: SubmeterRow[] = byId.map((eq, idx) => ({
-    id: eq.id,
-    name: labels?.get(eq.id) ?? eq.name,
-    power: readSubmeterPower(eq),
-    status: eq.status,
-    offlineSince: eq.statusReason?.offlineSince ?? null,
-    color: pickSubmeterColor(idx),
-  }));
+  const rows: SubmeterRow[] = byId
+    .map((eq, idx) => ({
+      id: eq.id,
+      name: labels?.get(eq.id) ?? eq.name,
+      power: readSubmeterPower(eq),
+      status: eq.status,
+      offlineSince: eq.statusReason?.offlineSince ?? null,
+      color: pickSubmeterColor(idx),
+    }))
+    // No measurement and not offline → nothing to show (#560).
+    .filter((row) => row.power !== null || row.status === "offline");
 
   rows.sort((a, b) => {
     const aNull = a.power === null;
