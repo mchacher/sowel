@@ -158,12 +158,18 @@ Il est **désactivé par défaut** et ne change rien tant que vous ne l'activez 
 
 ### Déclarer une charge pilotable
 
-Sur un équipement qui peut s'allumer et s'éteindre (pompe de piscine, chauffe-eau, un interrupteur pilotant un radiateur), ouvrez sa fiche et activez **Pilotage énergie**. Vous choisissez :
+Sur un équipement dont le type est une charge pilotable (pompe de piscine, chauffe-eau, vanne d'eau, radiateur ou thermostat), ouvrez sa fiche et activez **Pilotage énergie**. Vous réglez :
 
-- **Classe** — _Différable_ (un relais dont marche/arrêt est une commande, comme une pompe de piscine ou un chauffe-eau : l'arbitre peut la couper et la relancer plus tard, et un on/off inattendu est lu comme une reprise en main manuelle) ou _Confort_ (une charge qui se régule seule, comme une climatisation : le surplus ne fait que compléter son fonctionnement, et l'arbitre n'interprète pas son cycling normal comme une action de votre part). Sowel présélectionne la bonne classe selon le type d'équipement ; vous pouvez la corriger.
 - **Puissance nominale** — pré-remplie depuis la mesure de l'équipement quand une pince est associée.
 - **Import toléré (W)** — combien d'import réseau cette charge accepte pour démarrer sur un **surplus partiel**. L'arbitre l'engage dès que le surplus couvre « puissance nominale + marge − import toléré ». À `0` (défaut), elle n'attend qu'un surplus complet ; monter cette valeur la fait démarrer plus tôt, en acceptant d'acheter un peu de réseau. C'est le curseur confort / économie de la charge, réglé une fois ici et respecté par toute automatisation qui la pilote.
 - **Marche / arrêt minimum** — durée minimale de marche une fois démarré, et de repos avant redémarrage (protège un compresseur des cycles courts).
+
+La façon dont l'arbitre traite la charge est **dérivée de son type**, il n'y a donc rien à choisir :
+
+- un **relais** dont marche/arrêt est une commande (pompe de piscine, chauffe-eau) peut être coupé et relancé plus tard sur le surplus, et un on/off inattendu est lu comme une reprise en main manuelle ;
+- une charge **auto-régulée** (un thermostat ou une climatisation) voit son fonctionnement normal seulement complété par le surplus, et l'arbitre n'interprète pas ses propres cycles marche/arrêt comme une action de votre part.
+
+Un type d'équipement sans comportement énergétique (une simple lumière ou un interrupteur générique) ne peut pas être déclaré charge pilotable.
 
 Activer ceci ne fait que _déclarer_ la charge. Rien ne la pilote tant que l'arbitre lui-même n'est pas activé.
 

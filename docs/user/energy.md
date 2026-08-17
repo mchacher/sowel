@@ -158,12 +158,18 @@ It is **off by default** and changes nothing until you enable it. On a home with
 
 ### Declaring a flexible load
 
-On an equipment that can be switched on and off (pool pump, water heater, a switch driving a heater), open its page and turn on **Energy management**. You choose:
+On an equipment whose type is a controllable load (pool pump, water heater, water valve, heater or thermostat), open its page and turn on **Energy management**. You set:
 
-- **Class** — _Deferrable_ (a relay whose on/off is a command, like a pool pump or a water heater: the arbiter can switch it off and run it later, and an unexpected on/off is read as you taking manual control) or _Comfort_ (a self-regulating load, like an air conditioner: the surplus only complements its normal operation, and the arbiter does not read its own on/off cycling as an action from you). Sowel pre-selects the right class from the equipment type; you can override it.
 - **Nominal power** — pre-filled from the equipment's own measurement when a clamp is bound.
 - **Tolerated import (W)** — how much grid import this load will accept to start on a **partial surplus**. The arbiter engages it once the surplus covers "nominal power + margin − tolerated import". At `0` (default) it waits for a full surplus; raising it makes the load start sooner, accepting to buy a little grid. It is the load's comfort / economy dial, set once here and honoured by whatever automation drives it.
 - **Minimum on / off** — how long it must stay on once started, and rest before restarting (protects a compressor from short-cycling).
+
+How the arbiter treats the load is **derived from its type**, so there is nothing to pick:
+
+- a **relay** whose on/off is a command (pool pump, water heater) can be switched off and run later on the surplus, and an unexpected on/off is read as you taking manual control;
+- a **self-regulating** load (a thermostat or air conditioner) has its normal operation only complemented by the surplus, and the arbiter does not read its own on/off cycling as an action from you.
+
+An equipment type with no energy behaviour (a plain light or a generic switch) cannot be declared a flexible load.
 
 Enabling this only _declares_ the load. Nothing acts on it until the arbiter itself is enabled.
 
