@@ -11,6 +11,18 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.51.x : Double authentification et arbitre énergie affiné
+
+### v1.51.0 — 2026-08-17 { #v1-51-0 }
+
+- Feat (auth) : **double authentification (TOTP) avec codes de secours**. Un compte peut activer la 2FA par application (Google Authenticator, Authy et similaires) : enrôlement par QR code dans les réglages utilisateur, code à six chiffres à la connexion, et codes de secours à usage unique pour récupérer l'accès en cas de perte de l'authentificateur. (#541)
+- Feat (énergie) : **une charge pilotable déclarée sans réservation active apparaît désormais dans la liste de l'arbitre avec un état d'attente**. Une charge que vous avez enrôlée mais qu'aucune automatisation ne réclame s'affiche en attente sur la surface d'arbitrage et la timeline, au lieu d'être invisible jusqu'à sa prochaine marche. (#561, #562)
+- Change (énergie) : **l'arbitre de surplus ne demande plus de choisir la classe de charge ; elle est déduite du type d'équipement**. Le panneau Pilotage énergie a supprimé le sélecteur Confort/Différable. Qu'une charge soit un relais (pompe de piscine, chauffe-eau) ou auto-régulée (thermostat, climatisation) est une propriété du type d'équipement, donc Sowel la déduit, et un type sans sémantique énergie ne peut plus être déclaré charge pilotable. Pas de migration ; les profils existants sont inchangés. (#555, #568, #569)
+- Fix (énergie) : **la courbe et la pastille de surplus de l'arbitre affichent le vrai solde réseau signé** (export positif, import négatif) au lieu d'un chiffre de réservation interne, si bien que la lecture correspond à votre compteur. (#563, #565)
+- Fix (énergie) : **un sous-compteur qui ne rapporte aucune mesure de puissance est retiré de la répartition de consommation** au lieu d'y afficher une ligne à zéro parasite. (#560, #567)
+- Fix (devices) : **un indicateur `battery_low` est classé comme lecture générique, pas comme niveau de batterie**. (#559)
+- Chore (registry) : zigbee2mqtt en 2.5.1 (correctif jumeau battery_low), smart-cooling en 2.1.0 (pré-refroidissement proportionnel au surplus), pool-pump-schedule en 1.6.2. (#554, #556, #558, #564, #566)
+
 ## 1.50.x : Tolérance de surplus par équipement
 
 ### v1.50.0 — 2026-08-16 { #v1-50-0 }

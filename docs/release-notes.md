@@ -11,6 +11,18 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.51.x: Two-factor authentication and a sharper energy arbiter
+
+### v1.51.0 — 2026-08-17 { #v1-51-0 }
+
+- Feat (auth): **two-factor authentication (TOTP) with backup codes**. Accounts can enable app-based 2FA (Google Authenticator, Authy and the like): a QR-code enrolment in the user settings, a six-digit code at login, and one-time backup codes to recover access if the authenticator is lost. (#541)
+- Feat (energy): **a declared flexible load with no active claim now appears in the arbiter roster with a waiting state**. A load you have enrolled but that no automation is currently claiming shows as waiting on the arbitration surface and timeline, instead of being invisible until it next runs. (#561, #562)
+- Change (energy): **the surplus arbiter no longer asks you to pick a load class; it is inferred from the equipment type**. The Pilotage énergie panel dropped the Comfort/Deferrable selector. Whether a load is a relay (pool pump, water heater) or self-regulating (thermostat, air conditioner) is a property of the equipment type, so Sowel derives it, and a type with no energy semantics can no longer be declared a flexible load. No migration; existing profiles are unchanged. (#555, #568, #569)
+- Fix (energy): **the arbiter surplus curve and pill show the true signed grid balance** (export positive, import negative) instead of an internal reservation figure, so the reading matches your meter. (#563, #565)
+- Fix (energy): **a submeter that reports no power measurement is dropped from the consumption breakdown** instead of showing a spurious zero row. (#560, #567)
+- Fix (devices): **a `battery_low` indicator is categorised as a generic reading, not a battery level**. (#559)
+- Chore (registry): zigbee2mqtt to 2.5.1 (battery_low twin fix), smart-cooling to 2.1.0 (surplus-proportional pre-cooling), pool-pump-schedule to 1.6.2. (#554, #556, #558, #564, #566)
+
 ## 1.50.x: Per-equipment surplus tolerance
 
 ### v1.50.0 — 2026-08-16 { #v1-50-0 }
