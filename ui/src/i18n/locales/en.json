@@ -1250,6 +1250,8 @@
   "arbiter.state.active": "Active",
   "arbiter.state.degraded": "Degraded",
   "arbiter.state.disabled": "Disabled",
+  "arbiter.state.dormant": "Dormant",
+  "arbiter.nightContext": "No solar production, resuming at sunrise",
   "arbiter.household": "Household",
   "arbiter.free": "Free surplus",
   "arbiter.legend.granted": "Granted (surplus)",

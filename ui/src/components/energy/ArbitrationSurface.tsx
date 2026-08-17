@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Scale } from "lucide-react";
+import { Scale, Moon } from "lucide-react";
 import { ArbiterTimeline } from "./ArbiterTimeline";
-import { surplusStickerColor } from "./arbiterColors";
+import { surplusStickerColor, isArbiterDormant } from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
+import { useZoneAggregation } from "../../store/useZoneAggregation";
+import { ROOT_ZONE_ID } from "../../lib/constants";
 
 /**
  * Spec 140 / FR-10 — the arbitration surface on Energy → Live. Two stacked
@@ -65,6 +67,8 @@ export function ArbitrationSurface() {
   const { t } = useTranslation();
   const state = useArbiter((s) => s.state);
   const fetch = useArbiter((s) => s.fetch);
+  // Same sun source as the header SunlightBanner (root zone aggregation).
+  const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
 
   useEffect(() => {
     void fetch();
@@ -73,7 +77,11 @@ export function ArbitrationSurface() {
   if (!state || !state.enabled) return null;
 
   const available = state.availableSurplusW;
-  const stickerColor = surplusStickerColor(available);
+
+  // Issue #577 — at night there is structurally no surplus to arbitrate. Show a
+  // calm "dormant" state instead of the active/importing deficit view.
+  const dormant = isArbiterDormant(state.state, rootAgg?.isDaylight ?? null, available);
+  const stickerColor = dormant ? "var(--color-slate)" : surplusStickerColor(available);
 
   // Flatten the read model into one ordered roster. Order encodes urgency:
   // who holds surplus, who is asking, who is paused, who is at rest.
@@ -91,7 +99,9 @@ export function ArbitrationSurface() {
       equipmentName: p.equipmentName,
       // A pending claim whose load a recipe is already running as a must-run
       // fallback is drawing power, not idle (#491) — read it "no surplus".
-      stateKey: p.running ? "running" : "waiting",
+      // While dormant (night, no surplus), a non-running claim is at rest, not
+      // "waiting" for a surplus that cannot come before sunrise (#577).
+      stateKey: p.running ? "running" : dormant ? "idle" : "waiting",
       needW: p.running ? null : p.needW,
       loadW: p.watts,
       toleratedW: tolerated(p.toleratedImportW),
@@ -116,7 +126,9 @@ export function ArbitrationSurface() {
 
   // Deficit context (FR-10a): when the meter is importing, no waiting load can
   // start — spell it out so an empty "need" column does not read as inaction.
-  const showDeficit = state.state === "active" && available !== null && available < 0;
+  // Suppressed while dormant, which shows its own calm night line instead (#577).
+  const showDeficit =
+    !dormant && state.state === "active" && available !== null && available < 0;
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
@@ -134,14 +146,32 @@ export function ArbitrationSurface() {
           }}
           title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
         >
-          {t(`arbiter.state.${state.state}`)}
-          {available !== null && (
-            <span className="font-mono">{(available / 1000).toFixed(1)} kW</span>
+          {dormant ? (
+            <>
+              <Moon size={11} strokeWidth={2} />
+              {t("arbiter.state.dormant")}
+            </>
+          ) : (
+            <>
+              {t(`arbiter.state.${state.state}`)}
+              {available !== null && (
+                <span className="font-mono">{(available / 1000).toFixed(1)} kW</span>
+              )}
+            </>
           )}
         </span>
       </div>
       {state.state === "degraded" && (
         <p className="text-[12px] text-warning mb-2">{t("arbiter.degradedReason")}</p>
+      )}
+      {dormant && (
+        <p className="text-[12px] text-slate mb-2 flex items-center gap-1.5">
+          <Moon size={13} strokeWidth={1.5} className="flex-none" />
+          <span>
+            {t("arbiter.nightContext")}
+            {rootAgg?.sunrise && <span className="font-mono"> ({rootAgg.sunrise})</span>}
+          </span>
+        </p>
       )}
       {showDeficit && (
         <p className="text-[12px] text-text-tertiary mb-2">

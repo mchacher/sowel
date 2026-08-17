@@ -34,3 +34,29 @@ export function surplusStickerColor(availableSurplusW: number | null): string {
   if (availableSurplusW === null) return "var(--color-text-tertiary)";
   return availableSurplusW > 0 ? "var(--color-solar-auto)" : "var(--color-error)";
 }
+
+/**
+ * Spec 148 (issue #577) — the arbiter is *dormant* when the sun is down and
+ * there is no surplus to distribute. At night there is structurally no PV
+ * production, so the "active but importing" deficit view (red sticker + loads
+ * "waiting" for a surplus that cannot come before sunrise) is misleading; the
+ * surface should read as calmly at rest instead.
+ *
+ * `isDaylight === false` comes from the root zone's aggregated data (the same
+ * source the header SunlightBanner uses) — a home with no coordinates has
+ * `isDaylight === null` and never goes dormant, falling back to the deficit
+ * view. The `availableSurplusW <= 0` guard keeps the battery case correct for
+ * free: a home battery exporting at night keeps `availableSurplusW > 0`, which
+ * is a real surplus to arbitrate and must stay in the normal active mode.
+ */
+export function isArbiterDormant(
+  runState: string,
+  isDaylight: boolean | null,
+  availableSurplusW: number | null,
+): boolean {
+  return (
+    runState === "active" &&
+    isDaylight === false &&
+    (availableSurplusW === null || availableSurplusW <= 0)
+  );
+}
