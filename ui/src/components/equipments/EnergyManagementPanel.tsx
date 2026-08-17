@@ -16,11 +16,14 @@ import type { EnergyLoadClass, EnergyLoadProfile, EquipmentWithDetails } from ".
  * orderable equipments only.
  *
  * Ticking "flexible load" REVEALS the form (pre-filled). The first save is an
- * explicit Save button — not an on-blur side effect — because a native select
- * does not blur when you pick an option, so "pick the class last, navigate
- * away" would otherwise lose a completed profile. Once a profile exists,
+ * explicit Save button, not an on-blur side effect, so a completed profile is
+ * never lost by navigating away before any field blurs. Once a profile exists,
  * edits persist live on change/blur. Removing an existing profile asks first
  * (it discards the learned power estimate).
+ *
+ * Issue #555 — the load class is derived from the equipment type, not picked
+ * by the user (a water heater is always a relay, a thermostat always
+ * self-regulating). Types with no energy semantics cannot be declared flexible.
  */
 export function EnergyManagementPanel({
   equipment,
@@ -49,16 +52,26 @@ export function EnergyManagementPanel({
   const defaults = useMemo(() => {
     const timings = defaultEnergyTimingsFor(equipment.type);
     return {
-      class: defaultEnergyClassFor(equipment.type),
       nominalPowerW: measuredW ?? profile?.learned?.watts ?? 0,
       ...timings,
     };
   }, [equipment.type, measuredW, profile]);
 
+  // Issue #555 — the load class (comfort/deferrable) is a physical property of
+  // the equipment type, not a user preference, so it is derived rather than
+  // picked. For a known type the derived class wins (this normalises any legacy
+  // override saved back when the class was a dropdown, on the next save). It
+  // falls back to the stored class only for types with no derived class, so an
+  // existing profile is never orphaned. `derivedClass` is null for types with
+  // no energy semantics; such an equipment cannot be declared a flexible load
+  // unless one already exists.
+  const derivedClass = defaultEnergyClassFor(equipment.type);
+  const cls: EnergyLoadClass | "" = derivedClass ?? profile?.class ?? "";
+  const canEnable = derivedClass !== null || !!profile;
+
   const [open, setOpen] = useState<boolean>(!!profile);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cls, setCls] = useState<EnergyLoadClass | "">(profile?.class ?? defaults.class ?? "");
   const [watts, setWatts] = useState<number>(profile?.nominalPowerW ?? defaults.nominalPowerW);
   const [toleratedImportW, setToleratedImportW] = useState<number>(profile?.toleratedImportW ?? 0);
   const [minOnS, setMinOnS] = useState<number>(profile?.minOnS ?? defaults.minOnS);
@@ -99,7 +112,6 @@ export function EnergyManagementPanel({
   /** Live-save an edit, but only once a profile already exists. */
   const commitEdit = (
     overrides: Partial<{
-      cls: EnergyLoadClass | "";
       watts: number;
       toleratedImportW: number;
       minOnS: number;
@@ -152,13 +164,15 @@ export function EnergyManagementPanel({
           <input
             type="checkbox"
             checked={open}
-            disabled={saving}
+            disabled={saving || !canEnable}
             onChange={(e) => toggle(e.target.checked)}
           />
           {t("energyProfile.enable")}
         </label>
       </div>
-      <p className="text-[12px] text-text-tertiary mb-3">{t("energyProfile.hint")}</p>
+      <p className="text-[12px] text-text-tertiary mb-3">
+        {canEnable ? t("energyProfile.hint") : t("energyProfile.noClassForType")}
+      </p>
 
       {suspension && (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-[12px] text-text-secondary">
@@ -182,27 +196,6 @@ export function EnergyManagementPanel({
       {open && (
         <>
           <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label htmlFor="ep-class" className="block text-[12px] text-text-secondary mb-1">
-                {t("energyProfile.class")}
-              </label>
-              <select
-                id="ep-class"
-                value={cls}
-                onChange={(e) => {
-                  const c = e.target.value as EnergyLoadClass;
-                  setCls(c);
-                  commitEdit({ cls: c });
-                }}
-                className="px-2 py-1 border border-border rounded text-[13px] text-text bg-background"
-              >
-                <option value="" disabled>
-                  {t("energyProfile.chooseClass")}
-                </option>
-                <option value="deferrable">{t("energyProfile.deferrable")}</option>
-                <option value="comfort">{t("energyProfile.comfort")}</option>
-              </select>
-            </div>
             <div>
               <label htmlFor="ep-watts" className="block text-[12px] text-text-secondary mb-1">
                 {t("energyProfile.nominalW")}
@@ -271,9 +264,6 @@ export function EnergyManagementPanel({
             )}
             {saving && <Loader2 size={14} className="animate-spin text-text-tertiary mb-2" />}
           </div>
-
-          {/* Definition of the two classes, right where the choice is made. */}
-          <p className="text-[12px] text-text-tertiary mt-2">{t("energyProfile.classHelp")}</p>
 
           {!profile &&
             (complete ? (
