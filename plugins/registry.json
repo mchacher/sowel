@@ -540,5 +540,26 @@
     "sowelVersion": ">=1.31.0",
     "owner": "alpitux",
     "sha256": "b26b62f2bc0c6ce2e4bf65c8b87148f9e0e98659b0547bc400030076a3a5c4d5"
+  },
+  {
+    "id": "vmc-humidity",
+    "type": "recipe",
+    "category": "climate",
+    "name": "VMC Humidity Control",
+    "description": "Runs the ventilation to extract humidity from the rooms it serves, only when the outdoor air can actually dry them, and on presence in the toilets. Use it alone on a given ventilation.",
+    "icon": "Fan",
+    "author": "adn-dev-adrien",
+    "repo": "adn-dev-adrien/sowel-recipe-vmc-humidity",
+    "version": "0.4.2",
+    "tags": ["ventilation", "vmc", "humidity", "comfort", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "VMC hygro-pilotée",
+        "description": "Fait tourner la VMC pour extraire l'humidité des pièces qu'elle dessert, uniquement quand l'air extérieur peut réellement les assécher, et sur détection de présence aux WC. À utiliser seule sur une VMC donnée."
+      }
+    },
+    "sowelVersion": ">=1.35.0",
+    "owner": "adn-dev-adrien",
+    "sha256": "3024d2edbfb3a2050cd7c79057efe0e0984245cd1649c6149d3d1187662b71fd"
   }
 ]
