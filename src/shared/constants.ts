@@ -70,7 +70,13 @@ export const PROPERTY_TO_CATEGORY: Record<string, DataCategory> = {
 
   // Battery
   battery: "battery",
-  battery_low: "battery",
+  // NOT "battery": that category's contract is a numeric percentage
+  // (CATEGORY_EXPECTED_TYPE), and this is a boolean flag. Mapping it there made
+  // every discovery log a contract violation, and made the device list show the
+  // flag instead of a level for sensors whose numeric battery stays null.
+  // `isBatteryData` matches it by key, so the low-battery monitor (spec 143) is
+  // unaffected.
+  battery_low: "generic",
 
   // Power / energy
   power: "power",

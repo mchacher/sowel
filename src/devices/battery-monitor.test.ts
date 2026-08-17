@@ -8,6 +8,7 @@ import {
   isBatteryData,
   isBatteryPowered,
 } from "./battery-monitor.js";
+import { PROPERTY_TO_CATEGORY, CATEGORY_EXPECTED_TYPE } from "../shared/constants.js";
 import { EventBus } from "../core/event-bus.js";
 import { createLogger } from "../core/logger.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
@@ -176,8 +177,17 @@ describe("isBatteryData", () => {
     expect(isBatteryData({ key: "battery", category: "battery" })).toBe(true);
   });
 
-  it("matches a battery_low key whatever its category (plugins before z2m 2.5.0)", () => {
+  it("matches a battery_low key whatever its category", () => {
     expect(isBatteryData({ key: "battery_low", category: "generic" })).toBe(true);
+  });
+
+  it("keeps battery_low out of the battery category, whose contract is numeric", () => {
+    // Mapping it to "battery" made every discovery log "Declared data type
+    // contradicts category contract" (boolean vs number), and made the device
+    // list render the flag instead of a level for sensors whose numeric
+    // battery stays null. The key match above is what keeps it monitored.
+    expect(PROPERTY_TO_CATEGORY.battery_low).toBe("generic");
+    expect(CATEGORY_EXPECTED_TYPE.battery).toBe("number");
   });
 
   it("ignores anything else", () => {

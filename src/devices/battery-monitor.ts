@@ -61,9 +61,10 @@ export function isBatteryPowered(device: DeviceWithDetails): boolean {
  * Is this device data a battery reading?
  *
  * The key-based clause is not redundant with the category: plugins assign the
- * category at discovery, and the Zigbee2MQTT plugin categorized `battery_low`
- * as `generic` until 2.5.0 — the sensors that only expose that boolean would be
- * invisible without it.
+ * category at discovery, and `battery_low` is deliberately categorized
+ * `generic` — it is a boolean, while the `battery` category means a numeric
+ * percentage. The sensors that only expose that boolean would be invisible
+ * without the key match.
  */
 export function isBatteryData(data: { key: string; category: string }): boolean {
   return data.category === "battery" || data.key === "battery_low";
