@@ -81,3 +81,35 @@ describe("findDataByCategory", () => {
     expect(findDataByCategory(bindings, ["light_state"], ["state"])).toEqual(bindings[0]);
   });
 });
+
+describe("solar channel resolution (spec 152)", () => {
+  it("resolves the solar command independently of the main on/off", () => {
+    const bindings = [
+      { alias: "state", category: "light_toggle" as const },
+      { alias: "solar", category: "solar_toggle" as const },
+    ];
+    expect(findOrderByCategory(bindings, ["solar_toggle"], ["solar"])).toEqual(bindings[1]);
+    // The main resolver never picks the solar binding.
+    expect(findOrderByCategory(bindings, ["light_toggle", "toggle_power"], ["state"])).toEqual(
+      bindings[0],
+    );
+  });
+
+  it("resolves solar on a solar-only equipment (no main on/off, e.g. Calypso)", () => {
+    const bindings = [{ alias: "solar", category: "solar_toggle" as const }];
+    expect(findOrderByCategory(bindings, ["solar_toggle"], ["solar"])).toEqual(bindings[0]);
+    // No main channel to resolve.
+    expect(
+      findOrderByCategory(bindings, ["light_toggle", "toggle_power"], ["state"]),
+    ).toBeUndefined();
+  });
+
+  it("resolves solar_state data distinctly from the main light_state", () => {
+    const bindings = [
+      { alias: "state", category: "light_state" as const },
+      { alias: "solar_state", category: "solar_state" as const },
+    ];
+    expect(findDataByCategory(bindings, ["solar_state"], ["solar_state"])).toEqual(bindings[1]);
+    expect(findDataByCategory(bindings, ["light_state"], ["state"])).toEqual(bindings[0]);
+  });
+});

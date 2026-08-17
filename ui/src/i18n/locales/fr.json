@@ -330,6 +330,7 @@
   "binding.addBinding": "Ajouter la liaison",
   "controls.turnOn": "Allumer",
   "controls.turnOff": "Éteindre",
+  "controls.solar": "Solaire",
   "controls.brightness": "Luminosité",
   "controls.open": "Ouvrir",
   "controls.stop": "Stop",

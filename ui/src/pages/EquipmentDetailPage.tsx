@@ -8,6 +8,8 @@ import { useAuth } from "../store/useAuth";
 import { getEquipment, getHistoryBindings, setHistorize } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
+import { SolarControl } from "../components/equipments/SolarControl";
+import { findOrderByCategory, findMainOnOffOrder } from "../components/equipments/bindingUtils";
 import { ShutterControl } from "../components/equipments/ShutterControl";
 import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { WaterValveControl } from "../components/equipments/WaterValveControl";
@@ -263,16 +265,30 @@ export function EquipmentDetailPage() {
         )}
       </div>
 
-      {/* Controls — light and switch (smart plug) share the ON/OFF toggle surface */}
-      {(isLight || isSwitch) && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
-          <LightControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
-          />
-        </div>
-      )}
+      {/* Controls — light, switch (smart plug) and water heater share the ON/OFF
+          toggle surface. Spec 152: a water heater can additionally (or only, on
+          permanent mains) carry a dedicated "solar" on/off. Each toggle renders
+          iff its channel is bound. */}
+      {(isLight || isSwitch || equipment.type === "water_heater") &&
+        equipment.enabled &&
+        (!!findMainOnOffOrder(equipment.orderBindings) ||
+          !!findOrderByCategory(equipment.orderBindings, ["solar_toggle"], ["solar"])) && (
+          <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+            <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              {!!findMainOnOffOrder(equipment.orderBindings) && (
+                <LightControl
+                  equipment={equipment}
+                  onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+                />
+              )}
+              <SolarControl
+                equipment={equipment}
+                onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+              />
+            </div>
+          </div>
+        )}
 
       {/* Shutter / Awning controls (also used for pool_cover). isShutterFamily
           covers both shutters and awnings — ShutterControl handles the

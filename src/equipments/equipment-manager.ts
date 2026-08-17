@@ -21,7 +21,7 @@ import type {
   OrderCategory,
   OrderSource,
 } from "../shared/types.js";
-import { inferBindingCategory } from "../shared/binding-candidates.js";
+import { inferBindingCategory, inferDataBindingCategory } from "../shared/binding-candidates.js";
 import { parseWireValue, resolveWireValue } from "../shared/order-wire-value.js";
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import type { Device } from "../shared/types.js";
@@ -198,8 +198,8 @@ export class EquipmentManager {
 
       // DataBinding
       insertDataBinding: this.db.prepare(
-        `INSERT INTO data_bindings (id, equipment_id, device_data_id, alias)
-         VALUES (@id, @equipmentId, @deviceDataId, @alias)`,
+        `INSERT INTO data_bindings (id, equipment_id, device_data_id, alias, category_override)
+         VALUES (@id, @equipmentId, @deviceDataId, @alias, @categoryOverride)`,
       ),
       deleteDataBinding: this.db.prepare("DELETE FROM data_bindings WHERE id = ?"),
       getDataBindingById: this.db.prepare("SELECT * FROM data_bindings WHERE id = ?"),
@@ -211,7 +211,8 @@ export class EquipmentManager {
       ),
       getDataBindingsWithValues: this.db.prepare(
         `SELECT db.id, db.equipment_id, db.device_data_id, db.alias, db.historize,
-                dd.device_id, d.name as device_name, dd.key, dd.type, dd.category,
+                dd.device_id, d.name as device_name, dd.key, dd.type,
+                COALESCE(db.category_override, dd.category) as category,
                 dd.value, dd.unit, dd.enum_values, dd.last_updated, dd.last_changed
          FROM data_bindings db
          JOIN device_data dd ON db.device_data_id = dd.id
@@ -227,6 +228,9 @@ export class EquipmentManager {
       ),
       updateOrderBindingCategoryOverride: this.db.prepare(
         `UPDATE order_bindings SET category_override = ? WHERE id = ?`,
+      ),
+      updateDataBindingCategoryOverride: this.db.prepare(
+        `UPDATE data_bindings SET category_override = ? WHERE id = ?`,
       ),
       getOrderBindingsByEquipmentWithOrder: this.db.prepare(
         `SELECT ob.id, ob.equipment_id, ob.device_order_id, ob.alias,
@@ -487,6 +491,7 @@ export class EquipmentManager {
     // so that recipes / zone orders targeting pool-specific categories stay consistent.
     if (input.type !== undefined && input.type !== existing.type) {
       this.retagOrderBindingOverrides(id, equipment.type);
+      this.retagDataBindingOverrides(id, equipment.type);
     }
 
     this.logger.info({ equipmentId: id, name: equipment.name }, "Equipment updated");
@@ -523,19 +528,41 @@ export class EquipmentManager {
   private retagOrderBindingOverrides(equipmentId: string, equipmentType: EquipmentType): void {
     const rows = this.stmts.getOrderBindingsByEquipmentWithOrder.all(equipmentId) as Array<{
       id: string;
+      alias: string;
       type: string;
       enum_values: string | null;
       min_value: number | null;
       max_value: number | null;
     }>;
     for (const row of rows) {
-      const override = inferBindingCategory(equipmentType, {
-        type: row.type as DataType,
-        enumValues: row.enum_values ? (JSON.parse(row.enum_values) as string[]) : undefined,
-        min: row.min_value ?? undefined,
-        max: row.max_value ?? undefined,
-      });
+      const override = inferBindingCategory(
+        equipmentType,
+        {
+          type: row.type as DataType,
+          enumValues: row.enum_values ? (JSON.parse(row.enum_values) as string[]) : undefined,
+          min: row.min_value ?? undefined,
+          max: row.max_value ?? undefined,
+        },
+        row.alias,
+      );
       this.stmts.updateOrderBindingCategoryOverride.run(override, row.id);
+    }
+  }
+
+  /**
+   * Spec 152 — re-infer `category_override` for all DATA bindings on a type
+   * change (symmetric with retagOrderBindingOverrides). Keeps a `solar_state`
+   * override consistent with the new type so aggregation / Analyse (which key on
+   * category, not alias) never mis-tag a channel after a type switch.
+   */
+  private retagDataBindingOverrides(equipmentId: string, equipmentType: EquipmentType): void {
+    const rows = this.stmts.getDataBindingsByEquipment.all(equipmentId) as Array<{
+      id: string;
+      alias: string;
+    }>;
+    for (const row of rows) {
+      const override = inferDataBindingCategory(equipmentType, row.alias);
+      this.stmts.updateDataBindingCategoryOverride.run(override, row.id);
     }
   }
 
@@ -577,16 +604,21 @@ export class EquipmentManager {
   // ============================================================
 
   addDataBinding(equipmentId: string, deviceDataId: string, alias: string): DataBinding {
-    if (!this.getById(equipmentId)) {
+    const equipment = this.getById(equipmentId);
+    if (!equipment) {
       throw new EquipmentError("Equipment not found", 404);
     }
     if (!this.stmts.checkDeviceDataExists.get(deviceDataId)) {
       throw new EquipmentError(`DeviceData not found: ${deviceDataId}`, 404);
     }
 
+    // Spec 152 — a state binding added under the `solar_state` alias is tagged
+    // solar_state so it never collides with the main on/off light_state.
+    const categoryOverride = inferDataBindingCategory(equipment.type, alias);
+
     const id = randomUUID();
     try {
-      this.stmts.insertDataBinding.run({ id, equipmentId, deviceDataId, alias });
+      this.stmts.insertDataBinding.run({ id, equipmentId, deviceDataId, alias, categoryOverride });
     } catch (err) {
       if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
         throw new EquipmentError(`Alias "${alias}" already exists on this equipment`, 409);
@@ -688,14 +720,18 @@ export class EquipmentManager {
     // Compute category override based on equipment type + device order shape.
     const orderRow = this.stmts.getDeviceOrderById.get(deviceOrderId) as DeviceOrderRow | undefined;
     const categoryOverride = orderRow
-      ? inferBindingCategory(equipment.type, {
-          type: orderRow.type as DataType,
-          enumValues: orderRow.enum_values
-            ? (JSON.parse(orderRow.enum_values) as string[])
-            : undefined,
-          min: orderRow.min_value ?? undefined,
-          max: orderRow.max_value ?? undefined,
-        })
+      ? inferBindingCategory(
+          equipment.type,
+          {
+            type: orderRow.type as DataType,
+            enumValues: orderRow.enum_values
+              ? (JSON.parse(orderRow.enum_values) as string[])
+              : undefined,
+            min: orderRow.min_value ?? undefined,
+            max: orderRow.max_value ?? undefined,
+          },
+          alias,
+        )
       : null;
 
     const id = randomUUID();

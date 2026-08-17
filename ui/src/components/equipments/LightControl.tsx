@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
-import { findOrderByCategory } from "./bindingUtils";
+import { findOrderByCategory, findMainOnOffOrder } from "./bindingUtils";
 
 interface LightControlProps {
   equipment: EquipmentWithDetails;
@@ -37,11 +37,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
 
   // Category-first resolver (spec 110). Falls back to the boolean type / alias
   // heuristic used by lights bound before category typing existed.
-  const toggleBinding =
-    findOrderByCategory(equipment.orderBindings, ["light_toggle", "toggle_power"], ["state"]) ??
-    equipment.orderBindings.find(
-      (ob) => ob.type === "boolean" || (ob.alias === "state" && ob.type === "enum"),
-    );
+  const toggleBinding = findMainOnOffOrder(equipment.orderBindings);
   const hasToggle = !!toggleBinding;
   const brightnessOrderBinding = findOrderByCategory(
     equipment.orderBindings,

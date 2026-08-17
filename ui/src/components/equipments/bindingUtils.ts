@@ -71,6 +71,28 @@ export function findOrderByCategory<T extends MinimalOrderBinding>(
   return undefined;
 }
 
+/**
+ * Spec 152 — resolve the MAIN on/off command of a light/switch/water_heater,
+ * mirroring exactly what `LightControl` binds to (category-first, then the loose
+ * boolean/`state`-enum fallback), while never matching the dedicated solar
+ * channel. Callers use it as the render gate for the main toggle so the gate and
+ * the control resolve identically (no "gate hides a toggle LightControl would
+ * still render" regression for legacy uncategorized bindings).
+ */
+export function findMainOnOffOrder<T extends MinimalOrderBinding & { type?: string }>(
+  bindings: readonly T[],
+): T | undefined {
+  return (
+    findOrderByCategory(bindings, ["light_toggle", "toggle_power"], ["state"]) ??
+    bindings.find(
+      (b) =>
+        b.alias !== "solar" &&
+        b.category !== "solar_toggle" &&
+        (b.type === "boolean" || (b.alias === "state" && b.type === "enum")),
+    )
+  );
+}
+
 /** Find a data binding by category, with the same fallback semantics. */
 export function findDataByCategory<T extends MinimalDataBinding>(
   bindings: readonly T[],

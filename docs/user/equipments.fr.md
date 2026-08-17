@@ -110,9 +110,10 @@ Radiateur électrique individuel piloté par relais fil pilote.
 
 Chauffe-eau / cumulus piloté par un relais on/off. Le canal on/off est lié automatiquement (ainsi que sa puissance/énergie si le relais les mesure).
 
-- **Contrôles :** Bascule Marche / Arrêt
+- **Contrôles :** Bascule Marche / Arrêt, plus une bascule **Solaire** dédiée lorsqu'un canal solaire est lié
 - **Données attendues :** état du relais on/off, température d'eau optionnelle (affichage seul, exclue de la moyenne de température ambiante de la zone), puissance/énergie optionnelles
-- La consigne réglable est volontairement hors périmètre (ce serait un thermostat). La planification ou le pilotage sur surplus solaire relèvent d'une recette, pas de l'équipement.
+- **Canal solaire (optionnel) :** un second on/off indépendant, lié sur un contact dédié (par exemple un relais Zigbee contact sec SONOFF MINI-ZBD qui pilote l'entrée photovoltaïque d'un chauffe-eau thermodynamique). Il est distinct de la marche normale de l'appareil : sur un chauffe-eau en alimentation permanente, seule la bascule Solaire apparaît. La carte affiche une bascule par canal lié (Marche/Arrêt si présent, Solaire si présent).
+- La consigne réglable est volontairement hors périmètre (ce serait un thermostat). L'équipement fournit le canal de commande solaire (l'actionneur) ; la logique de pilotage sur surplus solaire reste dans une recette qui pilote ce canal via l'arbitre d'énergie.
 
 ---
 

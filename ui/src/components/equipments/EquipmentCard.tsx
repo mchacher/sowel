@@ -25,6 +25,8 @@ import { AwningIcon } from "../icons/AwningIcon";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
+import { SolarControl } from "./SolarControl";
+import { findMainOnOffOrder } from "./bindingUtils";
 import { SensorValues } from "./SensorValues";
 import { ShutterControl } from "./ShutterControl";
 import { ThermostatCard } from "./ThermostatCard";
@@ -168,13 +170,24 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
         />
       )}
 
-      {/* Light / switch quick control (smart plug = ON/OFF relay, same surface) */}
-      {(isLight || isSwitch) && equipment.enabled && (
-        <LightControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
+      {/* Light / switch / water heater quick control (smart plug = ON/OFF relay,
+          same surface). Spec 152: a dedicated solar toggle renders alongside
+          (or instead of, on permanent mains) the main on/off. */}
+      {(isLight || isSwitch || equipment.type === "water_heater") && equipment.enabled && (
+        <div className="flex items-center gap-2">
+          {!!findMainOnOffOrder(equipment.orderBindings) && (
+            <LightControl
+              equipment={equipment}
+              onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+              compact
+            />
+          )}
+          <SolarControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        </div>
       )}
 
       {/* Shutter / Awning quick control (shared control surface, awning relabels) */}

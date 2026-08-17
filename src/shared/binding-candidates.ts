@@ -92,6 +92,18 @@ function isOnOffEnum(order: CandidateOrder): boolean {
 const POWER_TOGGLE_CATEGORIES = new Set<OrderCategory>(["light_toggle", "toggle_power"]);
 
 /**
+ * Spec 152 — equipment types that can carry a dedicated "solar" command
+ * channel (a second on/off, distinct from the main one, driven by the surplus
+ * arbiter recipe). The solar role is bound explicitly under alias `solar`
+ * (order) / `solar_state` (state); it is never auto-inferred from the device.
+ */
+const SOLAR_CHANNEL_TYPES = new Set<EquipmentType>(["water_heater", "switch"]);
+
+/** Reserved alias marking the solar command / state binding role. */
+export const SOLAR_ORDER_ALIAS = "solar";
+export const SOLAR_STATE_ALIAS = "solar_state";
+
+/**
  * True for an on/off command channel. Two shapes are accepted:
  *  - an ON/OFF enum order (`["ON","OFF"]`, e.g. Tasmota `power1`)
  *  - a boolean power-toggle order (Zigbee2MQTT exposes plug/relay `state` as a
@@ -498,7 +510,20 @@ export function hasFreeCandidates(
 export function inferBindingCategory(
   equipmentType: EquipmentType,
   order: Pick<CandidateOrder, "type" | "enumValues" | "min" | "max">,
+  alias?: string,
 ): OrderCategory | null {
+  // Spec 152 — an on/off order bound under the reserved `solar` alias becomes
+  // the dedicated solar command channel, regardless of the device order's own
+  // category (a plain relay reports light_toggle/toggle_power). Guarded to
+  // on/off-shaped orders so a setpoint/number can never be tagged solar.
+  if (
+    alias === SOLAR_ORDER_ALIAS &&
+    SOLAR_CHANNEL_TYPES.has(equipmentType) &&
+    (order.type === "boolean" || isOnOffEnum(order as CandidateOrder))
+  ) {
+    return "solar_toggle";
+  }
+
   if (equipmentType === "pool_pump") {
     if (
       order.type === "enum" &&
@@ -525,5 +550,23 @@ export function inferBindingCategory(
     return null;
   }
 
+  return null;
+}
+
+/**
+ * Spec 152 — infer a per-binding category override for a DATA binding. Mirrors
+ * inferBindingCategory for the order side. A state binding added under the
+ * reserved `solar_state` alias on a solar-capable equipment is tagged
+ * `solar_state` (distinct from the main on/off `light_state`) so the two
+ * channels resolve independently and the solar state charts as its own series.
+ * Returns null when no override applies (the device_data.category is used).
+ */
+export function inferDataBindingCategory(
+  equipmentType: EquipmentType,
+  alias: string,
+): DataCategory | null {
+  if (alias === SOLAR_STATE_ALIAS && SOLAR_CHANNEL_TYPES.has(equipmentType)) {
+    return "solar_state";
+  }
   return null;
 }

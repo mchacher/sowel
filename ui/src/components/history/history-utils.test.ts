@@ -53,6 +53,8 @@ describe("familyOf", () => {
   it("classifies strictly-binary actuator feedback as states (spec 144)", () => {
     expect(familyOf("light_state")).toBe("states");
     expect(familyOf("appliance_state")).toBe("states");
+    // Spec 152 — the solar command channel state is a strictly-binary ON/OFF.
+    expect(familyOf("solar_state")).toBe("states");
   });
 
   it("does NOT force cover/gate/lock onto the 0/1 state axis (they can be multi-value; #434 index-encodes them)", () => {
@@ -183,6 +185,11 @@ describe("booleanTickLabels", () => {
       "analyse.bool.power.on",
     ]);
     expect(booleanTickLabels("appliance_state")).toEqual([
+      "analyse.bool.power.off",
+      "analyse.bool.power.on",
+    ]);
+    // Spec 152 — solar channel state uses the same ON/OFF power labels.
+    expect(booleanTickLabels("solar_state")).toEqual([
       "analyse.bool.power.off",
       "analyse.bool.power.on",
     ]);

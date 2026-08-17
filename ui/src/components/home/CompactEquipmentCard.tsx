@@ -6,6 +6,8 @@ import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { SensorValues } from "../equipments/SensorValues";
 import { LightControl } from "../equipments/LightControl";
+import { SolarControl } from "../equipments/SolarControl";
+import { findMainOnOffOrder } from "../equipments/bindingUtils";
 import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
@@ -268,7 +270,20 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               </span>
             </span>
           )}
-          <LightControl
+          {/* Main on/off — hidden when only a solar channel is bound (e.g. a
+              water heater on permanent mains, spec 152), so no dead toggle.
+              Uses the same resolver as LightControl so the gate never hides a
+              toggle the control would still render. */}
+          {!!findMainOnOffOrder(equipment.orderBindings) && (
+            <LightControl
+              equipment={equipment}
+              onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+              compact
+            />
+          )}
+          {/* Spec 152 — dedicated solar on/off (same toggle, sun glyph). Renders
+              nothing when no solar command is bound. */}
+          <SolarControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
             compact

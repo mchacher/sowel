@@ -47,6 +47,8 @@ export const BOOLEAN_CATEGORIES = new Set<string>([
   // to classify by enum cardinality rather than category name (deferred).
   "light_state",
   "appliance_state",
+  // Spec 152 — the solar command channel state is a strictly binary ON/OFF.
+  "solar_state",
 ]);
 
 const MEASUREMENT_CATEGORIES = new Set<string>([
@@ -208,6 +210,7 @@ export function booleanTickLabels(category: string): [string, string] {
       return ["analyse.bool.smoke.clear", "analyse.bool.smoke.detected"];
     case "light_state":
     case "appliance_state":
+    case "solar_state":
       return ["analyse.bool.power.off", "analyse.bool.power.on"];
     default:
       return ["analyse.bool.generic.off", "analyse.bool.generic.on"];

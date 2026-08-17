@@ -65,13 +65,15 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 
 ### Climate
 
-| Type             | Controls                                        | Expected data                                                                        |
-| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
-| **Thermostat**   | Temperature display, setpoint +/-, power on/off | current temperature, target setpoint, power state, optional mode/fan/eco             |
-| **Heater**       | Comfort / Eco toggle                            | relay state (fil pilote: ON = eco, OFF = comfort)                                    |
-| **Water Heater** | On/Off toggle                                   | on/off relay state, optional water temperature (display only), optional power/energy |
+| Type             | Controls                                        | Expected data                                                                                                      |
+| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Thermostat**   | Temperature display, setpoint +/-, power on/off | current temperature, target setpoint, power state, optional mode/fan/eco                                           |
+| **Heater**       | Comfort / Eco toggle                            | relay state (fil pilote: ON = eco, OFF = comfort)                                                                  |
+| **Water Heater** | On/Off toggle, optional dedicated Solar toggle  | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy |
 
-Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat). Scheduling / solar-surplus heating is a recipe, not the equipment.
+Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat).
+
+A water heater (and a switch) can also carry a dedicated **solar** on/off channel, independent from the main on/off: a second contact (e.g. a SONOFF MINI-ZBD Zigbee dry-contact relay driving the photovoltaic input of a heat-pump water heater). It is bound explicitly under the solar role, distinct from the appliance's normal operation. On a water heater left on permanent mains, only the Solar toggle appears; the card shows one toggle per bound channel. The solar channel is the actuator a solar-surplus recipe drives through the energy arbiter; the arbitration logic itself stays in the recipe.
 
 ### Access
 

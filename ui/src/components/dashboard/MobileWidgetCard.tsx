@@ -443,14 +443,25 @@ function useMobileState(
   if (equipment.type === "water_heater") {
     const waterTemp = equipment.dataBindings.find((db) => db.alias === "water_temperature");
     const tempValue = typeof waterTemp?.value === "number" ? waterTemp.value : null;
+    // Spec 152 — reflect the bound channel: the main on/off (light_state) when
+    // present, else the dedicated solar channel (solar_state) for a heater on
+    // permanent mains. `isOn` (light_state only) would read OFF forever there.
+    const channelState =
+      equipment.dataBindings.find((db) => db.alias === "state" || db.category === "light_state") ??
+      equipment.dataBindings.find(
+        (db) => db.category === "solar_state" || db.alias === "solar_state",
+      );
+    const heaterOn = channelState
+      ? channelState.value === true || String(channelState.value).toUpperCase() === "ON"
+      : false;
     return {
       icon: customEntry ? (
         createElement(customEntry.component, customEntry.previewProps)
       ) : (
-        <WaterHeaterIcon on={isOn} />
+        <WaterHeaterIcon on={heaterOn} />
       ),
       stateLines: [
-        isOn ? "ON" : "OFF",
+        heaterOn ? "ON" : "OFF",
         ...(tempValue !== null ? [`${tempValue.toFixed(1)}°C`] : []),
       ],
     };

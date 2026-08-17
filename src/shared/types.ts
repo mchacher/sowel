@@ -45,6 +45,10 @@ export type DataCategory =
   | "media_mute"
   | "media_input"
   | "appliance_state"
+  // Spec 152 — on/off state feedback for the solar command channel. An actuator
+  // state (states family, spec 144, stepped Arrêt/Marche); excluded from zone
+  // measurement aggregation like every other actuator state.
+  | "solar_state"
   | "pool_water_temperature"
   | "pool_temperature_setpoint"
   // Spec 120 — display equipment (generic-ish telemetry that displays
@@ -93,7 +97,12 @@ export type OrderCategory =
   // Spec 133 — camera equipment.
   | "set_camera_monitoring"
   | "set_camera_light_mode"
-  | "trigger_camera_siren";
+  | "trigger_camera_siren"
+  // Spec 152 — solar force command channel: a second, dedicated on/off distinct
+  // from the equipment's main on/off (`light_toggle`/`toggle_power`). Reserved
+  // so the solar channel resolves independently (category-first) and never
+  // collides with the main on/off. Driven by the surplus arbiter recipe.
+  | "solar_toggle";
 
 // ============================================================
 // Device

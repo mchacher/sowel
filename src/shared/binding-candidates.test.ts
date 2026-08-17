@@ -4,6 +4,7 @@ import {
   computeBindingCandidates,
   hasFreeCandidates,
   inferBindingCategory,
+  inferDataBindingCategory,
 } from "./binding-candidates.js";
 import type { DeviceData, DeviceOrder } from "./types.js";
 
@@ -584,5 +585,41 @@ describe("CANDIDATE_BASED_TYPES coverage (spec 150)", () => {
         result.length === 1 && result[0].id === "all" && result[0].orderKeys.length === 1;
       expect(isDefaultShape, `type ${t} fell through to the default case`).toBe(false);
     }
+  });
+});
+
+describe("solar command channel inference (spec 152)", () => {
+  it("tags a boolean on/off order bound under alias `solar` as solar_toggle (water_heater)", () => {
+    expect(inferBindingCategory("water_heater", { type: "boolean" }, "solar")).toBe("solar_toggle");
+  });
+
+  it("tags an ON/OFF enum order bound under alias `solar` as solar_toggle (switch)", () => {
+    expect(
+      inferBindingCategory("switch", { type: "enum", enumValues: ["ON", "OFF"] }, "solar"),
+    ).toBe("solar_toggle");
+  });
+
+  it("does NOT tag a non-on/off order as solar even under alias `solar` (guard)", () => {
+    expect(
+      inferBindingCategory("water_heater", { type: "number", min: 0, max: 100 }, "solar"),
+    ).toBe(null);
+  });
+
+  it("leaves the main channel untouched (alias `state` never becomes solar)", () => {
+    expect(inferBindingCategory("water_heater", { type: "boolean" }, "state")).toBe(null);
+  });
+
+  it("only water_heater and switch carry a solar channel (light_onoff does not)", () => {
+    expect(inferBindingCategory("light_onoff", { type: "boolean" }, "solar")).toBe(null);
+  });
+
+  it("inferDataBindingCategory tags alias `solar_state` as solar_state on solar-capable types", () => {
+    expect(inferDataBindingCategory("water_heater", "solar_state")).toBe("solar_state");
+    expect(inferDataBindingCategory("switch", "solar_state")).toBe("solar_state");
+  });
+
+  it("inferDataBindingCategory returns null for the main state alias and non-solar types", () => {
+    expect(inferDataBindingCategory("water_heater", "state")).toBe(null);
+    expect(inferDataBindingCategory("light_onoff", "solar_state")).toBe(null);
   });
 });

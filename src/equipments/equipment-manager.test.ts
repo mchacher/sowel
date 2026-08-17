@@ -1281,6 +1281,79 @@ describe("EquipmentManager", () => {
       expect(cover?.value).toBe(null);
     });
   });
+
+  // ============================================================
+  // Solar command channel (spec 152)
+  // ============================================================
+
+  describe("solar command channel (spec 152)", () => {
+    function seedWaterHeaterWithChannels() {
+      const zone = zoneManager.create({ name: "Buanderie" });
+      const eq = manager.create({ name: "Chauffe-eau", type: "water_heater", zoneId: zone.id });
+
+      const main = seedDevice(db, {
+        name: "MainRelay",
+        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: "OFF" }],
+        orderKeys: [{ key: "state", type: "boolean", category: "light_toggle" }],
+      });
+      const solar = seedDevice(db, {
+        name: "SolarRelay",
+        dataKeys: [{ key: "state", type: "boolean", category: "light_state", value: "OFF" }],
+        orderKeys: [{ key: "state", type: "boolean", category: "light_toggle" }],
+      });
+      return { eq, main, solar };
+    }
+
+    it("tags an on/off order bound under alias `solar` as solar_toggle", () => {
+      const { eq, solar } = seedWaterHeaterWithChannels();
+      manager.addOrderBinding(eq.id, solar.orderIds[0], "solar");
+      const ob = manager.getOrderBindingsWithDetails(eq.id).find((b) => b.alias === "solar");
+      expect(ob?.category).toBe("solar_toggle");
+    });
+
+    it("tags a state binding under alias `solar_state` as solar_state", () => {
+      const { eq, solar } = seedWaterHeaterWithChannels();
+      manager.addDataBinding(eq.id, solar.dataIds[0], "solar_state");
+      const sb = manager.getDataBindingsWithValues(eq.id).find((b) => b.alias === "solar_state");
+      expect(sb?.category).toBe("solar_state");
+    });
+
+    it("executeOrder(solar) dispatches only the solar device; the main relay is untouched", async () => {
+      const { eq, main, solar } = seedWaterHeaterWithChannels();
+      manager.addOrderBinding(eq.id, main.orderIds[0], "state");
+      manager.addOrderBinding(eq.id, solar.orderIds[0], "solar");
+
+      mockPublished.length = 0;
+      await manager.executeOrder(eq.id, "solar", true);
+
+      expect(mockPublished).toHaveLength(1);
+      expect(mockPublished[0].topic).toBe("z2m/SolarRelay/set");
+    });
+
+    it("executeOrder(state) dispatches only the main device; the solar contact is untouched", async () => {
+      const { eq, main, solar } = seedWaterHeaterWithChannels();
+      manager.addOrderBinding(eq.id, main.orderIds[0], "state");
+      manager.addOrderBinding(eq.id, solar.orderIds[0], "solar");
+
+      mockPublished.length = 0;
+      await manager.executeOrder(eq.id, "state", true);
+
+      expect(mockPublished).toHaveLength(1);
+      expect(mockPublished[0].topic).toBe("z2m/MainRelay/set");
+    });
+
+    it("a solar-only water heater (no main binding) still actuates via the solar alias", async () => {
+      const { eq, solar } = seedWaterHeaterWithChannels();
+      manager.addOrderBinding(eq.id, solar.orderIds[0], "solar");
+
+      mockPublished.length = 0;
+      await manager.executeOrder(eq.id, "solar", true);
+      expect(mockPublished).toHaveLength(1);
+      expect(mockPublished[0].topic).toBe("z2m/SolarRelay/set");
+
+      await expect(manager.executeOrder(eq.id, "state", true)).rejects.toThrow(/not found/i);
+    });
+  });
 });
 
 // ============================================================

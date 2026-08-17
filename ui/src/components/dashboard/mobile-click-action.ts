@@ -58,18 +58,24 @@ export function getMobileClickAction(
     type === "water_heater" ||
     type === "water_valve"
   ) {
-    const stateBindingRaw = findOrderByCategory(
+    const mainRaw = findOrderByCategory(
       equipment.orderBindings,
       ["light_toggle", "pool_pump_toggle", "valve_toggle", "toggle_power"],
       ["state"],
     );
+    // Spec 152 — a water heater on permanent mains carries only a "solar"
+    // channel; with no main on/off, the single mobile tap toggles solar. When
+    // both exist, main wins (solar is managed from the detail sheet).
+    const solarRaw = findOrderByCategory(equipment.orderBindings, ["solar_toggle"], ["solar"]);
+    const usingSolar = !mainRaw && !!solarRaw;
+    const chosenRaw = mainRaw ?? solarRaw;
     const stateBinding =
-      stateBindingRaw &&
-      (stateBindingRaw.type === "enum" || stateBindingRaw.type === "boolean")
-        ? stateBindingRaw
+      chosenRaw && (chosenRaw.type === "enum" || chosenRaw.type === "boolean")
+        ? chosenRaw
         : undefined;
     if (stateBinding) {
-      const dataBinding = equipment.dataBindings.find((db) => db.category === "light_state");
+      const stateCategory = usingSolar ? "solar_state" : "light_state";
+      const dataBinding = equipment.dataBindings.find((db) => db.category === stateCategory);
       const isOn = dataBinding
         ? dataBinding.value === true || dataBinding.value === "ON" || dataBinding.value === 1
         : false;

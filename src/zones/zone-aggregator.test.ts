@@ -651,6 +651,44 @@ describe("ZoneAggregator", () => {
       expect(data?.lightsOn).toBe(1);
       expect(data?.lightsTotal).toBe(2);
     });
+
+    // Spec 152 — the solar command channel state is an internal actuator state,
+    // never a zone-level measurement. A water_heater's solar_state binding must
+    // not leak into any aggregate (in particular it is not counted as a light).
+    it("excludes solar_state from zone aggregation", () => {
+      const zone = zoneManager.create({ name: "Buanderie" });
+
+      const light = seedDevice(db, {
+        name: "Light",
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") },
+        ],
+      });
+      const solar = seedDevice(db, {
+        name: "SolarRelay",
+        dataKeys: [
+          { key: "state", type: "boolean", category: "light_state", value: JSON.stringify("ON") },
+        ],
+      });
+
+      const lamp = equipmentManager.create({ name: "Lampe", type: "light_onoff", zoneId: zone.id });
+      equipmentManager.addDataBinding(lamp.id, light.dataIds[0], "state");
+
+      const heater = equipmentManager.create({
+        name: "Chauffe-eau",
+        type: "water_heater",
+        zoneId: zone.id,
+      });
+      // Bound under the solar alias → category override solar_state.
+      equipmentManager.addDataBinding(heater.id, solar.dataIds[0], "solar_state");
+
+      aggregator.computeAll();
+
+      const data = aggregator.getByZoneId(zone.id);
+      // Only the actual light counts; the solar_state binding is ignored.
+      expect(data?.lightsTotal).toBe(1);
+      expect(data?.lightsOn).toBe(1);
+    });
   });
 
   // ============================================================

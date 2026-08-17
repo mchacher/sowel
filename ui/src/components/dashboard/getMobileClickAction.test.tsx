@@ -95,4 +95,86 @@ describe("getMobileClickAction", () => {
     const action = getMobileClickAction(widget, eq, t, vi.fn(), onOpenDetail);
     expect(action).toBe(onOpenDetail);
   });
+
+  // Spec 152 — a water heater on permanent mains carries only the solar channel;
+  // the single mobile tap must toggle it, and when a main on/off also exists the
+  // tap targets main (solar is managed from the detail sheet).
+  describe("solar channel (spec 152)", () => {
+    function makeWaterHeater(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDetails {
+      return {
+        ...makeSwitch(),
+        id: "wh-1",
+        type: "water_heater",
+        dataBindings: [] as EquipmentWithDetails["dataBindings"],
+        orderBindings: [] as EquipmentWithDetails["orderBindings"],
+        ...over,
+      } as EquipmentWithDetails;
+    }
+    const solarOrder = {
+      id: "ob-solar",
+      equipmentId: "wh-1",
+      deviceOrderId: "do-solar",
+      alias: "solar",
+      deviceId: "dev-solar",
+      deviceName: "SolarRelay",
+      key: "state",
+      type: "boolean",
+      category: "solar_toggle",
+    } as EquipmentWithDetails["orderBindings"][number];
+    const solarState = {
+      id: "db-solar",
+      equipmentId: "wh-1",
+      deviceDataId: "dd-solar",
+      alias: "solar_state",
+      deviceId: "dev-solar",
+      deviceName: "SolarRelay",
+      key: "state",
+      type: "boolean",
+      category: "solar_state",
+      value: false,
+      lastUpdated: "2026-01-01T00:00:00Z",
+      lastChanged: "2026-01-01T00:00:00Z",
+      stale: false,
+    } as EquipmentWithDetails["dataBindings"][number];
+
+    it("toggles the solar channel when only a solar binding exists (no main)", () => {
+      const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+      const eq = makeWaterHeater({
+        orderBindings: [solarOrder] as EquipmentWithDetails["orderBindings"],
+        dataBindings: [solarState] as EquipmentWithDetails["dataBindings"],
+      });
+      const action = getMobileClickAction(widget, eq, t, onExecuteOrder);
+      expect(action).toBeTypeOf("function");
+      action!();
+      expect(onExecuteOrder).toHaveBeenCalledWith("wh-1", "solar", "ON");
+    });
+
+    it("targets the main on/off (not solar) when both channels are bound", () => {
+      const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+      const mainOrder = {
+        id: "ob-main",
+        equipmentId: "wh-1",
+        deviceOrderId: "do-main",
+        alias: "state",
+        deviceId: "dev-main",
+        deviceName: "MainRelay",
+        key: "state",
+        type: "enum",
+        enumValues: ["ON", "OFF"],
+        category: "light_toggle",
+      } as EquipmentWithDetails["orderBindings"][number];
+      const mainState = {
+        ...solarState,
+        id: "db-main",
+        alias: "state",
+        category: "light_state",
+      } as EquipmentWithDetails["dataBindings"][number];
+      const eq = makeWaterHeater({
+        orderBindings: [mainOrder, solarOrder] as EquipmentWithDetails["orderBindings"],
+        dataBindings: [mainState, solarState] as EquipmentWithDetails["dataBindings"],
+      });
+      getMobileClickAction(widget, eq, t, onExecuteOrder)!();
+      expect(onExecuteOrder).toHaveBeenCalledWith("wh-1", "state", "ON");
+    });
+  });
 });
