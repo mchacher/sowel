@@ -385,8 +385,31 @@ describe("capacity arbiter", () => {
     // no deficit, whatever the hold. This is the anti-oscillation core.
     h.run(-400, 700);
     expect(h.revokedEvents()).toHaveLength(0);
-    // availableSurplusW stays on the true surplus (export + reserved).
-    expect(h.arbiter.getPublicState().availableSurplusW).toBe(1000);
+    // #563 — the DISPLAYED figure is the true grid balance (exportW), so the
+    // grant's own draw legitimately dents it: still exporting 400 W. The
+    // no-revoke behaviour above is what reservation accounting protects.
+    expect(h.arbiter.getPublicState().availableSurplusW).toBe(400);
+  });
+
+  it("shows a deficit while importing, not a phantom surplus equal to production (#563)", () => {
+    // The bug: a home importing 1.2 kW while its managed loads soak up all of
+    // the production read as "Actif +1.3 kW" (≈ production) because the pill
+    // showed the reservation availableW (export + reserved), which stays
+    // positive as long as the reclaimable reserved draw exceeds the import.
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150); // granted while exporting 1 kW
+    expect(h.grantedEvents()).toHaveLength(1);
+    // Clouds roll in: the granted pump keeps drawing ~600 W but the meter now
+    // IMPORTS 400 W. The pump stays granted — its minOnS (900 s) anti-short-
+    // cycle floor is far from elapsed — exactly the screenshot state.
+    h.feedLoadPower("pump", 600);
+    h.run(400, 30); // settle the EMA on the import
+    const st = h.arbiter.getPublicState();
+    expect(st.grants).toHaveLength(1); // still granted (minOn protects it)
+    // Reservation availableW here would be export(-400) + reserved(600) = +200,
+    // a phantom surplus. The fix reports the true grid balance: a 400 W deficit.
+    expect(st.availableSurplusW).toBe(-400);
   });
 
   it("a background surge revokes bottom-up after releaseHoldS", () => {
@@ -612,11 +635,11 @@ describe("capacity arbiter", () => {
     h.claim("pacI", { equipmentId: "pac" });
     h.run(-2200, 150);
     expect(h.grantedEvents()[0].equipmentId).toBe("pac");
-    // PAC ramps down to 1.2 kW → export rises accordingly; available stays
-    // on the true surplus through the live-draw reservation.
+    // PAC ramps down to 1.2 kW → export rises accordingly. #563 — the
+    // displayed figure is the true grid balance (exportW): now exporting 1 kW.
     h.feedLoadPower("pac", 1200);
     h.run(-1000, 50);
-    expect(h.arbiter.getPublicState().availableSurplusW).toBe(2200);
+    expect(h.arbiter.getPublicState().availableSurplusW).toBe(1000);
     // The freed headroom serves the pump without any release.
     h.claim("pumpI", { equipmentId: "pump" });
     h.run(-1000, 150);
@@ -662,8 +685,10 @@ describe("capacity arbiter", () => {
       h.feedLoadPower("pump", 600);
     }
     expect(h.grantedEvents()).toHaveLength(1);
-    // Books become exact: available = export + live draw.
-    expect(h.arbiter.getPublicState().availableSurplusW).toBe(800);
+    // #563 — displayed figure is the true grid balance (exportW): 200 W export.
+    // The own-draw reservation (used internally so the grant holds) is not
+    // added to the user-facing surplus any more.
+    expect(h.arbiter.getPublicState().availableSurplusW).toBe(200);
   });
 
   it("journals unclaimed-run once for a grantless recipe run", () => {
@@ -1178,8 +1203,13 @@ describe("capacity arbiter — review hardening", () => {
     h.feedLoadPower("pump", -50); // bidirectional-clamp noise
     h.feedMeter(-1000);
     const st = h.arbiter.getPublicState();
-    // available = export(1000) + reserved(max(0,-50)=0); never < export.
-    expect(st.availableSurplusW).toBeGreaterThanOrEqual(1000);
+    // The clamp lives in the reservation, now surfaced on the grant's effective
+    // watts (not on availableSurplusW, which is the raw grid balance since
+    // #563): a −50 W sample reserves 0, never a negative draw that would
+    // inflate the internal deficit.
+    expect(st.grants[0]?.watts).toBe(0);
+    // The displayed surplus is the true grid export, unaffected by the draw.
+    expect(st.availableSurplusW).toBe(1000);
   });
 
   // test review M2 — the manual-override suspension actually expires after

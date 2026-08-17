@@ -284,7 +284,10 @@ const claim = ctx.helpers.energy?.claimCapacity({
 `claimCapacity` returns a handle (`status()`, `deniedReason`, `release()`).
 Denials are typed: `not-profiled`, `equipment-already-claimed`,
 `arbiter-disabled`, `override-active`. `energy.getCapacityState()` is a
-read-only snapshot (`enabled`, `availableSurplusW`, `grants`).
+read-only snapshot (`enabled`, `availableSurplusW`, `grants`). `availableSurplusW`
+is the true signed grid balance in watts (positive = exporting/surplus, negative
+= importing/deficit), not a reservation total, so it dips as your own granted
+load draws.
 
 Rules for authors (spec 140, enforced socially and audited by the core):
 

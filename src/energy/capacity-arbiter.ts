@@ -2,13 +2,16 @@
  * CapacityArbiter — spec 140.
  *
  * Single reader of the grid meter, arbitrating solar surplus between declared
- * flexible loads through reservation accounting:
+ * flexible loads through reservation accounting: the release pass keys off the
+ * SIGNED grid reading (`signedGridW − tolerances`) and the grant pass off the
+ * live export (`exportW`) plus each claim's own draw, so a drop in export
+ * caused by its own grants never reads as "surplus gone" (the only honest
+ * deficit signal is a real net import, per review decision 10).
  *
- *   availableW = exportW + Σ effectiveWatts(granted claims)
- *
- * A drop in export caused by its own grants never reads as "surplus gone";
- * the only honest deficit signal is the SIGNED grid reading (an import), per
- * review decision 10. The arbiter issues no orders in phase 1 — recipes act,
+ * The user-facing "Surplus / déficit" figure (`availableSurplusW`, curve +
+ * pill) is the true signed grid balance `exportW` (>0 exporting, <0 importing)
+ * — NOT a reservation-inflated total, which read as a phantom surplus equal to
+ * production while importing (#563). The arbiter issues no orders in phase 1 — recipes act,
  * the arbiter decides — and everything it does lands in a bounded decision
  * journal ("why" first-class, FR-8).
  */
@@ -167,7 +170,12 @@ export class CapacityArbiter {
   private deficitSince: number | null = null;
   private watchdogs: RevokeWatchdog[] = [];
   private lastStatus: { state: ArbiterRunState; availableSurplusW: number | null } | null = null;
-  /** ~5 min samples of availableW for the day-timeline curve (FR-10). */
+  /**
+   * ~5 min samples of the signed grid surplus for the day-timeline curve
+   * (FR-10). #563 — this holds exportW (>0 surplus, <0 déficit), the true grid
+   * balance, not the reservation availableW. The field keeps its `availableW`
+   * name to match the persisted store / API shape.
+   */
   private surplusSeries: Array<{ at: number; availableW: number }> = [];
   private lastSurplusSampleAt = 0;
 
@@ -869,7 +877,13 @@ export class CapacityArbiter {
       // Control paths still gate on `config.enabled`; this is display only.
       enabled: this.settings.get(SETTING_PREFIX + "enabled") === "true",
       state,
-      availableSurplusW: state === "active" ? Math.round(accounting.availableW) : null,
+      // #563 — the user-facing figure is the TRUE signed grid balance
+      // (headroomW ≡ exportW: >0 exporting, <0 importing), NOT the
+      // reservation-inflated availableW. A home importing while its managed
+      // loads soak up production must read as a deficit, not a phantom surplus
+      // equal to production. Reservation accounting stays internal to the
+      // grant/revoke passes (it keeps a grant from reading "surplus gone").
+      availableSurplusW: state === "active" ? Math.round(accounting.headroomW) : null,
       productionDetected: this.equipments
         .getAll()
         .some((e) => e.type === "energy_production_meter" || e.type === "solar_panel"),
@@ -954,7 +968,7 @@ export class CapacityArbiter {
     this.checkStateDivergence(now);
     this.checkWatchdogs(now);
 
-    const { signedGridW, exportW, availableW } = this.accounting();
+    const { signedGridW, exportW } = this.accounting();
 
     // ── Release pass (bottom-up). deficit ≡ signed import − tolerances −
     // the known draw of unresponsive equipments (excused as background). ──
@@ -1067,9 +1081,13 @@ export class CapacityArbiter {
     }
 
     // Day-timeline curve sample (FR-10): ~5 min cadence, bounded to 24 h.
+    // #563 — persist the TRUE signed grid balance (exportW: >0 surplus, <0
+    // déficit), matching the "Surplus / déficit" axis. The reservation
+    // availableW would keep the curve positive while importing (a grant does
+    // not dent it), which read as a phantom surplus equal to production.
     if (now - this.lastSurplusSampleAt >= 5 * 60_000) {
       this.lastSurplusSampleAt = now;
-      const sample = { at: now, availableW: Math.round(availableW) };
+      const sample = { at: now, availableW: Math.round(exportW) };
       this.surplusSeries.push(sample);
       this.surplusStore?.insert(sample); // spec 148 — persist for the 48h timeline
       const dayAgo = now - 24 * 3_600_000;
@@ -1078,7 +1096,7 @@ export class CapacityArbiter {
       }
     }
 
-    this.emitStatus(availableW);
+    this.emitStatus(exportW);
   }
 
   // ── Accounting helpers ──────────────────────────────────────
@@ -1086,14 +1104,17 @@ export class CapacityArbiter {
   private accounting(): {
     signedGridW: number;
     exportW: number;
-    reservedW: number;
-    availableW: number;
     headroomW: number;
   } {
+    // #563 — decisions key off the signed grid reading directly: the release
+    // pass on `signedGridW − tolerances`, the grant pass on `exportW` (headroom)
+    // plus each claim's own draw. The reservation is applied per-claim through
+    // `effectiveWatts` in those passes; there is no longer a summed
+    // `availableW`/`reservedW`, which used to feed the display only and made a
+    // grant read as phantom surplus while importing. `headroomW ≡ exportW`.
     const signedGridW = this.emaPowerW ?? 0;
     const exportW = -signedGridW;
-    const reservedW = this.grantedClaims().reduce((s, c) => s + this.effectiveWatts(c), 0);
-    return { signedGridW, exportW, reservedW, availableW: exportW + reservedW, headroomW: exportW };
+    return { signedGridW, exportW, headroomW: exportW };
   }
 
   /** FR-2 three-tier effective watts: live draw → learned → claim watts. */
@@ -1422,12 +1443,14 @@ export class CapacityArbiter {
     return "active";
   }
 
-  private emitStatus(availableW?: number): void {
+  private emitStatus(signedSurplusW?: number): void {
     const state = this.runState();
     // Coarsen to the nearest 25 W so the status event fires on a meaningful
     // change, not on every meter sample (the raw surplus jitters by >1 W
     // almost continuously — review #7; the architecture wants "on change").
-    const raw = availableW ?? this.accounting().availableW;
+    // #563 — the emitted figure is the TRUE signed grid balance (headroomW ≡
+    // exportW), consistent with the pill in getPublicState.
+    const raw = signedSurplusW ?? this.accounting().headroomW;
     const availableSurplusW = state === "active" ? Math.round(raw / 25) * 25 : null;
     const prev = this.lastStatus;
     if (prev && prev.state === state && prev.availableSurplusW === availableSurplusW) return;
