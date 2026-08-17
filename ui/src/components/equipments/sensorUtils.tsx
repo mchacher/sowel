@@ -253,9 +253,9 @@ export function formatBooleanSensor(category: DataCategory, value: unknown, t?: 
       case "contact_window":
         return contactOpen ? t("controls.opened") : t("controls.closed");
       case "water_leak":
-        return isActive ? t("category.value.water_leak.active") : t("category.value.water_leak.ok");
+        return isActive ? t("category.value.water_leak.leak") : t("category.value.water_leak.ok");
       case "smoke":
-        return isActive ? t("category.value.smoke.active") : t("category.value.smoke.ok");
+        return isActive ? t("category.value.smoke.alert") : t("category.value.smoke.ok");
       default:
         return isActive ? t("common.yes") : t("common.no");
     }
