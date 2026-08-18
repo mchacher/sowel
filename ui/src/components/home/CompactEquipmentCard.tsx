@@ -270,7 +270,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 ? (waterHeaterDayWh / 1000).toFixed(2)
                 : Math.round(waterHeaterDayWh)}
               <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
-                {waterHeaterDayWh >= 1000 ? "kWh" : "Wh"} {t("energy.today").toLowerCase()}
+                {waterHeaterDayWh >= 1000 ? "kWh" : "Wh"}
               </span>
             </span>
           )}
@@ -456,7 +456,6 @@ function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
 }
 
 function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails }) {
-  const { t } = useTranslation();
   const computed = equipment.computedData ?? [];
   const energyDay = computed.find((c) => c.alias === "energy_day");
   // Live instantaneous power (issue #376): generic power binding first,
@@ -482,7 +481,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
         <span className={`text-[13px] ${valueColor} tabular-nums font-mono font-semibold`}>
           {dayWh >= 1000 ? (dayWh / 1000).toFixed(2) : Math.round(dayWh)}
           <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
-            {dayWh >= 1000 ? "kWh" : "Wh"} {t("energy.today").toLowerCase()}
+            {dayWh >= 1000 ? "kWh" : "Wh"}
           </span>
         </span>
       )}
