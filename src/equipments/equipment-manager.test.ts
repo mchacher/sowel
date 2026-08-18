@@ -99,6 +99,9 @@ describe("EquipmentManager", () => {
   let deviceManager: DeviceManager;
   // Order keys whose dispatch should throw (test hook for failure paths).
   let failOrderKeys: Set<string>;
+  // Order keys whose dispatch throws exactly once, then recovers (transient
+  // failure hook for the retry path). The key is removed on the first throw.
+  let failOnceOrderKeys: Set<string>;
 
   beforeEach(() => {
     db = createTestDb();
@@ -106,11 +109,15 @@ describe("EquipmentManager", () => {
     zoneManager = new ZoneManager(db, eventBus, logger);
     mockPublished = [];
     failOrderKeys = new Set();
+    failOnceOrderKeys = new Set();
     deviceManager = new DeviceManager(db, eventBus, logger);
     const mockPlugin = {
       id: "zigbee2mqtt",
       getStatus: () => "connected" as const,
       executeOrder: async (_device: any, orderKey: string, value: unknown) => {
+        if (failOnceOrderKeys.delete(orderKey)) {
+          throw new Error(`transient dispatch failure for ${orderKey}`);
+        }
         if (failOrderKeys.has(orderKey)) throw new Error(`dispatch failed for ${orderKey}`);
         mockPublished.push({
           topic: `z2m/${_device.name}/set`,
@@ -982,6 +989,78 @@ describe("EquipmentManager", () => {
 
       expect(mockPublished).toHaveLength(1);
       expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "on" });
+    });
+
+    it("retries a transient dispatch failure and succeeds on the 2nd attempt without raising an alarm", async () => {
+      vi.useFakeTimers();
+      try {
+        const zone = zoneManager.create({ name: "Salon" });
+        const eq = manager.create({ name: "Lampe", type: "light_onoff", zoneId: zone.id });
+        const { orderIds } = seedDevice(db, {
+          name: "Relay",
+          orderKeys: [{ key: "state", type: "boolean", valueOn: "ON", valueOff: "OFF" }],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+        // Attempt 1 throws (transient), attempt 2 (after the 2s retry) succeeds.
+        failOnceOrderKeys.add("state");
+        const p = manager.executeOrder(eq.id, "state", true);
+        await vi.advanceTimersByTimeAsync(2000);
+        const res = await p;
+
+        expect(res.success).toBe(true);
+        // Dispatched exactly once — the failed first attempt published nothing.
+        expect(mockPublished).toHaveLength(1);
+        expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "ON" });
+        // A transient failure that recovers must not raise an alarm.
+        expect(events.some((e) => e.type === "system.alarm.raised")).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("raises an order-fail alarm once on a persistent failure and resolves it on recovery", async () => {
+      vi.useFakeTimers();
+      try {
+        const zone = zoneManager.create({ name: "Salon" });
+        const eq = manager.create({ name: "Lampe", type: "light_onoff", zoneId: zone.id });
+        const { orderIds } = seedDevice(db, {
+          name: "Relay",
+          orderKeys: [{ key: "state", type: "boolean", valueOn: "ON", valueOff: "OFF" }],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+        const raised = () =>
+          events.filter(
+            (e) => e.type === "system.alarm.raised" && e.alarmId === "order-fail:zigbee2mqtt",
+          );
+        const resolved = () =>
+          events.filter(
+            (e) => e.type === "system.alarm.resolved" && e.alarmId === "order-fail:zigbee2mqtt",
+          );
+
+        // First persistent failure (both attempts throw) raises the alarm once.
+        failOrderKeys.add("state");
+        const p1 = manager.executeOrder(eq.id, "state", true);
+        await vi.advanceTimersByTimeAsync(2000);
+        expect((await p1).success).toBe(false);
+        expect(raised()).toHaveLength(1);
+
+        // A second failure while the integration is already flagged does not
+        // re-raise the alarm.
+        const p2 = manager.executeOrder(eq.id, "state", true);
+        await vi.advanceTimersByTimeAsync(2000);
+        await p2;
+        expect(raised()).toHaveLength(1);
+
+        // Recovery (succeeds on the first attempt) resolves the standing alarm.
+        failOrderKeys.delete("state");
+        const res = await manager.executeOrder(eq.id, "state", true);
+        expect(res.success).toBe(true);
+        expect(resolved()).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

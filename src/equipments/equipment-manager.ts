@@ -833,11 +833,150 @@ export class EquipmentManager {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
     }
 
-    // Resolve value against the binding's enumValues:
-    // - null/undefined/empty → use first enum value
-    // - string → match case-insensitively against enum values (e.g. "ON" matches "on")
+    // Resolve the order value against the binding's declared shape (enum
+    // case-insensitive match, boolean empty-value rule — see resolveOrderValue).
+    const resolvedValue = this.resolveOrderValue(bindings[0], value);
+
+    // Dispatch to every bound device order via its integration plugin.
+    let successes = 0;
+    let lastError: string | undefined;
+    for (const binding of bindings) {
+      const outcome = await this.dispatchToBinding(binding, resolvedValue, equipment, alias);
+      if (!outcome) continue; // device missing — binding skipped
+      if (outcome.error !== undefined) lastError = outcome.error;
+      if (outcome.dispatched) successes++;
+    }
+
+    this.emitOrderOutcome({
+      equipment,
+      alias,
+      resolvedValue,
+      successes,
+      targets: bindings.length,
+      lastError,
+      source,
+    });
+
+    if (successes === 0 && lastError) {
+      return { success: false, error: lastError };
+    }
+    return { success: true };
+  }
+
+  /**
+   * Resolve the device + integration behind one order binding, map the value to
+   * the wire representation, dispatch it (with retry), and update that
+   * integration's order alarm. Returns null when the device is missing (the
+   * binding is skipped); throws `EquipmentError` (503) when the integration is
+   * missing or disconnected, which aborts the whole order.
+   */
+  private async dispatchToBinding(
+    binding: OrderBindingJoinRow,
+    resolvedValue: unknown,
+    equipment: Equipment,
+    alias: string,
+  ): Promise<{ dispatched: boolean; error?: string } | null> {
+    const device = this.deviceManager.getById(binding.device_id);
+    if (!device) {
+      this.logger.warn({ deviceId: binding.device_id }, "Device not found for order dispatch");
+      return null;
+    }
+
+    const integration = this.integrationRegistry.getById(device.integrationId);
+    if (!integration) {
+      throw new EquipmentError(`Integration not found: ${device.integrationId}`, 503);
+    }
+    if (integration.getStatus() !== "connected") {
+      throw new EquipmentError(`Integration ${device.integrationId} not connected`, 503);
+    }
+
+    // Map boolean-ish values onto the wire representation the device declared at
+    // discovery (value_on/value_off), e.g. true -> "ON" for Z2M binary exposes.
+    // Orders without wire values dispatch untouched.
+    const dispatchValue = resolveWireValue(
+      resolvedValue,
+      parseWireValue(binding.value_on),
+      parseWireValue(binding.value_off),
+    );
+
+    const { dispatched, lastError } = await this.dispatchWithRetry(
+      device,
+      binding.key,
+      dispatchValue,
+      {
+        equipment,
+        alias,
+      },
+    );
+
+    this.updateOrderAlarms(device.integrationId, dispatched, {
+      equipmentName: equipment.name,
+      alias,
+      lastError,
+    });
+
+    return { dispatched, error: lastError };
+  }
+
+  /**
+   * Emit the terminal order events once every binding has been attempted: at
+   * least one success logs + emits `equipment.order.executed` and runs the gate
+   * pending-state tracking; a total failure emits `equipment.order.failed`.
+   */
+  private emitOrderOutcome(ctx: {
+    equipment: Equipment;
+    alias: string;
+    resolvedValue: unknown;
+    successes: number;
+    targets: number;
+    lastError?: string;
+    source?: OrderSource;
+  }): void {
+    const { equipment, alias, resolvedValue, successes, targets, lastError, source } = ctx;
+    if (successes > 0) {
+      this.logger.info(
+        {
+          equipmentId: equipment.id,
+          equipmentName: equipment.name,
+          alias,
+          value: resolvedValue,
+          targets,
+        },
+        "Equipment order executed",
+      );
+      this.eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId: equipment.id,
+        orderAlias: alias,
+        value: resolvedValue,
+        source,
+      });
+      // Gate command: mark state as "unknown" until the next sensor update.
+      this.trackGatePending(equipment, alias);
+    } else if (lastError) {
+      this.eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: equipment.id,
+        orderAlias: alias,
+        value: resolvedValue,
+        error: lastError,
+        source,
+      });
+    }
+  }
+
+  /**
+   * Resolve an order value against the first binding's declared shape:
+   * - enum binding: empty (null/undefined/"") -> first enum value; a string is
+   *   matched case-insensitively against the enum values (e.g. "ON" -> "on").
+   * - boolean binding (spec 150): empty -> true, so a momentary "just trigger
+   *   it" command (GateControl's single button sends null) does not reach the
+   *   wire verbatim and get dropped by Z2M. Non-empty values pass through
+   *   untouched — resolveWireValue maps them at dispatch time, and pre-2.3.0
+   *   z2m plugins rely on raw "ON" strings passing through unchanged.
+   */
+  private resolveOrderValue(firstBinding: OrderBindingJoinRow, value: unknown): unknown {
     let resolvedValue = value;
-    const firstBinding = bindings[0];
     if (firstBinding.enum_values) {
       try {
         const enumVals = JSON.parse(firstBinding.enum_values) as unknown[];
@@ -860,78 +999,36 @@ export class EquipmentManager {
       firstBinding.type === "boolean" &&
       (resolvedValue === null || resolvedValue === undefined || resolvedValue === "")
     ) {
-      // Spec 150 — boolean twin of the enum empty-value rule above. A momentary
-      // command caller (GateControl's single button) sends null for "just
-      // trigger it"; on an enum binding that resolves to the first enum value
-      // ("ON"), but a boolean binding (Zigbee relay `state`) has no
-      // enum_values, so null used to reach the wire verbatim and Z2M dropped
-      // it silently. Non-empty values are deliberately left untouched:
-      // resolveWireValue already maps booleans and on/off strings when wire
-      // values are declared, and pre-2.3.0 z2m plugins rely on raw "ON"
-      // strings passing through unchanged.
       resolvedValue = true;
     }
+    return resolvedValue;
+  }
 
-    // Dispatch to all bound device orders via their integration plugins
-    let successes = 0;
+  /**
+   * Dispatch one order to an integration with a single 2s retry for transient
+   * failures, then log the outcome (debug on success, error after the retry is
+   * exhausted). Returns whether it eventually dispatched and the last error seen
+   * (undefined when the first attempt succeeded).
+   */
+  private async dispatchWithRetry(
+    device: Device,
+    orderKey: string,
+    dispatchValue: unknown,
+    ctx: { equipment: Equipment; alias: string },
+  ): Promise<{ dispatched: boolean; lastError?: string }> {
+    const { equipment, alias } = ctx;
     let lastError: string | undefined;
-
-    for (const binding of bindings) {
-      const device = this.deviceManager.getById(binding.device_id);
-      if (!device) {
-        this.logger.warn({ deviceId: binding.device_id }, "Device not found for order dispatch");
-        continue;
-      }
-
-      const integration = this.integrationRegistry.getById(device.integrationId);
-      if (!integration) {
-        throw new EquipmentError(`Integration not found: ${device.integrationId}`, 503);
-      }
-
-      if (integration.getStatus() !== "connected") {
-        throw new EquipmentError(`Integration ${device.integrationId} not connected`, 503);
-      }
-
-      const orderKey = binding.key;
-
-      // Map boolean-ish values onto the wire representation the device
-      // declared at discovery (value_on/value_off), e.g. true -> "ON" for
-      // Z2M binary exposes. Orders without wire values dispatch untouched.
-      const dispatchValue = resolveWireValue(
-        resolvedValue,
-        parseWireValue(binding.value_on),
-        parseWireValue(binding.value_off),
-      );
-
-      // Dispatch with 1 retry (2s delay) for transient failures
-      let dispatched = false;
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          await this.integrationRegistry.dispatchOrder(
-            device.integrationId,
-            device,
-            orderKey,
-            dispatchValue,
-          );
-          dispatched = true;
-          break;
-        } catch (err) {
-          lastError = err instanceof Error ? err.message : String(err);
-          if (attempt < 2) {
-            this.logger.warn(
-              { err, equipmentId, alias, deviceId: device.id, attempt },
-              "Order dispatch failed, retrying in 2s",
-            );
-            await new Promise((r) => setTimeout(r, 2000));
-          }
-        }
-      }
-
-      if (dispatched) {
-        successes++;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await this.integrationRegistry.dispatchOrder(
+          device.integrationId,
+          device,
+          orderKey,
+          dispatchValue,
+        );
         this.logger.debug(
           {
-            equipmentId,
+            equipmentId: equipment.id,
             equipmentName: equipment.name,
             alias,
             integrationId: device.integrationId,
@@ -940,92 +1037,82 @@ export class EquipmentManager {
           },
           "Order dispatched to integration",
         );
-
-        // Resolve alarm if this integration was previously failing
-        if (this.failedIntegrations.delete(device.integrationId)) {
-          this.eventBus.emit({
-            type: "system.alarm.resolved",
-            alarmId: `order-fail:${device.integrationId}`,
-            source: device.integrationId,
-            message: `${device.integrationId} order dispatch recovered`,
-          });
-        }
-      } else {
-        this.logger.error(
-          {
-            equipmentId,
-            equipmentName: equipment.name,
-            alias,
-            deviceId: device.id,
-            deviceName: device.name,
-            error: lastError,
-          },
-          "Integration order dispatch failed after retry",
-        );
-
-        // Raise alarm on first failure for this integration
-        if (!this.failedIntegrations.has(device.integrationId)) {
-          this.failedIntegrations.add(device.integrationId);
-          this.eventBus.emit({
-            type: "system.alarm.raised",
-            alarmId: `order-fail:${device.integrationId}`,
-            level: "error",
-            source: device.integrationId,
-            message: `Order dispatch failed: ${equipment.name} ${alias} — ${lastError}`,
-          });
+        return { dispatched: true, lastError };
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        if (attempt < 2) {
+          this.logger.warn(
+            { err, equipmentId: equipment.id, alias, deviceId: device.id, attempt },
+            "Order dispatch failed, retrying in 2s",
+          );
+          await new Promise((r) => setTimeout(r, 2000));
         }
       }
     }
-
-    if (successes > 0) {
-      this.logger.info(
-        {
-          equipmentId,
-          equipmentName: equipment.name,
-          alias,
-          value: resolvedValue,
-          targets: bindings.length,
-        },
-        "Equipment order executed",
-      );
-      this.eventBus.emit({
-        type: "equipment.order.executed",
-        equipmentId,
-        orderAlias: alias,
-        value: resolvedValue,
-        source,
-      });
-    } else if (lastError) {
-      this.eventBus.emit({
-        type: "equipment.order.failed",
-        equipmentId,
-        orderAlias: alias,
-        value: resolvedValue,
+    this.logger.error(
+      {
+        equipmentId: equipment.id,
+        equipmentName: equipment.name,
+        alias,
+        deviceId: device.id,
+        deviceName: device.name,
         error: lastError,
-        source,
-      });
-    }
+      },
+      "Integration order dispatch failed after retry",
+    );
+    return { dispatched: false, lastError };
+  }
 
-    // Gate command: mark state as "unknown" until next sensor update
-    if (successes > 0 && equipment.type === "gate" && alias === "command") {
-      this.pendingToggles.add(equipmentId);
+  /**
+   * Raise/resolve the per-integration `order-fail:<id>` alarm and keep the
+   * `failedIntegrations` set in sync. A recovered dispatch resolves a standing
+   * alarm; a failure raises one, once, on the first failure for that integration.
+   */
+  private updateOrderAlarms(
+    integrationId: string,
+    dispatched: boolean,
+    ctx: { equipmentName: string; alias: string; lastError?: string },
+  ): void {
+    if (dispatched) {
+      if (this.failedIntegrations.delete(integrationId)) {
+        this.eventBus.emit({
+          type: "system.alarm.resolved",
+          alarmId: `order-fail:${integrationId}`,
+          source: integrationId,
+          message: `${integrationId} order dispatch recovered`,
+        });
+      }
+    } else if (!this.failedIntegrations.has(integrationId)) {
+      this.failedIntegrations.add(integrationId);
       this.eventBus.emit({
-        type: "equipment.data.changed",
-        equipmentId,
-        alias: "state",
-        value: "unknown",
-        previous: undefined,
+        type: "system.alarm.raised",
+        alarmId: `order-fail:${integrationId}`,
+        level: "error",
+        source: integrationId,
+        message: `Order dispatch failed: ${ctx.equipmentName} ${ctx.alias} — ${ctx.lastError}`,
       });
-      this.logger.debug(
-        { equipmentId, equipmentName: equipment.name },
-        "Gate command — state set to unknown",
-      );
     }
+  }
 
-    if (successes === 0 && lastError) {
-      return { success: false, error: lastError };
-    }
-    return { success: true };
+  /**
+   * Gate `command` order (spec 146): mark the equipment state as "unknown" until
+   * the next sensor update, since a gate has no immediate position feedback.
+   * No-op for any other equipment type / alias.
+   */
+  private trackGatePending(equipment: Equipment, alias: string): void {
+    if (equipment.type !== "gate" || alias !== "command") return;
+    this.pendingToggles.add(equipment.id);
+    this.eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId: equipment.id,
+      alias: "state",
+      value: "unknown",
+      previous: undefined,
+    });
+    this.logger.debug(
+      { equipmentId: equipment.id, equipmentName: equipment.name },
+      "Gate command — state set to unknown",
+    );
   }
 
   /**
