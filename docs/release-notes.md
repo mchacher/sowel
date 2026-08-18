@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.2 — 2026-08-18 { #v1-52-2 }
+
+- Fix (ui): **the "Solar" toggle on the compact equipment card now actuates again**. Tapping it did nothing (the equipment detail page was unaffected); the button's own click handler was being suppressed. Solar automation driven by the energy arbiter was never affected. (#600)
+
 ### v1.52.1 — 2026-08-18 { #v1-52-1 }
 
 - Fix (energy): **a load that is manually overridden is no longer listed twice on the arbiter surface**. A flexible load that had a pending request when it was switched on at the wall now appears only as "Suspended", not also as "Waiting". (#599)

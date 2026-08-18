@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.2 — 2026-08-18 { #v1-52-2 }
+
+- Correctif (ui) : **la bascule « Solaire » de la carte d'équipement compacte fonctionne à nouveau**. Un appui ne faisait rien (la page détail de l'équipement n'était pas concernée) ; le gestionnaire de clic du bouton était neutralisé. Le pilotage solaire par l'arbitre d'énergie n'a jamais été impacté. (#600)
+
 ### v1.52.1 — 2026-08-18 { #v1-52-1 }
 
 - Fix (énergie) : **une charge en dérogation manuelle n'apparaît plus deux fois sur la surface de l'arbitre**. Une charge flexible qui avait une demande en attente au moment où elle est allumée à l'interrupteur mural n'apparaît plus que « Suspendu », et non plus aussi « En attente ». (#599)
