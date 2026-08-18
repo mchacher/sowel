@@ -595,6 +595,15 @@ export class CapacityArbiter {
       reason: "run outside arbitration finished",
     });
     this.finishLearnerRun(equipmentId);
+    // #584 — the unclaimed run overlaid the lane as "unmanaged"; its end resets
+    // the sustained state to "idle" in buildLoadTimelines. If a pending surplus
+    // claim is still held underneath (e.g. the pump kept claiming surplus while
+    // it ran on an off-peak slot), re-open its "waiting" span so the timeline
+    // keeps showing the load waiting for surplus instead of falsely idle.
+    const pending = this.pendingClaimFor(equipmentId);
+    if (pending) {
+      this.journal({ kind: "waiting", equipmentId, watts: pending.watts });
+    }
   }
 
   /**
@@ -1216,9 +1225,15 @@ export class CapacityArbiter {
   private release(claim: ClaimRecord): void {
     if (claim.status === "denied" || claim.status === "released") return;
     const wasGranted = claim.status === "granted";
+    const wasPending = claim.status === "pending";
     claim.status = "released";
-    if (wasGranted) {
-      this.finishLearnerRun(claim.equipmentId);
+    if (wasGranted) this.finishLearnerRun(claim.equipmentId);
+    // #584 — close the timeline span for a pending claim too, not only a
+    // granted one. `claimCapacity` journals `waiting` when a claim stays
+    // pending (#561); without a matching close, a claim released while still
+    // pending leaves its "en attente" span open to the window edge in
+    // buildLoadTimelines (the "PAC en attente toute la nuit" bug).
+    if (wasGranted || wasPending) {
       this.journal({ kind: "released", equipmentId: claim.equipmentId });
       this.emitEvent({
         type: "energy.capacity.released",
@@ -1374,6 +1389,12 @@ export class CapacityArbiter {
 
   private grantedClaimFor(equipmentId: string): ClaimRecord | undefined {
     return this.grantedClaims().find((c) => c.equipmentId === equipmentId);
+  }
+
+  private pendingClaimFor(equipmentId: string): ClaimRecord | undefined {
+    return [...this.claims.values()].find(
+      (c) => c.equipmentId === equipmentId && c.status === "pending",
+    );
   }
 
   private priorityRank(equipmentId: string): number {

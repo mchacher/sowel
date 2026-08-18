@@ -1021,6 +1021,51 @@ describe("capacity arbiter", () => {
     expect(h.events.filter((e) => e.type === "energy.capacity.released")).toHaveLength(1);
   });
 
+  // ── Timeline pending spans (#584) ─────────────────────────
+
+  it("journals `released` when a pending (never-granted) claim is released (#584)", () => {
+    const h = makeHarness();
+    const handle = h.claim("i1", { equipmentId: "pump" }); // needs 600+100 W
+    h.run(-100, 60); // exporting only 100 W → stays pending, never granted
+    expect(h.arbiter.getPublicState().pending.map((p) => p.equipmentId)).toContain("pump");
+    // The pending claim opened a `waiting` span (#561)…
+    const j0 = h.arbiter.getPublicState().journal;
+    expect(j0.filter((d) => d.kind === "waiting" && d.equipmentId === "pump")).toHaveLength(1);
+    expect(j0.some((d) => d.kind === "granted" && d.equipmentId === "pump")).toBe(false);
+
+    handle.release();
+
+    // …and releasing it must close that span, or buildLoadTimelines paints the
+    // load "en attente" to the window edge forever (the PAC-Piscine bug).
+    const j1 = h.arbiter.getPublicState().journal;
+    expect(j1.some((d) => d.kind === "released" && d.equipmentId === "pump")).toBe(true);
+    expect(h.events.filter((e) => e.type === "energy.capacity.released")).toHaveLength(1);
+    expect(h.arbiter.getPublicState().pending.map((p) => p.equipmentId)).not.toContain("pump");
+  });
+
+  it("re-journals `waiting` when an unclaimed run ends while a claim stays pending (#584)", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-100, 30); // pending, no grant
+    // Recipe runs the pump outside arbitration (off-peak fallback) → opens an
+    // unclaimed run that overlays the pending span as "unmanaged".
+    h.order("pump", "ON", { kind: "recipe", instanceId: "i1" });
+    expect(
+      h.arbiter
+        .getPublicState()
+        .journal.some((d) => d.kind === "unclaimed-run" && d.equipmentId === "pump"),
+    ).toBe(true);
+
+    // The run ends while the surplus claim is still pending underneath.
+    h.order("pump", "OFF", { kind: "recipe", instanceId: "i1" });
+
+    const j = h.arbiter.getPublicState().journal;
+    expect(j.some((d) => d.kind === "unclaimed-run-ended" && d.equipmentId === "pump")).toBe(true);
+    // Two `waiting` entries: the initial claim, plus the reopen after the run
+    // ended — so the timeline resumes "en attente" instead of falsely idle.
+    expect(j.filter((d) => d.kind === "waiting" && d.equipmentId === "pump")).toHaveLength(2);
+  });
+
   // ── Zero-behavior default (acceptance) ────────────────────
 
   it("disabled arbiter with no profiles produces no events and denies claims", () => {

@@ -66,6 +66,30 @@ describe("buildLoadTimelines (spec 148)", () => {
     expect(load.quarters).toEqual(["granted", "revoked", "pending", "pending"]);
   });
 
+  it("closes a 'pending' span when the claim is released without ever being granted (#584)", () => {
+    const [load] = buildLoadTimelines([dec(-5, "waiting"), dec(35, "released")], LOADS, START, END);
+    // pending from before the window; q2 (12:30-12:45) holds the 12:35 release
+    // → idle. Without a `released` close the span would bleed to the edge.
+    expect(load.quarters).toEqual(["pending", "pending", "idle", "idle"]);
+  });
+
+  it("reopens 'pending' when an unclaimed run ends over a still-pending claim (#584)", () => {
+    const [load] = buildLoadTimelines(
+      [
+        dec(-5, "waiting"),
+        dec(20, "unclaimed-run"),
+        dec(35, "unclaimed-run-ended"),
+        dec(35, "waiting"),
+      ],
+      LOADS,
+      START,
+      END,
+    );
+    // pending → q1 (12:20 unclaimed-run) unmanaged → q2 (12:35 end resets to
+    // idle, then the re-journaled waiting reopens pending, last wins) → pending.
+    expect(load.quarters).toEqual(["pending", "unmanaged", "pending", "pending"]);
+  });
+
   it("maps suspended and unclaimed-run to 'unmanaged'", () => {
     const [a] = buildLoadTimelines([dec(5, "suspended")], LOADS, START, END);
     expect(a.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
