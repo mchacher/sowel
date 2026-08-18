@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.4 — 2026-08-18 { #v1-52-4 }
+
+- Fix (ui): **the arbiter now labels a load outside arbitration as "hors arbitrage"** instead of the previous, less clear wording, so a load that the energy arbiter is not managing reads unambiguously. (#611)
+- Fix (ui): **submetered energy values on the compact equipment card no longer append a redundant "aujourd'hui" suffix**, keeping the card reading tight. (#612)
+
 ### v1.52.3 — 2026-08-18 { #v1-52-3 }
 
 - Fix (energy): **the arbiter activity timeline no longer shows a phantom "granted" ribbon after a restart**. When Sowel restarted while a flexible load was granted or waiting, the timeline replayed that state forward to the present even though the load had gone idle. Sowel now closes the dangling segment at the restart boundary, and repairs the persisted journal so every future replay is correct. The load table was always accurate. (#606)

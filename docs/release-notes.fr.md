@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.4 — 2026-08-18 { #v1-52-4 }
+
+- Correctif (ui) : **l'arbitre indique désormais « hors arbitrage » pour une charge non gérée**, au lieu de l'ancienne formulation moins claire, de sorte qu'une charge que l'arbitre d'énergie ne pilote pas se lit sans ambiguïté. (#611)
+- Correctif (ui) : **les valeurs d'énergie sous-comptée sur la carte d'équipement compacte n'ajoutent plus le suffixe « aujourd'hui » redondant**, ce qui allège la lecture de la carte. (#612)
+
 ### v1.52.3 — 2026-08-18 { #v1-52-3 }
 
 - Correctif (énergie) : **la timeline d'activité de l'arbitre n'affiche plus de bandeau « autorisé » fantôme après un redémarrage**. Quand Sowel redémarrait alors qu'une charge flexible était autorisée ou en attente, la timeline rejouait cet état jusqu'à maintenant alors même que la charge était redevenue inactive. Sowel ferme désormais le segment en suspens à la frontière du redémarrage et répare le journal persisté pour que tous les futurs rejeux soient corrects. Le tableau des charges a toujours été exact. (#606)
