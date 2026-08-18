@@ -13,9 +13,7 @@ import { nonEmptyString } from "../schemas.js";
 // optional-role enum check. nonEmptyString matches the truthiness guards;
 // password gets minLength 6. `role` is optional and enum-checked. The 409
 // unique-username check and admin gating (onRequest hook) stay as-is, both
-// running in the same order as before (403 hook -> body 400 -> 409). PUT /users
-// is left hand-rolled: it returns 404 for an unknown id BEFORE its body check,
-// which a body schema would flip to a 400.
+// running in the same order as before (403 hook -> body 400 -> 409).
 const createUserBodySchema = {
   type: "object",
   required: ["username", "password", "displayName"],
@@ -24,6 +22,20 @@ const createUserBodySchema = {
     password: { type: "string", minLength: 6 },
     displayName: nonEmptyString,
     role: { enum: ["admin", "standard"] },
+  },
+};
+
+// PUT /users/:id (issue #482). All fields optional; the role enum reproduces the
+// old `role && role !== "admin" && role !== "standard"` check. The unknown-id
+// 404 must beat the body 400, so it runs in a preValidation hook (before schema
+// validation); the last-admin business rules stay in the handler after the body,
+// exactly as before.
+const updateUserBodySchema = {
+  type: "object",
+  properties: {
+    displayName: { type: "string" },
+    role: { enum: ["admin", "standard"] },
+    enabled: { type: "boolean" },
   },
 };
 
@@ -88,50 +100,58 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
   app.put<{
     Params: { id: string };
     Body: { displayName?: string; role?: UserRole; enabled?: boolean };
-  }>("/api/v1/users/:id", async (request, reply) => {
-    const existing = userManager.getById(request.params.id);
-    if (!existing) return reply.code(404).send({ error: "User not found" });
-
-    const { displayName, role, enabled } = request.body ?? {};
-
-    if (role && role !== "admin" && role !== "standard") {
-      return reply.code(400).send({ error: "role must be 'admin' or 'standard'" });
-    }
-
-    // Prevent removing last admin
-    if (existing.role === "admin" && role === "standard") {
-      const allUsers = userManager.getAll();
-      const adminCount = allUsers.filter((u) => u.role === "admin" && u.enabled).length;
-      if (adminCount <= 1) {
-        return reply.code(400).send({ error: "Cannot remove the last admin" });
-      }
-    }
-
-    const updated = userManager.updateUser(request.params.id, {
-      displayName: displayName ?? existing.displayName,
-      role: role ?? existing.role,
-      enabled: enabled ?? existing.enabled,
-    });
-
-    auditLogger.log({
-      ...buildActor(request, userManager),
-      action: "user.update",
-      targetType: "user",
-      targetId: request.params.id,
-      ip: request.ip,
-      meta: {
-        username: existing.username,
-        roleChange: role && role !== existing.role ? { from: existing.role, to: role } : undefined,
-        enabledChange:
-          enabled !== undefined && enabled !== existing.enabled
-            ? { from: existing.enabled, to: enabled }
-            : undefined,
-        displayNameChanged: displayName !== undefined && displayName !== existing.displayName,
+  }>(
+    "/api/v1/users/:id",
+    {
+      // Unknown-id 404 must beat the body 400, so it runs before schema
+      // validation (issue #482).
+      preValidation: async (request, reply) => {
+        if (!userManager.getById(request.params.id)) {
+          reply.code(404).send({ error: "User not found" });
+        }
       },
-    });
+      schema: { body: updateUserBodySchema },
+    },
+    async (request, reply) => {
+      const existing = userManager.getById(request.params.id)!;
+      const { displayName, role, enabled } = request.body;
 
-    return updated;
-  });
+      // Prevent removing last admin
+      if (existing.role === "admin" && role === "standard") {
+        const allUsers = userManager.getAll();
+        const adminCount = allUsers.filter((u) => u.role === "admin" && u.enabled).length;
+        if (adminCount <= 1) {
+          return reply.code(400).send({ error: "Cannot remove the last admin" });
+        }
+      }
+
+      const updated = userManager.updateUser(request.params.id, {
+        displayName: displayName ?? existing.displayName,
+        role: role ?? existing.role,
+        enabled: enabled ?? existing.enabled,
+      });
+
+      auditLogger.log({
+        ...buildActor(request, userManager),
+        action: "user.update",
+        targetType: "user",
+        targetId: request.params.id,
+        ip: request.ip,
+        meta: {
+          username: existing.username,
+          roleChange:
+            role && role !== existing.role ? { from: existing.role, to: role } : undefined,
+          enabledChange:
+            enabled !== undefined && enabled !== existing.enabled
+              ? { from: existing.enabled, to: enabled }
+              : undefined,
+          displayNameChanged: displayName !== undefined && displayName !== existing.displayName,
+        },
+      });
+
+      return updated;
+    },
+  );
 
   // DELETE /api/v1/users/:id — Delete user
   app.delete<{

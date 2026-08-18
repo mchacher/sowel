@@ -4,32 +4,32 @@ import { createLogger } from "../../core/logger.js";
 import { registerUserRoutes } from "./users.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 
-// Input-validation characterization (issue #452) for POST /users. These routes
-// are admin-gated by an onRequest hook (runs before schema validation), so the
-// test app injects an admin request.auth first. PUT /users is not converted.
+// Input-validation characterization (issue #452 / #482) for POST /users and
+// PUT /users/:id. These routes are admin-gated by an onRequest hook (runs before
+// schema validation), so the test app injects an admin request.auth first.
 
-function makeDeps() {
-  const user = { id: "u-1", username: "bob", role: "standard" };
+function makeDeps(overrides: { userExists?: boolean } = {}) {
+  const user = { id: "u-1", username: "bob", displayName: "Bob", role: "standard", enabled: true };
   return {
     userManager: {
       getAll: () => [user],
-      getById: () => user,
+      getById: () => (overrides.userExists === false ? null : user),
       getByUsername: () => null,
       createUser: async () => user,
-      updateUser: async () => user,
+      updateUser: () => user,
     },
     auditLogger: { log: () => undefined },
     logger: createLogger("silent").logger,
   } as unknown as Parameters<typeof registerUserRoutes>[1];
 }
 
-function buildApp() {
+function buildApp(overrides: { userExists?: boolean } = {}) {
   const app = Fastify({ logger: false, ajv: validationAjvOptions });
   installValidationErrorHandler(app);
   app.addHook("onRequest", async (request) => {
     (request as unknown as { auth: unknown }).auth = { userId: "admin", role: "admin" };
   });
-  registerUserRoutes(app, makeDeps());
+  registerUserRoutes(app, makeDeps(overrides));
   return app;
 }
 
@@ -85,5 +85,43 @@ describe("POST /api/v1/users — input validation (characterization)", () => {
         })
       ).statusCode,
     ).toBe(201);
+  });
+});
+
+describe("PUT /api/v1/users/:id — input validation (characterization, #482)", () => {
+  let app: ReturnType<typeof Fastify>;
+  afterEach(async () => await app.close());
+
+  const put = (body: unknown) =>
+    app.inject({ method: "PUT", url: "/api/v1/users/u-1", payload: body });
+
+  it("404s (before body validation) for an unknown id", async () => {
+    app = buildApp({ userExists: false });
+    await app.ready();
+    // Malformed body (invalid role) against a missing user must 404, not 400.
+    const res = await put({ role: "superuser" });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("400 { error } when role is not admin or standard", async () => {
+    app = buildApp({ userExists: true });
+    await app.ready();
+    const res = await put({ role: "superuser" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: expect.any(String) });
+  });
+
+  it("400 when enabled is not a boolean", async () => {
+    app = buildApp({ userExists: true });
+    await app.ready();
+    const res = await put({ enabled: "yes" });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("200 for a valid partial update", async () => {
+    app = buildApp({ userExists: true });
+    await app.ready();
+    const res = await put({ displayName: "Bobby" });
+    expect(res.statusCode).toBe(200);
   });
 });

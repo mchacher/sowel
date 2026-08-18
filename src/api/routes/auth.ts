@@ -6,10 +6,11 @@ import type { Logger } from "../../core/logger.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
 import { nonEmptyString } from "../schemas.js";
 
-// Input schemas (issue #452). login/refresh had bare `!x` guards (no trim), so
-// nonEmptyString matches. /auth/setup and /auth/logout stay hand-rolled: setup
-// returns 403 when a user already exists BEFORE its body check (a body schema
-// would flip that 403 to a 400), and logout has no required field.
+// Input schemas (issue #452 / #482). login/refresh had bare `!x` guards (no
+// trim), so nonEmptyString matches. /auth/setup is schema-validated too (#482):
+// its "already completed" 403 precondition would be flipped to a 400 by a body
+// schema, so that check runs in a preValidation hook (before schema validation).
+// /auth/logout stays hand-rolled: it has no required field.
 const loginBodySchema = {
   type: "object",
   required: ["username", "password"],
@@ -26,6 +27,22 @@ const refreshBodySchema = {
   type: "object",
   required: ["refreshToken"],
   properties: { refreshToken: nonEmptyString },
+};
+
+// First-run admin creation. `password` min length 6 reproduces the old
+// `!password || password.length < 6`; username/displayName use nonEmptyString
+// (old bare `!x`). `language` is an optional string (old took it verbatim,
+// defaulting to "fr"); only a non-string language, which was never valid, is
+// newly rejected.
+const setupBodySchema = {
+  type: "object",
+  required: ["username", "password", "displayName"],
+  properties: {
+    username: nonEmptyString,
+    password: { type: "string", minLength: 6 },
+    displayName: nonEmptyString,
+    language: { type: "string" },
+  },
 };
 
 interface AuthDeps {
@@ -46,31 +63,34 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
   // POST /api/v1/auth/setup — Create first admin user (first-run only)
   app.post<{
     Body: { username: string; password: string; displayName: string; language?: "fr" | "en" };
-  }>("/api/v1/auth/setup", async (request, reply) => {
-    if (userManager.hasUsers()) {
-      return reply.code(403).send({ error: "Setup already completed" });
-    }
+  }>(
+    "/api/v1/auth/setup",
+    {
+      // The "already completed" 403 must beat the body 400, so it runs before
+      // schema validation (issue #482).
+      preValidation: async (_request, reply) => {
+        if (userManager.hasUsers()) {
+          reply.code(403).send({ error: "Setup already completed" });
+        }
+      },
+      schema: { body: setupBodySchema },
+    },
+    async (request, reply) => {
+      const { username, password, displayName, language } = request.body;
 
-    const { username, password, displayName, language } = request.body ?? {};
-    if (!username || !password || !displayName) {
-      return reply.code(400).send({ error: "username, password, and displayName are required" });
-    }
-    if (password.length < 6) {
-      return reply.code(400).send({ error: "Password must be at least 6 characters" });
-    }
+      await userManager.createUser({
+        username,
+        password,
+        displayName,
+        role: "admin",
+        preferences: { language: language ?? "fr" },
+      });
 
-    await userManager.createUser({
-      username,
-      password,
-      displayName,
-      role: "admin",
-      preferences: { language: language ?? "fr" },
-    });
-
-    // Auto-login after setup
-    const tokens = await authService.login(username, password);
-    return reply.code(201).send(tokens);
-  });
+      // Auto-login after setup
+      const tokens = await authService.login(username, password);
+      return reply.code(201).send(tokens);
+    },
+  );
 
   // POST /api/v1/auth/login (stricter rate limit: 10 req/min)
   app.post<{
