@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.3 — 2026-08-18 { #v1-52-3 }
+
+- Fix (energy): **the arbiter activity timeline no longer shows a phantom "granted" ribbon after a restart**. When Sowel restarted while a flexible load was granted or waiting, the timeline replayed that state forward to the present even though the load had gone idle. Sowel now closes the dangling segment at the restart boundary, and repairs the persisted journal so every future replay is correct. The load table was always accurate. (#606)
+
 ### v1.52.2 — 2026-08-18 { #v1-52-2 }
 
 - Fix (ui): **the "Solar" toggle on the compact equipment card now actuates again**. Tapping it did nothing (the equipment detail page was unaffected); the button's own click handler was being suppressed. Solar automation driven by the energy arbiter was never affected. (#600)

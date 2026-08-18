@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.3 — 2026-08-18 { #v1-52-3 }
+
+- Correctif (énergie) : **la timeline d'activité de l'arbitre n'affiche plus de bandeau « autorisé » fantôme après un redémarrage**. Quand Sowel redémarrait alors qu'une charge flexible était autorisée ou en attente, la timeline rejouait cet état jusqu'à maintenant alors même que la charge était redevenue inactive. Sowel ferme désormais le segment en suspens à la frontière du redémarrage et répare le journal persisté pour que tous les futurs rejeux soient corrects. Le tableau des charges a toujours été exact. (#606)
+
 ### v1.52.2 — 2026-08-18 { #v1-52-2 }
 
 - Correctif (ui) : **la bascule « Solaire » de la carte d'équipement compacte fonctionne à nouveau**. Un appui ne faisait rien (la page détail de l'équipement n'était pas concernée) ; le gestionnaire de clic du bouton était neutralisé. Le pilotage solaire par l'arbitre d'énergie n'a jamais été impacté. (#600)
