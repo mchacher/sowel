@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.1 — 2026-08-18 { #v1-52-1 }
+
+- Fix (energy): **a load that is manually overridden is no longer listed twice on the arbiter surface**. A flexible load that had a pending request when it was switched on at the wall now appears only as "Suspended", not also as "Waiting". (#599)
+
 ### v1.52.0 — 2026-08-18 { #v1-52-0 }
 
 - Feat (equipments): **two-speed ventilation (VMC) is now a dedicated equipment type**. A 2-speed controlled-mechanical-ventilation unit can be modelled directly; its speed order is decomposed into a break-before-make relay sequence so the two windings are never energised at once. Pairs with the vmc-humidity recipe. (#573, #586)

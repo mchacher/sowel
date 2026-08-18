@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.1 — 2026-08-18 { #v1-52-1 }
+
+- Fix (énergie) : **une charge en dérogation manuelle n'apparaît plus deux fois sur la surface de l'arbitre**. Une charge flexible qui avait une demande en attente au moment où elle est allumée à l'interrupteur mural n'apparaît plus que « Suspendu », et non plus aussi « En attente ». (#599)
+
 ### v1.52.0 — 2026-08-18 { #v1-52-0 }
 
 - Feat (équipements) : **la ventilation deux vitesses (VMC) devient un type d'équipement dédié**. Une VMC 2 vitesses se modélise directement ; son ordre de vitesse est décomposé en une séquence relais coupure-avant-établissement, de sorte que les deux enroulements ne sont jamais alimentés en même temps. Se marie avec la recette vmc-humidity. (#573, #586)
