@@ -550,7 +550,7 @@
     "icon": "Fan",
     "author": "adn-dev-adrien",
     "repo": "adn-dev-adrien/sowel-recipe-vmc-humidity",
-    "version": "0.5.2",
+    "version": "0.6.0",
     "tags": ["ventilation", "vmc", "humidity", "comfort", "automation"],
     "i18n": {
       "fr": {
@@ -560,6 +560,6 @@
     },
     "sowelVersion": ">=1.35.0",
     "owner": "adn-dev-adrien",
-    "sha256": "f66a07cdae2992893140dc4e3f381aec2d679a6c36aed8c848e3192dfcb1ab2e"
+    "sha256": "00c430369abedd2b1e77e244f63685a67fd425c2ce9d42559452a6e694e9302b"
   }
 ]
