@@ -7,7 +7,7 @@ import type { ArbiterDecision } from "../shared/types.js";
 //   "granted"   — accordé (running on surplus)
 //   "pending"   — en attente (claiming surplus, none granted yet) — #561
 //   "revoked"   — surplus retiré (a revoke happened in this quarter)
-//   "unmanaged" — On (hors pilotage): manual override or unclaimed run
+//   "unmanaged" — On (hors arbitrage): manual override or unclaimed run
 //   "idle"      — off / not managed
 //
 // Loads don't oscillate, so a quarter shows the *sustained* state at its end,

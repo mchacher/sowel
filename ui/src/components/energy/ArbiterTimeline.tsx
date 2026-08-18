@@ -54,7 +54,7 @@ function cellColor(s: ArbiterQuarterState): string {
     case "revoked":
       return "var(--color-error)"; // surplus retiré
     case "unmanaged":
-      return "var(--color-slate)"; // On (hors pilotage)
+      return "var(--color-slate)"; // On (hors arbitrage)
     default:
       return "color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)"; // idle
   }
