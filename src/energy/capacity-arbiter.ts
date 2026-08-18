@@ -821,8 +821,24 @@ export class CapacityArbiter {
         sinceIso: new Date(c.grantedAt ?? now).toISOString(),
         note: c.note,
       }));
+    const suspensions = [...this.overridesUntil.entries()]
+      .filter(([, until]) => until > now)
+      .map(([equipmentId, until]) => ({
+        equipmentId,
+        equipmentName: this.nameOf(equipmentId),
+        untilIso: new Date(until).toISOString(),
+      }));
+    const suspendedIds = new Set(suspensions.map((s) => s.equipmentId));
+    // A load can hold a pending claim (created before a manual override) AND be
+    // suspended at the same time: `suspend()` revokes only a GRANTED claim, so a
+    // claim that was still `pending` when the wall-switch-on / user-order
+    // override fired lingers. It cannot be granted while suspended (`evaluate`
+    // skips suspended loads), so it is dormant — the suspension is the truthful
+    // dominant state. Excluding suspended IDs here (mirroring `idle` below)
+    // stops the same equipment surfacing twice: once "En attente
+    // (override-active)" and once "Suspendu".
     const pending = [...this.claims.values()]
-      .filter((c) => c.status === "pending")
+      .filter((c) => c.status === "pending" && !suspendedIds.has(c.equipmentId))
       .map((c) => ({
         equipmentId: c.equipmentId,
         equipmentName: this.nameOf(c.equipmentId),
@@ -836,13 +852,6 @@ export class CapacityArbiter {
         // the UI relabels it "running (no surplus)" instead of "waiting" (#491).
         running: this.unclaimedRunning.has(c.equipmentId),
       }));
-    const suspensions = [...this.overridesUntil.entries()]
-      .filter(([, until]) => until > now)
-      .map(([equipmentId, until]) => ({
-        equipmentId,
-        equipmentName: this.nameOf(equipmentId),
-        untilIso: new Date(until).toISOString(),
-      }));
     // #561 — declared flexible loads (priority order) that hold no claim and are
     // not suspended: neither granted nor pending. They have a timeline lane but
     // were absent from the read model, so the UI could not show them "at rest".
@@ -851,7 +860,6 @@ export class CapacityArbiter {
         .filter((c) => c.status === "granted" || c.status === "pending")
         .map((c) => c.equipmentId),
     );
-    const suspendedIds = new Set(suspensions.map((s) => s.equipmentId));
     const idle = this.config.priority
       .filter((id) => !claimedIds.has(id) && !suspendedIds.has(id))
       // Still declared flexible and still present (profile dropped / deleted →

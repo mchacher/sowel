@@ -503,6 +503,24 @@ describe("capacity arbiter", () => {
     expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
   });
 
+  it("does not list a suspended load in BOTH pending and suspensions", () => {
+    // A claim that was still pending (insufficient surplus) when a wall-switch-on
+    // override fires lingers as pending — `suspend()` only revokes GRANTED
+    // claims. The read model must surface the load once ("Suspendu"), not also
+    // as "En attente (override-active)". Regression: prod showed "Pompe Piscine"
+    // twice at once.
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" }); // needs 600+100
+    h.feedMeter(-200); // below engage threshold → stays pending
+    h.run(-200, 300);
+    expect(h.arbiter.getPublicState().pending[0]?.equipmentId).toBe("pump");
+    // User turns the pump on at the wall while it is still pending.
+    h.order("pump", true, { kind: "manual", instanceId: undefined });
+    const state = h.arbiter.getPublicState();
+    expect(state.suspensions.map((s) => s.equipmentId)).toEqual(["pump"]);
+    expect(state.pending.map((p) => p.equipmentId)).not.toContain("pump");
+  });
+
   it("a recipe order on a granted equipment does NOT suspend", () => {
     const h = makeHarness();
     h.claim("i1", { equipmentId: "pump" });
