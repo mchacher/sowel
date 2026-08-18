@@ -561,5 +561,26 @@
     "sowelVersion": ">=1.35.0",
     "owner": "adn-dev-adrien",
     "sha256": "00c430369abedd2b1e77e244f63685a67fd425c2ce9d42559452a6e694e9302b"
+  },
+  {
+    "id": "water-heater-solar",
+    "type": "recipe",
+    "category": "energy",
+    "name": "Water Heater on Solar Surplus",
+    "description": "Heats your water heater on solar surplus through its dedicated solar contact, coordinated by the energy arbiter. Off-peak heating stays owned by the appliance.",
+    "icon": "Sun",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-water-heater-solar",
+    "version": "0.1.1",
+    "tags": ["water-heater", "solar", "energy", "surplus", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Chauffe-eau sur surplus solaire",
+        "description": "Chauffe le chauffe-eau sur le surplus solaire via son contact solaire dédié, coordonné par l'arbitre d'énergie. La chauffe en heures creuses reste gérée par l'appareil."
+      }
+    },
+    "sowelVersion": ">=1.52.0",
+    "owner": "mchacher",
+    "sha256": "a973c221054201cb64bf054167fcd998351a5b355cde93eec39d738bd90fb3ec"
   }
 ]
