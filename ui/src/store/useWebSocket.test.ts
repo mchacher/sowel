@@ -33,8 +33,8 @@ const S = vi.hoisted(() => ({
     handleModeDeactivated: vi.fn(),
     fetchModes: vi.fn(),
   },
-  activity: { addItem: vi.fn() },
-  arbiter: { patchStatus: vi.fn(), refreshSoon: vi.fn() },
+  activity: { addItem: vi.fn(), retry: vi.fn() },
+  arbiter: { patchStatus: vi.fn(), refreshSoon: vi.fn(), fetch: vi.fn() },
 }));
 
 vi.mock("./useDevices", () => ({ useDevices: { getState: () => S.devices } }));
@@ -178,7 +178,7 @@ describe("connect", () => {
 
     expect(useWebSocket.getState().status).toBe("connected");
     expect(ws.sent[0]).toContain('"type":"subscribe"');
-    // All seven store refetches fire so nothing missed while disconnected is stale.
+    // Every WS-driven store refetches so nothing missed while disconnected is stale.
     expect(S.devices.fetchDevices).toHaveBeenCalled();
     expect(S.equipments.fetchEquipments).toHaveBeenCalled();
     expect(S.zones.fetchZones).toHaveBeenCalled();
@@ -186,6 +186,17 @@ describe("connect", () => {
     expect(S.recipes.fetchRecipes).toHaveBeenCalled();
     expect(S.recipes.fetchInstances).toHaveBeenCalled();
     expect(S.modes.fetchModes).toHaveBeenCalled();
+  });
+
+  it("on open: re-syncs the arbiter and the activity feed (issue #589)", () => {
+    const ws = connect();
+    ws.simulateOpen();
+
+    // Both are fed only by live events after their mount fetch, so the reconnect
+    // recovery must refetch them or they stay frozen until the panel remounts.
+    expect(S.arbiter.fetch).toHaveBeenCalled();
+    expect(S.arbiter.refreshSoon).toHaveBeenCalled();
+    expect(S.activity.retry).toHaveBeenCalled();
   });
 
   it("on open: restores integration statuses and error alarms from the health endpoint", async () => {
@@ -452,5 +463,114 @@ describe("reconnect backoff", () => {
     vi.runOnlyPendingTimers();
     latestWs().simulateClose(); // attempt #3
     expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 4000);
+  });
+});
+
+describe("foreground reconnect (issue #589)", () => {
+  const docHandlers: Record<string, () => void> = {};
+  const winHandlers: Record<string, () => void> = {};
+  let visibility: "hidden" | "visible";
+
+  async function setupWithForegroundHooks(): Promise<void> {
+    for (const k of Object.keys(docHandlers)) delete docHandlers[k];
+    for (const k of Object.keys(winHandlers)) delete winHandlers[k];
+    visibility = "hidden";
+    vi.stubGlobal("document", {
+      get visibilityState() {
+        return visibility;
+      },
+      addEventListener: (type: string, h: () => void) => {
+        docHandlers[type] = h;
+      },
+    });
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", host: "localhost:5173", protocol: "http:" },
+      addEventListener: (type: string, h: () => void) => {
+        winHandlers[type] = h;
+      },
+    });
+    // wakeReconnect() guards on a stored token so a logged-out tab stays quiet.
+    localStorage.setItem("sowel_access_token", "tok");
+    await loadStore(); // fresh module so the once-only install guard is reset
+  }
+
+  it("reconnects when the tab returns to foreground after the socket dropped", async () => {
+    vi.useFakeTimers();
+    await setupWithForegroundHooks();
+
+    const ws1 = connect();
+    ws1.simulateOpen();
+    expect(typeof docHandlers.visibilitychange).toBe("function");
+
+    ws1.simulateClose(); // socket dropped while backgrounded
+    const before = FakeWebSocket.instances.length;
+
+    visibility = "visible";
+    docHandlers.visibilitychange();
+    expect(FakeWebSocket.instances.length).toBe(before + 1);
+  });
+
+  it("reconnects when the network comes back online", async () => {
+    vi.useFakeTimers();
+    await setupWithForegroundHooks();
+
+    const ws1 = connect();
+    ws1.simulateOpen();
+    ws1.simulateClose();
+    const before = FakeWebSocket.instances.length;
+
+    winHandlers.online();
+    expect(FakeWebSocket.instances.length).toBe(before + 1);
+  });
+
+  it("stays put while the tab is still hidden", async () => {
+    vi.useFakeTimers();
+    await setupWithForegroundHooks();
+
+    const ws1 = connect();
+    ws1.simulateOpen();
+    ws1.simulateClose();
+    const before = FakeWebSocket.instances.length;
+
+    // visibility stays "hidden" — the handler must not force a reconnect.
+    docHandlers.visibilitychange();
+    expect(FakeWebSocket.instances.length).toBe(before);
+  });
+
+  it("recovers the live-only surfaces without a new socket when foregrounded while OPEN", async () => {
+    vi.useFakeTimers();
+    await setupWithForegroundHooks();
+
+    const ws1 = connect();
+    ws1.simulateOpen(); // still OPEN (possibly a zombie the OS silently killed)
+    const before = FakeWebSocket.instances.length;
+    vi.clearAllMocks(); // drop the arbiter/activity refetch from onopen
+
+    visibility = "visible";
+    docHandlers.visibilitychange();
+
+    // connect() is a no-op while OPEN, so no new socket is created...
+    expect(FakeWebSocket.instances.length).toBe(before);
+    // ...but the live-only surfaces still refetch, so a zombie socket can't
+    // leave the arbiter/activity frozen (issue #589).
+    expect(S.arbiter.fetch).toHaveBeenCalled();
+    expect(S.activity.retry).toHaveBeenCalled();
+  });
+
+  it("stays quiet when the tab has no stored access token (logged out)", async () => {
+    vi.useFakeTimers();
+    await setupWithForegroundHooks();
+
+    const ws1 = connect();
+    ws1.simulateOpen();
+    ws1.simulateClose();
+    const before = FakeWebSocket.instances.length;
+    localStorage.removeItem("sowel_access_token");
+
+    visibility = "visible";
+    docHandlers.visibilitychange();
+    winHandlers.online();
+    // No token → no resurrection of the socket for a logged-out tab.
+    expect(FakeWebSocket.instances.length).toBe(before);
   });
 });

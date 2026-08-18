@@ -86,7 +86,54 @@ let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
 let currentTopics: WsTopic[] = ["system"];
+let foregroundHooksInstalled = false;
 const MAX_RECONNECT_DELAY = 30_000;
+
+/**
+ * Re-sync the two surfaces that are fed only by live events after their mount
+ * fetch (the capacity arbiter, issue #589, and the activity feed). Every other
+ * WS-driven store recovers through its own `fetch*` in the `onopen` block; these
+ * two have no such recovery, so they must be refetched explicitly whenever the
+ * connection is (re)established or the tab returns to foreground.
+ */
+function recoverLiveOnlyStores(): void {
+  useArbiter.getState().fetch();
+  useArbiter.getState().refreshSoon(); // bump timelineRev so the timeline refetches
+  useActivity.getState().retry(); // replay the last loadForZone (no-op if none)
+}
+
+/**
+ * Foreground / network-back recovery. Mobile browsers freeze timers and silently
+ * drop the socket while the PWA is backgrounded, and the `onclose` reconnect timer
+ * is throttled until the tab is visible again. On resume:
+ *  - reconnect if the socket is gone (`connect()` is a no-op when already OPEN or
+ *    CONNECTING, so it only fires when the browser actually dropped it); the
+ *    following `onopen` then resyncs every store.
+ *  - if the socket still claims OPEN, the browser may have torn it down while
+ *    frozen (a "zombie" whose `readyState` is stuck at OPEN), so `connect()`
+ *    no-ops and no `onopen` runs. Refetch the live-only surfaces directly so
+ *    foregrounding always refreshes them.
+ * A logged-out tab must stay quiet: the listeners outlive `disconnect()`, so guard
+ * on a stored access token before resurrecting a socket.
+ */
+function wakeReconnect(): void {
+  if (!localStorage.getItem("sowel_access_token")) return;
+  useWebSocket.getState().connect();
+  if (ws?.readyState === WebSocket.OPEN) recoverLiveOnlyStores();
+}
+
+/** Installed once, on first connect. */
+function installForegroundReconnect(): void {
+  if (foregroundHooksInstalled) return;
+  if (typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+  foregroundHooksInstalled = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") wakeReconnect();
+  });
+  if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+    window.addEventListener("online", wakeReconnect);
+  }
+}
 
 function getWsUrl(): string {
   // In dev mode, connect directly to the backend to avoid Vite proxy EPIPE issues
@@ -272,6 +319,7 @@ export const useWebSocket = create<WebSocketState>((set) => ({
   setRestartRequired: (reason) => set({ restartRequired: reason }),
 
   connect: () => {
+    installForegroundReconnect();
     if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) {
       return;
     }
@@ -295,6 +343,10 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       useRecipes.getState().fetchRecipes();
       useRecipes.getState().fetchInstances();
       useModes.getState().fetchModes();
+      // The arbiter (issue #589) and the activity feed are fed only by live
+      // `energy.*` / `activity.added` events after their mount fetch, so a
+      // reconnect would otherwise leave them frozen until the panel remounts.
+      recoverLiveOnlyStores();
 
       // Rebuild the alarm banner from server state: integration health, plus
       // the low-battery alerts (spec 143), which outlive both a page reload and
