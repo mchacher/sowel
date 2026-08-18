@@ -9,5 +9,7 @@ export function needsDetailSheet(equipmentType: string): boolean {
     "thermostat",
     "pool_heat_pump",
     "heater",
+    // Spec 153 — VMC has a 3-way OFF/V1/V2 selector, not a single toggle.
+    "vmc",
   ].includes(equipmentType);
 }

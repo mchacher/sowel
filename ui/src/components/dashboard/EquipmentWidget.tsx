@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { VmcControl } from "../equipments/VmcControl";
+import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import type { DashboardWidget } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
@@ -480,7 +481,7 @@ function VmcEquipmentWidget({
   iconKey?: string;
 }) {
   const { t } = useTranslation();
-  const speed = equipment.computedData?.find((c) => c.alias === "speed")?.value;
+  const speed = vmcSpeedOf(equipment);
   const running = speed === "v1" || speed === "v2";
   const speedLabel =
     speed === "v2"

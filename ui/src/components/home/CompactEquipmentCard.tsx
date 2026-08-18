@@ -13,6 +13,7 @@ import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
 import { HeaterControl } from "../equipments/HeaterControl";
 import { WaterValveControl } from "../equipments/WaterValveControl";
+import { VmcControl } from "../equipments/VmcControl";
 import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
@@ -96,12 +97,13 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
   const isSolar = equipment.type === "solar_panel";
   const isCamera = equipment.type === "camera";
+  const isVmc = equipment.type === "vmc";
 
   // Find primary data value for generic equipments
   const isKnownType =
     isLight || isSwitch || isWaterHeater || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
     isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
-    isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera;
+    isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera || isVmc;
 
   const hasCameraSnapshot =
     isCamera && equipment.dataBindings.some((b) => b.category === "camera_snapshot_url");
@@ -332,6 +334,15 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       {/* Water valve controls */}
       {isWaterValve && equipment.enabled && (
         <WaterValveControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* VMC: OFF/V1/V2 speed selector (spec 153) */}
+      {isVmc && equipment.enabled && (
+        <VmcControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact

@@ -13,6 +13,7 @@ export function defaultEnergyClassFor(type: EquipmentType): EnergyLoadClass | nu
     case "pool_pump":
     case "pool_heat_pump":
     case "water_valve":
+    case "vmc":
       return "deferrable";
     case "thermostat":
     case "heater":
@@ -39,6 +40,8 @@ export function defaultEnergyTimingsFor(type: EquipmentType): { minOnS: number; 
   switch (type) {
     case "water_heater":
       return { minOnS: 300, minOffS: 300 };
+    case "vmc":
+      return { minOnS: 60, minOffS: 30 };
     case "pool_heat_pump":
     case "thermostat":
     case "heater":

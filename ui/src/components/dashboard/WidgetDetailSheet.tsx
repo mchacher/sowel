@@ -27,6 +27,7 @@ import type {
 import { executeZoneOrder } from "../../api";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
+import { VmcControl } from "../equipments/VmcControl";
 import { allSupportStop } from "../../lib/binding-utils";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
@@ -132,6 +133,18 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
         icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
       >
         <WeatherDetailContent equipment={equipment} />
+      </BottomSheet>
+    );
+  }
+
+  if (equipment.type === "vmc") {
+    return (
+      <BottomSheet open onClose={onClose} title={label}
+        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+      >
+        <div className="p-4">
+          <VmcControl equipment={equipment} onExecuteOrder={execOrder} />
+        </div>
       </BottomSheet>
     );
   }

@@ -35,8 +35,9 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { TempExtremes } from "../TempExtremes";
-import { Cloud, WashingMachine, Camera, ShieldCheck } from "lucide-react";
+import { Cloud, WashingMachine, Camera, ShieldCheck, Fan } from "lucide-react";
 import { gateNeedsConfirm } from "./gate-confirm";
+import { vmcSpeedOf } from "../equipments/vmcSpeed";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
@@ -475,6 +476,25 @@ function useMobileState(
         <WaterValveWidgetIcon open={isOn} />
       ),
       stateLines: [isOn ? t("water.open") : t("water.closed")],
+    };
+  }
+
+  if (equipment.type === "vmc") {
+    const speed = vmcSpeedOf(equipment);
+    const running = speed === "v1" || speed === "v2";
+    const label =
+      speed === "v2"
+        ? t("equipments.vmc.v2")
+        : speed === "v1"
+          ? t("equipments.vmc.v1")
+          : t("equipments.vmc.off");
+    return {
+      icon: customEntry ? (
+        createElement(customEntry.component, customEntry.previewProps)
+      ) : (
+        <Fan size={96} strokeWidth={1.2} className={running ? "text-primary" : "text-text-tertiary"} />
+      ),
+      stateLines: [label],
     };
   }
 

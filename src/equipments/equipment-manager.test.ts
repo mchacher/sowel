@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { EquipmentManager, EquipmentError } from "./equipment-manager.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
@@ -97,17 +97,21 @@ describe("EquipmentManager", () => {
   let events: EngineEvent[];
   let mockPublished: { topic: string; payload: string }[];
   let deviceManager: DeviceManager;
+  // Order keys whose dispatch should throw (test hook for failure paths).
+  let failOrderKeys: Set<string>;
 
   beforeEach(() => {
     db = createTestDb();
     eventBus = new EventBus(logger);
     zoneManager = new ZoneManager(db, eventBus, logger);
     mockPublished = [];
+    failOrderKeys = new Set();
     deviceManager = new DeviceManager(db, eventBus, logger);
     const mockPlugin = {
       id: "zigbee2mqtt",
       getStatus: () => "connected" as const,
       executeOrder: async (_device: any, orderKey: string, value: unknown) => {
+        if (failOrderKeys.has(orderKey)) throw new Error(`dispatch failed for ${orderKey}`);
         mockPublished.push({
           topic: `z2m/${_device.name}/set`,
           payload: JSON.stringify({ [orderKey]: value }),
@@ -745,6 +749,35 @@ describe("EquipmentManager", () => {
       manager.addOrderBinding(eq.id, orderIds[0], "low");
 
       await expect(manager.executeOrder(eq.id, "speed", "v2")).rejects.toThrow(/V2/i);
+    });
+
+    it("aborts and never energizes the target when the break step fails (spec 153)", async () => {
+      vi.useFakeTimers();
+      try {
+        const zone = zoneManager.create({ name: "Cave" });
+        const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
+        const { orderIds } = seedDevice(db, {
+          name: "MiniDuo",
+          orderKeys: [
+            { key: "l1", payloadKey: "l1" },
+            { key: "l2", payloadKey: "l2" },
+          ],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "low");
+        manager.addOrderBinding(eq.id, orderIds[1], "high");
+
+        // V2 = break low (l1) then make high (l2). Make the break fail.
+        failOrderKeys.add("l1");
+        const p = manager.executeOrder(eq.id, "speed", "v2");
+        await vi.advanceTimersByTimeAsync(5000); // elapse the dispatch retry
+        const res = await p;
+
+        expect(res.success).toBe(false);
+        // The high winding (l2) must NEVER be energized after a failed break.
+        expect(mockPublished.some((m) => m.payload.includes("l2"))).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it.skip("dispatches to multiple devices (multi-device)", async () => {

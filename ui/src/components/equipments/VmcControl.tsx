@@ -2,24 +2,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { type Speed, vmcSpeedOf } from "./vmcSpeed";
 
 interface VmcControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
-}
-
-type Speed = "off" | "v1" | "v2";
-
-/** Interpret a relay state binding value as boolean. */
-function relayOn(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value > 0;
-  if (typeof value === "string") {
-    const s = value.trim().toLowerCase();
-    return s === "on" || s === "true" || s === "1";
-  }
-  return false;
 }
 
 /**
@@ -32,20 +20,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
   const [executing, setExecuting] = useState<Speed | null>(null);
 
   const hasHigh = equipment.orderBindings.some((ob) => ob.alias === "high");
-
-  // Current speed: prefer the computed `speed`, else derive from relay state.
-  const computedSpeed = equipment.computedData?.find((c) => c.alias === "speed")?.value;
-  let current: Speed | null =
-    computedSpeed === "off" || computedSpeed === "v1" || computedSpeed === "v2"
-      ? computedSpeed
-      : null;
-  if (current === null) {
-    const low = equipment.dataBindings.find((d) => d.alias === "low");
-    const high = equipment.dataBindings.find((d) => d.alias === "high");
-    if (low || high) {
-      current = high && relayOn(high.value) ? "v2" : low && relayOn(low.value) ? "v1" : "off";
-    }
-  }
+  const current = vmcSpeedOf(equipment);
 
   const options: { speed: Speed; label: string }[] = [
     { speed: "off", label: t("equipments.vmc.off") },
