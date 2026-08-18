@@ -30,6 +30,14 @@ describe("buildLoadTimelines (spec 148)", () => {
     expect(load.quarters).toEqual(["idle", "granted", "granted", "granted"]);
   });
 
+  it("#604 — a reset closes a grant that would otherwise run to now", () => {
+    // A grant opened before the window and was never revoked in the journal
+    // (its live claim vanished on restart). The startup `reset` at 12:35 closes
+    // the span there instead of painting green across the whole window.
+    const [load] = buildLoadTimelines([dec(-30, "granted"), dec(35, "reset")], LOADS, START, END);
+    expect(load.quarters).toEqual(["granted", "granted", "idle", "idle"]);
+  });
+
   it("flags the quarter that contains a revoke, then idle after", () => {
     const [load] = buildLoadTimelines([dec(-10, "granted"), dec(35, "revoked")], LOADS, START, END);
     // granted until q2 (12:30-12:45) where the 12:35 revoke lands → revoked, then idle

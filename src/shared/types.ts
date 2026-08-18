@@ -709,7 +709,14 @@ export type ArbiterDecisionKind =
    *  recipe is claiming surplus for it but none is granted yet. Opens a
    *  "pending" span on the timeline; the next `granted`/`released`/`suspended`
    *  (or a `revoked` with no re-claim) closes it. */
-  | "waiting";
+  | "waiting"
+  /** #604 — a grant/pending claim that was live at shutdown is not carried
+   *  across a restart (live claim state is rebuilt from scratch, not persisted).
+   *  On startup the arbiter journals a `reset` for any open journal tail that no
+   *  longer has a live claim, so the timeline replay closes the span at the
+   *  restart boundary instead of painting a phantom "granted"/"pending" ribbon
+   *  forward to now. */
+  | "reset";
 
 /** One line of the decision journal (FR-8/FR-9). Bounded ring buffer. */
 export interface ArbiterDecision {

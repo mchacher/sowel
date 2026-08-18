@@ -1461,6 +1461,45 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
     expect(suspended?.running).toBe(false);
   });
 
+  it("#604 — a granted tail with no live claim is closed with a reset on startup", () => {
+    const h = makeHarness({
+      journal: [dec("granted", "pump", "2026-08-12T08:00:00.000Z")],
+    });
+    // start() journaled exactly one reset closing the phantom grant.
+    const resets = h.journalRows.filter((d) => d.kind === "reset" && d.equipmentId === "pump");
+    expect(resets).toHaveLength(1);
+    expect(h.arbiter.getPublicState().journal[0]?.kind).toBe("reset");
+    // The timeline no longer paints the grant forward to now.
+    vi.advanceTimersByTime(15 * 60_000);
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    const pump = tl.loads.find((l) => l.equipmentId === "pump");
+    expect(pump?.quarters.at(-1)).toBe("idle");
+  });
+
+  it("#604 — a pending (waiting) tail with no live claim is closed on startup", () => {
+    const h = makeHarness({
+      journal: [dec("waiting", "pump", "2026-08-12T08:00:00.000Z")],
+    });
+    expect(h.journalRows.filter((d) => d.kind === "reset")).toHaveLength(1);
+  });
+
+  it("#604 — an already-closed tail is NOT reset on startup", () => {
+    const h = makeHarness({
+      journal: [
+        dec("granted", "pump", "2026-08-12T08:00:00.000Z"),
+        dec("released", "pump", "2026-08-12T09:00:00.000Z"),
+      ],
+    });
+    expect(h.journalRows.some((d) => d.kind === "reset")).toBe(false);
+  });
+
+  it("#604 — an unmanaged (unclaimed-run) tail is left to rehydration, not reset", () => {
+    const h = makeHarness({
+      journal: [dec("unclaimed-run", "pump", "2026-08-12T08:00:00.000Z")],
+    });
+    expect(h.journalRows.some((d) => d.kind === "reset")).toBe(false);
+  });
+
   it.each([
     ["unclaimed-run-ended", dec("unclaimed-run-ended", "pump", "2026-08-12T08:30:00.000Z")],
     ["granted", dec("granted", "pump", "2026-08-12T08:30:00.000Z")],

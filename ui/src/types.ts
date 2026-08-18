@@ -313,7 +313,8 @@ export type ArbiterDecisionKind =
   | "watts-divergence"
   | "unclaimed-run"
   | "unclaimed-run-ended"
-  | "waiting";
+  | "waiting"
+  | "reset";
 
 export interface ArbiterDecision {
   atIso: string;

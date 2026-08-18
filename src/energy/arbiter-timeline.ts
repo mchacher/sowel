@@ -23,8 +23,13 @@ export interface TimelineLoad {
   quarters: QuarterState[];
 }
 
-/** The sustained state a decision transitions a load into. */
-function sustainedAfter(kind: ArbiterDecision["kind"], running?: boolean): QuarterState | null {
+/** The sustained state a decision transitions a load into. Exported so the
+ *  arbiter can reconcile the journal tail on startup against the same notion of
+ *  "sustained state" the timeline uses (#604). */
+export function sustainedAfter(
+  kind: ArbiterDecision["kind"],
+  running?: boolean,
+): QuarterState | null {
   switch (kind) {
     case "granted":
       return "granted";
@@ -46,6 +51,7 @@ function sustainedAfter(kind: ArbiterDecision["kind"], running?: boolean): Quart
     case "released":
     case "denied":
     case "unclaimed-run-ended":
+    case "reset": // #604 — a restart closed an open grant/pending claim → idle
       return "idle";
     // A suspension caused by an OFF order (manual OFF, wall-switch-off) leaves
     // the load stopped — painting it "on outside arbitration" was issue #535.

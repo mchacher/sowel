@@ -41,6 +41,7 @@ const REDUNDANT_WITH_KIND = new Set([
   "recipe-driven run outside arbitration", // kind unclaimed-run
   "run outside arbitration finished", // kind unclaimed-run-ended
   "resume control", // kind resumed
+  "engine restart", // kind reset (#604) — the kind label already says it
 ]);
 
 /** The one reason that carries dynamic data: `declared <N> W` (watts-divergence). */

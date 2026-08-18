@@ -1280,6 +1280,7 @@
   "arbiter.kind.unclaimed-run": "running outside arbitration",
   "arbiter.kind.unclaimed-run-ended": "run outside arbitration ended",
   "arbiter.kind.waiting": "waiting for surplus",
+  "arbiter.kind.reset": "reset on restart",
   "arbiter.reason.surplus-deficit": "surplus deficit",
   "arbiter.reason.priority-preempted": "preempted by priority",
   "arbiter.reason.manual-override": "manual override",

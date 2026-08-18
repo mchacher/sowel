@@ -23,7 +23,7 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ArbiterJournalStore } from "./arbiter-journal-store.js";
 import type { ArbiterSurplusStore } from "./arbiter-surplus-store.js";
-import { buildLoadTimelines } from "./arbiter-timeline.js";
+import { buildLoadTimelines, sustainedAfter } from "./arbiter-timeline.js";
 import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
   ArbiterDecision,
@@ -217,6 +217,7 @@ export class CapacityArbiter {
       }
     }
     this.rehydrateUnclaimedRuns();
+    this.closeStaleClaimTails();
     this.resolveMeter();
     this.unsubscribes.push(
       this.eventBus.onType("equipment.data.changed", (e) => {
@@ -576,6 +577,39 @@ export class CapacityArbiter {
         { count: this.unclaimedRunning.size },
         "Open unclaimed runs rehydrated from journal",
       );
+    }
+  }
+
+  /**
+   * #604 — close a phantom claim span left open by a restart. Live claim state
+   * is rebuilt from scratch on startup (not persisted), so a grant/pending claim
+   * that was live at shutdown has no closing event in the journal: the timeline
+   * replay would paint its `granted`/`pending` state forward to now. For every
+   * equipment whose last *sustained* journal state is granted/pending yet has no
+   * live claim, journal a `reset` (stamped now, i.e. the restart boundary) so
+   * the span closes there instead of running to the present. Runs after
+   * `rehydrateUnclaimedRuns` so `unmanaged` runs are owned by that scan, not
+   * this one (we only touch claim-derived states).
+   */
+  private closeStaleClaimTails(): void {
+    const lastState = new Map<string, ReturnType<typeof sustainedAfter>>();
+    for (const d of this.journalEntries) {
+      if (!d.equipmentId) continue;
+      const s = sustainedAfter(d.kind, d.running);
+      if (s) lastState.set(d.equipmentId, s);
+    }
+    let closed = 0;
+    for (const [equipmentId, state] of lastState) {
+      if (state !== "granted" && state !== "pending") continue;
+      // A live claim (rebuilt by a recipe that already re-claimed) means the tail
+      // is genuine — leave it. At startup this is normally empty.
+      if (this.grantedClaimFor(equipmentId) || this.pendingClaimFor(equipmentId)) continue;
+      if (!this.equipments.getById(equipmentId)) continue; // deleted since
+      this.journal({ kind: "reset", equipmentId, reason: "engine restart" });
+      closed += 1;
+    }
+    if (closed > 0) {
+      this.logger.info({ count: closed }, "Stale arbiter claim tails closed on startup");
     }
   }
 

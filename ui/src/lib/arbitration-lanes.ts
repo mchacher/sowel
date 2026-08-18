@@ -98,6 +98,22 @@ export function buildLanes(
             openUnclaimed = null;
           }
           break;
+        // #604 — a restart closes any span that was open at shutdown, at the
+        // restart boundary, so nothing runs phantom-open to now.
+        case "reset":
+          if (openGrant !== null) {
+            segments.push({ startMin: openGrant, endMin: min, kind: "granted" });
+            openGrant = null;
+          }
+          if (openManual !== null) {
+            segments.push({ startMin: openManual, endMin: min, kind: "manual" });
+            openManual = null;
+          }
+          if (openUnclaimed !== null) {
+            segments.push({ startMin: openUnclaimed, endMin: min, kind: "unclaimed" });
+            openUnclaimed = null;
+          }
+          break;
         default:
           break;
       }

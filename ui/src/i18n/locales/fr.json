@@ -1280,6 +1280,7 @@
   "arbiter.kind.unclaimed-run": "marche hors arbitrage",
   "arbiter.kind.unclaimed-run-ended": "fin de marche hors arbitrage",
   "arbiter.kind.waiting": "en attente de surplus",
+  "arbiter.kind.reset": "réinitialisé au redémarrage",
   "arbiter.reason.surplus-deficit": "déficit de surplus",
   "arbiter.reason.priority-preempted": "préempté par une priorité",
   "arbiter.reason.manual-override": "commande manuelle",
