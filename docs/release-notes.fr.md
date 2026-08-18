@@ -11,6 +11,22 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.52.x : Ventilation deux vitesses et arbitre plus stable
+
+### v1.52.0 — 2026-08-18 { #v1-52-0 }
+
+- Feat (équipements) : **la ventilation deux vitesses (VMC) devient un type d'équipement dédié**. Une VMC 2 vitesses se modélise directement ; son ordre de vitesse est décomposé en une séquence relais coupure-avant-établissement, de sorte que les deux enroulements ne sont jamais alimentés en même temps. Se marie avec la recette vmc-humidity. (#573, #586)
+- Feat (équipements) : **un canal de commande on/off dédié aux équipements solaires** (spec 152), pour piloter une installation de production solaire indépendamment de son canal de mesure. (#574)
+- Feat (énergie) : **la surface de l'arbitre affiche un état nuit dormant** quand aucun surplus n'est attendu la nuit, au lieu d'un vide d'apparence inactive. (#577, #581)
+- Fix (caméras) : **le proxy de vue en direct HLS réécrit désormais les playlists imbriquées (maître vers variante), sert les segments binaires `.ts` octet par octet et prend en charge la balise `EXT-X-MAP`**. Cela répare les segments corrompus qui affectaient la vue en direct de la caméra Netatmo. (#580)
+- Fix (énergie) : **l'arbitre et le flux d'activité se rafraîchissent à la reconnexion ou au retour de l'application au premier plan**, de sorte qu'un onglet en arrière-plan n'affiche plus une arbitration périmée. (#589, #591)
+- Fix (énergie) : **les spans « en attente » de la timeline de l'arbitre sont désormais correctement fermés** au lieu de rester ouverts. (#584, #587)
+- Fix (énergie) : **un sous-compteur purement énergie est exclu du flux d'affichage de la puissance instantanée**, pour ne pas gonfler la lecture. (#590, #592)
+- Fix (ui) : **la page de détail d'un équipement ne recharge plus lors de changements d'équipements non liés**. (#579)
+- Fix (ui) : **les clés de traduction brutes de l'arbitre (comme l'état d'attente) s'affichent désormais en texte correct**. (#575, #576)
+- Sous le capot : **validation des entrées API durcie** (schémas de corps déclaratifs sur davantage de routes, en conservant l'ordre 403/404 avant 400) et chemin d'exécution des ordres d'équipement refactoré en fonctions nommées, le tout couvert par des tests. (#453, #482)
+- Chore (registry) : la recette vmc-humidity publiée et mise à jour pour le support natif de la VMC ; entrée registry zigbee2mqtt rafraîchie. (#571, #572, #582, #585)
+
 ## 1.51.x : Double authentification et arbitre énergie affiné
 
 ### v1.51.0 — 2026-08-17 { #v1-51-0 }

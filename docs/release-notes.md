@@ -11,6 +11,22 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.52.x: Two-speed ventilation and a steadier arbiter
+
+### v1.52.0 — 2026-08-18 { #v1-52-0 }
+
+- Feat (equipments): **two-speed ventilation (VMC) is now a dedicated equipment type**. A 2-speed controlled-mechanical-ventilation unit can be modelled directly; its speed order is decomposed into a break-before-make relay sequence so the two windings are never energised at once. Pairs with the vmc-humidity recipe. (#573, #586)
+- Feat (equipments): **a dedicated on/off command channel for solar equipment** (spec 152), so a solar production setup can be switched independently of its measurement channel. (#574)
+- Feat (energy): **the arbiter surface shows a dormant night state** when no surplus is expected overnight, instead of an idle-looking blank. (#577, #581)
+- Fix (cameras): **the HLS live-view proxy now rewrites nested master-to-variant playlists, serves binary `.ts` segments byte-for-byte, and honours the `EXT-X-MAP` tag**. This repairs corrupted segments that affected the Netatmo camera live view. (#580)
+- Fix (energy): **the arbiter and activity feed refresh when the connection is re-established or the app returns to the foreground**, so a backgrounded tab no longer shows stale arbitration. (#589, #591)
+- Fix (energy): **arbiter timeline pending spans are now closed correctly** instead of leaking open. (#584, #587)
+- Fix (energy): **an energy-only submeter is kept out of the live-power display feed**, so the instantaneous power reading is not inflated. (#590, #592)
+- Fix (ui): **the equipment detail page no longer refetches on unrelated equipment changes**. (#579)
+- Fix (ui): **raw arbiter translation keys (such as the waiting state) are now shown as proper text**. (#575, #576)
+- Under the hood: **API input validation hardened** (declarative body schemas across more routes, keeping the 403/404-before-400 ordering) and the equipment order-execution path refactored into named helpers, both fully test-covered. (#453, #482)
+- Chore (registry): the vmc-humidity recipe published and updated for native VMC support; zigbee2mqtt registry entry refreshed. (#571, #572, #582, #585)
+
 ## 1.51.x: Two-factor authentication and a sharper energy arbiter
 
 ### v1.51.0 — 2026-08-17 { #v1-51-0 }
