@@ -11,6 +11,7 @@ interface FixtureEq {
   id: string;
   name: string;
   type: string;
+  status?: string;
   dataBindings?: Array<{ alias?: string; category?: string; type?: string }>;
 }
 function makeManager(fixture: FixtureEq[]) {
@@ -71,23 +72,26 @@ describe("GET /api/v1/equipments — ?type / ?role filter", () => {
     expect(body.map((e) => e.id)).toEqual(["1"]);
   });
 
-  it("?role=submeter returns ANY numeric-metered load except house/production, ordered clamps-first (#523)", async () => {
+  it("?role=submeter returns numeric-metered loads except house/production, ordered clamps-first (#523/#590)", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/equipments?role=submeter" });
     expect(res.statusCode).toBe(200);
     const body = res.json() as FixtureEq[];
     // energy_meters (2,3) → metering relays (5 water_heater, 6 switch) → other
-    // metered loads (8 thermostat #523, 12 appliance #523), each group by name.
+    // metered load (8 thermostat #523), each group by name.
     // NOT: main_energy_meter (4), solar_panel (11), bare relay (7), no-channel
-    // light (1), or boolean-`power` loads (9 thermostat, 10 media_player).
+    // light (1), boolean-`power` loads (9 thermostat, 10 media_player), or
+    // 12 appliance — it enrols as a submeter via its cumulative `energy` channel
+    // (#523) but carries NO numeric `power`, so it has no live segment and is
+    // dropped from this live-power feed (#590; see the dedicated block below).
     // Deterministic order so the display's 8-slot cap keeps clamps first.
-    expect(body.map((e) => e.id)).toEqual(["2", "3", "5", "6", "8", "12"]);
+    expect(body.map((e) => e.id)).toEqual(["2", "3", "5", "6", "8"]);
   });
 
-  it("?type=energy_meter is honoured as the submeter role for the legacy display client, same ordered set (#224/#523)", async () => {
+  it("?type=energy_meter is honoured as the submeter role for the legacy display client, same ordered set (#224/#523/#590)", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/equipments?type=energy_meter" });
     expect(res.statusCode).toBe(200);
     const body = res.json() as FixtureEq[];
-    expect(body.map((e) => e.id)).toEqual(["2", "3", "5", "6", "8", "12"]);
+    expect(body.map((e) => e.id)).toEqual(["2", "3", "5", "6", "8"]);
   });
 
   it("returns an empty list for an unknown type (pass-through, no 400)", async () => {
@@ -97,6 +101,99 @@ describe("GET /api/v1/equipments — ?type / ?role filter", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual([]);
+  });
+});
+
+// The submeter feed is the energy display's live-power breakdown source. A load
+// that enrols as a submeter only through a cumulative `energy` (Wh) channel — a
+// SmartThings appliance whose sole `power` binding is a boolean on/off state —
+// has no live watts and used to surface as a "pas de mesure" row on the display
+// (#590). The web UI already drops such rows (#560); this pins the same rule on
+// the API path that the (unflashed) display consumes.
+describe("GET /api/v1/equipments — submeter live-power filter (#590)", () => {
+  let app: ReturnType<typeof Fastify>;
+
+  const energyOnly = [{ alias: "energy", category: "energy", type: "number" }];
+  const numericPower = [{ alias: "power", category: "power", type: "number" }];
+  const booleanPower = [{ alias: "power", category: "power", type: "boolean" }];
+
+  const fixture: FixtureEq[] = [
+    // Declared clamp with no reading yet (#527) — kept (renders pending).
+    { id: "clamp", name: "AAA Clamp", type: "energy_meter", status: "online", dataBindings: [] },
+    // Real clamp reporting watts — kept.
+    {
+      id: "live",
+      name: "BBB Live",
+      type: "energy_meter",
+      status: "online",
+      dataBindings: numericPower,
+    },
+    // Appliance reporting real watts — kept (has a live segment).
+    {
+      id: "wattbox",
+      name: "Wattbox",
+      type: "appliance",
+      status: "online",
+      dataBindings: numericPower,
+    },
+    // Energy-only appliance, ONLINE — dropped: enrols via `energy`, no live watts.
+    {
+      id: "washer-on",
+      name: "Washer On",
+      type: "appliance",
+      status: "online",
+      dataBindings: energyOnly,
+    },
+    // Same appliance but OFFLINE — kept: an offline legend row is meaningful.
+    {
+      id: "washer-off",
+      name: "Washer Off",
+      type: "appliance",
+      status: "offline",
+      dataBindings: energyOnly,
+    },
+    // Appliance whose only `power` binding is a boolean on/off state (the exact
+    // SmartThings shape) with an `energy` channel — dropped when online.
+    {
+      id: "smartthings",
+      name: "Lave-linge",
+      type: "appliance",
+      status: "online",
+      dataBindings: [...booleanPower, ...energyOnly],
+    },
+  ];
+
+  beforeEach(async () => {
+    app = Fastify({ logger: false });
+    registerEquipmentRoutes(app, {
+      equipmentManager: makeManager(fixture),
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => await app.close());
+
+  it("keeps live-power submeters, offline rows and declared meters; drops online energy-only loads", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?type=energy_meter" });
+    expect(res.statusCode).toBe(200);
+    const ids = (res.json() as FixtureEq[]).map((e) => e.id);
+    // Kept: declared clamp, live clamp, watt appliance, offline washer.
+    expect(ids).toContain("clamp");
+    expect(ids).toContain("live");
+    expect(ids).toContain("wattbox");
+    expect(ids).toContain("washer-off");
+    // Dropped: online energy-only appliance and the boolean-`power` SmartThings load.
+    expect(ids).not.toContain("washer-on");
+    expect(ids).not.toContain("smartthings");
+  });
+
+  it("?role=submeter applies the same live-power filter", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?role=submeter" });
+    const ids = (res.json() as FixtureEq[]).map((e) => e.id);
+    expect(ids).not.toContain("smartthings");
+    expect(ids).not.toContain("washer-on");
+    expect(ids).toContain("washer-off");
   });
 });
 

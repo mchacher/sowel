@@ -87,6 +87,25 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   // relays, then other metered loads, each group by name — a deterministic
   // truncation instead of unstable insertion order.
   //
+  // This feed is the LIVE-power breakdown source (the energy display is its sole
+  // consumer). An equipment that qualifies as a submeter only through a
+  // cumulative `energy` (Wh) channel — e.g. a SmartThings appliance whose sole
+  // `power` binding is a boolean on/off state, not watts — has no live watts to
+  // draw and would otherwise render as a "no measurement" row on the display.
+  // Mirror the web UI fix (#560, ui submeter-helpers `readSubmeterPower`): keep
+  // a submeter only when it can contribute a live segment or is meaningful as a
+  // legend row. See #590.  Kept when the equipment:
+  //   - is offline — an "offline since X" row is meaningful, not noise; OR
+  //   - is a declared `energy_meter` — it renders pending before its first
+  //     report (#527), same carve-out isSubmeterEquipment makes on type alone.
+  //     Deliberate divergence from #560: an online energy_meter with no numeric
+  //     `power` still shows "pas de mesure" on current firmware, kept on purpose
+  //     because a declared meter awaiting data is not noise the way an
+  //     energy-only appliance is; OR
+  //   - carries a NUMERIC `power` binding — the only shape that yields live
+  //     watts. The `type === "number"` gate rejects a boolean `power` state
+  //     (SmartThings on/off) exactly as `hasMeteringBinding` does.
+  //
   // Unknown ?type values yield an empty list rather than 400 so callers can
   // safely pass-through user input without their own validation.
   app.get<{ Querystring: { type?: string; role?: string } }>(
@@ -97,8 +116,13 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       if (role === "submeter" || type === "energy_meter") {
         const rank = (t: EquipmentType): number =>
           t === "energy_meter" ? 0 : METERING_RELAY_TYPES.has(t) ? 1 : 2;
+        const hasLivePower = (eq: (typeof all)[number]): boolean =>
+          eq.status === "offline" ||
+          eq.type === "energy_meter" ||
+          eq.dataBindings.some((b) => b.alias === "power" && b.type === "number");
         return all
           .filter((eq) => isSubmeterEquipment(eq.type, eq.dataBindings))
+          .filter(hasLivePower)
           .sort((a, b) => rank(a.type) - rank(b.type) || a.name.localeCompare(b.name));
       }
       return type ? all.filter((eq) => eq.type === type) : all;
