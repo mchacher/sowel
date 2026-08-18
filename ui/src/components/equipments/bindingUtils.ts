@@ -419,10 +419,26 @@ export async function autoCreateBindings(
         const allowedData = new Set(chosen.dataKeys);
         const allowedOrders = new Set(chosen.orderKeys);
 
+        // Spec 153 — a VMC maps its two on/off relay channels to fixed roles
+        // `low` (first channel) and `high` (second), so the speed controller can
+        // resolve them. Same alias for the matching state data. The generic
+        // category aliasing would collapse both channels to `state`, so this
+        // per-key map is applied first.
+        const vmcAlias: Record<string, string> | null =
+          equipmentType === "vmc"
+            ? Object.fromEntries(
+                chosen.orderKeys
+                  .slice()
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((k, i) => [k, i === 0 ? "low" : "high"]),
+              )
+            : null;
+
         for (const data of device.data) {
           if (!allowedData.has(data.key)) continue;
           const alias = uniqueAlias(
-            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+            vmcAlias?.[data.key] ??
+              resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
             usedDataAliases,
           );
           try {
@@ -435,7 +451,8 @@ export async function autoCreateBindings(
         for (const order of device.orders) {
           if (!allowedOrders.has(order.key)) continue;
           const alias = uniqueAlias(
-            resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
+            vmcAlias?.[order.key] ??
+              resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
             usedOrderAliases,
           );
           try {

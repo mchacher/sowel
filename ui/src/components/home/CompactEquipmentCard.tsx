@@ -62,6 +62,8 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   display:                 { bg: "bg-sensor-50",    text: "text-sensor-500" },
   // Spec 133 — cameras use the same muted "info-only" tint.
   camera:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
+  // Spec 153 — VMC uses the primary-light backdrop (air/comfort).
+  vmc:                     { bg: "bg-primary-light",text: "text-primary" },
 };
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {

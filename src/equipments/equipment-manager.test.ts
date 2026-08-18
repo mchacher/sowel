@@ -692,6 +692,61 @@ describe("EquipmentManager", () => {
       expect(execEvents).toHaveLength(1);
     });
 
+    // Sequence of (relay key, on?) actually dispatched, wire-value agnostic.
+    const dispatchSeq = () =>
+      mockPublished.map((p) => {
+        const payload = JSON.parse(p.payload) as Record<string, unknown>;
+        const k = Object.keys(payload)[0];
+        return { k, on: payload[k] === true || payload[k] === "ON" };
+      });
+
+    it("VMC speed order decomposes to break-before-make relay orders (spec 153)", async () => {
+      const zone = zoneManager.create({ name: "Buanderie" });
+      const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "MiniDuo",
+        orderKeys: [
+          { key: "l1", payloadKey: "l1" },
+          { key: "l2", payloadKey: "l2" },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "low");
+      manager.addOrderBinding(eq.id, orderIds[1], "high");
+
+      // V2 = break low, then make high.
+      await manager.executeOrder(eq.id, "speed", "v2");
+      expect(dispatchSeq()).toEqual([
+        { k: "l1", on: false },
+        { k: "l2", on: true },
+      ]);
+
+      // V1 = break high, then make low.
+      mockPublished = [];
+      await manager.executeOrder(eq.id, "speed", "v1");
+      expect(dispatchSeq()).toEqual([
+        { k: "l2", on: false },
+        { k: "l1", on: true },
+      ]);
+
+      // A `speed` data change is emitted optimistically.
+      const speedEvents = events.filter(
+        (e) => e.type === "equipment.data.changed" && e.alias === "speed",
+      );
+      expect(speedEvents.length).toBeGreaterThan(0);
+    });
+
+    it("rejects V2 on a single-speed VMC (no high relay)", async () => {
+      const zone = zoneManager.create({ name: "WC" });
+      const eq = manager.create({ name: "Extracteur", type: "vmc", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "Relay",
+        orderKeys: [{ key: "state", payloadKey: "state" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "low");
+
+      await expect(manager.executeOrder(eq.id, "speed", "v2")).rejects.toThrow(/V2/i);
+    });
+
     it.skip("dispatches to multiple devices (multi-device)", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "All Lights", type: "light_onoff", zoneId: zone.id });

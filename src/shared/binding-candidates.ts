@@ -76,6 +76,9 @@ export const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<Equipme
   // (Zigbee dry-contact like the SONOFF MINI-ZBD) is offered as a gate
   // command alongside LoRa R1..R4 and Somfy gate_trigger.
   "gate",
+  // Spec 153 — a VMC groups up to two on/off relay channels (low + optional
+  // high) into a single ventilation equipment.
+  "vmc",
 ]);
 
 /** ON/OFF-like enum values. Matches common vendor conventions. */
@@ -202,6 +205,26 @@ export function computeBindingCandidates(
         candidates[0].dataKeys.push(...meteringKeys);
       }
       return candidates;
+    }
+
+    case "vmc": {
+      // Spec 153 — a VMC drives up to two on/off relay channels: `low` (petite
+      // vitesse) and `high` (grande vitesse, optional). Unlike `switch` (one
+      // candidate per channel), group all on/off channels of the device into
+      // ONE candidate so a 2-channel relay (e.g. Sonoff MINI DUO, state_l1/
+      // state_l2) binds as a single ventilation equipment. Channels are sorted
+      // by key for a deterministic low→high assignment (see autoCreateBindings /
+      // createWithAutoBindings, which alias the first channel `low`, second `high`).
+      const onOff = deviceOrders
+        .filter((o) => isOnOffOrder(o))
+        .slice()
+        .sort((a, b) => a.key.localeCompare(b.key));
+      if (onOff.length === 0) return [];
+      const orderKeys = onOff.slice(0, 2).map((o) => o.key);
+      const dataKeys = orderKeys
+        .map((k) => deviceData.find((d) => d.key === k)?.key)
+        .filter((k): k is string => k !== undefined);
+      return [{ id: "vmc", label: "Ventilation", dataKeys, orderKeys }];
     }
 
     case "pool_pump":

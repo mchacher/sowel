@@ -34,7 +34,8 @@ type EquipmentType =
   | "water_valve"
   | "pool_pump"
   | "pool_cover"
-  | "pool_heat_pump";
+  | "pool_heat_pump"
+  | "vmc"; // Spec 153 — 2-speed mechanical ventilation (OFF / V1 / V2)
 
 interface Equipment {
   id: string; // UUID v4
@@ -204,6 +205,10 @@ Equipment "Eclairage Cuisine"
 ```
 
 <!-- MISMATCH: src/shared/types.ts comments suggested UNIQUE(equipment_id, alias, device_order_id) for multi-dispatch, but the live migration 001_initial.sql declares UNIQUE(equipment_id, alias). Multi-device dispatch in the current code is achieved by EquipmentManager iterating bindings and matching the alias across multiple device orders -- not by storing multiple rows with the same alias. Verify before relying on multi-row dispatch. -->
+
+### 2b VMC speed order (spec 153)
+
+A `vmc` equipment binds up to two on/off relay orders under fixed aliases `low` (petite vitesse, required) and `high` (grande vitesse, optional). It also accepts a **logical** order `speed` (`off`/`v1`/`v2`) with no device binding: `EquipmentManager.executeOrder` decomposes it into sequenced, **break-before-make** relay orders (never both windings energized at once — the universal VMC wiring invariant). See `src/equipments/vmc-controller.ts`. The observed speed is exposed as a computed `speed` value derived from the `low`/`high` relay state.
 
 ### 3 Per-binding category override
 

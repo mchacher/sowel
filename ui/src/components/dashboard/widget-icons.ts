@@ -319,6 +319,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   pool_cover: "ArrowUpDown",
   pool_heat_pump: "Thermometer",
   display: "Monitor",
+  vmc: "Fan",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
@@ -330,6 +331,7 @@ const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
   water: "Droplets",
   pool: "Droplets",
   displays: "Monitor",
+  ventilation: "Fan",
 };
 
 export function getWidgetIcon(

@@ -15,8 +15,10 @@ import {
   WashingMachine,
   Timer,
   Camera,
+  Fan,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { VmcControl } from "../equipments/VmcControl";
 import type { DashboardWidget } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
@@ -169,6 +171,16 @@ export function EquipmentWidget({
   if (equipment.type === "water_heater")
     return (
       <WaterHeaterEquipmentWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
+  if (equipment.type === "vmc")
+    return (
+      <VmcEquipmentWidget
         label={label}
         sublabel={sublabel}
         equipment={equipment}
@@ -444,6 +456,65 @@ function WaterHeaterEquipmentWidget({
               <Power size={16} strokeWidth={1.5} />
             )}
           </button>
+        </div>
+      )}
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// VMC equipment widget (spec 153)
+// ============================================================
+
+function VmcEquipmentWidget({
+  label,
+  sublabel,
+  equipment,
+  onExecuteOrder,
+  iconKey,
+}: {
+  label: string;
+  sublabel?: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
+}) {
+  const { t } = useTranslation();
+  const speed = equipment.computedData?.find((c) => c.alias === "speed")?.value;
+  const running = speed === "v1" || speed === "v2";
+  const speedLabel =
+    speed === "v2"
+      ? t("equipments.vmc.v2")
+      : speed === "v1"
+        ? t("equipments.vmc.v1")
+        : t("equipments.vmc.off");
+
+  return (
+    <WidgetCard label={label} sublabel={sublabel}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
+        <div />
+        {resolveWidgetIcon(
+          iconKey,
+          <Fan
+            size={44}
+            strokeWidth={1.2}
+            className={running ? "text-primary" : "text-text-tertiary"}
+          />,
+        )}
+        <div className="flex flex-col items-start gap-1 pl-2">
+          <span
+            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              running ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            }`}
+          >
+            {speedLabel}
+          </span>
+        </div>
+      </div>
+
+      {equipment.enabled && (
+        <div className="mt-auto pt-1">
+          <VmcControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
         </div>
       )}
     </WidgetCard>

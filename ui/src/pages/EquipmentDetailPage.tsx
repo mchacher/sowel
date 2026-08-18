@@ -13,6 +13,7 @@ import { findOrderByCategory, findMainOnOffOrder } from "../components/equipment
 import { ShutterControl } from "../components/equipments/ShutterControl";
 import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { WaterValveControl } from "../components/equipments/WaterValveControl";
+import { VmcControl } from "../components/equipments/VmcControl";
 import { PoolHeatPumpControl } from "../components/equipments/PoolHeatPumpControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { SolarPanelDataPanel } from "../components/equipments/SolarPanelDataPanel";
@@ -384,6 +385,17 @@ export function EquipmentDetailPage() {
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
           <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <HeaterControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
+      {/* VMC speed controls (spec 153) */}
+      {equipment.type === "vmc" && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <VmcControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />

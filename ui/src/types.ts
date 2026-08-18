@@ -260,7 +260,9 @@ export type EquipmentType =
   // Spec 120 — Sowel-supervised display (energy display, e-paper, ...).
   | "display"
   // Spec 133 — surveillance camera (vendor-agnostic).
-  | "camera";
+  | "camera"
+  // Spec 153 — mechanical ventilation (VMC), 2-speed: OFF / V1 / V2.
+  | "vmc";
 
 export interface Equipment {
   id: string;
@@ -1142,7 +1144,9 @@ export type WidgetFamily =
   | "water"
   | "pool"
   // Spec 120 — Sowel-supervised displays.
-  | "displays";
+  | "displays"
+  // Spec 153 — mechanical ventilation (VMC).
+  | "ventilation";
 
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */

@@ -21,8 +21,17 @@ import type {
   OrderCategory,
   OrderSource,
 } from "../shared/types.js";
-import { inferBindingCategory, inferDataBindingCategory } from "../shared/binding-candidates.js";
+import {
+  computeBindingCandidates,
+  inferBindingCategory,
+  inferDataBindingCategory,
+} from "../shared/binding-candidates.js";
 import { parseWireValue, resolveWireValue } from "../shared/order-wire-value.js";
+import {
+  normalizeVmcSpeed,
+  planSpeedTransition,
+  VmcHighSpeedUnavailableError,
+} from "./vmc-controller.js";
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import type { Device } from "../shared/types.js";
 
@@ -60,6 +69,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "pool_heat_pump",
   "display",
   "camera",
+  "vmc",
 ]);
 
 // ============================================================
@@ -349,10 +359,25 @@ export class EquipmentManager {
         continue;
       }
 
+      // Spec 153 — a VMC maps its two on/off relay channels to fixed roles
+      // `low` (first channel) and `high` (second) so the speed controller can
+      // resolve them; the generic per-key aliasing would collapse both to the
+      // same alias. Same alias for the matching relay state data.
+      const vmcAlias: Record<string, string> = {};
+      if (input.type === "vmc") {
+        const candidate = computeBindingCandidates("vmc", device.data, device.orders)[0];
+        (candidate?.orderKeys ?? [])
+          .slice()
+          .sort((a, b) => a.localeCompare(b))
+          .forEach((k, i) => {
+            vmcAlias[k] = i === 0 ? "low" : "high";
+          });
+      }
+
       // Bind all device data (sensors/state)
       for (const data of device.data) {
         try {
-          this.addDataBinding(equipment.id, data.id, data.key);
+          this.addDataBinding(equipment.id, data.id, vmcAlias[data.key] ?? data.key);
         } catch {
           // Skip if alias conflict (same key from multiple devices)
         }
@@ -360,7 +385,7 @@ export class EquipmentManager {
 
       // Bind all device orders (commands)
       for (const order of device.orders) {
-        const alias = input.type === "gate" ? "command" : order.key;
+        const alias = input.type === "gate" ? "command" : (vmcAlias[order.key] ?? order.key);
         try {
           this.addOrderBinding(equipment.id, order.id, alias);
         } catch {
@@ -792,6 +817,13 @@ export class EquipmentManager {
       throw new EquipmentError("Equipment is disabled", 400);
     }
 
+    // Spec 153 — a VMC `speed` order is a logical order (no device binding): it
+    // decomposes into sequenced, break-before-make relay orders so the two
+    // windings are never energized at once. This is the single enforcement point.
+    if (equipment.type === "vmc" && alias === "speed") {
+      return this.executeVmcSpeed(equipmentId, value, source);
+    }
+
     const bindings = this.stmts.getOrderBindingsByAlias.all(
       equipmentId,
       alias,
@@ -993,6 +1025,63 @@ export class EquipmentManager {
     if (successes === 0 && lastError) {
       return { success: false, error: lastError };
     }
+    return { success: true };
+  }
+
+  /**
+   * Spec 153 — decompose a VMC `speed` order (off/v1/v2) into sequenced,
+   * break-before-make relay orders. The steps are dispatched one after the
+   * other (awaited): a break step that fails stops the sequence, so the two
+   * windings are never left both energized.
+   */
+  private async executeVmcSpeed(
+    equipmentId: string,
+    value: unknown,
+    source?: OrderSource,
+  ): Promise<{ success: boolean; error?: string }> {
+    const target = normalizeVmcSpeed(value);
+    if (target === null) {
+      throw new EquipmentError(`Invalid VMC speed: ${String(value)} (expected off, v1 or v2)`, 400);
+    }
+
+    const hasHigh =
+      (this.stmts.getOrderBindingsByAlias.all(equipmentId, "high") as OrderBindingJoinRow[])
+        .length > 0;
+
+    let steps;
+    try {
+      steps = planSpeedTransition(target, hasHigh);
+    } catch (err) {
+      if (err instanceof VmcHighSpeedUnavailableError) {
+        throw new EquipmentError(err.message, 400);
+      }
+      throw err;
+    }
+
+    for (const step of steps) {
+      const res = await this.executeOrder(equipmentId, step.relay, step.value, source);
+      if (!res.success) {
+        // Stop on the first failing step. Because breaks come before makes, the
+        // motor is left in a safe partial state (the target winding not energized).
+        this.logger.error(
+          { equipmentId, target, relay: step.relay, value: step.value, error: res.error },
+          "VMC speed transition aborted on a failing relay step",
+        );
+        return res;
+      }
+    }
+
+    // Optimistic reflection so the UI updates immediately, even when the relays
+    // report no state feedback. The computed `speed` (from relay state) refines
+    // this once device reports arrive.
+    this.eventBus.emit({
+      type: "equipment.data.changed",
+      equipmentId,
+      alias: "speed",
+      value: target,
+      previous: undefined,
+    });
+
     return { success: true };
   }
 

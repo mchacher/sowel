@@ -18,6 +18,7 @@ import {
   Waves,
   Droplets,
   Camera,
+  Fan,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -32,6 +33,7 @@ import { ShutterControl } from "./ShutterControl";
 import { ThermostatCard } from "./ThermostatCard";
 import { GateControl } from "./GateControl";
 import { WaterValveControl } from "./WaterValveControl";
+import { VmcControl } from "./VmcControl";
 import { useEquipmentState } from "./useEquipmentState";
 
 const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
@@ -61,6 +63,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   pool_heat_pump: <Thermometer size={18} strokeWidth={1.5} />,
   display: <Monitor size={18} strokeWidth={1.5} />,
   camera: <Camera size={18} strokeWidth={1.5} />,
+  vmc: <Fan size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -90,6 +93,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   pool_heat_pump: "equipments.type.pool_heat_pump",
   display: "equipments.type.display",
   camera: "equipments.type.camera",
+  vmc: "equipments.type.vmc",
 };
 
 interface EquipmentCardProps {
@@ -220,6 +224,15 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       {/* Water valve quick control */}
       {equipment.type === "water_valve" && equipment.enabled && (
         <WaterValveControl
+          equipment={equipment}
+          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          compact
+        />
+      )}
+
+      {/* VMC speed control (spec 153) */}
+      {equipment.type === "vmc" && equipment.enabled && (
+        <VmcControl
           equipment={equipment}
           onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
           compact

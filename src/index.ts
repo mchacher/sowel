@@ -17,6 +17,7 @@ import { OrderConfirmationTracker } from "./equipments/order-confirmation-tracke
 import { BatteryMonitor } from "./devices/battery-monitor.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
+import { VmcSpeedTracker } from "./equipments/vmc-controller.js";
 import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-tracker.js";
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
@@ -260,6 +261,17 @@ async function main() {
   );
   equipmentManager.registerComputedDataProvider((eqId) =>
     weatherTempExtremesTracker.getComputedDataForEquipment(eqId),
+  );
+
+  // 9e. VMC speed tracker (spec 153) — exposes computed `speed` (off/v1/v2) on
+  // vmc equipments, derived from the observed low/high relay state bindings.
+  const vmcSpeedTracker = new VmcSpeedTracker({
+    getById: (eqId) => equipmentManager.getById(eqId),
+    getDataBindingsWithValues: (eqId) => equipmentManager.getDataBindingsWithValues(eqId),
+    logger,
+  });
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    vmcSpeedTracker.getComputedDataForEquipment(eqId),
   );
 
   // 10. Create Zone Aggregator + Sunlight Manager
