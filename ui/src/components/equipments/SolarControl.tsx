@@ -32,6 +32,11 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
 
   const handleToggle = async (e?: React.MouseEvent) => {
     e?.preventDefault();
+    // Bubble-phase stopPropagation is enough to keep the surrounding compact
+    // card <Link> from navigating (same as LightControl). Do NOT add an
+    // onClickCapture stopPropagation on the button: in React, stopping in the
+    // capture phase suppresses this element's own onClick, so the toggle would
+    // never fire on the compact card (spec 152 regression).
     e?.stopPropagation();
     if (executing) return;
     setExecuting(true);
@@ -64,7 +69,6 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
           disabled:opacity-50 disabled:cursor-not-allowed
         `}
         title={title}
-        onClickCapture={(e) => e.stopPropagation()}
       >
         <Sun size={16} strokeWidth={1.5} />
       </button>
