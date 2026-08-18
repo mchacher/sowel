@@ -330,7 +330,7 @@
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.6.2",
+    "version": "1.6.3",
     "tags": ["pool", "pump", "heating", "schedule", "automation", "temperature", "solar", "energy"],
     "i18n": {
       "fr": {
@@ -338,9 +338,9 @@
         "description": "Pilotage de pompe de piscine : créneaux horaires quotidiens, cible de temps de filtration selon la température de l'eau (option), fonctionnement sur surplus solaire (option) et chauffage PAC sur surplus solaire (option)."
       }
     },
-    "sowelVersion": ">=1.50.0",
+    "sowelVersion": ">=1.52.0",
     "owner": "mchacher",
-    "sha256": "f63a0348fcc6589fb50f4caec41ba4655683b9d55a76f5743298d4bd903b8aed"
+    "sha256": "fa2b3c9303ae150a9541a5e6b382abe9a47f9a16aac7f129743b33b6f0db1aaa"
   },
   {
     "id": "freecooling",
