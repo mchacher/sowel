@@ -54,12 +54,44 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
     }
   };
 
+  // Compact card: small separate buttons, same size/shape as the light toggle
+  // (bg-border-light when off, filled when selected). Detail page: a grouped
+  // segmented pill.
+  if (compact) {
+    return (
+      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        {options.map(({ speed, label }) => {
+          const active = current === speed;
+          return (
+            <button
+              key={speed}
+              type="button"
+              onClick={() => setSpeed(speed)}
+              disabled={!!executing}
+              aria-pressed={active}
+              title={label}
+              className={`
+                px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors duration-150 cursor-pointer
+                ${
+                  active
+                    ? "bg-primary text-white hover:bg-primary/90"
+                    : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
+                }
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {executing === speed ? <Loader2 size={13} className="animate-spin" /> : label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
-    // Compact segmented control: a neutral track with small pills sized to
-    // their label, so it never stretches into full-width blocks on the detail
-    // page.
+    // Detail page: a grouped segmented control (neutral track, small pills).
     <div
-      className={`inline-flex items-center gap-0.5 rounded-lg bg-border-light p-0.5 ${compact ? "" : "mt-1"}`}
+      className="inline-flex items-center gap-0.5 rounded-lg bg-border-light p-0.5 mt-1"
       onClick={(e) => e.stopPropagation()}
     >
       {options.map(({ speed, label }) => {
@@ -74,11 +106,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
             className={`
               min-w-[42px] px-3 py-1 rounded-md text-[13px] font-medium
               flex items-center justify-center transition-colors
-              ${
-                active
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-text-secondary hover:text-primary"
-              }
+              ${active ? "bg-primary text-white shadow-sm" : "text-text-secondary hover:text-primary"}
               ${executing ? "opacity-60" : ""}
             `}
           >
