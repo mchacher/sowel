@@ -11,6 +11,7 @@ import {
   WashingMachine,
   Waves,
   Camera,
+  Fan,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -41,6 +42,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.appliances", types: ["appliance"], icon: <WashingMachine size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.water", types: ["water_valve", "water_heater"], icon: <WaterValveIcon size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.pool", types: ["pool_pump", "pool_cover", "pool_heat_pump"], icon: <Waves size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.ventilation", types: ["vmc"], icon: <Fan size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.displays", types: ["display"], icon: <Monitor size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.cameras", types: ["camera"], icon: <Camera size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
