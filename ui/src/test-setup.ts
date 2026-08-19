@@ -28,3 +28,21 @@ const existing = globalThis.localStorage as Storage | undefined;
 if (!existing || typeof existing.getItem !== "function") {
   globalThis.localStorage = makeStorage();
 }
+
+// jsdom does not implement `matchMedia`; `useIsMobile` (useSyncExternalStore over
+// matchMedia) throws without it. Install a minimal desktop-default stub so any
+// component reading a media query renders under test. A test that needs the
+// mobile branch overrides `window.matchMedia` to report `matches: true`.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+}

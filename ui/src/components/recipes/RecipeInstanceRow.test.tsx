@@ -88,9 +88,32 @@ function seedStores(instance: RecipeInstance, overrides: Partial<Parameters<type
   });
 }
 
+/** Report a viewport to `useIsMobile` (matchMedia `(max-width: 639px)`). */
+function setViewport(mobile: boolean): void {
+  window.matchMedia = ((query: string) => ({
+    matches: mobile,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+const LOG_ENTRY = {
+  id: 1,
+  instanceId: "ri-1",
+  timestamp: "2026-01-01T12:00:00Z",
+  message: "Recipe fired",
+  level: "info" as const,
+};
+
 describe("RecipeInstanceRow", () => {
   beforeEach(() => {
     useAuth.setState({ user: adminUser() });
+    setViewport(false); // desktop by default; a test opts into mobile explicitly
   });
 
   it("renders the recipe display name", () => {
@@ -137,6 +160,35 @@ describe("RecipeInstanceRow", () => {
     await userEvent.clear(delay);
     await userEvent.type(delay, "9");
     expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+  });
+
+  it("opens recipe logs in a bottom sheet on the PWA/mobile (#615)", async () => {
+    setViewport(true);
+    const getLog = vi.fn().mockResolvedValue([LOG_ENTRY]);
+    seedStores(makeInstance(), { getLog });
+    render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+    // The log button is reachable on mobile (unlike duplicate/delete).
+    await userEvent.click(screen.getByTitle("View log"));
+
+    expect(await screen.findByText("Recipe fired")).toBeTruthy();
+    expect(getLog).toHaveBeenCalledWith("ri-1");
+    // Rendered in the bottom sheet: it carries a "View log" heading (the inline
+    // desktop panel has none).
+    expect(screen.getByRole("heading", { name: "View log" })).toBeTruthy();
+  });
+
+  it("opens recipe logs inline (no sheet) on desktop (#615)", async () => {
+    setViewport(false);
+    const getLog = vi.fn().mockResolvedValue([LOG_ENTRY]);
+    seedStores(makeInstance(), { getLog });
+    render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+    await userEvent.click(screen.getByTitle("View log"));
+
+    expect(await screen.findByText("Recipe fired")).toBeTruthy();
+    // Inline panel, not the bottom sheet — no sheet heading.
+    expect(screen.queryByRole("heading", { name: "View log" })).toBeNull();
   });
 
   it("hides admin controls for a non-admin user", () => {

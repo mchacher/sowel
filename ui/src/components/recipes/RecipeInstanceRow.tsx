@@ -24,6 +24,8 @@ import {
 } from "./recipe-form-fields";
 import { useZoneOptions } from "./useZoneOptions";
 import { DuplicateRecipeModal } from "./DuplicateRecipeModal";
+import { BottomSheet } from "../dashboard/BottomSheet";
+import { useIsMobile } from "../../hooks/useIsMobile";
 
 // ============================================================
 // Instance row
@@ -41,6 +43,7 @@ export function RecipeInstanceRow({
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
   const isAdmin = useAuth((s) => s.user?.role === "admin");
+  const isMobile = useIsMobile();
   const deleteInstance = useRecipes((s) => s.deleteInstance);
   const updateInstance = useRecipes((s) => s.updateInstance);
   const enableInstance = useRecipes((s) => s.enableInstance);
@@ -275,6 +278,32 @@ export function RecipeInstanceRow({
 
   // (paramsSummary removed per spec 100 — recipe row keeps name + actions only, no description line)
 
+  // Shared log list body — rendered inline on desktop and inside a bottom sheet
+  // on the PWA/mobile (#615). Kept in one place so both stay in sync.
+  const logBody =
+    logs.length === 0 ? (
+      <p className="text-[11px] text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
+    ) : (
+      <div className="space-y-0.5">
+        {logs.map((log) => (
+          <div key={log.id} className="flex gap-2 text-[11px] font-mono">
+            <span className="text-text-tertiary whitespace-nowrap">{formatTime(log.timestamp)}</span>
+            <span
+              className={
+                log.level === "error"
+                  ? "text-error"
+                  : log.level === "warn"
+                    ? "text-warning"
+                    : "text-text-secondary"
+              }
+            >
+              {log.message}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+
   return (
     <div className={instance.enabled ? "" : "opacity-50"}>
       <div className="grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0 items-center px-[1.1rem] py-[0.35rem] min-h-[52px] border-t border-border-light">
@@ -344,19 +373,21 @@ export function RecipeInstanceRow({
           />
         </button>
         )}
-        {/* Row 2: compact action buttons — admin only (log / duplicate / delete are config) */}
+        {/* Row 2: compact action buttons — admin only. The log button stays
+            visible on mobile (read-only, opens a bottom sheet on the PWA, #615);
+            duplicate / delete are config/destructive and stay desktop-only. */}
         {isAdmin && (
-        <div className="col-start-2 col-span-2 row-start-2 hidden sm:flex items-center gap-[2px]">
+        <div className="col-start-2 col-span-2 row-start-2 flex items-center gap-[2px]">
           <button
             onClick={handleShowLog}
-            className="w-[22px] h-[20px] inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
+            className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
             title={t("recipes.viewLog")}
           >
-            <ScrollText size={12} strokeWidth={1.5} />
+            <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setShowDuplicate(true)}
-            className="w-[22px] h-[20px] inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
             title={t("recipes.duplicate")}
           >
             <Copy size={12} strokeWidth={1.5} />
@@ -364,7 +395,7 @@ export function RecipeInstanceRow({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="w-[22px] h-[20px] inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
+            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
             title={t("common.delete")}
           >
             <Trash2 size={12} strokeWidth={1.5} />
@@ -684,37 +715,22 @@ export function RecipeInstanceRow({
         </div>
       )}
 
-      {/* Log panel */}
-      {showLog && (
+      {/* Log panel — inline on desktop, a bottom sheet on the PWA/mobile (#615). */}
+      {showLog && !isMobile && (
         <div className="px-4 pb-3">
           <div className="bg-border-light/40 rounded-[6px] p-2 max-h-[200px] overflow-y-auto">
-            {logs.length === 0 ? (
-              <p className="text-[11px] text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
-            ) : (
-              <div className="space-y-0.5">
-                {logs.map((log) => (
-                  <div key={log.id} className="flex gap-2 text-[11px] font-mono">
-                    <span className="text-text-tertiary whitespace-nowrap">
-                      {formatTime(log.timestamp)}
-                    </span>
-                    <span
-                      className={
-                        log.level === "error"
-                          ? "text-error"
-                          : log.level === "warn"
-                            ? "text-warning"
-                            : "text-text-secondary"
-                      }
-                    >
-                      {log.message}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {logBody}
           </div>
         </div>
       )}
+      <BottomSheet
+        open={showLog && isMobile}
+        onClose={() => setShowLog(false)}
+        title={t("recipes.viewLog")}
+        icon={<ScrollText size={18} strokeWidth={1.5} className="text-primary" />}
+      >
+        {logBody}
+      </BottomSheet>
     </div>
   );
 }
