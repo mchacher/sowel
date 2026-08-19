@@ -20,6 +20,7 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 - Feat (ui) : **le tableau des charges de l'arbitre est désormais trié par priorité configurée** au lieu de l'état, pour rester cohérent avec la timeline. La pastille d'état de chaque ligne indique toujours si la charge est autorisée, en attente, suspendue ou inactive. (#621)
 - Correctif (énergie) : **une charge sous-comptée inactive bascule désormais son total quotidien à la frontière de l'heure et de minuit**. Un sous-compteur de puissance seule resté à 0 W pouvait continuer d'afficher l'énergie cumulée de la veille pendant la nuit (par exemple un chauffe-eau bloqué à 2,92 kWh) ; un rafraîchissement aligné sur l'heure le recalcule maintenant depuis l'historique. (#619)
 - Correctif (ui) : **les cellules « en attente » de la timeline de l'arbitre utilisent la même teinte douce que le tableau des charges** au lieu d'un orange d'avertissement plein, pour une lecture plus apaisée. (#620)
+- Correctif (ui) : **un équipement de ventilation deux vitesses (VMC) apparaît désormais dans sa zone et la vue maison**. Il relève d'un nouveau groupe « Ventilation » ; il était auparavant filtré en silence de la liste de zone bien qu'il fonctionne. Son sélecteur OFF/V1/V2 devient aussi une pastille segmentée compacte. (#625)
 
 ### v1.52.4 — 2026-08-18 { #v1-52-4 }
 

@@ -20,6 +20,7 @@ This page summarises every published version, newest first. For the full diff be
 - Feat (ui): **the arbiter roster table is now ordered by configured priority** instead of by state, so it reads consistently with the timeline. Each row's state pill still shows whether the load is granted, waiting, suspended or idle. (#621)
 - Fix (energy): **an idle submetered load now rolls its daily total over at the hour and midnight boundary**. A power-only submeter that sat at 0 W could keep showing the previous day's cumulative energy overnight (for example a water heater stuck at 2.92 kWh); an hour-aligned refresh now recomputes it from history. (#619)
 - Fix (ui): **the "en attente" cells on the arbiter timeline use the same soft waiting tint as the roster table** instead of a solid warning orange, so the timeline reads calmer. (#620)
+- Fix (ui): **a two-speed ventilation (VMC) equipment now appears in its zone and home view**. It belongs to a new "Ventilation" group; previously it was silently filtered out of the zone list even though it worked. Its OFF/V1/V2 control is also now a compact segmented pill. (#625)
 
 ### v1.52.4 — 2026-08-18 { #v1-52-4 }
 
