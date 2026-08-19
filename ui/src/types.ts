@@ -284,6 +284,11 @@ export interface Equipment {
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
   invertDirection?: boolean;
+  /** Issue #627 — momentary boolean trigger resolution mode. "fixed" (default)
+   *  always sends the same value; "toggle" sends the inverse of the device's
+   *  last known state, for relays whose reported state gets stuck after the
+   *  physical pulse. */
+  gateTriggerMode?: "fixed" | "toggle";
 }
 
 // ============================================================

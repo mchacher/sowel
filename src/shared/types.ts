@@ -322,6 +322,16 @@ export interface Equipment {
    *  wired the opposite way with no bridge-side invert. Command-only: the
    *  reported position stays raw. Ignored for non-shutter-family types. */
   invertDirection?: boolean;
+  /** Issue #627 — resolution mode for a momentary boolean order trigger (e.g.
+   *  a `gate` "command" button, which sends an empty value). `"fixed"`
+   *  (default) always resolves to `true` (today's behavior). `"toggle"`
+   *  resolves to the logical inverse of the device's last known value for
+   *  that same order key, falling back to `true` when nothing is known yet —
+   *  for relays whose reported state gets stuck after the physical pulse
+   *  (device never reports its own auto-off), where resending the same fixed
+   *  value twice in a row is silently dropped. Ignored for non-boolean or
+   *  non-empty-value orders. */
+  gateTriggerMode?: "fixed" | "toggle";
 }
 
 /**

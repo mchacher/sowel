@@ -353,6 +353,17 @@ describe("PUT /api/v1/equipments/:id — input validation (characterization)", (
     expect(res.json()).toEqual({ error: expect.any(String) });
   });
 
+  it("accepts gateTriggerMode 'fixed' or 'toggle' (#627)", async () => {
+    expect((await put({ gateTriggerMode: "toggle" })).statusCode).toBe(200);
+    expect((await put({ gateTriggerMode: "fixed" })).statusCode).toBe(200);
+  });
+
+  it("400 when gateTriggerMode is not a valid enum value", async () => {
+    const res = await put({ gateTriggerMode: "invert" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: expect.any(String) });
+  });
+
   it("accepts a valid energyProfile, and accepts null energyProfile (pass-through)", async () => {
     const ok = await put({
       energyProfile: { class: "comfort", nominalPowerW: 1500, minOnS: 0, minOffS: 60 },

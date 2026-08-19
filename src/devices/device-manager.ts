@@ -607,7 +607,17 @@ export class DeviceManager {
       | DeviceRow
       | undefined;
     if (!device) return null;
-    const row = this.stmts.findDeviceDataByDeviceAndKey.get(device.id, key) as
+    return this.getDeviceDataValueById(device.id, key);
+  }
+
+  /**
+   * Same decoding as `getDeviceDataValue`, keyed by the internal `deviceId`
+   * instead of `(integrationId, sourceDeviceId)` — for callers (e.g.
+   * EquipmentManager order resolution, issue #627) that already have the
+   * device row and don't need the plugin-facing source-id lookup.
+   */
+  getDeviceDataValueById(deviceId: string, key: string): string | number | boolean | null {
+    const row = this.stmts.findDeviceDataByDeviceAndKey.get(deviceId, key) as
       | DeviceDataRow
       | undefined;
     if (!row || row.value === null) return null;

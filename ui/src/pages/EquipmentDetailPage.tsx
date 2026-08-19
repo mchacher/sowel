@@ -35,6 +35,7 @@ import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { GateTriggerModePanel } from "../components/equipments/GateTriggerModePanel";
 import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
@@ -368,6 +369,11 @@ export function EquipmentDetailPage() {
       {/* Gate — confirmation before action (spec 146), admin only */}
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      )}
+
+      {/* Gate — toggle-based trigger resolution (issue #627), admin only */}
+      {isGate && isAdmin && (
+        <GateTriggerModePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Shutter-family — invert command direction (spec 154), admin only */}
