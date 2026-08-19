@@ -810,38 +810,6 @@ describe("DeviceManager", () => {
     });
   });
 
-  describe("getDeviceDataValueById (issue #627)", () => {
-    const sampleEm = {
-      ieeeAddress: "0xshelly00",
-      friendlyName: "shelly-pro3em_00-em0",
-      manufacturer: "Shelly",
-      model: "Pro3EM",
-      data: [{ key: "online", type: "boolean" as const, category: "generic" as const }],
-      orders: [],
-      rawExpose: [],
-    };
-
-    it("returns null for an unknown deviceId", () => {
-      expect(manager.getDeviceDataValueById("does-not-exist", "online")).toBeNull();
-    });
-
-    it("returns null when the key value has never been written", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
-      const device = manager.getAll().find((d) => d.name === "shelly-pro3em_00-em0")!;
-      expect(manager.getDeviceDataValueById(device.id, "online")).toBeNull();
-    });
-
-    it("returns the same decoded value as getDeviceDataValue, keyed by internal id", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
-      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", { online: true });
-      const device = manager.getAll().find((d) => d.name === "shelly-pro3em_00-em0")!;
-      expect(manager.getDeviceDataValueById(device.id, "online")).toBe(true);
-      expect(manager.getDeviceDataValueById(device.id, "online")).toBe(
-        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "online"),
-      );
-    });
-  });
-
   describe("getDeviceDataLastUpdated", () => {
     const sampleEm = {
       ieeeAddress: "0xshelly00",

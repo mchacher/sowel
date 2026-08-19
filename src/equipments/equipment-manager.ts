@@ -98,8 +98,6 @@ interface UpdateEquipmentInput {
   requireConfirmation?: boolean;
   /** Spec 154 — invert shutter-family command direction. */
   invertDirection?: boolean;
-  /** Issue #627 — momentary boolean trigger resolution mode ("fixed" | "toggle"). */
-  gateTriggerMode?: "fixed" | "toggle";
 }
 
 // ============================================================
@@ -201,7 +199,7 @@ export class EquipmentManager {
         `UPDATE equipments SET name = @name, zone_id = @zoneId,
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
-         invert_direction = @invertDirection, gate_trigger_mode = @gateTriggerMode,
+         invert_direction = @invertDirection,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -520,7 +518,6 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.invert_direction,
-      gateTriggerMode: input.gateTriggerMode ?? existing.gate_trigger_mode,
     });
 
     const equipment = this.getById(id)!;
@@ -863,11 +860,7 @@ export class EquipmentManager {
 
     // Resolve the order value against the binding's declared shape (enum
     // case-insensitive match, boolean empty-value rule — see resolveOrderValue).
-    const resolvedValue = this.resolveOrderValue(
-      bindings[0],
-      semanticValue,
-      equipment.gateTriggerMode,
-    );
+    const resolvedValue = this.resolveOrderValue(bindings[0], semanticValue);
 
     // Dispatch to every bound device order via its integration plugin.
     let successes = 0;
@@ -1006,21 +999,8 @@ export class EquipmentManager {
    *   wire verbatim and get dropped by Z2M. Non-empty values pass through
    *   untouched — resolveWireValue maps them at dispatch time, and pre-2.3.0
    *   z2m plugins rely on raw "ON" strings passing through unchanged.
-   * - boolean binding, `gateTriggerMode: "toggle"` (issue #627): empty ->
-   *   logical inverse of the device's last known value for this order's key,
-   *   instead of the fixed `true` above. Some relays (SONOFF MINI-ZBD with
-   *   inching enabled, confirmed on real hardware) only actually re-trigger
-   *   on a genuine value CHANGE from the integration's point of view —
-   *   resending the same fixed value twice in a row is silently dropped,
-   *   because the device never reports its own auto-off so the cached value
-   *   never reverts on its own. Falls back to `true` when nothing is known
-   *   yet (first-ever trigger), matching the "fixed" default exactly.
    */
-  private resolveOrderValue(
-    firstBinding: OrderBindingJoinRow,
-    value: unknown,
-    gateTriggerMode?: "fixed" | "toggle",
-  ): unknown {
+  private resolveOrderValue(firstBinding: OrderBindingJoinRow, value: unknown): unknown {
     let resolvedValue = value;
     if (firstBinding.enum_values) {
       try {
@@ -1044,15 +1024,7 @@ export class EquipmentManager {
       firstBinding.type === "boolean" &&
       (resolvedValue === null || resolvedValue === undefined || resolvedValue === "")
     ) {
-      if (gateTriggerMode === "toggle") {
-        const lastKnown = this.deviceManager.getDeviceDataValueById(
-          firstBinding.device_id,
-          firstBinding.key,
-        );
-        resolvedValue = typeof lastKnown === "boolean" ? !lastKnown : true;
-      } else {
-        resolvedValue = true;
-      }
+      resolvedValue = true;
     }
     return resolvedValue;
   }
@@ -1566,7 +1538,6 @@ interface EquipmentRow {
   energy_profile: string | null;
   require_confirmation: number;
   invert_direction: number;
-  gate_trigger_mode: string;
   created_at: string;
   updated_at: string;
 }
@@ -1693,7 +1664,6 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     energyProfile: parseEnergyProfile(row.energy_profile),
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
-    gateTriggerMode: row.gate_trigger_mode === "toggle" ? "toggle" : "fixed",
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

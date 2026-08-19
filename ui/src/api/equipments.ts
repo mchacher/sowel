@@ -50,8 +50,6 @@ export async function updateEquipment(
     requireConfirmation?: boolean;
     /** Spec 154 — invert shutter-family command direction. */
     invertDirection?: boolean;
-    /** Issue #627 — momentary boolean trigger resolution mode. */
-    gateTriggerMode?: "fixed" | "toggle";
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {
