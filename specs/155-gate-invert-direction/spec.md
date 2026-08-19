@@ -46,7 +46,7 @@ On this repo's own dev instance, exactly one equipment (`PorteGarageGauche`, the
 - [x] An explicit non-empty value (e.g. `"ON"`) passes through untouched regardless of `invertDirection` — only the empty-trigger default is affected.
 - [x] Consecutive triggers on an inverted gate all resolve to the same `false` value (no dependency on device-reported state, unlike the dropped dynamic iteration).
 - [x] The delivery-retry guard (spec 141) applies here too: a retry with the RETRY_CHANNEL source is never re-inverted.
-- [ ] Real hardware: `PorteGarageGauche` (SONOFF MINI-ZBD) triggers reliably on repeated consecutive presses via the Sowel API with `invertDirection: true` — to (re-)validate on the dev VM, since the mechanism changed from the dynamic iteration even though the practical outcome should be identical.
+- [x] Real hardware: `PorteGarageGauche` (SONOFF MINI-ZBD) triggers reliably on repeated consecutive presses via the Sowel API with `invertDirection: true` — re-validated on the dev VM 2026-08-19, 3/3 consecutive presses via `POST /equipments/:id/orders/command` moved the physical door, same as the dropped dynamic iteration. Resolved value was `false` on all 3, confirming the earlier hypothesis that the dynamic version was, in practice, always converging on this exact static answer. Zero regression: 6/6 integrations, 48/48 devices online after deploy.
 
 ## Edge Cases
 

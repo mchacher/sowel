@@ -30,6 +30,8 @@ The dropped `gateTriggerMode` iteration was deployed and validated on the dev VM
 
 ### Test Results
 
-Automated: pending — see commit history on this branch for the actual `npx vitest run` output once the reworked tests are in place.
+Automated: `npx vitest run` — 97/97 backend test files (1578 tests) and 55/55 UI test files (520 tests) green, `tsc --noEmit` and `eslint` clean on both sides.
 
-Real-hardware validation on the dev VM: pending — to redo against this simplified implementation before considering this done, per the commitment made on issue #627.
+Real-hardware validation on the dev VM (2026-08-19): backup taken, deployed via `git archive` + `docker build` + hot-patch (no new npm dependency, no new migration — pure code change). One deployment mistake caught and fixed along the way: `docker cp` of the `migrations/` directory does not delete files absent from the source, so the previous iteration's `025_equipment_gate_trigger_mode.sql` was still present in the container and got silently re-applied on restart (re-adding the now-unused column). Caught via the startup log, fixed by explicitly removing the stale file from the container plus the leftover column and its `_migrations` tracking row, then restarting again to confirm a clean state matching this branch's actual migration set (024 is now the latest, same as before the dropped iteration).
+
+`invertDirection: true` set on the real `PorteGarageGauche` equipment via the API. 3 consecutive `POST /equipments/:id/orders/command` calls, physical door observed each time: all 3 moved the door — same practical result as the dropped dynamic iteration, with far less code. Zero regression on the rest of the instance.
