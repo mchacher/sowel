@@ -39,8 +39,11 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
   };
 
   return (
+    // Compact segmented control: a neutral track with small pills sized to
+    // their label, so it never stretches into full-width blocks on the detail
+    // page.
     <div
-      className={`flex items-center gap-1 ${compact ? "" : "mt-2"}`}
+      className={`inline-flex items-center gap-0.5 rounded-lg bg-border-light p-0.5 ${compact ? "" : "mt-1"}`}
       onClick={(e) => e.stopPropagation()}
     >
       {options.map(({ speed, label }) => {
@@ -53,17 +56,17 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
             disabled={!!executing}
             aria-pressed={active}
             className={`
-              flex-1 min-w-[44px] px-3 py-1.5 rounded-md text-[13px] font-medium
-              flex items-center justify-center gap-1 transition-colors
+              min-w-[42px] px-3 py-1 rounded-md text-[13px] font-medium
+              flex items-center justify-center transition-colors
               ${
                 active
-                  ? "bg-primary text-white"
-                  : "bg-primary-light text-primary hover:bg-primary/10"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-text-secondary hover:text-primary"
               }
               ${executing ? "opacity-60" : ""}
             `}
           >
-            {executing === speed ? <Loader2 size={14} className="animate-spin" /> : label}
+            {executing === speed ? <Loader2 size={13} className="animate-spin" /> : label}
           </button>
         );
       })}
