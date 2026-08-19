@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.6 — 2026-08-19 { #v1-52-6 }
+
+- Feat (equipments): **the per-equipment "invert direction" toggle (spec 154) now covers gate and boolean momentary triggers too**. A relay wired to pulse on the OFF edge instead of ON (reported on a SONOFF MINI-ZBD driving a garage door) can be flipped right from the equipment page, the same toggle already used to invert a shutter's open/close. It stays opt-in per equipment, so existing setups are unaffected. (#628)
+
 ### v1.52.5 — 2026-08-19 { #v1-52-5 }
 
 - Feat (equipments): **a per-equipment "invert direction" toggle for shutters and awnings** (spec 154). When a motor's open and close are wired the reverse of what Sowel assumes, and the integration has no bridge-side invert, an admin can now flip the direction on the equipment itself. It applies to every command path (card, zone bulk actions, recipes, modes). (#623)

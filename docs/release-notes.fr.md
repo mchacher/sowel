@@ -13,6 +13,10 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.6 — 2026-08-19 { #v1-52-6 }
+
+- Feat (équipements) : **la bascule « inverser le sens » par équipement (spec 154) couvre désormais aussi les portails et déclencheurs booléens momentanés**. Un relais câblé pour déclencher sur le front OFF au lieu de ON (constaté sur un SONOFF MINI-ZBD pilotant une porte de garage) s'inverse directement depuis la page de l'équipement, la même bascule que celle utilisée pour inverser l'ouverture/fermeture d'un volet. Elle reste opt-in par équipement, donc les installations existantes ne sont pas affectées. (#628)
+
 ### v1.52.5 — 2026-08-19 { #v1-52-5 }
 
 - Feat (équipements) : **une bascule « inverser le sens » par équipement pour les volets et stores** (spec 154). Quand le moteur a l'ouverture et la fermeture câblées à l'inverse de ce que Sowel suppose, et que l'intégration n'offre pas d'inversion côté passerelle, un admin peut désormais inverser le sens sur l'équipement lui-même. Cela s'applique à tous les chemins de commande (carte, actions groupées de zone, recettes, modes). (#623)
