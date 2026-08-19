@@ -289,6 +289,11 @@ describe("capacity arbiter", () => {
     expect(state.journal.some((j) => j.kind === "granted")).toBe(true);
   });
 
+  it("exposes the configured priority order for the roster table (#616)", () => {
+    const h = makeHarness({ priority: ["heater", "pac", "pump"] });
+    expect(h.arbiter.getPublicState().priority).toEqual(["heater", "pac", "pump"]);
+  });
+
   it("keeps a claim pending when the surplus is below watts+margin", () => {
     const h = makeHarness();
     h.claim("i1", { equipmentId: "pump" }); // needs 600+100

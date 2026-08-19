@@ -942,6 +942,9 @@ export class CapacityArbiter {
       pending,
       suspensions,
       idle,
+      // #616 — surface the configured order (highest first) so the roster table
+      // can list loads by priority like the timeline, not grouped by state.
+      priority: [...this.config.priority],
       journal: [...this.journalEntries].reverse(),
       surplusSeries: this.surplusSeries.map((s) => ({
         atIso: new Date(s.at).toISOString(),

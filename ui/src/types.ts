@@ -367,6 +367,9 @@ export interface ArbiterPublicState {
      *  arbitration", not "at rest" (mirrors #491). */
     runningUnmanaged: boolean;
   }>;
+  /** #616 — configured load priority, highest first (equipmentId order). Lets
+   *  the roster table list loads in priority order, matching the timeline. */
+  priority: string[];
   journal: ArbiterDecision[];
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }

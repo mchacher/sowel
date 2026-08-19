@@ -23,6 +23,7 @@ function fullState(over: Partial<ArbiterPublicState> = {}): ArbiterPublicState {
     pending: [],
     suspensions: [],
     idle: [],
+    priority: [],
     journal: [],
     surplusSeries: [],
     ...over,
@@ -154,6 +155,46 @@ describe("ArbitrationSurface roster (#561)", () => {
     expect(screen.getByText("Granted")).toBeTruthy();
     expect(screen.getByText("Waiting")).toBeTruthy();
     expect(screen.getByText("At rest")).toBeTruthy();
+  });
+
+  it("orders the roster by configured priority, not by state group (#616)", () => {
+    // Grant / pending / idle deliberately concatenate as pump, pacp, pac, heater;
+    // priority reorders them to pac, heater, pump, pacp — matching the timeline.
+    seed({
+      grants: [
+        {
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          instanceId: "i-pump",
+          watts: 600,
+          sinceIso: "2026-08-17T08:00:00.000Z",
+        },
+      ],
+      pending: [
+        {
+          equipmentId: "pacp",
+          equipmentName: "PAC Piscine",
+          instanceId: "i-pacp",
+          watts: 1800,
+          needW: 1700,
+          toleratedImportW: 200,
+          reasonWaiting: "insufficient-surplus:0",
+          running: false,
+        },
+      ],
+      idle: [
+        { equipmentId: "pac", equipmentName: "PAC", watts: 1500, toleratedImportW: 0, runningUnmanaged: false },
+        { equipmentId: "heater", equipmentName: "Chauffe-eau", watts: 2000, toleratedImportW: 0, runningUnmanaged: false },
+      ],
+      priority: ["pac", "heater", "pump", "pacp"],
+    });
+    render(<ArbitrationSurface />);
+
+    const names = screen
+      .getAllByRole("row")
+      .slice(1) // drop the header row
+      .map((row) => row.querySelector("td")?.textContent);
+    expect(names).toEqual(["PAC", "Chauffe-eau", "Pompe", "PAC Piscine"]);
   });
 
   it("spells out the deficit context when the meter is importing", () => {

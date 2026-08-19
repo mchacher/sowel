@@ -28,6 +28,7 @@ function state(journal: ArbiterDecision[], pending: string[] = []): ArbiterPubli
     })),
     suspensions: [],
     idle: [],
+    priority: [],
     journal, // newest-first
     surplusSeries: [],
   };

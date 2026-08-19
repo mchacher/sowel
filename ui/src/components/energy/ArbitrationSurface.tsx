@@ -18,8 +18,9 @@ import { ROOT_ZONE_ID } from "../../lib/constants";
 
 /**
  * One roster row, flattened from the four state arrays of the read model into a
- * single ordered list (granted → waiting/running → suspended → at-rest). Each
- * carries the figures relevant to its state; `null` renders as a dash.
+ * single list ordered by configured priority (#616), matching the timeline. The
+ * `stateKey` pill carries each load's state; figures irrelevant to a state are
+ * `null` and render as a dash.
  */
 interface RosterRow {
   equipmentId: string;
@@ -83,8 +84,10 @@ export function ArbitrationSurface() {
   const dormant = isArbiterDormant(state.state, rootAgg?.isDaylight ?? null, available);
   const stickerColor = dormant ? "var(--color-slate)" : surplusStickerColor(available);
 
-  // Flatten the read model into one ordered roster. Order encodes urgency:
-  // who holds surplus, who is asking, who is paused, who is at rest.
+  // Flatten the read model into one roster. Each source array is state-specific
+  // (grants / pending / suspensions / idle); the state pill carries the state,
+  // so the rows themselves are ordered by configured priority (#616) to match
+  // the timeline — not grouped by state.
   const rows: RosterRow[] = [
     ...state.grants.map<RosterRow>((g) => ({
       equipmentId: g.equipmentId,
@@ -125,6 +128,15 @@ export function ArbitrationSurface() {
       toleratedW: tolerated(i.toleratedImportW),
     })),
   ];
+
+  // #616 — order by the arbiter's configured priority (highest first), matching
+  // the timeline. A load absent from the list (should not happen) sorts last but
+  // keeps a stable relative order.
+  const rank = (id: string) => {
+    const i = state.priority.indexOf(id);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  rows.sort((a, b) => rank(a.equipmentId) - rank(b.equipmentId));
 
   // Deficit context (FR-10a): when the meter is importing, no waiting load can
   // start — spell it out so an empty "need" column does not read as inaction.

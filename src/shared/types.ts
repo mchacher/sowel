@@ -814,6 +814,10 @@ export interface ArbiterPublicState {
   /** #561 — declared flexible loads with no active claim (at rest / running
    *  outside arbitration). Completes the roster so every priority load shows. */
   idle: ArbiterIdleInfo[];
+  /** #616 — the configured load priority, highest first (equipmentId order).
+   *  Lets the UI list every load in priority order, matching the timeline,
+   *  instead of grouping the roster by state. */
+  priority: string[];
   journal: ArbiterDecision[];
   /** Today's available-surplus samples (~5 min cadence, in-memory, bounded)
    *  — the curve of the FR-10 day timeline. */
