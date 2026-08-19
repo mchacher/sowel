@@ -13,6 +13,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.5 — 2026-08-19 { #v1-52-5 }
+
+- Feat (equipments): **a per-equipment "invert direction" toggle for shutters and awnings** (spec 154). When a motor's open and close are wired the reverse of what Sowel assumes, and the integration has no bridge-side invert, an admin can now flip the direction on the equipment itself. It applies to every command path (card, zone bulk actions, recipes, modes). (#623)
+- Feat (ui): **recipe logs are now reachable on the phone (PWA)**. The log entry point was hidden below 640px; it now opens in a bottom sheet on mobile while keeping the inline panel on desktop. (#622)
+- Feat (ui): **the arbiter roster table is now ordered by configured priority** instead of by state, so it reads consistently with the timeline. Each row's state pill still shows whether the load is granted, waiting, suspended or idle. (#621)
+- Fix (energy): **an idle submetered load now rolls its daily total over at the hour and midnight boundary**. A power-only submeter that sat at 0 W could keep showing the previous day's cumulative energy overnight (for example a water heater stuck at 2.92 kWh); an hour-aligned refresh now recomputes it from history. (#619)
+- Fix (ui): **the "en attente" cells on the arbiter timeline use the same soft waiting tint as the roster table** instead of a solid warning orange, so the timeline reads calmer. (#620)
+
 ### v1.52.4 — 2026-08-18 { #v1-52-4 }
 
 - Fix (ui): **the arbiter now labels a load outside arbitration as "hors arbitrage"** instead of the previous, less clear wording, so a load that the energy arbiter is not managing reads unambiguously. (#611)

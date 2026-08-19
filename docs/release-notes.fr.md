@@ -13,6 +13,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.5 — 2026-08-19 { #v1-52-5 }
+
+- Feat (équipements) : **une bascule « inverser le sens » par équipement pour les volets et stores** (spec 154). Quand le moteur a l'ouverture et la fermeture câblées à l'inverse de ce que Sowel suppose, et que l'intégration n'offre pas d'inversion côté passerelle, un admin peut désormais inverser le sens sur l'équipement lui-même. Cela s'applique à tous les chemins de commande (carte, actions groupées de zone, recettes, modes). (#623)
+- Feat (ui) : **les journaux de recette sont désormais accessibles sur le téléphone (PWA)**. Le point d'entrée des journaux était masqué en dessous de 640 px ; il s'ouvre maintenant dans une feuille inférieure sur mobile, tout en conservant le panneau intégré sur ordinateur. (#622)
+- Feat (ui) : **le tableau des charges de l'arbitre est désormais trié par priorité configurée** au lieu de l'état, pour rester cohérent avec la timeline. La pastille d'état de chaque ligne indique toujours si la charge est autorisée, en attente, suspendue ou inactive. (#621)
+- Correctif (énergie) : **une charge sous-comptée inactive bascule désormais son total quotidien à la frontière de l'heure et de minuit**. Un sous-compteur de puissance seule resté à 0 W pouvait continuer d'afficher l'énergie cumulée de la veille pendant la nuit (par exemple un chauffe-eau bloqué à 2,92 kWh) ; un rafraîchissement aligné sur l'heure le recalcule maintenant depuis l'historique. (#619)
+- Correctif (ui) : **les cellules « en attente » de la timeline de l'arbitre utilisent la même teinte douce que le tableau des charges** au lieu d'un orange d'avertissement plein, pour une lecture plus apaisée. (#620)
+
 ### v1.52.4 — 2026-08-18 { #v1-52-4 }
 
 - Correctif (ui) : **l'arbitre indique désormais « hors arbitrage » pour une charge non gérée**, au lieu de l'ancienne formulation moins claire, de sorte qu'une charge que l'arbitre d'énergie ne pilote pas se lit sans ambiguïté. (#611)
