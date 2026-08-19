@@ -1,4 +1,27 @@
-import type { ArbiterDecision } from "../../types";
+import type { ArbiterDecision, ArbiterQuarterState } from "../../types";
+
+/**
+ * "En attente" cells reuse the muted 15% warning tint of the roster table's
+ * waiting pill (ArbitrationSurface StatePill) rather than the solid orange,
+ * which read as too aggressive on the timeline ribbon (#617).
+ */
+export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 15%, transparent)";
+
+/** Spec 148 — map an arbiter timeline quarter state to its ribbon-cell fill. */
+export function cellColor(s: ArbiterQuarterState): string {
+  switch (s) {
+    case "granted":
+      return "var(--color-solar-auto)"; // accordé (auto-conso)
+    case "pending":
+      return PENDING_FILL; // en attente de surplus (#561, muted per #617)
+    case "revoked":
+      return "var(--color-error)"; // surplus retiré
+    case "unmanaged":
+      return "var(--color-slate)"; // On (hors arbitrage)
+    default:
+      return "color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)"; // idle
+  }
+}
 
 /**
  * Spec 148 — map an arbiter decision kind to its journal-dot color token.

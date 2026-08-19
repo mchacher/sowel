@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { journalDotColor, surplusStickerColor, isArbiterDormant } from "./arbiterColors";
+import {
+  journalDotColor,
+  surplusStickerColor,
+  isArbiterDormant,
+  cellColor,
+  PENDING_FILL,
+} from "./arbiterColors";
 
 describe("journalDotColor (spec 148)", () => {
   it("maps granted/resumed to the auto-consumption green token", () => {
@@ -21,6 +27,26 @@ describe("journalDotColor (spec 148)", () => {
   it("falls back to a neutral token for other kinds", () => {
     expect(journalDotColor("unclaimed-run-ended")).toBe("var(--color-text-tertiary)");
     expect(journalDotColor("denied")).toBe("var(--color-text-tertiary)");
+  });
+});
+
+describe("cellColor (timeline ribbon, #617)", () => {
+  it("paints the 'en attente' cell with the muted table-pill tint, not the solid warning", () => {
+    // #617 — the solid orange read as aggressive; the pending cell must reuse
+    // the same 15% warning mix the roster's waiting pill uses.
+    expect(cellColor("pending")).toBe(PENDING_FILL);
+    expect(PENDING_FILL).toBe("color-mix(in srgb, var(--color-warning) 15%, transparent)");
+    expect(cellColor("pending")).not.toBe("var(--color-warning)");
+  });
+
+  it("keeps the other states on their solid tokens", () => {
+    expect(cellColor("granted")).toBe("var(--color-solar-auto)");
+    expect(cellColor("revoked")).toBe("var(--color-error)");
+    expect(cellColor("unmanaged")).toBe("var(--color-slate)");
+  });
+
+  it("uses a faint neutral tint for idle", () => {
+    expect(cellColor("idle")).toBe("color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)");
   });
 });
 

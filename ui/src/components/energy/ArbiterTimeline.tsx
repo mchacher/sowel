@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { ArbiterQuarterState, ArbiterTimeline as ArbiterTimelineData } from "../../types";
+import type { ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
-import { journalDotColor } from "./arbiterColors";
+import { cellColor, journalDotColor, PENDING_FILL } from "./arbiterColors";
 import { journalReasonLabel } from "./arbiterReason";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
@@ -43,21 +43,6 @@ function useWindowHours(): number {
     return () => mq.removeEventListener("change", onChange);
   }, []);
   return hours;
-}
-
-function cellColor(s: ArbiterQuarterState): string {
-  switch (s) {
-    case "granted":
-      return "var(--color-solar-auto)"; // accordé (auto-conso)
-    case "pending":
-      return "var(--color-warning)"; // en attente de surplus (#561, jaune a-500)
-    case "revoked":
-      return "var(--color-error)"; // surplus retiré
-    case "unmanaged":
-      return "var(--color-slate)"; // On (hors arbitrage)
-    default:
-      return "color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)"; // idle
-  }
 }
 
 function hhmm(ms: number): string {
@@ -430,7 +415,7 @@ export function ArbiterTimeline() {
         <span className="flex items-center gap-1.5">
           <span
             className="w-3 h-2.5 rounded-sm flex-none"
-            style={{ backgroundColor: "var(--color-warning)" }}
+            style={{ backgroundColor: PENDING_FILL }}
           />
           {t("arbiter.legend.pending")}
         </span>
