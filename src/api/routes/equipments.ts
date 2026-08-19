@@ -47,6 +47,7 @@ const updateEquipmentBodySchema = {
       },
     },
     requireConfirmation: { type: "boolean" },
+    invertDirection: { type: "boolean" },
   },
 };
 
@@ -193,6 +194,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       enabled?: boolean;
       energyProfile?: EnergyLoadProfile | null;
       requireConfirmation?: boolean;
+      invertDirection?: boolean;
     };
   }>(
     "/api/v1/equipments/:id",
@@ -227,6 +229,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           enabled: body.enabled,
           energyProfile: body.energyProfile,
           requireConfirmation: body.requireConfirmation,
+          invertDirection: body.invertDirection,
         });
         if (!equipment) {
           return reply.code(404).send({ error: "Equipment not found" });

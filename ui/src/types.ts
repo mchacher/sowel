@@ -280,6 +280,10 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard
    *  (gate equipments only in v1). */
   requireConfirmation?: boolean;
+  /** Spec 154 — invert shutter-family command direction (shutter_move
+   *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
+   *  non-shutter-family types. */
+  invertDirection?: boolean;
 }
 
 // ============================================================

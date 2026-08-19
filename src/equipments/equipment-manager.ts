@@ -33,6 +33,7 @@ import {
   VmcHighSpeedUnavailableError,
 } from "./vmc-controller.js";
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
+import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
@@ -95,6 +96,8 @@ interface UpdateEquipmentInput {
   energyProfile?: EnergyLoadProfile | null;
   /** Spec 146 — opt-in confirmation before actuating (gate v1). */
   requireConfirmation?: boolean;
+  /** Spec 154 — invert shutter-family command direction. */
+  invertDirection?: boolean;
 }
 
 // ============================================================
@@ -196,6 +199,7 @@ export class EquipmentManager {
         `UPDATE equipments SET name = @name, zone_id = @zoneId,
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
+         invert_direction = @invertDirection,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -508,6 +512,12 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.require_confirmation,
+      invertDirection:
+        input.invertDirection !== undefined
+          ? input.invertDirection
+            ? 1
+            : 0
+          : existing.invert_direction,
     });
 
     const equipment = this.getById(id)!;
@@ -833,9 +843,24 @@ export class EquipmentManager {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
     }
 
+    // Spec 154 — per-equipment command inversion for a shutter-family motor
+    // wired the opposite way (issue #614). Flip the SEMANTIC value before it is
+    // resolved to the wire representation, so it composes with enum/boolean
+    // mapping. Every command path (UI, zone bulk, recipes, modes) funnels through
+    // here, so all inherit it. Command-only: reported position is left raw.
+    //
+    // Skip a delivery-retry (spec 141): the order-confirmation tracker replays
+    // the already-inverted RESOLVED value it captured from equipment.order.executed,
+    // so re-inverting here would double-invert and send the wrong command.
+    const isDeliveryRetry = source?.kind === "external" && source.channel === RETRY_CHANNEL;
+    const semanticValue =
+      equipment.invertDirection && !isDeliveryRetry
+        ? invertShutterCommand(bindings[0].category, value)
+        : value;
+
     // Resolve the order value against the binding's declared shape (enum
     // case-insensitive match, boolean empty-value rule — see resolveOrderValue).
-    const resolvedValue = this.resolveOrderValue(bindings[0], value);
+    const resolvedValue = this.resolveOrderValue(bindings[0], semanticValue);
 
     // Dispatch to every bound device order via its integration plugin.
     let successes = 0;
@@ -1512,6 +1537,7 @@ interface EquipmentRow {
   enabled: number;
   energy_profile: string | null;
   require_confirmation: number;
+  invert_direction: number;
   created_at: string;
   updated_at: string;
 }
@@ -1597,6 +1623,35 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
   }
 }
 
+const INVERT_MOVE_CATEGORIES = new Set(["shutter_move", "pool_cover_move"]);
+const INVERT_POSITION_CATEGORIES = new Set(["set_shutter_position", "pool_cover_position"]);
+
+/**
+ * Spec 154 — invert a shutter-family command for an equipment flagged
+ * `invertDirection` (issue #614). `shutter_move` swaps OPEN<->CLOSE (STOP and any
+ * other value pass through); a position order maps `v -> 100 - v`. Any other
+ * order category is returned unchanged, so a stray flag on a non-shutter type is
+ * a no-op. Operates on the SEMANTIC value, before wire resolution.
+ */
+function invertShutterCommand(category: string | null | undefined, value: unknown): unknown {
+  if (category && INVERT_MOVE_CATEGORIES.has(category)) {
+    if (typeof value === "string") {
+      const v = value.trim().toUpperCase();
+      if (v === "OPEN") return "CLOSE";
+      if (v === "CLOSE") return "OPEN";
+    }
+    return value;
+  }
+  if (category && INVERT_POSITION_CATEGORIES.has(category)) {
+    if (typeof value === "number" && Number.isFinite(value)) return 100 - value;
+    if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+      return 100 - Number(value);
+    }
+    return value;
+  }
+  return value;
+}
+
 function rowToEquipment(row: EquipmentRow): Equipment {
   return {
     id: row.id,
@@ -1608,6 +1663,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     enabled: row.enabled === 1,
     energyProfile: parseEnergyProfile(row.energy_profile),
     requireConfirmation: row.require_confirmation === 1,
+    invertDirection: row.invert_direction === 1,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

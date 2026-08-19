@@ -342,6 +342,17 @@ describe("PUT /api/v1/equipments/:id — input validation (characterization)", (
     expect(res.statusCode).toBe(200);
   });
 
+  it("accepts a boolean invertDirection (#614)", async () => {
+    expect((await put({ invertDirection: true })).statusCode).toBe(200);
+    expect((await put({ invertDirection: false })).statusCode).toBe(200);
+  });
+
+  it("400 when invertDirection is not a boolean (strict types, no coercion)", async () => {
+    const res = await put({ invertDirection: "yes" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: expect.any(String) });
+  });
+
   it("accepts a valid energyProfile, and accepts null energyProfile (pass-through)", async () => {
     const ok = await put({
       energyProfile: { class: "comfort", nominalPowerW: 1500, minOnS: 0, minOffS: 60 },

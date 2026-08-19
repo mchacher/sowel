@@ -35,6 +35,7 @@ import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
@@ -367,6 +368,11 @@ export function EquipmentDetailPage() {
       {/* Gate — confirmation before action (spec 146), admin only */}
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      )}
+
+      {/* Shutter-family — invert command direction (spec 154), admin only */}
+      {(isShutterFamily || equipment.type === "pool_cover") && isAdmin && (
+        <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Water valve controls */}

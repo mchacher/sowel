@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { EquipmentManager, EquipmentError } from "./equipment-manager.js";
+import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import { DeviceManager } from "../devices/device-manager.js";
 import { ZoneManager } from "../zones/zone-manager.js";
@@ -149,6 +150,108 @@ describe("EquipmentManager", () => {
 
   afterEach(() => {
     db.close();
+  });
+
+  // ============================================================
+  // Invert direction (spec 154, issue #614)
+  // ============================================================
+
+  describe("invert direction", () => {
+    function seedShutter(invert: boolean) {
+      const zone = zoneManager.create({ name: "Salon" });
+      const eq = manager.create({ name: "Store", type: "awning", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "StoreDev",
+        orderKeys: [
+          {
+            key: "state",
+            type: "enum",
+            category: "shutter_move",
+            enumValues: ["OPEN", "CLOSE", "STOP"],
+          },
+          { key: "position", type: "number", category: "set_shutter_position" },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+      manager.addOrderBinding(eq.id, orderIds[1], "position");
+      if (invert) manager.update(eq.id, { invertDirection: true });
+      return eq;
+    }
+    const lastPayload = () => JSON.parse(mockPublished[mockPublished.length - 1].payload);
+
+    it("swaps OPEN<->CLOSE on shutter_move when inverted", async () => {
+      const eq = seedShutter(true);
+      await manager.executeOrder(eq.id, "state", "OPEN");
+      expect(lastPayload()).toEqual({ state: "CLOSE" });
+      await manager.executeOrder(eq.id, "state", "CLOSE");
+      expect(lastPayload()).toEqual({ state: "OPEN" });
+    });
+
+    it("leaves STOP unchanged when inverted", async () => {
+      const eq = seedShutter(true);
+      await manager.executeOrder(eq.id, "state", "STOP");
+      expect(lastPayload()).toEqual({ state: "STOP" });
+    });
+
+    it("maps a position command v -> 100-v when inverted", async () => {
+      const eq = seedShutter(true);
+      await manager.executeOrder(eq.id, "position", 30);
+      expect(lastPayload()).toEqual({ position: 70 });
+    });
+
+    it("dispatches the raw command when NOT inverted (default, regression guard)", async () => {
+      const eq = seedShutter(false);
+      expect(manager.getById(eq.id)?.invertDirection).toBe(false);
+      await manager.executeOrder(eq.id, "state", "OPEN");
+      expect(lastPayload()).toEqual({ state: "OPEN" });
+      await manager.executeOrder(eq.id, "position", 30);
+      expect(lastPayload()).toEqual({ position: 30 });
+    });
+
+    it("does not re-invert a delivery-retry replay (no double-invert, spec 141)", async () => {
+      // The confirmation tracker replays the already-inverted RESOLVED value it
+      // captured (e.g. user pressed OPEN -> we sent CLOSE -> tracker stores CLOSE).
+      // The retry must send CLOSE again, not re-invert it back to OPEN.
+      const eq = seedShutter(true);
+      await manager.executeOrder(eq.id, "state", "CLOSE", {
+        kind: "external",
+        channel: RETRY_CHANNEL,
+      });
+      expect(lastPayload()).toEqual({ state: "CLOSE" });
+    });
+
+    it("inverts a pool_cover's move + position commands too", async () => {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Volet", type: "pool_cover", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "VoletDev",
+        orderKeys: [
+          {
+            key: "state",
+            type: "enum",
+            category: "pool_cover_move",
+            enumValues: ["OPEN", "CLOSE", "STOP"],
+          },
+          { key: "position", type: "number", category: "pool_cover_position" },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+      manager.addOrderBinding(eq.id, orderIds[1], "position");
+      manager.update(eq.id, { invertDirection: true });
+
+      await manager.executeOrder(eq.id, "state", "OPEN");
+      expect(lastPayload()).toEqual({ state: "CLOSE" });
+      await manager.executeOrder(eq.id, "position", 30);
+      expect(lastPayload()).toEqual({ position: 70 });
+    });
+
+    it("round-trips invertDirection through update", () => {
+      const eq = seedShutter(false);
+      manager.update(eq.id, { invertDirection: true });
+      expect(manager.getById(eq.id)?.invertDirection).toBe(true);
+      manager.update(eq.id, { invertDirection: false });
+      expect(manager.getById(eq.id)?.invertDirection).toBe(false);
+    });
   });
 
   // ============================================================

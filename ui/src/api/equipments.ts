@@ -48,6 +48,8 @@ export async function updateEquipment(
     energyProfile?: EnergyLoadProfile | null;
     /** Spec 146 — opt-in confirmation before actuating (gate v1). */
     requireConfirmation?: boolean;
+    /** Spec 154 — invert shutter-family command direction. */
+    invertDirection?: boolean;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {
