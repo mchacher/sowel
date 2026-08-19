@@ -11,6 +11,12 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.53.x : Inversion de sens pour les déclencheurs de portail
+
+### v1.53.0 — 2026-08-19 { #v1-53-0 }
+
+- Feat (équipements) : **la bascule « inverser le sens » par équipement (spec 154) couvre désormais aussi les portails et déclencheurs booléens momentanés**. Un relais câblé pour déclencher sur le front OFF au lieu de ON (constaté sur un SONOFF MINI-ZBD pilotant une porte de garage) s'inverse directement depuis la page de l'équipement, la même bascule que celle utilisée pour inverser l'ouverture/fermeture d'un volet. Elle reste opt-in par équipement, donc les installations existantes ne sont pas affectées. (#628)
+
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
 ### v1.52.5 — 2026-08-19 { #v1-52-5 }

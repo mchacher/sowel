@@ -11,6 +11,12 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.53.x: Invert direction for gate triggers
+
+### v1.53.0 — 2026-08-19 { #v1-53-0 }
+
+- Feat (equipments): **the per-equipment "invert direction" toggle (spec 154) now covers gate and boolean momentary triggers too**. A relay wired to pulse on the OFF edge instead of ON (reported on a SONOFF MINI-ZBD driving a garage door) can be flipped right from the equipment page, the same toggle already used to invert a shutter's open/close. It stays opt-in per equipment, so existing setups are unaffected. (#628)
+
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
 ### v1.52.5 — 2026-08-19 { #v1-52-5 }
