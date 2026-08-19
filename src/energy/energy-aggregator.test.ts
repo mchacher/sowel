@@ -16,6 +16,32 @@ function offlineInflux(): InfluxClient {
   } as unknown as InfluxClient;
 }
 
+/**
+ * Connected InfluxDB whose current-hour raw sum is driven by `hourWh()`. The
+ * hour query reads the raw `bucket`; the day-prev / month / year queries read
+ * the `-energy-hourly` / `-energy-daily` buckets and return nothing here, so
+ * energy_day resolves to exactly the current-hour value. Lets a test flip the
+ * live consumption and assert the cached cumul follows.
+ */
+function influxWithHour(hourWh: () => number): InfluxClient {
+  const queryApi = {
+    async *iterateRows(flux: string) {
+      // Only the raw-bucket (current hour) query yields a value; the derived
+      // buckets are addressed by their suffixed names.
+      if (flux.includes("-energy-hourly") || flux.includes("-energy-daily")) return;
+      const value = hourWh();
+      yield {
+        values: [],
+        tableMeta: { toObject: () => ({ _value: value }) },
+      } as never;
+    },
+  };
+  return {
+    getClient: vi.fn(() => ({ getQueryApi: () => queryApi })),
+    getConfig: vi.fn(() => ({ org: "org", bucket: "sowel" })),
+  } as unknown as InfluxClient;
+}
+
 const power = [{ alias: "power", category: "power", value: 0 }];
 const energy = [{ alias: "energy", category: "energy", value: 100 }];
 const state = [{ alias: "state", category: "light_state", value: "ON" }];
@@ -100,6 +126,88 @@ describe("EnergyAggregator submeter enrolment (#527)", () => {
     const wh = agg.getComputedDataForEquipment("wh2");
     expect(wh).toHaveLength(4);
     expect(wh.every((e) => e.value === 0)).toBe(true);
+  });
+
+  it("recomputes an idle submeter's cumuls on the hour rollover, not just on energy events (#618)", async () => {
+    // Start mid-morning so we know how long until the next hour boundary.
+    vi.setSystemTime(new Date(2026, 7, 19, 8, 30, 0));
+    const mgr = managerWith([{ id: "wh", type: "water_heater", dataBindings: power }]);
+
+    // Yesterday's consumption is still the current cached value; the heater then
+    // goes idle (0 W) and emits no further `energy` events.
+    let hourWh = 2920;
+    const agg = new EnergyAggregator(
+      mgr,
+      influxWithHour(() => hourWh),
+      bus,
+      logger,
+    );
+    await agg.start();
+
+    expect(agg.getComputedDataForEquipment("wh").find((e) => e.alias === "energy_day")?.value).toBe(
+      2920,
+    );
+
+    // Real consumption drops to zero. Without a scheduled rollover the cached
+    // 2920 would keep being served all through the idle period.
+    hourWh = 0;
+
+    // Cross the next hour boundary (08:30 → 09:00 is 30 min away).
+    await vi.advanceTimersByTimeAsync(30 * 60 * 1000 + 1000);
+
+    expect(agg.getComputedDataForEquipment("wh").find((e) => e.alias === "energy_day")?.value).toBe(
+      0,
+    );
+
+    agg.stop();
+  });
+
+  it("rolls day/month/year cumuls over the local midnight boundary (#618)", async () => {
+    // 23:45 local: the midnight tick must recompute against the new day.
+    vi.setSystemTime(new Date(2026, 7, 19, 23, 45, 0));
+    const mgr = managerWith([{ id: "wh", type: "water_heater", dataBindings: power }]);
+
+    let hourWh = 2920;
+    const agg = new EnergyAggregator(
+      mgr,
+      influxWithHour(() => hourWh),
+      bus,
+      logger,
+    );
+    await agg.start();
+    expect(agg.getComputedDataForEquipment("wh").find((e) => e.alias === "energy_day")?.value).toBe(
+      2920,
+    );
+
+    // New day starts idle.
+    hourWh = 0;
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 1000); // cross 00:00
+
+    const cumuls = agg.getComputedDataForEquipment("wh");
+    expect(cumuls.find((e) => e.alias === "energy_day")?.value).toBe(0);
+    expect(cumuls.find((e) => e.alias === "energy_month")?.value).toBe(0);
+    expect(cumuls.find((e) => e.alias === "energy_year")?.value).toBe(0);
+
+    agg.stop();
+  });
+
+  it("stop() prevents a rollover refresh in flight from re-arming the timer (#618)", async () => {
+    vi.setSystemTime(new Date(2026, 7, 19, 8, 30, 0));
+    const mgr = managerWith([{ id: "wh", type: "water_heater", dataBindings: power }]);
+    const agg = new EnergyAggregator(
+      mgr,
+      influxWithHour(() => 0),
+      bus,
+      logger,
+    );
+    await agg.start();
+
+    agg.stop();
+    // Advancing well past several hour boundaries must fire nothing: no timer
+    // should have survived stop(). If one did, this would throw on the cleared
+    // Influx client or leave a dangling timer that clearAllTimers would report.
+    await vi.advanceTimersByTimeAsync(3 * 60 * 60 * 1000);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("does not enrol a bare relay (switch with no metering) on update", async () => {

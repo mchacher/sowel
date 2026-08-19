@@ -41,6 +41,10 @@ export class EnergyAggregator {
   private energyEquipmentIds = new Set<string>();
   /** Debounce timers per equipment. */
   private pendingRefresh = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Hour-aligned timer that recomputes every enrolled equipment (#618). */
+  private rolloverTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Set by stop() so a refresh in flight cannot re-arm the rollover timer. */
+  private stopped = false;
 
   constructor(
     equipmentManager: EquipmentManager,
@@ -59,6 +63,7 @@ export class EnergyAggregator {
    * Must be called after integrations have started and equipment bindings are set up.
    */
   async start(): Promise<void> {
+    this.stopped = false;
     // Discover which equipments have energy bindings
     this.discoverEnergyEquipments();
 
@@ -100,7 +105,60 @@ export class EnergyAggregator {
       }
     });
 
+    // Recompute every enrolled equipment on each local hour boundary. Without
+    // this, a submeter that goes idle (0 W) never emits another `energy` event,
+    // so its cached cumuls freeze and keep serving the previous hour/day/month
+    // total across the boundary — the "2.92 kWh shown all night" bug (#618).
+    this.scheduleRollover();
+
     this.logger.info({ equipmentCount: this.energyEquipmentIds.size }, "Energy aggregator started");
+  }
+
+  /** Clear timers so the aggregator can be torn down without leaks. */
+  stop(): void {
+    this.stopped = true;
+    if (this.rolloverTimer) {
+      clearTimeout(this.rolloverTimer);
+      this.rolloverTimer = null;
+    }
+    for (const timer of this.pendingRefresh.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingRefresh.clear();
+  }
+
+  /**
+   * Arm a one-shot timer for the next local hour boundary. On fire it refreshes
+   * all enrolled equipments (rolling the hour cumul, and — at the midnight tick —
+   * the day/month/year cumuls) then re-arms itself for the following hour.
+   */
+  private scheduleRollover(): void {
+    if (this.stopped) return;
+    const now = new Date();
+    const nextHour = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      now.getHours() + 1,
+      0,
+      0,
+      0,
+    );
+    const delay = Math.max(1, nextHour.getTime() - now.getTime());
+    this.rolloverTimer = setTimeout(() => {
+      this.refreshAll()
+        .catch((err) => this.logger.warn({ err }, "Energy rollover refresh failed"))
+        .finally(() => this.scheduleRollover());
+    }, delay);
+  }
+
+  /** Recompute cumuls for every enrolled equipment from InfluxDB. */
+  private async refreshAll(): Promise<void> {
+    for (const equipmentId of this.energyEquipmentIds) {
+      await this.refreshFromInfluxDB(equipmentId).catch((err) =>
+        this.logger.warn({ err, equipmentId }, "Failed to refresh energy cumuls on rollover"),
+      );
+    }
   }
 
   /**

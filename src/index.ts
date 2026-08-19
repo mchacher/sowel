@@ -727,6 +727,11 @@ async function main() {
       logger.error({ err }, "Error stopping power submeter integrator");
     }
     try {
+      energyAggregator.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping energy aggregator");
+    }
+    try {
       await influxClient.disconnect();
     } catch (err) {
       logger.error({ err }, "Error disconnecting InfluxDB");
