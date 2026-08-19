@@ -4,6 +4,16 @@
 
 `equipments.gate_trigger_mode TEXT NOT NULL DEFAULT 'fixed'` (migration `025_equipment_gate_trigger_mode.sql`). Mirrors `invert_direction`'s column pattern (spec 154) but as a string enum instead of a boolean, since a third mode is plausible later (e.g. a static-OFF mode per issue #627's original proposal).
 
+## Blast radius — opt-in only, enforced at three independent layers
+
+No other installation's behavior changes on upgrade, and no equipment on this installation is affected unless explicitly opted in:
+
+1. `DEFAULT 'fixed'` on the migration itself — existing rows get the old behavior with zero write from any caller.
+2. `resolveOrderValue()`'s toggle branch is gated on `gateTriggerMode === "toggle"` exactly (`equipment-manager.ts`); every other value takes the pre-existing spec 150 code path unchanged.
+3. `GateTriggerModePanel.tsx` ships the checkbox unchecked, scoped to gate types only, with copy that names the specific symptom it's for.
+
+See `spec.md` § "Safety / blast radius" for the equivalent statement aimed at a reviewer, not an implementer.
+
 ## Resolution flow
 
 ```
