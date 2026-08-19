@@ -10,6 +10,11 @@ import type { EquipmentWithDetails } from "../../types";
  * backend flips shutter_move OPEN<->CLOSE and set_shutter_position -> 100-value
  * for this equipment (command-only). Admin-only, shutter-family-only — the
  * caller gates the mount.
+ *
+ * Extended (issue #627) to `gate` equipments with a boolean momentary
+ * trigger: when on, an empty trigger resolves to `false` instead of `true` —
+ * for a relay wired to pulse on the opposite edge. Same field, same backend
+ * flag, just different copy for a gate vs a shutter/pool_cover.
  */
 export function InvertDirectionPanel({
   equipment,
@@ -22,6 +27,8 @@ export function InvertDirectionPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const enabled = equipment.invertDirection === true;
+  const copyPrefix =
+    equipment.type === "gate" ? "equipments.invertDirectionGate" : "equipments.invertDirection";
 
   const toggle = async (next: boolean) => {
     setSaving(true);
@@ -40,9 +47,7 @@ export function InvertDirectionPanel({
     <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <ArrowUpDown size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[14px] font-semibold text-text">
-          {t("equipments.invertDirection.title")}
-        </h3>
+        <h3 className="text-[14px] font-semibold text-text">{t(`${copyPrefix}.title`)}</h3>
         <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
           <input
             type="checkbox"
@@ -50,11 +55,11 @@ export function InvertDirectionPanel({
             disabled={saving}
             onChange={(e) => void toggle(e.target.checked)}
           />
-          {t("equipments.invertDirection.enable")}
+          {t(`${copyPrefix}.enable`)}
         </label>
       </div>
       <p className="text-[12px] text-text-tertiary flex items-center gap-1.5">
-        {t("equipments.invertDirection.hint")}
+        {t(`${copyPrefix}.hint`)}
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </p>
       {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}

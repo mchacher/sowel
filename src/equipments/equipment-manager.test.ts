@@ -252,6 +252,70 @@ describe("EquipmentManager", () => {
       manager.update(eq.id, { invertDirection: false });
       expect(manager.getById(eq.id)?.invertDirection).toBe(false);
     });
+
+    // Issue #627 — extended to boolean gate triggers: a relay wired to pulse
+    // on the opposite edge (some installs trigger on OFF, not ON).
+    function seedGate(invert: boolean) {
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "Porte", type: "gate", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "MINI-ZBD",
+        orderKeys: [
+          {
+            key: "state",
+            type: "boolean",
+            category: "light_toggle",
+            valueOn: "ON",
+            valueOff: "OFF",
+          },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "command");
+      if (invert) manager.update(eq.id, { invertDirection: true });
+      return eq;
+    }
+
+    it("resolves an empty gate trigger to OFF when inverted", async () => {
+      const eq = seedGate(true);
+      await manager.executeOrder(eq.id, "command", null);
+      expect(lastPayload()).toEqual({ state: "OFF" });
+    });
+
+    it("resolves an empty gate trigger to ON when NOT inverted (default, regression guard)", async () => {
+      const eq = seedGate(false);
+      expect(manager.getById(eq.id)?.invertDirection).toBe(false);
+      await manager.executeOrder(eq.id, "command", null);
+      expect(lastPayload()).toEqual({ state: "ON" });
+    });
+
+    it("sends OFF on every consecutive inverted gate trigger (no state dependency, issue #627)", async () => {
+      const eq = seedGate(true);
+      await manager.executeOrder(eq.id, "command", null);
+      expect(lastPayload()).toEqual({ state: "OFF" });
+      await manager.executeOrder(eq.id, "command", null);
+      expect(lastPayload()).toEqual({ state: "OFF" });
+      await manager.executeOrder(eq.id, "command", null);
+      expect(lastPayload()).toEqual({ state: "OFF" });
+    });
+
+    it("does not invert an explicit non-empty gate value (only the empty-trigger default is affected)", async () => {
+      const eq = seedGate(true);
+      await manager.executeOrder(eq.id, "command", "ON");
+      expect(lastPayload()).toEqual({ state: "ON" });
+    });
+
+    it("the delivery-retry guard disables the invert flag on an empty value too (spec 141)", async () => {
+      // Same isDeliveryRetry guard as the shutter case, exercised directly:
+      // an empty value arriving as a retry must resolve to the un-inverted
+      // default (true/ON), not the inverted one, even though the equipment
+      // has invertDirection set.
+      const eq = seedGate(true);
+      await manager.executeOrder(eq.id, "command", null, {
+        kind: "external",
+        channel: RETRY_CHANNEL,
+      });
+      expect(lastPayload()).toEqual({ state: "ON" });
+    });
   });
 
   // ============================================================

@@ -370,8 +370,9 @@ export function EquipmentDetailPage() {
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
-      {/* Shutter-family — invert command direction (spec 154), admin only */}
-      {(isShutterFamily || equipment.type === "pool_cover") && isAdmin && (
+      {/* Shutter-family / gate — invert command direction (spec 154, extended
+          to boolean gate triggers per issue #627), admin only */}
+      {(isShutterFamily || equipment.type === "pool_cover" || isGate) && isAdmin && (
         <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 

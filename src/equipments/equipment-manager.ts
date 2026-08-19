@@ -860,7 +860,11 @@ export class EquipmentManager {
 
     // Resolve the order value against the binding's declared shape (enum
     // case-insensitive match, boolean empty-value rule — see resolveOrderValue).
-    const resolvedValue = this.resolveOrderValue(bindings[0], semanticValue);
+    const resolvedValue = this.resolveOrderValue(
+      bindings[0],
+      semanticValue,
+      equipment.invertDirection && !isDeliveryRetry,
+    );
 
     // Dispatch to every bound device order via its integration plugin.
     let successes = 0;
@@ -999,8 +1003,17 @@ export class EquipmentManager {
    *   wire verbatim and get dropped by Z2M. Non-empty values pass through
    *   untouched — resolveWireValue maps them at dispatch time, and pre-2.3.0
    *   z2m plugins rely on raw "ON" strings passing through unchanged.
+   * - boolean binding, invertDirection (spec 154, extended to boolean gate
+   *   triggers per issue #627): empty -> false instead of true. For a relay
+   *   wired to trigger on the opposite edge (some gate installs pulse on OFF,
+   *   not ON) — the same per-equipment toggle already used to flip
+   *   shutter-family OPEN/CLOSE, reused here rather than a second flag.
    */
-  private resolveOrderValue(firstBinding: OrderBindingJoinRow, value: unknown): unknown {
+  private resolveOrderValue(
+    firstBinding: OrderBindingJoinRow,
+    value: unknown,
+    invertDirection?: boolean,
+  ): unknown {
     let resolvedValue = value;
     if (firstBinding.enum_values) {
       try {
@@ -1024,7 +1037,7 @@ export class EquipmentManager {
       firstBinding.type === "boolean" &&
       (resolvedValue === null || resolvedValue === undefined || resolvedValue === "")
     ) {
-      resolvedValue = true;
+      resolvedValue = !invertDirection;
     }
     return resolvedValue;
   }
