@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
@@ -18,9 +18,24 @@ interface VmcControlProps {
 export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<Speed | null>(null);
+  // Optimistic target: going V1<->V2 the core does break-before-make, so the
+  // observed speed dips through OFF for a moment. Keep the requested pill lit
+  // until reality catches up (or a timeout), so that transient OFF never shows.
+  const [pending, setPending] = useState<Speed | null>(null);
 
   const hasHigh = equipment.orderBindings.some((ob) => ob.alias === "high");
-  const current = vmcSpeedOf(equipment);
+  const observed = vmcSpeedOf(equipment);
+  const current = pending ?? observed;
+
+  useEffect(() => {
+    if (pending === null) return;
+    if (observed === pending) {
+      setPending(null);
+      return;
+    }
+    const id = setTimeout(() => setPending(null), 6000); // safety net
+    return () => clearTimeout(id);
+  }, [pending, observed]);
 
   const options: { speed: Speed; label: string }[] = [
     { speed: "off", label: t("equipments.vmc.off") },
@@ -31,6 +46,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
   const setSpeed = async (speed: Speed) => {
     if (executing) return;
     setExecuting(speed);
+    setPending(speed); // light the target immediately, hide the transient OFF
     try {
       await onExecuteOrder("speed", speed);
     } finally {
