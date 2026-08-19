@@ -39,4 +39,4 @@
 
 Automated: `npx vitest run` — 97/97 backend test files (1583 tests) and 56/56 UI test files (520 tests) green, `tsc --noEmit` and `eslint` clean on both sides (backend and UI).
 
-Real-hardware validation on the dev VM (2026-08-19): backup taken, deployed via `git archive` + `docker build` + hot-patch (no new npm dependency, `dist`/`ui-dist`/`migrations` only), migration `025_equipment_gate_trigger_mode.sql` applied cleanly. `gateTriggerMode` set to `"toggle"` on the real `PorteGarageGauche` equipment via `PUT /equipments/:id`. 3 consecutive `POST /equipments/:id/orders/command` calls, physical door observed each time: all 3 moved the door (previously only the very first press worked; every subsequent press silently failed). Zero regression on the rest of the instance. See `CONTEXT_ROMAIN.md` (not part of this repo) for the full narrative.
+Real-hardware validation on the dev VM: pending at the time of writing this file — see `CONTEXT_ROMAIN.md` (not part of this repo) for the outcome once run.
