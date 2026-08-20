@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.7 — 2026-08-20 { #v1-52-7 }
+
+- Feat (energy): **a per-equipment shutdown delay for the arbiter**. An inertial load (for example an Atlantic Calypso water heater whose heat pump keeps running about 30 minutes after its solar contact opens) no longer triggers a false "revoke not honored" alarm on every release. Set the optional "Shutdown delay" on the equipment's energy panel so the arbiter waits out the tail before flagging it; the anti-cascade protection for other loads stays prompt. With no delay set, behaviour is unchanged. (#632)
+- Fix (energy): **cumulative energy is no longer blanked out at the start of an hour, day, month or year**. A zero-width InfluxDB query (for example between 00:00 and 00:59 local, when no hour of the day is closed yet) used to throw and discard every cumulative value for the equipment, producing hundreds of warnings per night. Empty ranges now resolve to 0 without querying, so the readings stay stable across those boundaries. (#633)
+
 ### v1.52.6 — 2026-08-19 { #v1-52-6 }
 
 - Feat (equipments): **the per-equipment "invert direction" toggle (spec 154) now covers gate and boolean momentary triggers too**. A relay wired to pulse on the OFF edge instead of ON (reported on a SONOFF MINI-ZBD driving a garage door) can be flipped right from the equipment page, the same toggle already used to invert a shutter's open/close. It stays opt-in per equipment, so existing setups are unaffected. (#628)

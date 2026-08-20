@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.7 — 2026-08-20 { #v1-52-7 }
+
+- Feat (énergie) : **un délai d'extinction par équipement pour l'arbitre**. Une charge inertielle (par exemple un chauffe-eau Atlantic Calypso dont la pompe à chaleur continue de tourner environ 30 minutes après l'ouverture de son contact solaire) ne déclenche plus une fausse alarme « révocation non honorée » à chaque relâche. Renseignez le champ optionnel « Délai d'extinction » sur le panneau énergie de l'équipement pour que l'arbitre laisse passer cette traîne avant de la signaler ; la protection anti-cascade des autres charges reste immédiate. Sans délai renseigné, le comportement est inchangé. (#632)
+- Correctif (énergie) : **l'énergie cumulée n'est plus remise à blanc en début d'heure, de jour, de mois ou d'année**. Une requête InfluxDB de plage nulle (par exemple entre 00:00 et 00:59 en heure locale, quand aucune heure du jour n'est encore close) levait une erreur et écartait toutes les valeurs cumulées de l'équipement, générant des centaines d'avertissements par nuit. Les plages vides valent désormais 0 sans requête, de sorte que les relevés restent stables à ces frontières. (#633)
+
 ### v1.52.6 — 2026-08-19 { #v1-52-6 }
 
 - Feat (équipements) : **la bascule « inverser le sens » par équipement (spec 154) couvre désormais aussi les portails et déclencheurs booléens momentanés**. Un relais câblé pour déclencher sur le front OFF au lieu de ON (constaté sur un SONOFF MINI-ZBD pilotant une porte de garage) s'inverse directement depuis la page de l'équipement, la même bascule que celle utilisée pour inverser l'ouverture/fermeture d'un volet. Elle reste opt-in par équipement, donc les installations existantes ne sont pas affectées. (#628)
