@@ -299,6 +299,10 @@ export interface EnergyLoadProfile {
   minOffS: number;
   /** Grid import (W) this load accepts to run on a partial surplus (#550). */
   toleratedImportW?: number;
+  /** Shutdown inertia (s) — how long the load keeps drawing after a revoke
+   *  before its export returns; widens the arbiter's revoke-not-honored grace
+   *  for this load only (#631). Absent = global releaseHoldS. */
+  releaseDelayS?: number;
   /** Core-maintained measured estimate; read-only in the UI. */
   learned?: { watts: number; atIso: string; runs: number };
 }

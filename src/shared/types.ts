@@ -643,6 +643,14 @@ export interface EnergyLoadProfile {
    *  The arbiter engages it at `watts + engageMarginW - toleratedImportW`. A
    *  capacity claim may still override per call; absent = 0 (no tolerance). */
   toleratedImportW?: number;
+  /** Shutdown inertia (seconds) — how long this load keeps drawing after the
+   *  arbiter revokes it, before its export actually returns (#631). An inertial
+   *  load (e.g. a thermodynamic water heater whose heat pump runs ~30 min after
+   *  its solar contact opens) declares it here so the arbiter widens the
+   *  `revoke-not-honored` grace + `unresponsive` TTL to `max(releaseHoldS,
+   *  releaseDelayS)` for THIS load only, without touching global responsiveness.
+   *  Absent = 0 (the global `releaseHoldS` grace applies as before). */
+  releaseDelayS?: number;
   learned?: EnergyLoadProfileLearned;
 }
 

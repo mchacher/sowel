@@ -163,6 +163,7 @@ On an equipment whose type is a controllable load (pool pump, water heater, wate
 - **Nominal power** — pre-filled from the equipment's own measurement when a clamp is bound.
 - **Tolerated import (W)** — how much grid import this load will accept to start on a **partial surplus**. The arbiter engages it once the surplus covers "nominal power + margin − tolerated import". At `0` (default) it waits for a full surplus; raising it makes the load start sooner, accepting to buy a little grid. It is the load's comfort / economy dial, set once here and honoured by whatever automation drives it.
 - **Minimum on / off** — how long it must stay on once started, and rest before restarting (protects a compressor from short-cycling).
+- **Shutdown delay (min)**, optional: how long this load keeps drawing after the arbiter releases it, before it actually stops (for example a heat-pump water heater whose pump runs about 30 min after its solar contact opens). Leave it empty for a load that stops promptly; declare it for an inertial one so the arbiter does not flag its expected, slow shutdown as "did not turn off on demand". It widens that grace for this load only and never slows the arbiter's reaction for the others.
 
 How the arbiter treats the load is **derived from its type**, so there is nothing to pick:
 

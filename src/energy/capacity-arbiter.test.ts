@@ -952,6 +952,58 @@ describe("capacity arbiter", () => {
     expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
   });
 
+  it("releaseDelayS suppresses revoke-not-honored within the declared shutdown window, anti-cascade intact (#631)", () => {
+    const h = makeHarness({
+      priority: ["pac", "heater"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        heater: {
+          class: "deferrable",
+          nominalPowerW: 600,
+          minOnS: 0,
+          minOffS: 0,
+          releaseDelayS: 1800, // ~30 min appliance tail, > the 600 s global hold
+        },
+      },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.feedLoadPower("heater", 600);
+    // Deficit ~400 W: bottom-up revokes the heater only.
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+
+    // Heater keeps drawing its tail. Advance ~15 min: past the global hold
+    // (600 s) but inside the declared inertia (1800 s).
+    for (let i = 0; i < 90; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+      h.feedLoadPower("heater", 600);
+    }
+    let journal = h.arbiter.getPublicState().journal;
+    // Not flagged yet — the tail is expected, not overdue.
+    expect(journal.some((j) => j.kind === "revoke-not-honored" && j.equipmentId === "heater")).toBe(
+      false,
+    );
+    // Anti-cascade still holds: the heater is excused as background at the
+    // global hold, so the PAC keeps its grant despite the sustained deficit.
+    expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
+
+    // Advance past the declared window (~35 min total of unhonored draw): now
+    // genuinely overdue → flagged.
+    for (let i = 0; i < 130; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+      h.feedLoadPower("heater", 600);
+    }
+    journal = h.arbiter.getPublicState().journal;
+    expect(journal.some((j) => j.kind === "revoke-not-honored" && j.equipmentId === "heater")).toBe(
+      true,
+    );
+  });
+
   // ── Wall-switch divergence (FR-6, review decision 16) ─────
 
   it("a granted load reported OFF at the wall is revoked and suspended", () => {

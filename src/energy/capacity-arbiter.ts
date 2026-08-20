@@ -1312,20 +1312,38 @@ export class CapacityArbiter {
   // ── Watchdogs & divergence ──────────────────────────────────
 
   private checkWatchdogs(now: number): void {
-    // The decision point sits at releaseHoldS after the revoke — one hold of
-    // grace to act — so an unhonored revoke is marked BEFORE the deficit
-    // hold can fire again and cascade onto the next load down (acceptance:
-    // "revokes nobody else"). The unresponsive excuse then lasts a further
-    // 2 × releaseHoldS.
-    const graceMs = this.config.releaseHoldS * 1000;
+    // After a revoke the load has a grace window to actually stop (export to
+    // return). Two effects, deliberately DECOUPLED (#631):
+    //
+    //  - at the GLOBAL releaseHoldS, a still-drawing load is excused as
+    //    background (`unresponsive`) so the deficit pass does not cascade onto
+    //    the next load down (FR-9 + review decision 12, acceptance "revokes
+    //    nobody else"). This stays prompt whatever the declared inertia — the
+    //    anti-cascade guarantee must not be delayed.
+    //  - `revoke-not-honored` is JOURNALLED only once the load is genuinely
+    //    OVERDUE: past its declared shutdown inertia `energyProfile.releaseDelayS`
+    //    (default 0 → the global hold). An inertial load (e.g. a thermodynamic
+    //    water heater whose heat pump runs ~30 min after its solar contact
+    //    opens) thus stops emitting a benign, expected signal while the other
+    //    loads keep the tight global grace.
+    //
+    // The `unresponsive` excuse lasts 2 × the per-load grace so it spans the
+    // whole declared shutdown window.
+    const holdMs = this.config.releaseHoldS * 1000;
     const exportNow = -(this.emaPowerW ?? 0);
     this.watchdogs = this.watchdogs.filter((w) => {
       if (this.grantedClaimFor(w.equipmentId)) return false; // re-granted, moot
       if (exportNow - w.exportAtRevoke >= 0.5 * w.expectedW) return false; // honored
-      if (now - w.at >= graceMs) {
-        // FR-9 + review decision 12: bounded guard against cascades — the
-        // draw is excused as background and the release pass skips the load.
+      const graceMs =
+        Math.max(this.config.releaseHoldS, this.profileOf(w.equipmentId)?.releaseDelayS ?? 0) *
+        1000;
+      // Excuse the draw promptly (global hold) to keep the deficit pass from
+      // shedding the next load — independent of the declared inertia.
+      if (now - w.at >= holdMs && !this.unresponsiveUntil.has(w.equipmentId)) {
         this.unresponsiveUntil.set(w.equipmentId, now + 2 * graceMs);
+      }
+      // Flag as unhonored only once genuinely overdue (past the declared inertia).
+      if (now - w.at >= graceMs) {
         this.journal({
           kind: "revoke-not-honored",
           equipmentId: w.equipmentId,

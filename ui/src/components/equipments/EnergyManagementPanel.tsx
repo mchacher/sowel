@@ -76,6 +76,7 @@ export function EnergyManagementPanel({
   const [toleratedImportW, setToleratedImportW] = useState<number>(profile?.toleratedImportW ?? 0);
   const [minOnS, setMinOnS] = useState<number>(profile?.minOnS ?? defaults.minOnS);
   const [minOffS, setMinOffS] = useState<number>(profile?.minOffS ?? defaults.minOffS);
+  const [releaseDelayS, setReleaseDelayS] = useState<number>(profile?.releaseDelayS ?? 0);
 
   const suspension = arbiterState?.suspensions.find((s) => s.equipmentId === equipment.id);
   const complete = cls !== "" && Number.isFinite(watts) && watts > 0;
@@ -88,6 +89,7 @@ export function EnergyManagementPanel({
     toleratedImportW: number;
     minOnS: number;
     minOffS: number;
+    releaseDelayS: number;
   }) => {
     if (p.cls === "" || !Number.isFinite(p.watts) || p.watts <= 0) return;
     setSaving(true);
@@ -100,6 +102,10 @@ export function EnergyManagementPanel({
         minOnS: p.minOnS,
         minOffS: p.minOffS,
       };
+      // #631 — persisted only when set; absent = the global releaseHoldS grace.
+      if (Number.isFinite(p.releaseDelayS) && p.releaseDelayS > 0) {
+        next.releaseDelayS = Math.max(0, Math.round(p.releaseDelayS));
+      }
       await updateEquipment(equipment.id, { energyProfile: next });
       onUpdated();
     } catch (err) {
@@ -116,10 +122,11 @@ export function EnergyManagementPanel({
       toleratedImportW: number;
       minOnS: number;
       minOffS: number;
+      releaseDelayS: number;
     }>,
   ) => {
     if (!profile) return;
-    void commit({ cls, watts, toleratedImportW, minOnS, minOffS, ...overrides });
+    void commit({ cls, watts, toleratedImportW, minOnS, minOffS, releaseDelayS, ...overrides });
   };
 
   const clear = async () => {
@@ -254,6 +261,26 @@ export function EnergyManagementPanel({
                 className={inputCls}
               />
             </div>
+            <div>
+              <label
+                htmlFor="ep-releasedelay"
+                className="block text-[12px] text-text-secondary mb-1"
+                title={t("energyProfile.releaseDelayHint")}
+              >
+                {t("energyProfile.releaseDelay")}
+              </label>
+              <input
+                id="ep-releasedelay"
+                type="number"
+                min={0}
+                step={0.1}
+                placeholder="0"
+                value={releaseDelayS ? secondsToMinutes(releaseDelayS) : ""}
+                onChange={(e) => setReleaseDelayS(minutesToSeconds(Number(e.target.value)))}
+                onBlur={() => commitEdit({ releaseDelayS })}
+                className={inputCls}
+              />
+            </div>
             {profile?.learned && (
               <div className="text-[12px] text-text-tertiary pb-1">
                 {t("energyProfile.learned", {
@@ -268,7 +295,9 @@ export function EnergyManagementPanel({
           {!profile &&
             (complete ? (
               <button
-                onClick={() => void commit({ cls, watts, toleratedImportW, minOnS, minOffS })}
+                onClick={() =>
+                  void commit({ cls, watts, toleratedImportW, minOnS, minOffS, releaseDelayS })
+                }
                 disabled={saving}
                 className="mt-3 px-3 py-1.5 bg-primary text-white text-[13px] font-medium rounded-md hover:bg-primary-hover disabled:opacity-50"
               >
