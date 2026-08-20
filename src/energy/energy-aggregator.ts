@@ -19,6 +19,12 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../equipments/metering.js";
 import type { ComputedDataEntry } from "../shared/types.js";
 
+/** One row as the InfluxDB client hands it over. */
+interface QueryRow {
+  values: string[];
+  tableMeta: { toObject(values: string[]): unknown };
+}
+
 /** Minimum interval between two InfluxDB refreshes per equipment (ms). */
 const DEBOUNCE_MS = 5_000;
 
@@ -210,6 +216,50 @@ export class EnergyAggregator {
     this.pendingRefresh.set(equipmentId, timer);
   }
 
+  /**
+   * Sum the `energy` points of one equipment over `[start, stop)`.
+   *
+   * An empty or inverted range is answered with 0 without touching InfluxDB.
+   * Flux rejects `range(start: t, stop: t)` with "cannot query an empty range",
+   * and every caller has a legitimate moment where the two bounds coincide:
+   *
+   *  - between 00:00 and 00:59 local, no hour of today is completed yet, so
+   *    `todayMidnight === currentHourStart`;
+   *  - on the 1st of the month, no earlier day belongs to it, so
+   *    `monthFirst === todayMidnight`;
+   *  - on 1 January, the same holds for the year.
+   *
+   * Those are states, not failures — the sum of nothing is 0. Letting the query
+   * run threw out of refreshFromInfluxDB, which dropped *every* cumul for that
+   * equipment (hour and year included, not just the empty one) for the whole
+   * window: an hour every night, a full day every 1st of the month.
+   */
+  private async sumEnergy(
+    queryApi: { iterateRows(flux: string): AsyncIterable<QueryRow> },
+    bucket: string,
+    equipmentId: string,
+    start: Date,
+    stop: Date,
+  ): Promise<number> {
+    if (start.getTime() >= stop.getTime()) return 0;
+
+    const flux = `from(bucket: "${bucket}")
+  |> range(start: ${start.toISOString()}, stop: ${stop.toISOString()})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.category == "energy")
+  |> filter(fn: (r) => r.alias == "energy")
+  |> filter(fn: (r) => r._field == "value_number")
+  |> sum()`;
+
+    let total = 0;
+    for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
+      const row = tableMeta.toObject(values) as { _value: number };
+      if (row._value > 0) total = row._value;
+    }
+    return total;
+  }
+
   /** Query InfluxDB to compute all cumuls for an equipment, then emit to UI. */
   private async refreshFromInfluxDB(equipmentId: string): Promise<void> {
     const client = this.influxClient.getClient();
@@ -231,76 +281,45 @@ export class EnergyAggregator {
     const rawBucket = config.bucket;
     const hourlyBucket = `${config.bucket}-energy-hourly`;
     const dailyBucket = `${config.bucket}-energy-daily`;
+    const monthFirst = new Date(now.getFullYear(), now.getMonth(), 1);
+    const jan1 = new Date(now.getFullYear(), 0, 1);
 
-    // Hour cumul: sum raw points in current hour
-    let energyHourWh = 0;
-    const hourFlux = `from(bucket: "${rawBucket}")
-  |> range(start: ${currentHourStart.toISOString()}, stop: ${tomorrowMidnight.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r.alias == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
-  |> sum()`;
+    // Hour cumul: raw points since the top of the current hour.
+    const energyHourWh = await this.sumEnergy(
+      queryApi,
+      rawBucket,
+      equipmentId,
+      currentHourStart,
+      tomorrowMidnight,
+    );
 
-    for await (const { values, tableMeta } of queryApi.iterateRows(hourFlux)) {
-      const row = tableMeta.toObject(values) as { _value: number };
-      if (row._value > 0) energyHourWh = row._value;
-    }
-
-    // Day cumul: previous hours of today come from the hourly bucket
-    // (downsampled at the end of each hour), the current hour is still in
-    // the raw bucket. Sum both — they don't overlap because the hourly
-    // task only writes completed hours.
-    let energyDayPrevHoursWh = 0;
-    const dayFlux = `from(bucket: "${hourlyBucket}")
-  |> range(start: ${todayMidnight.toISOString()}, stop: ${currentHourStart.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r.alias == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
-  |> sum()`;
-
-    for await (const { values, tableMeta } of queryApi.iterateRows(dayFlux)) {
-      const row = tableMeta.toObject(values) as { _value: number };
-      if (row._value > 0) energyDayPrevHoursWh = row._value;
-    }
+    // Day cumul: the hours already completed today come from the hourly bucket
+    // (downsampled at the end of each hour), the current hour is still in the
+    // raw bucket. They don't overlap — the hourly task only writes closed hours.
+    const energyDayPrevHoursWh = await this.sumEnergy(
+      queryApi,
+      hourlyBucket,
+      equipmentId,
+      todayMidnight,
+      currentHourStart,
+    );
     const energyDayWh = energyDayPrevHoursWh + energyHourWh;
 
-    // Month cumul: daily points this month (excluding today) + today's day total
-    const monthFirst = new Date(now.getFullYear(), now.getMonth(), 1);
-    let monthPrevDays = 0;
-    const monthFlux = `from(bucket: "${dailyBucket}")
-  |> range(start: ${monthFirst.toISOString()}, stop: ${todayMidnight.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r.alias == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
-  |> sum()`;
-
-    for await (const { values, tableMeta } of queryApi.iterateRows(monthFlux)) {
-      const row = tableMeta.toObject(values) as { _value: number };
-      if (row._value > 0) monthPrevDays = row._value;
-    }
-
-    // Year cumul: daily points this year (excluding today) + today's day total
-    const jan1 = new Date(now.getFullYear(), 0, 1);
-    let yearPrevDays = 0;
-    const yearFlux = `from(bucket: "${dailyBucket}")
-  |> range(start: ${jan1.toISOString()}, stop: ${todayMidnight.toISOString()})
-  |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => r.category == "energy")
-  |> filter(fn: (r) => r.alias == "energy")
-  |> filter(fn: (r) => r._field == "value_number")
-  |> sum()`;
-
-    for await (const { values, tableMeta } of queryApi.iterateRows(yearFlux)) {
-      const row = tableMeta.toObject(values) as { _value: number };
-      if (row._value > 0) yearPrevDays = row._value;
-    }
+    // Month and year: daily points before today, plus today's own total below.
+    const monthPrevDays = await this.sumEnergy(
+      queryApi,
+      dailyBucket,
+      equipmentId,
+      monthFirst,
+      todayMidnight,
+    );
+    const yearPrevDays = await this.sumEnergy(
+      queryApi,
+      dailyBucket,
+      equipmentId,
+      jan1,
+      todayMidnight,
+    );
 
     const cumul: EnergyCumuls = {
       energyHourWh,
