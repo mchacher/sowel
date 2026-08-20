@@ -42,6 +42,38 @@ function influxWithHour(hourWh: () => number): InfluxClient {
   } as unknown as InfluxClient;
 }
 
+/**
+ * Connected InfluxDB that records every Flux query it is handed and rejects an
+ * empty range exactly like the real one, so a test can assert both what was
+ * asked and that nothing threw.
+ */
+function influxRecording(queries: string[]): InfluxClient {
+  const queryApi = {
+    async *iterateRows(flux: string) {
+      queries.push(flux);
+      const m = /range\(start: ([^,]+), stop: ([^)]+)\)/.exec(flux);
+      if (m && m[1] === m[2]) {
+        throw new Error(
+          "error in building plan while starting program: cannot query an empty range",
+        );
+      }
+      yield { values: [], tableMeta: { toObject: () => ({ _value: 7 }) } } as never;
+    },
+  };
+  return {
+    getClient: vi.fn(() => ({ getQueryApi: () => queryApi })),
+    getConfig: vi.fn(() => ({ org: "org", bucket: "sowel" })),
+  } as unknown as InfluxClient;
+}
+
+/** Ranges of the queries issued, as [start, stop] ISO pairs. */
+function rangesOf(queries: string[]): Array<[string, string]> {
+  return queries.map((q) => {
+    const m = /range\(start: ([^,]+), stop: ([^)]+)\)/.exec(q);
+    return [m?.[1] ?? "", m?.[2] ?? ""] as [string, string];
+  });
+}
+
 const power = [{ alias: "power", category: "power", value: 0 }];
 const energy = [{ alias: "energy", category: "energy", value: 100 }];
 const state = [{ alias: "state", category: "light_state", value: "ON" }];
@@ -221,5 +253,70 @@ describe("EnergyAggregator submeter enrolment (#527)", () => {
       equipment: { id: "relay", type: "switch" } as never,
     });
     expect(agg.getComputedDataForEquipment("relay")).toEqual([]);
+  });
+});
+
+describe("EnergyAggregator empty ranges (#620)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  /** Drive one refresh at a chosen local wall-clock instant. */
+  async function refreshAt(iso: string, queries: string[]): Promise<void> {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(iso));
+    const bus = new EventBus(logger);
+    const agg = new EnergyAggregator(
+      managerWith([{ id: "eq-1", type: "energy_meter", dataBindings: energy }]),
+      influxRecording(queries),
+      bus,
+      logger,
+    );
+    await agg.start();
+    bus.emit({
+      type: "equipment.data.changed",
+      equipmentId: "eq-1",
+      alias: "energy",
+      value: 1,
+      previous: null,
+    });
+    await vi.advanceTimersByTimeAsync(6_000);
+    agg.stop();
+  }
+
+  it("never asks InfluxDB for a zero-width range in the first hour of the day", async () => {
+    // 00:30 local: today's midnight and the current hour start are the same
+    // instant, so the day query used to be range(start: t, stop: t). Flux
+    // rejects that, the throw escaped refreshFromInfluxDB, and *every* cumul
+    // was dropped — 288 to 812 warnings a night on a live install.
+    const queries: string[] = [];
+    await refreshAt("2026-08-20T00:30:00", queries);
+
+    expect(queries.length).toBeGreaterThan(0);
+    for (const [start, stop] of rangesOf(queries)) expect(start).not.toBe(stop);
+  });
+
+  it("never asks for a zero-width range on the 1st of the month", async () => {
+    // monthFirst === todayMidnight all day long, not just for an hour.
+    const queries: string[] = [];
+    await refreshAt("2026-09-01T14:00:00", queries);
+
+    for (const [start, stop] of rangesOf(queries)) expect(start).not.toBe(stop);
+  });
+
+  it("never asks for a zero-width range on 1 January", async () => {
+    // jan1 === monthFirst === todayMidnight: all three collapse at once.
+    const queries: string[] = [];
+    await refreshAt("2027-01-01T14:00:00", queries);
+
+    for (const [start, stop] of rangesOf(queries)) expect(start).not.toBe(stop);
+  });
+
+  it("still queries every window once the day is under way", async () => {
+    const queries: string[] = [];
+    await refreshAt("2026-08-20T14:00:00", queries);
+
+    // hour + day-previous-hours + month + year (a refresh may run more than
+    // once in the window, so compare distinct queries).
+    expect(new Set(queries).size).toBe(4);
+    for (const [start, stop] of rangesOf(queries)) expect(start).not.toBe(stop);
   });
 });
