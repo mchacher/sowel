@@ -1221,6 +1221,8 @@
   "energyProfile.toleratedImport": "Import toléré (W)",
   "energyProfile.minOn": "Marche mini (min)",
   "energyProfile.minOff": "Arrêt mini (min)",
+  "energyProfile.releaseDelay": "Délai d'extinction (min)",
+  "energyProfile.releaseDelayHint": "Temps que la charge met à réellement s'arrêter après une révocation (ex. la tempo de 30 min d'un chauffe-eau thermodynamique). Vide = délai global par défaut.",
   "energyProfile.learned": "Mesuré : {{watts}} W sur {{runs}} marches",
   "energyProfile.manualUntil": "Manuel jusqu'à {{time}}",
   "energyProfile.resumeNow": "Reprendre le pilotage",

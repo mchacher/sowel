@@ -1221,6 +1221,8 @@
   "energyProfile.toleratedImport": "Tolerated import (W)",
   "energyProfile.minOn": "Min run (min)",
   "energyProfile.minOff": "Min rest (min)",
+  "energyProfile.releaseDelay": "Shutdown delay (min)",
+  "energyProfile.releaseDelayHint": "How long the load keeps drawing after a revoke before it actually stops (e.g. a heat-pump water heater's 30 min tail). Empty = global default grace.",
   "energyProfile.learned": "Measured: {{watts}} W over {{runs}} runs",
   "energyProfile.manualUntil": "Manual until {{time}}",
   "energyProfile.resumeNow": "Resume control now",
