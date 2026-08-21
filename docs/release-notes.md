@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
+### v1.52.8 — 2026-08-21 { #v1-52-8 }
+
+- Security (ws): **the live WebSocket now enforces role-based authorization**. Privileged data (MQTT broker and notification publisher configuration, and the server log stream) is delivered only to admin sessions; a non-admin session can no longer subscribe to those streams. Admin behaviour is unchanged. (#646)
+- Fix (equipments): **an equipment no longer reads a stale device status as a delivery failure**. After a restart the database still holds the status the last shutdown left behind, until the integration replays the real one a second or two later; the order-confirmation fast path used to treat that as proof the command could not be delivered and raise a false alarm. It now waits for real evidence, and a re-ordered load no longer produces repeated bogus warnings during an integration outage. (#635)
+
 ### v1.52.7 — 2026-08-20 { #v1-52-7 }
 
 - Feat (energy): **a per-equipment shutdown delay for the arbiter**. An inertial load (for example an Atlantic Calypso water heater whose heat pump keeps running about 30 minutes after its solar contact opens) no longer triggers a false "revoke not honored" alarm on every release. Set the optional "Shutdown delay" on the equipment's energy panel so the arbiter waits out the tail before flagging it; the anti-cascade protection for other loads stays prompt. With no delay set, behaviour is unchanged. (#632)
