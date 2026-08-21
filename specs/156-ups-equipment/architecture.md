@@ -38,9 +38,9 @@ to flag contract violations, not to force a wire type.
 export const UPS_STATUS_VALUES = [
   "online",
   "on_battery",
-  "low_battery",
   "bypass",
   "overload",
+  "low_battery",
   "offline",
 ] as const;
 ```
