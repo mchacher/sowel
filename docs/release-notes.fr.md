@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
+### v1.52.8 — 2026-08-21 { #v1-52-8 }
+
+- Sécurité (ws) : **le WebSocket temps réel applique désormais une autorisation par rôle**. Les données sensibles (configuration des brokers MQTT et des publieurs de notification, et le flux de logs serveur) ne sont livrées qu'aux sessions admin ; une session non-admin ne peut plus s'abonner à ces flux. Le comportement admin est inchangé. (#646)
+- Correctif (équipements) : **un équipement ne lit plus un statut d'appareil périmé comme un échec de livraison**. Après un redémarrage, la base contient encore le statut laissé par le dernier arrêt, jusqu'à ce que l'intégration rejoue le vrai une seconde ou deux plus tard ; le chemin rapide de confirmation d'ordre le prenait pour la preuve que la commande ne pouvait pas être délivrée et levait une fausse alarme. Il attend désormais une preuve réelle, et une charge re-commandée ne produit plus d'avertissements erronés répétés pendant une panne d'intégration. (#635)
+
 ### v1.52.7 — 2026-08-20 { #v1-52-7 }
 
 - Feat (énergie) : **un délai d'extinction par équipement pour l'arbitre**. Une charge inertielle (par exemple un chauffe-eau Atlantic Calypso dont la pompe à chaleur continue de tourner environ 30 minutes après l'ouverture de son contact solaire) ne déclenche plus une fausse alarme « révocation non honorée » à chaque relâche. Renseignez le champ optionnel « Délai d'extinction » sur le panneau énergie de l'équipement pour que l'arbitre laisse passer cette traîne avant de la signaler ; la protection anti-cascade des autres charges reste immédiate. Sans délai renseigné, le comportement est inchangé. (#632)
