@@ -11,6 +11,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.53.x: UPS equipment type
+
+### v1.53.0 — 2026-08-21 { #v1-53-0 }
+
+- Feat (equipments): **a new read-only UPS (uninterruptible power supply) equipment type** (spec 156). Model an inverter or UPS as one functional unit with its power state (on mains, on battery, battery low, bypass, overload, output off), its battery charge, its remaining autonomy and its output load. It binds whatever telemetry the plugin reports, renders only the values actually present, and carries no command surface on purpose: an accidental shutdown order to a UPS is unrecoverable, so the orderly-shutdown chain stays with the host running `upsmon`. A new "Power" group gathers UPS equipments in the zone and home views. The companion integration is `sowel-plugin-nut` (Network UPS Tools), which reads the stream shipped by Synology, QNAP, Proxmox and most Linux hosts. (#676)
+- Maintenance: **dependency and CI updates**. React Router, PostCSS, nanoid, js-yaml and fast-uri were bumped on the UI, together with a backend minor/patch group and the GitHub Actions used by CI, several of them clearing security advisories. No functional change. (#641, #642, #643, #644, #645, #677, #678, #680)
+
 ## 1.52.x: Two-speed ventilation and a steadier arbiter
 
 ### v1.52.8 — 2026-08-21 { #v1-52-8 }

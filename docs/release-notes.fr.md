@@ -11,6 +11,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.53.x : Type d'équipement onduleur
+
+### v1.53.0 — 2026-08-21 { #v1-53-0 }
+
+- Feat (équipements) : **un nouveau type d'équipement onduleur (UPS), en lecture seule** (spec 156). Modélise un onduleur comme une seule unité fonctionnelle avec son état d'alimentation (sur secteur, sur batterie, batterie faible, by-pass, surcharge, sortie coupée), sa charge de batterie, son autonomie restante et sa charge de sortie. Il se lie à la télémétrie que le plugin expose, n'affiche que les valeurs réellement présentes et n'offre aucune commande, volontairement : un ordre d'arrêt accidentel vers un onduleur est irrécupérable, la chaîne d'arrêt propre reste du côté de l'hôte qui fait tourner `upsmon`. Un nouveau groupe « Alimentation » regroupe les onduleurs dans les vues zone et maison. L'intégration compagnon est `sowel-plugin-nut` (Network UPS Tools), qui lit le flux exposé par Synology, QNAP, Proxmox et la plupart des hôtes Linux. (#676)
+- Maintenance : **mises à jour de dépendances et de CI**. React Router, PostCSS, nanoid, js-yaml et fast-uri ont été mis à jour côté interface, ainsi qu'un groupe backend mineur/correctif et les actions GitHub utilisées par la CI, plusieurs corrigeant des avis de sécurité. Aucun changement fonctionnel. (#641, #642, #643, #644, #645, #677, #678, #680)
+
 ## 1.52.x : Ventilation deux vitesses et arbitre plus stable
 
 ### v1.52.8 — 2026-08-21 { #v1-52-8 }
