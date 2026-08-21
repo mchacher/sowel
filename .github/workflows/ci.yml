@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: CI only reads the repo. No job here writes to the repo,
+# publishes packages, or posts statuses, so the default token needs no more.
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Backend (lint, typecheck, test)
