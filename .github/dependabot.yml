@@ -1,4 +1,16 @@
 version: 2
+
+# Grouping strategy
+# -----------------
+# The minor/patch groups auto-collect ordinary library bumps into a single PR
+# per ecosystem. Linters, formatters and the TypeScript compiler are excluded
+# from those groups: a version bump to any of them can fail CI on UNCHANGED
+# code (a new lint rule, a reformat, a stricter type check), which would poison
+# the whole group and block every unrelated library update. They still get
+# updated, but as individual PRs so their toolchain upgrade can be reviewed on
+# its own (run the formatter/linter fixups, triage new rules) instead of slipped
+# into an unattended merge.
+
 updates:
   # Backend npm dependencies
   - package-ecosystem: "npm"
@@ -10,6 +22,14 @@ updates:
       - "dependencies"
     groups:
       backend-minor-patch:
+        exclude-patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "typescript"
         update-types:
           - "minor"
           - "patch"
@@ -24,14 +44,26 @@ updates:
       - "dependencies"
     groups:
       ui-minor-patch:
+        exclude-patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "typescript"
         update-types:
           - "minor"
           - "patch"
 
-  # GitHub Actions used in workflows
+  # GitHub Actions used in workflows, grouped into one PR to cut noise
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
