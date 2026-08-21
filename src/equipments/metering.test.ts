@@ -9,6 +9,15 @@ const battery = [{ alias: "battery", category: "battery", type: "number" }];
 // STATE, not a measurement. Must not count as a metering channel (#523).
 const booleanPower = [{ alias: "power", category: "power", type: "boolean" }];
 
+// Spec 156 — a UPS reports its load as a PERCENTAGE of nominal power, under
+// its own category. It must never reach the energy path.
+const upsLoad = [
+  { alias: "status", category: "ups_status", type: "text" },
+  { alias: "battery", category: "battery", type: "number" },
+  { alias: "load", category: "ups_load", type: "number" },
+  { alias: "input_voltage", category: "voltage", type: "number" },
+];
+
 describe("metering helpers (spec 129 / #523)", () => {
   it("hasMeteringBinding detects NUMERIC power or energy channels", () => {
     expect(hasMeteringBinding(power)).toBe(true);
@@ -57,6 +66,15 @@ describe("metering helpers (spec 129 / #523)", () => {
     // `switch` with a boolean `power` was a submeter (no numeric gate); the
     // #523 numeric gate now excludes it.
     expect(isSubmeterEquipment("switch", booleanPower)).toBe(false);
+
+    // Spec 156 — a UPS bound to its own telemetry carries no numeric power or
+    // energy channel: `ups_load` is a percentage, and the two voltages are not
+    // measurements of consumption. It stays out of the house breakdown without
+    // needing an entry in NON_SUBMETER_TYPES.
+    expect(isSubmeterEquipment("ups", upsLoad)).toBe(false);
+    // But `ups` is deliberately NOT blocklisted: a metering plug placed
+    // upstream of a UPS is a real measured load and should enrol.
+    expect(isSubmeterEquipment("ups", power)).toBe(true);
 
     // The three exclusions: house total + production must never be submeters.
     expect(isSubmeterEquipment("main_energy_meter", power)).toBe(false);

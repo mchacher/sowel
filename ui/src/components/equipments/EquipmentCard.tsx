@@ -19,6 +19,7 @@ import {
   Droplets,
   Camera,
   Fan,
+  BatteryCharging,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -64,6 +65,7 @@ const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   display: <Monitor size={18} strokeWidth={1.5} />,
   camera: <Camera size={18} strokeWidth={1.5} />,
   vmc: <Fan size={18} strokeWidth={1.5} />,
+  ups: <BatteryCharging size={18} strokeWidth={1.5} />,
 };
 
 const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -94,6 +96,7 @@ const TYPE_LABELS: Record<EquipmentType, string> = {
   display: "equipments.type.display",
   camera: "equipments.type.camera",
   vmc: "equipments.type.vmc",
+  ups: "equipments.type.ups",
 };
 
 interface EquipmentCardProps {

@@ -11,6 +11,7 @@ import {
   WashingMachine,
   Waves,
   Camera,
+  BatteryCharging,
   Fan,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
@@ -45,6 +46,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.ventilation", types: ["vmc"], icon: <Fan size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.displays", types: ["display"], icon: <Monitor size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.cameras", types: ["camera"], icon: <Camera size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.power", types: ["ups"], icon: <BatteryCharging size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
 ];
 

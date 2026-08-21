@@ -35,9 +35,16 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { TempExtremes } from "../TempExtremes";
-import { Cloud, WashingMachine, Camera, ShieldCheck, Fan } from "lucide-react";
+import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging } from "lucide-react";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
+import {
+  formatRuntime,
+  isOnBattery,
+  upsSeverityOf,
+  upsStatusKey,
+  upsStatusOf,
+} from "../equipments/upsStatus";
 
 interface MobileWidgetCardProps {
   widget: DashboardWidget;
@@ -476,6 +483,43 @@ function useMobileState(
         <WaterValveWidgetIcon open={isOn} />
       ),
       stateLines: [isOn ? t("water.open") : t("water.closed")],
+    };
+  }
+
+  if (equipment.type === "ups") {
+    const { status, raw } = upsStatusOf(equipment);
+    const severity = upsSeverityOf(status);
+    const tone =
+      severity === "ok"
+        ? "text-success"
+        : severity === "warning"
+          ? "text-warning"
+          : severity === "error"
+            ? "text-error"
+            : "text-text-tertiary";
+    const charge = equipment.dataBindings.find((b) => b.category === "battery")?.value;
+    const runtime = formatRuntime(
+      equipment.dataBindings.find((b) => b.category === "battery_runtime")?.value,
+    );
+    // Second line only while on battery: on mains the autonomy is trivia, and
+    // the mobile card has room for one meaningful line, not two.
+    const detail = isOnBattery(status)
+      ? [charge !== null && charge !== undefined ? `${String(charge)} %` : null, runtime]
+          .filter(Boolean)
+          .join("  ·  ")
+      : charge !== null && charge !== undefined
+        ? `${String(charge)} %`
+        : "";
+    return {
+      icon: customEntry ? (
+        createElement(customEntry.component, customEntry.previewProps)
+      ) : (
+        <BatteryCharging size={96} strokeWidth={1.2} className={tone} />
+      ),
+      stateLines: [
+        status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null))),
+        ...(detail ? [detail] : []),
+      ],
     };
   }
 

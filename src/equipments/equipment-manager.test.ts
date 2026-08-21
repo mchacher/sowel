@@ -878,6 +878,21 @@ describe("EquipmentManager", () => {
         return { k, on: payload[k] === true || payload[k] === "ON" };
       });
 
+    it("accepts the ups type and rejects an unknown one (spec 156)", () => {
+      const zone = zoneManager.create({ name: "Baie" });
+      const eq = manager.create({ name: "Onduleur baie", type: "ups", zoneId: zone.id });
+      expect(eq.type).toBe("ups");
+      expect(manager.getById(eq.id)?.type).toBe("ups");
+
+      expect(() =>
+        manager.create({
+          name: "Nope",
+          type: "not_a_type" as unknown as "ups",
+          zoneId: zone.id,
+        }),
+      ).toThrow(/Invalid equipment type/);
+    });
+
     it("VMC speed order decomposes to break-before-make relay orders (spec 153)", async () => {
       const zone = zoneManager.create({ name: "Buanderie" });
       const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });

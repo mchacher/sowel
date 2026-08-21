@@ -1,5 +1,12 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  formatRuntime,
+  isOnBattery,
+  upsSeverityOf,
+  upsStatusKey,
+  upsStatusOf,
+} from "../equipments/upsStatus";
 import { Camera } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../../types";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
@@ -65,6 +72,10 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   camera:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
   // Spec 153 — VMC uses the primary-light backdrop (air/comfort).
   vmc:                     { bg: "bg-primary-light",text: "text-primary" },
+  // Spec 156 — a UPS is infrastructure, not an actuator: the muted
+  // "info-only" tint, like sensors and displays. Its own status badge carries
+  // the alarm colour, so the tile itself stays quiet.
+  ups:                     { bg: "bg-sensor-50",    text: "text-sensor-500" },
 };
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
@@ -98,12 +109,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const isSolar = equipment.type === "solar_panel";
   const isCamera = equipment.type === "camera";
   const isVmc = equipment.type === "vmc";
+  const isUps = equipment.type === "ups";
 
   // Find primary data value for generic equipments
   const isKnownType =
     isLight || isSwitch || isWaterHeater || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
     isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
-    isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera || isVmc;
+    isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera || isVmc ||
+    isUps;
 
   const hasCameraSnapshot =
     isCamera && equipment.dataBindings.some((b) => b.category === "camera_snapshot_url");
@@ -230,6 +243,10 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               : `${Math.round(solarPowerW)} W`}
         </span>
       )}
+
+      {/* UPS compact (spec 156) — the state, then how much runway is left.
+       * Those two answer the only question a glance at a zone asks of a UPS. */}
+      {isUps && <CompactUps equipment={equipment} />}
 
       {/* Camera compact — snapshot thumbnail, blob-fetched (an <img src>
        * can't carry the Authorization header the media-proxy route needs). */}
@@ -540,6 +557,47 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
     <span className="text-[11px] text-text-tertiary tabular-nums font-mono flex-shrink-0">
       {runtimeStr}
     </span>
+  );
+}
+
+/**
+ * UPS compact row (spec 156) — status pill + battery, and the remaining
+ * autonomy only while the mains is gone. On mains, "3312 s of autonomy" is
+ * noise; on battery it is the only number that matters.
+ */
+function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
+  const { status, raw } = upsStatusOf(equipment);
+  const severity = upsSeverityOf(status);
+
+  const charge = equipment.dataBindings.find((b) => b.category === "battery")?.value;
+  const runtime = equipment.dataBindings.find((b) => b.category === "battery_runtime")?.value;
+  const runtimeLabel = isOnBattery(status) ? formatRuntime(runtime) : null;
+
+  const pill =
+    severity === "ok"
+      ? "bg-success/10 text-success"
+      : severity === "warning"
+        ? "bg-warning/10 text-warning"
+        : severity === "error"
+          ? "bg-error/10 text-error"
+          : "bg-border-light text-text-tertiary";
+
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${pill}`}>
+        {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
+      </span>
+      {charge !== null && charge !== undefined && (
+        <span className="text-[11px] text-text-secondary tabular-nums">{String(charge)}%</span>
+      )}
+      {runtimeLabel && (
+        <span className="flex items-center gap-0.5 text-[11px] text-text-secondary tabular-nums">
+          <Timer size={10} />
+          {runtimeLabel}
+        </span>
+      )}
+    </div>
   );
 }
 
