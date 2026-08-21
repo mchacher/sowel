@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { extractWsToken, isWsOriginAllowed } from "./websocket.js";
+import {
+  extractWsToken,
+  isWsOriginAllowed,
+  isAdminOnlyEvent,
+  resolveSubscribedTopics,
+  canReceiveEvent,
+} from "./websocket.js";
+import type { EngineEvent } from "../shared/types.js";
+
+// The role/topic helpers only read `event.type`, so a minimal cast is enough.
+const ev = (type: string): EngineEvent => ({ type }) as unknown as EngineEvent;
 
 describe("websocket auth helpers", () => {
   describe("extractWsToken", () => {
@@ -91,6 +101,106 @@ describe("websocket auth helpers", () => {
 
     it("tolerates a malformed Origin URL by falling through to deny", () => {
       expect(isWsOriginAllowed("not-a-url", corsOrigins, "domopi.local:3001")).toBe(false);
+    });
+  });
+});
+
+describe("websocket role authorization (S01)", () => {
+  describe("isAdminOnlyEvent", () => {
+    it("flags events routed to an admin-only topic (mqtt-publishers carries broker passwords)", () => {
+      expect(isAdminOnlyEvent(ev("mqtt-broker.updated"))).toBe(true);
+      expect(isAdminOnlyEvent(ev("mqtt-broker.created"))).toBe(true);
+      expect(isAdminOnlyEvent(ev("mqtt-publisher.created"))).toBe(true);
+    });
+
+    it("flags notification-publisher events even though they route to the shared `system` topic", () => {
+      expect(isAdminOnlyEvent(ev("notification-publisher.updated"))).toBe(true);
+      expect(isAdminOnlyEvent(ev("notification-publisher.created"))).toBe(true);
+    });
+
+    it("does not flag ordinary data events", () => {
+      expect(isAdminOnlyEvent(ev("device.data.updated"))).toBe(false);
+      expect(isAdminOnlyEvent(ev("equipment.data.changed"))).toBe(false);
+      expect(isAdminOnlyEvent(ev("zone.data.changed"))).toBe(false);
+      expect(isAdminOnlyEvent(ev("energy.arbiter.status"))).toBe(false);
+    });
+  });
+
+  describe("resolveSubscribedTopics", () => {
+    it("always includes `system`", () => {
+      expect(resolveSubscribedTopics([], "standard").has("system")).toBe(true);
+      expect(resolveSubscribedTopics([], "admin").has("system")).toBe(true);
+    });
+
+    it("grants admin-only topics to admins", () => {
+      const topics = resolveSubscribedTopics(["logs", "mqtt-publishers", "devices"], "admin");
+      expect([...topics].sort()).toEqual(["devices", "logs", "mqtt-publishers", "system"]);
+    });
+
+    it("drops admin-only topics for non-admins but keeps the rest", () => {
+      const topics = resolveSubscribedTopics(["logs", "mqtt-publishers", "devices"], "standard");
+      expect([...topics].sort()).toEqual(["devices", "system"]);
+    });
+
+    it("ignores unknown topics", () => {
+      const topics = resolveSubscribedTopics(["devices", "bogus"], "admin");
+      expect([...topics].sort()).toEqual(["devices", "system"]);
+    });
+  });
+
+  describe("canReceiveEvent", () => {
+    it("delivers ordinary events to a subscribed non-admin", () => {
+      expect(
+        canReceiveEvent(ev("device.data.updated"), {
+          role: "standard",
+          topics: new Set(["system", "devices"]),
+        }),
+      ).toBe(true);
+    });
+
+    it("does not deliver events for topics a client is not subscribed to", () => {
+      expect(
+        canReceiveEvent(ev("zone.data.changed"), {
+          role: "standard",
+          topics: new Set(["system", "devices"]),
+        }),
+      ).toBe(false);
+    });
+
+    it("hides notification-publisher secrets from a non-admin on the `system` topic", () => {
+      expect(
+        canReceiveEvent(ev("notification-publisher.updated"), {
+          role: "standard",
+          topics: new Set(["system"]),
+        }),
+      ).toBe(false);
+    });
+
+    it("delivers notification-publisher events to admins", () => {
+      expect(
+        canReceiveEvent(ev("notification-publisher.updated"), {
+          role: "admin",
+          topics: new Set(["system"]),
+        }),
+      ).toBe(true);
+    });
+
+    it("hides mqtt-broker passwords from a non-admin even if they force the topic into their set", () => {
+      expect(
+        canReceiveEvent(ev("mqtt-broker.updated"), {
+          role: "standard",
+          topics: new Set(["system", "mqtt-publishers"]),
+        }),
+      ).toBe(false);
+    });
+
+    it("delivers mqtt-broker events to a subscribed admin", () => {
+      expect(
+        canReceiveEvent(ev("mqtt-broker.updated"), {
+          role: "admin",
+          topics: new Set(["system", "mqtt-publishers"]),
+        }),
+      ).toBe(true);
     });
   });
 });
