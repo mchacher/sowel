@@ -71,6 +71,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "display",
   "camera",
   "vmc",
+  "ups",
 ]);
 
 // ============================================================

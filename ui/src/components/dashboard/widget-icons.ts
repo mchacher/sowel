@@ -30,6 +30,7 @@ import {
   Zap,
   Power,
   Battery,
+  BatteryCharging,
   Signal,
   Wifi,
   Home,
@@ -271,6 +272,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Zap,
   Power,
   Battery,
+  BatteryCharging,
   Signal,
   Wifi,
   Home,
@@ -295,7 +297,7 @@ export const ICON_CATEGORIES: { label: string; icons: string[] }[] = [
   { label: "Shutters / Doors", icons: ["DoorOpen", "DoorClosed", "ArrowUpDown", "Lock", "Unlock"] },
   { label: "Climate", icons: ["Thermometer", "Flame", "Snowflake", "Fan", "Wind", "Droplets", "CloudRain"] },
   { label: "Security", icons: ["Shield", "ShieldCheck", "Camera", "Bell", "Eye", "AlertTriangle"] },
-  { label: "Sensors", icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "Signal", "Wifi"] },
+  { label: "Sensors", icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "BatteryCharging", "Signal", "Wifi"] },
   { label: "Rooms", icons: ["Home", "Sofa", "Bed", "CookingPot", "Bath", "Car", "Trees", "Flower2"] },
   { label: "General", icons: ["Star", "Heart", "CircleDot", "ToggleLeft", "Settings", "Radio", "Monitor"] },
 ];
@@ -320,6 +322,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   pool_heat_pump: "Thermometer",
   display: "Monitor",
   vmc: "Fan",
+  ups: "BatteryCharging",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
@@ -332,6 +335,7 @@ const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {
   pool: "Droplets",
   displays: "Monitor",
   ventilation: "Fan",
+  power: "BatteryCharging",
 };
 
 export function getWidgetIcon(

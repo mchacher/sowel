@@ -35,7 +35,8 @@ type EquipmentType =
   | "pool_pump"
   | "pool_cover"
   | "pool_heat_pump"
-  | "vmc"; // Spec 153 — 2-speed mechanical ventilation (OFF / V1 / V2)
+  | "vmc" // Spec 153 — 2-speed mechanical ventilation (OFF / V1 / V2)
+  | "ups"; // Spec 156 — uninterruptible power supply, read-only
 
 interface Equipment {
   id: string; // UUID v4
@@ -209,6 +210,40 @@ Equipment "Eclairage Cuisine"
 ### 2b VMC speed order (spec 153)
 
 A `vmc` equipment binds up to two on/off relay orders under fixed aliases `low` (petite vitesse, required) and `high` (grande vitesse, optional). It also accepts a **logical** order `speed` (`off`/`v1`/`v2`) with no device binding: `EquipmentManager.executeOrder` decomposes it into sequenced, **break-before-make** relay orders (never both windings energized at once — the universal VMC wiring invariant). See `src/equipments/vmc-controller.ts`. The observed speed is exposed as a computed `speed` value derived from the `low`/`high` relay state.
+
+### 2c UPS telemetry (spec 156)
+
+A `ups` equipment is **read-only** — it declares no orders. It binds whatever
+telemetry its plugin reports, as a single "all data" candidate, and renders only
+the rows that are actually bound.
+
+Three categories are specific to it:
+
+| Category          | Type     | Unit | Meaning                                      |
+| ----------------- | -------- | ---- | -------------------------------------------- |
+| `ups_status`      | `enum`   | —    | Where the load is powered from               |
+| `battery_runtime` | `number` | s    | Autonomy remaining at the current load       |
+| `ups_load`        | `number` | %    | Output load as a percentage of nominal power |
+
+`ups_status` is a closed, severity-ordered set — `UPS_STATUS_VALUES` in
+`src/shared/constants.ts`: `online`, `on_battery`, `bypass`, `overload`,
+`low_battery`, `offline`. Vendor protocols report status as an _additive_ flag
+set (NUT: `OL CHRG`, `OB LB`), so the plugin resolves the flags to exactly one
+value, keeping the most severe. Secondary flags worth showing (charging,
+self-test result, model) stay `generic` bindings.
+
+Two rules bind the plugin rather than the core, and both matter:
+
+- **The load is a percentage, never the `power` category.** Submeter enrolment
+  is a blocklist, so any equipment carrying a numeric `power` binding joins the
+  house consumption breakdown. A UPS wattage is derived from `load % × nominal`
+  — an estimate — and would double-count whatever real meter already covers the
+  circuit. Expose it as a `generic` numeric if you want it visible.
+- **Declare `powerSource: "mains"` on the device.** The low-battery monitor
+  (spec 143) assumes a device with a `battery` category and no declared power
+  source runs on a cell. Left undeclared, every outage would raise a
+  "replace the battery" alarm against the UPS. Outage alarms belong to the
+  plugin, worded for what actually happened.
 
 ### 3 Per-binding category override
 

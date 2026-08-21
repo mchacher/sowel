@@ -61,6 +61,12 @@ export type DataCategory =
   | "camera_monitoring"
   | "camera_light_mode"
   | "camera_detection"
+  // Spec 156 — UPS. `ups_status` is a closed, severity-ordered enum;
+  // `battery_runtime` is the remaining autonomy in seconds; `ups_load` is the
+  // output load as a percentage of nominal power (never `power` — spec 156 FR3).
+  | "ups_status"
+  | "battery_runtime"
+  | "ups_load"
   | "generic";
 
 export type OrderCategory =
@@ -262,7 +268,9 @@ export type EquipmentType =
   // Spec 133 — surveillance camera (vendor-agnostic).
   | "camera"
   // Spec 153 — mechanical ventilation (VMC), 2-speed: OFF / V1 / V2.
-  | "vmc";
+  | "vmc"
+  // Spec 156 — uninterruptible power supply, read-only.
+  | "ups";
 
 export interface Equipment {
   id: string;
@@ -1158,7 +1166,9 @@ export type WidgetFamily =
   // Spec 120 — Sowel-supervised displays.
   | "displays"
   // Spec 153 — mechanical ventilation (VMC).
-  | "ventilation";
+  | "ventilation"
+  // Spec 156 — power protection (UPS).
+  | "power";
 
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */

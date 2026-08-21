@@ -340,6 +340,45 @@ describe("computeBindingCandidates", () => {
     expect(result).toHaveLength(0);
   });
 
+  // Spec 156 — UPS equipment polymorphism.
+  it("ups with full telemetry → one all-data candidate", () => {
+    const datas = [
+      data("status", "text", { category: "ups_status" }),
+      data("battery_charge", "number", { category: "battery" }),
+      data("battery_runtime", "number", { category: "battery_runtime" }),
+      data("load", "number", { category: "ups_load" }),
+      data("input_voltage", "number", { category: "voltage" }),
+      data("battery_voltage", "number", { category: "voltage" }),
+    ];
+    const result = computeBindingCandidates("ups", datas, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("all");
+    expect(result[0].dataKeys).toEqual([
+      "status",
+      "battery_charge",
+      "battery_runtime",
+      "load",
+      "input_voltage",
+      "battery_voltage",
+    ]);
+    // Read-only type: no order ever joins the candidate.
+    expect(result[0].orderKeys).toEqual([]);
+  });
+
+  it("ups from a cheap unit reporting only status + charge → still bindable", () => {
+    const datas = [
+      data("status", "text", { category: "ups_status" }),
+      data("battery_charge", "number", { category: "battery" }),
+    ];
+    const result = computeBindingCandidates("ups", datas, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys).toEqual(["status", "battery_charge"]);
+  });
+
+  it("ups with no data → no candidate", () => {
+    expect(computeBindingCandidates("ups", [], [])).toHaveLength(0);
+  });
+
   // ── solar_panel (spec 125) — one candidate per inverter channel ──
 
   function inverterData(channels: number, withTemp = true): DeviceData[] {

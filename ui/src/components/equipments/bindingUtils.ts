@@ -175,6 +175,18 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // opt-in only — the admin adds them later via AddBindingModal. See
   // "Per-equipment feature enablement" in spec 133.
   camera: ["camera_snapshot_url", "camera_stream_url", "camera_monitoring"],
+  // Spec 156 — a UPS binds whatever its plugin reports. `generic` is in the
+  // list on purpose: the secondary flags a UPS exposes (charging, self-test
+  // result, model) have no category of their own and are worth seeing.
+  ups: [
+    "ups_status",
+    "battery",
+    "battery_runtime",
+    "ups_load",
+    "voltage",
+    "temperature_device",
+    "generic",
+  ],
 };
 
 /** Maps equipment types to relevant order keys for auto-binding. */
@@ -239,6 +251,10 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   // topic.  Without this whitelist entry, the UI auto-binding would
   // drop the wake order during equipment creation.
   display: ["language", "brightness", "wake"],
+  // Spec 156 — a UPS is read-only: no order ever auto-binds. The explicit
+  // empty entry documents the intent, rather than leaving the type to fall
+  // through the lookup as an accident.
+  ups: [],
 };
 
 /**

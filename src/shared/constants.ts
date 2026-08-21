@@ -149,6 +149,11 @@ export const CATEGORY_EXPECTED_TYPE: Partial<Record<DataCategory, DataType>> = {
   pressure: "number",
   luminosity: "number",
   battery: "number",
+  // Spec 156 — UPS. `ups_status` is intentionally absent: a plugin may declare
+  // it `enum` (closed set) or `text`, and this map exists to flag contract
+  // violations, not to force one wire type onto a categorical value.
+  battery_runtime: "number",
+  ups_load: "number",
   power: "number",
   energy: "number",
   voltage: "number",
@@ -240,6 +245,8 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   displays: ["display"],
   // Spec 153 — mechanical ventilation (VMC).
   ventilation: ["vmc"],
+  // Spec 156 — power protection (UPS).
+  power: ["ups"],
 };
 
 // ============================================================
@@ -268,6 +275,12 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCateg
   "voc",
   "noise",
   "battery",
+  // Spec 156 — a UPS plugin polls, so silence is an anomaly rather than a
+  // quiet sensor. `ups_status` included on purpose: a status that stops
+  // refreshing is exactly the case where it must not be trusted.
+  "ups_status",
+  "battery_runtime",
+  "ups_load",
   "setpoint",
   "pool_water_temperature",
   "pool_temperature_setpoint",
@@ -347,6 +360,11 @@ export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
   setpoint: 60 * 60 * 1000, // 1 h
   pool_water_temperature: 65 * 60 * 1000,
   pool_temperature_setpoint: 60 * 60 * 1000,
+  // Spec 156 — UPS telemetry is not worth polling often (5 min is a sensible
+  // plugin default), so the window has to survive a few missed polls.
+  ups_status: 20 * 60 * 1000,
+  battery_runtime: 20 * 60 * 1000,
+  ups_load: 20 * 60 * 1000,
 };
 
 export const DEFAULT_STREAMING_TIMEOUT_MS = 15 * 60 * 1000;
@@ -389,6 +407,32 @@ export const BATTERY_SWEEP_START_DELAY_MS = 30 * 1000;
 
 /** A battery left low is re-notified at this cadence, not more often. */
 export const BATTERY_REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// ============================================================
+// UPS (spec 156)
+// ============================================================
+
+/**
+ * The closed set of UPS operating states, ascending by severity.
+ *
+ * NUT — and every vendor protocol behind it — reports status as an *additive*
+ * flag set (`OL CHRG`, `OB LB`), which cannot be rendered as one badge. A
+ * plugin resolves those flags to exactly one value here, keeping the most
+ * severe. Secondary flags worth showing (charging, discharging, battery needs
+ * replacing, self-test result) stay `generic` bindings.
+ *
+ * The array order IS the severity order — callers rely on the index.
+ */
+export const UPS_STATUS_VALUES = [
+  "online",
+  "on_battery",
+  "bypass",
+  "overload",
+  "low_battery",
+  "offline",
+] as const;
+
+export type UpsStatus = (typeof UPS_STATUS_VALUES)[number];
 
 // ============================================================
 // Energy capacity arbiter (spec 140)

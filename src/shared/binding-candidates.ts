@@ -379,8 +379,13 @@ export function computeBindingCandidates(
     case "button":
     case "appliance":
     case "media_player":
-    case "display": {
+    case "display":
+    case "ups": {
       // Multi-value equipment: single candidate that groups everything.
+      // Spec 156 — a UPS binds whatever telemetry the plugin exposes
+      // (ups_status / battery / battery_runtime / ups_load / voltage …), with
+      // no order surface. Polymorphic: cheap units reporting only a status
+      // and a charge percentage bind just as well.
       // Spec 120 — `display` binds whatever telemetry the plugin exposes
       // (firmware_version / uptime / rssi / language / display_brightness)
       // + matching orders. Polymorphic: missing fields are fine.

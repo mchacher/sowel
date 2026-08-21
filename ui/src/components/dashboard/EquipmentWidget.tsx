@@ -16,10 +16,17 @@ import {
   Timer,
   Camera,
   Fan,
+  BatteryCharging,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { VmcControl } from "../equipments/VmcControl";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
+import {
+  formatRuntime,
+  upsSeverityOf,
+  upsStatusKey,
+  upsStatusOf,
+} from "../equipments/upsStatus";
 import type { DashboardWidget } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
@@ -179,6 +186,8 @@ export function EquipmentWidget({
         iconKey={widget.icon}
       />
     );
+  if (equipment.type === "ups")
+    return <UpsEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
   if (equipment.type === "vmc")
     return (
       <VmcEquipmentWidget
@@ -1268,6 +1277,77 @@ function SolarPanelEquipmentWidget({
         >
           {lines.join("  ·  ")}
         </span>
+      </div>
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// UPS widget (spec 156)
+// ============================================================
+
+/**
+ * Read-only by design — the type has no order surface. The layout answers, in
+ * order: what is powering the load, how full the battery is, how long it would
+ * last, and how hard the unit is working. Rows the plugin does not report are
+ * simply absent.
+ */
+function UpsEquipmentWidget({
+  label,
+  sublabel,
+  equipment,
+}: {
+  label: string;
+  sublabel?: string;
+  equipment: EquipmentWithDetails;
+}) {
+  const { t } = useTranslation();
+  const { status, raw } = upsStatusOf(equipment);
+  const severity = upsSeverityOf(status);
+
+  const charge = equipment.dataBindings.find((b) => b.category === "battery")?.value;
+  const runtime = formatRuntime(
+    equipment.dataBindings.find((b) => b.category === "battery_runtime")?.value,
+  );
+  const load = equipment.dataBindings.find((b) => b.category === "ups_load")?.value;
+
+  const tone =
+    severity === "ok"
+      ? "text-success"
+      : severity === "warning"
+        ? "text-warning"
+        : severity === "error"
+          ? "text-error"
+          : "text-text-tertiary";
+
+  const rows: { key: string; label: string; value: string }[] = [];
+  if (charge !== null && charge !== undefined) {
+    rows.push({ key: "battery", label: t("equipments.ups.battery"), value: `${String(charge)} %` });
+  }
+  if (runtime) {
+    rows.push({ key: "runtime", label: t("equipments.ups.runtime"), value: runtime });
+  }
+  if (load !== null && load !== undefined) {
+    rows.push({ key: "load", label: t("equipments.ups.load"), value: `${String(load)} %` });
+  }
+
+  return (
+    <WidgetCard label={label} sublabel={sublabel}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
+        <BatteryCharging strokeWidth={1.5} className={`${tone} w-[52px] h-[52px]`} />
+        <span className={`text-[16px] font-semibold ${tone}`}>
+          {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
+        </span>
+        {rows.length > 0 && (
+          <div className="flex flex-col gap-0.5 text-[13px] text-text-secondary">
+            {rows.map((row) => (
+              <div key={row.key} className="flex items-center justify-between gap-4">
+                <span>{row.label}</span>
+                <span className="font-mono tabular-nums text-text">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </WidgetCard>
   );

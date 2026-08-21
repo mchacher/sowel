@@ -21,6 +21,7 @@ import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
 import { DisplayPanel } from "../components/equipments/DisplayPanel";
 import { CameraPanel } from "../components/equipments/CameraPanel";
+import { UpsPanel } from "../components/equipments/UpsPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBadge";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
@@ -445,6 +446,8 @@ export function EquipmentDetailPage() {
           equipmentId={equipment.id}
           onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
         />
+      ) : equipment.type === "ups" ? (
+        <UpsPanel dataBindings={equipment.dataBindings} />
       ) : equipment.type === "solar_panel" ? (
         <SolarPanelDataPanel
           bindings={equipment.dataBindings}

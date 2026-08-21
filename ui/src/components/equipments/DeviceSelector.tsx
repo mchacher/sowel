@@ -51,6 +51,9 @@ const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> 
     "camera_light_mode",
     "camera_detection",
   ],
+  // Spec 156 — UPS. Only the three UPS-specific categories discriminate:
+  // `battery` and `voltage` would match every Zigbee sensor in the house.
+  ups: ["ups_status", "battery_runtime", "ups_load"],
 };
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
