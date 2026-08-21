@@ -4,7 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { AuthService } from "../auth/auth-service.js";
 import type { LogRingBuffer } from "../core/log-buffer.js";
 import type { Logger } from "../core/logger.js";
-import type { EngineEvent } from "../shared/types.js";
+import type { EngineEvent, UserRole } from "../shared/types.js";
 
 interface WebSocketDeps {
   eventBus: EventBus;
@@ -94,8 +94,26 @@ const VALID_TOPICS = new Set<WsTopic>([
 ]);
 const BATCH_INTERVAL_MS = 200;
 
+/**
+ * Topics that carry admin-only data — a non-admin client may neither subscribe
+ * to them nor receive their events. `mqtt-publishers` events carry broker
+ * passwords; `logs` streams the full server log. Both are admin-only over REST,
+ * so the WebSocket must enforce the same boundary (security audit S01).
+ */
+const ADMIN_ONLY_TOPICS = new Set<WsTopic>(["mqtt-publishers", "logs"]);
+
+/**
+ * Event type prefixes that carry admin-only data even though `getEventTopic`
+ * routes them to a topic non-admins share. `notification-publisher.*` events
+ * land on `system` (the default subscription for every client) yet carry the
+ * publisher's `channelConfig` — e.g. a Telegram bot token. Non-admin clients
+ * never receive these regardless of their subscriptions (security audit S01).
+ */
+const ADMIN_ONLY_EVENT_PREFIXES = new Set<string>(["notification-publisher"]);
+
 interface ClientState {
   socket: WebSocket;
+  role: UserRole;
   topics: Set<WsTopic>;
   pending: EngineEvent[];
   logUnsubscribe?: () => void;
@@ -126,6 +144,41 @@ function getEventTopic(event: EngineEvent): WsTopic {
     default:
       return "system";
   }
+}
+
+/**
+ * True when an event must only be delivered to admin clients — either because
+ * its topic is admin-only, or because its type prefix is flagged as carrying
+ * admin-only data (secrets such as the MQTT broker password or Telegram bot
+ * token). See security audit S01.
+ */
+export function isAdminOnlyEvent(event: EngineEvent): boolean {
+  if (ADMIN_ONLY_TOPICS.has(getEventTopic(event))) return true;
+  return ADMIN_ONLY_EVENT_PREFIXES.has(event.type.split(".")[0]);
+}
+
+/**
+ * Resolves the set of topics a client may subscribe to, given its role.
+ * `system` is always included; admin-only topics are silently dropped for
+ * non-admin clients so they cannot subscribe to privileged streams.
+ */
+export function resolveSubscribedTopics(requested: string[], role: UserRole): Set<WsTopic> {
+  const result = new Set<WsTopic>(["system"]);
+  for (const t of requested) {
+    if (!VALID_TOPICS.has(t as WsTopic)) continue;
+    if (ADMIN_ONLY_TOPICS.has(t as WsTopic) && role !== "admin") continue;
+    result.add(t as WsTopic);
+  }
+  return result;
+}
+
+/** True when a client with the given role and subscriptions should receive the event. */
+export function canReceiveEvent(
+  event: EngineEvent,
+  client: { role: UserRole; topics: Set<WsTopic> },
+): boolean {
+  if (isAdminOnlyEvent(event) && client.role !== "admin") return false;
+  return client.topics.has(getEventTopic(event));
 }
 
 /** Returns a dedup key for high-frequency data events, null for structural events */
@@ -191,14 +244,14 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
     }
   }, BATCH_INTERVAL_MS);
 
-  // Listen for all engine events and enqueue for subscribed clients
+  // Listen for all engine events and enqueue for subscribed clients.
+  // canReceiveEvent enforces both the topic subscription and the role gate on
+  // admin-only topics/events (security audit S01).
   eventBus.on((event) => {
     if (clients.size === 0) return;
 
-    const topic = getEventTopic(event);
-
     for (const [, state] of clients) {
-      if (state.topics.has(topic)) {
+      if (canReceiveEvent(event, state)) {
         state.pending.push(event);
       }
     }
@@ -251,6 +304,7 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
       return;
     }
 
+    let role: UserRole;
     try {
       if (token.startsWith("swl_") || token.startsWith("wch_") || token.startsWith("cbl_")) {
         const result = authService.verifyApiToken(token);
@@ -258,8 +312,9 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
           socket.close(4001, "Invalid token");
           return;
         }
+        role = result.role;
       } else {
-        authService.verifyAccessToken(token);
+        role = authService.verifyAccessToken(token).role;
       }
     } catch {
       socket.close(4001, "Invalid token");
@@ -267,7 +322,7 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
     }
 
     // Default subscription: system events only
-    const state: ClientState = { socket, topics: new Set(["system"]), pending: [] };
+    const state: ClientState = { socket, role, topics: new Set(["system"]), pending: [] };
     clients.set(socket, state);
     logger.info({ clients: clients.size }, "WebSocket client connected");
 
@@ -276,12 +331,8 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
       try {
         const msg = JSON.parse(String(raw)) as { type?: string; topics?: string[] };
         if (msg.type === "subscribe" && Array.isArray(msg.topics)) {
-          const newTopics = new Set<WsTopic>(["system"]); // system always included
-          for (const t of msg.topics) {
-            if (VALID_TOPICS.has(t as WsTopic)) {
-              newTopics.add(t as WsTopic);
-            }
-          }
+          // Drops admin-only topics for non-admin clients (security audit S01).
+          const newTopics = resolveSubscribedTopics(msg.topics, state.role);
 
           // Handle logs topic subscription/unsubscription
           const hadLogs = state.topics.has("logs");
@@ -293,7 +344,7 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
           }
 
           state.topics = newTopics;
-          logger.debug({ topics: [...newTopics] }, "Client subscribed");
+          logger.debug({ topics: [...newTopics], role: state.role }, "Client subscribed");
         }
       } catch {
         // Ignore malformed messages
