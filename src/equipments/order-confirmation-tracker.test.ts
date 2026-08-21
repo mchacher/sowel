@@ -117,6 +117,17 @@ describe("OrderConfirmationTracker", () => {
     });
   }
 
+  /** Move a device's status the way an integration would, and let the bus see it. */
+  function emitDeviceStatus(status: "online" | "offline"): void {
+    deviceStatus["dev-1"] = status;
+    eventBus.emit({
+      type: "device.status_changed",
+      deviceId: "dev-1",
+      deviceName: "SONOFF",
+      status,
+    });
+  }
+
   function alarmsRaised(): EngineEvent[] {
     return emitted.filter((e) => e.type === "system.alarm.raised");
   }
@@ -195,7 +206,7 @@ describe("OrderConfirmationTracker", () => {
 
   it("marks unconfirmed immediately when every target device is offline", () => {
     bindingValue = "ON";
-    deviceStatus["dev-1"] = "offline";
+    emitDeviceStatus("offline");
     emitOrder("OFF");
 
     const unconfirmed = unconfirmedEvents();
@@ -206,27 +217,16 @@ describe("OrderConfirmationTracker", () => {
 
   it("re-dispatches once when the device comes back online (incident case)", () => {
     bindingValue = "ON";
-    deviceStatus["dev-1"] = "offline";
+    emitDeviceStatus("offline");
     emitOrder("OFF");
     expect(unconfirmedEvents().length).toBe(1);
 
-    deviceStatus["dev-1"] = "online";
-    eventBus.emit({
-      type: "device.status_changed",
-      deviceId: "dev-1",
-      deviceName: "SONOFF",
-      status: "online",
-    });
+    emitDeviceStatus("online");
 
     expect(executeOrderCalls).toEqual([{ equipmentId: "eq-1", alias: "state", value: "OFF" }]);
 
     // A second reconnect must not re-dispatch again.
-    eventBus.emit({
-      type: "device.status_changed",
-      deviceId: "dev-1",
-      deviceName: "SONOFF",
-      status: "online",
-    });
+    emitDeviceStatus("online");
     expect(executeOrderCalls.length).toBe(1);
 
     // The device acts after the retry: alarm resolves.
@@ -236,7 +236,7 @@ describe("OrderConfirmationTracker", () => {
 
   it("the retry's own order.executed event re-arms the entry without creating a new one", () => {
     bindingValue = "ON";
-    deviceStatus["dev-1"] = "offline";
+    emitDeviceStatus("offline");
     emitOrder("OFF");
 
     // Echo of the tracker's re-dispatch coming back through the bus.
@@ -248,18 +248,80 @@ describe("OrderConfirmationTracker", () => {
     expect(alarmsRaised().length).toBe(1);
   });
 
-  it("a newer order supersedes the pending one and resolves its alarm", () => {
+  it("carries a raised alarm over to the order that supersedes it", () => {
     bindingValue = "ON";
     emitOrder("OFF");
     vi.advanceTimersByTime(31_000);
     expect(alarmsRaised().length).toBe(1);
 
+    // The recipe re-asserts its intent: the new order gets its own watchdog,
+    // but no fake recovery and no duplicate warning are pushed meanwhile.
+    emitOrder("OFF");
+    vi.advanceTimersByTime(31_000);
+    expect(unconfirmedEvents().length).toBe(2);
+    expect(alarmsResolved().length).toBe(0);
+    expect(alarmsRaised().length).toBe(1);
+
+    // Only the equipment reporting the ordered value resolves it.
+    emitData("OFF");
+    expect(alarmsResolved().length).toBe(1);
+  });
+
+  it("resolves a carried-over alarm when the state already holds the new order", () => {
+    bindingValue = "ON";
+    emitOrder("OFF");
+    vi.advanceTimersByTime(31_000);
+    expect(alarmsRaised().length).toBe(1);
+
+    bindingValue = "OFF";
     emitOrder("OFF");
     expect(alarmsResolved().length).toBe(1);
+  });
 
-    // The new order gets its own watchdog.
+  it("ignores an offline status left behind by the last shutdown", () => {
+    // Boot: the database still holds what the previous shutdown persisted and
+    // the integration has not replayed its availability topics yet.
+    deviceStatus["dev-1"] = "offline";
+    emitOrder("ON");
+
+    expect(unconfirmedEvents().length).toBe(0);
+    expect(alarmsRaised().length).toBe(0);
+
+    // Availability lands a second later, the state follows: silent confirmation.
+    emitDeviceStatus("online");
+    vi.advanceTimersByTime(1_000);
+    emitData("ON");
+    vi.advanceTimersByTime(60_000);
+
+    expect(alarmsRaised().length).toBe(0);
+  });
+
+  it("re-dispatches on reconnect for an order sent at a device believed offline", () => {
+    deviceStatus["dev-1"] = "offline";
+    emitOrder("ON");
+    expect(alarmsRaised().length).toBe(0);
+
+    emitDeviceStatus("online");
+    expect(executeOrderCalls).toEqual([{ equipmentId: "eq-1", alias: "state", value: "ON" }]);
+  });
+
+  it("falls back to the watchdog when a boot-time offline status turns out true", () => {
+    deviceStatus["dev-1"] = "offline";
+    emitOrder("ON");
     vi.advanceTimersByTime(31_000);
-    expect(alarmsRaised().length).toBe(2);
+
+    // Delayed by the watchdog, but named for what the status says by then.
+    expect(unconfirmedEvents()[0]).toMatchObject({ reason: "device_offline" });
+    expect(alarmsRaised().length).toBe(1);
+  });
+
+  it("trusts a persisted offline status once the settle window has passed", () => {
+    vi.advanceTimersByTime(61_000);
+    deviceStatus["dev-1"] = "offline";
+    emitOrder("ON");
+
+    expect(unconfirmedEvents()[0]).toMatchObject({ reason: "device_offline" });
+    expect(alarmsRaised().length).toBe(1);
   });
 
   it("exempts orders without a mirror data binding", () => {
@@ -285,17 +347,11 @@ describe("OrderConfirmationTracker", () => {
 
   it("does not re-dispatch entries older than the TTL", () => {
     bindingValue = "ON";
-    deviceStatus["dev-1"] = "offline";
+    emitDeviceStatus("offline");
     emitOrder("OFF");
 
     vi.advanceTimersByTime(3_700_000); // beyond the 1h TTL
-    deviceStatus["dev-1"] = "online";
-    eventBus.emit({
-      type: "device.status_changed",
-      deviceId: "dev-1",
-      deviceName: "SONOFF",
-      status: "online",
-    });
+    emitDeviceStatus("online");
 
     expect(executeOrderCalls.length).toBe(0);
   });

@@ -22,14 +22,19 @@ interface PendingOrder {
   orderedAt: number; // epoch ms
   timer: NodeJS.Timeout | null;
   unconfirmed: boolean; // timeout elapsed or device_offline fast path
-  alarmRaised: boolean;
+  alarmRaised: boolean; // inherited from the order this one supersedes
   retried: boolean; // one reconnect re-dispatch max
+  offlineAtDispatch: boolean; // every target device believed offline at dispatch
   deviceIds: string[]; // devices behind the order bindings, for reconnect matching
   source?: OrderSource;
 }
 ```
 
 Entries are dropped on confirmation or supersession. The map is bounded by the number of distinct `(equipment, alias)` pairs that ever receive orders, so no periodic pruning is needed.
+
+## Trusting a device status
+
+`offlineIsEvidence(deviceIds)` gates the `device_offline` fast path. The tracker records every device id it sees on `device.status_changed` and stamps `startedAt` in `init()`: a status it has watched move is evidence, and so is any status once `STATUS_SETTLE_MS` (60 s) has elapsed since start. Before then, a status restored from SQLite is not — integrations repopulate it asynchronously, so an order dispatched in the seconds after boot would read the previous shutdown's snapshot. The fallback is the ordinary watchdog, which re-reads the statuses when it fires and reports `device_offline` if they are still offline: the alarm is delayed by the timeout, never lost.
 
 ## Value comparison
 
@@ -59,7 +64,7 @@ Consumers today: none required (alarms carry the user-facing path); the event ex
 ## Alarm contract
 
 - raise: `system.alarm.raised { alarmId: "order-unconfirmed:<equipmentId>:<alias>", level: "warning", source: "order-confirmation", message }`
-- resolve: same `alarmId` on late confirmation or supersession
+- resolve: same `alarmId` on late confirmation (supersession transfers the raised flag to the new entry instead)
 
 `notification-publish-service` already forwards both to every configured channel; no changes there.
 

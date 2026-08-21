@@ -26,6 +26,15 @@ import type { OrderSource } from "../shared/types.js";
 const CONFIRMATION_TIMEOUT_MS = 30_000;
 /** Maximum age of an unconfirmed order eligible for the reconnect re-dispatch. */
 const REDISPATCH_TTL_MS = 3_600_000;
+/**
+ * Settle window after start during which a device's persisted "offline" is not
+ * evidence on its own. Statuses survive a restart in SQLite and integrations
+ * restore the real one asynchronously — Zigbee2MQTT replays its retained
+ * availability topics a second or two after the MQTT connect — so an order
+ * dispatched right after boot would otherwise alarm on the status the previous
+ * shutdown left behind.
+ */
+const STATUS_SETTLE_MS = 60_000;
 /** OrderSource channel identifying the tracker's own re-dispatches. */
 export const RETRY_CHANNEL = "delivery-retry";
 
@@ -42,6 +51,8 @@ interface PendingOrder {
   unconfirmed: boolean;
   alarmRaised: boolean;
   retried: boolean;
+  /** Every target device was believed offline when the order was dispatched. */
+  offlineAtDispatch: boolean;
   deviceIds: string[];
   source?: OrderSource | undefined;
 }
@@ -81,6 +92,9 @@ export class OrderConfirmationTracker {
   private readonly logger: Logger;
   private readonly pending: Map<string, PendingOrder> = new Map();
   private readonly unsubs: Array<() => void> = [];
+  /** Devices whose status we have observed since start — see offlineIsEvidence. */
+  private readonly statusSeen: Set<string> = new Set();
+  private startedAt = 0;
 
   constructor(
     private readonly eventBus: EventBus,
@@ -93,6 +107,7 @@ export class OrderConfirmationTracker {
   }
 
   init(): void {
+    this.startedAt = Date.now();
     this.unsubs.push(
       this.eventBus.onType("equipment.order.executed", (event) => {
         try {
@@ -110,6 +125,7 @@ export class OrderConfirmationTracker {
       }),
       this.eventBus.onType("device.status_changed", (event) => {
         try {
+          this.statusSeen.add(event.deviceId);
           if (event.status === "online") this.handleDeviceOnline(event.deviceId);
         } catch (err) {
           this.logger.error({ err }, "Reconnect re-dispatch failed");
@@ -126,6 +142,7 @@ export class OrderConfirmationTracker {
       if (entry.timer) clearTimeout(entry.timer);
     }
     this.pending.clear();
+    this.statusSeen.clear();
   }
 
   // ── Order dispatch ───────────────────────────────────────────
@@ -146,20 +163,26 @@ export class OrderConfirmationTracker {
       return;
     }
 
-    // A newer order supersedes the pending one.
+    // A newer order supersedes the pending one. Its alarm is carried over
+    // rather than resolved and raised again: "recovered" has to mean the
+    // equipment finally reported the ordered value, not that the engine tried
+    // once more. Re-ordering every few minutes at an unreachable device would
+    // otherwise push a recovery/failure pair per attempt.
     const previous = this.pending.get(key);
     if (previous) {
       if (previous.timer) clearTimeout(previous.timer);
-      if (previous.alarmRaised) {
-        this.resolveAlarm(previous, "superseded by a new order");
-      }
       this.pending.delete(key);
     }
 
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
     const mirror = bindings.find((b) => b.alias === alias);
-    if (!mirror) return; // no observable effect — exempt (scenes, stateless orders)
-    if (!isConfirmableValue(value, mirror.enumValues)) return; // cross-vocabulary enum — exempt
+    // No observable effect (scenes, stateless orders) or a cross-vocabulary
+    // enum (cover CLOSE vs state CLOSED) — exempt. A carried-over alarm has
+    // nothing left to confirm it, so it is released here.
+    if (!mirror || !isConfirmableValue(value, mirror.enumValues)) {
+      if (previous?.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
+      return;
+    }
 
     const deviceIds = this.equipmentManager
       .getOrderBindingsWithDetails(equipmentId)
@@ -174,27 +197,49 @@ export class OrderConfirmationTracker {
       timer: null,
       timeoutMs: this.confirmationTimeoutFor(deviceIds),
       unconfirmed: false,
-      alarmRaised: false,
+      alarmRaised: previous?.alarmRaised ?? false,
       retried: false,
+      offlineAtDispatch: this.allTargetsOffline(deviceIds),
       deviceIds,
       source,
     };
 
     // Already in the ordered state (e.g. OFF ordered while already OFF):
     // nothing will change, confirm immediately.
-    if (valuesMatch(value, mirror.value)) return;
+    if (valuesMatch(value, mirror.value)) {
+      if (entry.alarmRaised) this.resolveAlarm(entry, "state finally confirmed");
+      return;
+    }
 
     this.pending.set(key, entry);
 
-    // Every target device offline: the command cannot have been delivered,
-    // no point waiting for the timeout.
-    const devices = deviceIds.map((id) => this.deviceManager.getById(id)).filter((d) => d !== null);
-    if (devices.length > 0 && devices.every((d) => d.status === "offline")) {
+    // Every target device offline: the command cannot have been delivered, no
+    // point waiting for the timeout — as long as that status is evidence and
+    // not a leftover from the last shutdown.
+    if (entry.offlineAtDispatch && this.offlineIsEvidence(deviceIds)) {
       this.markUnconfirmed(entry, "device_offline");
       return;
     }
 
     this.armTimer(entry);
+  }
+
+  /** Whether every device behind the order bindings is currently offline. */
+  private allTargetsOffline(deviceIds: string[]): boolean {
+    const devices = deviceIds.map((id) => this.deviceManager.getById(id)).filter((d) => d !== null);
+    return devices.length > 0 && devices.every((d) => d.status === "offline");
+  }
+
+  /**
+   * Whether an "offline" status can be read as proof that the command could
+   * not be delivered. A status we have seen move since start always can be;
+   * one restored from the database cannot, until the settle window has passed
+   * and every integration has had the time to report. Until then the watchdog
+   * decides — the alarm is delayed by the timeout, not lost.
+   */
+  private offlineIsEvidence(deviceIds: string[]): boolean {
+    if (Date.now() - this.startedAt >= STATUS_SETTLE_MS) return true;
+    return deviceIds.every((id) => this.statusSeen.has(id));
   }
 
   /**
@@ -219,7 +264,11 @@ export class OrderConfirmationTracker {
     if (entry.timer) clearTimeout(entry.timer);
     entry.timer = setTimeout(() => {
       entry.timer = null;
-      this.markUnconfirmed(entry, "timeout");
+      // Read the reason now rather than at dispatch: a device that went — or
+      // stayed — offline meanwhile explains the silence better than a bare
+      // timeout, and by now its status has had every chance to settle.
+      const reason = this.allTargetsOffline(entry.deviceIds) ? "device_offline" : "timeout";
+      this.markUnconfirmed(entry, reason);
     }, entry.timeoutMs);
   }
 
@@ -303,7 +352,11 @@ export class OrderConfirmationTracker {
 
   private handleDeviceOnline(deviceId: string): void {
     for (const entry of this.pending.values()) {
-      if (!entry.unconfirmed || entry.retried) continue;
+      if (entry.retried) continue;
+      // Unconfirmed, or still inside its watchdog after being dispatched at a
+      // device believed offline: either way the command may never have landed,
+      // and this reconnect is the moment to re-assert it.
+      if (!entry.unconfirmed && !entry.offlineAtDispatch) continue;
       if (!entry.deviceIds.includes(deviceId)) continue;
       if (Date.now() - entry.orderedAt > REDISPATCH_TTL_MS) continue;
 
