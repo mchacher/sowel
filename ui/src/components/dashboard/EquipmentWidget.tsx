@@ -75,6 +75,8 @@ interface EquipmentWidgetProps {
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   /** Click handler that opens the desktop detail drawer. Currently consumed only by the weather widget. */
   onOpenDetail?: () => void;
+  /** Dashboard in edit mode — tiles are drag/rename targets then, so the tap-to-toggle is off. */
+  editMode?: boolean;
 }
 
 export function EquipmentWidget({
@@ -83,6 +85,7 @@ export function EquipmentWidget({
   equipmentZone,
   onExecuteOrder,
   onOpenDetail,
+  editMode,
 }: EquipmentWidgetProps) {
   const { t } = useTranslation();
   const {
@@ -117,6 +120,7 @@ export function EquipmentWidget({
         equipment={equipment}
         presentation={presentation}
         onExecuteOrder={execOrder}
+        editMode={editMode}
       />
     );
 
@@ -128,6 +132,7 @@ export function EquipmentWidget({
         equipment={equipment}
         onExecuteOrder={execOrder}
         iconKey={widget.icon}
+        editMode={editMode}
       />
     );
   // Awnings share the shutter widget shape (icon + position + 3-button row).
@@ -161,6 +166,7 @@ export function EquipmentWidget({
         equipment={equipment}
         onExecuteOrder={execOrder}
         iconKey={widget.icon}
+        editMode={editMode}
       />
     );
   if (isHeater)
@@ -171,6 +177,7 @@ export function EquipmentWidget({
         equipment={equipment}
         onExecuteOrder={execOrder}
         iconKey={widget.icon}
+        editMode={editMode}
       />
     );
   if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
@@ -184,6 +191,7 @@ export function EquipmentWidget({
         equipment={equipment}
         onExecuteOrder={execOrder}
         iconKey={widget.icon}
+        editMode={editMode}
       />
     );
   if (equipment.type === "ups")
@@ -210,6 +218,7 @@ export function EquipmentWidget({
         equipment={equipment}
         onExecuteOrder={execOrder}
         iconKey={widget.icon}
+        editMode={editMode}
       />
     );
   if (isPoolCover)
@@ -250,12 +259,15 @@ function LightEquipmentWidget({
   equipment,
   onExecuteOrder,
   iconKey,
+  editMode,
 }: {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  /** Edit mode disables the tap-to-toggle so the tile can be dragged and renamed. */
+  editMode?: boolean;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -302,8 +314,14 @@ function LightEquipmentWidget({
 
   const handleBrightnessCommit = () => slider.onCommit((v) => onExecuteOrder("brightness", v));
 
+  const canToggle = hasToggle && equipment.enabled;
+
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
+    <WidgetCard
+      label={label}
+      sublabel={sublabel}
+      onClick={canToggle && !editMode ? () => void handleToggle() : undefined}
+    >
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
@@ -343,7 +361,7 @@ function LightEquipmentWidget({
       </div>
 
       {/* Zone 3: Bouton — toggle */}
-      {hasToggle && equipment.enabled && (
+      {canToggle && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button
             onClick={handleToggle}
@@ -378,12 +396,15 @@ function WaterHeaterEquipmentWidget({
   equipment,
   onExecuteOrder,
   iconKey,
+  editMode,
 }: {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  /** Edit mode disables the tap-to-toggle so the tile can be dragged and renamed. */
+  editMode?: boolean;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -422,8 +443,14 @@ function WaterHeaterEquipmentWidget({
     }
   };
 
+  const canToggle = hasToggle && equipment.enabled;
+
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
+    <WidgetCard
+      label={label}
+      sublabel={sublabel}
+      onClick={canToggle && !editMode ? () => void handleToggle() : undefined}
+    >
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
         {resolveWidgetIcon(iconKey, <WaterHeaterIcon on={isOn} />)}
@@ -450,7 +477,7 @@ function WaterHeaterEquipmentWidget({
         </div>
       </div>
 
-      {hasToggle && equipment.enabled && (
+      {canToggle && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button
             onClick={handleToggle}
@@ -821,12 +848,15 @@ function GateEquipmentWidget({
   equipment,
   onExecuteOrder,
   iconKey,
+  editMode,
 }: {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  /** Edit mode disables the tap-to-toggle so the tile can be dragged and renamed. */
+  editMode?: boolean;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
@@ -865,8 +895,7 @@ function GateEquipmentWidget({
     <WidgetCard
       label={label}
       sublabel={sublabel}
-      onClick={hasSingleAction ? () => handleCommand(null) : undefined}
-      className={hasSingleAction ? "cursor-pointer active:scale-[0.98] transition-transform" : ""}
+      onClick={hasSingleAction && !editMode ? () => handleCommand(null) : undefined}
     >
       {/* Icon centered */}
       <div className="flex-1 flex items-center justify-center">
@@ -921,12 +950,15 @@ function HeaterEquipmentWidget({
   equipment,
   onExecuteOrder,
   iconKey,
+  editMode,
 }: {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  /** Edit mode disables the tap-to-toggle so the tile can be dragged and renamed. */
+  editMode?: boolean;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -957,8 +989,14 @@ function HeaterEquipmentWidget({
     }
   };
 
+  const canToggle = hasToggle && equipment.enabled;
+
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
+    <WidgetCard
+      label={label}
+      sublabel={sublabel}
+      onClick={canToggle && !editMode ? () => void handleToggle() : undefined}
+    >
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
@@ -975,7 +1013,7 @@ function HeaterEquipmentWidget({
       </div>
 
       {/* Zone 3: Bouton — toggle */}
-      {hasToggle && equipment.enabled && (
+      {canToggle && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button
             onClick={handleToggle}
@@ -1436,12 +1474,15 @@ function WaterValveEquipmentWidget({
   equipment,
   onExecuteOrder,
   iconKey,
+  editMode,
 }: {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  /** Edit mode disables the tap-to-toggle so the tile can be dragged and renamed. */
+  editMode?: boolean;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -1471,8 +1512,14 @@ function WaterValveEquipmentWidget({
     }
   };
 
+  const canToggle = hasToggle && equipment.enabled;
+
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
+    <WidgetCard
+      label={label}
+      sublabel={sublabel}
+      onClick={canToggle && !editMode ? () => void handleToggle() : undefined}
+    >
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
         {resolveWidgetIcon(iconKey, <WaterValveWidgetIcon open={isOpen} />)}
@@ -1487,7 +1534,7 @@ function WaterValveEquipmentWidget({
         </div>
       </div>
 
-      {hasToggle && equipment.enabled && (
+      {canToggle && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button
             onClick={handleToggle}

@@ -16,6 +16,8 @@ interface PresentationWidgetProps {
   equipment: EquipmentWithDetails;
   presentation: WidgetPresentation;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  /** Dashboard in edit mode — the tile is then a drag/rename target, not a control. */
+  editMode?: boolean;
 }
 
 export function PresentationWidget({
@@ -24,6 +26,7 @@ export function PresentationWidget({
   equipment,
   presentation,
   onExecuteOrder,
+  editMode,
 }: PresentationWidgetProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
@@ -41,8 +44,14 @@ export function PresentationWidget({
     }
   };
 
+  const canToggle = !!toggle && equipment.enabled;
+
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
+    <WidgetCard
+      label={label}
+      sublabel={sublabel}
+      onClick={canToggle && !editMode ? () => void handleToggle() : undefined}
+    >
       {/* Zone 2: icon + state */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
@@ -63,8 +72,8 @@ export function PresentationWidget({
         </div>
       </div>
 
-      {/* Zone 3: toggle button */}
-      {toggle && equipment.enabled && (
+      {/* Zone 3: toggle button — the whole tile fires it too (see WidgetCard) */}
+      {canToggle && (
         <div className="flex justify-center gap-3 mt-auto pt-1">
           <button
             onClick={handleToggle}
