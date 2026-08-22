@@ -42,8 +42,21 @@ const LOAD_COLOR = "var(--color-energy-hp)";
 const BATTERY_COLOR = "var(--color-solar-auto)";
 const IDLE_COLOR = "var(--color-text-tertiary)";
 
-/** Values the diagram already shows, so the technical sheet never repeats them. */
-const SHOWN_IN_DIAGRAM = new Set(["status", "battery", "battery_runtime", "load", "input_voltage"]);
+/**
+ * Values the diagram already shows, so the technical sheet never repeats them.
+ * The focal node reads the output power via `real_power` (preferred) or
+ * `estimated_power`, so both belong here — otherwise the load reappears in the
+ * sheet, breaking the non-redundancy rule (spec 157 FR5).
+ */
+const SHOWN_IN_DIAGRAM = new Set([
+  "status",
+  "battery",
+  "battery_runtime",
+  "load",
+  "input_voltage",
+  "real_power",
+  "estimated_power",
+]);
 /** Values the margins card already shows. */
 const SHOWN_IN_MARGINS = new Set([
   "nominal_power",

@@ -150,4 +150,19 @@ describe("UpsPanel technical sheet", () => {
     render(<UpsPanel dataBindings={bindings()} />);
     expect(screen.queryByText("false")).toBeNull();
   });
+
+  it("does not repeat the output power the focal node already shows (spec 157 FR5)", () => {
+    // The focal node reads the load from `estimated_power` (21 W); the sheet
+    // must not list it again under "Estimated output power".
+    render(<UpsPanel dataBindings={bindings()} />);
+    expect(screen.getByText("21")).toBeTruthy(); // still on the diagram
+    expect(screen.queryByText("Estimated output power")).toBeNull();
+  });
+
+  it("hides a measured output power from the sheet too, since it feeds the node", () => {
+    render(<UpsPanel dataBindings={bindings({ real_power: 33 })} />);
+    expect(screen.getByText("33")).toBeTruthy(); // real_power wins on the node
+    expect(screen.queryByText("Measured output power")).toBeNull();
+    expect(screen.queryByText("Estimated output power")).toBeNull();
+  });
 });
