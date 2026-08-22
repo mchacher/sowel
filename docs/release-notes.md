@@ -11,6 +11,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.54.x: A tap-to-toggle dashboard and a shared power-flow diagram
+
+### v1.54.0 — 2026-08-22 { #v1-54-0 }
+
+- Feat (ui): **the whole dashboard tile now toggles an on/off equipment**. Lights, switches, plugs, water heaters, water valves, heaters, pool pumps, media players and single-action gates switch when you tap anywhere on the card, not just the small button under the icon, matching how the mobile card already behaved. Tiles with several controls (shutters, thermostats, pool covers, VMC) keep their own buttons, and in edit mode the tile stops acting so it can be dragged and renamed safely. A brightness-slider drag released off its track no longer flips the light off. (#689)
+- Feat (ui): **the UPS detail panel is rebuilt on a shared power-flow diagram** (spec 157). The Energy · Live routing diagram is extracted into a reusable component, and the UPS panel is rebuilt on it: three cards (the live diagram, a margins-and-thresholds card, and a collapsed technical sheet) replace the previous flat list of undifferentiated rows. Field names are translated, booleans render as a check or a dash instead of the word "false", and no value appears twice. The Energy page renders exactly as before, guarded by a characterization test written before the extraction. (#688)
+
 ## 1.53.x: UPS equipment type
 
 ### v1.53.0 — 2026-08-21 { #v1-53-0 }
