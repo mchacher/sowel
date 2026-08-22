@@ -18,7 +18,8 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { BatteryCharging, Server, Zap } from "lucide-react";
+import { Battery, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, Server } from "lucide-react";
+import { GridPylonIcon } from "../icons/GridPylonIcon";
 import type { DataBindingWithValue } from "../../types";
 import { FlowDiagram } from "../flow/FlowDiagram";
 import type { FlowLinkSpec, FlowNodeSpec } from "../flow/flow-geometry";
@@ -88,7 +89,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       dimmed: onBattery,
       value: onBattery ? t("equipments.ups.absent") : r.inputV !== null ? String(Math.round(r.inputV)) : "—",
       unit: onBattery || r.inputV === null ? undefined : "V",
-      icon: <Zap className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.5} />,
+      icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
     },
     {
       slot: "right",
@@ -102,7 +103,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       sub: onBattery
         ? t("equipments.ups.discharging")
         : (formatRuntime(r.runtimeS) ?? undefined),
-      icon: <BatteryCharging className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.5} />,
+      icon: batteryIcon(r.chargePct),
     },
   ];
 
@@ -276,6 +277,19 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       )}
     </div>
   );
+}
+
+/**
+ * Battery glyph matching the charge, so the level reads before the number does.
+ * Mirrors the low-battery thresholds the engine already uses (spec 143).
+ */
+function batteryIcon(pct: number | null) {
+  const cls = "w-9 h-9 sm:w-10 sm:h-10";
+  if (pct === null) return <Battery className={cls} strokeWidth={1.5} />;
+  if (pct <= 20) return <BatteryWarning className={cls} strokeWidth={1.5} />;
+  if (pct <= 50) return <BatteryLow className={cls} strokeWidth={1.5} />;
+  if (pct < 95) return <BatteryMedium className={cls} strokeWidth={1.5} />;
+  return <BatteryFull className={cls} strokeWidth={1.5} />;
 }
 
 function formatSheetValue(value: unknown, unit?: string): string {
