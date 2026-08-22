@@ -23,7 +23,7 @@ const SEVERITY: Record<UpsStatus, UpsSeverity> = {
   offline: "error",
 };
 
-function isUpsStatus(value: unknown): value is UpsStatus {
+export function isUpsStatus(value: unknown): value is UpsStatus {
   return typeof value === "string" && (UPS_STATUS_VALUES as readonly string[]).includes(value);
 }
 
@@ -86,4 +86,104 @@ export function formatRuntime(seconds: unknown): string | null {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest === 0 ? `${hours} h` : `${hours} h ${String(rest).padStart(2, "0")}`;
+}
+
+// ============================================================
+// Panel readings (spec 157)
+// ============================================================
+
+/** Everything the UPS panel needs, read once from the bindings. */
+export interface UpsReadings {
+  status: UpsStatus | null;
+  rawStatus: string | null;
+  chargePct: number | null;
+  runtimeS: number | null;
+  loadPct: number | null;
+  /** Output load in watts — measured or derived by the plugin, never `power`. */
+  loadW: number | null;
+  inputV: number | null;
+  nominalV: number | null;
+  nominalW: number | null;
+  transferLow: number | null;
+  transferHigh: number | null;
+  chargeLowPct: number | null;
+  runtimeLowS: number | null;
+  charging: boolean;
+  replaceBattery: boolean;
+}
+
+interface MinimalBinding {
+  alias: string;
+  category?: string;
+  value?: unknown;
+}
+
+function num(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function byCategory(bindings: readonly MinimalBinding[], category: string): unknown {
+  return bindings.find((b) => b.category === category)?.value;
+}
+
+function byAlias(bindings: readonly MinimalBinding[], alias: string): unknown {
+  return bindings.find((b) => b.alias === alias)?.value;
+}
+
+function bool(value: unknown): boolean {
+  return value === true || value === "true" || value === 1;
+}
+
+/**
+ * Read the panel's working set.
+ *
+ * Categories win where they are unambiguous. `voltage` is not: a UPS reports
+ * both an input and a battery voltage under it, so those two are read by
+ * alias — the one place the panel cannot be category-driven.
+ */
+export function readUpsBindings(bindings: readonly MinimalBinding[]): UpsReadings {
+  const raw = byCategory(bindings, "ups_status") ?? byAlias(bindings, "status");
+  const rawStatus = raw === null || raw === undefined || raw === "" ? null : String(raw);
+  const flags = byAlias(bindings, "status_flags");
+
+  return {
+    status: isUpsStatus(rawStatus) ? rawStatus : null,
+    rawStatus,
+    chargePct: num(byCategory(bindings, "battery")),
+    runtimeS: num(byCategory(bindings, "battery_runtime")),
+    loadPct: num(byCategory(bindings, "ups_load")),
+    loadW: num(byAlias(bindings, "real_power")) ?? num(byAlias(bindings, "estimated_power")),
+    inputV: num(byAlias(bindings, "input_voltage")),
+    nominalV: num(byAlias(bindings, "input_voltage_nominal")),
+    nominalW: num(byAlias(bindings, "nominal_power")),
+    transferLow: num(byAlias(bindings, "transfer_low")),
+    transferHigh: num(byAlias(bindings, "transfer_high")),
+    chargeLowPct: num(byAlias(bindings, "battery_charge_low")),
+    runtimeLowS: num(byAlias(bindings, "battery_runtime_low")),
+    // The plugin pushes explicit booleans; the raw flag string is the fallback
+    // for any other integration that only mirrors `ups.status`.
+    charging: bool(byAlias(bindings, "charging")) || /\bCHRG\b/.test(String(flags ?? "")),
+    replaceBattery: bool(byAlias(bindings, "replace_battery")) || /\bRB\b/.test(String(flags ?? "")),
+  };
+}
+
+/** How much room is left before the UPS stops protecting the load. */
+export type UpsMargin = "comfortable" | "tight" | "critical";
+
+/**
+ * Summarise the margins in one word for the card header.
+ *
+ * Deliberately coarse: the row values below carry the detail, and a header
+ * that changed on every percent would be noise rather than a summary.
+ */
+export function upsMarginOf(r: UpsReadings): UpsMargin {
+  if (r.status === "low_battery" || r.status === "overload" || r.status === "offline") {
+    return "critical";
+  }
+  if (isOnBattery(r.status)) return "tight";
+  if (r.loadPct !== null && r.loadPct >= 80) return "tight";
+  if (r.chargePct !== null && r.chargePct < 50) return "tight";
+  return "comfortable";
 }
