@@ -11,6 +11,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.54.x : Tuile de tableau de bord cliquable et diagramme de flux partagé
+
+### v1.54.0 — 2026-08-22 { #v1-54-0 }
+
+- Feat (ui) : **toute la tuile du tableau de bord bascule désormais un équipement on/off**. Lumières, interrupteurs, prises, chauffe-eau, vannes, radiateurs, pompes de piscine, lecteurs multimédia et portails à action unique changent d'état quand on clique n'importe où sur la carte, plus seulement sur le petit bouton sous l'icône, comme le faisait déjà la carte mobile. Les tuiles à plusieurs contrôles (volets, thermostats, volets de piscine, VMC) gardent leurs boutons, et en mode édition la tuile n'agit plus pour pouvoir être déplacée et renommée sans risque. Un glissement du curseur de luminosité relâché hors de sa piste n'éteint plus la lumière. (#689)
+- Feat (ui) : **le panneau de détail onduleur est reconstruit sur un diagramme de flux partagé** (spec 157). Le diagramme de routage d'Energy · Live est extrait en composant réutilisable, et le panneau onduleur est rebâti dessus : trois cartes (le diagramme en direct, une carte marges et seuils, une fiche technique repliée) remplacent l'ancienne liste plate de lignes indifférenciées. Les noms de champs sont traduits, les booléens s'affichent par une coche ou un tiret au lieu du mot « false », et aucune valeur n'apparaît deux fois. La page Energy s'affiche exactement comme avant, protégée par un test de caractérisation écrit avant l'extraction. (#688)
+
 ## 1.53.x : Type d'équipement onduleur
 
 ### v1.53.0 — 2026-08-21 { #v1-53-0 }
