@@ -461,6 +461,7 @@ function WidgetRenderer({
         equipmentZone={equipmentZone}
         onExecuteOrder={onExecuteOrder}
         onOpenDetail={editMode ? undefined : onOpenDetail}
+        editMode={editMode}
       />
     );
   }

@@ -20,6 +20,8 @@ Affiche un équipement unique avec son état courant et ses contrôles rapides.
 - **Thermostats** : affichage de température avec indicateur de mode
 - **Interrupteurs** : badge d'état on/off
 
+Les équipements on/off (lumières, interrupteurs, prises, chauffe-eau, vannes, radiateurs, pompes de piscine, lecteurs multimédia, portails à action unique) changent d'état quand vous cliquez **n'importe où sur la tuile**, et pas seulement sur le bouton sous l'icône. Les tuiles à plusieurs contrôles -- volets, thermostats, volets de piscine, VMC -- gardent leurs boutons. En mode édition la tuile n'agit plus, pour que vous puissiez la déplacer et la renommer sans risque.
+
 ### Widget de zone
 
 Affiche les données agrégées d'une zone entière. Vous choisissez quelle **famille** de données afficher :

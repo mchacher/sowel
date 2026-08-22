@@ -20,6 +20,8 @@ Displays a single equipment with its current state and quick controls.
 - **Thermostats**: temperature display with mode indicator
 - **Switches**: on/off state badge
 
+On/off equipments (lights, switches, plugs, water heaters, water valves, heaters, pool pumps, media players, single-action gates) toggle when you click **anywhere on the tile**, not just the button under the icon. Tiles with several controls -- shutters, thermostats, pool covers, VMC -- keep their own buttons. In edit mode the tile stops acting, so you can drag and rename it safely.
+
 ### Zone widget
 
 Displays aggregated data for an entire zone. You choose which **family** of data to show:

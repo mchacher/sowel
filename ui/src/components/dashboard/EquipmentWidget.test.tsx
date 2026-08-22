@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, userEvent } from "../../test-utils";
+import { act, fireEvent, render, screen, userEvent } from "../../test-utils";
 import { EquipmentWidget } from "./EquipmentWidget";
 import type { DashboardWidget, EquipmentWithDetails } from "../../types";
 
@@ -358,5 +358,114 @@ describe("EquipmentWidget", () => {
     // …the whole card is the action.
     await userEvent.click(screen.getByText("Garage"));
     expect(onExecuteOrder).toHaveBeenCalledWith("g-2", "command", null);
+  });
+  // A tile is the control, not just a frame around one: clicking anywhere on a
+  // switch/light/valve card runs the same order as the button under the icon,
+  // the way the mobile card already behaved.
+  it("fires the toggle when the tile itself is clicked", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EquipmentWidget
+        widget={makeWidget()}
+        equipment={makeEquipment()}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("Plug"));
+    expect(onExecuteOrder).toHaveBeenCalledWith("eq-1", "state", "ON");
+  });
+
+  it("fires the toggle once — not twice — when the button inside the tile is clicked", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EquipmentWidget
+        widget={makeWidget()}
+        equipment={makeEquipment()}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button"));
+    expect(onExecuteOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the tile inert in edit mode, where it is a drag and rename target", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EquipmentWidget
+        widget={makeWidget()}
+        equipment={makeEquipment()}
+        onExecuteOrder={onExecuteOrder}
+        editMode
+      />,
+    );
+
+    await userEvent.click(screen.getByText("Plug"));
+    expect(onExecuteOrder).not.toHaveBeenCalled();
+  });
+
+  // A brightness drag released off the slider track lands its click on the card
+  // (their common ancestor). Without the pointerdown bookkeeping in WidgetCard,
+  // adjusting a dimmable light would switch it off.
+  it("does not toggle a dimmable light when a slider drag ends on the tile", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    const dimmable = makeEquipment({
+      id: "l-1",
+      name: "Plafonnier",
+      type: "light_dimmable",
+      dataBindings: [
+        {
+          id: "db-l",
+          equipmentId: "l-1",
+          deviceDataId: "dd-l",
+          alias: "state",
+          deviceId: "dev-l",
+          deviceName: "Lamp",
+          key: "state",
+          type: "boolean",
+          category: "light_state",
+          value: true,
+          lastUpdated: "2026-01-01T00:00:00Z",
+          lastChanged: "2026-01-01T00:00:00Z",
+          stale: false,
+        },
+        {
+          id: "db-b",
+          equipmentId: "l-1",
+          deviceDataId: "dd-b",
+          alias: "brightness",
+          deviceId: "dev-l",
+          deviceName: "Lamp",
+          key: "brightness",
+          type: "number",
+          category: "light_brightness",
+          value: 127,
+          lastUpdated: "2026-01-01T00:00:00Z",
+          lastChanged: "2026-01-01T00:00:00Z",
+          stale: false,
+        },
+      ] as EquipmentWithDetails["dataBindings"],
+    });
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "l-1" })}
+        equipment={dimmable}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    const slider = screen.getByRole("slider");
+    const label = screen.getByText("Plafonnier");
+    fireEvent.pointerDown(slider);
+    fireEvent.click(label); // pointerup landed outside the track
+    expect(onExecuteOrder).not.toHaveBeenCalled();
+
+    // A plain click on the tile still toggles.
+    await act(async () => {
+      fireEvent.pointerDown(label);
+      fireEvent.click(label);
+    });
+    expect(onExecuteOrder).toHaveBeenCalledWith("l-1", "state", "OFF");
   });
 });
