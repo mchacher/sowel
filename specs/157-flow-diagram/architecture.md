@@ -12,6 +12,7 @@
 | `ui/src/components/equipments/UpsPanel.tsx`      | Rewritten on FlowDiagram + two cards                                                     |
 | `ui/src/components/equipments/upsStatus.ts`      | `readUpsBindings`, `upsMarginOf`; `isUpsStatus` exported                                 |
 | `ui/src/components/equipments/UpsPanel.test.tsx` | **New** — 15 tests                                                                       |
+| `ui/src/components/icons/GridPylonIcon.tsx`      | **New** — the pylon, shared by Live's Réseau node and the UPS's Secteur node             |
 | `ui/src/i18n/locales/{en,fr}.json`               | 46 keys                                                                                  |
 
 The geometry/component split is not cosmetic: `react-refresh/only-export-components`
@@ -63,3 +64,16 @@ Straight from the energy palette (spec 148), no new tokens:
 
 The battery branch borrows the status severity during an outage: amber the
 moment the mains is gone, red once the hardware calls the charge low.
+
+## Icons
+
+The mains node borrows Live's transmission pylon rather than picking a
+lightning bolt of its own: the two surfaces look at the same grid, so the glyph
+is extracted to `GridPylonIcon` and shared. Extracting it also lifts a ~1 KB
+inline path out of the page component.
+
+The battery glyph tracks the charge (`BatteryFull` / `BatteryMedium` /
+`BatteryLow` / `BatteryWarning`), on the thresholds the low-battery monitor
+already uses (spec 143), so the level reads before the number does. It also
+drops `BatteryCharging`, whose built-in bolt claimed the unit was charging when
+it was not — charging has its own branch on the diagram.
