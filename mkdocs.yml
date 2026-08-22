@@ -121,6 +121,7 @@ nav:
       - Modes: technical/data-model/modes.md
       - Recipes: technical/data-model/recipes.md
     - Contributing: technical/contributing.md
+    - Dependency Management: technical/dependency-management.md
     - Specs Index: specs-index.md
   - User Guide:
     - user/index.md
