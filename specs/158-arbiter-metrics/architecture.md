@@ -255,7 +255,7 @@ and yesterday once after midnight divides the writes by four, at the cost of
 staler same-day metrics. Not done by default, because the hourly catch-up is
 what makes a restart across a day boundary harmless.
 
-**Out of scope, worth its own ticket**: `src/core/database.ts` sets
+**Out of scope, tracked as #694**: `src/core/database.ts` sets
 `journal_mode = WAL` but never sets `synchronous`, which therefore stays FULL.
 `synchronous = NORMAL` is the standard WAL recommendation and would cut fsyncs
 across the whole application, far beyond this spec. It trades the last
