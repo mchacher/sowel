@@ -24,6 +24,39 @@ export function openDatabase(dbPath: string, parentLogger?: Logger): Database.Da
 
   // Enable WAL mode for better concurrent read performance
   db.pragma("journal_mode = WAL");
+
+  // Issue #694 — pin `synchronous` rather than inherit it.
+  //
+  // The effective value today is already NORMAL, but only by accident of a
+  // dependency: better-sqlite3 compiles SQLite with
+  // SQLITE_DEFAULT_WAL_SYNCHRONOUS=1, and SQLite applies that to any database
+  // ALREADY in WAL mode at open time. A brand-new file is different — it is
+  // created in `delete` mode, takes the ordinary default (FULL), and switching
+  // it to WAL afterwards does not re-apply the WAL default. So a fresh install
+  // ran its first process lifetime at FULL, and every boot after that at
+  // NORMAL, with nothing in this repo expressing the intent either way.
+  //
+  // Stating it here makes the choice ours instead of a compile flag's: a
+  // better-sqlite3 bump that drops or flips that define would otherwise
+  // silently move production to one fsync per commit. `database.test.ts` pins
+  // it.
+  //
+  // What NORMAL means under WAL: commits do not fsync, the sync happens at
+  // checkpoint. A power loss or an OS crash can lose transactions committed
+  // since the last checkpoint — with the default wal_autocheckpoint of 1000
+  // pages that is up to ~4 MB of WAL, so potentially many minutes of writes,
+  // not seconds (Linux writeback makes the realistic loss much smaller than
+  // that guaranteed bound). It CANNOT corrupt the database, and recovery is
+  // prefix-consistent: you can never keep transaction N+1 having lost N. A
+  // process crash or a container restart loses nothing, since the host page
+  // cache survives both — but a VM hard-stop is a guest power loss, not a
+  // restart.
+  //
+  // Note this pragma changes WHEN SQLite fsyncs, never how many pages it
+  // writes. It is not a write-amplification fix; batching the per-message
+  // writes in DeviceManager is (see the issue).
+  db.pragma("synchronous = NORMAL");
+
   db.pragma("foreign_keys = ON");
 
   logger?.info({ path: dbPath }, "SQLite database opened");
