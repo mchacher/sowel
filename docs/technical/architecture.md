@@ -240,6 +240,21 @@ The live list is in `plugins/registry.json` at the repo root.
 
 - **Library**: `better-sqlite3` with intentionally synchronous API (fast, no callback overhead).
 - **WAL mode**: `PRAGMA journal_mode=WAL` for concurrent read/write.
+- **`PRAGMA synchronous=NORMAL`** (issue #694): pinned rather than inherited.
+  The effective value was already NORMAL, but only because better-sqlite3
+  compiles `SQLITE_DEFAULT_WAL_SYNCHRONOUS=1` and SQLite applies it to a
+  database already in WAL mode at open; a brand-new file is created in `delete`
+  mode, takes FULL, and switching it to WAL afterwards does not re-apply the WAL
+  default, so a fresh install ran its first process lifetime at FULL. Setting it
+  explicitly makes the choice ours instead of a dependency's compile flag, and
+  `database.test.ts` pins it. **The trade-off NORMAL accepts**: a power loss or
+  an OS crash can lose transactions committed since the last checkpoint (up to
+  ~4 MB of WAL at the default `wal_autocheckpoint`, so potentially minutes of
+  writes, though Linux writeback makes the realistic loss far smaller). It
+  cannot corrupt the database, recovery is prefix-consistent, and a process
+  crash or container restart loses nothing — but a VM hard-stop is a guest power
+  loss, not a restart. Note this governs _when_ SQLite fsyncs, never how many
+  pages it writes: it is not a write-amplification fix.
 - **Migrations**: SQL files in `migrations/` run automatically on startup.
 - **Transactions**: Used for batch operations.
 - **IDs**: UUID v4 via `crypto.randomUUID()`.
