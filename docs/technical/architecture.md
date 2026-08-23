@@ -304,6 +304,39 @@ between declared flexible loads. Key invariants:
   surfaced on Energy → Live (allocation bar, day timeline, decision journal).
   Default off: `energy.arbiter.enabled = false` means zero behavior change.
 
+### Daily metrics (spec 158)
+
+The decision journal and the surplus series are purged after 7 days, which made
+any retrospective study of the arbiter impossible past a week. An hour-aligned
+rollup (`src/energy/arbiter-metrics-rollup.ts`) recomputes **today and
+yesterday** on every tick into `arbiter_daily_load_metrics` and
+`arbiter_daily_home_metrics`, kept 400 days. Today's row is partial by
+construction (the window is clamped to `now`) and the first tick after midnight
+completes it; recomputing yesterday every tick is what makes a restart across a
+day boundary a non-event.
+
+- **It never touches the arbiter.** Everything it needs is elsewhere: the two
+  persisted stores, the equipments' energy profiles, and two settings values.
+  `capacity-arbiter.ts` is not modified, so arbitration cannot be destabilised
+  by a change to the metrics.
+- **One definition of state**: spans are derived with `sustainedAfter()`, the
+  same function the timeline paints with. A metric that disagreed with the
+  ribbon on screen would be worse than no metric.
+- **The headline figure is the short cycle**: a grant revoked inside
+  `minOnS + releaseHoldS`, i.e. a load that started on a surplus that did not
+  hold. That is the number every later tuning change is judged against.
+- `idleClaimableExportWh` (export accumulated while a declared load was not
+  running and the surplus covered its `needW`) is an **estimate**: 5-minute
+  sampling, profiles read at rollup time. The API flags it in `estimates`.
+- Reads are capped at 20 000 decision rows per day and a truncation is logged,
+  never silent. A whole tick is written in one transaction: one commit and one
+  fsync per hour rather than fourteen, which is what keeps the write wear
+  negligible on a flash-booted box.
+
+Read through `GET /api/v1/energy/arbiter/metrics` or
+`scripts/energy/arbiter-metrics.ts`, which opens SQLite directly and therefore
+works against a restored backup with no running instance.
+
 Full design, review log and rationale: `specs/140-energy-capacity-arbiter/`.
 
 ## Authentication & Authorization

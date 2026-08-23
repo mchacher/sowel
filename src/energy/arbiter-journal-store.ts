@@ -50,7 +50,10 @@ export class ArbiterJournalStore {
     this.rangeStmt = db.prepare(
       "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note, running" +
         " FROM arbiter_decision_log WHERE at_iso >= ? AND at_iso <= ?" +
-        " ORDER BY at_iso ASC, rowid ASC",
+        // Spec 158 — the daily rollup caps how many rows it will pull for one
+        // day. SQLite treats a negative LIMIT as unlimited, which keeps the
+        // pre-158 callers (timeline window) on a single prepared statement.
+        " ORDER BY at_iso ASC, rowid ASC LIMIT ?",
     );
     this.countStmt = db.prepare("SELECT COUNT(*) AS n FROM arbiter_decision_log");
   }
@@ -99,10 +102,17 @@ export class ArbiterJournalStore {
     }
   }
 
-  /** Decisions in [fromIso, toIso], ascending (spec 148 — timeline window). */
-  range(fromIso: string, toIso: string): ArbiterDecision[] {
+  /**
+   * Decisions in [fromIso, toIso], ascending (spec 148 — timeline window).
+   *
+   * `limit` (spec 158) bounds the read for callers that cannot know how many
+   * decisions a window holds: a flapping arbiter can journal thousands in a
+   * day, and that is precisely the day the metrics rollup wants to read.
+   * Omitted means unlimited, as before.
+   */
+  range(fromIso: string, toIso: string, limit = -1): ArbiterDecision[] {
     try {
-      const rows = this.rangeStmt.all(fromIso, toIso) as ArbiterDecisionRow[];
+      const rows = this.rangeStmt.all(fromIso, toIso, limit) as ArbiterDecisionRow[];
       return rows.map((r) => ({
         atIso: r.at_iso,
         kind: r.kind as ArbiterDecisionKind,

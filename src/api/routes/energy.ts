@@ -5,6 +5,8 @@ import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
+import type { ArbiterMetricsStore } from "../../energy/arbiter-metrics-store.js";
+import { ARBITER_METRICS_RETENTION_DAYS } from "../../energy/arbiter-metrics-store.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
 import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../../equipments/metering.js";
 import type { InfluxClient } from "../../core/influx-client.js";
@@ -18,6 +20,7 @@ import type {
   EnergyByUsageResponse,
   SubmeterSeries,
   EnergyByUsagePoint,
+  ArbiterMetricsResponse,
 } from "../../shared/types.js";
 
 interface EnergyDeps {
@@ -26,6 +29,7 @@ interface EnergyDeps {
   settingsManager: SettingsManager;
   tariffClassifier: TariffClassifier;
   capacityArbiter: CapacityArbiter | null; // spec 140 — null in some tests
+  arbiterMetricsStore: ArbiterMetricsStore | null; // spec 158 — null in some tests
   logger: Logger;
 }
 
@@ -36,6 +40,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     settingsManager,
     tariffClassifier,
     capacityArbiter,
+    arbiterMetricsStore,
     logger: parentLogger,
   } = deps;
   const logger = parentLogger.child({ module: "energy-api" });
@@ -469,6 +474,64 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         return reply.code(404).send({ error: "No active suspension for this equipment" });
       }
       return { resumed: true };
+    },
+  );
+
+  // ============================================================
+  // GET /api/v1/energy/arbiter/metrics — spec 158 daily metrics.
+  // Query: from / to (YYYY-MM-DD, inclusive). Defaults to the last 30 days,
+  // span clamped to the retention window rather than rejected.
+  // ============================================================
+  app.get<{ Querystring: { from?: string; to?: string } }>(
+    "/api/v1/energy/arbiter/metrics",
+    async (request, reply) => {
+      const { from, to } = request.query;
+      const isDay = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
+      if ((from !== undefined && !isDay(from)) || (to !== undefined && !isDay(to))) {
+        return reply.code(400).send({ error: "from and to must be YYYY-MM-DD dates" });
+      }
+
+      const toDay = to ?? localDateStr();
+      let fromDay = from;
+      if (fromDay === undefined) {
+        const d = new Date(`${toDay}T12:00:00`);
+        d.setDate(d.getDate() - 29);
+        fromDay = localDateStr(d);
+      }
+      if (fromDay > toDay) {
+        return reply.code(400).send({ error: "from must not be after to" });
+      }
+      // Clamp rather than reject: an over-long span is a UI convenience call,
+      // not a client error, and the rows do not exist past the retention.
+      const earliest = new Date(`${toDay}T12:00:00`);
+      earliest.setDate(earliest.getDate() - ARBITER_METRICS_RETENTION_DAYS);
+      const earliestDay = localDateStr(earliest);
+      if (fromDay < earliestDay) fromDay = earliestDay;
+
+      const response: ArbiterMetricsResponse = {
+        from: fromDay,
+        to: toDay,
+        home: [],
+        loads: [],
+        // idleClaimableExportWh is derived from 5-min samples and from the
+        // profiles as they stand today, not as they were on the day. Flagged
+        // so no consumer presents it as a measured kWh.
+        estimates: ["idleClaimableExportWh"],
+      };
+      if (!arbiterMetricsStore) return response;
+
+      try {
+        response.home = arbiterMetricsStore.readHome(fromDay, toDay);
+        response.loads = arbiterMetricsStore.readLoads(fromDay, toDay).map((row) => ({
+          ...row,
+          // A deleted equipment keeps its history; the id is the honest label.
+          equipmentName: equipmentManager.getById(row.equipmentId)?.name ?? row.equipmentId,
+        }));
+        return response;
+      } catch (err) {
+        logger.error({ err, from: fromDay, to: toDay }, "Arbiter metrics query failed");
+        return reply.status(500).send({ error: "Failed to query arbiter metrics" });
+      }
     },
   );
 

@@ -25,6 +25,8 @@ import { RecipeManager } from "./recipes/engine/recipe-manager.js";
 import { CapacityArbiter } from "./energy/capacity-arbiter.js";
 import { ArbiterJournalStore } from "./energy/arbiter-journal-store.js";
 import { ArbiterSurplusStore } from "./energy/arbiter-surplus-store.js";
+import { ArbiterMetricsStore } from "./energy/arbiter-metrics-store.js";
+import { ArbiterMetricsRollup } from "./energy/arbiter-metrics-rollup.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
 import { ActivityStore } from "./activity/activity-store.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
@@ -355,6 +357,22 @@ async function main() {
   );
   capacityArbiter.start();
 
+  // Spec 158 — daily rollup of the arbiter's own behaviour (short cycles,
+  // granted time, missed surplus). Pure instrumentation: it reads the two
+  // stores above and never touches the arbiter, so the raw 7-day journal stops
+  // being the only record of how arbitration actually behaved.
+  const arbiterMetricsStore = new ArbiterMetricsStore(db, logger);
+  const purgedMetricsRows = arbiterMetricsStore.purgeOlderThan();
+  const arbiterMetricsRollup = new ArbiterMetricsRollup(
+    arbiterJournalStore,
+    arbiterSurplusStore,
+    arbiterMetricsStore,
+    equipmentManager,
+    settingsManager,
+    logger,
+  );
+  arbiterMetricsRollup.start();
+
   // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
@@ -441,9 +459,19 @@ async function main() {
   // boot-time pattern as the audit log. The arbiter journal was already purged
   // above (before its start() so it seeds only within the retention window).
   const purgedActivityRows = activityStore.purgeOlderThan();
-  if (purgedActivityRows > 0 || purgedArbiterRows > 0 || purgedSurplusRows > 0) {
+  if (
+    purgedActivityRows > 0 ||
+    purgedArbiterRows > 0 ||
+    purgedSurplusRows > 0 ||
+    purgedMetricsRows > 0
+  ) {
     logger.info(
-      { activity: purgedActivityRows, arbiter: purgedArbiterRows, surplus: purgedSurplusRows },
+      {
+        activity: purgedActivityRows,
+        arbiter: purgedArbiterRows,
+        surplus: purgedSurplusRows,
+        arbiterMetrics: purgedMetricsRows,
+      },
       "History retention purge complete",
     );
   }
@@ -513,6 +541,7 @@ async function main() {
     pluginLoader,
     recipeLoader,
     capacityArbiter,
+    arbiterMetricsStore, // spec 158 — daily metrics read surface
     backupManager,
     versionChecker,
     updateManager,
@@ -654,6 +683,11 @@ async function main() {
       capacityArbiter.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping capacity arbiter");
+    }
+    try {
+      arbiterMetricsRollup.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping arbiter metrics rollup");
     }
     try {
       sunlightManager.stop();
