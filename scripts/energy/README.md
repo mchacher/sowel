@@ -81,6 +81,26 @@ Affiche les points raw bruts pour un jour et les définitions Flux des tasks Inf
 npx tsx scripts/energy/raw-inspect.ts
 ```
 
+### `arbiter-metrics.ts`
+
+Affiche les métriques journalières de l'arbitre (spec 158) sur une plage de dates :
+démarrages, court-cycles, temps accordé par charge, l'énergie exportée pendant
+qu'une charge la réclamait (le vrai raté de l'arbitre) et celle exportée pendant
+qu'une charge décalable était à l'arrêt (l'occasion d'ordonnancement).
+
+Lit SQLite en lecture seule, donc utilisable sur un backup restauré sans instance
+qui tourne.
+
+```bash
+npx tsx scripts/energy/arbiter-metrics.ts                          # 30 derniers jours
+npx tsx scripts/energy/arbiter-metrics.ts --from 2026-08-01 --to 2026-08-31
+npx tsx scripts/energy/arbiter-metrics.ts --db ./data/restore/sowel.db
+```
+
+La colonne `short` est la métrique clé : un démarrage révoqué avant
+`minOnS + releaseHoldS` est une charge qui a démarré sur un surplus qui n'a pas
+tenu. Plus c'est bas, mieux c'est.
+
 ## Migration HP/HC
 
 ### `classify-hphc.ts`

@@ -2,7 +2,11 @@ import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerEnergyRoutes } from "./energy.js";
-import type { TariffConfig } from "../../shared/types.js";
+import type {
+  TariffConfig,
+  ArbiterDailyHomeMetrics,
+  ArbiterDailyLoadMetrics,
+} from "../../shared/types.js";
 
 // Spec 119 — Integration tests on /api/v1/energy/history and
 // /api/v1/energy/by-usage.  Validates the always-N-points-per-period
@@ -47,6 +51,12 @@ interface BuildOpts {
   /** Issue #381 — role decorated on request.auth. Defaults to admin;
    *  null leaves request.auth undefined (unauthenticated). */
   authRole?: "admin" | "standard" | null;
+  /** Spec 158 — stub the arbiter daily metrics store. Absent = not wired,
+   *  which is the "arbiter never ran" case the route must answer politely. */
+  arbiterMetrics?: {
+    readLoads: () => Omit<ArbiterDailyLoadMetrics, "equipmentName">[];
+    readHome: () => ArbiterDailyHomeMetrics[];
+  } | null;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -100,6 +110,7 @@ async function buildApp(opts: BuildOpts = {}) {
   const equipments = opts.equipments ?? [];
   const equipmentManager = {
     getAll: () => equipments,
+    getById: (id: string) => equipments.find((e) => e.id === id),
     getDataBindingsWithValues: () => [
       { alias: "power", category: "power", type: "number", value: 0 },
     ],
@@ -124,6 +135,8 @@ async function buildApp(opts: BuildOpts = {}) {
     influxClient: influxClient as never,
     settingsManager,
     tariffClassifier,
+    capacityArbiter: null,
+    arbiterMetricsStore: (opts.arbiterMetrics ?? null) as never,
     logger,
   });
   await app.ready();
@@ -697,5 +710,177 @@ describe("Issue #381 — GET /api/v1/settings/energy/tariff admin gate", () => {
     const r = await app.inject({ method: "GET", url: "/api/v1/settings/energy/tariff" });
     expect(r.statusCode).toBe(200);
     expect(r.json()).toEqual(TARIFF);
+  });
+});
+
+// ============================================================
+// Spec 158 — GET /api/v1/energy/arbiter/metrics
+// ============================================================
+
+describe("Spec 158 — /api/v1/energy/arbiter/metrics", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  const localDayStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  const loadRow = (day: string): Omit<ArbiterDailyLoadMetrics, "equipmentName"> => ({
+    day,
+    equipmentId: "pump",
+    grants: 3,
+    revokes: 2,
+    shortCycles: 1,
+    grantedS: 7200,
+    pendingS: 600,
+    unmanagedS: 0,
+    suspendedS: 0,
+  });
+
+  const homeRow = (day: string): ArbiterDailyHomeMetrics => ({
+    day,
+    exportWh: 4200,
+    importWh: 1300,
+    waitingExportWh: 120,
+    idleClaimableExportWh: 800,
+    samples: 288,
+  });
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("returns the rows over an explicit range, with names resolved", async () => {
+    app = await buildApp({
+      equipments: [{ id: "pump", name: "Pool pump", type: "energy_meter" }],
+      arbiterMetrics: {
+        readLoads: () => [loadRow("2026-08-20")],
+        readHome: () => [homeRow("2026-08-20")],
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=2026-08-01&to=2026-08-31",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.from).toBe("2026-08-01");
+    expect(body.to).toBe("2026-08-31");
+    expect(body.loads).toHaveLength(1);
+    expect(body.loads[0].equipmentName).toBe("Pool pump");
+    expect(body.loads[0].shortCycles).toBe(1);
+    expect(body.home[0].exportWh).toBe(4200);
+  });
+
+  it("flags idleClaimableExportWh as an estimate", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
+    expect(res.json().estimates).toContain("idleClaimableExportWh");
+    expect(res.json().estimates).toContain("waitingExportWh");
+  });
+
+  it("falls back to the equipment id for a deleted equipment", async () => {
+    app = await buildApp({
+      equipments: [],
+      arbiterMetrics: { readLoads: () => [loadRow("2026-08-20")], readHome: () => [] },
+    });
+
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().loads[0].equipmentName).toBe("pump");
+  });
+
+  it("defaults to the last 30 days", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
+
+    const body = res.json();
+    const from = new Date(`${body.from}T12:00:00`);
+    const to = new Date(`${body.to}T12:00:00`);
+    const days = Math.round((to.getTime() - from.getTime()) / 86_400_000);
+    expect(days).toBe(29); // inclusive range of 30 days
+  });
+
+  it("rejects a malformed date", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=hier&to=2026-08-31",
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects from after to", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=2026-08-31&to=2026-08-01",
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("clamps an over-long span instead of rejecting it", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const today = new Date();
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/energy/arbiter/metrics?from=2000-01-01&to=${localDayStr(today)}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.from).not.toBe("2000-01-01");
+    // Clamped to the retention window counted back from TODAY.
+    const expected = new Date(today);
+    expected.setDate(expected.getDate() - 399);
+    expect(body.from).toBe(localDayStr(expected));
+  });
+
+  it("anchors the clamp on today, not on `to` (a far-future `to` must not hide data)", async () => {
+    // Anchoring on `to` pushed `from` FORWARD past every existing row and
+    // answered 200 with empty arrays for a range that does have data.
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=2026-08-01&to=2099-01-01",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().from).toBe("2026-08-01");
+  });
+
+  it("rejects an impossible but well-shaped date", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=2026-02-30&to=2026-03-31",
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("answers with an empty payload when the arbiter never ran", async () => {
+    app = await buildApp({ arbiterMetrics: null });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ home: [], loads: [] });
+  });
+
+  it("returns 500 rather than crashing when the store throws", async () => {
+    app = await buildApp({
+      arbiterMetrics: {
+        readLoads: () => {
+          throw new Error("db gone");
+        },
+        readHome: () => [],
+      },
+    });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
+    expect(res.statusCode).toBe(500);
   });
 });

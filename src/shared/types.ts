@@ -869,6 +869,73 @@ export interface ArbiterTimeline {
 }
 
 // ============================================================
+// Arbiter daily metrics (spec 158)
+// ============================================================
+
+/**
+ * Per-load, per-local-day aggregate of the arbiter's own behaviour. Rolled up
+ * from the decision journal, which only keeps 7 days; these rows keep 400, so
+ * a change to the arbitration logic can be compared against a real "before".
+ */
+export interface ArbiterDailyLoadMetrics {
+  /** Local calendar day, YYYY-MM-DD. */
+  day: string;
+  equipmentId: string;
+  /** Resolved at read time; falls back to the id for a deleted equipment. */
+  equipmentName: string;
+  grants: number;
+  revokes: number;
+  /**
+   * Grants revoked in less than `minOnS + releaseHoldS` after being granted:
+   * the load started on a surplus that did not hold. THE metric this rollup
+   * exists for — a rising short-cycle count is the arbiter thrashing.
+   */
+  shortCycles: number;
+  grantedS: number;
+  /** Claiming surplus, none granted yet. */
+  pendingS: number;
+  /** Running outside arbitration (suspension or unclaimed run). */
+  unmanagedS: number;
+  suspendedS: number;
+}
+
+/** Per-local-day energy balance as the arbiter saw it (spec 158). */
+export interface ArbiterDailyHomeMetrics {
+  day: string;
+  exportWh: number;
+  importWh: number;
+  /**
+   * Export accumulated while a load was CLAIMING the surplus and did not get
+   * it. The arbiter's own miss: engage-hold latency, or a grant that never
+   * came. Small when healthy (3 % of export on the reference installation).
+   */
+  waitingExportWh: number;
+  /**
+   * Export accumulated while a DEFERRABLE load was not running and the surplus
+   * covered its `needW`. NOT an arbiter failure — nobody asked for it — but
+   * the scheduling opportunity a planner would harvest. Comfort loads are
+   * excluded on purpose: an idle heat pump means the house is comfortable, not
+   * that energy was wasted.
+   *
+   * An ESTIMATE: 5-minute sampling, and the load profiles are read at rollup
+   * time rather than as they were on the day.
+   */
+  idleClaimableExportWh: number;
+  /** Surplus samples the day actually had (~288 for a full day). A low count
+   *  means the instance was down, not that the day was quiet. */
+  samples: number;
+}
+
+export interface ArbiterMetricsResponse {
+  from: string;
+  to: string;
+  home: ArbiterDailyHomeMetrics[];
+  loads: ArbiterDailyLoadMetrics[];
+  /** Field names in this payload that are estimates, not measurements. */
+  estimates: string[];
+}
+
+// ============================================================
 // Mode
 // ============================================================
 
