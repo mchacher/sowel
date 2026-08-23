@@ -22,6 +22,10 @@ import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-t
 import { ZoneAggregator } from "./zones/zone-aggregator.js";
 import { SunlightManager } from "./zones/sunlight-manager.js";
 import { RecipeManager } from "./recipes/engine/recipe-manager.js";
+import { createShutdownController } from "./core/shutdown-controller.js";
+
+/** Half the shutdown budget, so the steps after stopAll() always get a share. */
+const INTEGRATION_STOP_TIMEOUT_MS = 4000;
 import { CapacityArbiter } from "./energy/capacity-arbiter.js";
 import { ArbiterJournalStore } from "./energy/arbiter-journal-store.js";
 import { ArbiterSurplusStore } from "./energy/arbiter-surplus-store.js";
@@ -81,12 +85,19 @@ async function main() {
   // 0. Clean up any stale PID file from a previous run
   cleanStalePidFile("./data");
 
-  process.on("SIGINT", () => {
-    process.exit(0);
-  });
-  process.on("SIGTERM", () => {
-    process.exit(0);
-  });
+  // Issue #696 — ONE signal listener for the whole process lifetime.
+  //
+  // This used to be an immediate `process.exit(0)` here plus the graceful
+  // `shutdown` registered at the end of boot. Node runs signal listeners in
+  // registration order, so this one always won and the graceful sequence never
+  // ran: integrations were never stopped, `db.close()` never called, and the
+  // InfluxDB write buffer was dropped on every container restart.
+  //
+  // The controller keeps both behaviours without the ordering trap. Until
+  // `setGraceful` is called it exits immediately, so a hang during boot stays
+  // killable; afterwards the same listener runs the real sequence.
+  const shutdownController = createShutdownController();
+  shutdownController.install();
 
   // 1. Load configuration
   const config = loadConfig();
@@ -113,6 +124,9 @@ async function main() {
   const logBuffer = new LogRingBuffer();
   const logHandle = createLogger(config.log.level, logBuffer);
   const logger = logHandle.logger;
+  // From here on a signal during boot says so instead of exiting silently,
+  // which would read as a crash in the logs (#696).
+  shutdownController.setLogger(logger);
 
   // Spec 124 — run a boot step only outside shadow mode; in shadow mode emit a
   // single consistent "Skipping <label>" line. `config.shadowMode` is read live
@@ -564,7 +578,13 @@ async function main() {
         { module: "instance-identity" },
         "Restarting to complete the takeover (docker restart policy will bring the engine back armed)",
       );
-      setTimeout(() => process.exit(0), 500);
+      // Routed through the controller rather than a bare process.exit: this is
+      // the same bug class #696 fixes, and a takeover restart deserves the
+      // clean sequence (buffered Influx points flushed, WAL checkpointed) just
+      // as much as a SIGTERM does. The delay is preserved so the HTTP response
+      // reaches the caller first.
+      const t = setTimeout(() => shutdownController.handle("RESTART"), 500);
+      t.unref?.();
     },
   });
 
@@ -776,7 +796,24 @@ async function main() {
       logger.error({ err }, "Error closing HTTP server");
     }
     try {
-      await integrationRegistry.stopAll();
+      // Bounded on purpose. `stopAll()` awaits each plugin in sequence with no
+      // per-plugin limit, and it runs BEFORE `db.close()`. A plugin stalling on
+      // a socket to a broker that has gone away (exactly what a `docker compose
+      // stop` produces) would otherwise eat the whole shutdown budget, the
+      // watchdog would hard-exit, and the WAL checkpoint this fix exists to
+      // guarantee still would not happen. Losing a clean plugin stop is the
+      // cheaper failure. Not reordered ahead of `db.close()`: plugins can write
+      // settings while stopping.
+      await Promise.race([
+        integrationRegistry.stopAll(),
+        new Promise<void>((resolve) => {
+          const t = setTimeout(() => {
+            logger.warn({ timeoutMs: INTEGRATION_STOP_TIMEOUT_MS }, "Integration stop timed out");
+            resolve();
+          }, INTEGRATION_STOP_TIMEOUT_MS);
+          t.unref?.();
+        }),
+      ]);
     } catch (err) {
       logger.error({ err }, "Error stopping integrations");
     }
@@ -787,11 +824,12 @@ async function main() {
     }
     logger.info("Shutdown complete");
     await logHandle.close();
-    process.exit(0);
   };
 
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  // Hand the sequence to the listener registered at the top of boot. The
+  // controller owns the exit, so `shutdown` no longer calls process.exit
+  // itself — that is what lets it be awaited to completion.
+  shutdownController.setGraceful(shutdown, logger);
 }
 
 main().catch((err) => {
