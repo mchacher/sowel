@@ -739,6 +739,7 @@ describe("Spec 158 — /api/v1/energy/arbiter/metrics", () => {
     day,
     exportWh: 4200,
     importWh: 1300,
+    waitingExportWh: 120,
     idleClaimableExportWh: 800,
     samples: 288,
   });
@@ -780,6 +781,7 @@ describe("Spec 158 — /api/v1/energy/arbiter/metrics", () => {
     app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
     const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
     expect(res.json().estimates).toContain("idleClaimableExportWh");
+    expect(res.json().estimates).toContain("waitingExportWh");
   });
 
   it("falls back to the equipment id for a deleted equipment", async () => {

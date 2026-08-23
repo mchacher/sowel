@@ -32,6 +32,7 @@ interface HomeRow {
   day: string;
   export_wh: number;
   import_wh: number;
+  waiting_export_wh: number;
   idle_claimable_export_wh: number;
   samples: number;
 }
@@ -58,8 +59,8 @@ export class ArbiterMetricsStore {
     );
     this.upsertHomeStmt = db.prepare(
       `INSERT OR REPLACE INTO arbiter_daily_home_metrics
-        (day, export_wh, import_wh, idle_claimable_export_wh, samples)
-       VALUES (@day, @exportWh, @importWh, @idleClaimableExportWh, @samples)`,
+        (day, export_wh, import_wh, waiting_export_wh, idle_claimable_export_wh, samples)
+       VALUES (@day, @exportWh, @importWh, @waitingExportWh, @idleClaimableExportWh, @samples)`,
     );
     this.readLoadsStmt = db.prepare(
       "SELECT day, equipment_id, grants, revokes, short_cycles," +
@@ -68,7 +69,7 @@ export class ArbiterMetricsStore {
         " ORDER BY day ASC, equipment_id ASC",
     );
     this.readHomeStmt = db.prepare(
-      "SELECT day, export_wh, import_wh, idle_claimable_export_wh, samples" +
+      "SELECT day, export_wh, import_wh, waiting_export_wh, idle_claimable_export_wh, samples" +
         " FROM arbiter_daily_home_metrics WHERE day >= ? AND day <= ? ORDER BY day ASC",
     );
     this.purgeLoadsStmt = db.prepare(
@@ -134,6 +135,7 @@ export class ArbiterMetricsStore {
         day: r.day,
         exportWh: r.export_wh,
         importWh: r.import_wh,
+        waitingExportWh: r.waiting_export_wh,
         idleClaimableExportWh: r.idle_claimable_export_wh,
         samples: r.samples,
       }));

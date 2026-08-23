@@ -540,10 +540,10 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         to: toDay,
         home: [],
         loads: [],
-        // idleClaimableExportWh is derived from 5-min samples and from the
-        // profiles as they stand today, not as they were on the day. Flagged
-        // so no consumer presents it as a measured kWh.
-        estimates: ["idleClaimableExportWh"],
+        // Both are derived from 5-min samples and from the profiles as they
+        // stand today, not as they were on the day. Flagged so no consumer
+        // presents either as a measured kWh.
+        estimates: ["waitingExportWh", "idleClaimableExportWh"],
       };
       if (!arbiterMetricsStore) return response;
 

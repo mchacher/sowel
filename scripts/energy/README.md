@@ -84,8 +84,9 @@ npx tsx scripts/energy/raw-inspect.ts
 ### `arbiter-metrics.ts`
 
 Affiche les métriques journalières de l'arbitre (spec 158) sur une plage de dates :
-démarrages, court-cycles, temps accordé par charge, et l'énergie exportée pendant
-qu'une charge déclarée était à l'arrêt.
+démarrages, court-cycles, temps accordé par charge, l'énergie exportée pendant
+qu'une charge la réclamait (le vrai raté de l'arbitre) et celle exportée pendant
+qu'une charge décalable était à l'arrêt (l'occasion d'ordonnancement).
 
 Lit SQLite en lecture seule, donc utilisable sur un backup restauré sans instance
 qui tourne.

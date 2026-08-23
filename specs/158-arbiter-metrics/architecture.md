@@ -179,10 +179,24 @@ own TTL is closed at the TTL, which is what the arbiter would have done had it
 stayed up; and any later state transition (a grant, a claim, a revoke) closes
 it immediately, since the arbiter cannot act on a suspended load.
 
-**`idleClaimableExportWh`**: for each surplus sample with `availableW > 0`, if
-at least one declared load is neither granted nor unmanaged at that instant and
-its `needW <= availableW`, the sample's energy (`availableW * 300 / 3600`) is
-accumulated. Documented as an estimate everywhere it surfaces.
+**Two export figures, deliberately separate.** For each surplus sample with
+`availableW > 0` and a load whose `needW <= availableW`:
+
+- `waitingExportWh` accumulates when the load is `pending` — claiming and not
+  granted. The arbiter's own miss.
+- `idleClaimableExportWh` accumulates when a **deferrable** load is neither
+  granted nor unmanaged. Nobody asked, so it is a scheduling opportunity, not a
+  failure.
+
+`unmanaged` is excluded from both: the load IS drawing, just outside
+arbitration, so the surplus was not wasted on it. Comfort loads are excluded
+from the idle figure only.
+
+This split came out of the real-data validation. Merged into one figure it read
+75 % of all export "missed" on the reference installation, two thirds of it a
+comfort heat pump idle because the house was comfortable — a number that would
+have made a healthy arbiter look broken. Split, the arbiter's own miss is 3 %.
+Both are documented as estimates everywhere they surface.
 
 ### 3.2 `src/energy/arbiter-metrics-store.ts`
 

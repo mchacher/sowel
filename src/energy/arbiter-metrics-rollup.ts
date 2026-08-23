@@ -195,6 +195,7 @@ export class ArbiterMetricsRollup {
         equipmentId: equipment.id,
         minOnS: profile.minOnS,
         needW: profile.nominalPowerW + engageMarginW - (profile.toleratedImportW ?? 0),
+        deferrable: profile.class === "deferrable",
       });
     }
     return loads;

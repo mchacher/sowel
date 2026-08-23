@@ -74,17 +74,33 @@ Per load and per local day:
 
 Per local day, home level:
 
-| Metric                  | Definition                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------ |
-| `exportWh`              | Energy exported, integrated from the 5-min signed surplus samples                          |
-| `importWh`              | Energy imported, same source                                                               |
-| `idleClaimableExportWh` | Export accumulated while at least one declared load was idle and its `needW` was available |
-| `samples`               | Number of surplus samples the day actually had, as a coverage indicator                    |
+| Metric                  | Definition                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `exportWh`              | Energy exported, integrated from the 5-min signed surplus samples                              |
+| `importWh`              | Energy imported, same source                                                                   |
+| `waitingExportWh`       | Export accumulated while a load was **claiming** it and did not get it: the arbiter's own miss |
+| `idleClaimableExportWh` | Export accumulated while a **deferrable** load was not running and its `needW` was available   |
+| `samples`               | Number of surplus samples the day actually had, as a coverage indicator                        |
 
-`idleClaimableExportWh` is the "missed opportunity" figure and it is an
-**estimate**: 5-minute sampling, and `needW` evaluated with the load's profile
-as it stands at rollup time. It is labelled as an estimate in the API payload
-and in the script output, never presented as an exact kWh.
+The two "missed opportunity" figures answer different questions and must not be
+merged. Measured on the reference installation over 9 real days: merged, the
+figure read **75 % of all export missed**, two thirds of which was a comfort
+heat pump idle because the house was already comfortable. Split:
+
+- `waitingExportWh` = **3 %**. A load was actively claiming that surplus and
+  did not get it. This is the arbiter's own miss (engage-hold latency, or a
+  grant that never came) and the number that should stay small.
+- `idleClaimableExportWh` = **46 %**, deferrable loads only. Nobody asked, so
+  it is not an arbiter failure; it is the scheduling opportunity that a planner
+  would harvest, and the figure that justifies roadmap phase 6.
+
+Comfort loads are excluded from the idle figure on purpose: an idle heat pump
+means the house is comfortable, not that energy was wasted. They are included
+in the waiting figure, because a comfort load that claims did ask.
+
+Both are **estimates**: 5-minute sampling, and `needW` evaluated with the
+load's profile as it stands at rollup time. Both are labelled as estimates in
+the API payload and in the script output, never presented as exact kWh.
 
 Acceptance criteria:
 
@@ -151,9 +167,24 @@ installation:
 and when those figures can still be read a year later. That is the baseline
 every later phase of the roadmap will be compared against.
 
-## Open question
+## Known caveat
 
-`idleClaimableExportWh` fidelity. 5-minute sampling plus a rollup-time profile
-lookup make it an estimate. Good enough as a trend, or does it eventually need a
-live per-minute accumulator inside the arbiter? Deliberately answered the cheap
-way here, because the cheap way requires no change to the arbiter at all.
+Load profiles are read **as they stand at rollup time**, not as they were on the
+day. This affects `needW` (both export figures) and `minOnS` (short-cycle
+detection). Since only today and yesterday are recomputed on a tick, historical
+rows keep the basis they were written with; retuning a profile does not rewrite
+the past. Observed on the reference installation: the pool pump shows revokes at
+30 to 41 minutes against a current `minOnS` of 45 minutes, which is the trace of
+a profile retuned since those days.
+
+## Validation on real data (plan step 14)
+
+Run against a copy of the production database (9 days, 297 decisions, 2300
+surplus samples, 4 declared loads). Granted hours were cross-checked against an
+independent walk of the raw journal written without sharing any code with the
+module: three loads matched to within 0.1 h. The fourth differed by 2.3 h, fully
+explained and in the module's favour — the heat pump goes `granted` to `waiting`
+with no revocation in between, so the timeline paints "pending" from that
+instant and the granted span must stop there. The independent script, being
+cruder, kept counting. That is exactly the benefit of deriving spans from
+`sustainedAfter()` rather than a second definition.

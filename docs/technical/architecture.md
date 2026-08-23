@@ -325,9 +325,16 @@ day boundary a non-event.
 - **The headline figure is the short cycle**: a grant revoked inside
   `minOnS + releaseHoldS`, i.e. a load that started on a surplus that did not
   hold. That is the number every later tuning change is judged against.
-- `idleClaimableExportWh` (export accumulated while a declared load was not
-  running and the surplus covered its `needW`) is an **estimate**: 5-minute
-  sampling, profiles read at rollup time. The API flags it in `estimates`.
+- Two export figures, kept apart because they answer different questions:
+  `waitingExportWh` (a load was claiming the surplus and did not get it — the
+  arbiter's own miss, 3 % on the reference installation) and
+  `idleClaimableExportWh` (a **deferrable** load was not running while the
+  surplus covered its need — nobody asked, so it is the scheduling opportunity
+  a planner would harvest, 46 %). Comfort loads are excluded from the idle
+  figure: an idle heat pump means the house is comfortable. Merged into one
+  number the figure read 75 % "missed" and made a healthy arbiter look broken.
+  Both are **estimates** (5-minute sampling, profiles read at rollup time) and
+  the API flags them in `estimates`.
 - Reads are capped at 20 000 decision rows per day and a truncation is logged,
   never silent. A whole tick is written in one transaction: one commit and one
   fsync per hour rather than fourteen, which is what keeps the write wear

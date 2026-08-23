@@ -44,10 +44,15 @@ the `index.ts` wiring.
 
 ## Verification on real data
 
-- [ ] 14. Run the script against a copy of the production database and check the
+- [x] 14. Run the script against a copy of the production database and check the
       figures are plausible against what the arbiter timeline shows for the same
-      days. This is the acceptance step that matters: the numbers have to match
-      what a human reading the timeline would count.
+      days. Done on 9 days of real data (297 decisions, 2300 surplus samples,
+      4 loads). Granted hours cross-checked against an independent walk of the
+      raw journal: 3 of 4 loads matched to 0.1 h, the 4th differed by 2.3 h in
+      the module's favour (`granted` to `waiting` with no revocation, which the
+      cruder check missed). Two real defects found and fixed as a result: the
+      export figure had to be split into waiting vs idle, and comfort loads
+      excluded from the idle one.
 
 ## Test Plan
 

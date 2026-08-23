@@ -30,7 +30,7 @@ function decision(atMs: number, kind: ArbiterDecisionKind, over: Partial<Arbiter
 }
 
 function load(over: Partial<RollupLoad> = {}): RollupLoad {
-  return { equipmentId: "pump", minOnS: 1800, needW: 700, ...over };
+  return { equipmentId: "pump", minOnS: 1800, needW: 700, deferrable: true, ...over };
 }
 
 function input(over: Partial<RollupInput> = {}): RollupInput {
@@ -247,9 +247,44 @@ describe("rollupDay — home level", () => {
     expect(result.home.samples).toBe(2);
   });
 
-  it("counts export as missed when an idle load's needW was covered", () => {
+  it("counts export as an idle opportunity when a deferrable load's needW was covered", () => {
     const result = rollupDay(input({ surplus: [sample("12:00", 1000)] }));
     expect(result.home.idleClaimableExportWh).toBeCloseTo((1000 * 300) / 3600, 1);
+    // Nobody was claiming it, so it is NOT the arbiter's miss.
+    expect(result.home.waitingExportWh).toBe(0);
+  });
+
+  it("ignores an idle COMFORT load: nobody asked it to run", () => {
+    // Measured on the reference installation: counting comfort loads made the
+    // figure read 75 % of all export "missed", two thirds of which was a heat
+    // pump idle because the house was already comfortable.
+    const result = rollupDay(
+      input({ surplus: [sample("12:00", 3000)], loads: [load({ deferrable: false })] }),
+    );
+    expect(result.home.idleClaimableExportWh).toBe(0);
+    expect(result.home.exportWh).toBeGreaterThan(0);
+  });
+
+  it("counts export as the arbiter's miss while a load is WAITING for it", () => {
+    const result = rollupDay(
+      input({
+        surplus: [sample("12:00", 1000)],
+        decisions: [decision(at("2026-08-20", "09:00"), "waiting")],
+      }),
+    );
+    expect(result.home.waitingExportWh).toBeCloseTo((1000 * 300) / 3600, 1);
+  });
+
+  it("counts a waiting COMFORT load too: it did ask", () => {
+    const result = rollupDay(
+      input({
+        surplus: [sample("12:00", 1000)],
+        loads: [load({ deferrable: false })],
+        decisions: [decision(at("2026-08-20", "09:00"), "waiting")],
+      }),
+    );
+    expect(result.home.waitingExportWh).toBeGreaterThan(0);
+    expect(result.home.idleClaimableExportWh).toBe(0);
   });
 
   it("does not count export as missed while the load is granted", () => {
@@ -260,6 +295,7 @@ describe("rollupDay — home level", () => {
       }),
     );
     expect(result.home.idleClaimableExportWh).toBe(0);
+    expect(result.home.waitingExportWh).toBe(0);
     expect(result.home.exportWh).toBeGreaterThan(0);
   });
 

@@ -33,7 +33,13 @@ function tick(over: Partial<MetricsTick> = {}): MetricsTick {
         suspendedS: 0,
       },
     ],
-    home: { exportWh: 1200, importWh: 300, idleClaimableExportWh: 400, samples: 288 },
+    home: {
+      exportWh: 1200,
+      importWh: 300,
+      waitingExportWh: 50,
+      idleClaimableExportWh: 400,
+      samples: 288,
+    },
     ...over,
   };
 }
@@ -67,7 +73,13 @@ describe("ArbiterMetricsStore", () => {
 
     const home = store.readHome("2026-08-01", "2026-08-31");
     expect(home).toHaveLength(1);
-    expect(home[0]).toMatchObject({ day: "2026-08-20", exportWh: 1200, samples: 288 });
+    expect(home[0]).toMatchObject({
+      day: "2026-08-20",
+      exportWh: 1200,
+      waitingExportWh: 50,
+      idleClaimableExportWh: 400,
+      samples: 288,
+    });
   });
 
   it("overwrites rather than accumulates when a day is recomputed", () => {

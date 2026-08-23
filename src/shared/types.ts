@@ -905,9 +905,20 @@ export interface ArbiterDailyHomeMetrics {
   exportWh: number;
   importWh: number;
   /**
-   * Export accumulated while a declared load was not running and the surplus
-   * covered its `needW`. An ESTIMATE: 5-minute sampling, and the load profiles
-   * are read at rollup time rather than as they were on the day.
+   * Export accumulated while a load was CLAIMING the surplus and did not get
+   * it. The arbiter's own miss: engage-hold latency, or a grant that never
+   * came. Small when healthy (3 % of export on the reference installation).
+   */
+  waitingExportWh: number;
+  /**
+   * Export accumulated while a DEFERRABLE load was not running and the surplus
+   * covered its `needW`. NOT an arbiter failure — nobody asked for it — but
+   * the scheduling opportunity a planner would harvest. Comfort loads are
+   * excluded on purpose: an idle heat pump means the house is comfortable, not
+   * that energy was wasted.
+   *
+   * An ESTIMATE: 5-minute sampling, and the load profiles are read at rollup
+   * time rather than as they were on the day.
    */
   idleClaimableExportWh: number;
   /** Surplus samples the day actually had (~288 for a full day). A low count

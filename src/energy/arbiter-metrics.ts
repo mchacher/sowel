@@ -25,6 +25,13 @@ export interface RollupLoad {
   /** `nominalPowerW + engageMarginW - toleratedImportW` — the surplus the load
    *  is actually engaged against. */
   needW: number;
+  /**
+   * Whether the load is time-shiftable (`class: "deferrable"`). A comfort load
+   * sitting idle is NOT a missed opportunity: nobody asked the heat pump to
+   * cool a house that is already cool. Only a deferrable load's idle time
+   * represents surplus that could have been used by running it earlier.
+   */
+  deferrable: boolean;
 }
 
 export interface RollupInput {
@@ -69,6 +76,7 @@ export interface LoadMetricRow {
 export interface HomeMetricRow {
   exportWh: number;
   importWh: number;
+  waitingExportWh: number;
   idleClaimableExportWh: number;
   samples: number;
 }
@@ -341,6 +349,7 @@ export function rollupDay(input: RollupInput): RollupResult {
   const home: HomeMetricRow = {
     exportWh: 0,
     importWh: 0,
+    waitingExportWh: 0,
     idleClaimableExportWh: 0,
     samples: 0,
   };
@@ -349,6 +358,7 @@ export function rollupDay(input: RollupInput): RollupResult {
   const ordered = [...surplus].sort((a, b) => a.at - b.at);
   const cursors = loads.map((load) => ({
     needW: load.needW,
+    deferrable: load.deferrable,
     cursor: new StateCursor(boundOpenSuspensions(byEq.get(load.equipmentId) ?? [], overrideTtlS)),
   }));
 
@@ -357,26 +367,42 @@ export function rollupDay(input: RollupInput): RollupResult {
     home.samples += 1;
     if (sample.availableW > 0) {
       home.exportWh += sample.availableW * hours;
-      // Missed opportunity: some declared load was NOT drawing (idle, or still
-      // waiting for its engage hold) while the surplus already covered what it
-      // needs. "unmanaged" is excluded — the load IS running, just not under
+      // Two different questions, deliberately kept apart (measured on the
+      // reference installation: conflating them made the figure read 75 % of
+      // all export "missed", 65 % of which was a comfort heat pump nobody had
+      // asked to run).
+      //
+      //   waiting  — a load was CLAIMING this surplus and did not get it.
+      //              The arbiter's own miss: engage-hold latency, or a grant
+      //              that never came. Actionable, and small when healthy.
+      //   idle     — a DEFERRABLE load was not running while the surplus
+      //              covered its need. Nobody asked for it, so it is not an
+      //              arbiter failure; it is the scheduling opportunity that
+      //              justifies a planner. Comfort loads are excluded: an idle
+      //              heat pump means the house is comfortable, not that
+      //              energy was wasted.
+      //
+      // "unmanaged" is excluded from both: the load IS drawing, just outside
       // arbitration, so the surplus was not wasted on it.
-      let missed = false;
-      for (const { needW, cursor } of cursors) {
+      let waiting = false;
+      let idle = false;
+      for (const { needW, deferrable, cursor } of cursors) {
         // advanceTo catches up from wherever the cursor stands, so skipping
         // importing samples costs nothing but a longer catch-up.
         const state = cursor.advanceTo(sample.at);
-        if (needW <= sample.availableW && state !== "granted" && state !== "unmanaged") {
-          missed = true;
-        }
+        if (needW > sample.availableW) continue;
+        if (state === "pending") waiting = true;
+        if (deferrable && state !== "granted" && state !== "unmanaged") idle = true;
       }
-      if (missed) home.idleClaimableExportWh += sample.availableW * hours;
+      if (waiting) home.waitingExportWh += sample.availableW * hours;
+      if (idle) home.idleClaimableExportWh += sample.availableW * hours;
     } else {
       home.importWh += -sample.availableW * hours;
     }
   }
   home.exportWh = Math.round(home.exportWh * 10) / 10;
   home.importWh = Math.round(home.importWh * 10) / 10;
+  home.waitingExportWh = Math.round(home.waitingExportWh * 10) / 10;
   home.idleClaimableExportWh = Math.round(home.idleClaimableExportWh * 10) / 10;
 
   return { loads: rows, home };

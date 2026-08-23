@@ -27,8 +27,15 @@ CREATE TABLE IF NOT EXISTS arbiter_daily_home_metrics (
   day                       TEXT PRIMARY KEY, -- local YYYY-MM-DD
   export_wh                 REAL NOT NULL DEFAULT 0,
   import_wh                 REAL NOT NULL DEFAULT 0,
-  -- Estimate: export accumulated while a declared load sat idle and the
-  -- surplus covered its needW. 5-min sampling, profile read at rollup time.
+  -- Export accumulated while a load was CLAIMING the surplus and did not get
+  -- it: the arbiter's own miss (engage-hold latency, or a grant that never
+  -- came). Small when healthy.
+  waiting_export_wh         REAL NOT NULL DEFAULT 0,
+  -- Export accumulated while a DEFERRABLE load was not running and the surplus
+  -- covered its needW. Not an arbiter failure -- nobody asked for it -- but the
+  -- scheduling opportunity a planner would harvest. Comfort loads are excluded:
+  -- an idle heat pump means the house is comfortable, not that energy was
+  -- wasted. Estimate: 5-min sampling, profiles read at rollup time.
   idle_claimable_export_wh  REAL NOT NULL DEFAULT 0,
   -- Surplus samples the day actually had (~288 for a full day). A low count
   -- means the instance was down, not that the day was quiet.

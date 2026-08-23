@@ -28,6 +28,7 @@ interface HomeRow {
   day: string;
   export_wh: number;
   import_wh: number;
+  waiting_export_wh: number;
   idle_claimable_export_wh: number;
   samples: number;
 }
@@ -97,7 +98,7 @@ const loads = db
 
 const home = db
   .prepare(
-    "SELECT day, export_wh, import_wh, idle_claimable_export_wh, samples" +
+    "SELECT day, export_wh, import_wh, waiting_export_wh, idle_claimable_export_wh, samples" +
       " FROM arbiter_daily_home_metrics WHERE day >= ? AND day <= ? ORDER BY day ASC",
   )
   .all(from, to) as HomeRow[];
@@ -125,10 +126,11 @@ const totals = home.reduce(
   (acc, d) => ({
     exportWh: acc.exportWh + d.export_wh,
     importWh: acc.importWh + d.import_wh,
+    waitingWh: acc.waitingWh + d.waiting_export_wh,
     idleWh: acc.idleWh + d.idle_claimable_export_wh,
     samples: acc.samples + d.samples,
   }),
-  { exportWh: 0, importWh: 0, idleWh: 0, samples: 0 },
+  { exportWh: 0, importWh: 0, waitingWh: 0, idleWh: 0, samples: 0 },
 );
 
 // ~288 samples per full day. A day well below that was a day the instance
@@ -140,7 +142,8 @@ console.log(`\n  Days with data     ${home.length}`);
 console.log(`  Sample coverage    ${coverage.toFixed(0)} %`);
 console.log(`  Exported           ${kwh(totals.exportWh)}`);
 console.log(`  Imported           ${kwh(totals.importWh)}`);
-console.log(`  Exported while a declared load was idle   ${kwh(totals.idleWh)}   (estimate)`);
+console.log(`  Exported while a load was WAITING for it  ${kwh(totals.waitingWh)}   (estimate)`);
+console.log(`  Exported while a deferrable load was idle  ${kwh(totals.idleWh)}   (estimate)`);
 
 // ── Per-load breakdown ──────────────────────────────────────
 interface Agg {
@@ -213,6 +216,8 @@ for (const [id, agg] of [...byLoad].sort((a, b) => b[1].shortCycles - a[1].short
 }
 
 console.log(
-  "\n  short = grants revoked inside (minOnS + releaseHoldS): the load started",
+  "\n  short   = grants revoked for a surplus deficit inside (minOnS + releaseHoldS):",
 );
-console.log("          on a surplus that did not hold. Lower is better.\n");
+console.log("            the load started on a surplus that did not hold. Lower is better.");
+console.log("  WAITING = the arbiter's own miss: a load was claiming that surplus.");
+console.log("  idle    = nobody asked, but a shiftable load could have used it.\n");
