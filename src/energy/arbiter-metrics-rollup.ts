@@ -15,7 +15,10 @@ import type { Logger } from "../core/logger.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import { localDateStr } from "../shared/local-date.js";
-import type { ArbiterJournalStore } from "./arbiter-journal-store.js";
+import {
+  ARBITER_JOURNAL_RETENTION_DAYS,
+  type ArbiterJournalStore,
+} from "./arbiter-journal-store.js";
 import type { ArbiterSurplusStore } from "./arbiter-surplus-store.js";
 import { rollupDay, type RollupLoad } from "./arbiter-metrics.js";
 import type { ArbiterMetricsStore, MetricsTick } from "./arbiter-metrics-store.js";
@@ -23,16 +26,18 @@ import type { ArbiterMetricsStore, MetricsTick } from "./arbiter-metrics-store.j
 /**
  * Cap on decision rows read per day. A normal day is a few hundred; the cap
  * exists for the pathological case (an arbiter thrashing), which is exactly
- * the day this rollup is meant to characterise. Hitting it is logged, never
- * silent: a truncated rollup must not read as a complete one.
+ * the day this rollup is meant to characterise. The read keeps the NEWEST rows
+ * (see `rangeLatest`), so what a cap costs is lookback context, never the day
+ * itself. Hitting it is logged, never silent.
  */
 export const ROLLUP_ROW_CAP = 20_000;
 
 /**
  * How far back the entering-state lookback reaches. A load whose last decision
- * is older than this reads as idle entering the day, which is right for every
- * realistic case: grants are bounded by minOn/minOff and a restart journals a
- * `reset` that closes any open span.
+ * is older than this reads as idle entering the day. Grants and pending spans
+ * are closed either by a real event or by the `reset` the arbiter journals on
+ * restart; suspensions are bounded by their own TTL inside `rollupDay`, so
+ * nothing can ride this window open indefinitely.
  */
 const LOOKBACK_MS = 48 * 3_600_000;
 
@@ -67,10 +72,17 @@ export class ArbiterMetricsRollup {
     this.logger = logger.child({ module: "arbiter-metrics-rollup" });
   }
 
-  /** Run once immediately, then on every hour boundary. */
+  /**
+   * Catch up over the whole journal retention once, then run on every hour
+   * boundary. The catch-up matters after an outage longer than a day: those
+   * days are still in the raw journal and are recoverable, but the hourly tick
+   * only ever looks at today and yesterday, so without it they would be lost
+   * for good.
+   */
   start(): void {
+    if (this.timer) return; // start() is idempotent — never leak a second timer
     this.stopped = false;
-    this.runSafely();
+    this.runSafely(ARBITER_JOURNAL_RETENTION_DAYS);
     this.scheduleNextHour();
   }
 
@@ -91,6 +103,7 @@ export class ArbiterMetricsRollup {
     const now = Date.now();
     const delay = HOUR_MS - (now % HOUR_MS);
     this.timer = setTimeout(() => {
+      this.timer = null;
       this.runSafely();
       this.scheduleNextHour();
     }, delay);
@@ -98,9 +111,9 @@ export class ArbiterMetricsRollup {
     this.timer.unref?.();
   }
 
-  private runSafely(): void {
+  private runSafely(days = 2): void {
     try {
-      this.run();
+      this.run(Date.now(), days);
     } catch (err) {
       // The timer must survive anything the rollup can do to itself.
       this.logger.error({ err }, "Arbiter metrics rollup failed");
@@ -108,33 +121,41 @@ export class ArbiterMetricsRollup {
   }
 
   /**
-   * Recompute today AND yesterday on every tick. Yesterday is what makes a
-   * restart across midnight a non-event; today is partial by construction and
-   * is completed by the first tick after midnight.
+   * Recompute the last `days` local days, oldest first. The hourly tick uses
+   * 2 (today and yesterday): yesterday is what makes a restart across midnight
+   * a non-event, and today is partial by construction, completed by the first
+   * tick after midnight.
    */
-  run(now: number = Date.now()): void {
+  run(now: number = Date.now(), days = 2): void {
     const todayStart = localMidnight(now);
-    const yesterdayStart = localMidnight(todayStart - HOUR_MS); // DST-safe: 23:00 the day before
+    const starts: number[] = [];
+    let cursor = todayStart;
+    for (let i = 0; i < Math.max(1, days); i += 1) {
+      starts.unshift(cursor);
+      cursor = localMidnight(cursor - HOUR_MS); // DST-safe: 23:00 the day before
+    }
     const loads = this.resolveLoads();
     const releaseHoldS = this.numSetting("energy.arbiter.releaseHoldS", 600);
+    const overrideTtlS = this.numSetting("energy.arbiter.overrideTtlS", 7200);
 
     const ticks: MetricsTick[] = [];
-    for (const dayStart of [yesterdayStart, todayStart]) {
+    for (const dayStart of starts) {
       const dayEndRaw = localMidnight(dayStart + 25 * HOUR_MS);
       // Clamp to now: a load granted right now must not be counted as granted
       // until tonight's midnight.
       const dayEnd = Math.min(dayEndRaw, now);
       if (dayEnd <= dayStart) continue;
 
-      const decisions = this.journalStore.range(
+      const { decisions, truncated } = this.journalStore.rangeLatest(
         new Date(dayStart - LOOKBACK_MS).toISOString(),
         new Date(dayEnd + LOOKAHEAD_MS).toISOString(),
         ROLLUP_ROW_CAP,
       );
-      if (decisions.length >= ROLLUP_ROW_CAP) {
+      if (truncated) {
         this.logger.warn(
           { day: localDateStr(new Date(dayStart)), cap: ROLLUP_ROW_CAP },
-          "Arbiter decision read hit the rollup cap — metrics for this day are truncated",
+          "Arbiter decision read hit the rollup cap — the oldest lookback rows " +
+            "were dropped, so this day's entering state may be incomplete",
         );
       }
       const surplus = this.surplusStore.range(dayStart, dayEnd);
@@ -146,6 +167,7 @@ export class ArbiterMetricsRollup {
         surplus,
         loads,
         releaseHoldS,
+        overrideTtlS,
       });
       ticks.push({
         day: localDateStr(new Date(dayStart)),

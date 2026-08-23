@@ -720,6 +720,9 @@ describe("Issue #381 — GET /api/v1/settings/energy/tariff admin gate", () => {
 describe("Spec 158 — /api/v1/energy/arbiter/metrics", () => {
   let app: Awaited<ReturnType<typeof buildApp>> | null = null;
 
+  const localDayStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   const loadRow = (day: string): Omit<ArbiterDailyLoadMetrics, "equipmentName"> => ({
     day,
     equipmentId: "pump",
@@ -821,14 +824,41 @@ describe("Spec 158 — /api/v1/energy/arbiter/metrics", () => {
 
   it("clamps an over-long span instead of rejecting it", async () => {
     app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const today = new Date();
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/energy/arbiter/metrics?from=2000-01-01&to=2026-08-31",
+      url: `/api/v1/energy/arbiter/metrics?from=2000-01-01&to=${localDayStr(today)}`,
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().from).not.toBe("2000-01-01");
-    expect(res.json().from > "2025-01-01").toBe(true);
+    const body = res.json();
+    expect(body.from).not.toBe("2000-01-01");
+    // Clamped to the retention window counted back from TODAY.
+    const expected = new Date(today);
+    expected.setDate(expected.getDate() - 399);
+    expect(body.from).toBe(localDayStr(expected));
+  });
+
+  it("anchors the clamp on today, not on `to` (a far-future `to` must not hide data)", async () => {
+    // Anchoring on `to` pushed `from` FORWARD past every existing row and
+    // answered 200 with empty arrays for a range that does have data.
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=2026-08-01&to=2099-01-01",
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().from).toBe("2026-08-01");
+  });
+
+  it("rejects an impossible but well-shaped date", async () => {
+    app = await buildApp({ arbiterMetrics: { readLoads: () => [], readHome: () => [] } });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/arbiter/metrics?from=2026-02-30&to=2026-03-31",
+    });
+    expect(res.statusCode).toBe(400);
   });
 
   it("answers with an empty payload when the arbiter never ran", async () => {

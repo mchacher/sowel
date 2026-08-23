@@ -150,8 +150,34 @@ day comes from the last decision before `dayStartMs` per load, mirroring the
 24 h lookback `getTimeline()` already performs.
 
 **Short cycle**: a `granted` at `t0` followed by a `revoked` for the same
-equipment at `t1` with `t1 - t0 < (minOnS + releaseHoldS) * 1000`. `minOnS` is
-per load and arrives through `loads`, keeping the module manager-free.
+equipment at `t1` with `t1 - t0 < (minOnS + releaseHoldS) * 1000` **and a
+reason of `surplus-deficit`**. `minOnS` is per load and arrives through
+`loads`, keeping the module manager-free.
+
+The reason gate matters: the arbiter shields a load inside its own `minOnS`
+(release pass, "an unresolvable deficit simply waits"), so any revoke landing
+in `[0, minOnS)` is by construction a _hard_ revoke — `manual-override`,
+`meter-stale`, `disabled`. A user flipping the pool pump off at the wall five
+minutes after a grant would otherwise be recorded as arbiter regret.
+`priority-preempted` is excluded for the same reason: it is a deliberate
+arbitration decision, not a misjudged engage.
+
+**Revoke counting** uses `revoked` only. `revoke-not-honored` is journaled ON
+TOP of the `revoked` it follows (the arbiter pushes a watchdog inside
+`revoke()`, and the watchdog writes the follow-up when the load did not stop),
+so counting both would report two revocations for one. The timeline can lump
+them together because painting a quarter red twice is idempotent; a counter
+cannot.
+
+**Open suspensions are bounded by the override TTL.** `overridesUntil` is
+in-memory, a restart drops every suspension without journaling anything, and
+the arbiter's startup reconciliation only closes tails whose sustained state is
+`granted` or `pending`. A manual override at 18:00 followed by a container
+restart would otherwise bill the rest of the day, and through the 48 h lookback
+the whole of the next one. So a suspension with no state transition inside its
+own TTL is closed at the TTL, which is what the arbiter would have done had it
+stayed up; and any later state transition (a grant, a claim, a revoke) closes
+it immediately, since the arbiter cannot act on a suspended load.
 
 **`idleClaimableExportWh`**: for each surplus sample with `availableW > 0`, if
 at least one declared load is neither granted nor unmanaged at that instant and
@@ -170,7 +196,10 @@ single `db.transaction()` (see 3.4). Also `readRange(from, to)` and
 
 ### 3.3 `src/energy/arbiter-metrics-rollup.ts`
 
-Scheduler and glue. On each hour-aligned tick, and once immediately at startup:
+Scheduler and glue. On each hour-aligned tick, and once immediately at startup
+(the startup run covers the whole journal retention, not just two days: after
+an outage longer than a day those days are still in the raw journal and would
+otherwise never be recovered):
 
 1. compute local midnight for today and for yesterday (spec 061 rules);
 2. read each day's decisions and surplus samples from the existing stores;
@@ -184,9 +213,10 @@ drifts and a restart resets it, so a day boundary eventually falls in a gap.
 Recomputing yesterday on every tick is what makes a restart across midnight a
 non-event.
 
-`ArbiterJournalStore.range()` gains an optional `limit` parameter so the cap in
-3.4 can be applied in SQL rather than after loading everything. That is the only
-change to an existing arbiter file, and it is additive.
+`ArbiterJournalStore` gains `rangeLatest()` so the cap in 3.4 is applied in SQL
+rather than after loading everything. That is the only change to an existing
+arbiter file, and it is purely additive: `range()` keeps its exact signature and
+behaviour.
 
 ### 3.4 Bounded reads and flash budget
 
@@ -240,8 +270,11 @@ GET /api/v1/energy/arbiter/metrics?from=YYYY-MM-DD&to=YYYY-MM-DD
 
 - Same auth as the other `/api/v1/energy/*` routes.
 - Defaults: `to` = today, `from` = `to - 29 days`. Range capped at 400 days.
-- Query validated with a schema, following the convention of #452/#482: a
-  malformed date is a 400, an over-long span is clamped rather than rejected.
+- Querystring validated with a Fastify schema (the #452/#482 convention), plus
+  a calendar round-trip in the handler for a well-shaped impossible date:
+  `Date.parse("2026-02-30")` does not fail, it rolls over to March 2.
+- The clamp is anchored on **today**, not on `to`. Anchoring on `to` pushes
+  `from` forward for a far-future `to` and hides data that does exist.
 - Returns `ArbiterMetricsResponse`. No data gives `{ from, to, home: [],
 loads: [], estimates: [...] }` with a 200, never a 500.
 

@@ -47,6 +47,12 @@ export interface RollupInput {
   loads: RollupLoad[];
   /** Arbiter config: how long a deficit must hold before it revokes. */
   releaseHoldS: number;
+  /**
+   * Arbiter config: the TTL of a manual-override suspension. Used to bound a
+   * suspension whose closing event never made it to the journal (see
+   * `boundOpenSuspensions`).
+   */
+  overrideTtlS: number;
 }
 
 export interface LoadMetricRow {
@@ -76,6 +82,8 @@ interface LoadEvent {
   at: number;
   kind: ArbiterDecision["kind"];
   running?: boolean;
+  /** Carried for short-cycle attribution (a `CapacityRevokeReason` on revokes). */
+  reason?: string;
 }
 
 function emptyRow(equipmentId: string): LoadMetricRow {
@@ -92,12 +100,20 @@ function emptyRow(equipmentId: string): LoadMetricRow {
 }
 
 /**
- * A revoke is the arbiter taking the surplus back. `released` is the recipe
- * giving it up on its own and is NOT a revoke: counting a normal end of run as
- * a short cycle would make the regret metric meaningless.
+ * A revocation event, for COUNTING purposes. Deliberately narrower than the
+ * timeline's notion of a revoke:
+ *
+ * - `released` is the recipe giving the surplus back on its own, not the
+ *   arbiter taking it away.
+ * - `revoke-not-honored` is NOT a second revocation. The arbiter journals it
+ *   on top of the `revoked` it already wrote, when the load did not actually
+ *   stop (capacity-arbiter `revoke()` pushes the watchdog, the watchdog
+ *   journals the follow-up). Counting both reports two revocations for one.
+ *   The timeline can lump them together because painting a quarter red twice
+ *   is idempotent; a counter is not.
  */
 function isRevoke(kind: ArbiterDecision["kind"]): boolean {
-  return kind === "revoked" || kind === "revoke-not-honored";
+  return kind === "revoked";
 }
 
 /** Group decisions by equipment, chronological, ignoring home-level entries. */
@@ -109,10 +125,48 @@ function eventsByEquipment(decisions: ArbiterDecision[]): Map<string, LoadEvent[
     if (Number.isNaN(at)) continue;
     let list = byEq.get(d.equipmentId);
     if (!list) byEq.set(d.equipmentId, (list = []));
-    list.push({ at, kind: d.kind, running: d.running });
+    list.push({ at, kind: d.kind, running: d.running, reason: d.reason });
   }
   for (const list of byEq.values()) list.sort((a, b) => a.at - b.at);
   return byEq;
+}
+
+/**
+ * A suspension can be left open in the journal, and then runs forever.
+ *
+ * `overridesUntil` is in-memory only: a restart drops every suspension without
+ * journaling anything, and the arbiter's startup reconciliation
+ * (`closeStaleClaimTails`) only closes tails whose sustained state is
+ * `granted` or `pending` — never a suspension, which reads as `unmanaged` or
+ * `idle`. The TTL expiry is journaled only while the arbiter is enabled.
+ *
+ * Left alone, a manual override at 18:00 followed by a container restart at
+ * 18:30 bills the rest of the day AND, through the 48 h lookback, the whole of
+ * the next one. So a suspension with no state-changing event within its own
+ * TTL is closed at the TTL, which is exactly what the arbiter would have done
+ * had it stayed up.
+ */
+function boundOpenSuspensions(events: LoadEvent[], overrideTtlS: number): LoadEvent[] {
+  if (overrideTtlS <= 0) return events;
+  const ttlMs = overrideTtlS * 1000;
+  const out: LoadEvent[] = [];
+  for (let i = 0; i < events.length; i += 1) {
+    const e = events[i];
+    out.push(e);
+    if (e.kind !== "suspended") continue;
+    const expiry = e.at + ttlMs;
+    // Any later state transition inside the TTL closes the suspension on its
+    // own — injecting an expiry then would wrongly cut short a real grant.
+    let covered = false;
+    for (let j = i + 1; j < events.length && events[j].at <= expiry; j += 1) {
+      if (sustainedAfter(events[j].kind, events[j].running)) {
+        covered = true;
+        break;
+      }
+    }
+    if (!covered) out.push({ at: expiry, kind: "resumed", running: false });
+  }
+  return out;
 }
 
 /**
@@ -179,26 +233,32 @@ function accumulateSuspended(
   dayEndMs: number,
   row: LoadMetricRow,
 ): void {
+  // A suspension ends on `resumed` / `reset`, but ALSO on any other state
+  // transition: the arbiter cannot grant, deny or revoke a suspended load
+  // (`claim()` denies with `override-active`), so seeing one of those proves
+  // the suspension is over. After a restart drops `overridesUntil` silently,
+  // the next grant is the only evidence there is.
+  const closes = (e: LoadEvent): boolean =>
+    e.kind !== "suspended" && sustainedAfter(e.kind, e.running) !== null;
+
   let suspended = false;
   let since = dayStartMs;
   let idx = 0;
   while (idx < events.length && events[idx].at < dayStartMs) {
     if (events[idx].kind === "suspended") suspended = true;
-    else if (events[idx].kind === "resumed" || events[idx].kind === "reset") suspended = false;
+    else if (closes(events[idx])) suspended = false;
     idx += 1;
   }
   for (; idx < events.length && events[idx].at < dayEndMs; idx += 1) {
-    const k = events[idx].kind;
-    if (k === "suspended") {
+    const e = events[idx];
+    if (e.kind === "suspended") {
       if (!suspended) {
         suspended = true;
-        since = events[idx].at;
+        since = e.at;
       }
-    } else if (k === "resumed" || k === "reset") {
-      if (suspended) {
-        row.suspendedS += Math.round((events[idx].at - since) / 1000);
-        suspended = false;
-      }
+    } else if (closes(e) && suspended) {
+      row.suspendedS += Math.round((e.at - since) / 1000);
+      suspended = false;
     }
   }
   if (suspended) row.suspendedS += Math.round((dayEndMs - since) / 1000);
@@ -231,11 +291,11 @@ class StateCursor {
 }
 
 export function rollupDay(input: RollupInput): RollupResult {
-  const { dayStartMs, dayEndMs, decisions, surplus, loads, releaseHoldS } = input;
+  const { dayStartMs, dayEndMs, decisions, surplus, loads, releaseHoldS, overrideTtlS } = input;
   const byEq = eventsByEquipment(decisions);
 
   const rows: LoadMetricRow[] = loads.map((load) => {
-    const events = byEq.get(load.equipmentId) ?? [];
+    const events = boundOpenSuspensions(byEq.get(load.equipmentId) ?? [], overrideTtlS);
     const row = emptyRow(load.equipmentId);
 
     for (const e of events) {
@@ -248,6 +308,14 @@ export function rollupDay(input: RollupInput): RollupResult {
     // anti-short-cycle floor plus the deficit hold. The revoke is looked up
     // across the whole event list, so a grant at 23:58 revoked at 00:03 is
     // still counted against the day it started on.
+    //
+    // Only a `surplus-deficit` revoke counts. The metric means "the load
+    // started on a surplus that did not hold", and the other reasons are not
+    // that: `manual-override` is the user touching the equipment,
+    // `meter-stale` and `disabled` are the arbiter standing down, and
+    // `priority-preempted` is a deliberate arbitration decision, not a
+    // misjudged engage. Without this gate a user flipping a wall switch five
+    // minutes after a grant would be recorded as arbiter regret.
     const shortCycleMs = (load.minOnS + releaseHoldS) * 1000;
     for (let i = 0; i < events.length; i += 1) {
       const e = events[i];
@@ -257,7 +325,9 @@ export function rollupDay(input: RollupInput): RollupResult {
         const next = events[j];
         if (next.kind === "granted") break; // re-granted without a revoke in between
         if (!isRevoke(next.kind)) continue;
-        if (next.at - e.at < shortCycleMs) row.shortCycles += 1;
+        if (next.at - e.at < shortCycleMs && next.reason === "surplus-deficit") {
+          row.shortCycles += 1;
+        }
         break;
       }
     }
@@ -279,7 +349,7 @@ export function rollupDay(input: RollupInput): RollupResult {
   const ordered = [...surplus].sort((a, b) => a.at - b.at);
   const cursors = loads.map((load) => ({
     needW: load.needW,
-    cursor: new StateCursor(byEq.get(load.equipmentId) ?? []),
+    cursor: new StateCursor(boundOpenSuspensions(byEq.get(load.equipmentId) ?? [], overrideTtlS)),
   }));
 
   for (const sample of ordered) {
@@ -293,8 +363,9 @@ export function rollupDay(input: RollupInput): RollupResult {
       // arbitration, so the surplus was not wasted on it.
       let missed = false;
       for (const { needW, cursor } of cursors) {
+        // advanceTo catches up from wherever the cursor stands, so skipping
+        // importing samples costs nothing but a longer catch-up.
         const state = cursor.advanceTo(sample.at);
-        if (missed) continue; // keep advancing every cursor, they must stay in step
         if (needW <= sample.availableW && state !== "granted" && state !== "unmanaged") {
           missed = true;
         }
@@ -302,9 +373,6 @@ export function rollupDay(input: RollupInput): RollupResult {
       if (missed) home.idleClaimableExportWh += sample.availableW * hours;
     } else {
       home.importWh += -sample.availableW * hours;
-      // Cursors must advance on importing samples too, or a later export
-      // sample would read a stale state.
-      for (const { cursor } of cursors) cursor.advanceTo(sample.at);
     }
   }
   home.exportWh = Math.round(home.exportWh * 10) / 10;

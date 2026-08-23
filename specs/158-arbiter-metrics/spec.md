@@ -62,15 +62,15 @@ This spec builds only that measurement. It is pure instrumentation: **no line of
 
 Per load and per local day:
 
-| Metric        | Definition                                                                                  |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| `grants`      | Number of `granted` decisions                                                               |
-| `revokes`     | Number of `revoked` decisions                                                               |
-| `shortCycles` | Grants revoked in less than `minOnS + releaseHoldS` after the grant (the **regret** metric) |
-| `grantedS`    | Seconds spent in the sustained `granted` state                                              |
-| `pendingS`    | Seconds spent in the sustained `pending` state (claiming, not granted)                      |
-| `unmanagedS`  | Seconds running outside arbitration (suspension or unclaimed run)                           |
-| `suspendedS`  | Seconds under a suspension                                                                  |
+| Metric        | Definition                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `grants`      | Number of `granted` decisions                                                                                     |
+| `revokes`     | Number of `revoked` decisions (`revoke-not-honored` is a follow-up on the same revocation, never a second one)    |
+| `shortCycles` | Grants revoked for `surplus-deficit` in less than `minOnS + releaseHoldS` after the grant (the **regret** metric) |
+| `grantedS`    | Seconds spent in the sustained `granted` state                                                                    |
+| `pendingS`    | Seconds spent in the sustained `pending` state (claiming, not granted)                                            |
+| `unmanagedS`  | Seconds running outside arbitration (suspension or unclaimed run)                                                 |
+| `suspendedS`  | Seconds under a suspension                                                                                        |
 
 Per local day, home level:
 
@@ -100,8 +100,12 @@ Acceptance criteria:
 - [x] Retention is 400 days, purged at boot, mirroring `ArbiterJournalStore`.
 - [x] A DB or computation failure never propagates: it is logged, the timer
       survives, and nothing else in the process is affected.
-- [x] Each rollup tick reads at most `ROLLUP_ROW_CAP` decision rows per day and
-      logs a warning naming the day when the cap is hit. No silent truncation.
+- [x] Each rollup tick reads at most `ROLLUP_ROW_CAP` decision rows per day,
+      **keeping the newest**, and logs a warning naming the day when the cap is
+      hit. No silent truncation, and a capped day is never emptied.
+- [x] A suspension left open in the journal (a restart drops `overridesUntil`
+      without journaling) is bounded by the override TTL, and closed outright
+      by any later state transition.
 - [x] All the upserts of one tick are issued in a single transaction: one
       commit, one fsync per tick (flash wear, architecture 3.4).
 

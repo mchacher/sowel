@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ArbiterMetricsRollup, localMidnight, ROLLUP_ROW_CAP } from "./arbiter-metrics-rollup.js";
-import type { ArbiterJournalStore } from "./arbiter-journal-store.js";
+import {
+  ARBITER_JOURNAL_RETENTION_DAYS,
+  type ArbiterJournalStore,
+} from "./arbiter-journal-store.js";
 import type { ArbiterSurplusStore } from "./arbiter-surplus-store.js";
 import type { ArbiterMetricsStore, MetricsTick } from "./arbiter-metrics-store.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
@@ -54,9 +57,17 @@ interface Harness {
 
 function harness(opts: { decisions?: ArbiterDecision[]; equipments?: Equipment[] } = {}): Harness {
   const upserts: MetricsTick[][] = [];
-  const journalRange = vi.fn(() => opts.decisions ?? []);
+  // Mirrors the real rangeLatest: keeps the newest `limit` rows and reports
+  // truncation. A mock that ignored the cap would let the rollup's handling of
+  // it go untested (the cap itself is proven against SQLite in
+  // arbiter-journal-store.test.ts).
+  const journalRange = vi.fn((_from: string, _to: string, limit: number) => {
+    const all = opts.decisions ?? [];
+    const kept = all.length > limit ? all.slice(all.length - limit) : all;
+    return { decisions: kept, truncated: all.length >= limit };
+  });
 
-  const journalStore = { range: journalRange } as unknown as ArbiterJournalStore;
+  const journalStore = { rangeLatest: journalRange } as unknown as ArbiterJournalStore;
   const surplusStore = { range: vi.fn(() => []) } as unknown as ArbiterSurplusStore;
   const metricsStore = {
     upsertTick: vi.fn((ticks: MetricsTick[]) => upserts.push(ticks)),
@@ -143,6 +154,8 @@ describe("ArbiterMetricsRollup", () => {
     );
     // Truncation must never pass as a complete rollup.
     expect(h.logger.warn).toHaveBeenCalled();
+    // ...and it must still persist the day rather than skip it.
+    expect(h.upserts[0].map((t) => t.day)).toContain("2026-08-20");
   });
 
   it("does not warn on a normal day", () => {
@@ -171,22 +184,51 @@ describe("ArbiterMetricsRollup", () => {
 
   it("survives a store that throws, and keeps the timer alive", () => {
     const h = harness();
+    const upserted = vi.fn();
     const throwing = new ArbiterMetricsRollup(
       {
-        range: () => {
+        rangeLatest: () => {
           throw new Error("db gone");
         },
       } as unknown as ArbiterJournalStore,
       { range: () => [] } as unknown as ArbiterSurplusStore,
-      { upsertTick: vi.fn() } as unknown as ArbiterMetricsStore,
+      { upsertTick: upserted } as unknown as ArbiterMetricsStore,
       { getAll: () => [makeEquipment()] } as unknown as EquipmentManager,
       { get: () => undefined } as unknown as SettingsManager,
       h.logger as unknown as Logger,
     );
 
     expect(() => throwing.start()).not.toThrow();
-    expect(h.logger.error).toHaveBeenCalled();
+    expect(h.logger.error).toHaveBeenCalledTimes(1);
+
+    // The timer really is alive: the next hour boundary tries again.
+    vi.advanceTimersByTime(60 * 60_000);
+    expect(h.logger.error).toHaveBeenCalledTimes(2);
     throwing.stop();
+  });
+
+  it("catches up over the journal retention on start, then only 2 days per tick", () => {
+    // An outage longer than a day leaves recoverable days in the raw journal;
+    // the hourly tick alone would never go back for them.
+    const h = harness();
+    h.rollup.start();
+    expect(h.upserts[0]).toHaveLength(ARBITER_JOURNAL_RETENTION_DAYS);
+    expect(h.upserts[0][h.upserts[0].length - 1].day).toBe("2026-08-20");
+
+    vi.advanceTimersByTime(30 * 60_000);
+    expect(h.upserts[1]).toHaveLength(2);
+    h.rollup.stop();
+  });
+
+  it("start() twice does not leak a second timer", () => {
+    const h = harness();
+    h.rollup.start();
+    h.rollup.start();
+    const after = h.upserts.length;
+
+    vi.advanceTimersByTime(60 * 60_000);
+    expect(h.upserts.length).toBe(after + 1); // one tick, not two
+    h.rollup.stop();
   });
 
   it("runs once immediately on start, then on the next hour boundary", () => {

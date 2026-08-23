@@ -52,15 +52,38 @@ function kwh(wh: number): string {
   return `${(wh / 1000).toFixed(2)} kWh`;
 }
 
+/** A real calendar date, not just the right shape: Date.parse rolls Feb 30
+ *  over to March 2, which would silently query the wrong range. */
+function isDay(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  const parsed = new Date(Date.UTC(y, m - 1, d));
+  return parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d;
+}
+
+function requireDay(name: string, value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  if (!isDay(value)) {
+    console.error(`--${name} must be a real YYYY-MM-DD date (got "${value}")`);
+    process.exit(1);
+  }
+  return value;
+}
+
 const dbPath = arg("db") ?? "./data/sowel.db";
-const to = arg("to") ?? localDay(new Date());
+const to = requireDay("to", arg("to")) ?? localDay(new Date());
 const from =
-  arg("from") ??
+  requireDay("from", arg("from")) ??
   (() => {
     const d = new Date(`${to}T12:00:00`);
     d.setDate(d.getDate() - 29);
     return localDay(d);
   })();
+
+if (from > to) {
+  console.error(`--from (${from}) must not be after --to (${to})`);
+  process.exit(1);
+}
 
 const db = new Database(dbPath, { readonly: true });
 

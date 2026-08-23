@@ -41,6 +41,7 @@ function input(over: Partial<RollupInput> = {}): RollupInput {
     surplus: [],
     loads: [load()],
     releaseHoldS: 600,
+    overrideTtlS: 7200,
     ...over,
   };
 }
@@ -73,7 +74,7 @@ describe("rollupDay — counts and short cycles", () => {
       input({
         decisions: [
           decision(at("2026-08-20", "10:00"), "granted"),
-          decision(at("2026-08-20", "10:05"), "revoked"),
+          decision(at("2026-08-20", "10:05"), "revoked", { reason: "surplus-deficit" }),
         ],
       }),
     );
@@ -104,7 +105,7 @@ describe("rollupDay — counts and short cycles", () => {
       input({
         decisions: [
           decision(at("2026-08-20", "23:58"), "granted"),
-          decision(at("2026-08-21", "00:03"), "revoked"),
+          decision(at("2026-08-21", "00:03"), "revoked", { reason: "surplus-deficit" }),
         ],
       }),
     );
@@ -280,16 +281,18 @@ describe("rollupDay — home level", () => {
     expect(result.home.idleClaimableExportWh).toBe(0);
   });
 
-  it("keeps state cursors in step across importing samples", () => {
-    // The grant lands between two samples; the later export sample must see
-    // "granted", which only holds if cursors advance on import samples too.
+  it("reads the right state when samples arrive out of order", () => {
+    // The cursor requires ascending instants; rollupDay sorts before sweeping.
+    // Unsorted input must not make a granted load read as idle.
     const result = rollupDay(
       input({
-        surplus: [sample("11:00", -200), sample("12:00", 1000)],
-        decisions: [decision(at("2026-08-20", "11:30"), "granted")],
+        surplus: [sample("14:00", 1000), sample("10:00", 1000)],
+        decisions: [decision(at("2026-08-20", "12:00"), "granted")],
       }),
     );
-    expect(result.home.idleClaimableExportWh).toBe(0);
+    // 10:00 is before the grant (missed), 14:00 is after it (not missed).
+    expect(result.home.idleClaimableExportWh).toBeCloseTo((1000 * 300) / 3600, 1);
+    expect(result.home.exportWh).toBeCloseTo((2 * 1000 * 300) / 3600, 1);
   });
 
   it("reports the real sample coverage of a partial day", () => {
@@ -335,6 +338,7 @@ describe("rollupDay — DST days", () => {
       surplus: [],
       loads: [load()],
       releaseHoldS: 600,
+      overrideTtlS: 7200,
     });
     expect(pumpRow(result).grantedS).toBe(23 * 3600);
   });
@@ -355,7 +359,145 @@ describe("rollupDay — DST days", () => {
       surplus: [],
       loads: [load()],
       releaseHoldS: 600,
+      overrideTtlS: 7200,
     });
     expect(pumpRow(result).grantedS).toBe(25 * 3600);
+  });
+});
+
+describe("rollupDay — revoke counting (review finding)", () => {
+  it("does not count revoke-not-honored as a second revocation", () => {
+    // The arbiter journals `revoke-not-honored` ON TOP of the `revoked` it
+    // already wrote, when the load did not actually stop. One revocation.
+    const result = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "10:00"), "granted"),
+          decision(at("2026-08-20", "12:00"), "revoked", { reason: "surplus-deficit" }),
+          decision(at("2026-08-20", "12:10"), "revoke-not-honored"),
+        ],
+      }),
+    );
+    const row = pumpRow(result);
+    expect(row.grants).toBe(1);
+    expect(row.revokes).toBe(1);
+  });
+
+  it("does not let a lone revoke-not-honored invent a revocation after midnight", () => {
+    const result = rollupDay(
+      input({
+        decisions: [decision(at("2026-08-20", "00:10"), "revoke-not-honored")],
+      }),
+    );
+    expect(pumpRow(result).revokes).toBe(0);
+  });
+});
+
+describe("rollupDay — short cycles only for a genuine surplus deficit", () => {
+  const grantThenRevoke = (reason: string) =>
+    pumpRow(
+      rollupDay(
+        input({
+          decisions: [
+            decision(at("2026-08-20", "10:00"), "granted"),
+            decision(at("2026-08-20", "10:05"), "revoked", { reason }),
+          ],
+        }),
+      ),
+    );
+
+  it("counts a surplus-deficit revoke", () => {
+    expect(grantThenRevoke("surplus-deficit").shortCycles).toBe(1);
+  });
+
+  it("does not count a manual override as arbiter regret", () => {
+    // The user flipping the wall switch 5 minutes after a grant is not the
+    // arbiter misjudging the surplus.
+    const row = grantThenRevoke("manual-override");
+    expect(row.shortCycles).toBe(0);
+    expect(row.revokes).toBe(1);
+  });
+
+  it("does not count meter-stale or disabled", () => {
+    expect(grantThenRevoke("meter-stale").shortCycles).toBe(0);
+    expect(grantThenRevoke("disabled").shortCycles).toBe(0);
+  });
+
+  it("does not count a deliberate preemption", () => {
+    expect(grantThenRevoke("priority-preempted").shortCycles).toBe(0);
+  });
+
+  it("does not count a revoke beyond minOnS + releaseHoldS", () => {
+    const result = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "10:00"), "granted"),
+          decision(at("2026-08-20", "12:00"), "revoked", { reason: "surplus-deficit" }),
+        ],
+      }),
+    );
+    expect(pumpRow(result).shortCycles).toBe(0);
+  });
+});
+
+describe("rollupDay — a suspension left open by a restart", () => {
+  it("bounds an unclosed suspension to the override TTL", () => {
+    // A manual override at 18:00 then a container restart: `overridesUntil` is
+    // in-memory, so nothing closes the suspension in the journal. Without the
+    // bound it would bill the rest of the day.
+    const result = rollupDay(
+      input({
+        decisions: [decision(at("2026-08-20", "18:00"), "suspended", { running: true })],
+        overrideTtlS: 7200,
+      }),
+    );
+    const row = pumpRow(result);
+    expect(row.suspendedS).toBe(7200);
+    expect(row.unmanagedS).toBe(7200); // and the unmanaged span stops there too
+  });
+
+  it("does not carry an unclosed suspension into the next day", () => {
+    const decisions = [decision(at("2026-08-20", "18:00"), "suspended", { running: true })];
+    const nextDay = pumpRow(
+      rollupDay(
+        input({
+          decisions,
+          dayStartMs: midnight("2026-08-21"),
+          dayEndMs: midnight("2026-08-22"),
+        }),
+      ),
+    );
+    expect(nextDay.suspendedS).toBe(0);
+    expect(nextDay.unmanagedS).toBe(0);
+  });
+
+  it("lets a real closing event win over the TTL bound", () => {
+    const result = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "10:00"), "suspended", { running: true }),
+          decision(at("2026-08-20", "10:30"), "resumed", { running: false }),
+        ],
+      }),
+    );
+    expect(pumpRow(result).suspendedS).toBe(1800);
+  });
+
+  it("never cuts short a grant that follows a lost suspension", () => {
+    // After a restart the suspension is gone, so the arbiter can grant again.
+    // The synthetic TTL expiry must not fire and end that grant.
+    const result = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "08:00"), "suspended", { running: true }),
+          decision(at("2026-08-20", "09:00"), "granted"),
+          decision(at("2026-08-20", "13:00"), "revoked", { reason: "surplus-deficit" }),
+        ],
+        overrideTtlS: 7200, // would have expired at 10:00, mid-grant
+      }),
+    );
+    const row = pumpRow(result);
+    expect(row.grantedS).toBe(4 * 3600);
+    expect(row.suspendedS).toBe(3600); // 08:00 to the grant at 09:00
   });
 });

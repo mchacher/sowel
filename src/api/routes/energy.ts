@@ -482,13 +482,37 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // Query: from / to (YYYY-MM-DD, inclusive). Defaults to the last 30 days,
   // span clamped to the retention window rather than rejected.
   // ============================================================
+  const dayPattern = "^\\d{4}-\\d{2}-\\d{2}$";
   app.get<{ Querystring: { from?: string; to?: string } }>(
     "/api/v1/energy/arbiter/metrics",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          properties: {
+            from: { type: "string", pattern: dayPattern },
+            to: { type: "string", pattern: dayPattern },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
     async (request, reply) => {
       const { from, to } = request.query;
-      const isDay = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
+      // The schema pins the shape; this catches a well-shaped impossible date.
+      // A round-trip is required: Date.parse("2026-02-30") does NOT fail, it
+      // rolls over to March 2 and would silently query the wrong range.
+      const isDay = (v: string): boolean => {
+        const [y, m, d] = v.split("-").map(Number);
+        const parsed = new Date(Date.UTC(y, m - 1, d));
+        return (
+          parsed.getUTCFullYear() === y &&
+          parsed.getUTCMonth() === m - 1 &&
+          parsed.getUTCDate() === d
+        );
+      };
       if ((from !== undefined && !isDay(from)) || (to !== undefined && !isDay(to))) {
-        return reply.code(400).send({ error: "from and to must be YYYY-MM-DD dates" });
+        return reply.code(400).send({ error: "from and to must be real YYYY-MM-DD dates" });
       }
 
       const toDay = to ?? localDateStr();
@@ -503,10 +527,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       }
       // Clamp rather than reject: an over-long span is a UI convenience call,
       // not a client error, and the rows do not exist past the retention.
-      const earliest = new Date(`${toDay}T12:00:00`);
-      earliest.setDate(earliest.getDate() - ARBITER_METRICS_RETENTION_DAYS);
+      // Anchored on TODAY, not on `to`: anchoring on `to` would push `from`
+      // FORWARD for a far-future `to` and hide data that does exist.
+      const earliest = new Date();
+      earliest.setDate(earliest.getDate() - (ARBITER_METRICS_RETENTION_DAYS - 1));
       const earliestDay = localDateStr(earliest);
       if (fromDay < earliestDay) fromDay = earliestDay;
+      if (fromDay > toDay) fromDay = toDay; // a to-date older than the retention
 
       const response: ArbiterMetricsResponse = {
         from: fromDay,

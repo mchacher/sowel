@@ -33,8 +33,10 @@ the `index.ts` wiring.
 - [x] 10. Tests (see test plan).
 - [x] 11. Validation: `npx tsc --noEmit`, `npx vitest run`,
       `npx eslint src/ --ext .ts`. No UI change, so no UI typecheck needed.
-- [x] 12. Self-review of the branch diff (workflow phase 5 — a review agent was
-      not spawned; see the PR body).
+- [x] 12. Agent code review on the branch diff (workflow phase 5). Five blocking
+      findings, all fixed: revoke double-counting, the cap truncating the
+      lookback instead of the target day, suspensions left open forever,
+      a cap asserted only at a mock boundary, and a tautological cursor test.
 - [x] 13. Docs: a paragraph in the arbiter section of
       `docs/technical/architecture.md`, the endpoint in
       `docs/technical/api-reference.md`, the spec 158 entry in

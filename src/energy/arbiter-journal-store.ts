@@ -24,12 +24,26 @@ interface ArbiterDecisionRow {
   running: number | null; // 0/1, NULL = unknown (#535, legacy rows)
 }
 
+function toDecision(r: ArbiterDecisionRow): ArbiterDecision {
+  return {
+    atIso: r.at_iso,
+    kind: r.kind as ArbiterDecisionKind,
+    equipmentId: r.equipment_id ?? undefined,
+    equipmentName: r.equipment_name ?? undefined,
+    watts: r.watts ?? undefined,
+    reason: r.reason ?? undefined,
+    note: r.note ?? undefined,
+    running: r.running === null ? undefined : r.running === 1,
+  };
+}
+
 export class ArbiterJournalStore {
   private logger: Logger;
   private insertStmt: Database.Statement;
   private loadRecentStmt: Database.Statement;
   private purgeStmt: Database.Statement;
   private rangeStmt: Database.Statement;
+  private rangeLatestStmt: Database.Statement;
   private countStmt: Database.Statement;
 
   constructor(db: Database.Database, logger: Logger) {
@@ -50,10 +64,15 @@ export class ArbiterJournalStore {
     this.rangeStmt = db.prepare(
       "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note, running" +
         " FROM arbiter_decision_log WHERE at_iso >= ? AND at_iso <= ?" +
-        // Spec 158 — the daily rollup caps how many rows it will pull for one
-        // day. SQLite treats a negative LIMIT as unlimited, which keeps the
-        // pre-158 callers (timeline window) on a single prepared statement.
-        " ORDER BY at_iso ASC, rowid ASC LIMIT ?",
+        " ORDER BY at_iso ASC, rowid ASC",
+    );
+    // Spec 158 — same window, but capped to the NEWEST rows. A plain
+    // "ORDER BY ASC LIMIT n" would keep the oldest, which for the rollup means
+    // keeping the lookback and dropping the very day being rolled up.
+    this.rangeLatestStmt = db.prepare(
+      "SELECT at_iso, kind, equipment_id, equipment_name, watts, reason, note, running" +
+        " FROM arbiter_decision_log WHERE at_iso >= ? AND at_iso <= ?" +
+        " ORDER BY at_iso DESC, rowid DESC LIMIT ?",
     );
     this.countStmt = db.prepare("SELECT COUNT(*) AS n FROM arbiter_decision_log");
   }
@@ -102,30 +121,42 @@ export class ArbiterJournalStore {
     }
   }
 
-  /**
-   * Decisions in [fromIso, toIso], ascending (spec 148 — timeline window).
-   *
-   * `limit` (spec 158) bounds the read for callers that cannot know how many
-   * decisions a window holds: a flapping arbiter can journal thousands in a
-   * day, and that is precisely the day the metrics rollup wants to read.
-   * Omitted means unlimited, as before.
-   */
-  range(fromIso: string, toIso: string, limit = -1): ArbiterDecision[] {
+  /** Decisions in [fromIso, toIso], ascending (spec 148 — timeline window). */
+  range(fromIso: string, toIso: string): ArbiterDecision[] {
     try {
-      const rows = this.rangeStmt.all(fromIso, toIso, limit) as ArbiterDecisionRow[];
-      return rows.map((r) => ({
-        atIso: r.at_iso,
-        kind: r.kind as ArbiterDecisionKind,
-        equipmentId: r.equipment_id ?? undefined,
-        equipmentName: r.equipment_name ?? undefined,
-        watts: r.watts ?? undefined,
-        reason: r.reason ?? undefined,
-        note: r.note ?? undefined,
-        running: r.running === null ? undefined : r.running === 1,
-      }));
+      return (this.rangeStmt.all(fromIso, toIso) as ArbiterDecisionRow[]).map(toDecision);
     } catch (err) {
       this.logger.error({ err }, "Failed to read arbiter decision range");
       return [];
+    }
+  }
+
+  /**
+   * The most recent `limit` decisions in [fromIso, toIso], returned ascending
+   * (spec 158 — the metrics rollup).
+   *
+   * A caller that cannot know how many decisions a window holds needs a bound:
+   * a flapping arbiter can journal thousands in a day, and that is exactly the
+   * day worth measuring. The cap keeps the NEWEST rows on purpose — the rollup
+   * window is one day plus 48 h of lookback, and dropping the oldest costs
+   * some entering-state context, whereas dropping the newest would silently
+   * empty the very day being rolled up.
+   *
+   * Returns `{ decisions, truncated }` so the caller can report the loss
+   * rather than persist a truncated day as if it were complete.
+   */
+  rangeLatest(
+    fromIso: string,
+    toIso: string,
+    limit: number,
+  ): { decisions: ArbiterDecision[]; truncated: boolean } {
+    try {
+      const rows = this.rangeLatestStmt.all(fromIso, toIso, limit) as ArbiterDecisionRow[];
+      // Query is DESC (newest `limit`); reverse back to ascending.
+      return { decisions: rows.reverse().map(toDecision), truncated: rows.length >= limit };
+    } catch (err) {
+      this.logger.error({ err }, "Failed to read capped arbiter decision range");
+      return { decisions: [], truncated: false };
     }
   }
 
