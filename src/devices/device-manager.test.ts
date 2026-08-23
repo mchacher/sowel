@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { DeviceManager } from "./device-manager.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
@@ -851,5 +851,183 @@ describe("DeviceManager", () => {
       expect(ageMs).toBeGreaterThanOrEqual(0);
       expect(ageMs).toBeLessThan(10 * 60 * 1000);
     });
+  });
+});
+
+// ============================================================
+// Issue #697 — one transaction per message, events after the commit
+// ============================================================
+
+describe("DeviceManager — batched message writes (#697)", () => {
+  let db: Database.Database;
+  let eventBus: EventBus;
+  let manager: DeviceManager;
+
+  const device = {
+    ieeeAddress: "0x00158d0009f8e7d6",
+    friendlyName: "salon_multi",
+    manufacturer: "Xiaomi",
+    model: "MULTI",
+    data: [
+      { key: "temperature", type: "number" as const, category: "temperature" as const, unit: "°C" },
+      { key: "humidity", type: "number" as const, category: "humidity" as const, unit: "%" },
+      { key: "battery", type: "number" as const, category: "battery" as const, unit: "%" },
+    ],
+    orders: [],
+    rawExpose: [],
+  };
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    applyMigrations(db);
+    eventBus = new EventBus(logger);
+    manager = new DeviceManager(db, eventBus, logger);
+    manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", device);
+  });
+
+  afterEach(() => db.close());
+
+  /** Every stored value of the device, as a consumer would read it back. */
+  function storedValues(): Record<string, unknown> {
+    const rows = db
+      .prepare(
+        "SELECT dd.key, dd.value FROM device_data dd" +
+          " JOIN devices d ON d.id = dd.device_id WHERE d.source_device_id = ?",
+      )
+      .all("salon_multi") as { key: string; value: string | null }[];
+    return Object.fromEntries(
+      rows.map((r) => [r.key, r.value === null ? null : JSON.parse(r.value)]),
+    );
+  }
+
+  it("has every value of the message already committed when the FIRST event fires", () => {
+    // The regression this fixes. Emitting between writes made a consumer that
+    // re-reads siblings (several trackers call getDataBindingsWithValues) see
+    // a partially applied message: the temperature event fired while humidity
+    // and battery still held their previous values.
+    const seenAtFirstEvent: Record<string, unknown>[] = [];
+    eventBus.on((event) => {
+      if (event.type === "device.data.updated") seenAtFirstEvent.push(storedValues());
+    });
+
+    manager.updateDeviceData("zigbee2mqtt", "salon_multi", {
+      temperature: 21.5,
+      humidity: 55,
+      battery: 88,
+    });
+
+    expect(seenAtFirstEvent).toHaveLength(3);
+    // Without the fix the first snapshot holds only the temperature.
+    expect(seenAtFirstEvent[0]).toMatchObject({
+      temperature: 21.5,
+      humidity: 55,
+      battery: 88,
+    });
+  });
+
+  it("opens exactly ONE transaction per message, whatever the attribute count", () => {
+    // The invariant the whole change exists for. Asserting `db.inTransaction`
+    // at emit time is NOT enough: it reads false when there is no transaction
+    // at all, so it passes for an implementation that dropped the batching
+    // entirely (reviewed finding). Count the invocations instead, by wrapping
+    // what `db.transaction()` hands back.
+    const real = db.transaction.bind(db);
+    let invocations = 0;
+    const spy = vi.spyOn(db, "transaction").mockImplementation(((fn: () => void) => {
+      const wrapped = real(fn);
+      return ((...args: unknown[]) => {
+        invocations += 1;
+        return (wrapped as (...a: unknown[]) => unknown)(...args);
+      }) as never;
+    }) as never);
+
+    const local = new DeviceManager(db, eventBus, logger);
+    spy.mockRestore();
+    invocations = 0;
+
+    local.updateDeviceData("zigbee2mqtt", "salon_multi", {
+      temperature: 20,
+      humidity: 50,
+      battery: 77,
+    });
+
+    // One per MESSAGE. Zero would mean the batching was dropped; three would
+    // mean it went back to one per data point.
+    expect(invocations).toBe(1);
+  });
+
+  it("emits EVERY event outside the transaction, heartbeat included", () => {
+    // Covering only device.data.updated let a heartbeat emitted inside the
+    // write lock go unnoticed (reviewed finding).
+    const inTx: Record<string, boolean[]> = {};
+    eventBus.on((event) => {
+      (inTx[event.type] ??= []).push(db.inTransaction);
+    });
+
+    manager.updateDeviceData("zigbee2mqtt", "salon_multi", { temperature: 20, humidity: 50 });
+
+    expect(Object.keys(inTx)).toContain("device.heartbeat");
+    for (const [, values] of Object.entries(inTx)) {
+      expect(values.every((v) => v === false)).toBe(true);
+    }
+  });
+
+  it("keeps the rest of the message when ONE attribute cannot be stored", () => {
+    // A poison value (a BigInt from a protocol plugin reaches JSON.stringify)
+    // must not roll back the message. Before the guard it took the device
+    // offline: `last_seen` was never refreshed and no heartbeat fired, so a
+    // perfectly healthy device looked dead.
+    manager.updateDeviceData("zigbee2mqtt", "salon_multi", {
+      temperature: 21,
+      humidity: BigInt(55) as unknown as number,
+      battery: 80,
+    });
+
+    const stored = storedValues();
+    expect(stored.temperature).toBe(21);
+    expect(stored.battery).toBe(80);
+
+    const row = db
+      .prepare("SELECT status, last_seen FROM devices WHERE source_device_id = ?")
+      .get("salon_multi") as { status: string; last_seen: string | null };
+    expect(row.status).toBe("online");
+    expect(row.last_seen).not.toBeNull();
+  });
+
+  it("forwards sourceTimestamp through to the emitted event", () => {
+    // The aligned-history path (30-min plugin windows) depends on it, and the
+    // batching added two parameter hops where it could silently be dropped.
+    const seen: (number | undefined)[] = [];
+    eventBus.on((event) => {
+      if (event.type === "device.data.updated") seen.push(event.sourceTimestamp);
+    });
+
+    manager.updateDeviceData("zigbee2mqtt", "salon_multi", { temperature: 18 }, 1_756_000_000);
+
+    expect(seen).toEqual([1_756_000_000]);
+  });
+
+  it("still emits the same events, in the same order", () => {
+    const seen: string[] = [];
+    eventBus.on((event) => {
+      if (event.type === "device.data.updated") seen.push(event.key);
+      else if (event.type === "device.heartbeat") seen.push("heartbeat");
+    });
+
+    manager.updateDeviceData("zigbee2mqtt", "salon_multi", {
+      temperature: 22,
+      humidity: 51,
+      battery: 90,
+    });
+
+    expect(seen).toEqual(["heartbeat", "temperature", "humidity", "battery"]);
+  });
+
+  it("still auto-discovers a data point that appears mid-message", () => {
+    // The insert and its re-read both happen inside the transaction.
+    manager.updateDeviceData("zigbee2mqtt", "salon_multi", { temperature: 23, pressure: 1013 });
+
+    expect(storedValues()).toMatchObject({ temperature: 23, pressure: 1013 });
   });
 });
