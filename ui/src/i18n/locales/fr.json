@@ -1398,5 +1398,10 @@
   "arbiter.moveUpNamed": "Monter {{name}}",
   "arbiter.moveDownNamed": "Descendre {{name}}",
   "arbiter.timelineLabel": "Frise d'arbitrage : quand chaque charge a tenu le surplus, et quand elle s'est effacée.",
-  "arbiter.degradedReason": "Données compteur périmées. L'arbitre est en pause jusqu'au retour de mesures fraîches."
+  "arbiter.degradedReason": "Données compteur périmées. L'arbitre est en pause jusqu'au retour de mesures fraîches.",
+  "equipments.forecast.source": "Source : {{model}}",
+  "equipments.forecast.medianOf": "médiane de {{count}} modèles",
+  "equipments.forecast.confidence.high": "Confiance élevée : les modèles s'accordent",
+  "equipments.forecast.confidence.medium": "Confiance moyenne",
+  "equipments.forecast.confidence.low": "Confiance faible : les modèles divergent"
 }
