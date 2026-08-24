@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { DataBindingWithValue } from "../../types";
 import {
   parseForecastDays,
+  parseModelUsed,
+  modelLabel,
   CONDITION_ICONS,
   CONDITION_COLORS,
   type ForecastDay,
@@ -13,7 +15,7 @@ interface WeatherForecastPanelProps {
 }
 
 export function WeatherForecastPanel({ bindings }: WeatherForecastPanelProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const days = parseForecastDays(bindings);
 
   if (days.length === 0) {
@@ -21,6 +23,17 @@ export function WeatherForecastPanel({ bindings }: WeatherForecastPanelProps) {
   }
 
   const locale = i18n.language === "fr" ? "fr-FR" : "en-US";
+  // Absent before plugin 2.0, which is what keeps the card unchanged for
+  // households that have not upgraded.
+  const modelUsed = parseModelUsed(bindings);
+  // `median(5)` is the plugin's own notation for "no single model, the median
+  // of five". Anything else is a raw Open-Meteo id, shown as is: renaming a
+  // dozen ids in two languages would be upkeep for no gain, and the id is what
+  // a household would search for.
+  const medianMatch = modelUsed?.match(/^median\((\d+)\)$/);
+  const sourceLabel = medianMatch
+    ? t("equipments.forecast.medianOf", { count: Number(medianMatch[1]) })
+    : modelUsed && modelLabel(modelUsed);
 
   return (
     <div className="mb-6">
@@ -29,11 +42,17 @@ export function WeatherForecastPanel({ bindings }: WeatherForecastPanelProps) {
           <ForecastDayCard key={day.dayIndex} day={day} locale={locale} />
         ))}
       </div>
+      {modelUsed && (
+        <p className="mt-1 text-[12px] text-text-tertiary">
+          {t("equipments.forecast.source", { model: sourceLabel })}
+        </p>
+      )}
     </div>
   );
 }
 
 function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) {
+  const { t } = useTranslation();
   const today = new Date();
   const dayDate = new Date(today);
   dayDate.setDate(today.getDate() + day.dayIndex);
@@ -63,6 +82,22 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
           </span>
           <span className="text-[13px] text-text-tertiary">&deg;C</span>
         </div>
+      )}
+
+      {/* Spread behind the maximum — published for the first days only, and
+          only when several sources actually disagree. The plugin publishes the
+          full width of the band, so half of it goes behind the `±`. */}
+      {day.tempMaxSpread !== null && day.tempMaxSpread > 0 && (
+        <span
+          className="text-[11px] text-text-tertiary tabular-nums font-mono leading-none"
+          title={
+            day.confidence
+              ? t(`equipments.forecast.confidence.${day.confidence}`)
+              : undefined
+          }
+        >
+          &plusmn; {(day.tempMaxSpread / 2).toFixed(1)}
+        </span>
       )}
 
       {/* Temperature min */}
