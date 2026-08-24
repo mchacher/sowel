@@ -11,6 +11,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.56.x : Savoir à quel point faire confiance à la météo
+
+### v1.56.0 — 2026-08-24 { #v1-56-0 }
+
+- Feat (ui) : **la carte de prévision indique désormais la confiance à accorder à ses propres chiffres** (spec 159). Jusqu'ici elle affichait une température par jour sans permettre de distinguer une valeur sur laquelle les modèles s'accordent d'une valeur sur laquelle ils divergent, et se fier à « demain il fera 34 °C » ne disait pas s'il fallait comprendre 33 à 35 ou 29 à 37. La carte affiche maintenant l'incertitude sous chaque maximum et nomme sa source sous la rangée : `AROME 2.5 km`, ou `médiane de 4 modèles`. Une journée sur laquelle les modèles s'écartent de 8 °C se lit immédiatement comme non exploitable, ce qu'aucun chiffre unique ne peut exprimer. Ces valeurs viennent de la **version 2.0 du plugin Weather Forecast**, qui résout chaque jour à partir de tous les modèles couvrant la maison au lieu d'accepter un choix non divulgué, et calcule une vraie probabilité de pluie sur 51 membres d'ensemble. Tant que ce plugin n'est pas mis à jour, la carte s'affiche exactement comme avant : les deux peuvent donc être mis à jour dans n'importe quel ordre. (#704)
+- Maintenance (packages) : **un plugin NUT communautaire rejoint le registre**. `sowel-plugin-nut` expose les onduleurs servis par un serveur Network UPS Tools, le flux fourni par Synology, QNAP, Proxmox et la plupart des hôtes Linux, et se marie avec le type d'équipement UPS ajouté en v1.53.0. Il provient d'un auteur hors de la liste officielle : Sowel le signale donc comme paquet communautaire et demande une confirmation explicite à l'installation, empreinte de l'archive à l'appui. Il nécessite Sowel 1.53.0 ou plus récent. Contribution de adn-dev-adrien. (#703)
+
 ## 1.55.x : Mesurer l'arbitre, et réparer ce que chaque redémarrage perdait
 
 ### v1.55.0 — 2026-08-23 { #v1-55-0 }
