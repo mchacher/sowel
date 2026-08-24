@@ -1401,7 +1401,8 @@
   "arbiter.degradedReason": "Meter data is stale. The arbiter is paused until fresh readings arrive.",
   "equipments.forecast.source": "Source: {{model}}",
   "equipments.forecast.medianOf": "median of {{count}} models",
-  "equipments.forecast.confidence.high": "High confidence: the models agree",
-  "equipments.forecast.confidence.medium": "Moderate confidence",
-  "equipments.forecast.confidence.low": "Low confidence: the models disagree"
+  "equipments.forecast.confidence.high": "reliable",
+  "equipments.forecast.confidence.medium": "fairly reliable",
+  "equipments.forecast.confidence.low": "unreliable",
+  "equipments.forecast.confidenceHint": "The sources span {{spread}} °C on this day"
 }

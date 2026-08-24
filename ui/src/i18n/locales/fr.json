@@ -1401,7 +1401,8 @@
   "arbiter.degradedReason": "Données compteur périmées. L'arbitre est en pause jusqu'au retour de mesures fraîches.",
   "equipments.forecast.source": "Source : {{model}}",
   "equipments.forecast.medianOf": "médiane de {{count}} modèles",
-  "equipments.forecast.confidence.high": "Confiance élevée : les modèles s'accordent",
-  "equipments.forecast.confidence.medium": "Confiance moyenne",
-  "equipments.forecast.confidence.low": "Confiance faible : les modèles divergent"
+  "equipments.forecast.confidence.high": "fiable",
+  "equipments.forecast.confidence.medium": "assez fiable",
+  "equipments.forecast.confidence.low": "peu fiable",
+  "equipments.forecast.confidenceHint": "Les sources s'écartent de {{spread}} °C sur cette journée"
 }
