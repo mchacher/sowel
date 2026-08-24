@@ -599,7 +599,7 @@
         "description": "Onduleurs exposés par un serveur Network UPS Tools (NUT) — état, charge et autonomie de la batterie, charge, alarmes"
       }
     },
-    "sowelVersion": ">=1.43.0",
+    "sowelVersion": ">=1.53.0",
     "owner": "adn-dev-adrien",
     "sha256": "07974d1dde193c8359ead021947bd650324a70e10bc11763edb488e896a8461c"
   }
