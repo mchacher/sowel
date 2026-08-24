@@ -75,6 +75,7 @@ Tests use Vitest with in-memory SQLite databases and fake timers.
 - **PR merge requires explicit user approval**: never merge a pull request without the maintainer's explicit validation.
 - Create the PR, present it, and wait for approval before merging.
 - Keep PRs focused -- one feature or fix per PR.
+- For Dependabot PRs (bumps, security patches, coupled major upgrades), follow the [Dependency Management](dependency-management.md) playbook.
 
 ### Commit Messages
 
