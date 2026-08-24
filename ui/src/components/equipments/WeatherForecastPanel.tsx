@@ -8,7 +8,20 @@ import {
   CONDITION_ICONS,
   CONDITION_COLORS,
   type ForecastDay,
+  type ForecastConfidence,
 } from "./weatherForecastUtils";
+
+/**
+ * Traffic-light coding of the confidence level. Green reads "act on it", red
+ * "do not build on this day". The amber middle is a deliberate call by the
+ * maintainer: the accent is otherwise reserved for "a light is on right now",
+ * so the same hue carries two meanings across the app.
+ */
+const CONFIDENCE_STYLES: Record<ForecastConfidence, string> = {
+  high: "border-success text-success bg-success/10",
+  medium: "border-warning text-warning bg-warning/10",
+  low: "border-error text-error bg-error/10",
+};
 
 interface WeatherForecastPanelProps {
   bindings: DataBindingWithValue[];
@@ -84,22 +97,6 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
         </div>
       )}
 
-      {/* Spread behind the maximum — published for the first days only, and
-          only when several sources actually disagree. The plugin publishes the
-          full width of the band, so half of it goes behind the `±`. */}
-      {day.tempMaxSpread !== null && day.tempMaxSpread > 0 && (
-        <span
-          className="text-[11px] text-text-tertiary tabular-nums font-mono leading-none"
-          title={
-            day.confidence
-              ? t(`equipments.forecast.confidence.${day.confidence}`)
-              : undefined
-          }
-        >
-          &plusmn; {(day.tempMaxSpread / 2).toFixed(1)}
-        </span>
-      )}
-
       {/* Temperature min */}
       {day.tempMin !== null && (
         <div className="flex items-baseline gap-0.5">
@@ -126,6 +123,28 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
           <Wind size={13} strokeWidth={1.5} className="text-text-tertiary" />
           <span className="text-[12px] text-text-secondary tabular-nums font-mono">
             {Math.round(day.windGusts)} km/h
+          </span>
+        </div>
+      )}
+
+      {/* How much the sources agree on this day. Sits at the foot, separated
+          from the temperatures: it qualifies the whole day, not one figure.
+          The exact band stays on the tooltip for whoever wants the number. */}
+      {day.confidence && (
+        <div className="mt-0.5 w-full border-t border-border-light pt-2 flex justify-center">
+          <span
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+              CONFIDENCE_STYLES[day.confidence]
+            }`}
+            title={
+              day.tempMaxSpread !== null && day.tempMaxSpread > 0
+                ? t("equipments.forecast.confidenceHint", {
+                    spread: day.tempMaxSpread.toFixed(1),
+                  })
+                : undefined
+            }
+          >
+            {t(`equipments.forecast.confidence.${day.confidence}`)}
           </span>
         </div>
       )}

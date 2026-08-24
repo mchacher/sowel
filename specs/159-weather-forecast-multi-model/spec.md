@@ -54,8 +54,11 @@ Design rationale and all measurements:
 - **Model comparison curves in the UI.** Showing four models side by side is
   `releve-meteo`'s product; Sowel's product is a decision. One figure plus a
   spread, not four curves.
-- **Colour-coding the confidence.** It would compete with the condition colours
-  already on the card.
+- **A raw uncertainty figure on the card.** The first implementation printed
+  `± 0.9` under the maximum. It is engineering notation on a card the whole
+  household reads, and it sat between the maximum and the minimum where it
+  qualified neither. The number survives in the binding and on the tooltip; the
+  card carries a level instead.
 
 ## Functional Requirements
 
@@ -152,8 +155,11 @@ French household seeing ten of them would systematically report less confidence
 than an American one seeing five, for identical meteorological uncertainty. Below
 five models the plain range is used, a band over four points being noise.
 
-New data points, for J+1 to J+3 only (beyond J+3 the spread is wide enough that
-the index would read `low` permanently and carry no information):
+New data points, for every forecast day. The index was first limited to J+1 to
+J+3 on the grounds that the far days would read `low` permanently. Two things
+overturned that: a card with no index on two of its five days reads as a bug,
+and the assumption is false in the first place — measured on one run, J+4 came
+out `low` on an 8.5 C band while J+5 was `medium` on 3.5 C.
 
 | Key                                         | Type   | Category            | Unit |
 | ------------------------------------------- | ------ | ------------------- | ---- |
@@ -205,22 +211,30 @@ day**, an order of magnitude under the daily cap and far under the hourly one.
 `WeatherForecastPanel` renders one card per day. Two additions, in the existing
 visual language:
 
-- Under the daily maximum, the spread as a figure: `± 2.6` in 11 px
-  `text-tertiary`. Rendered only for the days that carry it. A spread of 8 °C
-  reads immediately as "this day is not actionable", which no colour code
-  conveys as well.
+- At the foot of each card, separated from the temperatures by a rule, the
+  confidence as a **pill**, colour-coded green / amber / red. It qualifies the
+  whole day rather than one figure, which is why it sits at the foot and not
+  under the maximum. The exact band stays on the tooltip for whoever wants the
+  number.
 - Under the row, one discreet 12 px line naming the source: `Source: AROME
 2.5 km`, or `Source: median of 5 models`. The raw Open-Meteo id is mapped to a
   provider-and-grid label; an id absent from the map is shown as is rather than
   guessed at.
 
-The plugin publishes the **full width** of the uncertainty band, so the card
-renders half of it behind the `±`, which is what that notation means. Publishing
-a width and displaying it as a half-width would double the apparent uncertainty.
+Labels are `reliable` / `fairly reliable` / `unreliable`, which read as a scale
+without a legend, where `high` / `medium` / `low` would leave the reader to
+guess what is being measured.
 
-Both degrade to nothing when absent, so a household still running plugin v1.0.0
-sees exactly today's card. Release ordering between the core and the plugin
-therefore does not matter.
+**On the amber.** Sowel's accent is documented in `design-system/tokens.css` as
+"reserved for a light is on right now", so a traffic light makes the same hue
+carry two meanings across the app. This was raised and the maintainer chose the
+traffic light anyway: it is the one colour code that needs no learning, and the
+alternative (green / neutral / brick) was judged less immediate. Recorded here
+so the collision is a known trade-off rather than an oversight.
+
+Both additions are conditional on data only plugin 2.0 publishes, so a household
+still running 1.0.0 sees exactly today's card. Release ordering between the core
+and the plugin therefore does not matter.
 
 ## Acceptance Criteria
 
@@ -229,12 +243,12 @@ therefore does not matter.
 - [ ] `jN_condition` is never null when at least one model carries `weather_code`
 - [ ] `jN_rain_prob` is populated from ensemble members, with the documented
       fallback chain, and is never null when the ensemble call succeeds
-- [ ] `j1..j3_temp_max_spread` and `j1..j3_confidence` are published
+- [ ] `j1..j5_temp_max_spread` and `j1..j5_confidence` are published
 - [ ] `model_used` reports the J+1 source
 - [ ] `models=best_match` reproduces v1.0.0's deterministic values exactly
 - [ ] A failing ensemble call degrades the forecast but never fails the poll
-- [ ] Total device data points: 25 existing + 7 new = 32
-- [ ] The forecast card shows `± <spread>` under the maximum where available
+- [ ] Total device data points: 25 existing + 11 new = 36
+- [ ] The forecast card shows a colour-coded confidence pill at its foot
 - [ ] The forecast card shows the source model line where `model_used` exists
 - [ ] With plugin v1.0.0 data (no new keys), the card renders exactly as before
 - [ ] Unit tests cover every scenario of the plan's test plan
