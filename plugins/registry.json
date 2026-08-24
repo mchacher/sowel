@@ -582,5 +582,25 @@
     "sowelVersion": ">=1.52.0",
     "owner": "mchacher",
     "sha256": "65570863aa52e4be29561d65d0e60abf4ba05181e9de358f01dfc6a5214290a0"
+  },
+  {
+    "id": "nut",
+    "type": "integration",
+    "name": "NUT (UPS)",
+    "description": "Uninterruptible power supplies exposed by a Network UPS Tools (NUT) server — status, battery charge and runtime, load, alarms",
+    "icon": "BatteryCharging",
+    "author": "adn-dev-adrien",
+    "repo": "adn-dev-adrien/sowel-plugin-nut",
+    "version": "0.1.1",
+    "tags": ["nut", "ups", "battery", "power", "backup", "monitoring"],
+    "i18n": {
+      "fr": {
+        "name": "NUT (onduleur)",
+        "description": "Onduleurs exposés par un serveur Network UPS Tools (NUT) — état, charge et autonomie de la batterie, charge, alarmes"
+      }
+    },
+    "sowelVersion": ">=1.53.0",
+    "owner": "adn-dev-adrien",
+    "sha256": "07974d1dde193c8359ead021947bd650324a70e10bc11763edb488e896a8461c"
   }
 ]
