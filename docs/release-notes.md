@@ -11,6 +11,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.56.x: Knowing how much to trust the forecast
+
+### v1.56.0 — 2026-08-24 { #v1-56-0 }
+
+- Feat (ui): **the forecast card now shows how much to trust its own numbers** (spec 159). Until now it showed one temperature per day with no way to tell a figure the models agree on from one they do not, and a household acting on "tomorrow reaches 34 °C" had no way to know whether that meant 33 to 35 or 29 to 37. The card now prints the uncertainty under each daily maximum and names its source under the row: `AROME 2.5 km`, or `median of 4 models`. A day whose models span 8 °C reads immediately as not actionable, which no single blended number can express. The figures come from **version 2.0 of the Weather Forecast plugin**, which resolves each day across every model that covers the home instead of accepting an undisclosed pick, and derives a genuine rain probability from 51 ensemble members. Until that plugin is updated the card renders exactly as before, so the two can be updated in either order. (#704)
+- Maintenance (packages): **a community NUT plugin joins the registry**. `sowel-plugin-nut` exposes the uninterruptible power supplies served by a Network UPS Tools server, the stream shipped by Synology, QNAP, Proxmox and most Linux hosts, and pairs with the UPS equipment type added in v1.53.0. It comes from outside the official author list, so Sowel flags it as a community package and asks for an explicit confirmation at install, showing the archive's fingerprint. It requires Sowel 1.53.0 or later. Contributed by adn-dev-adrien. (#703)
+
 ## 1.55.x: Measuring the arbiter, and fixing what every restart was losing
 
 ### v1.55.0 — 2026-08-23 { #v1-55-0 }
