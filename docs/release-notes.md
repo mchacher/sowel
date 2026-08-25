@@ -13,6 +13,10 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.57.x: Knowing what the panels will produce
 
+### v1.57.1 — 2026-08-25 { #v1-57-1 }
+
+- Fix (energy): **the production chart now draws what the meter recorded, even before any forecast can be compared against it.** Reported an hour after v1.57.0 reached a live installation: the chart showed the expected-production curve over an empty past while the meter's own readings sat in the database, plainly known and invisible. The measured line was fed from the forecast-versus-actual comparison, which by design only holds hours where a forecast _issued the day before_ can be paired with what happened — and an installation declared this morning has no forecast history at all. So the line had nothing to draw for a full day, which is exactly when a household is looking hardest. The comparison figure still counts only paired hours and is unchanged; the line no longer depends on it. (#717)
+
 ### v1.57.0 — 2026-08-25 { #v1-57-0 }
 
 - Feat (energy): **an hourly forecast of what your solar installation will produce, to five days out** (spec 160). Sowel already knew what the panels _had_ produced; it could say nothing about what they were about to. The household declares the installation once — tilt, orientation, peak power, one entry per roof pitch — and everything else is measured rather than asked for. Shading in particular is never declared: the model learns it. On the reference installation it came out as 53 % efficiency at 08 h and 61 % at 20 h, which is that owner's trees, and 89 % at the hottest hours, which is thermal derating. The model is deliberately unremarkable arithmetic, a scalar gain plus one coefficient per hour of the day, refit nightly on a rolling 45 days. Measured against three alternatives on 92 days of production data it beat a physical model of the array (158 W of hourly error against 310 W) and a fit over a dictionary of candidate orientations (323 W). Requires **version 2.3.0 of the Weather Forecast plugin**, which publishes the irradiance the projection needs. (#711)
