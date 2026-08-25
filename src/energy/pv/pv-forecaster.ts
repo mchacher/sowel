@@ -26,8 +26,23 @@ import { isActiveSolarProfile } from "./solar-profile.js";
 /** Days of production history the fit runs on. Measured: 45 beats all-history. */
 export const WINDOW_DAYS = 45;
 
-/** Data point key the weather plugin publishes the hourly series under. */
-export const IRRADIANCE_CATEGORY = "solar_radiation";
+/**
+ * Daylight hours needed after a declared capacity change before the gain is
+ * re-estimated on the new array.
+ *
+ * Measured on a real +1 kW addition: two days of production took the hourly
+ * error from 523 W to 264 W, three days to 253 W. Roughly two days of daylight.
+ */
+export const MIN_FRESH_SAMPLES = 24;
+
+/**
+ * Name of the device data point the weather plugin publishes the series under.
+ *
+ * Matched on the key rather than on a category: `solar_radiation` declares a
+ * numeric contract in the core, so a json series filed under it would log a
+ * contract warning at every discovery and be offered as a binding candidate.
+ */
+export const IRRADIANCE_DATA_POINT = "irradiance_120h";
 
 interface IrradianceHour {
   t: string;
@@ -80,6 +95,7 @@ export class PvForecaster {
   private readonly curves = new Map<string, ForecastPoint[]>();
   private unsubscribe: (() => void) | null = null;
   private refitTimer: ReturnType<typeof setTimeout> | null = null;
+  private recomputeTimer: ReturnType<typeof setTimeout> | null = null;
   /** equipmentId -> readings accumulated for the hour currently open. */
   private readonly pending = new Map<
     string,
@@ -99,12 +115,13 @@ export class PvForecaster {
   start(): void {
     // The series arrives as ordinary device data, so a new poll is simply a
     // device.data.updated like any other.
-    this.unsubscribe = this.eventBus.onType("device.data.updated", () => {
-      try {
-        this.recomputeAll();
-      } catch (err) {
-        this.logger.error({ err }, "Failed to recompute the PV forecast");
-      }
+    // Only the irradiance series matters here, and a plugin poll emits one
+    // event per data key. Without the filter every Zigbee message in the house
+    // would trigger a full recompute: 120 solar positions and 120 InfluxDB
+    // writes, several times a second.
+    this.unsubscribe = this.eventBus.onType("device.data.updated", (event) => {
+      if (event.key !== IRRADIANCE_DATA_POINT) return;
+      this.recomputeSoon();
     });
     this.scheduleRefit();
     this.recomputeAll();
@@ -116,6 +133,24 @@ export class PvForecaster {
     this.unsubscribe = null;
     if (this.refitTimer) clearTimeout(this.refitTimer);
     this.refitTimer = null;
+    if (this.recomputeTimer) clearTimeout(this.recomputeTimer);
+    this.recomputeTimer = null;
+    // Do not lose the hour in progress on a clean stop.
+    for (const [equipmentId, bucket] of this.pending) this.closeHour(equipmentId, bucket);
+    this.pending.clear();
+  }
+
+  /** Coalesce bursts: one recompute per settling window, never one per event. */
+  private recomputeSoon(): void {
+    if (this.recomputeTimer) clearTimeout(this.recomputeTimer);
+    this.recomputeTimer = setTimeout(() => {
+      this.recomputeTimer = null;
+      try {
+        this.recomputeAll();
+      } catch (err) {
+        this.logger.error({ err }, "Failed to recompute the PV forecast");
+      }
+    }, 2_000);
   }
 
   // ============================================================
@@ -140,19 +175,25 @@ export class PvForecaster {
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    const dayMs = 86_400_000;
+    // setDate, not +86_400_000: on a DST changeover the local day is 23 or 25
+    // hours, and a fixed millisecond day would push an hour into the wrong one
+    // and disagree with the figure the panel prints from the same curve.
+    const dayAfter = new Date(startOfDay);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+    const twoDaysAfter = new Date(dayAfter);
+    twoDaysAfter.setDate(twoDaysAfter.getDate() + 1);
 
     return [
       {
         alias: "pv_forecast_today_kwh",
-        value: kwhBetween(startOfDay.getTime(), startOfDay.getTime() + dayMs),
+        value: kwhBetween(startOfDay.getTime(), dayAfter.getTime()),
         unit: "kWh",
         category: "energy",
         lastUpdated: at,
       },
       {
         alias: "pv_forecast_tomorrow_kwh",
-        value: kwhBetween(startOfDay.getTime() + dayMs, startOfDay.getTime() + 2 * dayMs),
+        value: kwhBetween(dayAfter.getTime(), twoDaysAfter.getTime()),
         unit: "kWh",
         category: "energy",
         lastUpdated: at,
@@ -236,7 +277,7 @@ export class PvForecaster {
   private readIrradiance(): IrradianceSeries | null {
     for (const device of this.devices.getAllWithData()) {
       for (const data of device.data) {
-        if (data.category !== IRRADIANCE_CATEGORY || data.type !== "json") continue;
+        if (data.key !== IRRADIANCE_DATA_POINT || data.type !== "json") continue;
         const value = data.value as IrradianceSeries | null;
         if (value && Array.isArray(value.hours) && value.hours.length > 0) return value;
       }
@@ -295,12 +336,31 @@ export class PvForecaster {
     if (!model) return null;
 
     if (Math.abs(row.fitted_peak_wc - peakWc) > 1) {
-      this.logger.info(
-        { equipmentId: equipment.id, from: row.fitted_peak_wc, to: peakWc },
-        "Declared peak power changed, re-estimating the gain",
-      );
-      const refit = this.refitGain(equipment, model, peakWc);
-      if (refit) return refit;
+      // Only samples recorded *since* the change describe the new array. Before
+      // that, re-estimating would reproduce the old gain from old data and, if
+      // the trigger were stamped anyway, disarm itself forever — leaving the
+      // forecast wrong by the size of the change until the 45-day window drifts.
+      const since = row.gain_reset_at ?? new Date().toISOString();
+      if (!row.gain_reset_at) this.markCapacityChange(equipment.id, since);
+
+      const fresh = this.readSamplesSince(equipment, since);
+      if (fresh.length >= MIN_FRESH_SAMPLES) {
+        this.logger.info(
+          {
+            equipmentId: equipment.id,
+            from: row.fitted_peak_wc,
+            to: peakWc,
+            samples: fresh.length,
+          },
+          "Declared peak power changed, gain re-estimated on post-change production",
+        );
+        const next = refitGainOnly(model, fresh, peakWc);
+        this.store(equipment.id, next, peakWc, false);
+        return next;
+      }
+      // Not enough yet. Keep the old gain, keep the trigger armed, and say so
+      // once rather than on every recompute.
+      return model;
     }
     return model;
   }
@@ -330,6 +390,9 @@ export class PvForecaster {
           continue;
         }
         this.store(equipment.id, model, peakWc, false);
+        this.db
+          .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
+          .run(equipment.id);
         this.logger.info(
           { equipmentId: equipment.id, gain: model.gain, samples: model.samples },
           "PV model refit",
@@ -383,6 +446,38 @@ export class PvForecaster {
       watts: number;
     }[];
 
+    return rows.map((r) => ({
+      hourLocal: r.hour_local,
+      poa: r.poa,
+      tempC: r.temp_c,
+      watts: r.watts,
+    }));
+  }
+
+  /** Stamp the moment a declared change was noticed, so freshness is measurable. */
+  private markCapacityChange(equipmentId: string, at: string): void {
+    this.db
+      .prepare("UPDATE pv_forecast_model SET gain_reset_at = ? WHERE equipment_id = ?")
+      .run(at, equipmentId);
+    this.logger.info(
+      { equipmentId, at },
+      "Declared peak power changed, waiting for production on the new array",
+    );
+  }
+
+  /** Samples recorded since an instant. Used to judge a post-change gain. */
+  private readSamplesSince(equipment: Equipment, since: string): PvSample[] {
+    const rows = this.db
+      .prepare(
+        `SELECT hour_local, poa, temp_c, watts FROM pv_forecast_sample
+         WHERE equipment_id = ? AND at >= ? ORDER BY at`,
+      )
+      .all(equipment.id, since) as {
+      hour_local: number;
+      poa: number;
+      temp_c: number;
+      watts: number;
+    }[];
     return rows.map((r) => ({
       hourLocal: r.hour_local,
       poa: r.poa,
@@ -476,11 +571,26 @@ export class PvForecaster {
       );
   }
 
-  /** Instantaneous production, from whatever power binding the meter carries. */
+  /**
+   * Instantaneous production, from whatever power binding the meter carries.
+   *
+   * A stale binding is refused. An inverter whose Wi-Fi drops at 14:00 keeps
+   * reporting its last value; recording it against a declining plane-of-array
+   * irradiance would inflate both the gain and the afternoon shape for the next
+   * forty-five days, and nothing downstream could tell.
+   */
   private currentProduction(equipment: Equipment): number | null {
     const bindings = this.equipments.getDataBindingsWithValues(equipment.id);
     const power = bindings.find((b) => b.category === "power" && typeof b.value === "number");
-    return power ? (power.value as number) : null;
+    if (!power) return null;
+    if (power.stale) {
+      this.logger.debug(
+        { equipmentId: equipment.id, alias: power.alias },
+        "Production binding is stale, not recording a training sample",
+      );
+      return null;
+    }
+    return power.value as number;
   }
 
   /** Drop samples that have fallen out of the window. */
