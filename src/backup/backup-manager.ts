@@ -95,6 +95,13 @@ export const BACKUP_TABLES = [
   "notification_publisher_mappings",
   "dashboard_widgets",
   "plugins",
+  // Spec 160/161 — after `equipments`, which they reference: this list is the
+  // insert order on restore, and `DELETE_ORDER` reverses it so they are cleared
+  // first. Omitted, the restore's `DELETE FROM equipments` cascaded into both
+  // (foreign keys are ON) and silently threw away a learned array, dropping the
+  // forecast back to the provisional estimate for another twelve days.
+  "pv_forecast_model",
+  "pv_forecast_sample",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared

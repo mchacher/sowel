@@ -61,6 +61,29 @@ older than the window, in the future, or unparseable is discarded. This is
 deliberately not a "use the longest history you can" rule — see the spec's
 measurement of seasonal drift.
 
+## Both sides label an hour by its end
+
+Worth writing down, because it looks wrong twice over and a plausible-sounding
+"fix" in either direction breaks a join that is already correct.
+
+`sowel-downsample-hourly` aggregates without `timeSrc`, and Flux defaults that to
+`_stop`, so a point in `-hourly` at 09:00 is the mean of 08:00-09:00. Verified
+against the raw bucket on production data: 159 of 166 hours match to the last
+decimal at exactly that offset.
+
+Open-Meteo arrives at the same convention from the other direction: its radiation
+variables are documented as **preceding-hour means**, so the entry labelled 14:00
+covers 13:00-14:00. On the reference site the series peaks at 14:00 local against
+a solar noon of 13:37, which is the convention showing through, not an error.
+
+So the two agree, and neither reader shifts anything. Measured when a shift was
+tried on the production side alone: the fitted gain went from 3.8 to 45.8 and the
+hourly shape collapsed into a monotonic decay from sunrise, because production
+was then paired with the irradiance of the hour before it.
+
+`hour_local` inherits the same convention — the "13 h" bucket is 12:00-13:00 —
+and since the fit and the prediction both use it, the model is self-consistent.
+
 ## Pairing
 
 Identical arithmetic to `collectSample`, on stored hours instead of live ones:

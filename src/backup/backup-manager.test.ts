@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
-import { BackupManager, BackupSizeCapExceededError } from "./backup-manager.js";
+import { BACKUP_TABLES, BackupManager, BackupSizeCapExceededError } from "./backup-manager.js";
 import { createLogger } from "../core/logger.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import type { InfluxClient } from "../core/influx-client.js";
@@ -342,5 +342,33 @@ describe("BackupManager", () => {
       expect(existsSync(resolve(tmpDir, "legit.json"))).toBe(true);
       expect(readFileSync(resolve(tmpDir, "legit.json"), "utf-8")).toBe('{"ok": true}');
     });
+  });
+});
+
+/**
+ * Which tables a backup carries.
+ *
+ * A table missing from this list is not merely left out of the export: the
+ * restore clears `equipments`, foreign keys are on, and anything referencing it
+ * is cascaded away. So an omission silently destroys data on restore rather than
+ * merely failing to preserve it — which is how a learned PV model disappeared.
+ */
+describe("BACKUP_TABLES covers everything a restore would cascade away", () => {
+  it("carries the PV forecast tables (spec 160/161)", () => {
+    expect(BACKUP_TABLES).toContain("pv_forecast_model");
+    expect(BACKUP_TABLES).toContain("pv_forecast_sample");
+  });
+
+  it("lists every child after the parent it references", () => {
+    // The list doubles as the insert order on restore; a child inserted before
+    // its parent violates the foreign key.
+    const order = BACKUP_TABLES.indexOf("equipments");
+    expect(BACKUP_TABLES.indexOf("pv_forecast_model")).toBeGreaterThan(order);
+    expect(BACKUP_TABLES.indexOf("pv_forecast_sample")).toBeGreaterThan(order);
+    expect(BACKUP_TABLES.indexOf("data_bindings")).toBeGreaterThan(order);
+  });
+
+  it("has no duplicates", () => {
+    expect(new Set(BACKUP_TABLES).size).toBe(BACKUP_TABLES.length);
   });
 });

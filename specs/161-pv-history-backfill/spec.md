@@ -82,10 +82,20 @@ Number of hours paired, the window actually used, and why it was bounded. A
 household that declared a date last week and gets 9 days of history must be able
 to see that is what happened.
 
-### FR6 — Backfill is repeatable and idempotent
+### FR6 — Backfill is repeatable, idempotent, and never destructive on failure
 
 Running it twice must not double-count. Rows are upserted on
 `(equipment_id, at)`, the same key the live path uses.
+
+Samples recorded before the window are dropped — they describe hardware that is
+gone, and the nightly refit would otherwise keep fitting on them — but **only
+once a fit over the window alone has succeeded**. The order matters: deleting
+first means a date typed as one day instead of one year costs every accumulated
+sample in exchange for a model the household did not get.
+
+The fit itself runs over the window, not over everything stored. Bounding what a
+run _adds_ without bounding what it _fits on_ leaves an earlier, unbounded run's
+rows in the fit, and a corrected second run changes nothing at all.
 
 ## Out of scope
 
@@ -107,17 +117,19 @@ Running it twice must not double-count. Rows are upserted on
 - [ ] Hours with no production, or no irradiance, are skipped rather than zeroed
 - [ ] Samples above the impossible ceiling are excluded, as in the live path
 - [ ] Running backfill twice leaves the same number of rows
+- [ ] A declared window too short to fit deletes nothing
+- [ ] Neither side of the pairing is time-shifted (both label an hour by its end)
 - [ ] A model is fitted at the end, or the reason none was is reported
 - [ ] The panel reports hours paired and the window used
 
 ## Edge cases
 
-| Case                                                        | Behaviour                                                      |
-| ----------------------------------------------------------- | -------------------------------------------------------------- |
-| No `irradiance_history` published (old plugin)              | Refused, naming the plugin update                              |
-| No production history in Influx                             | Refused, reporting zero hours paired                           |
-| `since` in the future, or unparseable                       | Ignored, the 45-day bound applies                              |
-| `since` more than 45 days ago                               | Ignored, the 45-day bound applies                              |
-| `since` so recent that fewer than `MIN_SAMPLES` hours exist | Samples are written, no model is fitted, and the panel says so |
-| Influx unavailable                                          | Refused, the existing model untouched                          |
-| A model already exists                                      | Replaced, and the capacity stamp is set to the declared value  |
+| Case                                                        | Behaviour                                                                                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No `irradiance_history` published (old plugin)              | Refused, naming the plugin update                                                                                                                       |
+| No production history in Influx                             | Refused, reporting zero hours paired                                                                                                                    |
+| `since` in the future, or unparseable                       | Ignored, the 45-day bound applies                                                                                                                       |
+| `since` more than 45 days ago                               | Ignored, the 45-day bound applies                                                                                                                       |
+| `since` so recent that fewer than `MIN_SAMPLES` hours exist | Samples are written, no model is fitted, **nothing is deleted**, and the panel says so. A mistyped date must never cost a household the history it had. |
+| Influx unavailable                                          | Refused, the existing model untouched                                                                                                                   |
+| A model already exists                                      | Replaced, and the capacity stamp is set to the declared value                                                                                           |

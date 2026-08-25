@@ -21,6 +21,28 @@ export const FORECAST_MEASUREMENT = "pv_forecast";
  */
 export const MAX_ACCURACY_DAYS = 90;
 
+/**
+ * Both series label an hour by its END. Do not "fix" this.
+ *
+ * `sowel-downsample-hourly` aggregates without `timeSrc`, and Flux defaults that
+ * to `_stop`, so a point in `-hourly` at 09:00 is the mean of 08:00-09:00.
+ * Verified against the raw bucket on production data: 159 of 166 hours match to
+ * the last decimal at exactly that offset.
+ *
+ * The forecast side inherits the same convention from the other direction.
+ * Open-Meteo documents its radiation variables as **preceding-hour means**, so
+ * the entry labelled 14:00 covers 13:00-14:00, and the forecaster writes its
+ * curve points on those labels unchanged. On the reference site the series peaks
+ * at 14:00 local against a solar noon of 13:37, which is that convention and not
+ * a bug.
+ *
+ * Shifting one side to "align" them therefore breaks a join that was already
+ * correct. Measured when it was tried: the fitted gain went from 3.8 to 45.8 and
+ * the hourly shape collapsed into a monotonic decay from sunrise.
+ *
+ * @see MAX_ACCURACY_DAYS
+ */
+
 /** Lead bucket compared by default: what was said the day before. */
 export const DEFAULT_LEAD_BUCKET = "6-24h";
 
@@ -94,6 +116,10 @@ export async function queryPvAccuracy(
 
     // What the meter actually recorded, on the same hourly grid.
     //
+    // No time shift here, and that is deliberate — see the note on hour stamps
+    // below. Both sides of this join label an hour by its END, so they already
+    // line up.
+    //
     // The downsampled bucket, not the raw one. Raw retention is seven days —
     // exactly the default window, so the comparison would sit permanently on
     // the eviction boundary and any longer window would silently return only
@@ -107,7 +133,6 @@ export async function queryPvAccuracy(
   |> filter(fn: (r) => r.equipmentId == "${params.equipmentId}")
   |> filter(fn: (r) => r.alias == "${params.alias}")
   |> filter(fn: (r) => r._field == "mean")
-  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false, timeSrc: "_start")
   |> sort(columns: ["_time"])`;
 
     for await (const { values, tableMeta } of queryApi.iterateRows(actualFlux)) {
