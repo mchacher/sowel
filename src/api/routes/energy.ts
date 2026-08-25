@@ -691,48 +691,6 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   );
 
   // ============================================================
-  // POST /api/v1/energy/pv-forecast/:equipmentId/recalibrate — spec 160 FR7.
-  //
-  // Re-estimates the gain now, for the case where nothing was declared but
-  // something changed anyway: panels cleaned, a shading branch cut. The hourly
-  // shape is deliberately left alone, because it describes the site and not the
-  // array — measured identical before and after a real +1 kW addition.
-  // ============================================================
-  app.post<{ Params: { equipmentId: string } }>(
-    "/api/v1/energy/pv-forecast/:equipmentId/recalibrate",
-    async (request, reply) => {
-      requireAdmin(request, reply);
-      if (reply.sent) return;
-
-      if (!pvForecaster) {
-        return reply.status(503).send({ error: "PV forecaster not available" });
-      }
-      const equipment = equipmentManager.getById(request.params.equipmentId);
-      if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
-
-      const model = pvForecaster.getModel(equipment.id);
-      if (!model) {
-        return reply
-          .status(409)
-          .send({ error: "No model to recalibrate yet, not enough production history" });
-      }
-
-      const peakWc = totalPeakWc(equipment.solarProfile?.planes ?? []);
-      const refit = pvForecaster.refitGain(equipment, model, peakWc);
-      if (!refit) {
-        return reply
-          .status(409)
-          .send({ error: "Not enough recent production to re-estimate the gain" });
-      }
-
-      logger.info(
-        { equipmentId: equipment.id, from: model.gain, to: refit.gain },
-        "PV gain recalibrated on request",
-      );
-      return { gain: refit.gain, fittedAt: refit.fittedAt, samples: refit.samples };
-    },
-  );
-
   // ============================================================
   // POST /api/v1/energy/pv-forecast/:equipmentId/backfill — spec 161.
   //

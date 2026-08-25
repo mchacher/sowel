@@ -63,7 +63,18 @@ The core does not call a weather API. The plugin publishes a second series,
 `irradiance_history`, covering the same 45 days, **daylight hours only** (about
 630 points rather than 2 200), refreshed once a day rather than on every poll.
 
-### FR3 — Backfill is explicit, never automatic
+### FR3 — One action, explicit, never automatic
+
+Spec 160 also exposed a manual gain recalibration. Two buttons, and no household
+could tell them apart: one re-estimated the level from three days, the other
+rebuilt everything from forty-five. **The recalibration is withdrawn** — the
+case it served (panels cleaned, branch cut) is a few percent that the rolling
+window absorbs, and the case that matters (panels added or removed) was already
+automatic on declaring the new peak power. Where a household really does want to
+mark an undeclared change, FR1's date says it, and this action then rebuilds on
+what followed.
+
+Backfill is explicit, never automatic.
 
 A household action, from the panel. Running it silently on declaration would
 make a model appear from nowhere with no way to tell it apart from a learned

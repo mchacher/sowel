@@ -157,8 +157,16 @@ installation the normalised `shape(h)` was **identical before and after** a
 | `gain` re-estimated on 2 days | 264 W      |
 | `gain` re-estimated on 3 days | 253 W      |
 
-A **manual recalibration action** is also exposed for the case where nothing was
-declared but something changed anyway — a panel cleaned, a shading branch cut.
+A manual recalibration action was originally exposed alongside it, for the case
+where nothing was declared but something changed anyway — a panel cleaned, a
+shading branch cut. **Withdrawn in spec 161** as a second button a household
+could not tell apart from the first. The big case, added or removed panels, is
+already automatic here: the owner edits the declared peak power and this trigger
+fires on its own. What remained was a few percent that the rolling window
+absorbs anyway, and the "unchanged since" date spec 161 introduces expresses the
+same intent — "something changed on this day" — through a field that already
+exists, at the cost of about a week of responsiveness on an effect too small to
+see.
 
 No automatic step detection. It would only earn its keep on the _undeclared_
 loss, an inverter dropping or a panel failing, and that is the absolute
@@ -245,7 +253,7 @@ none.
 - [x] Forecast points are persisted with their lead time and readable back
 - [x] Saving a profile with a different total peak power re-estimates `gain`
       and leaves `shape(h)` untouched
-- [x] A manual recalibration re-estimates `gain` immediately
+- [x] A manual recalibration re-estimates `gain` immediately — ~~exposed as an action~~, withdrawn in spec 161 (see FR7); the automatic declared-change path is unaffected and still tested
 - [x] The eight cardinal shortcuts each set the expected azimuth
 - [x] Samples above declared peak power are excluded from the fit and logged
 - [x] The declaration form creates, edits and removes planes, with cardinal

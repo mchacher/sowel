@@ -492,24 +492,6 @@ export class PvForecaster {
     return model;
   }
 
-  /** Re-estimate the gain from the last few days. Used by FR7 and the API. */
-  refitGain(equipment: Equipment, model: PvModel, peakWc: number, days = 3): PvModel | null {
-    const samples = this.readSamples(equipment, days);
-    if (samples.length === 0) return null;
-
-    // Keep the full fit's sample count: the shape still comes from the 45-day
-    // window, and reporting "fitted on 20 hours" would misdescribe it.
-    const next = { ...refitGainOnly(model, samples, peakWc), samples: model.samples };
-
-    // `refitGainOnly` returns the model untouched below its own floor. Saying
-    // "recalibrated" when the gain did not move would be a lie the owner has no
-    // way to check.
-    if (next.gain === model.gain) return null;
-
-    this.store(equipment.id, next, peakWc, true);
-    return next;
-  }
-
   // ============================================================
   // Backfill from existing history (spec 161)
   // ============================================================
@@ -749,11 +731,11 @@ export class PvForecaster {
         const stampedPeakWc = measured ? peakWc : (existingPeakWc ?? peakWc);
 
         // The same reasoning has to cover the gain, not just the stamp. While a
-        // change is pending, the stored gain is the re-estimated one — from the
-        // capacity trigger or from a manual recalibration — and this window is
+        // declared capacity change is pending, the stored gain is the one the
+        // trigger re-estimated on post-change production, and this window is
         // still dominated by the array as it was before. Writing the window's
-        // gain here undoes that re-estimation every night at 02:15, and the
-        // owner is told "recalibrated" for a number discarded hours later.
+        // gain here undoes that re-estimation every night at 02:15, leaving the
+        // forecast wrong by the size of the change until the window drifts.
         //
         // The shape is refreshed either way: it was measured identical across a
         // real +1 kW addition, which is the whole reason gain and shape are

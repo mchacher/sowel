@@ -10,11 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { History, RefreshCw, Sun } from "lucide-react";
+import { History, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
 import type { PvForecastResponse } from "../../types";
-import { backfillPvForecast, getPvForecast, recalibratePvForecast } from "../../api";
+import { backfillPvForecast, getPvForecast } from "../../api";
 import { SolarProfileForm } from "./SolarProfileForm";
 import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
 
@@ -115,20 +115,6 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
           ? t("equipments.pv.backfilled", { hours: res.hoursPaired })
           : t("equipments.pv.backfilledShort", { hours: res.hoursPaired }),
       );
-      await load();
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function recalibrate(): Promise<void> {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await recalibratePvForecast(equipmentId);
-      setNotice(t("equipments.pv.recalibrated", { gain: res.gain.toFixed(2) }));
       await load();
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err));
@@ -332,15 +318,6 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
         <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
-            onClick={recalibrate}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-border text-[12px] text-text-secondary hover:border-primary disabled:opacity-50"
-          >
-            <RefreshCw size={13} strokeWidth={1.5} />
-            {t("equipments.pv.recalibrate")}
-          </button>
-          <button
-            type="button"
             onClick={backfill}
             disabled={busy}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-border text-[13px] text-text-secondary hover:border-primary disabled:opacity-50"
@@ -348,6 +325,9 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             <History size={14} strokeWidth={1.5} />
             {t("equipments.pv.backfill")}
           </button>
+          <span className="text-[11px] text-text-tertiary">
+            {t("equipments.pv.backfillHint")}
+          </span>
           {notice && <span className="text-[12px] text-text-secondary">{notice}</span>}
         </div>
       </div>

@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS pv_forecast_model (
   -- Total peak power the fit was made against. A profile saved with a different
   -- total is what triggers a gain-only refit (FR7).
   fitted_peak_wc    REAL NOT NULL,
-  gain_reset_at     TEXT             -- last declared change or manual recalibration
+  gain_reset_at     TEXT             -- when the declared capacity last changed
 );
 ```
 
@@ -171,10 +171,10 @@ name keeps it separable.
 
 ### Changed: `src/api/routes/energy.ts`
 
-| Method | Route                                                 | Purpose                                   |
-| ------ | ----------------------------------------------------- | ----------------------------------------- |
-| GET    | `/api/v1/energy/pv-forecast/:equipmentId`             | curve, model provenance, rolling accuracy |
-| POST   | `/api/v1/energy/pv-forecast/:equipmentId/recalibrate` | force a `gain` refit (FR7)                |
+| Method   | Route                                                     | Purpose                                   |
+| -------- | --------------------------------------------------------- | ----------------------------------------- |
+| GET      | `/api/v1/energy/pv-forecast/:equipmentId`                 | curve, model provenance, rolling accuracy |
+| ~~POST~~ | ~~`/api/v1/energy/pv-forecast/:equipmentId/recalibrate`~~ | removed in spec 161 — see FR7             |
 
 The POST is admin-only, following the arbiter routes. The GET is not: reading
 your own installation's forecast is not an administrative act, and every other
@@ -182,12 +182,12 @@ read on an equipment is open to any authenticated user.
 
 ### Changed: UI
 
-| File                                                | Change                                                                 |
-| --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `ui/src/components/equipments/PvForecastPanel.tsx`  | **new** — curve, forecast against actual, accuracy, recalibrate action |
-| `ui/src/components/equipments/SolarProfileForm.tsx` | **new** — declare the planes                                           |
-| `ui/src/pages/EquipmentDetailPage.tsx`              | render both for `energy_production_meter`                              |
-| `ui/src/i18n/locales/{en,fr}.json`                  | copy                                                                   |
+| File                                                | Change                                                                    |
+| --------------------------------------------------- | ------------------------------------------------------------------------- |
+| `ui/src/components/equipments/PvForecastPanel.tsx`  | **new** — one timeline: forecast against actual, accuracy, relearn action |
+| `ui/src/components/equipments/SolarProfileForm.tsx` | **new** — declare the planes                                              |
+| `ui/src/pages/EquipmentDetailPage.tsx`              | render both for `energy_production_meter`                                 |
+| `ui/src/i18n/locales/{en,fr}.json`                  | copy                                                                      |
 
 The panel follows `EnergyDataPanel`, already rendered for this equipment type.
 Charts follow the existing energy charts, Recharts, no new dependency.
