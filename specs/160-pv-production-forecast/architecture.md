@@ -159,9 +159,13 @@ Stored as JSON in a new `equipments.solar_profile` column, exactly as
 
 ### Changed: `src/core/influx-client.ts`
 
-A `pv_forecast` measurement written at `ENERGY_RETENTION.hourly` (2 years). It
-reuses the energy-hourly bucket rather than adding a fourth: same retention,
-same lifecycle, and the measurement name keeps it separable.
+A `pv_forecast` measurement written into the **energy-hourly bucket**
+(`ENERGY_RETENTION.hourly`, 2 years) through a new `writeEnergyHourlyPoint`.
+Not the raw bucket: that keeps 7 days, and no downsampling task carries a
+bespoke measurement across, so a forecast written there would be gone long
+before there was anything to compare it with. Reusing the energy bucket rather
+than adding a fourth keeps the retention and lifecycle shared; the measurement
+name keeps it separable.
 
 ### Changed: `src/api/routes/energy.ts`
 
@@ -170,7 +174,9 @@ same lifecycle, and the measurement name keeps it separable.
 | GET    | `/api/v1/energy/pv-forecast/:equipmentId`             | curve, model provenance, rolling accuracy |
 | POST   | `/api/v1/energy/pv-forecast/:equipmentId/recalibrate` | force a `gain` refit (FR7)                |
 
-Both admin-only, following the arbiter routes.
+The POST is admin-only, following the arbiter routes. The GET is not: reading
+your own installation's forecast is not an administrative act, and every other
+read on an equipment is open to any authenticated user.
 
 ### Changed: UI
 

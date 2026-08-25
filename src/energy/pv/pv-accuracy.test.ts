@@ -89,3 +89,25 @@ describe("pairSeries", () => {
     expect(over.maeW).toBe(under.maeW);
   });
 });
+
+describe("the bucket the query reads", () => {
+  it("reads the same bucket the forecaster writes", async () => {
+    // These two lived in different buckets for a while: the forecaster wrote to
+    // the raw one, the query read the energy-hourly one, and the comparison was
+    // therefore always empty. Nothing in the type system connects them, so the
+    // pairing is asserted here.
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const forecaster = readFileSync(
+      fileURLToPath(new URL("./pv-forecaster.ts", import.meta.url)),
+      "utf8",
+    );
+    const accuracy = readFileSync(
+      fileURLToPath(new URL("./pv-accuracy.ts", import.meta.url)),
+      "utf8",
+    );
+
+    expect(forecaster).toContain("writeEnergyHourlyPoint");
+    expect(accuracy).toContain("-energy-hourly");
+  });
+});

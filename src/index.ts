@@ -777,9 +777,16 @@ async function main() {
     }
     try {
       weatherTempExtremesTracker.stop();
-      pvForecaster.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping weather temp extremes tracker");
+    }
+
+    // Its own try: sharing one with another tracker means a throw there skips
+    // this stop entirely, and the pending training hour is lost with it.
+    try {
+      pvForecaster.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping PV forecaster");
     }
     try {
       notificationPublishService.destroy();

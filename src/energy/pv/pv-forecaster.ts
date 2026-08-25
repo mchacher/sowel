@@ -21,6 +21,7 @@ import type { SettingsManager } from "../../core/settings-manager.js";
 import type { ComputedDataEntry, Equipment } from "../../shared/types.js";
 import { planeOfArray, solarPosition, toDni, totalPeakWc } from "./solar-geometry.js";
 import {
+  MIN_SAMPLES,
   clearSkyEstimate,
   fitModel,
   predict,
@@ -399,9 +400,16 @@ export class PvForecaster {
   refitGain(equipment: Equipment, model: PvModel, peakWc: number, days = 3): PvModel | null {
     const samples = this.readSamples(equipment, days);
     if (samples.length === 0) return null;
+
     // Keep the full fit's sample count: the shape still comes from the 45-day
     // window, and reporting "fitted on 20 hours" would misdescribe it.
     const next = { ...refitGainOnly(model, samples, peakWc), samples: model.samples };
+
+    // `refitGainOnly` returns the model untouched below its own floor. Saying
+    // "recalibrated" when the gain did not move would be a lie the owner has no
+    // way to check.
+    if (next.gain === model.gain) return null;
+
     this.store(equipment.id, next, peakWc, true);
     return next;
   }
@@ -421,10 +429,24 @@ export class PvForecaster {
           );
           continue;
         }
+        // Only clear the pending-change stamp when this fit actually saw the
+        // new array. The window is 45 days; a change declared yesterday leaves
+        // it dominated by the old one, and clearing the stamp here would disarm
+        // the fast re-estimation at 02:15 every night before it could ever fire.
+        const pending = this.db
+          .prepare("SELECT gain_reset_at FROM pv_forecast_model WHERE equipment_id = ?")
+          .get(equipment.id) as { gain_reset_at: string | null } | undefined;
+        const fresh = pending?.gain_reset_at
+          ? this.readSamplesSince(equipment, pending.gain_reset_at).length
+          : 0;
+
         this.store(equipment.id, model, peakWc, false);
-        this.db
-          .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
-          .run(equipment.id);
+
+        if (!pending?.gain_reset_at || fresh >= MIN_SAMPLES) {
+          this.db
+            .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
+            .run(equipment.id);
+        }
         this.logger.info(
           { equipmentId: equipment.id, gain: model.gain, samples: model.samples },
           "PV model refit",
@@ -436,6 +458,14 @@ export class PvForecaster {
     this.recomputeAll();
   }
 
+  /**
+   * Persist the model.
+   *
+   * `fitted_peak_wc` is the capacity-change trigger, so it is only advanced
+   * when the fit genuinely describes that capacity. Stamping it otherwise
+   * disarms the trigger while the model still describes the old array — the
+   * exact failure this table was added to catch.
+   */
   private store(equipmentId: string, model: PvModel, peakWc: number, gainReset: boolean): void {
     this.db
       .prepare(
@@ -521,10 +551,15 @@ export class PvForecaster {
   /**
    * Accumulate the hour in progress, and close the previous one.
    *
-   * Called on every poll. The production meter reports instantaneous power, so
-   * the hour's figure is the mean of what was seen during it — the same quantity
-   * InfluxDB's hourly downsampling produces, computed here so the fit does not
-   * depend on InfluxDB being up.
+   * Called on every poll. The meter reports instantaneous power, so the hour's
+   * figure is the mean of the readings seen during it.
+   *
+   * That is **not** a true hourly mean: with a 30-minute plugin poll it averages
+   * about two readings at near-fixed minute offsets, which biases it low on the
+   * morning ramp and high on the evening one. It is computed here anyway so the
+   * fit does not depend on InfluxDB being up, and the bias is systematic rather
+   * than random, so the hourly shape absorbs most of it. A finer sampling
+   * cadence would be the way to remove the rest.
    */
   private collectSample(equipment: Equipment, series: IrradianceSeries, peakWc: number): void {
     const watts = this.currentProduction(equipment);
@@ -644,7 +679,10 @@ export class PvForecaster {
       if (!Number.isFinite(targetMs) || targetMs < issued) continue;
       const leadHours = Math.round((targetMs - issued) / 3_600_000);
 
-      this.influx.writePoint(
+      // The 2-year bucket, not the raw one: a forecast exists to be compared
+      // with reality weeks later, and the raw bucket keeps 7 days with no
+      // downsampling task carrying this measurement across.
+      this.influx.writeEnergyHourlyPoint(
         new Point("pv_forecast")
           .tag("equipmentId", equipmentId)
           // Bucketed rather than exact, so a curve refreshed every 30 minutes

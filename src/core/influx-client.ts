@@ -43,6 +43,8 @@ export class InfluxClient {
   private logger: Logger;
   private client: InfluxDB | null = null;
   private writeApi: WriteApi | null = null;
+  /** Long-lived writer for the energy-hourly bucket (spec 160). */
+  private energyHourlyWriteApi: WriteApi | null = null;
   private config: InfluxConfig | null = null;
   private _connected = false;
 
@@ -87,6 +89,10 @@ export class InfluxClient {
     if (this.writeApi) {
       try {
         await this.writeApi.close();
+        if (this.energyHourlyWriteApi) {
+          await this.energyHourlyWriteApi.close();
+          this.energyHourlyWriteApi = null;
+        }
       } catch (err) {
         this.logger.warn({ err }, "Error flushing InfluxDB write buffer on disconnect");
       }
@@ -361,6 +367,32 @@ export class InfluxClient {
         { err },
         "Failed to ensure energy buckets — continuing without energy aggregation",
       );
+    }
+  }
+
+  /**
+   * Buffer a point into the energy-hourly bucket (spec 160).
+   *
+   * The raw bucket keeps 7 days and no downsampling task copies a bespoke
+   * measurement across, so anything written there that must survive longer —
+   * the PV forecast, whose whole point is to be compared with reality weeks
+   * later — has to go to the 2-year bucket directly.
+   *
+   * Unlike {@link getEnergyHourlyWriteApi}, which hands a fresh writer to a
+   * one-shot backfill, this keeps a single writer for the process lifetime.
+   */
+  writeEnergyHourlyPoint(point: Point): void {
+    if (!this.client || !this.config) return;
+    if (!this.energyHourlyWriteApi) {
+      this.energyHourlyWriteApi = this.getEnergyHourlyWriteApi();
+      if (!this.energyHourlyWriteApi) return;
+    }
+    try {
+      this.energyHourlyWriteApi.writePoint(point);
+      this.tickPointWritten();
+    } catch (err) {
+      this.tickError();
+      this.logger.warn({ err }, "Error buffering InfluxDB energy-hourly point");
     }
   }
 

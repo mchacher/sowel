@@ -42,7 +42,8 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
   /** "planeIndex:field" for every field the validator refused. */
   const [badFields, setBadFields] = useState<Set<string>>(new Set());
 
-  const totalWc = draft.reduce((sum, p) => sum + (p.peakWc || 0), 0);
+  const totalWc = draft.reduce((sum, p) => sum + (Number.isFinite(p.peakWc) ? p.peakWc : 0), 0);
+  const nothingToSave = draft.length === 0;
   const firstFilled = draft.length > 0 && draft[0].peakWc > 0;
 
   function patch(index: number, changes: Partial<SolarPlane>): void {
@@ -56,8 +57,12 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
     // schema rejects an out-of-range value before the handler runs, so the
     // structured per-field detail never comes back over the wire — checking
     // first is the only way to name the offending field, which FR9 requires.
-    const planesToSave = draft.filter((p) => p.peakWc > 0);
-    const errors = validateSolarProfile({ planes: planesToSave });
+    //
+    // Every drafted plane is validated, none filtered out: a half-typed row must
+    // be reported, never quietly dropped. Filtering first would let a cleared
+    // peak power empty the list, validate clean, and send `null` — deleting a
+    // working declaration because someone was mid-edit.
+    const errors = validateSolarProfile({ planes: draft });
     if (errors.length > 0) {
       setBadFields(new Set(errors.map((e) => `${e.plane}:${e.field}`)));
       setError(errors[0].message);
@@ -65,10 +70,12 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
     }
     setBadFields(new Set());
 
+    const planesToSave = draft;
+
     setSaving(true);
     try {
       await updateEquipment(equipmentId, {
-        solarProfile: planesToSave.length > 0 ? { planes: planesToSave } : null,
+        solarProfile: { planes: planesToSave },
       });
       onSaved();
     } catch (err) {
@@ -209,7 +216,7 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
         <button
           type="button"
           onClick={save}
-          disabled={saving}
+          disabled={saving || nothingToSave}
           className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-[13px] font-medium disabled:opacity-50"
         >
           {saving ? t("common.saving") : t("common.save")}

@@ -51,11 +51,21 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
     void load();
   }, [load]);
 
-  // A transient failure must not remove the only place an owner can declare or
-  // fix their array, so the form stays reachable even with no data.
+  // A transient failure must not silently offer an empty form: saving from it
+  // would send an empty declaration and wipe whatever is stored. Say what
+  // happened and offer a retry instead.
   if (!data) {
     return failed ? (
-      <SolarProfileForm equipmentId={equipmentId} planes={[]} onSaved={load} />
+      <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+        <p className="text-[13px] text-text-secondary">{t("equipments.pv.loadFailed")}</p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="mt-3 px-3 py-1.5 rounded-[6px] border border-border text-[12px] text-text-secondary hover:border-primary"
+        >
+          {t("common.retry")}
+        </button>
+      </div>
     ) : null;
   }
 
