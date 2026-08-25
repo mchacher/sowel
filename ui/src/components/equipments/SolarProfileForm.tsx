@@ -31,13 +31,16 @@ const EMPTY_PLANE: SolarPlane = { tiltDeg: 30, azimuthDeg: 180, peakWc: 0 };
 interface SolarProfileFormProps {
   equipmentId: string;
   planes: SolarPlane[];
+  /** Spec 161 — the array has been in this configuration since. */
+  since?: string;
   onSaved: () => void;
 }
 
-export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileFormProps) {
+export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarProfileFormProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<SolarPlane[]>(planes.length > 0 ? planes : [EMPTY_PLANE]);
   const [saving, setSaving] = useState(false);
+  const [sinceDraft, setSinceDraft] = useState<string>(since ? since.slice(0, 10) : "");
   const [error, setError] = useState<string | null>(null);
   /** "planeIndex:field" for every field the validator refused. */
   const [badFields, setBadFields] = useState<Set<string>>(new Set());
@@ -75,7 +78,12 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
     setSaving(true);
     try {
       await updateEquipment(equipmentId, {
-        solarProfile: { planes: planesToSave },
+        solarProfile: {
+          planes: planesToSave,
+          // Empty means "no extra information", which is not the same as a bad
+          // date: the backfill window falls back to its own bound either way.
+          since: sinceDraft.trim() === "" ? undefined : sinceDraft,
+        },
       });
       onSaved();
     } catch (err) {
@@ -230,6 +238,24 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
           {t("equipments.solar.addPlane")}
         </button>
       )}
+
+      {/* Spec 161 — only ever used to bound a fit over past production. Fitted
+          across a capacity change the gain describes neither array, and this
+          date is the one thing only the household knows. */}
+      <div className="mt-4 pt-4 border-t border-border-light">
+        <label htmlFor="solar-since" className="block text-[12px] text-text-secondary mb-1">
+          {t("equipments.solar.since")}
+        </label>
+        <input
+          id="solar-since"
+          type="date"
+          value={sinceDraft}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => setSinceDraft(e.target.value)}
+          className="px-2 py-1.5 rounded-[6px] border border-border bg-background text-[13px] tabular-nums"
+        />
+        <p className="text-[11px] text-text-tertiary mt-1">{t("equipments.solar.sinceHint")}</p>
+      </div>
 
       {error && <p className="mt-3 text-[12px] text-error">{error}</p>}
 

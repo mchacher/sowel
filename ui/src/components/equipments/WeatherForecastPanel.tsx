@@ -1,5 +1,6 @@
 import { Droplets, Wind, Cloud } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import type { DataBindingWithValue } from "../../types";
 import {
   parseForecastDays,
@@ -35,7 +36,7 @@ export function WeatherForecastPanel({ bindings }: WeatherForecastPanelProps) {
     return null;
   }
 
-  const locale = i18n.language === "fr" ? "fr-FR" : "en-US";
+  const locale = dateLocale(i18n.language);
   // Absent before plugin 2.0, which is what keeps the card unchanged for
   // households that have not upgraded.
   const modelUsed = parseModelUsed(bindings);

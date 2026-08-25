@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import { Cloud, Droplets, Wind } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import {
@@ -38,7 +39,8 @@ export function WeatherForecastWidget({ label, sublabel, equipment }: WeatherFor
   const { i18n } = useTranslation();
   const days = parseForecastDays(equipment.dataBindings);
   const tomorrow = days[0]; // J+1
-  const conditionLabels = i18n.language === "fr" ? CONDITION_LABELS_FR : CONDITION_LABELS_EN;
+  const conditionLabels =
+    dateLocale(i18n.language) === "fr-FR" ? CONDITION_LABELS_FR : CONDITION_LABELS_EN;
 
   if (!tomorrow) return null;
 

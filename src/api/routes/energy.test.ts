@@ -46,6 +46,8 @@ interface BuildOpts {
     enabled?: boolean;
   }>;
   envTz?: string | undefined;
+  /** Spec 160/161 — a stand-in forecaster, for the routes that need one. */
+  pvForecaster?: unknown;
   /** Spec 123 — inject a tariff config for cost-wiring tests. */
   tariff?: TariffConfig | null;
   /** Issue #381 — role decorated on request.auth. Defaults to admin;
@@ -138,7 +140,7 @@ async function buildApp(opts: BuildOpts = {}) {
     capacityArbiter: null,
     arbiterMetricsStore: (opts.arbiterMetrics ?? null) as never,
     // Spec 160 — the routes must answer sensibly with no forecaster at all.
-    pvForecaster: null,
+    pvForecaster: (opts.pvForecaster ?? null) as never,
     logger,
   });
   await app.ready();
@@ -929,13 +931,144 @@ describe("PV forecast routes (spec 160)", () => {
     await app.close();
   });
 
-  it("does not crash recalibrating with no forecaster wired", async () => {
+  it("answers 503 when recalibrating with no forecaster wired", async () => {
     const app = await buildApp({ equipments: [solarMeter] });
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/energy/pv-forecast/eq-pv/recalibrate",
     });
-    expect([401, 403, 503]).toContain(res.statusCode);
+    // The request is admin (the default stub), so this is deterministic. The
+    // previous form accepted 401, 403 or 503 and so could not tell a working
+    // admin gate from a missing forecaster.
+    expect(res.statusCode).toBe(503);
+    await app.close();
+  });
+});
+
+/**
+ * The backfill route (spec 161).
+ *
+ * Each refusal is something different for the household to do — update the
+ * plugin, declare the array, wait for the database — so the route must keep
+ * them apart rather than folding them into one failure.
+ */
+describe("Spec 161 — POST /energy/pv-forecast/:id/backfill", () => {
+  const solarMeter = {
+    id: "eq-pv",
+    name: "Solaire",
+    type: "energy_production_meter" as const,
+  };
+
+  const url = "/api/v1/energy/pv-forecast/eq-pv/backfill";
+
+  /** A forecaster whose backfill returns exactly what the test wants. */
+  const forecasterReturning = (report: unknown) => ({
+    backfill: () => Promise.resolve(report),
+    getModel: () => null,
+    getCurve: () => [],
+    getIssuedAt: () => null,
+    getProductionAlias: () => null,
+    hasIrradianceSeries: () => false,
+  });
+
+  it("reports the fit, the window and why it stopped there", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({
+        ok: true,
+        hoursPaired: 640,
+        windowFrom: "2026-07-11T00:00:00.000Z",
+        windowTo: "2026-08-25T00:00:00.000Z",
+        boundedBy: "window",
+        model: { gain: 3.8, shape: { 12: 1 }, fittedAt: "2026-08-25T00:00:00.000Z", samples: 640 },
+      }),
+    });
+    const res = await app.inject({ method: "POST", url });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.hoursPaired).toBe(640);
+    expect(body.boundedBy).toBe("window");
+    expect(body.model.gain).toBe(3.8);
+    await app.close();
+  });
+
+  it("returns a null model, not an error, when there is still too little history", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({
+        ok: true,
+        hoursPaired: 40,
+        boundedBy: "declaration",
+        model: null,
+        reason: "not-enough-history",
+      }),
+    });
+    const res = await app.inject({ method: "POST", url });
+    // The samples were still written; this is progress, not a failure.
+    expect(res.statusCode).toBe(200);
+    expect(res.json().model).toBeNull();
+    expect(res.json().reason).toBe("not-enough-history");
+    await app.close();
+  });
+
+  it("refuses with 400 when no array is declared", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({ ok: false, reason: "no-profile" }),
+    });
+    expect((await app.inject({ method: "POST", url })).statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("refuses with 409 when no plugin publishes the history", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({ ok: false, reason: "no-history" }),
+    });
+    const res = await app.inject({ method: "POST", url });
+    expect(res.statusCode).toBe(409);
+    // Named, so the panel can tell the owner to update the plugin rather than
+    // to keep waiting.
+    expect(res.json().reason).toBe("no-history");
+    await app.close();
+  });
+
+  it("refuses with 503 when the database cannot be reached", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({ ok: false, reason: "influx-unavailable" }),
+    });
+    expect((await app.inject({ method: "POST", url })).statusCode).toBe(503);
+    await app.close();
+  });
+
+  it("answers 404 for an unknown equipment", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({ ok: true, hoursPaired: 0, model: null }),
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/energy/pv-forecast/nope/backfill",
+    });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("refuses a non-admin before touching the forecaster", async () => {
+    const app = await buildApp({
+      equipments: [solarMeter],
+      authRole: "user",
+      pvForecaster: forecasterReturning({ ok: true, hoursPaired: 999, model: null }),
+    });
+    const res = await app.inject({ method: "POST", url });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("answers 503 with no forecaster wired at all", async () => {
+    const app = await buildApp({ equipments: [solarMeter] });
+    expect((await app.inject({ method: "POST", url })).statusCode).toBe(503);
     await app.close();
   });
 });

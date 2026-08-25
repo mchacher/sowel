@@ -666,6 +666,8 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         // means the plugin is missing or too old, which the panel must say
         // instead of asking the household to keep waiting.
         weatherAvailable: pvForecaster?.hasIrradianceSeries() ?? false,
+        // Spec 161 — echoed so the declaration form can show what was saved.
+        since: equipment.solarProfile?.since,
         accuracy,
         model: model
           ? {
@@ -719,6 +721,54 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         "PV gain recalibrated on request",
       );
       return { gain: refit.gain, fittedAt: refit.fittedAt, samples: refit.samples };
+    },
+  );
+
+  // ============================================================
+  // POST /api/v1/energy/pv-forecast/:equipmentId/backfill — spec 161.
+  //
+  // Fit the model from production the installation has already recorded,
+  // instead of waiting the twelve days it takes to observe enough new hours.
+  // Bounded by the declared "unchanged since" date when there is one: fitted
+  // across a capacity change the gain describes neither array.
+  // ============================================================
+  app.post<{ Params: { equipmentId: string } }>(
+    "/api/v1/energy/pv-forecast/:equipmentId/backfill",
+    async (request, reply) => {
+      requireAdmin(request, reply);
+      if (reply.sent) return;
+
+      if (!pvForecaster) {
+        return reply.status(503).send({ error: "PV forecaster not available" });
+      }
+      const equipment = equipmentManager.getById(request.params.equipmentId);
+      if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
+
+      const report = await pvForecaster.backfill(equipment.id);
+
+      if (!report.ok) {
+        // Each of these is something different for the household to do, so they
+        // are told apart rather than folded into one "cannot do that".
+        const status =
+          report.reason === "no-profile" ? 400 : report.reason === "influx-unavailable" ? 503 : 409;
+        return reply.status(status).send({ error: report.reason, reason: report.reason });
+      }
+
+      return {
+        hoursPaired: report.hoursPaired ?? 0,
+        windowFrom: report.windowFrom,
+        windowTo: report.windowTo,
+        boundedBy: report.boundedBy,
+        reason: report.reason,
+        model: report.model
+          ? {
+              gain: report.model.gain,
+              shape: report.model.shape,
+              fittedAt: report.model.fittedAt,
+              samples: report.model.samples,
+            }
+          : null,
+      };
     },
   );
 }

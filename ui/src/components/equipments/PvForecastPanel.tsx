@@ -10,10 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { RefreshCw, Sun } from "lucide-react";
+import { History, RefreshCw, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import type { PvForecastResponse } from "../../types";
-import { getPvForecast, recalibratePvForecast } from "../../api";
+import { backfillPvForecast, getPvForecast, recalibratePvForecast } from "../../api";
 import { SolarProfileForm } from "./SolarProfileForm";
 import { sumKwh } from "./pvForecastUtils";
 
@@ -75,7 +76,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
     return <SolarProfileForm equipmentId={equipmentId} planes={[]} onSaved={load} />;
   }
 
-  const locale = i18n.language === "fr" ? "fr-FR" : "en-US";
+  const locale = dateLocale(i18n.language);
   const chart = data.curve.map((p) => ({
     ts: Date.parse(p.at),
     watts: p.watts,
@@ -90,6 +91,31 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
 
   const todayKwh = sumKwh(data.curve, 0);
   const tomorrowKwh = sumKwh(data.curve, 1);
+
+  /**
+   * Fit from history the installation already holds (spec 161).
+   *
+   * Offered mainly while there is no model, which is the twelve-day gap this
+   * exists to close, but kept available afterwards: it is also how a household
+   * rebuilds the fit after correcting the declared array or its date.
+   */
+  async function backfill(): Promise<void> {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await backfillPvForecast(equipmentId);
+      setNotice(
+        res.model
+          ? t("equipments.pv.backfilled", { hours: res.hoursPaired })
+          : t("equipments.pv.backfilledShort", { hours: res.hoursPaired }),
+      );
+      await load();
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function recalibrate(): Promise<void> {
     setBusy(true);
@@ -288,11 +314,25 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             <RefreshCw size={13} strokeWidth={1.5} />
             {t("equipments.pv.recalibrate")}
           </button>
+          <button
+            type="button"
+            onClick={backfill}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-border text-[13px] text-text-secondary hover:border-primary disabled:opacity-50"
+          >
+            <History size={14} strokeWidth={1.5} />
+            {t("equipments.pv.backfill")}
+          </button>
           {notice && <span className="text-[12px] text-text-secondary">{notice}</span>}
         </div>
       </div>
 
-      <SolarProfileForm equipmentId={equipmentId} planes={data.planes} onSaved={load} />
+      <SolarProfileForm
+        equipmentId={equipmentId}
+        planes={data.planes}
+        since={data.since}
+        onSaved={load}
+      />
     </div>
   );
 }
