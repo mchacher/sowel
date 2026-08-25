@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   GAMMA_PER_C,
+  clearSkyEstimate,
   IMPOSSIBLE_FACTOR,
   MIN_SAMPLES,
   fitModel,
@@ -193,5 +194,34 @@ describe("refitGainOnly", () => {
       watts: 9999,
     }));
     expect(refitGainOnly(before, unknownHour, PEAK_WC, AT).gain).toBe(before.gain);
+  });
+});
+
+describe("clearSkyEstimate", () => {
+  it("gives the nameplate at standard test conditions", () => {
+    expect(clearSkyEstimate(1000, 25, 4000)).toBeCloseTo(4000, 0);
+  });
+
+  it("scales with irradiance", () => {
+    expect(clearSkyEstimate(500, 25, 4000)).toBeCloseTo(2000, 0);
+  });
+
+  it("derates with heat, like the fitted model", () => {
+    expect(clearSkyEstimate(1000, 35, 4000)).toBeLessThan(clearSkyEstimate(1000, 25, 4000));
+  });
+
+  it("never exceeds the nameplate", () => {
+    expect(clearSkyEstimate(5000, 25, 4000)).toBe(4000);
+  });
+
+  it("is zero in the dark and with nothing declared", () => {
+    expect(clearSkyEstimate(0, 12, 4000)).toBe(0);
+    expect(clearSkyEstimate(800, 25, 0)).toBe(0);
+  });
+
+  it("reads high against a real array, which is why it must be labelled", () => {
+    // The reference site's fitted gain is about 2.5 W per W/m2 on 3 kWc, i.e.
+    // ~0.83 of nameplate. An unshaded ideal always over-promises.
+    expect(clearSkyEstimate(800, 25, 3000)).toBeGreaterThan(2.5 * 800);
   });
 });

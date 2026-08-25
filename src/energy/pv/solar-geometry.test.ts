@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SolarPlane } from "../../shared/types.js";
 import {
+  FULL_ELEVATION_RAD,
   MIN_ELEVATION_RAD,
   planeOfArray,
   solarPosition,
@@ -59,6 +60,16 @@ describe("toDni", () => {
     // At 1 degree, 10 W/m2 horizontal would otherwise become 573 W/m2 of beam.
     expect(toDni(10, (1 * Math.PI) / 180)).toBe(0);
     expect(toDni(10, MIN_ELEVATION_RAD - 0.001)).toBe(0);
+  });
+
+  it("ramps rather than steps across the guard, so an edge hour does not jump", () => {
+    const justAbove = toDni(10, MIN_ELEVATION_RAD + 0.0001);
+    const midway = toDni(10, (MIN_ELEVATION_RAD + FULL_ELEVATION_RAD) / 2);
+    const full = toDni(10, FULL_ELEVATION_RAD);
+    expect(justAbove).toBeLessThan(midway);
+    expect(midway).toBeLessThan(full);
+    // Continuous at the bottom: no cliff between "nothing" and "a lot".
+    expect(justAbove).toBeLessThan(full * 0.05);
   });
 
   it("returns zero at night and for a non-positive reading", () => {

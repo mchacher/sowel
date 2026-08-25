@@ -230,26 +230,26 @@ none.
 
 ## Acceptance Criteria
 
-- [ ] An equipment with no `solarProfile` is untouched: no forecast, no storage,
+- [x] An equipment with no `solarProfile` is untouched: no forecast, no storage,
       no panel
-- [ ] The irradiance series is consumed with no data binding created anywhere
-- [ ] With a profile, an hourly curve to J+5 is exposed and refreshed each poll
-- [ ] Several planes are summed with per-plane clipping, verified on a synthetic
+- [x] The irradiance series is consumed with no data binding created anywhere
+- [x] With a profile, an hourly curve to J+5 is exposed and refreshed each poll
+- [x] Several planes are summed with per-plane clipping, verified on a synthetic
       east/west array
-- [ ] `gain` and `shape(h)` refit nightly on a 45-day window
-- [ ] Forecast points are persisted with their lead time and readable back
-- [ ] Saving a profile with a different total peak power re-estimates `gain`
+- [x] `gain` and `shape(h)` refit nightly on a 45-day window
+- [x] Forecast points are persisted with their lead time and readable back
+- [x] Saving a profile with a different total peak power re-estimates `gain`
       and leaves `shape(h)` untouched
-- [ ] A manual recalibration re-estimates `gain` immediately
-- [ ] The eight cardinal shortcuts each set the expected azimuth
-- [ ] Samples above declared peak power are excluded from the fit and logged
-- [ ] The declaration form creates, edits and removes planes, with cardinal
+- [x] A manual recalibration re-estimates `gain` immediately
+- [x] The eight cardinal shortcuts each set the expected azimuth
+- [x] Samples above declared peak power are excluded from the fit and logged
+- [x] The declaration form creates, edits and removes planes, with cardinal
       shortcuts for the orientation
-- [ ] Validation refuses an out-of-range tilt, azimuth or peak power, naming the
+- [x] Validation refuses an out-of-range tilt, azimuth or peak power, naming the
       field
-- [ ] The panel shows the curve, forecast against actual for past days, and the
+- [x] The panel shows the curve, forecast against actual for past days, and the
       rolling accuracy
-- [ ] Unit tests cover every scenario of the plan's test plan
+- [x] Unit tests cover every scenario of the plan's test plan
 
 ## Edge Cases
 

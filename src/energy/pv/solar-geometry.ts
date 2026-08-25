@@ -18,6 +18,17 @@ import type { SolarPlane } from "../../shared/types.js";
  */
 export const MIN_ELEVATION_RAD = (3 * Math.PI) / 180;
 
+/**
+ * Above this elevation the conversion is trusted in full; between the two it is
+ * ramped to zero.
+ *
+ * A hard cut-off would make one sunrise or sunset hour flip between diffuse-only
+ * and a large beam term as the season walks its mid-hour elevation across the
+ * threshold — a step of several hundred watts in exactly the edge hours the
+ * hourly shape reads as shading.
+ */
+export const FULL_ELEVATION_RAD = (5 * Math.PI) / 180;
+
 export interface SunPosition {
   /** Radians above the horizon. Negative at night. */
   elevationRad: number;
@@ -52,7 +63,10 @@ export function solarPosition(when: Date, latitude: number, longitude: number): 
 export function toDni(directHorizontal: number, elevationRad: number): number {
   if (!Number.isFinite(directHorizontal) || directHorizontal <= 0) return 0;
   if (elevationRad < MIN_ELEVATION_RAD) return 0;
-  return directHorizontal / Math.sin(elevationRad);
+  const dni = directHorizontal / Math.sin(elevationRad);
+  if (elevationRad >= FULL_ELEVATION_RAD) return dni;
+  const ramp = (elevationRad - MIN_ELEVATION_RAD) / (FULL_ELEVATION_RAD - MIN_ELEVATION_RAD);
+  return dni * ramp;
 }
 
 /** Cosine of the angle between the sun and a plane's normal. */

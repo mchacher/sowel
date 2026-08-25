@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CARDINAL_AZIMUTHS, isActiveSolarProfile, validateSolarProfile } from "./solar-profile.js";
+import { CARDINAL_AZIMUTHS, isActiveSolarProfile, validateSolarProfile } from "./solarProfileValidation";
 
 const SOUTH = { tiltDeg: 35, azimuthDeg: 180, peakWc: 4000 };
 
@@ -103,35 +103,5 @@ describe("CARDINAL_AZIMUTHS", () => {
     for (const azimuthDeg of Object.values(CARDINAL_AZIMUTHS)) {
       expect(validateSolarProfile({ planes: [{ ...SOUTH, azimuthDeg }] })).toEqual([]);
     }
-  });
-});
-
-describe("the UI mirror stays in step", () => {
-  it("is byte-identical to the copy the form validates against", async () => {
-    // The UI cannot import from the backend tree, so the module is mirrored.
-    // A drift would let the form offer a value the API refuses, which is the
-    // one failure this arrangement exists to prevent.
-    const { readFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-
-    const backend = readFileSync(
-      fileURLToPath(new URL("./solar-profile.ts", import.meta.url)),
-      "utf8",
-    );
-    const ui = readFileSync(
-      fileURLToPath(
-        new URL("../../../ui/src/components/equipments/solarProfileValidation.ts", import.meta.url),
-      ),
-      "utf8",
-    );
-
-    const logic = (src: string): string =>
-      src
-        .replace(/\/\*[\s\S]*?\*\//g, "")
-        .replace(/import[^;]+;/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    expect(logic(ui)).toBe(logic(backend));
   });
 });

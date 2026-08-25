@@ -1431,5 +1431,11 @@
   "equipments.pv.learning": "Apprentissage en cours. La prévision apparaîtra dès que assez de production aura été enregistrée.",
   "equipments.pv.provenance": "Ajusté sur {{samples}} heures, mis à jour le {{date}}",
   "equipments.pv.recalibrate": "Recaler",
-  "equipments.pv.recalibrated": "Recalé, gain désormais {{gain}}"
+  "equipments.pv.recalibrated": "Recalé, gain désormais {{gain}}",
+  "equipments.pv.accuracy": "Justesse",
+  "equipments.pv.accuracyValue": "± {{mae}} W",
+  "equipments.pv.accuracySamples": "sur {{n}} heures, prévues la veille",
+  "equipments.pv.actual": "Réalisé",
+  "equipments.pv.stale": "données météo vieilles de {{hours}} h",
+  "equipments.pv.provisional": "Provisoire : l'idéal d'un champ propre et sans ombre. Surestime tant que le site n'est pas appris."
 }

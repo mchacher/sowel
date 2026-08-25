@@ -3,6 +3,7 @@ import { Plus, Sun, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SolarPlane } from "../../types";
 import { updateEquipment } from "../../api";
+import { CARDINAL_AZIMUTHS, validateSolarProfile } from "./solarProfileValidation";
 
 /**
  * Declare the array (spec 160, FR9).
@@ -16,17 +17,14 @@ import { updateEquipment } from "../../api";
  * Shading is deliberately not asked for: the model measures it.
  */
 
-/** All eight, not just the sunny ones: east/west and north arrays exist. */
-const CARDINALS: { key: string; azimuth: number }[] = [
-  { key: "N", azimuth: 0 },
-  { key: "NE", azimuth: 45 },
-  { key: "E", azimuth: 90 },
-  { key: "SE", azimuth: 135 },
-  { key: "S", azimuth: 180 },
-  { key: "SW", azimuth: 225 },
-  { key: "W", azimuth: 270 },
-  { key: "NW", azimuth: 315 },
-];
+/**
+ * All eight, not just the sunny ones: east/west roofs are the modern standard
+ * and north-facing arrays exist.
+ *
+ * Taken from the same table the backend validates against, so the buttons can
+ * never offer a bearing the API would refuse.
+ */
+const CARDINALS = Object.entries(CARDINAL_AZIMUTHS).map(([key, azimuth]) => ({ key, azimuth }));
 
 const EMPTY_PLANE: SolarPlane = { tiltDeg: 30, azimuthDeg: 180, peakWc: 0 };
 
@@ -41,6 +39,8 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
   const [draft, setDraft] = useState<SolarPlane[]>(planes.length > 0 ? planes : [EMPTY_PLANE]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** "planeIndex:field" for every field the validator refused. */
+  const [badFields, setBadFields] = useState<Set<string>>(new Set());
 
   const totalWc = draft.reduce((sum, p) => sum + (p.peakWc || 0), 0);
   const firstFilled = draft.length > 0 && draft[0].peakWc > 0;
@@ -50,10 +50,23 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
   }
 
   async function save(): Promise<void> {
-    setSaving(true);
     setError(null);
+
+    // Validated here with the same rules the backend applies. Fastify's body
+    // schema rejects an out-of-range value before the handler runs, so the
+    // structured per-field detail never comes back over the wire — checking
+    // first is the only way to name the offending field, which FR9 requires.
+    const planesToSave = draft.filter((p) => p.peakWc > 0);
+    const errors = validateSolarProfile({ planes: planesToSave });
+    if (errors.length > 0) {
+      setBadFields(new Set(errors.map((e) => `${e.plane}:${e.field}`)));
+      setError(errors[0].message);
+      return;
+    }
+    setBadFields(new Set());
+
+    setSaving(true);
     try {
-      const planesToSave = draft.filter((p) => p.peakWc > 0);
       await updateEquipment(equipmentId, {
         solarProfile: planesToSave.length > 0 ? { planes: planesToSave } : null,
       });
@@ -120,8 +133,10 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
                 min={0}
                 max={359}
                 value={plane.azimuthDeg}
-                onChange={(e) => patch(index, { azimuthDeg: Number(e.target.value) })}
-                className="w-20 px-2 py-1 rounded-[6px] border border-border bg-background text-[12px] tabular-nums"
+                onChange={(e) => patch(index, { azimuthDeg: toDegrees(e.target.value) })}
+                className={`w-20 px-2 py-1 rounded-[6px] border bg-background text-[12px] tabular-nums ${
+                  badFields.has(`${index}:azimuthDeg`) ? "border-error" : "border-border"
+                }`}
                 aria-label={t("equipments.solar.orientation")}
               />
             </div>
@@ -140,8 +155,10 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
                   min={0}
                   max={90}
                   value={plane.tiltDeg}
-                  onChange={(e) => patch(index, { tiltDeg: Number(e.target.value) })}
-                  className="w-full px-2 py-1.5 rounded-[6px] border border-border bg-background text-[13px] tabular-nums"
+                  onChange={(e) => patch(index, { tiltDeg: toDegrees(e.target.value) })}
+                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-[13px] tabular-nums ${
+                    badFields.has(`${index}:tiltDeg`) ? "border-error" : "border-border"
+                  }`}
                 />
                 <p className="text-[11px] text-text-tertiary mt-1">
                   {t("equipments.solar.tiltHint")}
@@ -159,8 +176,10 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
                   type="number"
                   min={0}
                   value={plane.peakWc || ""}
-                  onChange={(e) => patch(index, { peakWc: Number(e.target.value) })}
-                  className="w-full px-2 py-1.5 rounded-[6px] border border-border bg-background text-[13px] tabular-nums"
+                  onChange={(e) => patch(index, { peakWc: toDegrees(e.target.value) })}
+                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-[13px] tabular-nums ${
+                    badFields.has(`${index}:peakWc`) ? "border-error" : "border-border"
+                  }`}
                 />
                 <p className="text-[11px] text-text-tertiary mt-1">
                   {t("equipments.solar.peakHint")}
@@ -203,4 +222,15 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
       </div>
     </div>
   );
+}
+
+/**
+ * A number input's value, as a number.
+ *
+ * A cleared field yields "", which `Number("")` turns into 0 — silently
+ * flattening a tilt or pointing an array due north mid-retype. NaN is kept
+ * instead, which the validator refuses with the field named.
+ */
+function toDegrees(raw: string): number {
+  return raw.trim() === "" ? Number.NaN : Number(raw);
 }

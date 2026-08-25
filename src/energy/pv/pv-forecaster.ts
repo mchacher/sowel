@@ -20,7 +20,14 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { ComputedDataEntry, Equipment } from "../../shared/types.js";
 import { planeOfArray, solarPosition, toDni, totalPeakWc } from "./solar-geometry.js";
-import { fitModel, predict, refitGainOnly, type PvModel, type PvSample } from "./pv-model.js";
+import {
+  clearSkyEstimate,
+  fitModel,
+  predict,
+  refitGainOnly,
+  type PvModel,
+  type PvSample,
+} from "./pv-model.js";
 import { isActiveSolarProfile } from "./solar-profile.js";
 
 /** Days of production history the fit runs on. Measured: 45 beats all-history. */
@@ -93,6 +100,8 @@ export class PvForecaster {
 
   /** equipmentId -> latest curve, kept in memory for the computed data. */
   private readonly curves = new Map<string, ForecastPoint[]>();
+  /** equipmentId -> when the series behind that curve was issued (FR5). */
+  private readonly issuedAt = new Map<string, string>();
   private unsubscribe: (() => void) | null = null;
   private refitTimer: ReturnType<typeof setTimeout> | null = null;
   private recomputeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -224,6 +233,25 @@ export class PvForecaster {
     return this.curves.get(equipmentId) ?? [];
   }
 
+  /**
+   * When the series behind the current curve was issued.
+   *
+   * Surfaced rather than kept private: if the weather plugin stops polling, the
+   * curve stays in memory and would otherwise be drawn exactly like a fresh one.
+   * A three-day-old forecast presented as today's is worse than none.
+   */
+  getIssuedAt(equipmentId: string): string | null {
+    return this.issuedAt.get(equipmentId) ?? null;
+  }
+
+  /** The production binding the accuracy comparison comes from. */
+  getProductionAlias(equipmentId: string): string | null {
+    const power = this.equipments
+      .getDataBindingsWithValues(equipmentId)
+      .find((b) => b.category === "power");
+    return power?.alias ?? null;
+  }
+
   getModel(equipmentId: string): PvModel | null {
     const row = this.db
       .prepare("SELECT * FROM pv_forecast_model WHERE equipment_id = ?")
@@ -259,6 +287,7 @@ export class PvForecaster {
         const curve = this.computeCurve(equipment, series);
         if (curve.length === 0) continue;
         this.curves.set(equipment.id, curve);
+        this.issuedAt.set(equipment.id, series.issuedAt ?? new Date().toISOString());
         this.persist(equipment.id, curve, series.issuedAt);
       } catch (err) {
         this.logger.error({ err, equipmentId: equipment.id }, "PV curve computation failed");
@@ -288,8 +317,11 @@ export class PvForecaster {
   private computeCurve(equipment: Equipment, series: IrradianceSeries): ForecastPoint[] {
     const planes = equipment.solarProfile?.planes ?? [];
     const peakWc = totalPeakWc(planes);
+    if (peakWc <= 0) return [];
+    // No model yet: a provisional clear-sky estimate rather than nothing. The
+    // API reports `model: null` alongside, so the panel can label it as such —
+    // eleven days of an empty card is indistinguishable from a broken feature.
     const model = this.modelFor(equipment, peakWc);
-    if (!model || peakWc <= 0) return [];
 
     const lat = parseFloat(this.settings.get("home.latitude") ?? "");
     const lon = parseFloat(this.settings.get("home.longitude") ?? "");
@@ -305,11 +337,9 @@ export class PvForecaster {
       const sun = solarPosition(new Date(startMs + 1_800_000), lat, lon);
       const poa = planeOfArray(planes, toDni(hour.direct, sun.elevationRad), hour.diffuse, sun);
       const local = new Date(startMs);
-      const watts = predict(
-        model,
-        { hourLocal: local.getHours(), poa, tempC: hour.temp ?? 25 },
-        peakWc,
-      );
+      const watts = model
+        ? predict(model, { hourLocal: local.getHours(), poa, tempC: hour.temp ?? 25 }, peakWc)
+        : clearSkyEstimate(poa, hour.temp ?? 25, peakWc);
       out.push({ at: new Date(startMs).toISOString(), watts: Math.round(watts) });
     }
     return out;
@@ -369,7 +399,9 @@ export class PvForecaster {
   refitGain(equipment: Equipment, model: PvModel, peakWc: number, days = 3): PvModel | null {
     const samples = this.readSamples(equipment, days);
     if (samples.length === 0) return null;
-    const next = refitGainOnly(model, samples, peakWc);
+    // Keep the full fit's sample count: the shape still comes from the 45-day
+    // window, and reporting "fitted on 20 hours" would misdescribe it.
+    const next = { ...refitGainOnly(model, samples, peakWc), samples: model.samples };
     this.store(equipment.id, next, peakWc, true);
     return next;
   }

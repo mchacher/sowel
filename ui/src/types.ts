@@ -289,11 +289,24 @@ export interface PvForecastPoint {
   watts: number;
 }
 
+export interface PvAccuracyPoint {
+  at: string;
+  forecastW: number;
+  actualW: number;
+}
+
 export interface PvForecastResponse {
   active: boolean;
   declaredPeakWc: number;
   planes: SolarPlane[];
   curve: PvForecastPoint[];
+  /** When the weather series behind the curve was issued. Null before the first. */
+  issuedAt: string | null;
+  accuracy: {
+    samples: number;
+    maeW: number | null;
+    points: PvAccuracyPoint[];
+  };
   model: {
     gain: number;
     shape: Record<number, number>;

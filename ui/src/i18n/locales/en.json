@@ -1431,5 +1431,11 @@
   "equipments.pv.learning": "Still learning this array. The forecast appears once enough production has been recorded.",
   "equipments.pv.provenance": "Fitted on {{samples}} hours, last updated {{date}}",
   "equipments.pv.recalibrate": "Recalibrate",
-  "equipments.pv.recalibrated": "Recalibrated, gain now {{gain}}"
+  "equipments.pv.recalibrated": "Recalibrated, gain now {{gain}}",
+  "equipments.pv.accuracy": "Accuracy",
+  "equipments.pv.accuracyValue": "± {{mae}} W",
+  "equipments.pv.accuracySamples": "over {{n}} hours, forecast a day ahead",
+  "equipments.pv.actual": "Actual",
+  "equipments.pv.stale": "weather data is {{hours}} h old",
+  "equipments.pv.provisional": "Provisional: the ideal for a clean, unshaded array. It reads high until the site is learned."
 }

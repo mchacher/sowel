@@ -25,6 +25,7 @@ import type {
 
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
+import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
 import { totalPeakWc } from "../../energy/pv/solar-geometry.js";
 
 interface EnergyDeps {
@@ -642,11 +643,25 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       const planes = equipment.solarProfile?.planes ?? [];
       const model = pvForecaster?.getModel(equipment.id) ?? null;
 
+      // FR6 — what was promised against what happened. Compared at the 6-24h
+      // lead by default: "how wrong was yesterday's forecast for today" is the
+      // question a household actually asks, and averaging it with a four-day-old
+      // one would answer neither.
+      const alias = pvForecaster?.getProductionAlias(equipment.id) ?? null;
+      const accuracy =
+        alias && planes.length > 0
+          ? await queryPvAccuracy(influxClient, { equipmentId: equipment.id, alias }, logger)
+          : { samples: 0, maeW: null, points: [] };
+
       return {
         active: planes.length > 0,
         declaredPeakWc: totalPeakWc(planes),
         planes,
         curve: pvForecaster?.getCurve(equipment.id) ?? [],
+        // FR5 — the age of the series behind the curve, so a stale forecast is
+        // not drawn like a fresh one.
+        issuedAt: pvForecaster?.getIssuedAt(equipment.id) ?? null,
+        accuracy,
         model: model
           ? {
               gain: model.gain,

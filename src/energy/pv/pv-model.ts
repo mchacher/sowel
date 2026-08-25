@@ -192,3 +192,21 @@ export function predict(model: PvModel, point: PvPoint, peakWc: number): number 
 
   return peakWc > 0 ? Math.min(watts, peakWc) : watts;
 }
+
+/**
+ * Expected production before any model exists, from the declared array alone.
+ *
+ * Standard test conditions: a panel rated `peakWc` produces that at 1000 W/m2
+ * on its plane. No site knowledge at all — no shading, no soiling, no ageing —
+ * so it reads high, and the caller must label it as provisional rather than
+ * present it as a forecast.
+ *
+ * It exists because eleven days of an empty panel is indistinguishable from a
+ * broken feature, and a household that has just declared its array deserves to
+ * see something move.
+ */
+export function clearSkyEstimate(poa: number, tempC: number, peakWc: number): number {
+  const eff = effectiveIrradiance(poa, tempC);
+  if (eff <= 0 || peakWc <= 0) return 0;
+  return Math.min((eff / 1000) * peakWc, peakWc);
+}
