@@ -493,6 +493,15 @@ describe("PUT /api/v1/equipments/:id — solar profile (spec 160)", () => {
     expect(received?.solarProfile).toBeUndefined();
   });
 
+  it("forwards the declared change date (spec 161)", async () => {
+    const withSince = { planes: validProfile.planes, since: "2026-08-04" };
+    const res = await put({ solarProfile: withSince });
+    expect(res.statusCode).toBe(200);
+    // The one thing only the household knows: without it a backfill fits across
+    // a capacity change and the gain describes neither array.
+    expect(received?.solarProfile).toEqual(withSince);
+  });
+
   it("refuses an out-of-range angle before reaching the manager", async () => {
     const res = await put({
       solarProfile: { planes: [{ tiltDeg: 120, azimuthDeg: 180, peakWc: 4000 }] },

@@ -68,6 +68,22 @@ export async function getPvForecast(equipmentId: string): Promise<PvForecastResp
 }
 
 /** Re-estimate the gain now. The hourly shape, which describes the site, is kept. */
+/** Spec 161 — fit the model from history that already exists. */
+export interface PvBackfillResult {
+  hoursPaired: number;
+  windowFrom?: string;
+  windowTo?: string;
+  boundedBy?: "window" | "declaration";
+  reason?: string;
+  model: { gain: number; samples: number; fittedAt: string } | null;
+}
+
+export async function backfillPvForecast(equipmentId: string): Promise<PvBackfillResult> {
+  return fetchJSON(`${API_BASE}/energy/pv-forecast/${equipmentId}/backfill`, {
+    method: "POST",
+  });
+}
+
 export async function recalibratePvForecast(
   equipmentId: string,
 ): Promise<{ gain: number; fittedAt: string; samples: number }> {

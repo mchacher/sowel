@@ -281,6 +281,14 @@ export interface SolarPlane {
 
 export interface SolarProfile {
   planes: SolarPlane[];
+  /**
+   * ISO date. The array has been in this configuration since (spec 161).
+   *
+   * Only ever used to bound a backfill over existing history: fitted across a
+   * capacity change the gain describes neither array. The forward path never
+   * reads it.
+   */
+  since?: string;
 }
 
 /** Spec 160 — one hour of the expected-production curve. */
@@ -304,6 +312,8 @@ export interface PvForecastResponse {
   issuedAt: string | null;
   /** False when no plugin publishes the irradiance series the curve needs. */
   weatherAvailable: boolean;
+  /** Spec 161 — the declared "unchanged since" date, when there is one. */
+  since?: string;
   accuracy: {
     samples: number;
     maeW: number | null;

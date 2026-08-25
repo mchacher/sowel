@@ -70,6 +70,12 @@ const updateEquipmentBodySchema = {
             },
           },
         },
+        // Spec 161 — the array has been in this configuration since. Declared
+        // here rather than left as an unlisted extra property so a client can
+        // see it exists and a malformed one is refused at the edge. A date that
+        // is merely wrong (future, too old) is not an error: it is discarded
+        // when the backfill window is resolved.
+        since: { type: ["string", "null"], maxLength: 40 },
       },
     },
   },
