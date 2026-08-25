@@ -462,7 +462,7 @@ L'image runtime fait environ 950 Mo non compressée (environ 210 Mo de contenu).
 
 ### Flux d'événements
 
-1. Le buffer souscrit à un sous-ensemble curé d'`EngineEvent`s : `equipment.order.executed`, `equipment.data.changed` (filtré sur la catégorie de binding `motion`, `water_leak`, `smoke`), `recipe.instance.started/stopped/error`, `mode.activated/deactivated`, `sunlight.changed`, `system.alarm.raised`, `system.alarm.resolved`.
+1. Le buffer souscrit à un sous-ensemble curé d'`EngineEvent`s : `equipment.order.executed`, `equipment.data.changed` (filtré sur la catégorie de binding `motion`, `water_leak`, `smoke`), `recipe.instance.started/stopped/error`, `mode.activated/deactivated`, `sunlight.changed`, `system.alarm.raised`, `system.alarm.resolved`. Une résolution est classée dans la zone portée par son événement, à défaut dans celle de la levée vue par le buffer (globale s'il n'a ni l'une ni l'autre, par exemple une alarme levée avant un redémarrage).
 2. Pour chaque événement, il résout le nom d'équipement / de recette et le `zoneId` pertinent via les managers (equipment, recipe, zone, sunlight), puis construit un `ActivityItem`.
 3. Il pousse l'item dans le ring buffer (cap par count, purge des entrées dépassant le TTL) et émet un événement `activity.added` sur le bus.
 4. La couche WebSocket diffuse cet événement aux clients abonnés au topic `activity`. Les clients bootstrapent également via `GET /api/v1/activity` au montage.

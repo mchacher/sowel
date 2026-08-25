@@ -291,11 +291,16 @@ export class BatteryMonitor {
       { deviceId: alert.deviceId, deviceName: alert.deviceName, value: newValue },
       "Low battery cleared",
     );
+    // Same equipment context as the raise: an incident must open and close
+    // under one name, and in one zone, or the feed reads as two unrelated
+    // events. Resolved live, so a re-binding is picked up here too.
+    const { equipmentNames, zoneId } = this.resolveEquipmentContext(alert.deviceId);
     this.eventBus.emit({
       type: "system.alarm.resolved",
       alarmId: `${ALARM_PREFIX}${alert.deviceDataId}`,
-      source: alert.deviceName,
+      source: equipmentNames.length > 0 ? equipmentNames.join(", ") : alert.deviceName,
       message: isPercentage(newValue) ? `Battery back to ${newValue}%` : "Battery back to normal",
+      zoneId,
     });
   }
 

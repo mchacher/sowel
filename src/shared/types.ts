@@ -1274,7 +1274,17 @@ export type EngineEvent =
        *  or null = a global alarm shown in every zone (spec 143/#472). */
       zoneId?: string | null;
     }
-  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
+  | {
+      type: "system.alarm.resolved";
+      alarmId: string;
+      source: string;
+      message: string;
+      /** Zone the resolved alarm belongs to, mirroring `system.alarm.raised`.
+       *  Emitters that know the zone should send it: the activity feed then
+       *  files the end of an incident where its start went, even across a
+       *  restart. Absent or null = global, shown in every zone. */
+      zoneId?: string | null;
+    }
   // Self-update events
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }

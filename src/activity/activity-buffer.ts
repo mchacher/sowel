@@ -15,6 +15,10 @@ interface GetItemsOptions {
 }
 
 const MAX_ITEMS = 2000;
+// Zones remembered for alarms still raised. Far above any realistic count of
+// standing alarms; only there so an alarm that never resolves cannot grow the
+// map without bound.
+const MAX_TRACKED_ALARM_ZONES = 500;
 // Spec 147 — keep the live ring aligned with the persisted retention so a
 // restart restores the same window it will then maintain (bounded by MAX_ITEMS).
 const TTL_MS = ACTIVITY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
@@ -34,9 +38,10 @@ export class ActivityBuffer {
   private readonly logger: Logger;
   private prevIsDaylight: boolean | null = null;
   /**
-   * Zone each currently-raised alarm was filed under. `system.alarm.resolved`
-   * carries no zone, so without this the end of an outage would surface in
-   * every zone while its start stayed scoped to one.
+   * Zone each currently-raised alarm was filed under, used only when a
+   * `system.alarm.resolved` arrives without a zone of its own (a plugin that
+   * does not send one). Emitters that know the zone send it on both halves,
+   * which also survives a restart; this map does not.
    */
   private readonly alarmZones = new Map<string, string | null>();
 
@@ -100,6 +105,7 @@ export class ActivityBuffer {
   /** Internal: clear all items (used in tests). */
   clear(): void {
     this.items.length = 0;
+    this.alarmZones.clear();
   }
 
   /** Internal: get raw count (used in tests). */
@@ -262,7 +268,7 @@ export class ActivityBuffer {
     // lands in that zone; an alarm with no zone (integrations, unbound device)
     // stays global and shows in every zone, as before.
     const zoneId = event.zoneId ?? null;
-    this.alarmZones.set(event.alarmId, zoneId);
+    this.rememberAlarmZone(event.alarmId, zoneId);
     this.push("alarm", zoneId, {
       template: "alarm.raised",
       params: { source: event.source, message: event.message },
@@ -272,16 +278,39 @@ export class ActivityBuffer {
   /**
    * The other half of an alarm's life. A feed that only ever records the bad
    * news reads as an unbroken run of failures: the mains outage is in there,
-   * the moment the power came back is not. The zone is the one the alarm was
-   * raised in — global when it was raised before this process started.
+   * the moment the power came back is not. The zone comes from the event when
+   * the emitter sends one (the reliable path, restart included), otherwise
+   * from the raise we saw — global when we saw neither.
    */
-  private onAlarmResolved(event: { alarmId: string; source: string; message: string }): void {
-    const zoneId = this.alarmZones.get(event.alarmId) ?? null;
+  private onAlarmResolved(event: {
+    alarmId: string;
+    source: string;
+    message: string;
+    zoneId?: string | null;
+  }): void {
+    const zoneId =
+      event.zoneId !== undefined ? event.zoneId : (this.alarmZones.get(event.alarmId) ?? null);
     this.alarmZones.delete(event.alarmId);
     this.push("alarm", zoneId, {
       template: "alarm.resolved",
       params: { source: event.source, message: event.message },
     });
+  }
+
+  /**
+   * Entries leave the map when their alarm resolves, but an alarm raised on an
+   * equipment that is then deleted (or by a plugin minting a fresh id every
+   * time) never resolves. Cap the map like the ring itself is capped: oldest
+   * out first, so a leak stays bounded instead of growing for the process
+   * lifetime.
+   */
+  private rememberAlarmZone(alarmId: string, zoneId: string | null): void {
+    this.alarmZones.delete(alarmId);
+    if (this.alarmZones.size >= MAX_TRACKED_ALARM_ZONES) {
+      const oldest = this.alarmZones.keys().next();
+      if (!oldest.done) this.alarmZones.delete(oldest.value);
+    }
+    this.alarmZones.set(alarmId, zoneId);
   }
 }
 

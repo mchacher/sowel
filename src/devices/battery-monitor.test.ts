@@ -329,9 +329,29 @@ describe("BatteryMonitor", () => {
     expect(harness.resolved()).toHaveLength(1);
     expect(harness.resolved()[0]).toMatchObject({
       alarmId: "battery-low:dd-1",
+      source: "Capteur porte",
       message: "Battery back to 87%",
+      zoneId: null,
     });
     expect(harness.rows()).toHaveLength(0);
+  });
+
+  it("closes the incident under the same equipment name and zone as it opened", () => {
+    harness = createHarness([makeDevice({ powerSource: "battery" })], {
+      "dev-1": [eq("e1", "Détecteur salon", "zone-salon")],
+    });
+    harness.monitor.init();
+    harness.monitor.sweep();
+
+    harness.setDevices([makeDevice({ powerSource: "battery", data: [{ value: 87 }] })]);
+    harness.monitor.sweep();
+
+    expect(harness.raised()[0]).toMatchObject({ source: "Détecteur salon", zoneId: "zone-salon" });
+    expect(harness.resolved()[0]).toMatchObject({
+      source: "Détecteur salon",
+      message: "Battery back to 87%",
+      zoneId: "zone-salon",
+    });
   });
 
   it("keeps the alarm inside the hysteresis band", () => {

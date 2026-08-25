@@ -564,7 +564,7 @@ Runtime image is ~950 MB uncompressed (~210 MB content). The Python 3.13 require
 
 ### Event flow
 
-1. The buffer subscribes to a curated set of `EngineEvent`s: `equipment.order.executed`, `equipment.data.changed` (filtered by binding category to `motion`, `water_leak`, `smoke`), `recipe.instance.started/stopped/error`, `mode.activated/deactivated`, `sunlight.changed`, `system.alarm.raised`, `system.alarm.resolved`.
+1. The buffer subscribes to a curated set of `EngineEvent`s: `equipment.order.executed`, `equipment.data.changed` (filtered by binding category to `motion`, `water_leak`, `smoke`), `recipe.instance.started/stopped/error`, `mode.activated/deactivated`, `sunlight.changed`, `system.alarm.raised`, `system.alarm.resolved`. A resolution is filed in the zone its event carries, falling back to the zone of the raise the buffer saw (global when it has neither, e.g. an alarm raised before a restart).
 2. For each event it resolves equipment / recipe names and the relevant `zoneId` via the equipment, recipe, zone and sunlight managers, then builds an `ActivityItem`.
 3. It pushes the item to the ring buffer (capping by count, purging stale entries past the TTL) and emits an `activity.added` event on the bus.
 4. The WebSocket layer broadcasts that event to clients subscribed to the `activity` topic. Clients also bootstrap from `GET /api/v1/activity` on mount.

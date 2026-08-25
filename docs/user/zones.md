@@ -99,15 +99,15 @@ The panel groups events by hour. The most recent bucket is labeled `HH:00 → no
 
 ### What is tracked
 
-| Category            | Triggered by                                                                        | Example                                                 |
-| ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Order**           | Any equipment order dispatched by a recipe, mode, button, manual API call           | `Lumière → ON manuel`, `Lumière → OFF par Motion Light` |
-| **Motion**          | Motion sensor rising edge (binding category `motion`)                               | `Motion detected on PIR Living Room`                    |
-| **Recipe**          | Recipe instance start / stop                                                        | `Recipe Motion Light started`                           |
-| **Mode**            | Mode activation / deactivation                                                      | `Mode Night activated`                                  |
-| **Sunlight**        | Sunrise or sunset transition                                                        | `Sunset`                                                |
-| **Alarm**           | System alarm raised, recipe errors, water leak, smoke detection                     | `Smoke detector Kitchen: Smoke detected`                |
-| **Alarm (cleared)** | The same alarm going away — mains restored, battery back up, plugin reachable again | `nut: Mains restored — ups is back on utility power`    |
+| Category            | Triggered by                                                                        | Example                                                      |
+| ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Order**           | Any equipment order dispatched by a recipe, mode, button, manual API call           | `Lumière → ON manuel`, `Lumière → OFF par Motion Light`      |
+| **Motion**          | Motion sensor rising edge (binding category `motion`)                               | `Motion detected on PIR Living Room`                         |
+| **Recipe**          | Recipe instance start / stop                                                        | `Recipe Motion Light started`                                |
+| **Mode**            | Mode activation / deactivation                                                      | `Mode Night activated`                                       |
+| **Sunlight**        | Sunrise or sunset transition                                                        | `Sunset`                                                     |
+| **Alarm**           | System alarm raised, recipe errors, water leak, smoke detection                     | `Smoke detector Kitchen: Smoke detected`                     |
+| **Alarm (cleared)** | The same alarm going away — mains restored, battery back up, plugin reachable again | `nut: Retour secteur — ups est réalimenté (batterie à 58 %)` |
 
 Each item shows **who triggered it**: a recipe name, a mode name, "manual" for direct UI actions, the button id, or "external" for inbound MQTT.
 
