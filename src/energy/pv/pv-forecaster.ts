@@ -414,7 +414,12 @@ export class PvForecaster {
     return next;
   }
 
-  /** Full nightly refit, gain and shape, on the rolling window. */
+  /**
+   * Full nightly refit, gain and shape, on the rolling window.
+   *
+   * Public so the trigger logic can be exercised directly: it has broken twice,
+   * both times by advancing `fitted_peak_wc` past a change nobody had measured.
+   */
   refitAll(): void {
     this.pruneSamples();
     for (const equipment of this.solarEquipments()) {
@@ -434,15 +439,26 @@ export class PvForecaster {
         // it dominated by the old one, and clearing the stamp here would disarm
         // the fast re-estimation at 02:15 every night before it could ever fire.
         const pending = this.db
-          .prepare("SELECT gain_reset_at FROM pv_forecast_model WHERE equipment_id = ?")
-          .get(equipment.id) as { gain_reset_at: string | null } | undefined;
+          .prepare(
+            "SELECT gain_reset_at, fitted_peak_wc FROM pv_forecast_model WHERE equipment_id = ?",
+          )
+          .get(equipment.id) as
+          | { gain_reset_at: string | null; fitted_peak_wc: number }
+          | undefined;
+        const existingPeakWc = pending?.fitted_peak_wc;
         const fresh = pending?.gain_reset_at
           ? this.readSamplesSince(equipment, pending.gain_reset_at).length
           : 0;
 
-        this.store(equipment.id, model, peakWc, false);
+        // A change is pending and this window has not seen enough of the new
+        // array yet: keep the old capacity on the row so the trigger stays
+        // armed. Stamping the declared one here is what disarmed it before —
+        // the nightly refit would quietly close a change it had not measured.
+        const measured = !pending?.gain_reset_at || fresh >= MIN_SAMPLES;
+        const stampedPeakWc = measured ? peakWc : (existingPeakWc ?? peakWc);
+        this.store(equipment.id, model, stampedPeakWc, false);
 
-        if (!pending?.gain_reset_at || fresh >= MIN_SAMPLES) {
+        if (measured) {
           this.db
             .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
             .run(equipment.id);
@@ -466,7 +482,13 @@ export class PvForecaster {
    * disarms the trigger while the model still describes the old array — the
    * exact failure this table was added to catch.
    */
-  private store(equipmentId: string, model: PvModel, peakWc: number, gainReset: boolean): void {
+  private store(
+    equipmentId: string,
+    model: PvModel,
+    /** The capacity this fit actually describes, not necessarily the declared one. */
+    fittedPeakWc: number,
+    gainReset: boolean,
+  ): void {
     this.db
       .prepare(
         `INSERT INTO pv_forecast_model
@@ -483,7 +505,7 @@ export class PvForecaster {
         JSON.stringify(model.shape),
         model.fittedAt,
         model.samples,
-        peakWc,
+        fittedPeakWc,
         gainReset ? new Date().toISOString() : null,
       );
   }
