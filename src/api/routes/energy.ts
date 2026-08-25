@@ -634,7 +634,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // with no solar profile answers with an empty curve and `active: false`, so
   // the panel can say "not set up yet" rather than "something went wrong".
   // ============================================================
-  app.get<{ Params: { equipmentId: string } }>(
+  app.get<{ Params: { equipmentId: string }; Querystring: { days?: string } }>(
     "/api/v1/energy/pv-forecast/:equipmentId",
     async (request, reply) => {
       const equipment = equipmentManager.getById(request.params.equipmentId);
@@ -648,9 +648,18 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // question a household actually asks, and averaging it with a four-day-old
       // one would answer neither.
       const alias = pvForecaster?.getProductionAlias(equipment.id) ?? null;
+      // How far back the comparison looks. `queryPvAccuracy` clamps it to what
+      // the measured series is actually retained for, so a nonsense value costs
+      // nothing; anything unparseable falls back to its default.
+      const parsedDays = Number.parseInt(request.query.days ?? "", 10);
+      const accuracyDays = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : undefined;
       const accuracy =
         alias && planes.length > 0
-          ? await queryPvAccuracy(influxClient, { equipmentId: equipment.id, alias }, logger)
+          ? await queryPvAccuracy(
+              influxClient,
+              { equipmentId: equipment.id, alias, days: accuracyDays },
+              logger,
+            )
           : { samples: 0, maeW: null, points: [] };
 
       return {

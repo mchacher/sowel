@@ -63,8 +63,16 @@ export async function getActivity(
 // PV production forecast (spec 160)
 // ============================================================
 
-export async function getPvForecast(equipmentId: string): Promise<PvForecastResponse> {
-  return fetchJSON<PvForecastResponse>(`${API_BASE}/energy/pv-forecast/${equipmentId}`);
+/**
+ * @param accuracyDays how far back the forecast-versus-actual comparison looks.
+ *   Bounded server-side by the retention of the measured series.
+ */
+export async function getPvForecast(
+  equipmentId: string,
+  accuracyDays?: number,
+): Promise<PvForecastResponse> {
+  const query = accuracyDays ? `?days=${accuracyDays}` : "";
+  return fetchJSON<PvForecastResponse>(`${API_BASE}/energy/pv-forecast/${equipmentId}${query}`);
 }
 
 /** Re-estimate the gain now. The hourly shape, which describes the site, is kept. */

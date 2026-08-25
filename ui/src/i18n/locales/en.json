@@ -1441,6 +1441,8 @@
   "equipments.pv.recalibrated": "Recalibrated, gain now {{gain}}",
   "equipments.pv.accuracy": "Accuracy",
   "equipments.pv.accuracyValue": "± {{mae}} W",
+  "equipments.pv.lastDays": "{{n}} d",
+  "equipments.pv.accuracyPending": "Available once a forecast issued yesterday can be compared with today's production.",
   "equipments.pv.accuracySamples": "over {{n}} hours, forecast a day ahead",
   "equipments.pv.actual": "Actual",
   "equipments.pv.stale": "weather data is {{hours}} h old",

@@ -1441,6 +1441,8 @@
   "equipments.pv.recalibrated": "Recalé, gain désormais {{gain}}",
   "equipments.pv.accuracy": "Justesse",
   "equipments.pv.accuracyValue": "± {{mae}} W",
+  "equipments.pv.lastDays": "{{n}} j",
+  "equipments.pv.accuracyPending": "Disponible dès qu'une prévision émise hier pourra être comparée à la production d'aujourd'hui.",
   "equipments.pv.accuracySamples": "sur {{n}} heures, prévues la veille",
   "equipments.pv.actual": "Réalisé",
   "equipments.pv.stale": "données météo vieilles de {{hours}} h",

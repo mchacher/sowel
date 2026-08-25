@@ -16,7 +16,7 @@ import { dateLocale } from "../../lib/locale";
 import type { PvForecastResponse } from "../../types";
 import { backfillPvForecast, getPvForecast, recalibratePvForecast } from "../../api";
 import { SolarProfileForm } from "./SolarProfileForm";
-import { sumKwh } from "./pvForecastUtils";
+import { sumKwh, dailyTicks } from "./pvForecastUtils";
 
 /**
  * Expected PV production (spec 160).
@@ -35,18 +35,20 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<PvForecastResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  /** How far back the forecast-versus-actual comparison looks, in days. */
+  const [accuracyDays, setAccuracyDays] = useState(7);
   const [notice, setNotice] = useState<string | null>(null);
 
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setData(await getPvForecast(equipmentId));
+      setData(await getPvForecast(equipmentId, accuracyDays));
       setFailed(false);
     } catch {
       setFailed(true);
     }
-  }, [equipmentId]);
+  }, [equipmentId, accuracyDays]);
 
   useEffect(() => {
     void load();
@@ -171,8 +173,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     type="number"
                     scale="time"
                     domain={["dataMin", "dataMax"]}
+                    // One tick per day. Left to itself Recharts puts a tick
+                    // every few of the 144 hourly points, and formatted as
+                    // weekday names that reads "Tue Tue Tue Wed Wed Wed".
+                    ticks={dailyTicks(chart.map((p) => p.ts))}
                     tickFormatter={(ts: number) =>
-                      new Date(ts).toLocaleDateString(locale, { weekday: "short" })
+                      new Date(ts).toLocaleDateString(locale, { weekday: "short", day: "numeric" })
                     }
                     tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
@@ -215,25 +221,79 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             </div>
 
             {/* FR6 — what was promised against what happened. Without it the
-                curve is a number to take on faith. */}
-            {data.accuracy.maeW !== null && (
-              <div className="mt-4 pt-3 border-t border-border-light">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[12px] text-text-secondary">
-                    {t("equipments.pv.accuracy")}
-                  </span>
-                  <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
-                    {t("equipments.pv.accuracyValue", { mae: data.accuracy.maeW })}
-                  </span>
+                curve is a number to take on faith.
+                Always rendered, never hidden when empty: an absent section is
+                indistinguishable from an absent feature, and this one is empty
+                for a whole day after the array is declared. */}
+            <div className="mt-4 pt-3 border-t border-border-light">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-[12px] text-text-secondary">
+                  {t("equipments.pv.accuracy")}
+                </span>
+                {data.accuracy.maeW !== null ? (
+                  <>
+                    <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
+                      {t("equipments.pv.accuracyValue", { mae: data.accuracy.maeW })}
+                    </span>
+                    <span className="text-[11px] text-text-tertiary">
+                      {t("equipments.pv.accuracySamples", { n: data.accuracy.samples })}
+                    </span>
+                  </>
+                ) : (
                   <span className="text-[11px] text-text-tertiary">
-                    {t("equipments.pv.accuracySamples", { n: data.accuracy.samples })}
+                    {t("equipments.pv.accuracyPending")}
                   </span>
-                </div>
+                )}
+                {/* Which line is which. The chart draws two series in two
+                    colours and nothing else said so — the question this panel
+                    exists to answer is precisely "forecast versus actual". */}
+                {data.accuracy.maeW !== null && (
+                  <span className="flex items-center gap-3 ml-2">
+                    <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                      <span
+                        aria-hidden
+                        className="inline-block w-3 h-[2px] rounded-full"
+                        style={{ background: "var(--color-accent)" }}
+                      />
+                      {t("equipments.pv.expected")}
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                      <span
+                        aria-hidden
+                        className="inline-block w-3 h-[2px] rounded-full"
+                        style={{ background: "var(--color-primary)" }}
+                      />
+                      {t("equipments.pv.actual")}
+                    </span>
+                  </span>
+                )}
+
+                {/* The window. Bounded server-side by how long the measured
+                    series is retained, so 90 days is the honest maximum. */}
+                <span className="ml-auto flex items-center gap-1">
+                  {[7, 30, 90].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setAccuracyDays(d)}
+                      className={`px-2 py-0.5 rounded-[6px] text-[11px] font-medium border ${
+                        accuracyDays === d
+                          ? "border-primary bg-primary-light text-primary"
+                          : "border-border text-text-secondary hover:border-primary"
+                      }`}
+                    >
+                      {t("equipments.pv.lastDays", { n: d })}
+                    </button>
+                  ))}
+                </span>
+              </div>
+              {data.accuracy.maeW !== null && (
+                <>
                 <div className="h-32 mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={data.accuracy.points.map((p) => ({ ...p, ts: Date.parse(p.at) }))}
-                      margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
+                      margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
                       <XAxis
@@ -241,16 +301,24 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                         type="number"
                         scale="time"
                         domain={["dataMin", "dataMax"]}
+                        ticks={dailyTicks(data.accuracy.points.map((p) => Date.parse(p.at)))}
                         tickFormatter={(ts: number) =>
-                          new Date(ts).toLocaleDateString(locale, { weekday: "short" })
+                          new Date(ts).toLocaleDateString(locale, {
+                            day: "numeric",
+                            month: "short",
+                          })
                         }
                         tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                         stroke="var(--color-border)"
                       />
                       <YAxis
+                        // kW, like the forecast chart above: four-digit watt
+                        // labels do not fit this gutter and were clipped to
+                        // their last three digits.
+                        tickFormatter={(w: number) => (w > 0 ? `${(w / 1000).toFixed(1)} kW` : "0")}
                         tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                         stroke="var(--color-border)"
-                        width={44}
+                        width={56}
                       />
                       <Tooltip
                         labelFormatter={(ts) =>
@@ -285,8 +353,9 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
 
             {data.model === null && (
               <p className="mt-3 text-[11px] text-warning">{t("equipments.pv.provisional")}</p>
