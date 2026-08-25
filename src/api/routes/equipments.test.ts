@@ -431,3 +431,73 @@ describe("POST /api/v1/equipments/:id/(data|order)-bindings — validation", () 
     expect(res.statusCode).toBe(201);
   });
 });
+
+/**
+ * The route-to-manager seam for the solar declaration (spec 160, FR9).
+ *
+ * Every layer of this path passed its own tests while the feature was dead: the
+ * body schema bounded the angles, the validator named the bad plane, the manager
+ * persisted whatever it was handed. The handler simply never handed it over, so
+ * a declaration returned 200 and vanished. Only a test that reads what `update`
+ * actually receives can see that.
+ */
+describe("PUT /api/v1/equipments/:id — solar profile (spec 160)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let received: Record<string, unknown> | null;
+
+  const validProfile = { planes: [{ tiltDeg: 35, azimuthDeg: 180, peakWc: 4000 }] };
+
+  beforeEach(async () => {
+    received = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: () => ({ id: "eq-1" }),
+        update: (_id: string, input: Record<string, unknown>) => {
+          received = input;
+          return { id: "eq-1", solarProfile: input.solarProfile };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const put = (payload: unknown) =>
+    app.inject({ method: "PUT", url: "/api/v1/equipments/eq-1", payload });
+
+  it("forwards the declared profile to the manager", async () => {
+    const res = await put({ solarProfile: validProfile });
+    expect(res.statusCode).toBe(200);
+    // The assertion that was missing: not that the call succeeded, but that the
+    // profile survived the handler.
+    expect(received?.solarProfile).toEqual(validProfile);
+  });
+
+  it("forwards an explicit null, so a declaration can be withdrawn", async () => {
+    const res = await put({ solarProfile: null });
+    expect(res.statusCode).toBe(200);
+    expect(received).toHaveProperty("solarProfile", null);
+  });
+
+  it("leaves the profile untouched when the body does not mention it", async () => {
+    const res = await put({ name: "Shelly Solar" });
+    expect(res.statusCode).toBe(200);
+    // undefined, not null: the manager keeps the stored value on undefined and
+    // clears it on null, so the two must not be conflated here.
+    expect(received?.solarProfile).toBeUndefined();
+  });
+
+  it("refuses an out-of-range angle before reaching the manager", async () => {
+    const res = await put({
+      solarProfile: { planes: [{ tiltDeg: 120, azimuthDeg: 180, peakWc: 4000 }] },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(received).toBeNull();
+  });
+});

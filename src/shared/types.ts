@@ -310,6 +310,29 @@ export type EquipmentType =
   // Spec 156 — uninterruptible power supply, read-only.
   | "ups";
 
+/**
+ * One coplanar group of panels (spec 160).
+ *
+ * A list of planes, not a list of panels: the panel count adds nothing the peak
+ * power does not already carry, since the fitted gain absorbs the real capacity.
+ * What genuinely changes the physics is panels facing different ways, and that
+ * is the one case a single averaged plane cannot represent — the non-linearity
+ * is the `max(0, cos theta)` clipping of a panel whose sun has gone behind it,
+ * so each plane must be clipped on its own before the sum.
+ */
+export interface SolarPlane {
+  /** 0 = flat, 90 = vertical (a wall, a fence, a balcony rail). */
+  tiltDeg: number;
+  /** Compass bearing the panels face. 0 = north, 180 = due south. */
+  azimuthDeg: number;
+  /** Nameplate power of the panels on this plane, in Wc. */
+  peakWc: number;
+}
+
+export interface SolarProfile {
+  planes: SolarPlane[];
+}
+
 export interface Equipment {
   id: string;
   name: string;
@@ -326,6 +349,9 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
    *  `true` only when an admin enabled it. Gate equipments only in v1. */
   requireConfirmation?: boolean;
+  /** Spec 160 — declared array geometry. Presence enables the PV production
+   *  forecast; absence leaves the equipment untouched. */
+  solarProfile?: SolarProfile;
   /** Spec 154 — invert the shutter-family command direction for this equipment
    *  (shutter_move OPEN<->CLOSE, set_shutter_position -> 100-value). For a motor
    *  wired the opposite way with no bridge-side invert. Command-only: the

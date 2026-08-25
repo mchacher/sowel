@@ -526,7 +526,25 @@ async function main() {
 
   // 15. Start Fastify server BEFORE integrations (UI available immediately)
   // Integrations start in background with staggered polling
+  // PV production forecaster (spec 160). Inert until an equipment declares a
+  // solar profile and a weather plugin publishes the hourly irradiance series.
+  // Constructed here because the API routes need it; started at 18a-ter.
+  const { PvForecaster } = await import("./energy/pv/pv-forecaster.js");
+  const pvForecaster = new PvForecaster({
+    db,
+    logger,
+    eventBus,
+    influxClient,
+    deviceManager,
+    equipmentManager,
+    settingsManager,
+  });
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    pvForecaster.getComputedDataForEquipment(eqId),
+  );
+
   const server = await createServer({
+    pvForecaster,
     db,
     deviceManager,
     batteryMonitor,
@@ -669,6 +687,14 @@ async function main() {
     .start()
     .catch((err) => logger.warn({ err }, "Weather aggregator start failed"));
 
+  // 18a-ter. Start the PV production forecaster (spec 160). Constructed earlier,
+  // since the API server needs it; the timers only begin here.
+  try {
+    pvForecaster.start();
+  } catch (err) {
+    logger.warn({ err }, "PV forecaster start failed");
+  }
+
   // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
   // Spec 124 — skip in shadow mode; the service is monolithic and has
   // no runtime entry point, so the boot gate alone keeps it inert.
@@ -753,6 +779,14 @@ async function main() {
       weatherTempExtremesTracker.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping weather temp extremes tracker");
+    }
+
+    // Its own try: sharing one with another tracker means a throw there skips
+    // this stop entirely, and the pending training hour is lost with it.
+    try {
+      pvForecaster.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping PV forecaster");
     }
     try {
       notificationPublishService.destroy();

@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
 import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
-import type { EnergyLoadProfile, EquipmentType } from "../../shared/types.js";
+import type { EnergyLoadProfile, EquipmentType, SolarProfile } from "../../shared/types.js";
 import type { Logger } from "../../core/logger.js";
 
 interface EquipmentsDeps {
@@ -30,6 +30,8 @@ const createEquipmentBodySchema = {
   },
 };
 
+import { validateSolarProfile } from "../../energy/pv/solar-profile.js";
+
 const updateEquipmentBodySchema = {
   type: "object",
   properties: {
@@ -48,6 +50,28 @@ const updateEquipmentBodySchema = {
     },
     requireConfirmation: { type: "boolean" },
     invertDirection: { type: "boolean" },
+    // Spec 160 — declared array geometry. The bounds are the same ones
+    // `validateSolarProfile` enforces, repeated here so a malformed body is
+    // refused at the edge rather than silently dropped when read back.
+    solarProfile: {
+      type: ["object", "null"],
+      required: ["planes"],
+      properties: {
+        planes: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            required: ["tiltDeg", "azimuthDeg", "peakWc"],
+            properties: {
+              tiltDeg: { type: "number", minimum: 0, maximum: 90 },
+              azimuthDeg: { type: "number", minimum: 0, exclusiveMaximum: 360 },
+              peakWc: { type: "number", exclusiveMinimum: 0, maximum: 1000000 },
+            },
+          },
+        },
+      },
+    },
   },
 };
 
@@ -195,6 +219,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       energyProfile?: EnergyLoadProfile | null;
       requireConfirmation?: boolean;
       invertDirection?: boolean;
+      solarProfile?: SolarProfile | null;
     };
   }>(
     "/api/v1/equipments/:id",
@@ -219,6 +244,18 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         };
       }
 
+      // Spec 160 — the schema bounds each field; this refuses a profile the
+      // model would reject anyway, with the offending plane named.
+      if (body.solarProfile) {
+        const errors = validateSolarProfile(body.solarProfile);
+        if (errors.length > 0) {
+          return reply.status(400).send({
+            error: "Invalid solar profile",
+            details: errors,
+          });
+        }
+      }
+
       try {
         const equipment = equipmentManager.update(request.params.id, {
           name: body.name?.trim(),
@@ -228,6 +265,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           description: body.description,
           enabled: body.enabled,
           energyProfile: body.energyProfile,
+          solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
         });

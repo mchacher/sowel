@@ -70,6 +70,7 @@ import { registerPluginRoutes } from "./routes/plugins.js";
 import { registerSystemRoutes } from "./routes/system.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import type { AuditLogger } from "../core/audit-logger.js";
+import type { PvForecaster } from "../energy/pv/pv-forecaster.js";
 import { registerWebSocket } from "./websocket.js";
 import { installValidationErrorHandler, validationAjvOptions } from "./error-handler.js";
 
@@ -106,6 +107,7 @@ interface ServerDeps {
   // Spec 158 — arbiter daily metrics, read-only surface. Null in tests that
   // do not exercise it.
   arbiterMetricsStore: import("../energy/arbiter-metrics-store.js").ArbiterMetricsStore | null;
+  pvForecaster: PvForecaster | null;
   backupManager: BackupManager;
   versionChecker: import("../core/version-checker.js").VersionChecker;
   updateManager: import("../core/update-manager.js").UpdateManager;
@@ -161,6 +163,7 @@ export async function createServer(deps: ServerDeps) {
     recipeLoader,
     capacityArbiter,
     arbiterMetricsStore,
+    pvForecaster,
     backupManager,
     versionChecker,
     updateManager,
@@ -359,6 +362,7 @@ export async function createServer(deps: ServerDeps) {
   });
   registerPushRoutes(app, { pushSubscriptionManager, vapidKeys });
   registerEnergyRoutes(app, {
+    pvForecaster,
     equipmentManager,
     influxClient,
     settingsManager,

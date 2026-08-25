@@ -5,6 +5,7 @@ import type {
   EnergyByUsageResponse,
   ActivityItem,
 } from "../types";
+import type { PvForecastResponse } from "../types";
 import { fetchJSON, API_BASE } from "./client";
 
 // ============================================================
@@ -56,4 +57,21 @@ export async function getActivity(
   return fetchJSON<{ items: ActivityItem[] }>(
     `${API_BASE}/activity?zoneId=${encodeURIComponent(zoneId)}&includeDescendants=${includeDescendants}&limit=${limit}`,
   );
+}
+
+// ============================================================
+// PV production forecast (spec 160)
+// ============================================================
+
+export async function getPvForecast(equipmentId: string): Promise<PvForecastResponse> {
+  return fetchJSON<PvForecastResponse>(`${API_BASE}/energy/pv-forecast/${equipmentId}`);
+}
+
+/** Re-estimate the gain now. The hourly shape, which describes the site, is kept. */
+export async function recalibratePvForecast(
+  equipmentId: string,
+): Promise<{ gain: number; fittedAt: string; samples: number }> {
+  return fetchJSON(`${API_BASE}/energy/pv-forecast/${equipmentId}/recalibrate`, {
+    method: "POST",
+  });
 }

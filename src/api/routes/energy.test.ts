@@ -137,6 +137,8 @@ async function buildApp(opts: BuildOpts = {}) {
     tariffClassifier,
     capacityArbiter: null,
     arbiterMetricsStore: (opts.arbiterMetrics ?? null) as never,
+    // Spec 160 — the routes must answer sensibly with no forecaster at all.
+    pvForecaster: null,
     logger,
   });
   await app.ready();
@@ -882,5 +884,58 @@ describe("Spec 158 — /api/v1/energy/arbiter/metrics", () => {
     });
     const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter/metrics" });
     expect(res.statusCode).toBe(500);
+  });
+});
+
+describe("PV forecast routes (spec 160)", () => {
+  const solarMeter = {
+    id: "eq-pv",
+    name: "Shelly Solar",
+    type: "energy_production_meter",
+  } as never;
+
+  it("404s on an unknown equipment", async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/pv-forecast/nope" });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("answers with an inactive profile rather than an error when nothing is declared", async () => {
+    const app = await buildApp({ equipments: [solarMeter] });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/pv-forecast/eq-pv" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // The panel needs "not set up yet", not "something went wrong".
+    expect(body.active).toBe(false);
+    expect(body.curve).toEqual([]);
+    expect(body.model).toBeNull();
+    expect(body.declaredPeakWc).toBe(0);
+    await app.close();
+  });
+
+  it("reports the declared array once a profile is present", async () => {
+    const declared = {
+      ...solarMeter,
+      solarProfile: { planes: [{ tiltDeg: 35, azimuthDeg: 180, peakWc: 4000 }] },
+    } as never;
+    const app = await buildApp({ equipments: [declared] });
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/pv-forecast/eq-pv" })
+    ).json();
+    expect(body.active).toBe(true);
+    expect(body.declaredPeakWc).toBe(4000);
+    expect(body.planes).toHaveLength(1);
+    await app.close();
+  });
+
+  it("does not crash recalibrating with no forecaster wired", async () => {
+    const app = await buildApp({ equipments: [solarMeter] });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/energy/pv-forecast/eq-pv/recalibrate",
+    });
+    expect([401, 403, 503]).toContain(res.statusCode);
+    await app.close();
   });
 });

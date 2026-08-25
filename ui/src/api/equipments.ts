@@ -7,6 +7,7 @@ import type {
   EquipmentWithDetails,
   DataBinding,
   OrderBinding,
+  SolarProfile,
 } from "../types";
 import { fetchJSON, API_BASE, getAccessToken } from "./client";
 
@@ -50,6 +51,8 @@ export async function updateEquipment(
     requireConfirmation?: boolean;
     /** Spec 154 — invert shutter-family command direction. */
     invertDirection?: boolean;
+    /** Spec 160 — declared array geometry; null clears it. */
+    solarProfile?: SolarProfile | null;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {

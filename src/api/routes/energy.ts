@@ -23,6 +23,11 @@ import type {
   ArbiterMetricsResponse,
 } from "../../shared/types.js";
 
+import { requireAdmin } from "../../auth/auth-middleware.js";
+import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
+import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
+import { totalPeakWc } from "../../energy/pv/solar-geometry.js";
+
 interface EnergyDeps {
   equipmentManager: EquipmentManager;
   influxClient: InfluxClient;
@@ -30,6 +35,7 @@ interface EnergyDeps {
   tariffClassifier: TariffClassifier;
   capacityArbiter: CapacityArbiter | null; // spec 140 — null in some tests
   arbiterMetricsStore: ArbiterMetricsStore | null; // spec 158 — null in some tests
+  pvForecaster: PvForecaster | null; // spec 160 — null in some tests
   logger: Logger;
 }
 
@@ -41,6 +47,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     tariffClassifier,
     capacityArbiter,
     arbiterMetricsStore,
+    pvForecaster,
     logger: parentLogger,
   } = deps;
   const logger = parentLogger.child({ module: "energy-api" });
@@ -618,6 +625,102 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     logger.info("Tariff configuration updated");
     return { ok: true };
   });
+
+  // ============================================================
+  // GET /api/v1/energy/pv-forecast/:equipmentId — spec 160.
+  //
+  // The expected-production curve, the model's provenance, and what the
+  // household declared. 404 only when the equipment is unknown: an equipment
+  // with no solar profile answers with an empty curve and `active: false`, so
+  // the panel can say "not set up yet" rather than "something went wrong".
+  // ============================================================
+  app.get<{ Params: { equipmentId: string } }>(
+    "/api/v1/energy/pv-forecast/:equipmentId",
+    async (request, reply) => {
+      const equipment = equipmentManager.getById(request.params.equipmentId);
+      if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
+
+      const planes = equipment.solarProfile?.planes ?? [];
+      const model = pvForecaster?.getModel(equipment.id) ?? null;
+
+      // FR6 — what was promised against what happened. Compared at the 6-24h
+      // lead by default: "how wrong was yesterday's forecast for today" is the
+      // question a household actually asks, and averaging it with a four-day-old
+      // one would answer neither.
+      const alias = pvForecaster?.getProductionAlias(equipment.id) ?? null;
+      const accuracy =
+        alias && planes.length > 0
+          ? await queryPvAccuracy(influxClient, { equipmentId: equipment.id, alias }, logger)
+          : { samples: 0, maeW: null, points: [] };
+
+      return {
+        active: planes.length > 0,
+        declaredPeakWc: totalPeakWc(planes),
+        planes,
+        curve: pvForecaster?.getCurve(equipment.id) ?? [],
+        // FR5 — the age of the series behind the curve, so a stale forecast is
+        // not drawn like a fresh one.
+        issuedAt: pvForecaster?.getIssuedAt(equipment.id) ?? null,
+        // Whether a weather plugin is publishing irradiance at all. An empty
+        // curve means "still learning" only if the input exists; otherwise it
+        // means the plugin is missing or too old, which the panel must say
+        // instead of asking the household to keep waiting.
+        weatherAvailable: pvForecaster?.hasIrradianceSeries() ?? false,
+        accuracy,
+        model: model
+          ? {
+              gain: model.gain,
+              shape: model.shape,
+              fittedAt: model.fittedAt,
+              samples: model.samples,
+            }
+          : null,
+      };
+    },
+  );
+
+  // ============================================================
+  // POST /api/v1/energy/pv-forecast/:equipmentId/recalibrate — spec 160 FR7.
+  //
+  // Re-estimates the gain now, for the case where nothing was declared but
+  // something changed anyway: panels cleaned, a shading branch cut. The hourly
+  // shape is deliberately left alone, because it describes the site and not the
+  // array — measured identical before and after a real +1 kW addition.
+  // ============================================================
+  app.post<{ Params: { equipmentId: string } }>(
+    "/api/v1/energy/pv-forecast/:equipmentId/recalibrate",
+    async (request, reply) => {
+      requireAdmin(request, reply);
+      if (reply.sent) return;
+
+      if (!pvForecaster) {
+        return reply.status(503).send({ error: "PV forecaster not available" });
+      }
+      const equipment = equipmentManager.getById(request.params.equipmentId);
+      if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
+
+      const model = pvForecaster.getModel(equipment.id);
+      if (!model) {
+        return reply
+          .status(409)
+          .send({ error: "No model to recalibrate yet, not enough production history" });
+      }
+
+      const peakWc = totalPeakWc(equipment.solarProfile?.planes ?? []);
+      const refit = pvForecaster.refitGain(equipment, model, peakWc);
+      if (!refit) {
+        return reply
+          .status(409)
+          .send({ error: "Not enough recent production to re-estimate the gain" });
+      }
+
+      logger.info(
+        { equipmentId: equipment.id, from: model.gain, to: refit.gain },
+        "PV gain recalibrated on request",
+      );
+      return { gain: refit.gain, fittedAt: refit.fittedAt, samples: refit.samples };
+    },
+  );
 }
 
 // ============================================================
