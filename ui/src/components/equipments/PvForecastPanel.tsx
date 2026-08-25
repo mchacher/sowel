@@ -82,7 +82,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const now = Date.now();
   // One timeline. Past hours carry what was promised for them, future hours the
   // current curve; see `mergeTimeline`.
-  const chart = mergeTimeline(data.accuracy.points, data.curve, now);
+  const chart = mergeTimeline(data.accuracy.points, data.curve, now, data.accuracy.measured);
   const spanDays = chart.length > 1 ? (chart[chart.length - 1].ts - chart[0].ts) / 86_400_000 : 0;
   // A weekday name stops helping once the span passes a fortnight.
   const tickFormat: Intl.DateTimeFormatOptions =
@@ -181,7 +181,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                   />
                   {t("equipments.pv.expected")}
                 </span>
-                {data.accuracy.maeW !== null && (
+                {chart.some((p) => p.actualW !== undefined) && (
                   <span className="flex items-center gap-1 text-[11px] text-text-secondary">
                     <span
                       aria-hidden

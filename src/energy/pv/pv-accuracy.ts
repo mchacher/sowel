@@ -53,6 +53,12 @@ export interface AccuracyPoint {
   actualW: number;
 }
 
+export interface MeasuredPoint {
+  /** Hour, UTC ISO. */
+  at: string;
+  watts: number;
+}
+
 export interface PvAccuracy {
   /** Hours compared. Zero means nothing to say, not a perfect score. */
   samples: number;
@@ -60,9 +66,19 @@ export interface PvAccuracy {
   maeW: number | null;
   /** The paired series, newest last, for the chart. */
   points: AccuracyPoint[];
+  /**
+   * Every hour the meter recorded over the window, paired or not.
+   *
+   * Separate from `points` on purpose. The error figure may only count hours
+   * where a forecast was issued to compare against; the *line* on the chart has
+   * no such requirement, and tying it to the pairing meant a household that had
+   * just declared its installation saw a forecast drawn over an empty past
+   * while its own production sat in the database, plainly known and invisible.
+   */
+  measured: MeasuredPoint[];
 }
 
-const EMPTY: PvAccuracy = { samples: 0, maeW: null, points: [] };
+const EMPTY: PvAccuracy = { samples: 0, maeW: null, points: [], measured: [] };
 
 /**
  * Pair the forecast with the production for the same hours.
@@ -112,7 +128,11 @@ export async function queryPvAccuracy(
       if (typeof v === "number") forecast.set(at, v);
     }
 
-    if (forecast.size === 0) return EMPTY;
+    // No early return on an empty forecast. The measured series is wanted
+    // whether or not anything was ever promised for those hours: a household
+    // that has just declared its installation has no forecast history at all,
+    // and skipping the query here is what left its own production invisible
+    // under a curve drawn over an empty past.
 
     // What the meter actually recorded, on the same hourly grid.
     //
@@ -146,7 +166,18 @@ export async function queryPvAccuracy(
     return EMPTY;
   }
 
-  return pairSeries(forecast, actual);
+  return { ...pairSeries(forecast, actual), measured: toMeasured(actual) };
+}
+
+/** The measured series as the chart wants it: sorted, finite, oldest first. */
+export function toMeasured(actual: ReadonlyMap<string, number>): MeasuredPoint[] {
+  const out: MeasuredPoint[] = [];
+  for (const [at, watts] of actual) {
+    if (!Number.isFinite(watts)) continue;
+    out.push({ at, watts });
+  }
+  out.sort((a, b) => a.at.localeCompare(b.at));
+  return out;
 }
 
 /**
@@ -154,7 +185,8 @@ export async function queryPvAccuracy(
  *
  * Only hours present on both sides count. An hour the meter never reported is
  * not a forecast miss, and scoring it as one would make an outage look like a
- * bad model.
+ * bad model. The measured series rides along untouched, so the chart can draw
+ * production for hours nothing was ever promised for.
  */
 export function pairSeries(
   forecast: ReadonlyMap<string, number>,
@@ -169,7 +201,7 @@ export function pairSeries(
     points.push({ at, forecastW, actualW });
   }
 
-  if (points.length === 0) return EMPTY;
+  if (points.length === 0) return { ...EMPTY, measured: toMeasured(actual) };
   points.sort((a, b) => a.at.localeCompare(b.at));
 
   const totalError = points.reduce((sum, p) => sum + Math.abs(p.forecastW - p.actualW), 0);
@@ -177,5 +209,6 @@ export function pairSeries(
     samples: points.length,
     maeW: Math.round(totalError / points.length),
     points,
+    measured: toMeasured(actual),
   };
 }

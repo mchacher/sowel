@@ -318,6 +318,12 @@ export interface PvForecastResponse {
     samples: number;
     maeW: number | null;
     points: PvAccuracyPoint[];
+    /**
+     * Every hour the meter recorded over the window, paired or not. The chart's
+     * measured line comes from here, never from `points` — a household with no
+     * forecast history yet still has production worth drawing.
+     */
+    measured: { at: string; watts: number }[];
   };
   model: {
     gain: number;

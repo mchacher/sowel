@@ -96,13 +96,25 @@ export function mergeTimeline(
   accuracy: ReadonlyArray<{ at: string; forecastW: number; actualW: number }>,
   curve: ReadonlyArray<{ at: string; watts: number }>,
   now: number,
+  measured: ReadonlyArray<{ at: string; watts: number }> = [],
 ): TimelinePoint[] {
   const byTs = new Map<number, TimelinePoint>();
 
+  // Everything the meter recorded, first. Not gated on there being a forecast
+  // to compare it against: an installation declared this morning has no
+  // forecast history at all, and drawing the curve over an empty past while its
+  // own production sat in the database is exactly what this argument fixes.
+  for (const p of measured) {
+    const ts = Date.parse(p.at);
+    if (!Number.isFinite(ts)) continue;
+    byTs.set(ts, { ts, actualW: p.watts });
+  }
+
+  // Then what was promised for those hours, where anything was.
   for (const p of accuracy) {
     const ts = Date.parse(p.at);
     if (!Number.isFinite(ts)) continue;
-    byTs.set(ts, { ts, forecastW: p.forecastW, actualW: p.actualW });
+    byTs.set(ts, { ...(byTs.get(ts) ?? { ts }), forecastW: p.forecastW, actualW: p.actualW });
   }
 
   for (const p of curve) {
