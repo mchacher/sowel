@@ -8,6 +8,13 @@ interface EnergyDataPanelProps {
   /** Spec 116: render a badge + last-update caption when degraded/offline. */
   status?: EquipmentStatus;
   statusReason?: EquipmentStatusReason;
+  /**
+   * True on a production meter, where the same cumulative kWh are energy the
+   * installation produced rather than energy the house consumed. The card said
+   * "consumption" on every equipment, which on a solar meter is the opposite of
+   * what the figures mean.
+   */
+  isProduction?: boolean;
 }
 
 interface EnergyCumul {
@@ -36,7 +43,9 @@ function formatRelative(iso: string | null): string {
   return `${Math.floor(hours / 24)} j`;
 }
 
-export function EnergyDataPanel({ computedData, status, statusReason }: EnergyDataPanelProps) {
+export function EnergyDataPanel({ computedData, status, statusReason,
+  isProduction,
+}: EnergyDataPanelProps) {
   const { t } = useTranslation();
 
   const cumuls: EnergyCumul[] = [
@@ -76,7 +85,7 @@ export function EnergyDataPanel({ computedData, status, statusReason }: EnergyDa
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
           <Zap size={16} strokeWidth={1.5} className="text-accent" />
-          {t("energy.cumuls")}
+          {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
         </h3>
         {status && <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />}
       </div>

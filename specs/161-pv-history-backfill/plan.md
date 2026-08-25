@@ -14,8 +14,8 @@
 - **6 — Route + validation.** `since` through the equipments body schema and the
   shared validator.
 - **7 — Plugin 2.3.0.** `fetchIrradianceHistory`, published once a day.
-- **8 — UI.** Date field on the declaration form, action and report on the panel,
-  EN/FR strings.
+- **8 — UI.** Date field on the declaration form, one action and its report on
+  the panel (spec 160's recalibration button withdrawn), EN/FR strings.
 - **9 — Docs.** `docs/specs-index.md` row, plugin README.
 
 ## Test Plan

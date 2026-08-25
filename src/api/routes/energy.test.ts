@@ -930,19 +930,6 @@ describe("PV forecast routes (spec 160)", () => {
     expect(body.planes).toHaveLength(1);
     await app.close();
   });
-
-  it("answers 503 when recalibrating with no forecaster wired", async () => {
-    const app = await buildApp({ equipments: [solarMeter] });
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/energy/pv-forecast/eq-pv/recalibrate",
-    });
-    // The request is admin (the default stub), so this is deterministic. The
-    // previous form accepted 401, 403 or 503 and so could not tell a working
-    // admin gate from a missing forecaster.
-    expect(res.statusCode).toBe(503);
-    await app.close();
-  });
 });
 
 /**

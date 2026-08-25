@@ -63,11 +63,18 @@ export async function getActivity(
 // PV production forecast (spec 160)
 // ============================================================
 
-export async function getPvForecast(equipmentId: string): Promise<PvForecastResponse> {
-  return fetchJSON<PvForecastResponse>(`${API_BASE}/energy/pv-forecast/${equipmentId}`);
+/**
+ * @param accuracyDays how far back the forecast-versus-actual comparison looks.
+ *   Bounded server-side by the retention of the measured series.
+ */
+export async function getPvForecast(
+  equipmentId: string,
+  accuracyDays?: number,
+): Promise<PvForecastResponse> {
+  const query = accuracyDays ? `?days=${accuracyDays}` : "";
+  return fetchJSON<PvForecastResponse>(`${API_BASE}/energy/pv-forecast/${equipmentId}${query}`);
 }
 
-/** Re-estimate the gain now. The hourly shape, which describes the site, is kept. */
 /** Spec 161 — fit the model from history that already exists. */
 export interface PvBackfillResult {
   hoursPaired: number;
@@ -80,14 +87,6 @@ export interface PvBackfillResult {
 
 export async function backfillPvForecast(equipmentId: string): Promise<PvBackfillResult> {
   return fetchJSON(`${API_BASE}/energy/pv-forecast/${equipmentId}/backfill`, {
-    method: "POST",
-  });
-}
-
-export async function recalibratePvForecast(
-  equipmentId: string,
-): Promise<{ gain: number; fittedAt: string; samples: number }> {
-  return fetchJSON(`${API_BASE}/energy/pv-forecast/${equipmentId}/recalibrate`, {
     method: "POST",
   });
 }

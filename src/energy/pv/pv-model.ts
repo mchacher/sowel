@@ -145,10 +145,9 @@ export function fitModel(
 /**
  * Re-estimate the gain, keeping the shape.
  *
- * What a declared capacity change and the manual recalibration both call. On the
- * measured +1 kW addition this took the hourly error from 523 W with no
- * recalibration to 253 W after three days, where waiting for the rolling window
- * would have taken six weeks.
+ * What a declared capacity change calls. On the measured +1 kW addition this
+ * took the hourly error from 523 W to 253 W after three days, where waiting for
+ * the rolling window to drift would have taken six weeks.
  *
  * Below the sample floor the old gain is kept: a noisy replacement is worse than
  * a stale one that is about to be refit anyway.

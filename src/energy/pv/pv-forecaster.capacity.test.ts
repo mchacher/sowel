@@ -164,10 +164,11 @@ describe("the capacity-change trigger survives the nightly refit", () => {
 /**
  * What the nightly refit is allowed to overwrite.
  *
- * The stamp was guarded; the gain it protects was not. While a change is
- * pending, the stored gain is the re-estimated one and the 45-day window still
- * describes the array as it was — so writing the window's gain at 02:15 undoes
- * exactly the correction the pending state exists to preserve.
+ * The stamp was guarded; the gain it protects was not. While a declared capacity
+ * change is pending, the stored gain is the one re-estimated on post-change
+ * production and the 45-day window still describes the array as it was — so
+ * writing the window's gain at 02:15 undoes exactly the correction the pending
+ * state exists to preserve.
  *
  * The seeded samples all fit a gain of 2.5 (1500 W at 600 W/m2), so a kept gain
  * and a refit one are trivially distinguishable.
@@ -176,7 +177,7 @@ describe("the nightly refit does not undo a re-estimated gain", () => {
   let db: Database.Database;
 
   const WINDOW_GAIN = 2.5;
-  const RECALIBRATED = 3.33;
+  const RE_ESTIMATED = 3.33;
 
   beforeEach(() => {
     db = new Database(":memory:");
@@ -211,35 +212,37 @@ describe("the nightly refit does not undo a re-estimated gain", () => {
     ).gain;
   }
 
-  it("keeps a manual recalibration instead of replacing it with the window fit", () => {
-    // The state `refitGain` leaves behind: capacity unchanged, stamp set now.
-    const recalibratedAt = Date.now() - 4 * 3_600_000;
-    seedModelWithGain(RECALIBRATED, new Date(recalibratedAt).toISOString(), NEW_PEAK);
-    seedSamples(db, MIN_SAMPLES + 60, recalibratedAt, 4);
+  it("keeps a fresh re-estimate when almost no post-change history exists yet", () => {
+    // The state the capacity trigger leaves the moment it fires: capacity
+    // already advanced to the declared value, stamp still set, and only a
+    // handful of hours of the new array recorded.
+    const changedAt = Date.now() - 4 * 3_600_000;
+    seedModelWithGain(RE_ESTIMATED, new Date(changedAt).toISOString(), NEW_PEAK);
+    seedSamples(db, MIN_SAMPLES + 60, changedAt, 4);
 
     build(db).refitAll();
 
-    // Told "recalibrated, gain now 3.33" in the evening, silently back to 2.5
-    // by morning — the panel reports a number that no longer exists.
-    expect(gainNow()).toBeCloseTo(RECALIBRATED, 5);
+    // Re-estimated in the evening, silently back to the old array by morning —
+    // the panel would report a gain that no longer exists.
+    expect(gainNow()).toBeCloseTo(RE_ESTIMATED, 5);
   });
 
   it("keeps the gain the capacity trigger re-estimated", () => {
     // The state `modelFor` leaves behind once it has fired: capacity advanced to
     // the declared value, stamp still set because the window has not caught up.
     const changedAt = Date.now() - 2 * 24 * 3_600_000;
-    seedModelWithGain(RECALIBRATED, new Date(changedAt).toISOString(), NEW_PEAK);
+    seedModelWithGain(RE_ESTIMATED, new Date(changedAt).toISOString(), NEW_PEAK);
     seedSamples(db, MIN_SAMPLES + 60, changedAt, 20);
 
     build(db).refitAll();
 
-    expect(gainNow()).toBeCloseTo(RECALIBRATED, 5);
+    expect(gainNow()).toBeCloseTo(RE_ESTIMATED, 5);
   });
 
   it("refreshes the shape even while the gain is held", () => {
-    const recalibratedAt = Date.now() - 4 * 3_600_000;
-    seedModelWithGain(RECALIBRATED, new Date(recalibratedAt).toISOString(), NEW_PEAK);
-    seedSamples(db, MIN_SAMPLES + 60, recalibratedAt, 4);
+    const reEstimatedAt = Date.now() - 4 * 3_600_000;
+    seedModelWithGain(RE_ESTIMATED, new Date(reEstimatedAt).toISOString(), NEW_PEAK);
+    seedSamples(db, MIN_SAMPLES + 60, reEstimatedAt, 4);
 
     build(db).refitAll();
 
@@ -259,7 +262,7 @@ describe("the nightly refit does not undo a re-estimated gain", () => {
 
   it("takes the window gain once the window has actually seen the new array", () => {
     const changedAt = Date.now() - 40 * 24 * 3_600_000;
-    seedModelWithGain(RECALIBRATED, new Date(changedAt).toISOString(), NEW_PEAK);
+    seedModelWithGain(RE_ESTIMATED, new Date(changedAt).toISOString(), NEW_PEAK);
     seedSamples(db, MIN_SAMPLES + 60, changedAt, MIN_SAMPLES + 60);
 
     build(db).refitAll();

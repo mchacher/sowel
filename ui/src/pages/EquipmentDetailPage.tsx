@@ -473,6 +473,7 @@ export function EquipmentDetailPage() {
           computedData={equipment.computedData}
           status={equipment.status}
           statusReason={equipment.statusReason}
+          isProduction={equipment.type === "energy_production_meter"}
         />
       )}
 
