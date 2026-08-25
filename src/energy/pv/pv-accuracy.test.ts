@@ -180,3 +180,65 @@ describe("the buckets the query reads", () => {
     expect(queries[0]).toContain(`range(start: -${MAX_ACCURACY_DAYS}d`);
   });
 });
+
+/**
+ * The measured series is not gated on the pairing.
+ *
+ * The chart draws production for the past whether or not a forecast was ever
+ * issued for those hours. Tying the two together meant a household that had just
+ * declared its installation saw its own production vanish from the chart while
+ * it sat in the database.
+ */
+describe("the measured series", () => {
+  const silent = createLogger("silent").logger;
+
+  /** An influx stub with a forecast series and a measured series of given sizes. */
+  function stub(forecastHours: number, measuredHours: number): InfluxClient {
+    const row = (at: string, v: number) =>
+      ({ values: [], tableMeta: { toObject: () => ({ _time: at, _value: v }) } }) as never;
+    return {
+      getConfig: () => ({ bucket: "sowel", org: "sowel" }),
+      getClient: () => ({
+        getQueryApi: () => ({
+          iterateRows: (flux: string) =>
+            (async function* () {
+              const isForecast = flux.includes(FORECAST_MEASUREMENT);
+              const n = isForecast ? forecastHours : measuredHours;
+              for (let i = 0; i < n; i++) {
+                yield row(
+                  `2026-08-25T${String(i).padStart(2, "0")}:00:00Z`,
+                  isForecast ? 900 : 800,
+                );
+              }
+            })(),
+        }),
+      }),
+    } as unknown as InfluxClient;
+  }
+
+  it("comes back even when nothing was ever forecast", async () => {
+    const res = await queryPvAccuracy(stub(0, 5), { equipmentId: "eq", alias: "power" }, silent);
+    expect(res.samples).toBe(0);
+    expect(res.maeW).toBeNull();
+    // The point of the fix: the line has data even though the figure does not.
+    expect(res.measured).toHaveLength(5);
+    expect(res.measured[0].watts).toBe(800);
+  });
+
+  it("carries every measured hour, not only the paired ones", async () => {
+    const res = await queryPvAccuracy(stub(3, 8), { equipmentId: "eq", alias: "power" }, silent);
+    expect(res.samples).toBe(3);
+    expect(res.measured).toHaveLength(8);
+  });
+
+  it("comes back sorted oldest first", async () => {
+    const res = await queryPvAccuracy(stub(0, 6), { equipmentId: "eq", alias: "power" }, silent);
+    const ats = res.measured.map((p) => p.at);
+    expect([...ats].sort()).toEqual(ats);
+  });
+
+  it("is empty, not absent, when the meter reported nothing", async () => {
+    const res = await queryPvAccuracy(stub(4, 0), { equipmentId: "eq", alias: "power" }, silent);
+    expect(res.measured).toEqual([]);
+  });
+});
