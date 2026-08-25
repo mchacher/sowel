@@ -1121,7 +1121,8 @@ export type ActivityMessage =
   | { template: "mode.deactivated"; params: { modeName: string } }
   | { template: "sunlight.sunrise"; params: Record<string, never> }
   | { template: "sunlight.sunset"; params: Record<string, never> }
-  | { template: "alarm.raised"; params: { source: string; message: string } };
+  | { template: "alarm.raised"; params: { source: string; message: string } }
+  | { template: "alarm.resolved"; params: { source: string; message: string } };
 
 export interface ActivityItem {
   id: string;

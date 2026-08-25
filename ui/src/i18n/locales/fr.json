@@ -1249,6 +1249,7 @@
   "activity.templates.sunlight.sunrise": "<b>Lever du soleil</b>",
   "activity.templates.sunlight.sunset": "<b>Coucher du soleil</b>",
   "activity.templates.alarm.raised": "<b>{{source}}</b> : {{message}}",
+  "activity.templates.alarm.resolved": "<b>{{source}}</b> : {{message}}",
   "activity.source.recipe": "par {{recipeName}}",
   "activity.source.mode": "par le mode {{modeName}}",
   "activity.source.manual": "manuel",

@@ -33,6 +33,12 @@ export class ActivityBuffer {
   private readonly items: ActivityItem[] = [];
   private readonly logger: Logger;
   private prevIsDaylight: boolean | null = null;
+  /**
+   * Zone each currently-raised alarm was filed under. `system.alarm.resolved`
+   * carries no zone, so without this the end of an outage would surface in
+   * every zone while its start stayed scoped to one.
+   */
+  private readonly alarmZones = new Map<string, string | null>();
 
   constructor(
     private readonly bus: EventBus,
@@ -66,6 +72,7 @@ export class ActivityBuffer {
     this.bus.onType("mode.deactivated", (e) => this.onModeDeactivated(e));
     this.bus.onType("sunlight.changed", () => this.onSunlightChanged());
     this.bus.onType("system.alarm.raised", (e) => this.onAlarmRaised(e));
+    this.bus.onType("system.alarm.resolved", (e) => this.onAlarmResolved(e));
     this.logger.info("Activity buffer started");
   }
 
@@ -245,12 +252,34 @@ export class ActivityBuffer {
     this.push("sunlight", null, { template, params: {} });
   }
 
-  private onAlarmRaised(event: { source: string; message: string; zoneId?: string | null }): void {
+  private onAlarmRaised(event: {
+    alarmId: string;
+    source: string;
+    message: string;
+    zoneId?: string | null;
+  }): void {
     // A zone-scoped alarm (a battery alert bound to an equipment, spec 143/#472)
     // lands in that zone; an alarm with no zone (integrations, unbound device)
     // stays global and shows in every zone, as before.
-    this.push("alarm", event.zoneId ?? null, {
+    const zoneId = event.zoneId ?? null;
+    this.alarmZones.set(event.alarmId, zoneId);
+    this.push("alarm", zoneId, {
       template: "alarm.raised",
+      params: { source: event.source, message: event.message },
+    });
+  }
+
+  /**
+   * The other half of an alarm's life. A feed that only ever records the bad
+   * news reads as an unbroken run of failures: the mains outage is in there,
+   * the moment the power came back is not. The zone is the one the alarm was
+   * raised in — global when it was raised before this process started.
+   */
+  private onAlarmResolved(event: { alarmId: string; source: string; message: string }): void {
+    const zoneId = this.alarmZones.get(event.alarmId) ?? null;
+    this.alarmZones.delete(event.alarmId);
+    this.push("alarm", zoneId, {
+      template: "alarm.resolved",
       params: { source: event.source, message: event.message },
     });
   }

@@ -1,4 +1,13 @@
-import { ChefHat, Layers, PersonStanding, Sun, Moon, AlertTriangle, Circle } from "lucide-react";
+import {
+  ChefHat,
+  Layers,
+  PersonStanding,
+  Sun,
+  Moon,
+  AlertTriangle,
+  CircleCheck,
+  Circle,
+} from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import type { ActivityItem, ActivityCategory, OrderSource } from "../../types";
 
@@ -61,6 +70,7 @@ function interpolation(item: ActivityItem): Record<string, string | number> {
     case "mode.activated":
     case "mode.deactivated":
     case "alarm.raised":
+    case "alarm.resolved":
       return m.params as unknown as Record<string, string | number>;
     case "sunlight.sunrise":
     case "sunlight.sunset":
@@ -99,6 +109,15 @@ function CategoryIcon({
     );
   }
   if (category === "alarm") {
+    // A resolution is an alarm-category item, but the red triangle would read
+    // as a second failure. Green tick, same slot.
+    if (template === "alarm.resolved") {
+      return (
+        <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--green-50)] text-[var(--green-700)]">
+          <CircleCheck size={12} strokeWidth={2} />
+        </div>
+      );
+    }
     return (
       <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--red-50)] text-[var(--red-500)]">
         <AlertTriangle size={12} strokeWidth={2} />

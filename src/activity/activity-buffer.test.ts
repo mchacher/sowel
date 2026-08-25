@@ -349,6 +349,58 @@ describe("ActivityBuffer", () => {
         message: { template: "alarm.raised" },
       });
     });
+
+    it("records system.alarm.resolved so the end of an incident is in the feed", () => {
+      h.bus.emit({
+        type: "system.alarm.resolved",
+        alarmId: "a1",
+        source: "nut",
+        message: "Retour secteur — ups est réalimenté (batterie à 58 %)",
+      });
+      expect(h.buffer.getItems()[0]).toMatchObject({
+        category: "alarm",
+        zoneId: null,
+        message: {
+          template: "alarm.resolved",
+          params: {
+            source: "nut",
+            message: "Retour secteur — ups est réalimenté (batterie à 58 %)",
+          },
+        },
+      });
+    });
+
+    it("files a resolution in the zone its alarm was raised in", () => {
+      h.bus.emit({
+        type: "system.alarm.raised",
+        alarmId: "battery-low:dd-1",
+        level: "warning",
+        source: "Détecteur salon",
+        message: "Low battery: 12%",
+        zoneId: "zone-A",
+      });
+      h.bus.emit({
+        type: "system.alarm.resolved",
+        alarmId: "battery-low:dd-1",
+        source: "Détecteur salon",
+        message: "Battery back to 80%",
+      });
+
+      const resolved = (items: { message: { template: string } }[]) =>
+        items.some((i) => i.message.template === "alarm.resolved");
+      expect(resolved(h.buffer.getItems({ zoneId: "zone-A" }))).toBe(true);
+      expect(resolved(h.buffer.getItems({ zoneId: "zone-B" }))).toBe(false);
+    });
+
+    it("keeps a resolution global when the raise was never seen (restart)", () => {
+      h.bus.emit({
+        type: "system.alarm.resolved",
+        alarmId: "raised-before-the-restart",
+        source: "nut",
+        message: "Serveur NUT de nouveau joignable",
+      });
+      expect(h.buffer.getItems({ zoneId: "zone-A" })[0]).toMatchObject({ zoneId: null });
+    });
   });
 
   describe("filter by zone", () => {

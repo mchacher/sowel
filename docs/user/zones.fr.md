@@ -99,14 +99,15 @@ Le panneau regroupe les événements par heure. Le bucket le plus récent porte 
 
 ### Ce qui est tracé
 
-| Catégorie     | Déclencheur                                                                       | Exemple                                                 |
-| ------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Ordre**     | Tout ordre dispatché sur un équipement par une recette, un mode, un bouton, l'API | `Lumière → ON manuel`, `Lumière → OFF par Motion Light` |
-| **Mouvement** | Front montant d'un capteur de présence (catégorie binding `motion`)               | `Mouvement détecté sur PIR Salon`                       |
-| **Recette**   | Démarrage ou arrêt d'une instance de recette                                      | `Recette Motion Light démarrée`                         |
-| **Mode**      | Activation ou désactivation d'un mode                                             | `Mode Nuit activé`                                      |
-| **Soleil**    | Lever ou coucher du soleil                                                        | `Coucher du soleil`                                     |
-| **Alarme**    | Alarme système, erreur de recette, détection fuite d'eau ou fumée                 | `Détecteur Cuisine : Fumée détectée`                    |
+| Catégorie        | Déclencheur                                                                               | Exemple                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Ordre**        | Tout ordre dispatché sur un équipement par une recette, un mode, un bouton, l'API         | `Lumière → ON manuel`, `Lumière → OFF par Motion Light`       |
+| **Mouvement**    | Front montant d'un capteur de présence (catégorie binding `motion`)                       | `Mouvement détecté sur PIR Salon`                             |
+| **Recette**      | Démarrage ou arrêt d'une instance de recette                                              | `Recette Motion Light démarrée`                               |
+| **Mode**         | Activation ou désactivation d'un mode                                                     | `Mode Nuit activé`                                            |
+| **Soleil**       | Lever ou coucher du soleil                                                                | `Coucher du soleil`                                           |
+| **Alarme**       | Alarme système, erreur de recette, détection fuite d'eau ou fumée                         | `Détecteur Cuisine : Fumée détectée`                          |
+| **Alarme levée** | La fin de la même alarme — secteur revenu, batterie remontée, plugin de nouveau joignable | `nut : Retour secteur — ups est réalimenté (batterie à 58 %)` |
 
 Chaque ligne indique **qui a déclenché l'événement** : nom de la recette, nom du mode, « manuel » pour les actions directes via l'UI, identifiant du bouton, ou « externe » pour un MQTT entrant.
 
