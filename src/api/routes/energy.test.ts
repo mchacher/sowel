@@ -1083,7 +1083,14 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     hasIrradianceSeries: () => false,
   });
 
-  const empty = { days: [], normal: null, latest: null, alert: null, detection: null };
+  const empty = {
+    days: [],
+    normal: null,
+    latest: null,
+    alert: null,
+    detection: null,
+    recentQualifyingDays: 0,
+  };
 
   it("returns an empty series rather than 404 when nothing qualifies yet", async () => {
     const app = await buildApp({
@@ -1101,17 +1108,25 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     const app = await buildApp({
       equipments: [solarMeter],
       pvForecaster: forecasterReturning({
-        days: [{ day: "2026-08-24", ratio: 3.8, hours: 6, measuredWh: 1, modelledWh: 1 }],
+        days: [{ day: "2026-08-24", ratio: 3.8, hours: 6, measuredWh: 1, irradiationWhM2: 1 }],
         normal: 3.8,
-        latest: { day: "2026-08-24", ratio: 3.8, hours: 6, measuredWh: 1, modelledWh: 1 },
+        latest: { day: "2026-08-24", ratio: 3.8, hours: 6, measuredWh: 1, irradiationWhM2: 1 },
         alert: null,
-        detection: { onePanelDays: 5, oneInverterDays: 3, qualifyingDays: 8, windowDays: 14 },
+        detection: {
+          minDetectableLoss: 0.1,
+          clearDaysNeeded: 3,
+          calendarDays: 6,
+          qualifyingDays: 8,
+          windowDays: 14,
+        },
+        recentQualifyingDays: 8,
       }),
     });
     const res = await app.inject({ method: "GET", url });
     expect(res.statusCode).toBe(200);
     expect(res.json().normal).toBe(3.8);
-    expect(res.json().detection.onePanelDays).toBe(5);
+    expect(res.json().detection.calendarDays).toBe(6);
+    expect(res.json().detection.minDetectableLoss).toBe(0.1);
     await app.close();
   });
 

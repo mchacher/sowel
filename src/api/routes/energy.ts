@@ -691,7 +691,6 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   );
 
   // ============================================================
-  // ============================================================
   // GET /api/v1/energy/pv-health/:equipmentId — spec 162.
   //
   // Is the array still performing? One number a day, against its own recent
@@ -716,6 +715,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         latest: health.latest,
         alert: health.alert,
         detection: health.detection,
+        recentQualifyingDays: health.recentQualifyingDays,
       };
     },
   );

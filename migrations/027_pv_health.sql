@@ -17,9 +17,36 @@ CREATE TABLE IF NOT EXISTS pv_health_day (
   ratio        REAL NOT NULL,
   hours        INTEGER NOT NULL,
   measured_wh  REAL NOT NULL,
-  modelled_wh  REAL NOT NULL,
+  -- Irradiation on the plane of the array, Wh/m2. Not an energy: the ratio
+  -- above carries a unit and is only ever compared with its own normal.
+  irradiation_wh_m2 REAL NOT NULL,
   PRIMARY KEY (equipment_id, day)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pv_health_day_equipment
   ON pv_health_day (equipment_id, day DESC);
+
+-- One row per array whose production is currently below its normal. Deleted
+-- when it recovers.
+--
+-- `normal` is frozen at the moment the alert is raised, and that is the whole
+-- point of the table. Recomputed nightly, a rolling median absorbs a sustained
+-- fault: once the bad days fill the window the median *becomes* the degraded
+-- level, the alert clears itself, and the household is told the panels
+-- recovered while they are still dead. Measured on the real rule, that happens
+-- after fourteen clear days.
+--
+-- Persisting it also fixes what an in-memory flag could not: a restart used to
+-- raise the same alarm twice, and a recovery during downtime lost its
+-- resolution for good.
+--
+-- No foreign key, following `battery_alerts` (spec 143): a cascade delete would
+-- drop the row without letting the check emit `system.alarm.resolved`, leaving
+-- a ghost in the UI banner. The nightly sweep reconciles orphans instead.
+CREATE TABLE IF NOT EXISTS pv_health_alert (
+  equipment_id TEXT PRIMARY KEY,
+  since        TEXT NOT NULL,
+  normal       REAL NOT NULL,
+  deficit      REAL NOT NULL,
+  raised_at    TEXT NOT NULL
+);

@@ -67,15 +67,33 @@ already handles.
 ALTER TABLE pv_forecast_sample ADD COLUMN direct_fraction REAL;
 
 CREATE TABLE pv_health_day (
-  equipment_id TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
-  day          TEXT NOT NULL,          -- local date, YYYY-MM-DD
-  ratio        REAL NOT NULL,          -- measured Wh / modelled Wh
-  hours        INTEGER NOT NULL,       -- qualifying hours behind it
-  measured_wh  REAL NOT NULL,
-  modelled_wh  REAL NOT NULL,
+  equipment_id      TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
+  day               TEXT NOT NULL,     -- local date, YYYY-MM-DD
+  ratio             REAL NOT NULL,     -- measured Wh per Wh/m2 of irradiation
+  hours             INTEGER NOT NULL,  -- qualifying hours behind it
+  measured_wh       REAL NOT NULL,
+  irradiation_wh_m2 REAL NOT NULL,     -- Wh/m2, NOT an energy
   PRIMARY KEY (equipment_id, day)
 );
+
+-- One row per array currently below its normal. `normal` is frozen at the raise:
+-- recomputed nightly it would absorb the fault and clear the alert on its own
+-- after fourteen clear days. No foreign key, following `battery_alerts`: a
+-- cascade would drop the row without letting the check emit the resolution.
+CREATE TABLE pv_health_alert (
+  equipment_id TEXT PRIMARY KEY,
+  since        TEXT NOT NULL,
+  normal       REAL NOT NULL,
+  deficit      REAL NOT NULL,
+  raised_at    TEXT NOT NULL
+);
 ```
+
+Both consumers — the alarm path and the card — recompute the day list from
+`pv_forecast_sample` rather than reading `pv_health_day` whole. Reading different
+windows is how the card came to show a red banner for a fault the engine had just
+closed. `pv_health_day` is the persisted record for the chart and is pruned to
+the same window in the same transaction that writes it.
 
 Both tables go into `BACKUP_TABLES`. Spec 161's review found the PV tables
 missing from it, where a restore cascaded them away through `equipments`; the new

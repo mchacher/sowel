@@ -38,13 +38,20 @@ function migrate(db: Database.Database): void {
       PRIMARY KEY (equipment_id, at)
     );
     CREATE TABLE pv_health_day (
-      equipment_id TEXT NOT NULL,
-      day          TEXT NOT NULL,
-      ratio        REAL NOT NULL,
-      hours        INTEGER NOT NULL,
-      measured_wh  REAL NOT NULL,
-      modelled_wh  REAL NOT NULL,
+      equipment_id      TEXT NOT NULL,
+      day               TEXT NOT NULL,
+      ratio             REAL NOT NULL,
+      hours             INTEGER NOT NULL,
+      measured_wh       REAL NOT NULL,
+      irradiation_wh_m2 REAL NOT NULL,
       PRIMARY KEY (equipment_id, day)
+    );
+    CREATE TABLE pv_health_alert (
+      equipment_id TEXT PRIMARY KEY,
+      since        TEXT NOT NULL,
+      normal       REAL NOT NULL,
+      deficit      REAL NOT NULL,
+      raised_at    TEXT NOT NULL
     );
   `);
 }
@@ -93,7 +100,11 @@ function seedDays(
   }
 }
 
-function build(db: Database.Database, emit: (e: unknown) => void = () => {}): PvForecaster {
+function build(
+  db: Database.Database,
+  emit: (e: unknown) => void = () => {},
+  planes: Array<{ tiltDeg: number; azimuthDeg: number; peakWc: number }> | null = null,
+): PvForecaster {
   const noop = (): void => {};
   const logger = { info: noop, warn: noop, error: noop, debug: noop, child: () => logger } as never;
 
@@ -108,7 +119,10 @@ function build(db: Database.Database, emit: (e: unknown) => void = () => {}): Pv
           id: EQUIPMENT_ID,
           name: "Shelly Solar",
           zoneId: "zone-1",
-          solarProfile: { planes: [{ tiltDeg: 35, azimuthDeg: 180, peakWc: PEAK }] },
+          solarProfile:
+            planes === null
+              ? { planes: [{ tiltDeg: 35, azimuthDeg: 180, peakWc: PEAK }] }
+              : { planes },
         },
       ],
       getDataBindingsWithValues: () => [],
@@ -124,6 +138,28 @@ function build(db: Database.Database, emit: (e: unknown) => void = () => {}): Pv
 
 const storedDays = (db: Database.Database): number =>
   (db.prepare("SELECT count(*) AS n FROM pv_health_day").get() as { n: number }).n;
+
+const standingAlerts = (db: Database.Database): number =>
+  (db.prepare("SELECT count(*) AS n FROM pv_health_alert").get() as { n: number }).n;
+
+/** Append one more clear day after the newest sample already stored. */
+function appendDay(db: Database.Database, watts: number): void {
+  const newest = (
+    db.prepare("SELECT max(at) AS a FROM pv_forecast_sample").get() as { a: string | null }
+  ).a;
+  const base = newest ? new Date(Date.parse(newest) + 86_400_000) : new Date();
+  const insert = db.prepare(
+    `INSERT INTO pv_forecast_sample
+       (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(equipment_id, at) DO UPDATE SET watts = excluded.watts`,
+  );
+  for (let h = 10; h <= 15; h++) {
+    const at = new Date(base);
+    at.setHours(h, 0, 0, 0);
+    insert.run(EQUIPMENT_ID, at.toISOString(), h, POA, 25, watts, 0.9);
+  }
+}
 
 describe("the daily PV health check", () => {
   let db: Database.Database;
@@ -228,24 +264,103 @@ describe("the daily PV health check", () => {
     expect(emit.mock.calls.filter((c) => c[0].type === "system.alarm.raised")).toHaveLength(0);
   });
 
-  it("resolves when production comes back", () => {
+  it("resolves when a repaired array produces again", () => {
+    // Appended to the standing fault, not a reset history: the previous form of
+    // this test deleted every sample and reseeded a clean run, so it passed
+    // whether or not the alert had been cleared for the right reason.
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    const emit = vi.fn();
+    const f = build(db, emit);
+    f.runHealthCheck();
+    expect(standingAlerts(db)).toBe(1);
+
+    appendDay(db, 3000);
+    f.runHealthCheck();
+    f.stop();
+
+    expect(standingAlerts(db)).toBe(0);
+    expect(emit.mock.calls.filter((c) => c[0].type === "system.alarm.resolved")).toHaveLength(1);
+  });
+
+  it("does not clear itself once the fault fills the median window", () => {
+    // The critical defect the alert table exists for: a rolling median absorbs a
+    // sustained fault, and after fourteen clear days the alert used to clear
+    // itself and announce that the panels had recovered.
     seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
     const emit = vi.fn();
     const f = build(db, emit);
     f.runHealthCheck();
 
-    // A clear day back at full output.
+    for (let i = 0; i < 16; i++) {
+      appendDay(db, 2250);
+      f.runHealthCheck();
+    }
+    f.stop();
+
+    expect(standingAlerts(db)).toBe(1);
+    expect(emit.mock.calls.filter((c) => c[0].type === "system.alarm.resolved")).toHaveLength(0);
+  });
+
+  it("survives a restart without re-raising or losing the resolution", () => {
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    const first = vi.fn();
+    const a = build(db, first);
+    a.runHealthCheck();
+    a.stop();
+    expect(first.mock.calls.filter((c) => c[0].type === "system.alarm.raised")).toHaveLength(1);
+
+    // A new process over the same database, as every self-update produces.
+    const second = vi.fn();
+    const b = build(db, second);
+    b.runHealthCheck();
+    expect(second.mock.calls.filter((c) => c[0].type === "system.alarm.raised")).toHaveLength(0);
+
+    appendDay(db, 3000);
+    b.runHealthCheck();
+    b.stop();
+    // The resolution used to be lost for good: the in-memory flag was empty
+    // after the restart, so the branch that emits it could never run.
+    expect(second.mock.calls.filter((c) => c[0].type === "system.alarm.resolved")).toHaveLength(1);
+  });
+
+  it("does not announce recovery when it merely stops being able to judge", () => {
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    const emit = vi.fn();
+    const f = build(db, emit);
+    f.runHealthCheck();
+
+    // A fortnight of overcast: nothing recent to judge on.
     db.prepare("DELETE FROM pv_forecast_sample").run();
-    db.prepare("DELETE FROM pv_health_day").run();
-    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000);
     f.runHealthCheck();
     f.stop();
 
-    const resolved = emit.mock.calls
-      .map((c) => c[0])
-      .filter((e) => e.type === "system.alarm.resolved");
-    expect(resolved).toHaveLength(1);
-    expect(resolved[0].source).toBe("pv-health");
+    expect(standingAlerts(db)).toBe(1);
+    expect(emit.mock.calls.filter((c) => c[0].type === "system.alarm.resolved")).toHaveLength(0);
+  });
+
+  it("closes a standing alert when the array is no longer declared", () => {
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    const emit = vi.fn();
+    build(db, emit).runHealthCheck();
+    expect(standingAlerts(db)).toBe(1);
+
+    // No foreign key cascades this table, so nothing else would ever close it
+    // and the banner would carry a ghost for good.
+    const undeclared = build(db, emit, []);
+    undeclared.runHealthCheck();
+    undeclared.stop();
+
+    expect(standingAlerts(db)).toBe(0);
+    expect(emit.mock.calls.filter((c) => c[0].type === "system.alarm.resolved")).toHaveLength(1);
+  });
+
+  it("skips an equipment with no declared array", () => {
+    seedDays(db, 10, 3000);
+    const f = build(db, () => {}, []);
+    f.runHealthCheck();
+    f.stop();
+
+    expect(storedDays(db)).toBe(0);
   });
 
   it("does nothing at all without a fitted model", () => {

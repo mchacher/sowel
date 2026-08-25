@@ -39,6 +39,22 @@ function migrate(db: Database.Database): void {
       direct_fraction REAL,
       PRIMARY KEY (equipment_id, at)
     );
+    CREATE TABLE pv_health_day (
+      equipment_id      TEXT NOT NULL,
+      day               TEXT NOT NULL,
+      ratio             REAL NOT NULL,
+      hours             INTEGER NOT NULL,
+      measured_wh       REAL NOT NULL,
+      irradiation_wh_m2 REAL NOT NULL,
+      PRIMARY KEY (equipment_id, day)
+    );
+    CREATE TABLE pv_health_alert (
+      equipment_id TEXT PRIMARY KEY,
+      since        TEXT NOT NULL,
+      normal       REAL NOT NULL,
+      deficit      REAL NOT NULL,
+      raised_at    TEXT NOT NULL
+    );
   `);
 }
 

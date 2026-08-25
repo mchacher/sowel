@@ -87,24 +87,54 @@ For each day with enough qualifying hours, store measured Wh over modelled Wh.
 A day below the threshold of qualifying hours is skipped, not stored as a low
 ratio: too few clear hours is missing information, never bad performance.
 
-### FR2 — A normal that moves
+### FR2 — A normal that moves, and freezes when it matters
 
-The reference is a slow trailing statistic over recent qualifying days, not a
-constant. Soiling and ageing are supposed to move it; a failure is supposed to
-outrun it.
+The reference is the median of recent qualifying days, not a constant. Soiling
+and ageing are supposed to move it; a failure is supposed to outrun it.
 
-### FR3 — An alert on a sustained departure
+**Once an alert is raised, the normal it was raised against is frozen and
+persisted.** A rolling median absorbs a sustained fault: once the bad days fill
+the window the median _becomes_ the degraded level, the deficit vanishes on
+paper, and the alert clears itself. Measured on the real rule, that happens after
+fourteen clear days — and the household is told the panels recovered while they
+are still dead. Excluding the days under assessment delays that by three days; it
+does not prevent it.
 
-Raise when the ratio sits below the normal by more than the measured noise floor
-across several qualifying days. One bad day is never enough. Resolve when it
-comes back, through the existing alarm events so the notification publishers and
-the zone activity feed carry it with no new plumbing.
+### FR3 — An alert on a sustained departure, that survives a restart
+
+Raise when the ratio sits below the normal by more than the margin across several
+consecutive qualifying days. One bad day is never enough.
+
+Resolve **only** when a qualifying day comes back above the frozen threshold.
+Two states look alike from the outside and only one is good news: performance
+returned, and the detector went blind — a fortnight of overcast, a meter that
+stopped reporting, a capacity change that pruned the history. Losing the ability
+to measure is not recovery, and announcing it as such is worse than silence.
+
+The standing alert is persisted, not held in memory. Sowel restarts on every
+self-update: an in-memory flag re-raises the same alarm as new, and loses its
+resolution for good if performance returned while the process was down.
+
+Raised and resolved through the existing alarm events, so the notification
+publishers and the zone activity feed carry them with no new plumbing.
 
 ### FR4 — The card says what it can and cannot see
 
-Current ratio against its normal, qualifying days recently, and the plain-language
-consequence: at this rate a fault of a quarter of the array would show in about a
-day, one panel in about three. Explicitly: this does not identify which panel.
+Current ratio against its normal, the date it was measured, how many qualifying
+days there have been recently, and the plain-language consequence stated as a
+**sensitivity**: at this rate a loss of more than the margin would be confirmed
+in about N days, and anything shallower is not detected at all.
+
+Deliberately not "one panel in about three days". Naming a per-panel figure needs
+the panel count, which is nowhere declared; deriving it by dividing the peak
+power by an assumed wattage produces a confident fiction, and on a common 5 kWc
+array it makes a single panel fall under the margin, so the card prints a dash
+where a duration belongs.
+
+When there has been no qualifying day recently the card says so, rather than
+showing a three-week-old figure as though it were current.
+
+Explicitly: this does not identify which panel.
 
 ### FR5 — Nothing new to declare
 
@@ -122,7 +152,10 @@ alerting, not showing a placeholder ratio computed from nothing.
 - [ ] Clear-hour selection uses the direct fraction of the published irradiance, with no new plugin variable
 - [ ] The normal follows a slow drift and does not follow a step
 - [ ] An alert needs several qualifying days, never one
-- [ ] The alert resolves on its own when performance returns
+- [ ] The alert resolves when performance returns, and **only** then
+- [ ] A fault lasting longer than the median window does not clear itself
+- [ ] A restart neither re-raises the alert nor loses its resolution
+- [ ] Losing the ability to measure never announces a recovery
 - [ ] Alerts ride the existing alarm events
 - [ ] The card states the current detection speed, from real recent days
 - [ ] The card says it cannot name a panel

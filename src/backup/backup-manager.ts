@@ -105,6 +105,7 @@ export const BACKUP_TABLES = [
   // Spec 162. Same reasoning as the two above, which were missing until a
   // review found the restore cascading them away through `equipments`.
   "pv_health_day",
+  "pv_health_alert",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared

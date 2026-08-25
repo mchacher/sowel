@@ -71,10 +71,18 @@ export interface HealthHour {
 export interface DayRatio {
   /** Local date, YYYY-MM-DD. */
   day: string;
+  /** Measured Wh per Wh/m2 of irradiation. Meaningful only against its normal. */
   ratio: number;
   hours: number;
   measuredWh: number;
-  modelledWh: number;
+  /**
+   * Irradiation on the plane of the array, Wh/m2 — **not** an energy.
+   *
+   * Named for what it is rather than "modelled Wh": the quotient above carries a
+   * unit, and calling the denominator watt-hours would invite the first person to
+   * read the column in a year to compare it with the numerator.
+   */
+  irradiationWhM2: number;
 }
 
 /**
@@ -116,10 +124,16 @@ export function dailyRatio(day: string, hours: readonly HealthHour[]): DayRatio 
   if (usable.length < MIN_QUALIFYING_HOURS) return null;
 
   const measuredWh = usable.reduce((sum, h) => sum + h.watts, 0);
-  const modelledWh = usable.reduce((sum, h) => sum + h.poa, 0);
-  if (!(modelledWh > 0)) return null;
+  const irradiationWhM2 = usable.reduce((sum, h) => sum + h.poa, 0);
+  if (!(irradiationWhM2 > 0)) return null;
 
-  return { day, ratio: measuredWh / modelledWh, hours: usable.length, measuredWh, modelledWh };
+  return {
+    day,
+    ratio: measuredWh / irradiationWhM2,
+    hours: usable.length,
+    measuredWh,
+    irradiationWhM2,
+  };
 }
 
 /**
@@ -195,11 +209,49 @@ export function assess(days: readonly DayRatio[]): HealthVerdict {
   };
 }
 
+/**
+ * Should a standing alert be cleared?
+ *
+ * Judged against the normal **as it was when the alert was raised**, never a
+ * freshly computed one. A rolling median absorbs a sustained fault: once the bad
+ * days fill the window it becomes the degraded level, the deficit vanishes on
+ * paper, and the household is told the panels recovered while they are still
+ * dead. Measured on the real rule, that took fourteen clear days.
+ *
+ * Two states that both look like "not alerting" are kept apart here, because
+ * only one of them is good news:
+ *
+ * - a qualifying day came back above the threshold — recovered, clear it;
+ * - there is no recent qualifying day at all — the detector has gone blind, from
+ *   a fortnight of overcast or a meter that stopped reporting. Losing the ability
+ *   to measure is not recovery, and announcing it as such is worse than silence.
+ */
+export function shouldResolve(frozenNormal: number, latest: DayRatio | null): boolean {
+  if (latest === null) return false;
+  if (!Number.isFinite(frozenNormal) || frozenNormal <= 0) return false;
+  return latest.ratio >= frozenNormal * (1 - ALERT_MARGIN);
+}
+
+/** How far below the frozen normal the recent days sit, for the standing alert. */
+export function deficitAgainst(frozenNormal: number, days: readonly DayRatio[]): number {
+  const assessed = days.slice(-ALERT_DAYS);
+  if (assessed.length === 0 || !(frozenNormal > 0)) return 0;
+  const mean = assessed.reduce((sum, d) => sum + d.ratio, 0) / assessed.length;
+  return Math.max(0, 1 - mean / frozenNormal);
+}
+
 export interface DetectionSpeed {
-  /** Clear days needed to confirm the loss of one panel of `panels`. */
-  onePanelDays: number;
-  /** Clear days needed to confirm the loss of a micro-inverter, two channels. */
-  oneInverterDays: number;
+  /**
+   * Smallest loss this rule can confirm at all, as a fraction.
+   *
+   * Anything shallower sits inside `ALERT_MARGIN` and is never raised, however
+   * long one waits. Saying so is the honest form of "how sensitive is this".
+   */
+  minDetectableLoss: number;
+  /** Clear days a confirmable loss needs, by the rule: `ALERT_DAYS` of them. */
+  clearDaysNeeded: number;
+  /** Those clear days translated into calendar days at the observed rate. */
+  calendarDays: number;
   /** Qualifying days seen over the observed window. */
   qualifyingDays: number;
   /** Calendar days that window covered. */
@@ -207,37 +259,32 @@ export interface DetectionSpeed {
 }
 
 /**
- * How quickly a fault would show, **at the rate this installation is actually
- * getting clear days** — not at the summer rate.
+ * How sensitive the detector is, and how long it would take, **at the rate this
+ * installation is actually getting clear days** — not at the summer rate.
  *
  * A health feature that reports the same confidence in December as in July is
  * lying. Fewer clear midday hours means fewer qualifying days means a slower
  * detector, and the household should be told that rather than left to assume the
  * silence means all is well.
  *
+ * Deliberately expressed as "a loss of more than X shows in Y days", not as
+ * per-panel figures. Naming a number of days for one lost panel would need the
+ * panel count, which is nowhere declared — deriving it by dividing the peak
+ * power by an assumed 500 Wc per panel produced a confident fiction, and on a
+ * 5 kWc array it made a single panel fall under the margin so the card printed a
+ * dash where a duration belonged.
+ *
  * Returns null when no qualifying day has been seen at all: the honest answer is
  * "cannot say yet", never an infinity dressed up as a number.
  */
-export function detectionSpeed(
-  qualifyingDays: number,
-  windowDays: number,
-  panels: number,
-): DetectionSpeed | null {
-  if (qualifyingDays <= 0 || windowDays <= 0 || panels <= 0) return null;
-
-  const clearDaysNeeded = (lossFraction: number): number => {
-    // Below the margin nothing is ever raised, however long one waits.
-    if (lossFraction <= ALERT_MARGIN) return Number.POSITIVE_INFINITY;
-    return ALERT_DAYS;
-  };
+export function detectionSpeed(qualifyingDays: number, windowDays: number): DetectionSpeed | null {
+  if (qualifyingDays <= 0 || windowDays <= 0) return null;
 
   const perQualifyingDay = windowDays / qualifyingDays;
-  const toCalendar = (clear: number): number =>
-    Number.isFinite(clear) ? Math.ceil(clear * perQualifyingDay) : Number.POSITIVE_INFINITY;
-
   return {
-    onePanelDays: toCalendar(clearDaysNeeded(1 / panels)),
-    oneInverterDays: toCalendar(clearDaysNeeded(2 / panels)),
+    minDetectableLoss: ALERT_MARGIN,
+    clearDaysNeeded: ALERT_DAYS,
+    calendarDays: Math.ceil(ALERT_DAYS * perQualifyingDay),
     qualifyingDays,
     windowDays,
   };

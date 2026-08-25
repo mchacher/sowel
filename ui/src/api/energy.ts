@@ -106,11 +106,15 @@ export interface PvHealthResponse {
   alert: { since: string; deficit: number } | null;
   /** Null when no qualifying day has been seen: "cannot say yet", not an infinity. */
   detection: {
-    onePanelDays: number;
-    oneInverterDays: number;
+    /** Smallest loss the rule can confirm at all, as a fraction. */
+    minDetectableLoss: number;
+    clearDaysNeeded: number;
+    calendarDays: number;
     qualifyingDays: number;
     windowDays: number;
   } | null;
+  /** Qualifying days over the recent window. Zero means the detector is blind. */
+  recentQualifyingDays: number;
 }
 
 export async function getPvHealth(equipmentId: string): Promise<PvHealthResponse> {

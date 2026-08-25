@@ -359,8 +359,11 @@ describe("BACKUP_TABLES covers everything a restore would cascade away", () => {
     expect(BACKUP_TABLES).toContain("pv_forecast_sample");
   });
 
-  it("carries the PV health table (spec 162)", () => {
+  it("carries the PV health tables (spec 162)", () => {
     expect(BACKUP_TABLES).toContain("pv_health_day");
+    // The standing alert too: lost on restore, a fault would be re-raised as
+    // new and its recovery would never be announced.
+    expect(BACKUP_TABLES).toContain("pv_health_alert");
   });
 
   it("lists every child after the parent it references", () => {

@@ -7,6 +7,18 @@ import { dateLocale } from "../../lib/locale";
 import { dailyTicks } from "./pvForecastUtils";
 
 /**
+ * A local-date key as a local instant.
+ *
+ * `Date.parse("2026-08-24")` is UTC midnight, which renders as the 23rd anywhere
+ * west of Greenwich. These keys were built from local components; they have to
+ * be read back the same way.
+ */
+function localDate(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1).getTime();
+}
+
+/**
  * Is the array still performing? (spec 162)
  *
  * One number a day — what the panels produced over what the sun offered them —
@@ -56,7 +68,12 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
     );
   }
 
-  const chart = data.days.map((d) => ({ ts: Date.parse(d.day), ratio: d.ratio, hours: d.hours }));
+  // A spell of overcast leaves plenty of history and no recent judgement. Said
+  // out loud, because the alternative is a card that looks current while its
+  // newest figure is three weeks old.
+  const blind = data.recentQualifyingDays === 0;
+
+  const chart = data.days.map((d) => ({ ts: localDate(d.day), ratio: d.ratio, hours: d.hours }));
   const normal = data.normal;
   const latest = data.latest;
   const deviation = latest ? (latest.ratio / normal - 1) * 100 : null;
@@ -71,16 +88,19 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
           <p className="text-[13px] text-text">
             {t("equipments.pvHealth.alert", {
               pct: Math.round(data.alert.deficit * 100),
-              since: new Date(data.alert.since).toLocaleDateString(locale, {
+              since: new Date(localDate(data.alert.since)).toLocaleDateString(locale, {
                 day: "numeric",
                 month: "long",
               }),
             })}
           </p>
         </div>
+      ) : blind ? (
+        <p className="text-[13px] text-text-secondary mb-3">{t("equipments.pvHealth.blind")}</p>
       ) : (
         <p className="text-[13px] text-text-secondary mb-3">
           {t("equipments.pvHealth.normal", {
+            date: latest ? new Date(localDate(latest.day)).toLocaleDateString(locale) : "",
             pct: deviation === null ? 0 : Math.abs(Math.round(deviation)),
             direction: t(
               deviation !== null && deviation < 0
@@ -148,12 +168,8 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
           {t("equipments.pvHealth.speed", {
             clear: data.detection.qualifyingDays,
             window: data.detection.windowDays,
-            inverter: Number.isFinite(data.detection.oneInverterDays)
-              ? data.detection.oneInverterDays
-              : "-",
-            panel: Number.isFinite(data.detection.onePanelDays)
-              ? data.detection.onePanelDays
-              : "-",
+            pct: Math.round(data.detection.minDetectableLoss * 100),
+            days: data.detection.calendarDays,
           })}
         </p>
       )}

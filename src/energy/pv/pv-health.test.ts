@@ -5,9 +5,11 @@ import {
   MIN_NORMAL_DAYS,
   assess,
   dailyRatio,
+  deficitAgainst,
   detectionSpeed,
   qualifies,
   rollingNormal,
+  shouldResolve,
   type DayRatio,
   type HealthHour,
 } from "./pv-health.js";
@@ -100,7 +102,7 @@ describe("dailyRatio", () => {
     // A nightly refit changes the fitted gain. It must not move this ratio, or
     // the detector jumps at its own shadow.
     const r = dailyRatio("2026-08-25", clearHours(5))!;
-    expect(r.modelledWh).toBe(5 * 800);
+    expect(r.irradiationWhM2).toBe(5 * 800);
   });
 });
 
@@ -109,7 +111,7 @@ const day = (d: string, ratio: number): DayRatio => ({
   ratio,
   hours: 5,
   measuredWh: ratio * 4000,
-  modelledWh: 4000,
+  irradiationWhM2: 4000,
 });
 
 /** `n` days at `ratio`, dated consecutively from 2026-07-01. */
@@ -214,35 +216,94 @@ describe("assess", () => {
   });
 });
 
+describe("shouldResolve", () => {
+  const frozen = 4.0;
+
+  it("clears when a qualifying day comes back above the threshold", () => {
+    expect(shouldResolve(frozen, day("2026-07-25", 3.7))).toBe(true);
+  });
+
+  it("does not clear while the day is still below it", () => {
+    expect(shouldResolve(frozen, day("2026-07-25", 3.2))).toBe(false);
+  });
+
+  it("does not clear when there is no recent day at all", () => {
+    // Losing the ability to measure is not recovery, and announcing it as such
+    // is worse than silence. This is the state a fortnight of overcast, or a
+    // meter that stopped reporting, produces.
+    expect(shouldResolve(frozen, null)).toBe(false);
+  });
+
+  it("refuses a nonsense frozen normal rather than clearing on it", () => {
+    expect(shouldResolve(0, day("2026-07-25", 4.0))).toBe(false);
+    expect(shouldResolve(Number.NaN, day("2026-07-25", 4.0))).toBe(false);
+  });
+
+  it("is judged against the frozen normal, never a recomputed one", () => {
+    // The failure this exists for: a rolling median absorbs a sustained fault,
+    // and after fourteen clear days the alert clears itself while the panel is
+    // still dead. A day at the fault level must never clear against the normal
+    // the alert was raised with.
+    const stillFaulty = day("2026-07-25", 3.0);
+    expect(shouldResolve(frozen, stillFaulty)).toBe(false);
+    // ...even though a normal recomputed over those faulty days would say fine.
+    expect(shouldResolve(3.0, stillFaulty)).toBe(true);
+  });
+});
+
+describe("deficitAgainst", () => {
+  it("measures the recent days against the frozen normal", () => {
+    expect(deficitAgainst(4.0, run(ALERT_DAYS, 3.0, 21))).toBeCloseTo(0.25, 6);
+  });
+
+  it("is zero rather than negative when production is above it", () => {
+    expect(deficitAgainst(4.0, run(ALERT_DAYS, 4.4, 21))).toBe(0);
+  });
+
+  it("is zero with nothing to measure", () => {
+    expect(deficitAgainst(4.0, [])).toBe(0);
+    expect(deficitAgainst(0, run(ALERT_DAYS, 3.0, 21))).toBe(0);
+  });
+});
+
 describe("detectionSpeed", () => {
-  it("is faster when clear days are frequent", () => {
-    const often = detectionSpeed(12, 14, 8)!;
-    const rarely = detectionSpeed(4, 14, 8)!;
+  it("is slower when clear days are rare", () => {
     // Same rule, different weather: December must not claim July's confidence.
-    expect(rarely.onePanelDays).toBeGreaterThan(often.onePanelDays);
+    expect(detectionSpeed(4, 14)!.calendarDays).toBeGreaterThan(
+      detectionSpeed(12, 14)!.calendarDays,
+    );
   });
 
-  it("confirms a whole inverter sooner than a single panel", () => {
-    const s = detectionSpeed(6, 14, 8)!;
-    expect(s.oneInverterDays).toBeLessThanOrEqual(s.onePanelDays);
+  it("states the smallest loss it can confirm at all", () => {
+    // The honest form of "how sensitive is this". Anything shallower than the
+    // margin is never raised, however long one waits.
+    expect(detectionSpeed(10, 14)!.minDetectableLoss).toBe(ALERT_MARGIN);
   });
 
-  it("says a loss inside the margin is never confirmed, rather than inventing a number", () => {
-    // One panel of twenty is 5 %, below the 10 % margin: no amount of waiting
-    // raises it, and the card must not pretend otherwise.
-    const s = detectionSpeed(10, 14, 20)!;
-    expect(s.onePanelDays).toBe(Number.POSITIVE_INFINITY);
-    expect(1 / 20).toBeLessThan(ALERT_MARGIN);
+  it("needs the rule's run of clear days, whatever the weather", () => {
+    expect(detectionSpeed(3, 21)!.clearDaysNeeded).toBe(ALERT_DAYS);
+  });
+
+  it("never reports an infinity, since it names no panel count", () => {
+    // The previous form divided the peak power by an assumed 500 Wc to guess a
+    // panel count, and on a 5 kWc array a single panel fell under the margin so
+    // the card printed a dash where a duration belonged.
+    for (const [q, w] of [
+      [1, 45],
+      [10, 14],
+      [45, 45],
+    ]) {
+      expect(Number.isFinite(detectionSpeed(q, w)!.calendarDays)).toBe(true);
+    }
   });
 
   it("returns null rather than an infinity dressed as a number", () => {
-    expect(detectionSpeed(0, 14, 8)).toBeNull();
-    expect(detectionSpeed(5, 0, 8)).toBeNull();
-    expect(detectionSpeed(5, 14, 0)).toBeNull();
+    expect(detectionSpeed(0, 14)).toBeNull();
+    expect(detectionSpeed(5, 0)).toBeNull();
   });
 
   it("carries what it was computed from, so the card can show its working", () => {
-    const s = detectionSpeed(7, 14, 8)!;
+    const s = detectionSpeed(7, 14)!;
     expect(s.qualifyingDays).toBe(7);
     expect(s.windowDays).toBe(14);
   });
