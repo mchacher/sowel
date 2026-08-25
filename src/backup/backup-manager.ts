@@ -102,6 +102,9 @@ export const BACKUP_TABLES = [
   // forecast back to the provisional estimate for another twelve days.
   "pv_forecast_model",
   "pv_forecast_sample",
+  // Spec 162. Same reasoning as the two above, which were missing until a
+  // review found the restore cascading them away through `equipments`.
+  "pv_health_day",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared

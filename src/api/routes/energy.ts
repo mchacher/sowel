@@ -692,6 +692,35 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
 
   // ============================================================
   // ============================================================
+  // GET /api/v1/energy/pv-health/:equipmentId — spec 162.
+  //
+  // Is the array still performing? One number a day, against its own recent
+  // normal, plus how fast a fault would actually show at the rate this
+  // installation is getting clear days.
+  // ============================================================
+  app.get<{ Params: { equipmentId: string } }>(
+    "/api/v1/energy/pv-health/:equipmentId",
+    async (request, reply) => {
+      if (!pvForecaster) {
+        return reply.status(503).send({ error: "PV forecaster not available" });
+      }
+      const equipment = equipmentManager.getById(request.params.equipmentId);
+      if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
+
+      const health = pvForecaster.getHealth(equipment);
+      return {
+        // An installation with no qualifying day yet gets an empty series, never
+        // a 404: nothing to show is a state of the feature, not a missing route.
+        days: health.days.map((d) => ({ day: d.day, ratio: d.ratio, hours: d.hours })),
+        normal: health.normal,
+        latest: health.latest,
+        alert: health.alert,
+        detection: health.detection,
+      };
+    },
+  );
+
+  // ============================================================
   // POST /api/v1/energy/pv-forecast/:equipmentId/backfill — spec 161.
   //
   // Fit the model from production the installation has already recorded,

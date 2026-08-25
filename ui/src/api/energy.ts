@@ -90,3 +90,29 @@ export async function backfillPvForecast(equipmentId: string): Promise<PvBackfil
     method: "POST",
   });
 }
+
+/** Spec 162 — is the array still performing? */
+export interface PvHealthDay {
+  day: string;
+  ratio: number;
+  hours: number;
+}
+
+export interface PvHealthResponse {
+  days: PvHealthDay[];
+  /** The recent normal the days are judged against. Null until there is one. */
+  normal: number | null;
+  latest: { day: string; ratio: number; hours: number } | null;
+  alert: { since: string; deficit: number } | null;
+  /** Null when no qualifying day has been seen: "cannot say yet", not an infinity. */
+  detection: {
+    onePanelDays: number;
+    oneInverterDays: number;
+    qualifyingDays: number;
+    windowDays: number;
+  } | null;
+}
+
+export async function getPvHealth(equipmentId: string): Promise<PvHealthResponse> {
+  return fetchJSON<PvHealthResponse>(`${API_BASE}/energy/pv-health/${equipmentId}`);
+}

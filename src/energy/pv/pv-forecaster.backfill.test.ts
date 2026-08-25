@@ -36,6 +36,7 @@ function migrate(db: Database.Database): void {
       poa          REAL NOT NULL,
       temp_c       REAL NOT NULL,
       watts        REAL NOT NULL,
+      direct_fraction REAL,
       PRIMARY KEY (equipment_id, at)
     );
   `);

@@ -68,6 +68,14 @@ function hourStart(ms: number): number {
 export interface PairedSample extends PvSample {
   /** UTC ISO of the hour start, the key rows are upserted on. */
   at: string;
+  /**
+   * Beam share of the irradiance, 0 to 1 (spec 162).
+   *
+   * Stored rather than recomputed later: it decides whether an hour is clear
+   * enough to judge the array's health on, and a past day's qualification
+   * should be a fact, not something a plugin gap can silently change.
+   */
+  directFraction: number | null;
 }
 
 /**
@@ -126,12 +134,14 @@ export function pairHistory(params: {
     // same test before it writes.
     if (poa <= 0) continue;
 
+    const total = hour.direct + hour.diffuse;
     out.push({
       at: new Date(ms).toISOString(),
       hourLocal: new Date(ms).getHours(),
       poa,
       tempC: hour.temp ?? 25,
       watts,
+      directFraction: total > 0 ? hour.direct / total : null,
     });
   }
 

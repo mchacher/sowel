@@ -31,6 +31,15 @@ import {
 } from "./pv-model.js";
 import { isActiveSolarProfile } from "./solar-profile.js";
 import {
+  ALERT_DAYS,
+  NORMAL_DAYS,
+  assess,
+  dailyRatio,
+  detectionSpeed,
+  type DayRatio,
+  type HealthHour,
+} from "./pv-health.js";
+import {
   pairHistory,
   profilePeakWc,
   resolveWindow,
@@ -140,9 +149,12 @@ export class PvForecaster {
   private refitTimer: ReturnType<typeof setTimeout> | null = null;
   private recomputeTimer: ReturnType<typeof setTimeout> | null = null;
   /** equipmentId -> readings accumulated for the hour currently open. */
+  /** Equipments currently alerting, so an alarm is raised once and not nightly. */
+  private readonly healthAlerting = new Set<string>();
+
   private readonly pending = new Map<
     string,
-    { hourMs: number; watts: number[]; poa: number; tempC: number }
+    { hourMs: number; watts: number[]; poa: number; tempC: number; directFraction: number | null }
   >();
 
   constructor(deps: PvForecasterDeps) {
@@ -493,6 +505,169 @@ export class PvForecaster {
   }
 
   // ============================================================
+  // Health (spec 162)
+  // ============================================================
+
+  /**
+   * Compare what the panels produced with what they should have, once a day.
+   *
+   * Runs after the nightly refit, on the samples that refit just used. The
+   * modelled side is the plane-of-array irradiance, never the fitted model, so
+   * the refit cannot move the ratio it is about to be judged by.
+   */
+  runHealthCheck(): void {
+    for (const equipment of this.solarEquipments()) {
+      try {
+        // No model, no health. The provisional clear-sky curve reads high by
+        // construction and judging an array against it would report every new
+        // installation as failing.
+        if (!this.getModel(equipment.id)) continue;
+        this.assessEquipmentHealth(equipment);
+      } catch (err) {
+        this.logger.error({ err, equipmentId: equipment.id }, "PV health check failed");
+      }
+    }
+  }
+
+  private assessEquipmentHealth(equipment: Equipment): void {
+    const rows = this.db
+      .prepare(
+        `SELECT at, hour_local, poa, watts, direct_fraction
+           FROM pv_forecast_sample WHERE equipment_id = ? ORDER BY at`,
+      )
+      .all(equipment.id) as Array<{
+      at: string;
+      hour_local: number;
+      poa: number;
+      watts: number;
+      direct_fraction: number | null;
+    }>;
+
+    // Grouped by local date, because the midday band is a local notion.
+    const byDay = new Map<string, HealthHour[]>();
+    for (const r of rows) {
+      const ms = Date.parse(r.at);
+      if (!Number.isFinite(ms)) continue;
+      const local = new Date(ms);
+      const day = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}`;
+      const list = byDay.get(day) ?? [];
+      list.push({
+        hourLocal: r.hour_local,
+        poa: r.poa,
+        watts: r.watts,
+        directFraction: r.direct_fraction,
+      });
+      byDay.set(day, list);
+    }
+
+    const days: DayRatio[] = [];
+    for (const [day, hours] of [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const ratio = dailyRatio(day, hours);
+      if (ratio) days.push(ratio);
+    }
+
+    const upsert = this.db.prepare(
+      `INSERT INTO pv_health_day (equipment_id, day, ratio, hours, measured_wh, modelled_wh)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(equipment_id, day) DO UPDATE SET
+         ratio = excluded.ratio, hours = excluded.hours,
+         measured_wh = excluded.measured_wh, modelled_wh = excluded.modelled_wh`,
+    );
+    this.db.transaction(() => {
+      for (const d of days) {
+        upsert.run(equipment.id, d.day, d.ratio, d.hours, d.measuredWh, d.modelledWh);
+      }
+    })();
+
+    const verdict = assess(days);
+    const alarmId = `pv-health:${equipment.id}`;
+    const wasAlerting = this.healthAlerting.has(equipment.id);
+
+    if (verdict.alerting && !wasAlerting) {
+      this.healthAlerting.add(equipment.id);
+      const pct = Math.round((verdict.deficit ?? 0) * 100);
+      this.logger.warn(
+        { equipmentId: equipment.id, deficit: verdict.deficit, since: verdict.since },
+        "PV production has been below its normal for several clear days",
+      );
+      this.eventBus.emit({
+        type: "system.alarm.raised",
+        alarmId,
+        level: "warning",
+        source: "pv-health",
+        message: `${equipment.name}: production ${pct} % below its usual level on the last ${ALERT_DAYS} clear days`,
+        zoneId: equipment.zoneId ?? null,
+      });
+    } else if (!verdict.alerting && wasAlerting) {
+      this.healthAlerting.delete(equipment.id);
+      this.logger.info({ equipmentId: equipment.id }, "PV production is back to its normal");
+      this.eventBus.emit({
+        type: "system.alarm.resolved",
+        alarmId,
+        source: "pv-health",
+        message: `${equipment.name}: production is back to its usual level`,
+        zoneId: equipment.zoneId ?? null,
+      });
+    }
+  }
+
+  /**
+   * Everything the health card needs, including what the detector cannot do.
+   *
+   * The detection speed is computed from the qualifying days actually seen over
+   * the recent window, not from a summer figure: in a fortnight of overcast the
+   * honest answer is that a fault would take a long time to show.
+   */
+  getHealth(equipment: Equipment): {
+    days: DayRatio[];
+    normal: number | null;
+    latest: DayRatio | null;
+    alert: { since: string; deficit: number } | null;
+    detection: ReturnType<typeof detectionSpeed>;
+  } {
+    const rows = this.db
+      .prepare(
+        `SELECT day, ratio, hours, measured_wh, modelled_wh FROM pv_health_day
+          WHERE equipment_id = ? ORDER BY day`,
+      )
+      .all(equipment.id) as Array<{
+      day: string;
+      ratio: number;
+      hours: number;
+      measured_wh: number;
+      modelled_wh: number;
+    }>;
+
+    const days: DayRatio[] = rows.map((r) => ({
+      day: r.day,
+      ratio: r.ratio,
+      hours: r.hours,
+      measuredWh: r.measured_wh,
+      modelledWh: r.modelled_wh,
+    }));
+
+    const verdict = assess(days);
+    const panels = Math.max(1, Math.round(totalPeakWc(equipment.solarProfile?.planes ?? []) / 500));
+
+    // Over the same window the samples cover, so "days seen" and "days that
+    // qualified" are measured against the same stretch of calendar.
+    const windowDays = Math.min(NORMAL_DAYS + ALERT_DAYS, WINDOW_DAYS);
+    const cutoff = new Date(Date.now() - windowDays * 86_400_000).toISOString().slice(0, 10);
+    const recent = days.filter((d) => d.day >= cutoff).length;
+
+    return {
+      days,
+      normal: verdict.normal,
+      latest: verdict.latest,
+      alert:
+        verdict.alerting && verdict.since !== null
+          ? { since: verdict.since, deficit: verdict.deficit ?? 0 }
+          : null,
+      detection: detectionSpeed(recent, windowDays, panels),
+    };
+  }
+
+  // ============================================================
   // Backfill from existing history (spec 161)
   // ============================================================
 
@@ -543,14 +718,16 @@ export class PvForecaster {
     // rewrites its own rows instead of doubling them, and never fights a live
     // sample for the hour in progress.
     const insert = this.db.prepare(
-      `INSERT INTO pv_forecast_sample (equipment_id, at, hour_local, poa, temp_c, watts)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO pv_forecast_sample
+         (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(equipment_id, at) DO UPDATE SET
-         poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts`,
+         poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts,
+         direct_fraction = excluded.direct_fraction`,
     );
     this.db.transaction(() => {
       for (const s of samples) {
-        insert.run(equipmentId, s.at, s.hourLocal, s.poa, s.tempC, s.watts);
+        insert.run(equipmentId, s.at, s.hourLocal, s.poa, s.tempC, s.watts, s.directFraction);
       }
     })();
 
@@ -917,30 +1094,45 @@ export class PvForecaster {
       return;
     }
 
+    // Spec 162 — the beam share decides whether this hour can judge the array's
+    // health later. Computed here, where both components are in hand.
+    const total = hour.direct + hour.diffuse;
+    const directFraction = total > 0 ? hour.direct / total : null;
+
     const bucket = this.pending.get(equipment.id) ?? {
       hourMs,
       watts: [],
       poa,
       tempC: hour.temp ?? 25,
+      directFraction,
     };
     bucket.watts.push(watts);
     bucket.poa = poa;
     bucket.tempC = hour.temp ?? 25;
+    bucket.directFraction = directFraction;
     this.pending.set(equipment.id, bucket);
   }
 
   private closeHour(
     equipmentId: string,
-    bucket: { hourMs: number; watts: number[]; poa: number; tempC: number },
+    bucket: {
+      hourMs: number;
+      watts: number[];
+      poa: number;
+      tempC: number;
+      directFraction: number | null;
+    },
   ): void {
     if (bucket.watts.length === 0 || bucket.poa <= 0) return;
     const mean = bucket.watts.reduce((a, b) => a + b, 0) / bucket.watts.length;
     this.db
       .prepare(
-        `INSERT INTO pv_forecast_sample (equipment_id, at, hour_local, poa, temp_c, watts)
-         VALUES (?, ?, ?, ?, ?, ?)
+        `INSERT INTO pv_forecast_sample
+           (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(equipment_id, at) DO UPDATE SET
-           poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts`,
+           poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts,
+           direct_fraction = excluded.direct_fraction`,
       )
       .run(
         equipmentId,
@@ -949,6 +1141,7 @@ export class PvForecaster {
         bucket.poa,
         bucket.tempC,
         mean,
+        bucket.directFraction,
       );
   }
 
@@ -1024,6 +1217,14 @@ export class PvForecaster {
         this.refitAll();
       } catch (err) {
         this.logger.error({ err }, "Nightly PV refit failed");
+      }
+      // Spec 162, after the refit and in its own try: a health check that threw
+      // must not cost the schedule, and a failed refit must not skip the check —
+      // the health ratio does not depend on the model anyway.
+      try {
+        this.runHealthCheck();
+      } catch (err) {
+        this.logger.error({ err }, "Nightly PV health check failed");
       }
       this.scheduleRefit();
     }, next.getTime() - Date.now());

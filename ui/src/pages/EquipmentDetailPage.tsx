@@ -19,6 +19,7 @@ import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { SolarPanelDataPanel } from "../components/equipments/SolarPanelDataPanel";
 import { WeatherPanel } from "../components/equipments/WeatherPanel";
 import { PvForecastPanel } from "../components/equipments/PvForecastPanel";
+import { PvHealthPanel } from "../components/equipments/PvHealthPanel";
 import { WeatherForecastPanel } from "../components/equipments/WeatherForecastPanel";
 import { DisplayPanel } from "../components/equipments/DisplayPanel";
 import { CameraPanel } from "../components/equipments/CameraPanel";
@@ -463,6 +464,12 @@ export function EquipmentDetailPage() {
           shows the declaration form on its own when nothing is declared. */}
       {equipment.type === "energy_production_meter" && (
         <PvForecastPanel equipmentId={equipment.id} />
+      )}
+
+      {/* Spec 162 — is the array still performing? Renders nothing until a
+          model exists and clear days have accumulated. */}
+      {equipment.type === "energy_production_meter" && (
+        <PvHealthPanel equipmentId={equipment.id} />
       )}
 
       {/* Energy cumuls — meters + metering relays (switch/water_heater, #521) */}
