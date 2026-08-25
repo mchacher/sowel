@@ -20,6 +20,7 @@ import type {
   DataCategory,
   OrderCategory,
   OrderSource,
+  SolarProfile,
 } from "../shared/types.js";
 import {
   computeBindingCandidates,
@@ -27,6 +28,7 @@ import {
   inferDataBindingCategory,
 } from "../shared/binding-candidates.js";
 import { parseWireValue, resolveWireValue } from "../shared/order-wire-value.js";
+import { isActiveSolarProfile } from "../energy/pv/solar-profile.js";
 import {
   normalizeVmcSpeed,
   planSpeedTransition,
@@ -95,6 +97,8 @@ interface UpdateEquipmentInput {
   enabled?: boolean;
   /** Spec 140 — flexible-load declaration. `null` clears the profile. */
   energyProfile?: EnergyLoadProfile | null;
+  /** Spec 160 — declared array geometry. `null` clears it. */
+  solarProfile?: SolarProfile | null;
   /** Spec 146 — opt-in confirmation before actuating (gate v1). */
   requireConfirmation?: boolean;
   /** Spec 154 — invert shutter-family command direction. */
@@ -200,7 +204,7 @@ export class EquipmentManager {
         `UPDATE equipments SET name = @name, zone_id = @zoneId,
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
-         invert_direction = @invertDirection,
+         invert_direction = @invertDirection, solar_profile = @solarProfile,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -507,6 +511,12 @@ export class EquipmentManager {
             ? null
             : JSON.stringify(input.energyProfile)
           : existing.energy_profile,
+      solarProfile:
+        input.solarProfile !== undefined
+          ? input.solarProfile === null || input.solarProfile.planes.length === 0
+            ? null
+            : JSON.stringify(input.solarProfile)
+          : existing.solar_profile,
       requireConfirmation:
         input.requireConfirmation !== undefined
           ? input.requireConfirmation
@@ -1550,6 +1560,7 @@ interface EquipmentRow {
   description: string | null;
   enabled: number;
   energy_profile: string | null;
+  solar_profile: string | null;
   require_confirmation: number;
   invert_direction: number;
   created_at: string;
@@ -1637,6 +1648,21 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
   }
 }
 
+/** Parse the solar_profile JSON column (spec 160).
+ *
+ *  A corrupt or invalid row reads as no profile rather than crashing a read
+ *  path, and rather than reaching the model: a profile that would be refused at
+ *  the API must not slip in through a hand-edited database either. */
+function parseSolarProfile(json: string | null): SolarProfile | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed = JSON.parse(json) as SolarProfile;
+    return isActiveSolarProfile(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const INVERT_MOVE_CATEGORIES = new Set(["shutter_move", "pool_cover_move"]);
 const INVERT_POSITION_CATEGORIES = new Set(["set_shutter_position", "pool_cover_position"]);
 
@@ -1676,6 +1702,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     description: row.description ?? undefined,
     enabled: row.enabled === 1,
     energyProfile: parseEnergyProfile(row.energy_profile),
+    solarProfile: parseSolarProfile(row.solar_profile),
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
     createdAt: toISOUtc(row.created_at),

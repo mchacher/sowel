@@ -669,6 +669,28 @@ async function main() {
     .start()
     .catch((err) => logger.warn({ err }, "Weather aggregator start failed"));
 
+  // 18a-ter. Start the PV production forecaster (spec 160). Inert until an
+  // equipment declares a solar profile and a weather plugin publishes the
+  // hourly irradiance series.
+  const { PvForecaster } = await import("./energy/pv/pv-forecaster.js");
+  const pvForecaster = new PvForecaster({
+    db,
+    logger,
+    eventBus,
+    influxClient,
+    deviceManager,
+    equipmentManager,
+    settingsManager,
+  });
+  equipmentManager.registerComputedDataProvider((eqId) =>
+    pvForecaster.getComputedDataForEquipment(eqId),
+  );
+  try {
+    pvForecaster.start();
+  } catch (err) {
+    logger.warn({ err }, "PV forecaster start failed");
+  }
+
   // 18b. Initialize MQTT publish service (connects to MQTT broker, subscribes to events)
   // Spec 124 — skip in shadow mode; the service is monolithic and has
   // no runtime entry point, so the boot gate alone keeps it inert.
@@ -751,6 +773,7 @@ async function main() {
     }
     try {
       weatherTempExtremesTracker.stop();
+      pvForecaster.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping weather temp extremes tracker");
     }

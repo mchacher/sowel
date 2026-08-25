@@ -19,3 +19,25 @@ CREATE TABLE IF NOT EXISTS pv_forecast_model (
   fitted_peak_wc REAL NOT NULL,
   gain_reset_at  TEXT
 );
+
+-- Training samples, collected as they happen.
+--
+-- The fit needs production paired with the plane-of-array irradiance that
+-- produced it. Production is in InfluxDB, but past irradiance is nowhere: a
+-- weather plugin publishes a forward-looking series and overwrites it at every
+-- poll. So each closed hour is recorded here instead, which also keeps the fit
+-- independent of InfluxDB being up.
+--
+-- One row per equipment per hour. A 45-day window of daylight hours is roughly
+-- 600 rows.
+CREATE TABLE IF NOT EXISTS pv_forecast_sample (
+  equipment_id TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
+  at           TEXT NOT NULL,   -- UTC ISO, start of the hour
+  hour_local   INTEGER NOT NULL,
+  poa          REAL NOT NULL,
+  temp_c       REAL NOT NULL,
+  watts        REAL NOT NULL,
+  PRIMARY KEY (equipment_id, at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pv_sample_at ON pv_forecast_sample(equipment_id, at DESC);
