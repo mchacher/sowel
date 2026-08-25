@@ -77,6 +77,10 @@ export class InfluxClient {
       retryJitter: 200,
     });
 
+    // Never inherit a writer bound to the previous client, whatever happened on
+    // the way out of it.
+    this.energyHourlyWriteApi = null;
+
     this._connected = true;
     this.logger.info(
       { url: config.url, org: config.org, bucket: config.bucket },
@@ -86,21 +90,38 @@ export class InfluxClient {
 
   /** Flush pending writes and close the client. */
   async disconnect(): Promise<void> {
-    if (this.writeApi) {
-      try {
-        await this.writeApi.close();
-        if (this.energyHourlyWriteApi) {
-          await this.energyHourlyWriteApi.close();
-          this.energyHourlyWriteApi = null;
-        }
-      } catch (err) {
-        this.logger.warn({ err }, "Error flushing InfluxDB write buffer on disconnect");
-      }
-      this.writeApi = null;
-    }
+    // Every field is cleared BEFORE the first await, and the flush happens after.
+    // `connect()` is synchronous and calls this without awaiting, so anything
+    // left after an await runs as a microtask — after `connect()` has installed
+    // the new config — and would null the config it had just set. That is not
+    // hypothetical: it happened here, and the symptom was every bucket and
+    // downsampling task failing at startup with "cannot read properties of null".
+    const pending: Array<[WriteApi, string]> = [];
+    if (this.writeApi) pending.push([this.writeApi, "default"]);
+    if (this.energyHourlyWriteApi) pending.push([this.energyHourlyWriteApi, "energy-hourly"]);
+
+    this.writeApi = null;
+    this.energyHourlyWriteApi = null;
     this.client = null;
     this._connected = false;
     this.config = null;
+
+    // Each writer is flushed on its own. Sharing one `try` meant a failure
+    // flushing the first — Influx down during a settings change, exactly when a
+    // disconnect happens — skipped the second and left it non-null, bound to a
+    // discarded client. Every later `writeEnergyHourlyPoint` then took the
+    // "already have a writer" path and dropped the forecast curve while counting
+    // it as written.
+    for (const [api, what] of pending) {
+      try {
+        await api.close();
+      } catch (err) {
+        this.logger.warn(
+          { err, writer: what },
+          "Error flushing InfluxDB write buffer on disconnect",
+        );
+      }
+    }
   }
 
   isConnected(): boolean {

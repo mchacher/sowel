@@ -30,6 +30,13 @@ import {
   type PvSample,
 } from "./pv-model.js";
 import { isActiveSolarProfile } from "./solar-profile.js";
+import {
+  pairHistory,
+  profilePeakWc,
+  resolveWindow,
+  type BackfillWindow,
+  type HistoryHour,
+} from "./pv-backfill.js";
 
 /** Days of production history the fit runs on. Measured: 45 beats all-history. */
 export const WINDOW_DAYS = 45;
@@ -52,6 +59,15 @@ export const MIN_FRESH_SAMPLES = 24;
  */
 export const IRRADIANCE_DATA_POINT = "irradiance_120h";
 
+/**
+ * The past irradiance the weather plugin publishes for spec 161.
+ *
+ * A second series rather than a longer first one: the forward series is
+ * republished on every poll, and carrying 45 days of history in it would put
+ * ~130 KB on the wire twice an hour, with its `previous` value alongside.
+ */
+export const IRRADIANCE_HISTORY_DATA_POINT = "irradiance_history";
+
 interface IrradianceHour {
   t: string;
   direct: number | null;
@@ -62,6 +78,23 @@ interface IrradianceHour {
 interface IrradianceSeries {
   issuedAt?: string;
   hours: IrradianceHour[];
+}
+
+/** What a backfill did, or why it did nothing (spec 161, FR5). */
+export interface BackfillReport {
+  ok: boolean;
+  hoursPaired?: number;
+  windowFrom?: string;
+  windowTo?: string;
+  boundedBy?: BackfillWindow["boundedBy"];
+  model?: PvModel | null;
+  /** Set when nothing could be fitted, or nothing could be done at all. */
+  reason?:
+    | "no-profile"
+    | "no-history"
+    | "no-coordinates"
+    | "influx-unavailable"
+    | "not-enough-history";
 }
 
 export interface ForecastPoint {
@@ -179,6 +212,17 @@ export class PvForecaster {
   getComputedDataForEquipment(equipmentId: string): ComputedDataEntry[] {
     const curve = this.curves.get(equipmentId);
     if (!curve || curve.length === 0) return [];
+
+    // Nothing is published while the curve is the provisional clear-sky
+    // estimate. `persist()` already refuses to write that curve to Influx for
+    // this exact reason — it is nameplate output with no shading, soiling or
+    // ageing in it — and these aliases are read by machines, which have no
+    // "provisional" label to go on. A recipe binding to `pv_forecast_now_w`
+    // would act on near-nameplate numbers for the whole learning period.
+    //
+    // The panel is unaffected: it draws the curve from its own endpoint and says
+    // in words that it is provisional.
+    if (!this.getModel(equipmentId)) return [];
 
     const now = Date.now();
     const at = new Date().toISOString();
@@ -464,6 +508,201 @@ export class PvForecaster {
 
     this.store(equipment.id, next, peakWc, true);
     return next;
+  }
+
+  // ============================================================
+  // Backfill from existing history (spec 161)
+  // ============================================================
+
+  /**
+   * Fit the model now, from production the installation has already recorded.
+   *
+   * Without this a household waits about twelve days after declaring its array
+   * before the panel says anything but "provisional". The history is already
+   * there: hourly production in Influx, and the irradiance of those same hours
+   * published by the weather plugin.
+   *
+   * Explicit, never automatic. A model appearing on its own would be
+   * indistinguishable from a learned one, and it would run before the owner had
+   * a chance to say when the array last changed — which is the one thing that
+   * decides whether the result is worth having.
+   */
+  async backfill(equipmentId: string): Promise<BackfillReport> {
+    const equipment = this.equipments.getAll().find((e) => e.id === equipmentId);
+    if (!equipment || !isActiveSolarProfile(equipment.solarProfile)) {
+      return { ok: false, reason: "no-profile" };
+    }
+
+    const history = this.readIrradianceHistory();
+    if (!history) return { ok: false, reason: "no-history" };
+
+    const lat = parseFloat(this.settings.get("home.latitude") ?? "");
+    const lon = parseFloat(this.settings.get("home.longitude") ?? "");
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return { ok: false, reason: "no-coordinates" };
+    }
+
+    const window = resolveWindow(equipment.solarProfile?.since, WINDOW_DAYS, Date.now());
+    const production = await this.readProductionHistory(equipment, window);
+    if (production === null) return { ok: false, reason: "influx-unavailable" };
+
+    const peakWc = profilePeakWc(equipment.solarProfile);
+    const samples = pairHistory({
+      production,
+      hours: history,
+      planes: equipment.solarProfile?.planes ?? [],
+      latitude: lat,
+      longitude: lon,
+      window,
+      peakWc,
+    });
+
+    // Upserted on the same key the live path uses, so a backfill run twice
+    // rewrites its own rows instead of doubling them, and never fights a live
+    // sample for the hour in progress.
+    const insert = this.db.prepare(
+      `INSERT INTO pv_forecast_sample (equipment_id, at, hour_local, poa, temp_c, watts)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(equipment_id, at) DO UPDATE SET
+         poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts`,
+    );
+    this.db.transaction(() => {
+      for (const s of samples) {
+        insert.run(equipmentId, s.at, s.hourLocal, s.poa, s.tempC, s.watts);
+      }
+    })();
+
+    const report: BackfillReport = {
+      ok: true,
+      hoursPaired: samples.length,
+      windowFrom: new Date(window.fromMs).toISOString(),
+      windowTo: new Date(window.toMs).toISOString(),
+      boundedBy: window.boundedBy,
+      model: null,
+    };
+
+    // Fit over everything stored *inside the window*, not only what this run
+    // added — a second backfill after a live fortnight should use both — and not
+    // over everything stored either. Bounding what is added but not what is
+    // fitted is why a declared run after an unbounded one changed nothing at
+    // all: the earlier run's rows were still in the fit.
+    const windowFrom = new Date(window.fromMs).toISOString();
+    const inWindow = this.readSamplesSince(equipment, windowFrom);
+    const model = fitModel(inWindow, peakWc);
+    if (!model) {
+      this.logger.info(
+        { equipmentId, hoursPaired: samples.length, inWindow: inWindow.length },
+        "Backfill stored samples but there is still not enough history to fit",
+      );
+      // Nothing is deleted on this path, deliberately. A mistyped date — one day
+      // instead of one year — would otherwise cost a household every sample it
+      // had accumulated, in exchange for a model it did not get.
+      report.reason = "not-enough-history";
+      return report;
+    }
+
+    // Only now that the window alone has proved sufficient are the older rows
+    // dropped. A declared change date says the array was different before it, so
+    // those hours describe hardware that is gone and the nightly refit would
+    // otherwise keep fitting on them for another 45 days.
+    const pruned = this.db
+      .prepare("DELETE FROM pv_forecast_sample WHERE equipment_id = ? AND at < ?")
+      .run(equipmentId, windowFrom).changes;
+    if (pruned > 0) {
+      this.logger.info(
+        { equipmentId, pruned, from: windowFrom },
+        "Dropped PV samples recorded before the declared array configuration",
+      );
+    }
+
+    // The fit describes the declared capacity by construction: the window either
+    // starts at the declared change or reaches back only as far as the rolling
+    // window, so there is no pending change left to keep the trigger armed for.
+    this.store(equipmentId, model, peakWc, false);
+    this.db
+      .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
+      .run(equipmentId);
+    report.model = model;
+
+    this.logger.info(
+      {
+        equipmentId,
+        hoursPaired: samples.length,
+        gain: model.gain,
+        samples: model.samples,
+        boundedBy: window.boundedBy,
+      },
+      "PV model fitted from existing history",
+    );
+
+    // The curve is stale the moment the model changes.
+    this.recomputeSoon();
+    return report;
+  }
+
+  /** The published past series, or null when no plugin provides one. */
+  private readIrradianceHistory(): HistoryHour[] | null {
+    for (const device of this.devices.getAllWithData()) {
+      for (const data of device.data) {
+        if (data.key !== IRRADIANCE_HISTORY_DATA_POINT || data.type !== "json") continue;
+        const value = data.value as { hours?: HistoryHour[] } | null;
+        if (!value || !Array.isArray(value.hours) || value.hours.length === 0) continue;
+        if (!value.hours.some((h) => h.direct !== null && h.diffuse !== null)) continue;
+        return value.hours;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Hourly production over the window, from the downsampled bucket.
+   *
+   * `-hourly`, not the raw bucket: raw retention is seven days and the window is
+   * forty-five. The same asymmetry cost spec 160 its accuracy comparison.
+   *
+   * Read with no time shift, deliberately. `-hourly` labels an hour by its END,
+   * and so does Open-Meteo's irradiance (its radiation variables are documented
+   * as preceding-hour means), so the two already agree. See the note in
+   * `pv-accuracy.ts`; shifting one side collapsed the fitted gain from 3.8 to
+   * 45.8 when it was tried.
+   *
+   * Returns null when Influx cannot answer, which the caller reports rather than
+   * treating as "no production" — an empty history and an unreachable database
+   * are very different answers to give a household.
+   */
+  private async readProductionHistory(
+    equipment: Equipment,
+    window: BackfillWindow,
+  ): Promise<Map<number, number> | null> {
+    const config = this.influx.getConfig();
+    const client = this.influx.getClient();
+    if (!config || !client) return null;
+
+    const alias = this.getProductionAlias(equipment.id);
+    if (!alias) return new Map();
+
+    const days = Math.ceil((Date.now() - window.fromMs) / 86_400_000) + 1;
+    const flux = `from(bucket: "${config.bucket}-hourly")
+  |> range(start: -${days}d, stop: now())
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipment.id}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "mean")
+  |> sort(columns: ["_time"])`;
+
+    const out = new Map<number, number>();
+    try {
+      for await (const { values, tableMeta } of client.getQueryApi(config.org).iterateRows(flux)) {
+        const row = tableMeta.toObject(values);
+        const ms = Date.parse(String(row._time));
+        const v = row._value as number | undefined;
+        if (Number.isFinite(ms) && typeof v === "number") out.set(ms, v);
+      }
+    } catch (err) {
+      this.logger.warn({ err, equipmentId: equipment.id }, "PV backfill production query failed");
+      return null;
+    }
+    return out;
   }
 
   /**
