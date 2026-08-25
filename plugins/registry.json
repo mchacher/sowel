@@ -119,11 +119,11 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-weather-forecast",
-    "version": "2.0.0",
+    "version": "2.3.0",
     "tags": ["weather", "forecast", "open-meteo"],
     "sowelVersion": ">=1.2.11",
     "owner": "mchacher",
-    "sha256": "c5896e2025ff9020ad3bebd0d94c25b494334d30bf5f9e6744222258e3363174"
+    "sha256": "ac340f921d1c79a3b1f02af46a2c19e17937dc07d7ac9834e3ef1ac3287ccb76"
   },
   {
     "id": "smartthings",
