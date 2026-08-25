@@ -272,6 +272,36 @@ export type EquipmentType =
   // Spec 156 — uninterruptible power supply, read-only.
   | "ups";
 
+/** Spec 160 — one coplanar group of panels. */
+export interface SolarPlane {
+  tiltDeg: number;
+  azimuthDeg: number;
+  peakWc: number;
+}
+
+export interface SolarProfile {
+  planes: SolarPlane[];
+}
+
+/** Spec 160 — one hour of the expected-production curve. */
+export interface PvForecastPoint {
+  at: string;
+  watts: number;
+}
+
+export interface PvForecastResponse {
+  active: boolean;
+  declaredPeakWc: number;
+  planes: SolarPlane[];
+  curve: PvForecastPoint[];
+  model: {
+    gain: number;
+    shape: Record<number, number>;
+    fittedAt: string;
+    samples: number;
+  } | null;
+}
+
 export interface Equipment {
   id: string;
   name: string;
@@ -292,6 +322,8 @@ export interface Equipment {
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
   invertDirection?: boolean;
+  /** Spec 160 — declared array geometry. */
+  solarProfile?: SolarProfile;
 }
 
 // ============================================================
