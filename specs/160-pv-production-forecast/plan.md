@@ -9,9 +9,9 @@ irradiance series appears.
 ### Slice A — Plugin 2.2.0: the irradiance series
 
 - A.1 — Fetch `direct_radiation`, `diffuse_radiation` and `temperature_2m`
-  hourly over 120 points, on the existing poll.
+  hourly over the 120 h of lookahead (144 calendar points), on the existing poll.
 - A.2 — Publish `irradiance_120h` as one `json` data point, category
-  `solar_radiation`.
+  `generic` (the `solar_radiation` category is defined for a single number).
 - A.3 — Degrade like the rest: a failed hourly call costs the series, never the
   daily forecast.
 - A.4 — Release, then the registry `sha256` bump (spec 089).
@@ -91,7 +91,7 @@ pure modules above.
 | validator      | Empty plane list                                | Treated as absent, not as an invalid profile                                                   |
 | validator      | Two valid planes                                | Accepted                                                                                       |
 | validator      | Each of the eight cardinals                     | Sets the expected azimuth, N is 0 and S is 180                                                 |
-| plugin         | 120 hourly points parsed into the series        | `hours` has 120 entries with direct, diffuse and temp                                          |
+| plugin         | the hourly block parsed into the series         | `hours` mirrors the fixture entry for entry, with direct, diffuse and temp                     |
 | plugin         | Hourly call fails                               | Series absent, the daily forecast still published                                              |
 
 ### Fixtures

@@ -145,8 +145,17 @@ export class PvForecaster {
     this.refitTimer = null;
     if (this.recomputeTimer) clearTimeout(this.recomputeTimer);
     this.recomputeTimer = null;
-    // Do not lose the hour in progress on a clean stop.
-    for (const [equipmentId, bucket] of this.pending) this.closeHour(equipmentId, bucket);
+    // Do not lose the hour in progress on a clean stop. Each is closed on its
+    // own: an equipment deleted mid-hour leaves a bucket whose insert violates
+    // the foreign key, and an unguarded loop would abort there and drop every
+    // other equipment's hour with it.
+    for (const [equipmentId, bucket] of this.pending) {
+      try {
+        this.closeHour(equipmentId, bucket);
+      } catch (err) {
+        this.logger.warn({ err, equipmentId }, "Could not persist the PV sample in progress");
+      }
+    }
     this.pending.clear();
   }
 
@@ -218,14 +227,12 @@ export class PvForecaster {
         category: "power",
         lastUpdated: at,
       },
-      // The curve itself, for the panel. A json entry rather than 120 flat
-      // aliases, for the same reason the plugin publishes one series.
-      {
-        alias: "pv_forecast_curve",
-        value: curve,
-        category: "generic",
-        lastUpdated: at,
-      },
+      // The curve itself is deliberately not published here. Computed data is
+      // serialised into every `GET /api/v1/equipments`, and the curve is ~7 kB
+      // per production meter that no client reads: the panel takes it from
+      // `/energy/pv-forecast/:id`, and a recipe wants the scalars above, not a
+      // 144-point array. The three figures cost a few bytes and are the surface
+      // an automation would bind to.
     ];
   }
 
@@ -243,6 +250,19 @@ export class PvForecaster {
    */
   getIssuedAt(equipmentId: string): string | null {
     return this.issuedAt.get(equipmentId) ?? null;
+  }
+
+  /**
+   * Whether any plugin is currently publishing the irradiance series.
+   *
+   * Without it a declared array produces no curve at all, which is
+   * indistinguishable on the panel from an array still gathering its first
+   * fortnight of samples. The two need different words: one is waiting for
+   * time to pass, the other for a plugin to be installed or updated, and only
+   * the second is something the household can act on.
+   */
+  hasIrradianceSeries(): boolean {
+    return this.readIrradiance() !== null;
   }
 
   /** The production binding the accuracy comparison comes from. */
@@ -282,6 +302,17 @@ export class PvForecaster {
     const series = this.readIrradiance();
     if (!series) return;
 
+    // Drop what belongs to equipments that no longer declare an array. Without
+    // this the last curve stays in memory for good, and the computed aliases
+    // keep publishing a forecast for a meter whose declaration was withdrawn.
+    const active = new Set(this.solarEquipments().map((e) => e.id));
+    for (const id of this.curves.keys()) {
+      if (active.has(id)) continue;
+      this.curves.delete(id);
+      this.issuedAt.delete(id);
+      this.pending.delete(id);
+    }
+
     for (const equipment of this.solarEquipments()) {
       try {
         this.collectSample(equipment, series, totalPeakWc(equipment.solarProfile?.planes ?? []));
@@ -289,7 +320,13 @@ export class PvForecaster {
         if (curve.length === 0) continue;
         this.curves.set(equipment.id, curve);
         this.issuedAt.set(equipment.id, series.issuedAt ?? new Date().toISOString());
-        this.persist(equipment.id, curve, series.issuedAt);
+        // Only a model-backed curve is worth keeping for FR6. The provisional
+        // clear-sky estimate is nameplate output with no shading, soiling or
+        // ageing in it, and its own docstring says it reads high; persisted
+        // untagged it would sit in the two-year bucket and be scored as if it
+        // were a forecast, reporting the site as far worse than the model is.
+        // The panel still draws it from memory, labelled provisional.
+        if (this.getModel(equipment.id)) this.persist(equipment.id, curve, series.issuedAt);
       } catch (err) {
         this.logger.error({ err, equipmentId: equipment.id }, "PV curve computation failed");
       }
@@ -309,7 +346,14 @@ export class PvForecaster {
       for (const data of device.data) {
         if (data.key !== IRRADIANCE_DATA_POINT || data.type !== "json") continue;
         const value = data.value as IrradianceSeries | null;
-        if (value && Array.isArray(value.hours) && value.hours.length > 0) return value;
+        if (!value || !Array.isArray(value.hours) || value.hours.length === 0) continue;
+        // A model configured without the radiation variables answers with the
+        // right number of hours and nothing in them. That passes every length
+        // check on both sides and then yields an empty curve, which the panel
+        // reads as "still learning" — a fully populated, fully null series is
+        // otherwise indistinguishable from a working one.
+        if (!value.hours.some((h) => h.direct !== null && h.diffuse !== null)) continue;
+        return value;
       }
     }
     return null;
@@ -326,7 +370,15 @@ export class PvForecaster {
 
     const lat = parseFloat(this.settings.get("home.latitude") ?? "");
     const lon = parseFloat(this.settings.get("home.longitude") ?? "");
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [];
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      // Silent until now: the curve came back empty and the panel said the
+      // array was still being learned, which no amount of waiting would fix.
+      this.logger.warn(
+        { equipmentId: equipment.id },
+        "Home coordinates are not set, no PV forecast can be computed",
+      );
+      return [];
+    }
 
     const out: ForecastPoint[] = [];
     for (const hour of series.hours) {
@@ -456,7 +508,20 @@ export class PvForecaster {
         // the nightly refit would quietly close a change it had not measured.
         const measured = !pending?.gain_reset_at || fresh >= MIN_SAMPLES;
         const stampedPeakWc = measured ? peakWc : (existingPeakWc ?? peakWc);
-        this.store(equipment.id, model, stampedPeakWc, false);
+
+        // The same reasoning has to cover the gain, not just the stamp. While a
+        // change is pending, the stored gain is the re-estimated one — from the
+        // capacity trigger or from a manual recalibration — and this window is
+        // still dominated by the array as it was before. Writing the window's
+        // gain here undoes that re-estimation every night at 02:15, and the
+        // owner is told "recalibrated" for a number discarded hours later.
+        //
+        // The shape is refreshed either way: it was measured identical across a
+        // real +1 kW addition, which is the whole reason gain and shape are
+        // fitted separately.
+        const stored = this.getModel(equipment.id);
+        const toStore = measured || !stored ? model : { ...model, gain: stored.gain };
+        this.store(equipment.id, toStore, stampedPeakWc, false);
 
         if (measured) {
           this.db
@@ -513,8 +578,14 @@ export class PvForecaster {
   /**
    * The recorded samples inside the window.
    *
-   * Measured production paired with the irradiance that produced it, never the
-   * forecast, so a bad model can never train the next one on its own output.
+   * Measured production paired with the irradiance forecast for that hour.
+   *
+   * The watts are always measured, never predicted, which is what keeps a bad
+   * model from training the next one on its own output. The irradiance is the
+   * forecast series — there is no pyranometer on the roof — so a systematically
+   * wrong irradiance forecast does bias the gain. That bias is the same one the
+   * forecast will carry at prediction time, and fitting through it is what makes
+   * the model correct for it rather than against it.
    */
   private readSamples(equipment: Equipment, days: number): PvSample[] {
     const from = new Date(Date.now() - days * 86_400_000).toISOString();

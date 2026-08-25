@@ -13,6 +13,14 @@ import type { Logger } from "../../core/logger.js";
 /** Measurement the forecaster writes its curve to. */
 export const FORECAST_MEASUREMENT = "pv_forecast";
 
+/**
+ * Longest comparison window, in days.
+ *
+ * The forecast side lives for two years; the measured side is the 90-day
+ * downsampled power series, and a pair needs both.
+ */
+export const MAX_ACCURACY_DAYS = 90;
+
 /** Lead bucket compared by default: what was said the day before. */
 export const DEFAULT_LEAD_BUCKET = "6-24h";
 
@@ -54,7 +62,10 @@ export async function queryPvAccuracy(
   const client = influxClient.getClient();
   if (!config || !client) return EMPTY;
 
-  const days = params.days ?? 7;
+  // Bounded by the downsampled power retention (90 days), not by the forecast
+  // side, which keeps two years. Asking for more would return fewer paired
+  // hours than requested with nothing to say why.
+  const days = Math.min(params.days ?? 7, MAX_ACCURACY_DAYS);
   const leadBucket = params.leadBucket ?? DEFAULT_LEAD_BUCKET;
   const queryApi = client.getQueryApi(config.org);
 
@@ -82,12 +93,20 @@ export async function queryPvAccuracy(
     if (forecast.size === 0) return EMPTY;
 
     // What the meter actually recorded, on the same hourly grid.
-    const actualFlux = `from(bucket: "${config.bucket}")
+    //
+    // The downsampled bucket, not the raw one. Raw retention is seven days —
+    // exactly the default window, so the comparison would sit permanently on
+    // the eviction boundary and any longer window would silently return only
+    // the last week, `pairSeries` having quietly dropped every forecast hour
+    // whose partner had expired. `-hourly` keeps 90 days of the same series,
+    // already aggregated to the hour and stamped at the hour start, which is
+    // where the forecast points sit too.
+    const actualFlux = `from(bucket: "${config.bucket}-hourly")
   |> range(start: -${days}d, stop: now())
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${params.equipmentId}")
   |> filter(fn: (r) => r.alias == "${params.alias}")
-  |> filter(fn: (r) => r._field == "value_number")
+  |> filter(fn: (r) => r._field == "mean")
   |> aggregateWindow(every: 1h, fn: mean, createEmpty: false, timeSrc: "_start")
   |> sort(columns: ["_time"])`;
 

@@ -302,6 +302,8 @@ export interface PvForecastResponse {
   curve: PvForecastPoint[];
   /** When the weather series behind the curve was issued. Null before the first. */
   issuedAt: string | null;
+  /** False when no plugin publishes the irradiance series the curve needs. */
+  weatherAvailable: boolean;
   accuracy: {
     samples: number;
     maeW: number | null;

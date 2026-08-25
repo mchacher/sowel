@@ -661,6 +661,11 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         // FR5 — the age of the series behind the curve, so a stale forecast is
         // not drawn like a fresh one.
         issuedAt: pvForecaster?.getIssuedAt(equipment.id) ?? null,
+        // Whether a weather plugin is publishing irradiance at all. An empty
+        // curve means "still learning" only if the input exists; otherwise it
+        // means the plugin is missing or too old, which the panel must say
+        // instead of asking the household to keep waiting.
+        weatherAvailable: pvForecaster?.hasIrradianceSeries() ?? false,
         accuracy,
         model: model
           ? {

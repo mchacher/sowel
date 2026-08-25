@@ -160,3 +160,112 @@ describe("the capacity-change trigger survives the nightly refit", () => {
     expect(after.gain_reset_at).not.toBeNull();
   });
 });
+
+/**
+ * What the nightly refit is allowed to overwrite.
+ *
+ * The stamp was guarded; the gain it protects was not. While a change is
+ * pending, the stored gain is the re-estimated one and the 45-day window still
+ * describes the array as it was — so writing the window's gain at 02:15 undoes
+ * exactly the correction the pending state exists to preserve.
+ *
+ * The seeded samples all fit a gain of 2.5 (1500 W at 600 W/m2), so a kept gain
+ * and a refit one are trivially distinguishable.
+ */
+describe("the nightly refit does not undo a re-estimated gain", () => {
+  let db: Database.Database;
+
+  const WINDOW_GAIN = 2.5;
+  const RECALIBRATED = 3.33;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    migrate(db);
+    db.prepare("INSERT INTO equipments (id, solar_profile) VALUES (?, ?)").run(
+      EQUIPMENT_ID,
+      JSON.stringify({ planes: [{ tiltDeg: 35, azimuthDeg: 180, peakWc: NEW_PEAK }] }),
+    );
+  });
+
+  function seedModelWithGain(gain: number, gainResetAt: string | null, peakWc: number): void {
+    db.prepare(
+      `INSERT INTO pv_forecast_model
+         (equipment_id, gain, shape, fitted_at, samples, fitted_peak_wc, gain_reset_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      EQUIPMENT_ID,
+      gain,
+      JSON.stringify({ 8: 1, 9: 1 }),
+      new Date().toISOString(),
+      500,
+      peakWc,
+      gainResetAt,
+    );
+  }
+
+  function gainNow(): number {
+    return (
+      db.prepare("SELECT gain FROM pv_forecast_model WHERE equipment_id = ?").get(EQUIPMENT_ID) as {
+        gain: number;
+      }
+    ).gain;
+  }
+
+  it("keeps a manual recalibration instead of replacing it with the window fit", () => {
+    // The state `refitGain` leaves behind: capacity unchanged, stamp set now.
+    const recalibratedAt = Date.now() - 4 * 3_600_000;
+    seedModelWithGain(RECALIBRATED, new Date(recalibratedAt).toISOString(), NEW_PEAK);
+    seedSamples(db, MIN_SAMPLES + 60, recalibratedAt, 4);
+
+    build(db).refitAll();
+
+    // Told "recalibrated, gain now 3.33" in the evening, silently back to 2.5
+    // by morning — the panel reports a number that no longer exists.
+    expect(gainNow()).toBeCloseTo(RECALIBRATED, 5);
+  });
+
+  it("keeps the gain the capacity trigger re-estimated", () => {
+    // The state `modelFor` leaves behind once it has fired: capacity advanced to
+    // the declared value, stamp still set because the window has not caught up.
+    const changedAt = Date.now() - 2 * 24 * 3_600_000;
+    seedModelWithGain(RECALIBRATED, new Date(changedAt).toISOString(), NEW_PEAK);
+    seedSamples(db, MIN_SAMPLES + 60, changedAt, 20);
+
+    build(db).refitAll();
+
+    expect(gainNow()).toBeCloseTo(RECALIBRATED, 5);
+  });
+
+  it("refreshes the shape even while the gain is held", () => {
+    const recalibratedAt = Date.now() - 4 * 3_600_000;
+    seedModelWithGain(RECALIBRATED, new Date(recalibratedAt).toISOString(), NEW_PEAK);
+    seedSamples(db, MIN_SAMPLES + 60, recalibratedAt, 4);
+
+    build(db).refitAll();
+
+    // The seeded shape had two hours; the window covers ten. Holding the gain
+    // must not freeze the rest of the model.
+    const shape = JSON.parse(
+      (
+        db
+          .prepare("SELECT shape FROM pv_forecast_model WHERE equipment_id = ?")
+          .get(EQUIPMENT_ID) as {
+          shape: string;
+        }
+      ).shape,
+    ) as Record<string, number>;
+    expect(Object.keys(shape).length).toBeGreaterThan(2);
+  });
+
+  it("takes the window gain once the window has actually seen the new array", () => {
+    const changedAt = Date.now() - 40 * 24 * 3_600_000;
+    seedModelWithGain(RECALIBRATED, new Date(changedAt).toISOString(), NEW_PEAK);
+    seedSamples(db, MIN_SAMPLES + 60, changedAt, MIN_SAMPLES + 60);
+
+    build(db).refitAll();
+
+    // The hold is temporary by design: once enough post-change history exists,
+    // the full fit is the better estimate and must win.
+    expect(gainNow()).toBeCloseTo(WINDOW_GAIN, 5);
+  });
+});

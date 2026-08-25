@@ -116,7 +116,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
           </span>
         </div>
 
-        {data.model === null && data.curve.length === 0 ? (
+        {/* An empty curve has two very different causes. Waiting for samples
+            resolves itself; a missing weather plugin never does, and saying
+            "learning" there would leave the household waiting on nothing. */}
+        {data.curve.length === 0 && !data.weatherAvailable ? (
+          <p className="text-[13px] text-warning">{t("equipments.pv.noWeather")}</p>
+        ) : data.model === null && data.curve.length === 0 ? (
           <p className="text-[13px] text-text-secondary">{t("equipments.pv.learning")}</p>
         ) : (
           <>
@@ -127,7 +132,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
 
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
+                <AreaChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="pvFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.35} />
@@ -147,9 +152,15 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     stroke="var(--color-border)"
                   />
                   <YAxis
+                    // In kW, not W. Four-digit watt labels do not fit the
+                    // gutter this chart leaves: at 11px behind a -16px left
+                    // margin they were clipped to their last three digits, so a
+                    // 3800 W peak read "800" — an axis that looked plausible
+                    // and was wrong by an order of magnitude.
+                    tickFormatter={(w: number) => (w > 0 ? `${(w / 1000).toFixed(1)} kW` : "0")}
                     tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
-                    width={44}
+                    width={56}
                   />
                   <Tooltip
                     labelFormatter={(ts) =>

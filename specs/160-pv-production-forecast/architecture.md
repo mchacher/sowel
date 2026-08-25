@@ -13,7 +13,7 @@ converts it into a production forecast is core work.
 weather-forecast plugin 2.2.0, every poll
   │  hourly direct_radiation, diffuse_radiation, temperature_2m, 120 points
   ▼
-device data  irradiance_120h   (type "json", category "solar_radiation")
+device data  irradiance_120h   (type "json", category "generic")
   │            read straight off the DeviceManager — no binding, no equipment
   ▼  device.data.updated
 PvForecaster (core)
@@ -104,9 +104,11 @@ and registers a computed-data provider.
 **The irradiance series is read straight off the `DeviceManager`, with no data
 binding and no equipment.** Bindings exist to attach device data to something a
 household looks at; this series is a computation input nobody wants on a card.
-The forecaster looks for a device data point of category `solar_radiation` and
-type `json`, whichever integration publishes it, so a future weather plugin can
-serve it without a code change here.
+The forecaster looks for a device data point by key (`irradiance_120h`) and type
+(`json`), whichever integration publishes it, so a future weather plugin can
+serve it without a code change here. Not by category: the natural
+`solar_radiation` category is defined for a single number, and this entry is a
+series, so it is published as `generic`.
 
 This matters for more than tidiness: a binding would have to be created by hand
 after the plugin update, which is exactly the friction reported in issue #707.
@@ -197,7 +199,7 @@ One new data point, the deferred half of spec 159:
 | Field      | Value                                                                |
 | ---------- | -------------------------------------------------------------------- |
 | Data point | `irradiance_120h`                                                    |
-| Type       | `json`, category `solar_radiation`                                   |
+| Type       | `json`, category `generic`                                           |
 | Payload    | `issuedAt`, `model`, and `hours` as `[{ t, direct, diffuse, temp }]` |
 
 `direct_radiation` and `diffuse_radiation` separately, never just

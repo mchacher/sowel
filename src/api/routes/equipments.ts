@@ -265,6 +265,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           description: body.description,
           enabled: body.enabled,
           energyProfile: body.energyProfile,
+          solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
         });

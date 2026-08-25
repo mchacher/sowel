@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { pairSeries } from "./pv-accuracy.js";
+import type { InfluxClient } from "../../core/influx-client.js";
+import { createLogger } from "../../core/logger.js";
+import {
+  FORECAST_MEASUREMENT,
+  MAX_ACCURACY_DAYS,
+  pairSeries,
+  queryPvAccuracy,
+} from "./pv-accuracy.js";
 
 const h = (n: number): string => `2026-08-25T${String(n).padStart(2, "0")}:00:00Z`;
 
@@ -90,24 +97,81 @@ describe("pairSeries", () => {
   });
 });
 
-describe("the bucket the query reads", () => {
-  it("reads the same bucket the forecaster writes", async () => {
-    // These two lived in different buckets for a while: the forecaster wrote to
-    // the raw one, the query read the energy-hourly one, and the comparison was
-    // therefore always empty. Nothing in the type system connects them, so the
-    // pairing is asserted here.
-    const { readFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const forecaster = readFileSync(
-      fileURLToPath(new URL("./pv-forecaster.ts", import.meta.url)),
-      "utf8",
-    );
-    const accuracy = readFileSync(
-      fileURLToPath(new URL("./pv-accuracy.ts", import.meta.url)),
-      "utf8",
-    );
+/**
+ * Which bucket each side of the pairing actually reads.
+ *
+ * This has been wrong twice, in both directions, and never visibly: a forecast
+ * read from a bucket nothing writes, and a measurement read from a bucket that
+ * evicts it after seven days. Both produced an empty or truncated comparison
+ * that looked exactly like "no data yet".
+ *
+ * Asserted by capturing the Flux the query emits, not by grepping the source
+ * for substrings — the previous version of this test checked two unrelated
+ * literals and would have stayed green through either regression.
+ */
+describe("the buckets the query reads", () => {
+  function captureQueries(): { queries: string[]; influx: InfluxClient } {
+    const queries: string[] = [];
+    const influx = {
+      getConfig: () => ({ bucket: "sowel", org: "sowel" }),
+      getClient: () => ({
+        getQueryApi: () => ({
+          iterateRows: (flux: string) => {
+            queries.push(flux);
+            // Yielding nothing is enough: the assertions are on the queries.
+            return (async function* () {})();
+          },
+        }),
+      }),
+    } as unknown as InfluxClient;
+    return { queries, influx };
+  }
 
-    expect(forecaster).toContain("writeEnergyHourlyPoint");
-    expect(accuracy).toContain("-energy-hourly");
+  const silent = createLogger("silent").logger;
+
+  it("reads the forecast from the two-year energy-hourly bucket", async () => {
+    const { queries, influx } = captureQueries();
+    await queryPvAccuracy(influx, { equipmentId: "eq-1", alias: "power" }, silent);
+
+    expect(queries[0]).toContain('from(bucket: "sowel-energy-hourly")');
+    expect(queries[0]).toContain(`r._measurement == "${FORECAST_MEASUREMENT}"`);
+  });
+
+  it("reads the measurement from the 90-day hourly bucket, not the 7-day raw one", async () => {
+    const { queries, influx } = captureQueries();
+    // The forecast side must return something for the actual side to run at all.
+    const influxWithForecast = {
+      ...influx,
+      getClient: () => ({
+        getQueryApi: () => ({
+          iterateRows: async function* (flux: string) {
+            queries.push(flux);
+            if (flux.includes(FORECAST_MEASUREMENT)) {
+              yield {
+                values: [],
+                tableMeta: { toObject: () => ({ _time: "2026-08-19T12:00:00Z", _value: 3000 }) },
+              } as never;
+            }
+          },
+        }),
+      }),
+    } as unknown as InfluxClient;
+
+    await queryPvAccuracy(influxWithForecast, { equipmentId: "eq-1", alias: "power" }, silent);
+
+    const actualQuery = queries.find((q) => q.includes("equipment_data"));
+    expect(actualQuery).toBeDefined();
+    // The raw bucket retains exactly the default window, so it must not be it.
+    expect(actualQuery).toContain('from(bucket: "sowel-hourly")');
+    expect(actualQuery).not.toContain('from(bucket: "sowel")');
+    // And the downsampled series stores `mean`, never `value_number`.
+    expect(actualQuery).toContain('r._field == "mean"');
+  });
+
+  it("caps the window at the retention of the shorter side", async () => {
+    const { queries, influx } = captureQueries();
+    await queryPvAccuracy(influx, { equipmentId: "eq-1", alias: "power", days: 365 }, silent);
+
+    expect(queries[0]).toContain(`range(start: -${MAX_ACCURACY_DAYS}d`);
   });
 });

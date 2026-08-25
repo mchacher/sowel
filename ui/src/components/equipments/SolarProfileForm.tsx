@@ -85,6 +85,27 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
     }
   }
 
+  /**
+   * Withdraw the declaration entirely.
+   *
+   * Sends an explicit null rather than an empty plane list: the manager treats
+   * undefined as "leave alone" and null as "clear", and only the second stops
+   * the forecast and hides the panel.
+   */
+  async function withdraw(): Promise<void> {
+    setError(null);
+    setSaving(true);
+    try {
+      await updateEquipment(equipmentId, { solarProfile: null });
+      setDraft([EMPTY_PLANE]);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
       <div className="flex items-center gap-2 mb-1">
@@ -221,6 +242,19 @@ export function SolarProfileForm({ equipmentId, planes, onSaved }: SolarProfileF
         >
           {saving ? t("common.saving") : t("common.save")}
         </button>
+        {/* FR9 — a declaration has to be undoable. Without this the panel is
+            permanent on every production meter once saved, and the per-plane
+            delete cannot reach zero because it hides on the last one. */}
+        {planes.length > 0 && (
+          <button
+            type="button"
+            onClick={withdraw}
+            disabled={saving}
+            className="text-[12px] text-text-tertiary hover:text-error disabled:opacity-50"
+          >
+            {t("equipments.solar.withdraw")}
+          </button>
+        )}
         {totalWc > 0 && (
           <span className="text-[12px] text-text-tertiary tabular-nums font-mono">
             {t("equipments.solar.total", { wc: totalWc })}

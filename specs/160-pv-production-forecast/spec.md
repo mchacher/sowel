@@ -131,9 +131,14 @@ that once the hour has passed the forecast can be compared with what the meter
 actually recorded. Without this the forecast is a snapshot overwritten at each
 poll and its accuracy can never be stated, now or later.
 
-Retention aligns with `ENERGY_RETENTION.hourly`, **2 years**, so one June can be
-compared with the next and soiling or ageing can be seen drifting across a full
-season.
+Forecast points are kept for **2 years** (`ENERGY_RETENTION.hourly`). The
+comparison itself is bounded by the shorter side: the measured power survives as
+the downsampled hourly series, retained **90 days**, and a pair needs both. So
+the accuracy figure can look back a season, not a year, and asking for a longer
+window returns 90 days rather than silently fewer paired hours. Comparing one
+June with the next would need the measured side to be retained as long as the
+forecast side, which is a change to the energy downsampling, not to this
+feature.
 
 ### FR7 — A capacity change is declared, not guessed
 
@@ -253,16 +258,16 @@ none.
 
 ## Edge Cases
 
-| Case                                                           | Expected                                                                                                                                      |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| No `solarProfile`                                              | Feature inert, nothing computed or stored                                                                                                     |
-| Profile declared but no production history yet                 | No fit; the clear-sky physical estimate is published with the accuracy shown as unknown                                                       |
-| Fewer than N days in the window                                | No fit, forecast withheld rather than published from noise                                                                                    |
-| Irradiance series missing (plugin not updated, or poll failed) | Last curve kept with its age shown; no new points persisted                                                                                   |
-| Sun below the horizon                                          | POA is zero by construction, production forecast zero, not null                                                                               |
-| A plane declared with an absurd tilt or azimuth                | Rejected at validation with a message naming the field                                                                                        |
-| Total peak power zero or missing                               | Profile invalid; treated as absent                                                                                                            |
-| Meter reports a sample above peak power                        | Excluded from the fit, logged, still shown on the actual curve                                                                                |
-| Array changed but the profile not updated                      | The forecast drifts until the 45-day window catches up; the declared peak power is shown beside the curve so the stale declaration is visible |
-| Profile saved with the same peak power as before               | No `gain` reset; an edit to tilt or azimuth alone does not throw away a good fit                                                              |
-| Equipment deleted                                              | Its forecast state and stored points go with it                                                                                               |
+| Case                                                           | Expected                                                                                                                                       |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| No `solarProfile`                                              | Feature inert, nothing computed or stored                                                                                                      |
+| Profile declared but no production history yet                 | No fit; the clear-sky physical estimate is published with the accuracy shown as unknown                                                        |
+| Fewer than `MIN_SAMPLES` usable hours in the window            | No model is fitted; the clear-sky estimate stands in, labelled provisional, and is deliberately **not** persisted so it cannot be scored later |
+| Irradiance series missing (plugin not updated, or poll failed) | Last curve kept with its age shown; no new points persisted                                                                                    |
+| Sun below the horizon                                          | POA is zero by construction, production forecast zero, not null                                                                                |
+| A plane declared with an absurd tilt or azimuth                | Rejected at validation with a message naming the field                                                                                         |
+| Total peak power zero or missing                               | Profile invalid; treated as absent                                                                                                             |
+| Meter reports a sample above peak power                        | Excluded from the fit, logged, still shown on the actual curve                                                                                 |
+| Array changed but the profile not updated                      | The forecast drifts until the 45-day window catches up; the declared peak power is shown beside the curve so the stale declaration is visible  |
+| Profile saved with the same peak power as before               | No `gain` reset; an edit to tilt or azimuth alone does not throw away a good fit                                                               |
+| Equipment deleted                                              | Its forecast state and stored points go with it                                                                                                |
