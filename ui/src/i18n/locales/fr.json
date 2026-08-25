@@ -1433,6 +1433,7 @@
   "equipments.pv.expected": "Attendu",
   "equipments.pv.learning": "Apprentissage en cours. La prévision apparaîtra dès que assez de production aura été enregistrée.",
   "equipments.pv.provenance": "Ajusté sur {{samples}} heures, mis à jour le {{date}}",
+  "equipments.pv.now": "maintenant",
   "equipments.pv.noWeather": "La prévision a besoin que le plugin météo publie l'irradiance solaire. Installez-le ou mettez-le à jour, et ce panneau se remplira à la prochaine interrogation.",
   "equipments.pv.backfill": "Ajuster sur l'historique",
   "equipments.pv.backfilled": "Ajusté sur {{hours}} heures déjà enregistrées",

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,7 +16,7 @@ import { dateLocale } from "../../lib/locale";
 import type { PvForecastResponse } from "../../types";
 import { backfillPvForecast, getPvForecast, recalibratePvForecast } from "../../api";
 import { SolarProfileForm } from "./SolarProfileForm";
-import { sumKwh, dailyTicks } from "./pvForecastUtils";
+import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
 
 /**
  * Expected PV production (spec 160).
@@ -79,10 +79,14 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   }
 
   const locale = dateLocale(i18n.language);
-  const chart = data.curve.map((p) => ({
-    ts: Date.parse(p.at),
-    watts: p.watts,
-  }));
+  const now = Date.now();
+  // One timeline. Past hours carry what was promised for them, future hours the
+  // current curve; see `mergeTimeline`.
+  const chart = mergeTimeline(data.accuracy.points, data.curve, now);
+  const spanDays = chart.length > 1 ? (chart[chart.length - 1].ts - chart[0].ts) / 86_400_000 : 0;
+  // A weekday name stops helping once the span passes a fortnight.
+  const tickFormat: Intl.DateTimeFormatOptions =
+    spanDays > 14 ? { day: "numeric", month: "short" } : { weekday: "short", day: "numeric" };
 
   // FR5 — a curve nobody refreshed must not be drawn like a fresh one.
   const ageHours = data.issuedAt
@@ -158,9 +162,74 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               <Figure label={t("equipments.pv.tomorrow")} value={tomorrowKwh} />
             </div>
 
-            <div className="h-48">
+            {/* One chart, not two. The comparison and the forecast are the
+                same quantity in the same unit on adjacent stretches of time;
+                split apart, the reader had to join them up by eye. */}
+            <div className="flex items-baseline gap-2 flex-wrap mb-2">
+              <span className="text-[12px] text-text-secondary">
+                {t("equipments.pv.accuracy")}
+              </span>
+              {data.accuracy.maeW !== null ? (
+                <>
+                  <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
+                    {t("equipments.pv.accuracyValue", { mae: data.accuracy.maeW })}
+                  </span>
+                  <span className="text-[11px] text-text-tertiary">
+                    {t("equipments.pv.accuracySamples", { n: data.accuracy.samples })}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[11px] text-text-tertiary">
+                  {t("equipments.pv.accuracyPending")}
+                </span>
+              )}
+
+              {/* Which line is which. Two series in two colours and nothing
+                  else saying so is the question this panel exists to answer. */}
+              <span className="flex items-center gap-3 ml-2">
+                <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                  <span
+                    aria-hidden
+                    className="inline-block w-3 h-[2px] rounded-full"
+                    style={{ background: "var(--color-accent)" }}
+                  />
+                  {t("equipments.pv.expected")}
+                </span>
+                {data.accuracy.maeW !== null && (
+                  <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                    <span
+                      aria-hidden
+                      className="inline-block w-3 h-[2px] rounded-full"
+                      style={{ background: "var(--color-primary)" }}
+                    />
+                    {t("equipments.pv.actual")}
+                  </span>
+                )}
+              </span>
+
+              {/* How far back. Bounded server-side by how long the measured
+                  series is retained, so 90 days is the honest maximum. */}
+              <span className="ml-auto flex items-center gap-1">
+                {[7, 30, 90].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setAccuracyDays(d)}
+                    className={`px-2 py-0.5 rounded-[6px] text-[11px] font-medium border ${
+                      accuracyDays === d
+                        ? "border-primary bg-primary-light text-primary"
+                        : "border-border text-text-secondary hover:border-primary"
+                    }`}
+                  >
+                    {t("equipments.pv.lastDays", { n: d })}
+                  </button>
+                ))}
+              </span>
+            </div>
+
+            <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <ComposedChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="pvFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.35} />
@@ -173,22 +242,20 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     type="number"
                     scale="time"
                     domain={["dataMin", "dataMax"]}
-                    // One tick per day. Left to itself Recharts puts a tick
-                    // every few of the 144 hourly points, and formatted as
-                    // weekday names that reads "Tue Tue Tue Wed Wed Wed".
+                    // One tick per local day, thinned on a long window. Left to
+                    // itself Recharts put one every few hourly points, and
+                    // formatted as weekday names that read "Tue Tue Tue Wed".
                     ticks={dailyTicks(chart.map((p) => p.ts))}
                     tickFormatter={(ts: number) =>
-                      new Date(ts).toLocaleDateString(locale, { weekday: "short", day: "numeric" })
+                      new Date(ts).toLocaleDateString(locale, tickFormat)
                     }
                     tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
                   />
                   <YAxis
-                    // In kW, not W. Four-digit watt labels do not fit the
-                    // gutter this chart leaves: at 11px behind a -16px left
-                    // margin they were clipped to their last three digits, so a
-                    // 3800 W peak read "800" — an axis that looked plausible
-                    // and was wrong by an order of magnitude.
+                    // kW, not W: four-digit watt labels do not fit this gutter
+                    // and were clipped to their last three digits, so a 3800 W
+                    // peak read "800".
                     tickFormatter={(w: number) => (w > 0 ? `${(w / 1000).toFixed(1)} kW` : "0")}
                     tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
@@ -198,10 +265,11 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     labelFormatter={(ts) =>
                       new Date(ts as number).toLocaleString(locale, {
                         weekday: "short",
+                        day: "numeric",
                         hour: "2-digit",
                       })
                     }
-                    formatter={(v) => [`${Math.round(v as number)} W`, t("equipments.pv.expected")]}
+                    formatter={(v, name) => [`${Math.round(v as number)} W`, name]}
                     contentStyle={{
                       background: "var(--color-surface)",
                       border: "1px solid var(--color-border)",
@@ -209,152 +277,40 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                       fontSize: 12,
                     }}
                   />
+                  {/* Where the record stops and the promise starts. */}
+                  <ReferenceLine
+                    x={now}
+                    stroke="var(--color-text-tertiary)"
+                    strokeDasharray="2 3"
+                    label={{
+                      value: t("equipments.pv.now"),
+                      position: "insideTopRight",
+                      fontSize: 10,
+                      fill: "var(--color-text-tertiary)",
+                    }}
+                  />
                   <Area
                     type="monotone"
-                    dataKey="watts"
+                    dataKey="forecastW"
+                    name={t("equipments.pv.expected")}
                     stroke="var(--color-accent)"
                     strokeWidth={1.5}
                     fill="url(#pvFill)"
+                    connectNulls
                   />
-                </AreaChart>
+                  <Line
+                    type="monotone"
+                    dataKey="actualW"
+                    name={t("equipments.pv.actual")}
+                    stroke="var(--color-primary)"
+                    strokeWidth={1.5}
+                    dot={false}
+                    // Not connected: a gap is an hour the meter did not report,
+                    // and drawing straight through it would invent production.
+                    connectNulls={false}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
-            </div>
-
-            {/* FR6 — what was promised against what happened. Without it the
-                curve is a number to take on faith.
-                Always rendered, never hidden when empty: an absent section is
-                indistinguishable from an absent feature, and this one is empty
-                for a whole day after the array is declared. */}
-            <div className="mt-4 pt-3 border-t border-border-light">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-[12px] text-text-secondary">
-                  {t("equipments.pv.accuracy")}
-                </span>
-                {data.accuracy.maeW !== null ? (
-                  <>
-                    <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
-                      {t("equipments.pv.accuracyValue", { mae: data.accuracy.maeW })}
-                    </span>
-                    <span className="text-[11px] text-text-tertiary">
-                      {t("equipments.pv.accuracySamples", { n: data.accuracy.samples })}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-[11px] text-text-tertiary">
-                    {t("equipments.pv.accuracyPending")}
-                  </span>
-                )}
-                {/* Which line is which. The chart draws two series in two
-                    colours and nothing else said so — the question this panel
-                    exists to answer is precisely "forecast versus actual". */}
-                {data.accuracy.maeW !== null && (
-                  <span className="flex items-center gap-3 ml-2">
-                    <span className="flex items-center gap-1 text-[11px] text-text-secondary">
-                      <span
-                        aria-hidden
-                        className="inline-block w-3 h-[2px] rounded-full"
-                        style={{ background: "var(--color-accent)" }}
-                      />
-                      {t("equipments.pv.expected")}
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px] text-text-secondary">
-                      <span
-                        aria-hidden
-                        className="inline-block w-3 h-[2px] rounded-full"
-                        style={{ background: "var(--color-primary)" }}
-                      />
-                      {t("equipments.pv.actual")}
-                    </span>
-                  </span>
-                )}
-
-                {/* The window. Bounded server-side by how long the measured
-                    series is retained, so 90 days is the honest maximum. */}
-                <span className="ml-auto flex items-center gap-1">
-                  {[7, 30, 90].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setAccuracyDays(d)}
-                      className={`px-2 py-0.5 rounded-[6px] text-[11px] font-medium border ${
-                        accuracyDays === d
-                          ? "border-primary bg-primary-light text-primary"
-                          : "border-border text-text-secondary hover:border-primary"
-                      }`}
-                    >
-                      {t("equipments.pv.lastDays", { n: d })}
-                    </button>
-                  ))}
-                </span>
-              </div>
-              {data.accuracy.maeW !== null && (
-                <>
-                <div className="h-32 mt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={data.accuracy.points.map((p) => ({ ...p, ts: Date.parse(p.at) }))}
-                      margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
-                      <XAxis
-                        dataKey="ts"
-                        type="number"
-                        scale="time"
-                        domain={["dataMin", "dataMax"]}
-                        ticks={dailyTicks(data.accuracy.points.map((p) => Date.parse(p.at)))}
-                        tickFormatter={(ts: number) =>
-                          new Date(ts).toLocaleDateString(locale, {
-                            day: "numeric",
-                            month: "short",
-                          })
-                        }
-                        tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
-                        stroke="var(--color-border)"
-                      />
-                      <YAxis
-                        // kW, like the forecast chart above: four-digit watt
-                        // labels do not fit this gutter and were clipped to
-                        // their last three digits.
-                        tickFormatter={(w: number) => (w > 0 ? `${(w / 1000).toFixed(1)} kW` : "0")}
-                        tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
-                        stroke="var(--color-border)"
-                        width={56}
-                      />
-                      <Tooltip
-                        labelFormatter={(ts) =>
-                          new Date(ts as number).toLocaleString(locale, {
-                            weekday: "short",
-                            hour: "2-digit",
-                          })
-                        }
-                        contentStyle={{
-                          background: "var(--color-surface)",
-                          border: "1px solid var(--color-border)",
-                          borderRadius: 6,
-                          fontSize: 12,
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="forecastW"
-                        name={t("equipments.pv.expected")}
-                        stroke="var(--color-accent)"
-                        strokeWidth={1.5}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="actualW"
-                        name={t("equipments.pv.actual")}
-                        stroke="var(--color-primary)"
-                        strokeWidth={1.5}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                </>
-              )}
             </div>
 
             {data.model === null && (

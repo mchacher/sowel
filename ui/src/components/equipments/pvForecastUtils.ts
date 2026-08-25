@@ -70,3 +70,48 @@ export function dailyTicks(timestamps: readonly number[], maxTicks = 12): number
   }
   return ticks;
 }
+
+/** One hour on the merged timeline: what was expected, and what happened. */
+export interface TimelinePoint {
+  ts: number;
+  /** Expected watts. Present across the whole span. */
+  forecastW?: number;
+  /** Measured watts. Past hours only, and only where the meter reported. */
+  actualW?: number;
+}
+
+/**
+ * Past and future on one timeline.
+ *
+ * The comparison and the forecast are the same quantity in the same unit on
+ * adjacent stretches of time; drawn as two charts the reader had to join them up
+ * by eye.
+ *
+ * A past hour carries what was actually **promised** for it, not the current
+ * curve. The curve still contains today's elapsed hours, but for an hour that
+ * has passed that value is a retrodiction — recomputed from irradiance now
+ * known — and scoring or displaying it as a forecast would flatter the model.
+ */
+export function mergeTimeline(
+  accuracy: ReadonlyArray<{ at: string; forecastW: number; actualW: number }>,
+  curve: ReadonlyArray<{ at: string; watts: number }>,
+  now: number,
+): TimelinePoint[] {
+  const byTs = new Map<number, TimelinePoint>();
+
+  for (const p of accuracy) {
+    const ts = Date.parse(p.at);
+    if (!Number.isFinite(ts)) continue;
+    byTs.set(ts, { ts, forecastW: p.forecastW, actualW: p.actualW });
+  }
+
+  for (const p of curve) {
+    const ts = Date.parse(p.at);
+    if (!Number.isFinite(ts)) continue;
+    // The past belongs to what was promised at the time.
+    if (ts < now) continue;
+    byTs.set(ts, { ...(byTs.get(ts) ?? { ts }), forecastW: p.watts });
+  }
+
+  return [...byTs.values()].sort((a, b) => a.ts - b.ts);
+}

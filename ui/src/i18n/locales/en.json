@@ -1433,6 +1433,7 @@
   "equipments.pv.expected": "Expected",
   "equipments.pv.learning": "Still learning this array. The forecast appears once enough production has been recorded.",
   "equipments.pv.provenance": "Fitted on {{samples}} hours, last updated {{date}}",
+  "equipments.pv.now": "now",
   "equipments.pv.noWeather": "The forecast needs the weather plugin to publish solar irradiance. Install or update it, then this panel fills in on the next poll.",
   "equipments.pv.backfill": "Fit from history",
   "equipments.pv.backfilled": "Fitted on {{hours}} hours already recorded",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PvForecastPoint } from "../../types";
-import { sumKwh, dailyTicks } from "./pvForecastUtils";
+import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
 
 /** An hourly curve of `watts`, starting at local midnight `dayOffset` days out. */
 function curve(dayOffset: number, watts: number, hours = 24): PvForecastPoint[] {
@@ -148,5 +148,76 @@ describe("dailyTicks over a long window", () => {
 
   it("honours an explicit ceiling", () => {
     expect(dailyTicks(hourly("2026-06-01T00:00:00", 30 * 24), 5).length).toBeLessThanOrEqual(6);
+  });
+});
+
+describe("mergeTimeline", () => {
+  const NOW = Date.parse("2026-08-25T12:00:00Z");
+  const at = (h: number) => new Date(NOW + h * 3_600_000).toISOString();
+
+  it("puts past and future on one ordered series", () => {
+    const out = mergeTimeline(
+      [{ at: at(-2), forecastW: 900, actualW: 850 }],
+      [{ at: at(1), watts: 1200 }],
+      NOW,
+    );
+    expect(out.map((p) => p.ts)).toEqual([...out.map((p) => p.ts)].sort((a, b) => a - b));
+    expect(out).toHaveLength(2);
+  });
+
+  it("carries the measurement only on past hours", () => {
+    const out = mergeTimeline(
+      [{ at: at(-2), forecastW: 900, actualW: 850 }],
+      [{ at: at(1), watts: 1200 }],
+      NOW,
+    );
+    expect(out[0].actualW).toBe(850);
+    expect(out[1].actualW).toBeUndefined();
+  });
+
+  it("keeps what was promised for a past hour, not the recomputed curve", () => {
+    // The curve still holds today's elapsed hours, recomputed from irradiance
+    // now known. Letting that overwrite the promise would flatter the model
+    // against its own record.
+    const out = mergeTimeline(
+      [{ at: at(-2), forecastW: 900, actualW: 850 }],
+      [
+        { at: at(-2), watts: 860 },
+        { at: at(3), watts: 1500 },
+      ],
+      NOW,
+    );
+    const past = out.find((p) => p.ts === Date.parse(at(-2)));
+    expect(past?.forecastW).toBe(900);
+  });
+
+  it("takes the curve for the hour in progress and everything after", () => {
+    const out = mergeTimeline([], [{ at: at(0), watts: 1100 }], NOW);
+    expect(out[0].forecastW).toBe(1100);
+  });
+
+  it("shows the forecast alone when nothing has been compared yet", () => {
+    const out = mergeTimeline([], [{ at: at(1), watts: 1200 }], NOW);
+    expect(out).toHaveLength(1);
+    expect(out[0].actualW).toBeUndefined();
+  });
+
+  it("shows the comparison alone when the curve is empty", () => {
+    const out = mergeTimeline([{ at: at(-3), forecastW: 700, actualW: 640 }], [], NOW);
+    expect(out).toHaveLength(1);
+    expect(out[0].forecastW).toBe(700);
+  });
+
+  it("skips unparseable timestamps rather than producing NaN points", () => {
+    const out = mergeTimeline(
+      [{ at: "hier", forecastW: 1, actualW: 1 }],
+      [{ at: "demain", watts: 1 }],
+      NOW,
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("is empty when both sides are", () => {
+    expect(mergeTimeline([], [], NOW)).toEqual([]);
   });
 });
