@@ -15,7 +15,7 @@ import { PvForecaster } from "./pv-forecaster.js";
 const EQUIPMENT_ID = "eq-pv";
 const PEAK = 4000;
 /** Enough daylight hours to clear `MIN_SAMPLES` comfortably. */
-const DAYS = 14;
+const DAYS = 30;
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16];
 
 function migrate(db: Database.Database): void {
@@ -68,6 +68,9 @@ interface BuildOptions {
   coordinates?: boolean;
 }
 
+/** Flux emitted by the most recent `build(...)` forecaster, for assertions. */
+const emittedFlux: string[] = [];
+
 function build(db: Database.Database, opts: BuildOptions = {}): PvForecaster {
   const noop = (): void => {};
   const logger = { info: noop, warn: noop, error: noop, debug: noop, child: () => logger } as never;
@@ -110,7 +113,8 @@ function build(db: Database.Database, opts: BuildOptions = {}): PvForecaster {
       getConfig: () => ({ bucket: "sowel", org: "sowel" }),
       getClient: () => ({
         getQueryApi: () => ({
-          iterateRows: (_flux: string) => {
+          iterateRows: (flux: string) => {
+            emittedFlux.push(flux);
             if (opts.influxDown) {
               // Rejecting, not throwing synchronously: an unreachable Influx
               // fails while the caller is already iterating.
@@ -203,7 +207,8 @@ describe("backfill from existing history", () => {
     expect(report.ok).toBe(true);
     expect(report.model).toBeNull();
     expect(report.reason).toBe("not-enough-history");
-    // The hours are kept: a live fortnight on top of them will reach the floor.
+    // The hours are still written: a live fortnight on top of them reaches the
+    // floor. Only the pruning waits for a successful fit.
     expect(sampleCount(db)).toBe(report.hoursPaired);
   });
 
@@ -217,12 +222,14 @@ describe("backfill from existing history", () => {
     wide.stop();
     const wideCount = sampleCount(db);
 
-    const since = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    // Long enough to fit on its own, which is what licenses the delete.
+    const since = new Date(Date.now() - 20 * 86_400_000).toISOString();
     const narrow = build(db, { since });
     const report = await narrow.backfill(EQUIPMENT_ID);
     narrow.stop();
 
     expect(report.boundedBy).toBe("declaration");
+    expect(report.model).not.toBeNull();
     expect(sampleCount(db)).toBeLessThan(wideCount);
     expect(sampleCount(db)).toBe(report.hoursPaired);
     // Nothing older than the declared date survives anywhere in the store.
@@ -232,6 +239,26 @@ describe("backfill from existing history", () => {
         .get(EQUIPMENT_ID) as { a: string }
     ).a;
     expect(oldest >= since).toBe(true);
+  });
+
+  it("destroys nothing when the declared window turns out too short to fit", async () => {
+    // The failure this guards: a mistyped date — yesterday instead of last year
+    // — used to delete every accumulated sample before anyone knew whether a fit
+    // was even possible, and the route still answered 200.
+    const wide = build(db);
+    await wide.backfill(EQUIPMENT_ID);
+    wide.stop();
+    const before = sampleCount(db);
+
+    const narrow = build(db, { since: new Date(Date.now() - 2 * 86_400_000).toISOString() });
+    const report = await narrow.backfill(EQUIPMENT_ID);
+    narrow.stop();
+
+    expect(report.model).toBeNull();
+    expect(report.reason).toBe("not-enough-history");
+    // Every earlier sample survives: the household is exactly where it started,
+    // and can correct the date and run it again.
+    expect(sampleCount(db)).toBe(before);
   });
 
   it("is idempotent, so running it twice does not double the history", async () => {
@@ -313,5 +340,69 @@ describe("backfill from existing history", () => {
     // hostage to a change that no longer exists.
     expect(row.gain_reset_at).toBeNull();
     expect(row.fitted_peak_wc).toBe(PEAK);
+  });
+});
+
+describe("the production query the backfill emits", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    migrate(db);
+    emittedFlux.length = 0;
+  });
+
+  it("reads the 90-day hourly bucket, and does not re-stamp its points", async () => {
+    const forecaster = build(db);
+    await forecaster.backfill(EQUIPMENT_ID);
+    forecaster.stop();
+
+    const flux = emittedFlux.at(-1)!;
+    expect(flux).toContain('from(bucket: "sowel-hourly")');
+    expect(flux).toContain('r._field == "mean"');
+    // Read with no shift, on purpose: `-hourly` labels an hour by its END and so
+    // does Open-Meteo's irradiance, so the two already agree. Shifting the
+    // production side collapsed the fitted gain from 3.8 to 45.8 and turned the
+    // hourly shape into a monotonic decay from sunrise.
+    expect(flux).not.toContain("timeShift");
+  });
+});
+
+/**
+ * What the computed aliases expose, and when.
+ *
+ * These are the machine-facing surface: a recipe binds to `pv_forecast_now_w`
+ * and acts on it. Unlike the panel, it has no "provisional" label to read, so a
+ * clear-sky estimate published here is indistinguishable from a learned
+ * forecast — and clear-sky reads near nameplate by construction.
+ */
+describe("computed aliases while there is no model", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    migrate(db);
+  });
+
+  it("publishes nothing before a model exists", async () => {
+    const forecaster = build(db, { since: new Date(Date.now() - 2 * 86_400_000).toISOString() });
+    const report = await forecaster.backfill(EQUIPMENT_ID);
+    expect(report.model).toBeNull();
+
+    // `persist()` already refuses to write this curve to Influx; the aliases
+    // must agree with it rather than quietly hand it to a recipe.
+    expect(forecaster.getComputedDataForEquipment(EQUIPMENT_ID)).toEqual([]);
+    forecaster.stop();
+  });
+
+  it("publishes the figures once a model has been fitted", async () => {
+    const forecaster = build(db);
+    const report = await forecaster.backfill(EQUIPMENT_ID);
+    expect(report.model).not.toBeNull();
+    forecaster.stop();
+
+    // The curve is computed on the next recompute, which needs the forward
+    // series; what matters here is that the model gate no longer blocks.
+    expect(forecaster.getModel(EQUIPMENT_ID)).not.toBeNull();
   });
 });

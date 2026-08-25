@@ -213,6 +213,17 @@ export class PvForecaster {
     const curve = this.curves.get(equipmentId);
     if (!curve || curve.length === 0) return [];
 
+    // Nothing is published while the curve is the provisional clear-sky
+    // estimate. `persist()` already refuses to write that curve to Influx for
+    // this exact reason — it is nameplate output with no shading, soiling or
+    // ageing in it — and these aliases are read by machines, which have no
+    // "provisional" label to go on. A recipe binding to `pv_forecast_now_w`
+    // would act on near-nameplate numbers for the whole learning period.
+    //
+    // The panel is unaffected: it draws the curve from its own endpoint and says
+    // in words that it is provisional.
+    if (!this.getModel(equipmentId)) return [];
+
     const now = Date.now();
     const at = new Date().toISOString();
     const kwhBetween = (fromMs: number, toMs: number): number => {
@@ -546,22 +557,6 @@ export class PvForecaster {
       peakWc,
     });
 
-    // Anything recorded before the window is actively misleading and is dropped,
-    // not merely left out of this run. A declared change date says the array was
-    // different before it, so those hours describe hardware that is gone — and
-    // the nightly refit would otherwise keep fitting on them for another 45
-    // days. Without this the bound only limits what a backfill *adds*, and a
-    // second run after a first, unbounded one changes nothing at all.
-    const pruned = this.db
-      .prepare("DELETE FROM pv_forecast_sample WHERE equipment_id = ? AND at < ?")
-      .run(equipmentId, new Date(window.fromMs).toISOString()).changes;
-    if (pruned > 0) {
-      this.logger.info(
-        { equipmentId, pruned, from: new Date(window.fromMs).toISOString() },
-        "Dropped PV samples recorded before the declared array configuration",
-      );
-    }
-
     // Upserted on the same key the live path uses, so a backfill run twice
     // rewrites its own rows instead of doubling them, and never fights a live
     // sample for the hour in progress.
@@ -586,17 +581,38 @@ export class PvForecaster {
       model: null,
     };
 
-    // Fit over everything now stored, not only what this run added: a second
-    // backfill after a live fortnight should use both.
-    const all = this.readSamples(equipment, WINDOW_DAYS);
-    const model = fitModel(all, peakWc);
+    // Fit over everything stored *inside the window*, not only what this run
+    // added — a second backfill after a live fortnight should use both — and not
+    // over everything stored either. Bounding what is added but not what is
+    // fitted is why a declared run after an unbounded one changed nothing at
+    // all: the earlier run's rows were still in the fit.
+    const windowFrom = new Date(window.fromMs).toISOString();
+    const inWindow = this.readSamplesSince(equipment, windowFrom);
+    const model = fitModel(inWindow, peakWc);
     if (!model) {
       this.logger.info(
-        { equipmentId, hoursPaired: samples.length, stored: all.length },
+        { equipmentId, hoursPaired: samples.length, inWindow: inWindow.length },
         "Backfill stored samples but there is still not enough history to fit",
       );
+      // Nothing is deleted on this path, deliberately. A mistyped date — one day
+      // instead of one year — would otherwise cost a household every sample it
+      // had accumulated, in exchange for a model it did not get.
       report.reason = "not-enough-history";
       return report;
+    }
+
+    // Only now that the window alone has proved sufficient are the older rows
+    // dropped. A declared change date says the array was different before it, so
+    // those hours describe hardware that is gone and the nightly refit would
+    // otherwise keep fitting on them for another 45 days.
+    const pruned = this.db
+      .prepare("DELETE FROM pv_forecast_sample WHERE equipment_id = ? AND at < ?")
+      .run(equipmentId, windowFrom).changes;
+    if (pruned > 0) {
+      this.logger.info(
+        { equipmentId, pruned, from: windowFrom },
+        "Dropped PV samples recorded before the declared array configuration",
+      );
     }
 
     // The fit describes the declared capacity by construction: the window either
@@ -644,6 +660,12 @@ export class PvForecaster {
    * `-hourly`, not the raw bucket: raw retention is seven days and the window is
    * forty-five. The same asymmetry cost spec 160 its accuracy comparison.
    *
+   * Read with no time shift, deliberately. `-hourly` labels an hour by its END,
+   * and so does Open-Meteo's irradiance (its radiation variables are documented
+   * as preceding-hour means), so the two already agree. See the note in
+   * `pv-accuracy.ts`; shifting one side collapsed the fitted gain from 3.8 to
+   * 45.8 when it was tried.
+   *
    * Returns null when Influx cannot answer, which the caller reports rather than
    * treating as "no production" — an empty history and an unreachable database
    * are very different answers to give a household.
@@ -666,7 +688,6 @@ export class PvForecaster {
   |> filter(fn: (r) => r.equipmentId == "${equipment.id}")
   |> filter(fn: (r) => r.alias == "${alias}")
   |> filter(fn: (r) => r._field == "mean")
-  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false, timeSrc: "_start")
   |> sort(columns: ["_time"])`;
 
     const out = new Map<number, number>();

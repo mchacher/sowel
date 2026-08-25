@@ -166,6 +166,11 @@ describe("the buckets the query reads", () => {
     expect(actualQuery).not.toContain('from(bucket: "sowel")');
     // And the downsampled series stores `mean`, never `value_number`.
     expect(actualQuery).toContain('r._field == "mean"');
+    // And no time shift: both sides label an hour by its END (the downsample
+    // task defaults `timeSrc` to `_stop`, and Open-Meteo's radiation variables
+    // are preceding-hour means), so the join already lines up. Shifting one side
+    // to "align" them took the fitted gain from 3.8 to 45.8 when it was tried.
+    expect(actualQuery).not.toContain("timeShift");
   });
 
   it("caps the window at the retention of the shorter side", async () => {
