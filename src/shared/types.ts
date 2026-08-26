@@ -766,6 +766,12 @@ export type ArbiterDecisionKind =
    *  "pending" span on the timeline; the next `granted`/`released`/`suspended`
    *  (or a `revoked` with no re-claim) closes it. */
   | "waiting"
+  /** Spec 164 — a granted load's own power measurement has stayed below its
+   *  idle threshold for the confirmation window: the surplus is allocated and
+   *  nothing is consuming it. Paints `granted-idle` on the timeline ribbon. */
+  | "draw-stopped"
+  /** Spec 164 — the same load is measured drawing again, back to `granted`. */
+  | "draw-started"
   /** #604 — a grant/pending claim that was live at shutdown is not carried
    *  across a restart (live claim state is rebuilt from scratch, not persisted).
    *  On startup the arbiter journals a `reset` for any open journal tail that no
@@ -881,8 +887,16 @@ export interface ArbiterPublicState {
 }
 
 /** Spec 148 (Phase B) — the Energy → arbitrage timeline read model.
- *  `pending` (#561) — the load was waiting for surplus (claiming, not granted). */
-export type ArbiterQuarterState = "granted" | "pending" | "revoked" | "unmanaged" | "idle";
+ *  `pending` (#561) — the load was waiting for surplus (claiming, not granted).
+ *  `granted-idle` (spec 164) — the load held its grant but its own measurement
+ *  says nothing consumed it. */
+export type ArbiterQuarterState =
+  | "granted"
+  | "granted-idle"
+  | "pending"
+  | "revoked"
+  | "unmanaged"
+  | "idle";
 
 export interface ArbiterTimelineLoad {
   equipmentId: string;

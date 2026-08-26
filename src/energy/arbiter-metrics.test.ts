@@ -83,6 +83,46 @@ describe("rollupDay — counts and short cycles", () => {
     expect(row.grantedS).toBe(300);
   });
 
+  it("spec 164 — a grant nothing consumed still counts as granted time", () => {
+    // The ribbon paints those hours differently; the metric must not change,
+    // or every `grantedS` row silently re-baselines against spec 158.
+    const withDrawEvents = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "10:00"), "granted"),
+          decision(at("2026-08-20", "10:05"), "draw-stopped"),
+          decision(at("2026-08-20", "11:30"), "draw-started"),
+          decision(at("2026-08-20", "12:00"), "revoked", { reason: "surplus-deficit" }),
+        ],
+      }),
+    );
+    const withoutDrawEvents = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "10:00"), "granted"),
+          decision(at("2026-08-20", "12:00"), "revoked", { reason: "surplus-deficit" }),
+        ],
+      }),
+    );
+    expect(pumpRow(withDrawEvents).grantedS).toBe(7200);
+    expect(pumpRow(withDrawEvents).grantedS).toBe(pumpRow(withoutDrawEvents).grantedS);
+  });
+
+  it("spec 164 — draw events are neither grants nor revocations", () => {
+    const result = rollupDay(
+      input({
+        decisions: [
+          decision(at("2026-08-20", "10:00"), "granted"),
+          decision(at("2026-08-20", "10:05"), "draw-stopped"),
+          decision(at("2026-08-20", "11:30"), "draw-started"),
+        ],
+      }),
+    );
+    const row = pumpRow(result);
+    expect(row.grants).toBe(1);
+    expect(row.revokes).toBe(0);
+  });
+
   it("does NOT count a recipe-side release as a short cycle", () => {
     // `released` is the recipe giving the surplus back on its own. Counting it
     // would make the regret metric meaningless.
@@ -297,6 +337,22 @@ describe("rollupDay — home level", () => {
     expect(result.home.idleClaimableExportWh).toBe(0);
     expect(result.home.waitingExportWh).toBe(0);
     expect(result.home.exportWh).toBeGreaterThan(0);
+  });
+
+  it("spec 164 — a grant nothing consumed is still not an idle opportunity", () => {
+    // The arbiter DID allocate the surplus to the load: counting it here as
+    // "nobody seized it" would silently re-baseline the spec 158 figure the
+    // moment the two new kinds start being journaled (FR-7).
+    const result = rollupDay(
+      input({
+        surplus: [sample("12:00", 1000)],
+        decisions: [
+          decision(at("2026-08-20", "09:00"), "granted"),
+          decision(at("2026-08-20", "09:10"), "draw-stopped"),
+        ],
+      }),
+    );
+    expect(result.home.idleClaimableExportWh).toBe(0);
   });
 
   it("does not count export the surplus could not have served", () => {

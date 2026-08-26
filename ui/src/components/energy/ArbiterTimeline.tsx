@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
-import { cellColor, journalDotColor, PENDING_FILL } from "./arbiterColors";
+import { cellColor, journalDotColor, GRANTED_IDLE_FILL, PENDING_FILL } from "./arbiterColors";
 import { journalReasonLabel } from "./arbiterReason";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
@@ -411,6 +411,13 @@ export function ArbiterTimeline() {
             style={{ backgroundColor: "var(--color-solar-auto)" }}
           />
           {t("arbiter.legend.granted")}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="w-3 h-2.5 rounded-sm flex-none"
+            style={{ backgroundColor: GRANTED_IDLE_FILL }}
+          />
+          {t("arbiter.legend.grantedIdle")}
         </span>
         <span className="flex items-center gap-1.5">
           <span

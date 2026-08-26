@@ -54,21 +54,21 @@ readable at a glance.
 
 ## Acceptance criteria
 
-- [ ] AC1 — A granted metered load whose draw stays below the idle threshold for
+- [x] AC1 — A granted metered load whose draw stays below the idle threshold for
       5 minutes journals one `draw-stopped`, and its ribbon quarters turn muted
       green from there.
-- [ ] AC2 — The same load drawing again journals one `draw-started` and the
+- [x] AC2 — The same load drawing again journals one `draw-started` and the
       ribbon returns to the full green.
-- [ ] AC3 — A dip shorter than 5 minutes journals nothing and leaves the ribbon
+- [x] AC3 — A dip shorter than 5 minutes journals nothing and leaves the ribbon
       unchanged.
-- [ ] AC4 — A granted load with no power binding never journals either kind and
+- [x] AC4 — A granted load with no power binding never journals either kind and
       keeps the current green for the whole grant.
-- [ ] AC5 — A load whose measurement goes stale keeps the state it had.
-- [ ] AC6 — A revoke inside a quarter still paints that quarter red, whatever the
+- [x] AC5 — A load whose measurement goes stale keeps the state it had.
+- [x] AC6 — A revoke inside a quarter still paints that quarter red, whatever the
       draw state entering it.
-- [ ] AC7 — `grantedS` in the daily metrics is identical with and without the
+- [x] AC7 — `grantedS` in the daily metrics is identical with and without the
       new kinds; `grants` and `revokes` counters are untouched.
-- [ ] AC8 — The legend shows the new entry, and both locales carry the new kind
+- [x] AC8 — The legend shows the new entry, and both locales carry the new kind
       and state labels (locale-completeness test green).
 
 ## Scope
@@ -95,13 +95,13 @@ readable at a glance.
 
 ## Edge cases
 
-| Case                                              | Behaviour                                                                          |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Load with no power binding                        | No transition ever journaled; ribbon keeps the current green (FR-2)                |
-| Measurement goes stale mid-grant                  | State held, no flip (FR-5)                                                          |
-| Thermostatic load cycling below 5 min             | Nothing journaled — the confirmation window absorbs it                             |
-| Load idle at grant, starts at 3 min               | Nothing journaled (the idle never reached 5 min); ribbon stays green               |
-| Grant lost while idle                             | Observation cleared; no `draw-started` on the next grant until it actually draws   |
-| Restart during an idle grant                      | `reset` closes the span (#604); a fresh `draw-stopped` is journaled 5 min later     |
-| Load deleted / profile dropped                    | Per-equipment state dropped with the rest in `forgetEquipment`                     |
-| Legacy journal rows (before this spec)            | No new kinds present; every granted quarter reads as it does today                 |
+| Case                                   | Behaviour                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------------------- |
+| Load with no power binding             | No transition ever journaled; ribbon keeps the current green (FR-2)              |
+| Measurement goes stale mid-grant       | State held, no flip (FR-5)                                                       |
+| Thermostatic load cycling below 5 min  | Nothing journaled — the confirmation window absorbs it                           |
+| Load idle at grant, starts at 3 min    | Nothing journaled (the idle never reached 5 min); ribbon stays green             |
+| Grant lost while idle                  | Observation cleared; no `draw-started` on the next grant until it actually draws |
+| Restart during an idle grant           | `reset` closes the span (#604); a fresh `draw-stopped` is journaled 5 min later  |
+| Load deleted / profile dropped         | Per-equipment state dropped with the rest in `forgetEquipment`                   |
+| Legacy journal rows (before this spec) | No new kinds present; every granted quarter reads as it does today               |

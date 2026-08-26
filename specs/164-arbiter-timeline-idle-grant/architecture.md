@@ -135,14 +135,14 @@ new kinds are naturally neither.
 
 ## UI
 
-| File                                            | Change                                                                     |
-| ----------------------------------------------- | -------------------------------------------------------------------------- |
-| `ui/src/types.ts`                               | Mirror both unions                                                         |
-| `ui/src/components/energy/arbiterColors.ts`     | `GRANTED_IDLE_FILL` + `cellColor` case + `journalDotColor` for both kinds  |
-| `ui/src/components/energy/ArbiterTimeline.tsx`  | One more legend entry                                                      |
-| `ui/src/components/energy/arbiterReason.ts`     | Nothing — the journal label comes from `arbiter.kind.<kind>`               |
-| `ui/src/i18n/locales/{fr,en}.json`              | `arbiter.timeline.state.granted-idle`, `arbiter.legend.grantedIdle`, `arbiter.kind.draw-stopped`, `arbiter.kind.draw-started` |
-| `ui/src/i18n/locale-completeness.test.ts`       | Extend both exhaustive maps                                                |
+| File                                           | Change                                                                                                                        |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `ui/src/types.ts`                              | Mirror both unions                                                                                                            |
+| `ui/src/components/energy/arbiterColors.ts`    | `GRANTED_IDLE_FILL` + `cellColor` case + `journalDotColor` for both kinds                                                     |
+| `ui/src/components/energy/ArbiterTimeline.tsx` | One more legend entry                                                                                                         |
+| `ui/src/components/energy/arbiterReason.ts`    | Nothing — the journal label comes from `arbiter.kind.<kind>`                                                                  |
+| `ui/src/i18n/locales/{fr,en}.json`             | `arbiter.timeline.state.granted-idle`, `arbiter.legend.grantedIdle`, `arbiter.kind.draw-stopped`, `arbiter.kind.draw-started` |
+| `ui/src/i18n/locale-completeness.test.ts`      | Extend both exhaustive maps                                                                                                   |
 
 Colour, following the `PENDING_FILL` precedent (#617):
 
@@ -155,12 +155,12 @@ rather than as an empty cell, while sitting clearly below the solid grant.
 
 Copy:
 
-| Key                                     | FR                                | EN                            |
-| --------------------------------------- | --------------------------------- | ----------------------------- |
-| `arbiter.timeline.state.granted-idle`   | Accordé (ne consomme pas)         | Granted (not consuming)       |
-| `arbiter.legend.grantedIdle`            | Accordé, sans consommation        | Granted, not consuming        |
-| `arbiter.kind.draw-stopped`             | ne consomme plus le surplus       | stopped consuming the surplus |
-| `arbiter.kind.draw-started`             | consomme le surplus               | started consuming the surplus |
+| Key                                   | FR                          | EN                            |
+| ------------------------------------- | --------------------------- | ----------------------------- |
+| `arbiter.timeline.state.granted-idle` | Accordé (ne consomme pas)   | Granted (not consuming)       |
+| `arbiter.legend.grantedIdle`          | Accordé, sans consommation  | Granted, not consuming        |
+| `arbiter.kind.draw-stopped`           | ne consomme plus le surplus | stopped consuming the surplus |
+| `arbiter.kind.draw-started`           | consomme le surplus         | started consuming the surplus |
 
 ## API
 

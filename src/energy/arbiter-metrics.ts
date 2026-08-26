@@ -193,7 +193,11 @@ function accumulateSpans(
     if (ms <= 0) return;
     const s = Math.round(ms / 1000);
     switch (state) {
+      // Spec 164 — a grant nothing consumed is still GRANTED time: the ribbon
+      // paints those quarters apart, the metric does not, or every `grantedS`
+      // row silently re-baselines against the spec 158 figures.
       case "granted":
+      case "granted-idle":
         row.grantedS += s;
         break;
       case "pending":
@@ -392,7 +396,19 @@ export function rollupDay(input: RollupInput): RollupResult {
         const state = cursor.advanceTo(sample.at);
         if (needW > sample.availableW) continue;
         if (state === "pending") waiting = true;
-        if (deferrable && state !== "granted" && state !== "unmanaged") idle = true;
+        // Spec 164 — "granted-idle" is granted: the arbiter DID allocate the
+        // surplus to this load, so the export is not an unseized opportunity
+        // and this figure keeps the spec 158 baseline comparable (FR-7). What
+        // the load then did with the grant is the ribbon's story, not this
+        // metric's.
+        if (
+          deferrable &&
+          state !== "granted" &&
+          state !== "granted-idle" &&
+          state !== "unmanaged"
+        ) {
+          idle = true;
+        }
       }
       if (waiting) home.waitingExportWh += sample.availableW * hours;
       if (idle) home.idleClaimableExportWh += sample.availableW * hours;

@@ -38,25 +38,25 @@ No migration, no API contract change, no new endpoint.
 
 ### Scenarios
 
-| Module            | Scenario                                                              | Expected                                                             |
-| ----------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| capacity-arbiter  | Granted metered load below the idle threshold for 5 min               | One `draw-stopped` journaled, with the measured watts (AC1)          |
-| capacity-arbiter  | The same load draws again for 5 min                                   | One `draw-started`, and only one (AC2)                               |
-| capacity-arbiter  | Draw dips below the threshold for 2 min then returns                  | Nothing journaled (AC3)                                              |
-| capacity-arbiter  | Granted load with no power binding, whole grant                       | Neither kind ever journaled (AC4)                                    |
-| capacity-arbiter  | Measurement stops arriving (stale) while idle, before the 5 min       | Nothing journaled, state held (AC5)                                  |
-| capacity-arbiter  | Load idle from the grant, never starts                                | Exactly one `draw-stopped`, 5 min after the grant (FR-3)             |
-| capacity-arbiter  | Revoke while idle, then a new grant, load drawing                     | No stray `draw-started`; observation restarts clean (FR-6)           |
-| capacity-arbiter  | Load drawing 2 200 W, granted, stays drawing                          | Nothing journaled — the ribbon already shows the drawing green       |
-| arbiter-timeline  | `sustainedAfter("draw-stopped")` / `("draw-started")`                 | `"granted-idle"` / `"granted"`                                       |
-| arbiter-timeline  | Grant, then `draw-stopped` mid-window                                 | Quarters before stay `granted`, quarters after are `granted-idle`    |
-| arbiter-timeline  | A revoke lands in a quarter that entered `granted-idle`               | That quarter is `revoked` (AC6)                                      |
-| arbiter-timeline  | Journal with no new kinds (legacy rows)                               | Ribbon identical to today                                            |
-| arbiter-metrics   | A day split between `granted` and `granted-idle`                      | `grantedS` equals the day with no draw events at all (AC7)           |
-| arbiter-metrics   | `draw-stopped` / `draw-started` in the journal                        | `grants` and `revokes` unchanged                                     |
-| arbiterColors     | `cellColor("granted-idle")`                                           | `GRANTED_IDLE_FILL`, distinct from `cellColor("granted")`            |
-| arbiterColors     | `journalDotColor("draw-stopped" \| "draw-started")`                   | The solar-auto token (same family as the grant)                      |
-| locale-complete.  | Both new kinds and the new state                                      | Present in `fr.json` and `en.json` (AC8)                             |
+| Module           | Scenario                                                        | Expected                                                          |
+| ---------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
+| capacity-arbiter | Granted metered load below the idle threshold for 5 min         | One `draw-stopped` journaled, with the measured watts (AC1)       |
+| capacity-arbiter | The same load draws again for 5 min                             | One `draw-started`, and only one (AC2)                            |
+| capacity-arbiter | Draw dips below the threshold for 2 min then returns            | Nothing journaled (AC3)                                           |
+| capacity-arbiter | Granted load with no power binding, whole grant                 | Neither kind ever journaled (AC4)                                 |
+| capacity-arbiter | Measurement stops arriving (stale) while idle, before the 5 min | Nothing journaled, state held (AC5)                               |
+| capacity-arbiter | Load idle from the grant, never starts                          | Exactly one `draw-stopped`, 5 min after the grant (FR-3)          |
+| capacity-arbiter | Revoke while idle, then a new grant, load drawing               | No stray `draw-started`; observation restarts clean (FR-6)        |
+| capacity-arbiter | Load drawing 2 200 W, granted, stays drawing                    | Nothing journaled — the ribbon already shows the drawing green    |
+| arbiter-timeline | `sustainedAfter("draw-stopped")` / `("draw-started")`           | `"granted-idle"` / `"granted"`                                    |
+| arbiter-timeline | Grant, then `draw-stopped` mid-window                           | Quarters before stay `granted`, quarters after are `granted-idle` |
+| arbiter-timeline | A revoke lands in a quarter that entered `granted-idle`         | That quarter is `revoked` (AC6)                                   |
+| arbiter-timeline | Journal with no new kinds (legacy rows)                         | Ribbon identical to today                                         |
+| arbiter-metrics  | A day split between `granted` and `granted-idle`                | `grantedS` equals the day with no draw events at all (AC7)        |
+| arbiter-metrics  | `draw-stopped` / `draw-started` in the journal                  | `grants` and `revokes` unchanged                                  |
+| arbiterColors    | `cellColor("granted-idle")`                                     | `GRANTED_IDLE_FILL`, distinct from `cellColor("granted")`         |
+| arbiterColors    | `journalDotColor("draw-stopped" \| "draw-started")`             | The solar-auto token (same family as the grant)                   |
+| locale-complete. | Both new kinds and the new state                                | Present in `fr.json` and `en.json` (AC8)                          |
 
 ### Manual verification
 
@@ -67,14 +67,14 @@ No migration, no API contract change, no new endpoint.
 
 ## Tasks
 
-- [ ] Types (shared + ui)
-- [ ] `measuredIdle()` split, no watchdog behaviour change
-- [ ] `checkGrantDraw` + state maps + clear paths
-- [ ] `sustainedAfter` cases
-- [ ] Metrics fall-through
-- [ ] Backend tests (13 scenarios)
-- [ ] UI colours + legend + locales + exhaustive maps
-- [ ] UI tests (colour map)
-- [ ] `docs/specs-index.md` + user docs if the ribbon legend is listed
-- [ ] Full `npm run validate`
-- [ ] Agent review (Phase 5)
+- [x] Types (shared + ui)
+- [x] `measuredIdle()` split, no watchdog behaviour change
+- [x] `checkGrantDraw` + state maps + clear paths
+- [x] `sustainedAfter` cases
+- [x] Metrics fall-through
+- [x] Backend tests (13 scenarios)
+- [x] UI colours + legend + locales + exhaustive maps
+- [x] UI tests (colour map)
+- [x] `docs/specs-index.md` + user docs if the ribbon legend is listed
+- [x] Full `npm run validate`
+- [x] Agent review (Phase 5)
