@@ -8,7 +8,7 @@ _A solar array fails silently: a lost panel looks exactly like a cloudy month. H
 
 ### The problem it solves
 
-Solar panels don't announce their failures. A connector corrodes, a bypass diode dies, one panel of eight goes dark — and production drops by an eighth, which is less than the difference between a nice day and a hazy one. The reference installation this feature was built on **lost one panel of six for eight months** before anyone noticed. Eight months of paying for electricity the roof should have produced.
+Solar panels don't announce their failures — and in a modern array the panels themselves are rarely what dies first. It is the electronics bolted behind them: a microinverter channel, an optimizer, a corroded connector, a bypass diode. One channel goes silent and one panel's worth of production disappears — an eighth on an eight-panel roof, less than the difference between a nice day and a hazy one. The reference installation this feature was built on **lost one channel of its microinverter — one panel of six, silent — for eight months** before anyone noticed. Eight months of paying for electricity the roof should have produced.
 
 The household's usual instrument — the production chart — cannot catch this. Production varies by a factor of five between a clear day and an overcast one; a 12 % fault hides comfortably inside that noise. You need to compare what the panels produced against what _the sky offered them_, and only on days where that offer was clean.
 
@@ -18,7 +18,7 @@ Once a day, Sowel divides the energy your panels produced by the sunlight that a
 
 When the score stays clearly below that reference — more than 10 % down, three clear days in a row — Sowel raises one alarm, through the same channel as every other alarm: a notification, a banner, a line in the zone activity feed. When production comes back, the alarm resolves and says so.
 
-![The forecast panel and the health card during a real (simulated) single-panel fault](../screenshots/pv-monitoring-en.png)
+![The forecast panel and the health card during a simulated fault: one panel's worth of production lost](../screenshots/pv-monitoring-en.png)
 
 The screenshot above shows the two cards on the Energy › Production page during a simulated fault: the expected-versus-actual forecast on top, and below it the health card — the ratio series flat around 100 % for six weeks, then dropping to 74 % and staying there. The banner appeared on the third clear day.
 
@@ -32,7 +32,7 @@ Everything the check needs, the forecast feature (v1.57) already collects. You d
 
 The card is deliberately honest about its own limits:
 
-- **It names the size of a fault, never which panel.** Identifying the panel would require per-panel electronics nothing declares.
+- **It names the size of a fault, never the culprit.** A dead panel, a failed microinverter channel and a corroded connector leave the same signature: one panel's worth of production missing. Saying which component — and which panel — would require per-panel electronics nothing declares.
 - **It states its current speed.** Detection needs clear days, and clear days arrive at very different rates through the year. In summer the card might say "a loss of more than 10 % would be confirmed in about 3 days"; in December it will admit it is nearly blind — which is itself information worth having.
 - **Anything shallower than 10 % is not flagged at all.** Slow soiling, a drifting inverter losing 3 % — below the alert margin, deliberately, because alerting inside the weather noise means crying wolf weekly.
 
@@ -40,7 +40,7 @@ The card is deliberately honest about its own limits:
 
 ## Part 2 — How it works, precisely
 
-_Every number below was measured on the reference installation's own 16 months of history, including a real single-panel outage with a known repair date. Feature history: specs 160 (forecast), 161 (history backfill), 162 (health) in the [specs index](../specs-index.md)._
+_Every number below was measured on the reference installation's own 16 months of history, including a real eight-month outage — one microinverter channel down — with a known repair date. Feature history: specs 160 (forecast), 161 (history backfill), 162 (health) in the [specs index](../specs-index.md)._
 
 ### The daily ratio
 
@@ -80,13 +80,13 @@ A **declared capacity change** (you changed the panels and updated the declarati
 
 The entire pipeline — the shipped functions, not a re-derivation — was replayed over 16 months of the reference installation's history:
 
-| Event (ground truth from the owner)      | Detector behaviour                                                                                      |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Single panel of six fails, autumn 2025   | Alert raised after **2 clear days** (13 Oct 2025)                                                       |
-| Fault persists through winter            | Alert held for the full 8 months, no flapping                                                           |
-| Panel repaired, late June 2026           | Alert resolved on the repair (25 Jun 2026); measured +23 % step vs +20 % predicted for one panel of six |
-| +1 kWc extension added, declared         | No false alert; reference rebuilt from the declared date; measured +36 % vs +33 % expected              |
-| The 8 healthy months around these events | **Zero** false alerts                                                                                   |
+| Event (ground truth from the owner)                                       | Detector behaviour                                                                                      |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| A microinverter channel fails — one panel of six goes silent, autumn 2025 | Alert raised after **2 clear days** (13 Oct 2025)                                                       |
+| Fault persists through winter                                             | Alert held for the full 8 months, no flapping                                                           |
+| The channel repaired, late June 2026                                      | Alert resolved on the repair (25 Jun 2026); measured +23 % step vs +20 % predicted for one panel of six |
+| +1 kWc extension added, declared                                          | No false alert; reference rebuilt from the declared date; measured +36 % vs +33 % expected              |
+| The 8 healthy months around these events                                  | **Zero** false alerts                                                                                   |
 
 ### Where this stands against the literature
 

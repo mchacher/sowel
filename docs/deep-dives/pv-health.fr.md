@@ -8,7 +8,7 @@ _Une installation solaire tombe en panne en silence : un panneau perdu ressemble
 
 ### Le problème que ça résout
 
-Les panneaux solaires n'annoncent pas leurs pannes. Un connecteur s'oxyde, une diode de bypass meurt, un panneau sur huit s'éteint — et la production baisse d'un huitième, soit moins que la différence entre une belle journée et une journée voilée. L'installation de référence sur laquelle cette fonctionnalité a été construite a **perdu un panneau sur six pendant huit mois** avant que quiconque s'en aperçoive. Huit mois à payer de l'électricité que le toit aurait dû produire.
+Les panneaux solaires n'annoncent pas leurs pannes — et dans une installation moderne, ce ne sont d'ailleurs presque jamais les panneaux eux-mêmes qui meurent en premier. C'est l'électronique vissée derrière : une voie de micro-onduleur, un optimiseur, un connecteur oxydé, une diode de bypass. Une voie devient muette et la production d'un panneau disparaît — un huitième sur un toit de huit panneaux, moins que la différence entre une belle journée et une journée voilée. L'installation de référence sur laquelle cette fonctionnalité a été construite a **perdu une voie de son micro-onduleur — un panneau sur six, muet — pendant huit mois** avant que quiconque s'en aperçoive. Huit mois à payer de l'électricité que le toit aurait dû produire.
 
 L'instrument habituel du foyer — le graphique de production — ne peut pas attraper ça. La production varie d'un facteur cinq entre un jour clair et un jour couvert ; un défaut de 12 % se cache confortablement dans ce bruit. Il faut comparer ce que les panneaux ont produit à ce que _le ciel leur offrait_, et seulement les jours où cette offre était propre.
 
@@ -18,7 +18,7 @@ Une fois par jour, Sowel divise l'énergie produite par vos panneaux par la lumi
 
 Quand le score reste nettement sous cette référence — plus de 10 % en dessous, trois jours clairs d'affilée — Sowel lève une seule alarme, par le même canal que toutes les autres : une notification, une bannière, une ligne dans le fil d'activité. Quand la production revient, l'alarme se résout et le dit.
 
-![Le panneau de prévision et la carte de santé pendant une panne (simulée) d'un panneau](../screenshots/pv-monitoring-fr.png)
+![Le panneau de prévision et la carte de santé pendant une panne simulée : la production d'un panneau en moins](../screenshots/pv-monitoring-fr.png)
 
 La capture ci-dessus montre les deux cartes de la page Énergie › Production pendant une panne simulée : la prévision attendu/réalisé en haut, et en dessous la carte de santé — la série de ratios plate autour de 100 % pendant six semaines, puis qui chute à 74 % et y reste. La bannière est apparue au troisième jour clair.
 
@@ -32,7 +32,7 @@ Tout ce dont le contrôle a besoin, la prévision de production (v1.57) le colle
 
 La carte est délibérément honnête sur ses propres limites :
 
-- **Elle nomme l'ampleur d'un défaut, jamais quel panneau.** Identifier le panneau demanderait de l'électronique par panneau que rien ne déclare.
+- **Elle nomme l'ampleur d'un défaut, jamais le coupable.** Un panneau mort, une voie de micro-onduleur en panne et un connecteur oxydé laissent la même signature : la production d'un panneau en moins. Dire quel composant — et quel panneau — demanderait de l'électronique par panneau que rien ne déclare.
 - **Elle énonce sa vitesse du moment.** La détection a besoin de jours clairs, et les jours clairs arrivent à des rythmes très différents selon la saison. En été la carte peut dire « une perte de plus de 10 % serait confirmée en 3 jours environ » ; en décembre elle admettra être presque aveugle — ce qui est en soi une information qui vaut d'être sue.
 - **Tout ce qui est plus léger que 10 % n'est pas signalé du tout.** L'encrassement lent, un onduleur qui dérive de 3 % — sous la marge d'alerte, délibérément, parce qu'alerter dans le bruit météo, c'est crier au loup toutes les semaines.
 
@@ -40,7 +40,7 @@ La carte est délibérément honnête sur ses propres limites :
 
 ## Partie 2 — Comment ça marche, précisément
 
-_Chaque nombre ci-dessous a été mesuré sur les 16 mois d'historique de l'installation de référence, y compris une vraie panne d'un panneau avec date de réparation connue. Historique de la fonctionnalité : specs 160 (prévision), 161 (réapprentissage), 162 (santé) dans l'[index des specs](../specs-index.md)._
+_Chaque nombre ci-dessous a été mesuré sur les 16 mois d'historique de l'installation de référence, y compris une vraie panne de huit mois — une voie de micro-onduleur morte — avec date de réparation connue. Historique de la fonctionnalité : specs 160 (prévision), 161 (réapprentissage), 162 (santé) dans l'[index des specs](../specs-index.md)._
 
 ### Le ratio quotidien
 
@@ -80,13 +80,13 @@ Un **changement déclaré de l'installation** (vous avez modifié les panneaux e
 
 Tout le pipeline — les fonctions livrées, pas une re-dérivation — a été rejoué sur 16 mois d'historique de l'installation de référence :
 
-| Événement (vérité terrain du propriétaire) | Comportement du détecteur                                                                                           |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Un panneau sur six meurt, automne 2025     | Alerte levée après **2 jours clairs** (13 oct. 2025)                                                                |
-| La panne persiste tout l'hiver             | Alerte tenue 8 mois pleins, sans battement                                                                          |
-| Panneau réparé, fin juin 2026              | Alerte résolue à la réparation (25 juin 2026) ; marche de +23 % mesurée contre +20 % prédit pour un panneau sur six |
-| Extension de +1 kWc, déclarée              | Aucune fausse alerte ; référence reconstruite depuis la date déclarée ; +36 % mesuré contre +33 % attendu           |
-| Les 8 mois sains autour de ces événements  | **Zéro** fausse alerte                                                                                              |
+| Événement (vérité terrain du propriétaire)                                       | Comportement du détecteur                                                                                           |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Une voie du micro-onduleur meurt — un panneau sur six devient muet, automne 2025 | Alerte levée après **2 jours clairs** (13 oct. 2025)                                                                |
+| La panne persiste tout l'hiver                                                   | Alerte tenue 8 mois pleins, sans battement                                                                          |
+| Voie réparée, fin juin 2026                                                      | Alerte résolue à la réparation (25 juin 2026) ; marche de +23 % mesurée contre +20 % prédit pour un panneau sur six |
+| Extension de +1 kWc, déclarée                                                    | Aucune fausse alerte ; référence reconstruite depuis la date déclarée ; +36 % mesuré contre +33 % attendu           |
+| Les 8 mois sains autour de ces événements                                        | **Zéro** fausse alerte                                                                                              |
 
 ### Où ça se situe face à la littérature
 
