@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Sun, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SolarPlane } from "../../types";
 import { updateEquipment } from "../../api";
@@ -114,16 +114,10 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
     }
   }
 
+  // Card chrome, title and help live in `SolarInstallationSettings` (spec
+  // 163), the form's only remaining host: bare fields here.
   return (
-    <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <Sun size={16} strokeWidth={1.5} className="text-accent" />
-        <h3 className="text-[14px] font-semibold text-text">
-          {t("equipments.solar.title")}
-        </h3>
-      </div>
-      <p className="text-[12px] text-text-secondary mb-4">{t("equipments.solar.help")}</p>
-
+    <div>
       <div className="flex flex-col gap-4">
         {draft.map((plane, index) => (
           <div

@@ -1,10 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { useEnergy } from "../../store/useEnergy";
+import { useEquipments } from "../../store/useEquipments";
+import { useAuth } from "../../store/useAuth";
 import { PeriodSelector } from "./PeriodSelector";
 import { ProductionBarChart } from "./ProductionBarChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { displayedProductionTotalWh, hasProductionSplit } from "./productionTotal";
+import { PvForecastPanel } from "../equipments/PvForecastPanel";
+import { PvHealthPanel } from "../equipments/PvHealthPanel";
+import { isActiveSolarProfile } from "../equipments/solarProfileValidation";
 
 function formatKWh(wh: number, period: string): string {
   const kwh = wh / 1000;
@@ -22,10 +28,29 @@ export function ProductionPage() {
   const date = useEnergy((s) => s.date);
   const loading = useEnergy((s) => s.loading);
   const fetchHistory = useEnergy((s) => s.fetchHistory);
+  const equipments = useEquipments((s) => s.equipments);
+  const fetchEquipments = useEquipments((s) => s.fetchEquipments);
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
+
+  useEffect(() => {
+    void fetchEquipments();
+  }, [fetchEquipments]);
+
+  // Spec 163 — the PV monitoring home. One block per declared production
+  // meter; "declared" is the same rule the backend applies, mirrored in
+  // solarProfileValidation since spec 160.
+  const meters = useMemo(
+    () => equipments.filter((e) => e.type === "energy_production_meter"),
+    [equipments],
+  );
+  const declaredMeters = useMemo(
+    () => meters.filter((m) => isActiveSolarProfile(m.solarProfile)),
+    [meters],
+  );
 
   const hasProdData = history ? displayedProductionTotalWh(history.totals) > 0 : false;
   const showSplit = history ? hasProductionSplit(history.totals) : false;
@@ -73,6 +98,31 @@ export function ProductionPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Spec 163 — forecast and panel health, read-only. Titled per meter as
+          soon as several meters exist (FR1) — even with one declared, the
+          name says which meter is being monitored; with a single meter the
+          panels' own headers say what they are. */}
+      {declaredMeters.map((meter) => (
+        <div key={meter.id} className="mt-6">
+          {meters.length > 1 && (
+            <h2 className="text-[15px] font-semibold text-text mb-3">{meter.name}</h2>
+          )}
+          <PvForecastPanel equipmentId={meter.id} />
+          <PvHealthPanel equipmentId={meter.id} />
+        </div>
+      ))}
+
+      {/* A meter exists but nothing is declared: only an admin can fix that,
+          so only an admin sees the pointer. No meter at all stays silent —
+          this page cannot create equipment. */}
+      {meters.length > 0 && declaredMeters.length === 0 && isAdmin && (
+        <p className="mt-6 text-[13px] text-text-secondary">
+          <Link to="/settings?tab=energy" className="text-primary hover:underline">
+            {t("energy.pv.setupHint")}
+          </Link>
+        </p>
       )}
     </div>
   );

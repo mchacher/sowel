@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -50,16 +51,20 @@ import { copyToClipboard } from "../lib/clipboard";
 import type { ApiToken, User, UserRole, MfaStatus, MfaTrustedDevice } from "../types";
 import { TariffSettings } from "../components/settings/TariffSettings";
 import { ArbiterSettings } from "../components/settings/ArbiterSettings";
-
-type SettingsTab = "general" | "account" | "energy" | "admin";
+import { SolarInstallationSettings } from "../components/settings/SolarInstallationSettings";
+import { initialSettingsTab } from "../lib/settings-tab";
+import type { SettingsTab } from "../lib/settings-tab";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const [searchParams] = useSearchParams();
   const user = useAuth((s) => s.user);
   const updatePreferences = useAuth((s) => s.updatePreferences);
   const fetchMe = useAuth((s) => s.fetchMe);
   const isAdmin = user?.role === "admin";
-  const [activeTab, setActiveTab] = useState<SettingsTab>(isAdmin ? "general" : "account");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
+    initialSettingsTab(searchParams.get("tab"), isAdmin),
+  );
 
   const tabs: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
     { id: "general", label: t("settings.tabs.general"), adminOnly: true },
@@ -154,6 +159,7 @@ export function SettingsPage() {
           <div className="space-y-6">
             <TariffSettings />
             <ArbiterSettings />
+            <SolarInstallationSettings />
           </div>
         )}
 
