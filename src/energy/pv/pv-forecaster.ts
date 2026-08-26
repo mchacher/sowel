@@ -852,6 +852,13 @@ export class PvForecaster {
     latest: DayRatio | null;
     alert: { since: string; deficit: number } | null;
     detection: ReturnType<typeof detectionSpeed>;
+    /**
+     * The capacity-change day the series is filtered by, when one is stamped
+     * (#724). While the reference is still building, the card needs to say
+     * *since when* the days are being counted — otherwise a household with a
+     * year of history reads the wait as the history being ignored.
+     */
+    sinceCutoff: string | null;
   } {
     // The same cutoff the alarm path applies: days from before the declared
     // array last changed describe hardware that is gone.
@@ -883,6 +890,7 @@ export class PvForecaster {
       // Null exactly when no day qualified in the window: the card reads that
       // as "nothing recent to judge on" rather than carrying a separate flag.
       detection: detectionSpeed(recent, DETECTION_WINDOW_DAYS),
+      sinceCutoff: cutoffDay,
     };
   }
 

@@ -435,6 +435,21 @@ describe("getHealth", () => {
     expect(h.normal).toBeNull();
     expect(h.detection).toBeNull();
   });
+
+  it("exposes the capacity cutoff the series counts from (#724)", () => {
+    // The building-progress line needs "since when": the stamped change day,
+    // as a local date, or null when nothing was ever stamped.
+    const f = build(db);
+    expect(f.getHealth(equipment).sinceCutoff).toBeNull();
+
+    // Midday UTC so the expected local date holds in any test-runner timezone.
+    db.prepare("UPDATE pv_forecast_model SET capacity_changed_at = ? WHERE equipment_id = ?").run(
+      "2026-08-05T12:00:00.000Z",
+      EQUIPMENT_ID,
+    );
+    expect(f.getHealth(equipment).sinceCutoff).toBe("2026-08-05");
+    f.stop();
+  });
 });
 
 /**

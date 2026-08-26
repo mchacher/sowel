@@ -1433,6 +1433,8 @@
   "equipments.solar.cardinal.NW": "NO",
   "equipments.pvHealth.title": "Santé des panneaux",
   "equipments.pvHealth.waiting": "En attente d'assez d'heures claires en milieu de journée pour se prononcer. Les jours couverts sont ignorés, pas comptés comme une contre-performance.",
+  "equipments.pvHealth.building": "Référence en construction : {{have}} jours clairs sur les {{need}} nécessaires depuis le changement d'installation du {{date}}. Les jours antérieurs décrivent l'ancienne installation et ne sont pas utilisés.",
+  "equipments.pvHealth.buildingNoDate": "Référence en construction : {{have}} jours clairs sur les {{need}} nécessaires.",
   "equipments.pvHealth.blind": "Aucune heure claire en milieu de journée récemment : il n'y a rien de récent sur quoi se prononcer. Les chiffres ci-dessous sont les derniers mesurés.",
   "equipments.pvHealth.normal": "{{date}}, dernier jour clair : {{pct}} % {{direction}} du niveau habituel.",
   "equipments.pvHealth.above": "au-dessus",

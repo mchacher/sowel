@@ -25,6 +25,8 @@ function response(over: Partial<PvHealthResponse> = {}): PvHealthResponse {
     latest: days[days.length - 1],
     alert: null,
     detection: { minDetectableLoss: 0.1, calendarDays: 6, qualifyingDays: 8, windowDays: 14 },
+    normalTarget: 30,
+    sinceCutoff: null,
     ...over,
   };
 }
@@ -53,6 +55,38 @@ describe("PvHealthPanel", () => {
   it("says it is waiting while nothing has qualified yet", async () => {
     await renderPanel(response({ days: [], normal: null, latest: null, detection: null }));
     expect(await screen.findByText(/clear midday hours/i)).toBeTruthy();
+  });
+
+  it("states its progress while the reference is building (#724)", async () => {
+    // 15 qualifying days, no reference yet, a stamped capacity change: the
+    // card must say how far along it is and since when the days count. The
+    // generic waiting line here read as "your history is being ignored".
+    const days = Array.from({ length: 15 }, (_, i) => ({
+      day: `2026-08-${String(i + 6).padStart(2, "0")}`,
+      ratio: 3.8,
+      hours: 6,
+    }));
+    await renderPanel(
+      response({
+        days,
+        normal: null,
+        latest: days[days.length - 1],
+        sinceCutoff: "2026-08-05",
+      }),
+    );
+    expect(await screen.findByText(/15 of the 30 clear days/i)).toBeTruthy();
+    expect(screen.getByText(/august 5/i)).toBeTruthy();
+    expect(screen.queryByText(/clear midday hours/i)).toBeNull();
+  });
+
+  it("states its progress without a date when no change was ever stamped", async () => {
+    const days = Array.from({ length: 4 }, (_, i) => ({
+      day: `2026-08-${String(i + 20).padStart(2, "0")}`,
+      ratio: 3.8,
+      hours: 6,
+    }));
+    await renderPanel(response({ days, normal: null, latest: days[3], sinceCutoff: null }));
+    expect(await screen.findByText(/4 of the 30 clear days/i)).toBeTruthy();
   });
 
   it("says it has nothing recent to judge on when no day qualified in the window", async () => {

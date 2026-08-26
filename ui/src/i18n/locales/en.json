@@ -1433,6 +1433,8 @@
   "equipments.solar.cardinal.NW": "NW",
   "equipments.pvHealth.title": "Panel health",
   "equipments.pvHealth.waiting": "Waiting for enough clear midday hours to judge on. Overcast days are skipped rather than counted as poor performance.",
+  "equipments.pvHealth.building": "Building the reference: {{have}} of the {{need}} clear days needed since your installation changed on {{date}}. Days from before that describe the previous installation and are not used.",
+  "equipments.pvHealth.buildingNoDate": "Building the reference: {{have}} of the {{need}} clear days needed.",
   "equipments.pvHealth.blind": "No clear midday hours recently, so there is nothing recent to judge on. The figures below are the last ones measured.",
   "equipments.pvHealth.normal": "{{date}}, the last clear day: {{pct}} % {{direction}} the usual level.",
   "equipments.pvHealth.above": "above",

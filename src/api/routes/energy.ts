@@ -27,7 +27,7 @@ import { requireAdmin } from "../../auth/auth-middleware.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
 import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
 import { isActiveSolarProfile } from "../../energy/pv/solar-profile.js";
-import { ALERT_DAYS } from "../../energy/pv/pv-health.js";
+import { ALERT_DAYS, MIN_NORMAL_DAYS } from "../../energy/pv/pv-health.js";
 
 /** Trailing days of the health series shipped to the card. */
 const HEALTH_DISPLAY_DAYS = 120;
@@ -730,6 +730,12 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         latest: health.latest,
         alert: health.alert,
         detection: health.detection,
+        // #724 — while the reference is building, the card states its progress:
+        // how many qualifying days it has (days.length), how many it needs, and
+        // since when they count. Constants stay server-side so the UI cannot
+        // drift from the rules.
+        normalTarget: MIN_NORMAL_DAYS,
+        sinceCutoff: health.sinceCutoff,
       };
     },
   );
