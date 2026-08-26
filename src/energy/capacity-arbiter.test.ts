@@ -1004,9 +1004,9 @@ describe("capacity arbiter", () => {
     );
   });
 
-  // ── Unhonored revokes: no accusation without a measured draw ──
+  // ── Unhonored revokes: no accusation without a measured draw (#732) ──
 
-  it("a load that was drawing nothing is never accused of ignoring the revoke", () => {
+  it("a load that was drawing nothing is never accused of ignoring the revoke (#732)", () => {
     const h = makeHarness({
       priority: ["pump", "heater"],
       profiles: {
@@ -1045,7 +1045,7 @@ describe("capacity arbiter", () => {
     expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("pump");
   });
 
-  it("an unmetered load that reports itself OFF is not accused either", () => {
+  it("an unmetered load that reports itself OFF is not accused either (#732)", () => {
     const h = makeHarness({
       priority: ["pump", "heater"],
       profiles: {
@@ -1077,7 +1077,7 @@ describe("capacity arbiter", () => {
     );
   });
 
-  it("a load that stops late drops its background excuse and can be granted again", () => {
+  it("a load that stops late drops its background excuse and can be granted again (#732)", () => {
     const h = makeHarness({
       priority: ["pac", "heater"],
       profiles: {

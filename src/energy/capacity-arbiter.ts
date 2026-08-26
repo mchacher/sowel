@@ -1194,7 +1194,7 @@ export class CapacityArbiter {
   }
 
   /**
-   * Direct evidence that a load is NOT consuming right now.
+   * Direct evidence that a load is NOT consuming right now (#732).
    *
    * Measurement first — a fresh own-power reading below the idle threshold is
    * proof, whatever the relay reports. Failing that, the load's own reported
@@ -1261,7 +1261,7 @@ export class CapacityArbiter {
         at: Date.now(),
       });
     }
-    // Arm the watchdog only when there is something to honor. A load
+    // Arm the watchdog only when there is something to honor (#732). A load
     // that was drawing nothing at the revoke — physically off, breaker open,
     // thermostat satisfied — cannot make the export "recover", so the proxy
     // below would accuse it the moment the sun drops or another load starts.
@@ -1368,7 +1368,7 @@ export class CapacityArbiter {
     const exportNow = -(this.emaPowerW ?? 0);
     this.watchdogs = this.watchdogs.filter((w) => {
       if (this.grantedClaimFor(w.equipmentId)) return false; // re-granted, moot
-      // Honored, by direct evidence: the load's own measurement (or its
+      // Honored, by direct evidence (#732): the load's own measurement (or its
       // reported state) says it has stopped. This outranks the export proxy,
       // which never recovers when the production falls or another load picks
       // up the slack in the same window — an evening revoke used to be flagged
