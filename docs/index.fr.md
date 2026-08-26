@@ -321,6 +321,15 @@ hide:
   <p><a href="technical/">Guide technique →</a></p>
 </div>
 
+<div class="sowel-card">
+  <div class="sowel-card__icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+  </div>
+  <h3>En profondeur</h3>
+  <p>Comment l'arbitre de surplus décide qui reçoit le surplus solaire, et comment Sowel remarque que les panneaux décrochent. Conception, mesures, références.</p>
+  <p><a href="deep-dives/surplus-arbiter/">L'arbitre de surplus →</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="deep-dives/pv-health/">Veiller sur les panneaux →</a></p>
+</div>
+
 </div>
 
 </div>
