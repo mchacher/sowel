@@ -114,12 +114,16 @@ const day = (d: string, ratio: number): DayRatio => ({
   irradiationWhM2: 4000,
 });
 
-/** `n` days at `ratio`, dated consecutively from 2026-07-01. */
+/** `n` consecutive qualifying days at `ratio`, starting `from` days after epoch. */
 const run = (n: number, ratio: number, from = 1): DayRatio[] =>
-  Array.from({ length: n }, (_, i) => day(`2026-07-${String(from + i).padStart(2, "0")}`, ratio));
+  Array.from({ length: n }, (_, i) =>
+    day(new Date(Date.UTC(2026, 0, from + i)).toISOString().slice(0, 10), ratio),
+  );
 
 describe("rollingNormal", () => {
   it("says nothing until there is enough history", () => {
+    // Thirty qualifying days, which is a couple of summer months. A reference
+    // built on less would be an opinion about the weather.
     expect(rollingNormal(run(MIN_NORMAL_DAYS - 1, 3.8))).toBeNull();
   });
 
@@ -143,14 +147,32 @@ describe("rollingNormal", () => {
     expect(rollingNormal(dirty)).toBeCloseTo(3.8, 6);
   });
 
-  it("follows a slow drift, which is soiling", () => {
-    const drifting = Array.from({ length: 20 }, (_, i) =>
-      day(`2026-07-${String(i + 1).padStart(2, "0")}`, 3.8 - i * 0.01),
-    );
-    const early = rollingNormal(drifting.slice(0, 10));
-    const late = rollingNormal(drifting);
-    expect(early).not.toBeNull();
-    expect(late!).toBeLessThan(early!);
+  it("sits near the top of the window, not in the middle", () => {
+    // "What this array is capable of", not "what it typically does". A dirty
+    // fortnight must not become the standard it is held to.
+    const mixed = [...run(MIN_NORMAL_DAYS, 4.0), ...run(10, 3.0, 40)];
+    const ref = rollingNormal(mixed)!;
+    expect(ref).toBeCloseTo(4.0, 6);
+  });
+
+  it("is not dragged down by a fault filling a fifth of the window", () => {
+    // The measured failure of the previous design: a 20-day median caught 7 % of
+    // a real eight-month outage because the fault became the reference. A fifth
+    // of the window cannot move an 80th centile.
+    const faultDays = Math.floor(MIN_NORMAL_DAYS / 5);
+    const withFault = [...run(MIN_NORMAL_DAYS, 4.0), ...run(faultDays, 3.0, 60)];
+    expect(rollingNormal(withFault)!).toBeCloseTo(4.0, 6);
+  });
+
+  it("reports a sustained decline rather than absorbing it", () => {
+    // Soiling used to be swallowed by a rolling median, so panels quietly lost
+    // ten percent and nothing said so. Now the reference holds and the deficit
+    // shows.
+    const clean = run(MIN_NORMAL_DAYS + 20, 4.0);
+    const dirty = [...clean, ...run(ALERT_DAYS, 3.5, 80)];
+    const v = assess(dirty);
+    expect(v.normal).toBeCloseTo(4.0, 6);
+    expect(v.alerting).toBe(true);
   });
 });
 
@@ -172,7 +194,7 @@ describe("assess", () => {
     const v = assess(faulty);
     expect(v.alerting).toBe(true);
     expect(v.deficit).toBeCloseTo(0.15, 2);
-    expect(v.since).toBe("2026-07-21");
+    expect(v.since).toBe(faulty[faulty.length - ALERT_DAYS].day);
   });
 
   it("does not raise on a deficit inside the margin", () => {

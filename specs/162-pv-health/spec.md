@@ -69,8 +69,19 @@ Against a 4.3 % floor, on the reference 8 × 500 Wc array:
 
 - one panel lost, 12.5 % of the array → about **2 clear days**
 - a micro-inverter lost, both channels, 25 % → **1 clear day**
-- soiling → a drift, not a step, which is why the normal has to move slowly
-  rather than be a fixed constant
+- soiling → a slow decline, now **reported** rather than absorbed: a reference
+  built on a year does not quietly follow ten percent of dirt down
+
+## Winter is close to blind, and the card must say so
+
+Measured over sixteen months on the reference installation: **182 qualifying
+days from April to September, 50 from October to March**. Eight a month in
+winter, against a reference that needs thirty to exist at all.
+
+The detector is therefore near-dormant exactly when snow and fallen leaves do
+their damage. That is a property of the sun, not of the rule, and the honest
+response is to state it rather than to loosen the criterion until winter appears
+to work.
 
 ## Winter is slower, and the card must say so
 
@@ -87,10 +98,30 @@ For each day with enough qualifying hours, store measured Wh over modelled Wh.
 A day below the threshold of qualifying hours is skipped, not stored as a low
 ratio: too few clear hours is missing information, never bad performance.
 
-### FR2 — A normal that moves, and freezes when it matters
+### FR2 — A reference the array cannot drag down, frozen once it matters
 
-The reference is the median of recent qualifying days, not a constant. Soiling
-and ageing are supposed to move it; a failure is supposed to outrun it.
+The reference is a **high centile (80th) of the last 180 qualifying days**, not a
+median of the last 20. That is not a refinement; it is the difference between a
+feature and a placebo.
+
+Validated against a real single-panel outage on the reference installation,
+about eight months long, with the repair date known from the owner:
+
+| reference                  | fault days covered | false-alert days |
+| -------------------------- | ------------------ | ---------------- |
+| median over 20 days        | **7 %**            | 2 %              |
+| median over 60 days        | 12 %               | 2 %              |
+| **80th centile, 180 days** | **91 %**           | **2 %**          |
+| 90th centile, all history  | 95 %               | 10 %             |
+
+A median follows the array down: a fault filling half the window becomes the
+reference and the detector accepts it as the new normal. A fault filling a fifth
+of the window cannot move an 80th centile. The measured consequence of getting
+this wrong is that eight months of a dead panel go unreported.
+
+The question the reference answers is therefore "what is this array capable of",
+not "what does it typically do". A dirty fortnight must not become the standard
+it is held to.
 
 **Once an alert is raised, the normal it was raised against is frozen and
 persisted.** A rolling median absorbs a sustained fault: once the bad days fill

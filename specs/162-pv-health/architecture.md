@@ -38,9 +38,14 @@ That table is exactly the input this feature needs, and it is already correct:
 same POA model, same impossible-reading rejection, same hour convention. The
 health check reads it and adds nothing to the collection path.
 
-The consequence is a real bound, and it is stated rather than worked around: the
-detector sees **45 days**, because that is what the sample window keeps. Long
-enough for a trailing normal, not long enough to compare one June with the next.
+The samples live 45 days, so a day's ratio has to be computed while its hours are
+still there and then **kept far longer than they are**: `pv_health_day` is
+retained 500 days. The reference is a high centile of 180 qualifying days, about
+a calendar year here, and a fault has to stay measurable against the array as it
+was before it started — the real one this was validated on lasted eight months.
+
+Both the alarm path and the card read that stored series, so they can never
+disagree about which days exist.
 
 ## Direct fraction, and where it comes from
 

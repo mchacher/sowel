@@ -429,3 +429,53 @@ describe("getHealth", () => {
     expect(h.detection).toBeNull();
   });
 });
+
+/**
+ * The long memory the reference needs.
+ *
+ * Validated against a real eight-month single-panel outage with a known repair
+ * date: a reference built on the 45-day sample window caught 7 % of it, one
+ * built on a high centile of a year caught 91 %. That only works if the day
+ * series outlives the samples that produced it.
+ */
+describe("health history outlives the sample window", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    migrate(db);
+    seedModel(db);
+  });
+
+  it("keeps stored days after their samples are gone", () => {
+    seedDays(db, 20, 3000);
+    const f = build(db);
+    f.runHealthCheck();
+    const before = storedDays(db);
+    expect(before).toBe(20);
+
+    // What `pruneSamples` does at 50 days, and what a spec 161 backfill does.
+    db.prepare("DELETE FROM pv_forecast_sample").run();
+    f.runHealthCheck();
+    f.stop();
+
+    expect(storedDays(db)).toBe(before);
+  });
+
+  it("judges against the stored series, not only what the samples still hold", () => {
+    // A fault that outlives the sample window must still be measured against
+    // the array as it was before it started.
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    const emit = vi.fn();
+    const f = build(db, emit);
+    f.runHealthCheck();
+    expect(standingAlerts(db)).toBe(1);
+
+    db.prepare("DELETE FROM pv_forecast_sample").run();
+    f.runHealthCheck();
+    f.stop();
+
+    // The alert stands on history the samples no longer carry.
+    expect(standingAlerts(db)).toBe(1);
+  });
+});

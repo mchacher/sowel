@@ -53,6 +53,17 @@ import {
 export const WINDOW_DAYS = 45;
 
 /**
+ * How long a day's performance ratio is kept (spec 162).
+ *
+ * Far longer than the 45-day sample window that produces it. The reference the
+ * health check judges against is a high centile of 180 qualifying days, which on
+ * the reference installation is about a year of calendar; and a fault has to
+ * stay measurable against the array as it was before it began. A real
+ * single-panel outage there lasted eight months.
+ */
+export const HEALTH_HISTORY_DAYS = 500;
+
+/**
  * Daylight hours needed after a declared capacity change before the gain is
  * re-estimated on the new array.
  *
@@ -549,8 +560,12 @@ export class PvForecaster {
   }
 
   private assessEquipmentHealth(equipment: Equipment): void {
-    const days = this.healthDays(equipment);
-    this.storeHealthDays(equipment.id, days);
+    // New days come from the samples, which live 50 days. The judgement reads
+    // the stored table, which lives a year: the reference is a high centile of
+    // 180 qualifying days, and a fault that outlives the sample window has to
+    // remain measurable against the array as it was before it.
+    this.storeHealthDays(equipment.id, this.healthDays(equipment));
+    const days = this.storedHealthDays(equipment.id);
 
     const standing = this.db
       .prepare("SELECT since, normal, deficit FROM pv_health_alert WHERE equipment_id = ?")
@@ -684,6 +699,29 @@ export class PvForecaster {
     return days;
   }
 
+  /** The persisted series: the long memory the reference is built on. */
+  private storedHealthDays(equipmentId: string): DayRatio[] {
+    const rows = this.db
+      .prepare(
+        `SELECT day, ratio, hours, measured_wh, irradiation_wh_m2 FROM pv_health_day
+          WHERE equipment_id = ? ORDER BY day`,
+      )
+      .all(equipmentId) as Array<{
+      day: string;
+      ratio: number;
+      hours: number;
+      measured_wh: number;
+      irradiation_wh_m2: number;
+    }>;
+    return rows.map((r) => ({
+      day: r.day,
+      ratio: r.ratio,
+      hours: r.hours,
+      measuredWh: r.measured_wh,
+      irradiationWhM2: r.irradiation_wh_m2,
+    }));
+  }
+
   private storeHealthDays(equipmentId: string, days: readonly DayRatio[]): void {
     const upsert = this.db.prepare(
       `INSERT INTO pv_health_day (equipment_id, day, ratio, hours, measured_wh, irradiation_wh_m2)
@@ -692,19 +730,18 @@ export class PvForecaster {
          ratio = excluded.ratio, hours = excluded.hours,
          measured_wh = excluded.measured_wh, irradiation_wh_m2 = excluded.irradiation_wh_m2`,
     );
-    // Rows outside the window the samples now cover are dropped in the same
-    // transaction: nothing else prunes this table, and a card reading further
-    // back than the alarm path is how the two came to contradict each other.
-    const oldest = days.length > 0 ? days[0].day : null;
+    // Pruned to the memory the reference needs, not to the sample window. The
+    // samples live 50 days; a fault lasting eight months has to stay measurable
+    // against the array as it was before it started, which is why this table is
+    // kept far longer than what produced it.
+    const cutoff = localDay(Date.now() - HEALTH_HISTORY_DAYS * 86_400_000);
     this.db.transaction(() => {
       for (const d of days) {
         upsert.run(equipmentId, d.day, d.ratio, d.hours, d.measuredWh, d.irradiationWhM2);
       }
-      if (oldest) {
-        this.db
-          .prepare("DELETE FROM pv_health_day WHERE equipment_id = ? AND day < ?")
-          .run(equipmentId, oldest);
-      }
+      this.db
+        .prepare("DELETE FROM pv_health_day WHERE equipment_id = ? AND day < ?")
+        .run(equipmentId, cutoff);
     })();
   }
 
@@ -727,7 +764,7 @@ export class PvForecaster {
     /** Qualifying days over the recent window, so the card can say it is blind. */
     recentQualifyingDays: number;
   } {
-    const days = this.healthDays(equipment);
+    const days = this.storedHealthDays(equipment.id);
     const standing = this.db
       .prepare("SELECT since, normal, deficit FROM pv_health_alert WHERE equipment_id = ?")
       .get(equipment.id) as { since: string; normal: number; deficit: number } | undefined;
