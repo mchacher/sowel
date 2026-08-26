@@ -1124,6 +1124,66 @@ describe("capacity arbiter", () => {
     expect(heaterClaim.status()).toBe("granted");
   });
 
+  it("an inertial load's own OFF report does not hand back the anti-cascade excuse (#733)", () => {
+    const h = makeHarness({
+      priority: ["pac", "heater"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        heater: {
+          class: "deferrable",
+          nominalPowerW: 2200,
+          minOnS: 0,
+          minOffS: 0,
+          releaseDelayS: 1800, // the Calypso case: contact opens, pump runs on
+        },
+      },
+      // No power binding: the relay's state report is all the arbiter gets,
+      // and on this load it says nothing about the current still flowing.
+      bindings: { heater: [{ alias: "state", category: "generic" }] },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.feedState("heater", true);
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+    // The contact opens immediately — the tail does not.
+    h.feedState("heater", false);
+    for (let i = 0; i < 130; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+    }
+    // The excuse must hold: the PAC keeps its grant instead of paying for a
+    // shutdown that has not electrically happened yet.
+    expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
+  });
+
+  it("a large load still importing hundreds of watts does not count as idle (#733)", () => {
+    const h = makeHarness({
+      priority: ["pac", "heater"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        heater: { class: "deferrable", nominalPowerW: 5000, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-8000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.feedLoadPower("heater", 5000);
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+    // It winds down to 400 W and stays there — 8 % of nominal, but 400 W of
+    // real import. An idle threshold scaled to nominal would call this idle.
+    for (let i = 0; i < 130; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+      h.feedLoadPower("heater", 400);
+    }
+    expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
+  });
+
   // ── Wall-switch divergence (FR-6, review decision 16) ─────
 
   it("a granted load reported OFF at the wall is revoked and suspended", () => {

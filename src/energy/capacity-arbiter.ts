@@ -53,12 +53,15 @@ const LEARN_SAMPLE_FLOOR = 0.25; // learner ignores samples below 25 % of nomina
 const LEARN_MIN_SAMPLES = 3;
 const LEARN_SAMPLE_CAP = 500;
 const DIVERGENCE_RATIO = 0.3; // watts-divergence threshold vs declared nominal
-// A load measured below this fraction of its declared nominal (or below the
-// absolute floor, for a load whose nominal is tiny/unset) is not running:
-// standby, a thermostat that has opened, a breaker left off. Used by the
-// revoke watchdog, which must never accuse a load that draws nothing.
+// Below this, a load is not running: standby, a thermostat that has opened, a
+// breaker left off. A fraction of the declared nominal, BOUNDED at both ends —
+// unbounded, 10 % of a 5 kW load would read 400 W of real import as "idle" and
+// hand the anti-cascade excuse away (review #733), while 10 % of a 100 W pump
+// would never be reached. Used by the revoke watchdog, which must never accuse
+// a load that draws nothing, and must never excuse one that still draws.
 const IDLE_DRAW_RATIO = 0.1;
 const IDLE_DRAW_FLOOR_W = 20;
+const IDLE_DRAW_CEIL_W = 100;
 const TICK_MS = 10_000;
 
 interface ArbiterConfig {
@@ -1197,16 +1200,31 @@ export class CapacityArbiter {
    * Direct evidence that a load is NOT consuming right now (#732).
    *
    * Measurement first — a fresh own-power reading below the idle threshold is
-   * proof, whatever the relay reports. Failing that, the load's own reported
-   * on/off STATE. A load with neither (no power binding, never reported a
-   * state) is unknown, and callers fall back to the grid-export proxy.
+   * proof, whatever the relay reports.
+   *
+   * Failing that, the load's own reported on/off STATE, but ONLY for a load
+   * that declares no shutdown inertia (review #733). `releaseDelayS` exists
+   * for the appliance whose contact opens — reporting itself OFF — while its
+   * heat pump keeps drawing for half an hour (#631); on such a load the state
+   * report says nothing about the current, and trusting it would hand back the
+   * anti-cascade excuse exactly when the tail needs it.
+   *
+   * A load with neither (no power binding, never reported a state, or an
+   * inertial load with no measurement) is unknown, and callers fall back to
+   * the grid-export proxy.
    */
   private notDrawing(equipmentId: string): boolean {
+    const profile = this.profileOf(equipmentId);
     const live = this.freshLiveDraw(equipmentId);
     if (live !== null) {
-      const nominal = this.profileOf(equipmentId)?.nominalPowerW ?? 0;
-      return live < Math.max(IDLE_DRAW_FLOOR_W, nominal * IDLE_DRAW_RATIO);
+      const nominal = profile?.nominalPowerW ?? 0;
+      const threshold = Math.min(
+        IDLE_DRAW_CEIL_W,
+        Math.max(IDLE_DRAW_FLOOR_W, nominal * IDLE_DRAW_RATIO),
+      );
+      return live < threshold;
     }
+    if ((profile?.releaseDelayS ?? 0) > 0) return false;
     const reportedOn = this.reportedOnOff.get(equipmentId);
     if (reportedOn !== undefined) return !reportedOn;
     return false;
@@ -1368,20 +1386,21 @@ export class CapacityArbiter {
     const exportNow = -(this.emaPowerW ?? 0);
     this.watchdogs = this.watchdogs.filter((w) => {
       if (this.grantedClaimFor(w.equipmentId)) return false; // re-granted, moot
-      // Honored, by direct evidence (#732): the load's own measurement (or its
-      // reported state) says it has stopped. This outranks the export proxy,
-      // which never recovers when the production falls or another load picks
-      // up the slack in the same window — an evening revoke used to be flagged
-      // unhonored for that reason alone. Drop the background excuse with it:
-      // a load that has genuinely stopped must be back in the release pass.
+      // Honored, by direct evidence (#732): the load's own measurement (or, for
+      // a load declaring no inertia, its reported state) says it has stopped.
+      // This outranks the export proxy, which never recovers when the
+      // production falls or another load picks up the slack in the same window
+      // — an evening revoke used to be flagged unhonored for that reason alone.
+      // Drop the background excuse with it: a load that has genuinely stopped
+      // must be back in the release pass, and grantable again.
       if (this.notDrawing(w.equipmentId)) {
         this.unresponsiveUntil.delete(w.equipmentId);
         return false;
       }
-      if (exportNow - w.exportAtRevoke >= 0.5 * w.expectedW) {
-        this.unresponsiveUntil.delete(w.equipmentId);
-        return false; // honored, export recovered
-      }
+      // NOT lifting `unresponsiveUntil` here is deliberate (review #733): an
+      // export that rose can be the sun coming back or a sibling stopping, so
+      // this branch closes the watchdog without claiming the load is idle.
+      if (exportNow - w.exportAtRevoke >= 0.5 * w.expectedW) return false; // honored
       const graceMs =
         Math.max(this.config.releaseHoldS, this.profileOf(w.equipmentId)?.releaseDelayS ?? 0) *
         1000;
