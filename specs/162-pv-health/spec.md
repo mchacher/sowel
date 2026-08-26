@@ -104,8 +104,10 @@ The reference is a **high centile (80th) of the last 180 qualifying days**, not 
 median of the last 20. That is not a refinement; it is the difference between a
 feature and a placebo.
 
-Validated against a real single-panel outage on the reference installation,
-about eight months long, with the repair date known from the owner:
+Validated against a real outage on the reference installation — one
+microinverter channel down, one panel of six silent (initially recorded as a
+panel failure; the owner later identified the channel as the culprit) — about
+eight months long, with the repair date known from the owner:
 
 | reference                  | fault days covered | false-alert days |
 | -------------------------- | ------------------ | ---------------- |

@@ -84,6 +84,7 @@ plugins:
           nav_translations:
             Home: Accueil
             In Depth: En profondeur
+            Where the Energy Goes: Où va l'énergie
             The Surplus Arbiter: L'arbitre de surplus
             Watching Over the Panels: Veiller sur les panneaux
             Technical Guide: Guide technique
@@ -128,6 +129,7 @@ nav:
     - Dependency Management: technical/dependency-management.md
     - Specs Index: specs-index.md
   - In Depth:
+    - Where the Energy Goes: deep-dives/energy-tour.md
     - The Surplus Arbiter: deep-dives/surplus-arbiter.md
     - Watching Over the Panels: deep-dives/pv-health.md
   - User Guide:
