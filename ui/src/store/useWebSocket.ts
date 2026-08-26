@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import type { BatteryAlert, EngineEvent } from "../types";
-import { getBatteryAlerts, getPvHealthAlerts } from "../api";
+import { getBatteryAlerts, getPvHealthAlerts, type PvHealthAlert } from "../api";
+import i18n from "../i18n";
+import { dateLocale } from "../lib/locale";
+import { localDayToDate } from "../lib/local-date";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
@@ -63,6 +66,55 @@ const BATTERY_ALARM_PREFIX = "battery-low:";
 function refreshBatteryAlertsIfNeeded(alarmId: string): void {
   if (!alarmId.startsWith(BATTERY_ALARM_PREFIX)) return;
   void fetchBatteryAlerts();
+}
+
+const PV_HEALTH_ALARM_PREFIX = "pv-health:";
+
+/**
+ * Localised banner text for a standing PV health alert (spec 162).
+ *
+ * Composed client-side from the snapshot's structured fields, NOT taken from
+ * the engine's message: engine events are English by repo convention, but the
+ * banner is user-facing UI and has to speak the user's language. One function
+ * for both the on-open seeding and the live-raise refresh, so the two can
+ * never word the same alert differently.
+ */
+function pvHealthBannerMessage(alert: PvHealthAlert): string {
+  return i18n.t("equipments.pvHealth.alarmBanner", {
+    pct: Math.round(alert.deficit * 100),
+    since: localDayToDate(alert.since).toLocaleDateString(dateLocale(i18n.language), {
+      day: "numeric",
+      month: "long",
+    }),
+  });
+}
+
+/**
+ * A live pv-health raise arrives with the engine's English message; replace it
+ * with the localised one from the snapshot, the way battery alerts refresh.
+ */
+function refreshPvHealthAlertsIfNeeded(alarmId: string): void {
+  if (!alarmId.startsWith(PV_HEALTH_ALARM_PREFIX)) return;
+  void getPvHealthAlerts()
+    .then((alerts) => {
+      useWebSocket.setState((s) => {
+        const alarms = new Map(s.alarms);
+        for (const alert of alerts) {
+          const id = `${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`;
+          if (!alarms.has(id)) continue;
+          alarms.set(id, {
+            alarmId: id,
+            level: "warning",
+            source: alert.equipmentName,
+            message: pvHealthBannerMessage(alert),
+          });
+        }
+        return { alarms };
+      });
+    })
+    .catch(() => {
+      // The English live message stays; better than nothing.
+    });
 }
 
 /** Same wording as the engine alarm, so a restored banner reads identically. */
@@ -258,6 +310,7 @@ function handleEvent(event: EngineEvent): void {
         return { alarms };
       });
       refreshBatteryAlertsIfNeeded(event.alarmId);
+      refreshPvHealthAlertsIfNeeded(event.alarmId);
       break;
     case "system.alarm.resolved":
       useWebSocket.setState((s) => {
@@ -396,15 +449,15 @@ export const useWebSocket = create<WebSocketState>((set) => ({
           }
 
           for (const alert of pvHealthAlerts) {
-            const alarmId = `pv-health:${alert.equipmentId}`;
-            // The message comes composed from the server, with the same wording
-            // and constants as the live raise — a copy here drifted the day any
-            // constant changed, and nothing would have said so.
+            const alarmId = `${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`;
+            // Localised client-side from the structured fields: the engine's
+            // message is English by repo convention, the banner is not. The
+            // equipment name headlines, as the battery alerts do.
             alarms.set(alarmId, {
               alarmId,
               level: "warning",
-              source: "pv-health",
-              message: alert.message,
+              source: alert.equipmentName,
+              message: pvHealthBannerMessage(alert),
             });
           }
 

@@ -273,11 +273,12 @@ describe("connect", () => {
 
     const alarm = useWebSocket.getState().alarms.get("pv-health:eq-pv");
     expect(alarm?.level).toBe("warning");
-    // The message is the server's, verbatim: a copy composed client-side
-    // silently diverged from the live raise the day a constant changed.
-    expect(alarm?.message).toBe(
-      "Shelly Solar: production 25 % below its usual level on the last 3 clear days",
-    );
+    // Headlined by the equipment name, as battery alerts are, and localised
+    // client-side from the structured fields: the engine's message is English
+    // by repo convention, the banner is user-facing UI and must not be.
+    expect(alarm?.source).toBe("Shelly Solar");
+    expect(alarm?.message).toMatch(/25\s?%/);
+    expect(alarm?.message).not.toMatch(/on the last 3 clear days/);
   });
 });
 

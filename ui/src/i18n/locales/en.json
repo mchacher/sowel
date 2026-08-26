@@ -1434,6 +1434,7 @@
   "equipments.pvHealth.normal": "{{date}}, the last clear day: {{pct}} % {{direction}} the usual level.",
   "equipments.pvHealth.above": "above",
   "equipments.pvHealth.below": "below",
+  "equipments.pvHealth.alarmBanner": "Production about {{pct}} % below its usual level since {{since}}, on clear days.",
   "equipments.pvHealth.alert": "Production has been about {{pct}} % below its usual level since {{since}}, on clear days. Worth checking the panels and the inverters.",
   "equipments.pvHealth.ofNormal": "of usual",
   "equipments.pvHealth.speed": "{{clear}} clear days out of the last {{window}}. At this rate a loss of more than {{pct}} % would be confirmed in about {{days}} days; anything shallower is not detected at all.",
