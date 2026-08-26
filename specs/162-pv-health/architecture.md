@@ -94,11 +94,14 @@ CREATE TABLE pv_health_alert (
 );
 ```
 
-Both consumers — the alarm path and the card — recompute the day list from
-`pv_forecast_sample` rather than reading `pv_health_day` whole. Reading different
-windows is how the card came to show a red banner for a fault the engine had just
-closed. `pv_health_day` is the persisted record for the chart and is pruned to
-the same window in the same transaction that writes it.
+Both consumers — the alarm path and the card — read the **same** stored series
+with the **same** capacity cutoff, so they can never disagree about which days
+exist; reading different windows is how the card once showed a red banner for a
+fault the engine had just closed. The samples (45-day retention) only _produce_
+new days; the stored table is the memory, kept `HEALTH_HISTORY_DAYS` = 500 days
+and pruned to that horizon in the same transaction that writes it. The API
+ships only the trailing 120 days — the display window — while the reference is
+computed server-side over the full stored history.
 
 Both tables go into `BACKUP_TABLES`. Spec 161's review found the PV tables
 missing from it, where a restore cascaded them away through `equipments`; the new
@@ -106,35 +109,72 @@ one must not repeat that.
 
 ## The rules, and their constants
 
-| Constant                    | Value  | Why                                                   |
-| --------------------------- | ------ | ----------------------------------------------------- |
-| `MIDDAY_FROM` / `MIDDAY_TO` | 10, 16 | Measured: outside it the noise doubles                |
-| `MIN_DIRECT_FRACTION`       | 0.75   | The knee of the measured table                        |
-| `MIN_QUALIFYING_HOURS`      | 4      | A day of fewer hours is an opinion, not a measurement |
-| `NORMAL_DAYS`               | 20     | Trailing qualifying days behind the reference         |
-| `MIN_NORMAL_DAYS`           | 8      | Below it there is no normal and nothing is asserted   |
-| `ALERT_MARGIN`              | 0.10   | Above the measured 4.3 % floor with room to spare     |
-| `ALERT_DAYS`                | 3      | Consecutive qualifying days below the margin          |
+| Constant                    | Value  | Why                                                                       |
+| --------------------------- | ------ | ------------------------------------------------------------------------- |
+| `MIDDAY_FROM` / `MIDDAY_TO` | 10, 16 | Measured: outside it the noise doubles                                    |
+| `MIN_DIRECT_FRACTION`       | 0.75   | The knee of the measured table                                            |
+| `MIN_QUALIFYING_HOURS`      | 4      | A day of fewer hours is an opinion, not a measurement                     |
+| `NORMAL_DAYS`               | 180    | About a year of qualifying days; the length is the requirement, see below |
+| `MIN_NORMAL_DAYS`           | 30     | Below it there is no reference and nothing is asserted                    |
+| `REFERENCE_QUANTILE`        | 0.8    | A median caught 7 % of a real outage; this catches 91 %                   |
+| `DETECTION_WINDOW_DAYS`     | 14     | What "recently" means on the card — December must describe December       |
+| `ALERT_MARGIN`              | 0.10   | Above the measured 4.3 % floor with room to spare                         |
+| `ALERT_DAYS`                | 3      | Consecutive qualifying days below the margin                              |
 
 `ALERT_MARGIN` is deliberately not the noise floor. At 3σ over three days the
 floor says 7.5 %; alerting there would fire on the tail of ordinary variation
 several times a season. Ten percent is still below one lost panel of eight
 (12.5 %), which is the smallest fault worth waking someone for.
 
-## The normal
+## The reference
 
-The median of the trailing `NORMAL_DAYS` qualifying days, excluding the days
-under assessment. Median rather than mean: one anomalous day should not move the
-reference it is about to be judged against.
+The **80th centile of the trailing 180 qualifying days**, excluding the days
+under assessment. Not a median, and this is the whole design: a median follows
+the array down — a fault filling half the window becomes the reference, and the
+detector accepts it as the new normal. Replayed against a real eight-month
+single-panel outage with the repair date known, a 20-day median covered 7 % of
+the fault days; this covers 91 % at the same 2 % false-alert rate. A fault
+filling a fifth of the window cannot move a high centile.
 
-It follows soiling, which is the point, and it cannot follow a step, because a
-step needs `ALERT_DAYS` days to enter the window and the alert fires first.
+The question it answers is "what is this array capable of", not "what does it
+typically do". A dirty fortnight must not become the standard the array is held
+to — so soiling is _reported_ as a deficit rather than absorbed, which is the
+point.
+
+An earlier revision of this document described a 20-day median here. That is the
+design the outage replay rejected; do not "fix" the code back toward it.
+
+## Judgement, and what a capacity change does
+
+Both the alarm path and the card read the **stored** `pv_health_day` series
+(kept `HEALTH_HISTORY_DAYS` = 500 days), filtered to days on or after
+`capacity_changed_at` — a column on `pv_forecast_model` written by the
+capacity-change trigger and by a declaration-bounded backfill, and never
+cleared. Days from before a declared change describe hardware that is gone; a
+reference built on them holds the new array to the old one's standard, and a
+household that removed two panels would otherwise carry a false alert that can
+never resolve. The filter is by date rather than by deletion because the days
+regenerate from the samples on every check.
+
+An alert raised before the change is closed as monitoring being reset, in those
+words — never as a recovery.
 
 ## Alerting
 
 Through `system.alarm.raised` and `system.alarm.resolved`, which the notification
 publishers and the zone activity feed already carry — including the resolution,
-since #709. No new transport.
+since #709. No new transport, but one snapshot: the raise fires exactly once and
+then lives in `pv_health_alert`, so a client session opened after it (or after
+any restart) rebuilds its banner from `GET /energy/pv-health-alerts`, exactly as
+the battery alerts of spec 143 do. The startup check is deferred 30 s so its
+events land after the notification service has subscribed.
+
+Resolution is **symmetric with the raise**: `ALERT_DAYS` consecutive qualifying
+days back above the frozen threshold, not one. A single lucky day used to clear
+an alert whose fault sat near the margin, three unlucky ones re-raised it, and
+the household got a raise/recovery notification pair every few clear days all
+season. A real repair jumps the ratio by the size of the fault and clears in
+`ALERT_DAYS` clear days regardless.
 
 Raised once per equipment, not once per day. Resolved when a qualifying day comes
 back above the margin.

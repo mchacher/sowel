@@ -19,6 +19,7 @@ import type { DeviceManager } from "../../devices/device-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { ComputedDataEntry, Equipment } from "../../shared/types.js";
+import { localDateStr } from "../../shared/local-date.js";
 import { planeOfArray, solarPosition, toDni, totalPeakWc } from "./solar-geometry.js";
 import {
   MIN_SAMPLES,
@@ -32,8 +33,9 @@ import {
 import { isActiveSolarProfile } from "./solar-profile.js";
 import {
   ALERT_DAYS,
-  NORMAL_DAYS,
+  DETECTION_WINDOW_DAYS,
   assess,
+  beamFraction,
   dailyRatio,
   deficitAgainst,
   detectionSpeed,
@@ -62,6 +64,15 @@ export const WINDOW_DAYS = 45;
  * single-panel outage there lasted eight months.
  */
 export const HEALTH_HISTORY_DAYS = 500;
+
+/**
+ * Delay before the startup health check runs.
+ *
+ * Long enough for the whole boot sequence — the notification service that
+ * subscribes to alarm events in particular — to be in place, following the same
+ * pattern as the battery monitor's first sweep.
+ */
+export const STARTUP_HEALTH_DELAY_MS = 30_000;
 
 /**
  * Daylight hours needed after a declared capacity change before the gain is
@@ -162,6 +173,8 @@ export class PvForecaster {
   private refitTimer: ReturnType<typeof setTimeout> | null = null;
   private recomputeTimer: ReturnType<typeof setTimeout> | null = null;
   /** equipmentId -> readings accumulated for the hour currently open. */
+  private healthTimer: ReturnType<typeof setTimeout> | null = null;
+
   private readonly pending = new Map<
     string,
     { hourMs: number; watts: number[]; poa: number; tempC: number; directFraction: number | null }
@@ -190,14 +203,20 @@ export class PvForecaster {
     });
     this.scheduleRefit();
     this.recomputeAll();
-    // Spec 162 — at startup too, not only at 02:15. An instance restarted in the
-    // morning would otherwise show an empty health card all day, and the sweep
-    // that closes orphaned alerts would not run either.
-    try {
-      this.runHealthCheck();
-    } catch (err) {
-      this.logger.error({ err }, "PV health check at startup failed");
-    }
+    // Spec 162 — at startup too, not only at 02:15, but DEFERRED. Run inline it
+    // emitted alarm events before `notificationPublishService.init()` had
+    // subscribed — eleven lines later in the boot sequence — so a fault or a
+    // recovery that crossed the threshold while Sowel was down raised or
+    // resolved into the void, unrecoverably, since the raise is emitted exactly
+    // once. The delay also keeps the full-table health scan off the boot path.
+    this.healthTimer = setTimeout(() => {
+      this.healthTimer = null;
+      try {
+        this.runHealthCheck();
+      } catch (err) {
+        this.logger.error({ err }, "PV health check at startup failed");
+      }
+    }, STARTUP_HEALTH_DELAY_MS);
     this.logger.info("PV forecaster started");
   }
 
@@ -208,6 +227,8 @@ export class PvForecaster {
     this.refitTimer = null;
     if (this.recomputeTimer) clearTimeout(this.recomputeTimer);
     this.recomputeTimer = null;
+    if (this.healthTimer) clearTimeout(this.healthTimer);
+    this.healthTimer = null;
     // Do not lose the hour in progress on a clean stop. Each is closed on its
     // own: an equipment deleted mid-hour leaves a bucket whose insert violates
     // the foreign key, and an unguarded loop would abort there and drop every
@@ -565,20 +586,40 @@ export class PvForecaster {
     // 180 qualifying days, and a fault that outlives the sample window has to
     // remain measurable against the array as it was before it.
     this.storeHealthDays(equipment.id, this.healthDays(equipment));
-    const days = this.storedHealthDays(equipment.id);
+
+    // Days recorded before the declared array last changed describe hardware
+    // that is gone, and a reference built on them holds the new array to the
+    // old one's standard. A household that removes two panels would otherwise
+    // carry a false "panels failing" alert that can never resolve. The filter
+    // is by date rather than deletion because the samples regenerate the days:
+    // deleting rows the next check would rewrite is not an invalidation.
+    const changedAt = this.capacityChangedAt(equipment.id);
+    const cutoffDay = changedAt ? localDateStr(new Date(Date.parse(changedAt))) : null;
+    const days = this.storedHealthDays(equipment.id).filter(
+      (d) => cutoffDay === null || d.day >= cutoffDay,
+    );
 
     const standing = this.db
-      .prepare("SELECT since, normal, deficit FROM pv_health_alert WHERE equipment_id = ?")
-      .get(equipment.id) as { since: string; normal: number; deficit: number } | undefined;
+      .prepare(
+        "SELECT since, normal, deficit, raised_at FROM pv_health_alert WHERE equipment_id = ?",
+      )
+      .get(equipment.id) as
+      | { since: string; normal: number; deficit: number; raised_at: string }
+      | undefined;
 
-    const latest = days.length > 0 ? days[days.length - 1] : null;
+    // An alert raised before the array changed is judging the wrong hardware.
+    // Close it as monitoring being reset, never as a recovery.
+    if (standing && changedAt && changedAt > standing.raised_at) {
+      this.resolveHealthAlert(equipment.id, "the declared array changed");
+      return;
+    }
 
     if (standing) {
       // Judged against the normal frozen when the alert was raised, never a
       // freshly computed one. A rolling median absorbs a sustained fault and
       // would clear the alert on its own after a fortnight, telling the
       // household the panels recovered while they are still dead.
-      if (shouldResolve(standing.normal, latest)) {
+      if (shouldResolve(standing.normal, days)) {
         this.db.prepare("DELETE FROM pv_health_alert WHERE equipment_id = ?").run(equipment.id);
         this.logger.info({ equipmentId: equipment.id }, "PV production is back to its normal");
         this.eventBus.emit({
@@ -606,12 +647,13 @@ export class PvForecaster {
     if (!verdict.alerting || verdict.normal === null || verdict.since === null) return;
 
     const deficit = verdict.deficit ?? 0;
+    // A plain INSERT: the standing-alert branch above returns before this line
+    // whenever a row exists, and better-sqlite3 is synchronous, so a conflict
+    // handler here would be dead code inviting edits to a path that cannot run.
     this.db
       .prepare(
         `INSERT INTO pv_health_alert (equipment_id, since, normal, deficit, raised_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(equipment_id) DO UPDATE SET
-           since = excluded.since, normal = excluded.normal, deficit = excluded.deficit`,
+         VALUES (?, ?, ?, ?, ?)`,
       )
       .run(equipment.id, verdict.since, verdict.normal, deficit, new Date().toISOString());
 
@@ -642,13 +684,19 @@ export class PvForecaster {
       .run(equipmentId).changes;
     if (deleted === 0) return;
 
+    // Zone-scoped like the raise was, whenever the equipment still exists. A
+    // null zone files the resolution globally: the zone's feed then shows an
+    // incident that never ends while every other zone shows a resolution for an
+    // incident it never saw. Null only for a genuinely deleted equipment.
+    const equipment = this.equipments.getAll().find((e) => e.id === equipmentId);
+
     this.logger.info({ equipmentId, why }, "PV health alert cleared");
     this.eventBus.emit({
       type: "system.alarm.resolved",
       alarmId: healthAlarmId(equipmentId),
       source: "pv-health",
       message: `Solar production monitoring stopped: ${why}`,
-      zoneId: null,
+      zoneId: equipment?.zoneId ?? null,
     });
   }
 
@@ -680,7 +728,7 @@ export class PvForecaster {
     for (const r of rows) {
       const ms = Date.parse(r.at);
       if (!Number.isFinite(ms)) continue;
-      const day = localDay(ms);
+      const day = localDateStr(new Date(ms));
       const list = byDay.get(day) ?? [];
       list.push({
         hourLocal: r.hour_local,
@@ -697,6 +745,14 @@ export class PvForecaster {
       if (ratio) days.push(ratio);
     }
     return days;
+  }
+
+  /** When the declared array last changed, or null if it never has. */
+  private capacityChangedAt(equipmentId: string): string | null {
+    const row = this.db
+      .prepare("SELECT capacity_changed_at FROM pv_forecast_model WHERE equipment_id = ?")
+      .get(equipmentId) as { capacity_changed_at: string | null } | undefined;
+    return row?.capacity_changed_at ?? null;
   }
 
   /** The persisted series: the long memory the reference is built on. */
@@ -734,7 +790,7 @@ export class PvForecaster {
     // samples live 50 days; a fault lasting eight months has to stay measurable
     // against the array as it was before it started, which is why this table is
     // kept far longer than what produced it.
-    const cutoff = localDay(Date.now() - HEALTH_HISTORY_DAYS * 86_400_000);
+    const cutoff = localDateStr(new Date(Date.now() - HEALTH_HISTORY_DAYS * 86_400_000));
     this.db.transaction(() => {
       for (const d of days) {
         upsert.run(equipmentId, d.day, d.ratio, d.hours, d.measuredWh, d.irradiationWhM2);
@@ -761,21 +817,25 @@ export class PvForecaster {
     latest: DayRatio | null;
     alert: { since: string; deficit: number } | null;
     detection: ReturnType<typeof detectionSpeed>;
-    /** Qualifying days over the recent window, so the card can say it is blind. */
-    recentQualifyingDays: number;
   } {
-    const days = this.storedHealthDays(equipment.id);
+    // The same cutoff the alarm path applies: days from before the declared
+    // array last changed describe hardware that is gone.
+    const changedAt = this.capacityChangedAt(equipment.id);
+    const cutoffDay = changedAt ? localDateStr(new Date(Date.parse(changedAt))) : null;
+    const days = this.storedHealthDays(equipment.id).filter(
+      (d) => cutoffDay === null || d.day >= cutoffDay,
+    );
+
     const standing = this.db
       .prepare("SELECT since, normal, deficit FROM pv_health_alert WHERE equipment_id = ?")
       .get(equipment.id) as { since: string; normal: number; deficit: number } | undefined;
 
     const verdict = assess(days);
 
-    // Over the same window the samples cover, so "days seen" and "days that
-    // qualified" are measured against the same stretch of calendar. Compared in
-    // local dates, matching how the day keys were built.
-    const windowDays = Math.min(NORMAL_DAYS + ALERT_DAYS, WINDOW_DAYS);
-    const cutoff = localDay(Date.now() - windowDays * 86_400_000);
+    // A fortnight, on its own merits — not a window derived from the reference
+    // length. This is what "recently" means on the card, so in December it
+    // describes December's weather, not October's.
+    const cutoff = localDateStr(new Date(Date.now() - DETECTION_WINDOW_DAYS * 86_400_000));
     const recent = days.filter((d) => d.day >= cutoff).length;
 
     return {
@@ -785,9 +845,33 @@ export class PvForecaster {
       normal: standing ? standing.normal : verdict.normal,
       latest: verdict.latest,
       alert: standing ? { since: standing.since, deficit: standing.deficit } : null,
-      detection: detectionSpeed(recent, windowDays),
-      recentQualifyingDays: recent,
+      // Null exactly when no day qualified in the window: the card reads that
+      // as "nothing recent to judge on" rather than carrying a separate flag.
+      detection: detectionSpeed(recent, DETECTION_WINDOW_DAYS),
     };
+  }
+
+  /**
+   * Every standing health alert, for the client's banner rebuild.
+   *
+   * The raise is emitted exactly once and the alert then lives in this table,
+   * so a browser session opened after the raise — or after any restart, which
+   * every self-update causes — has no event to catch. The battery alerts of
+   * spec 143 plugged the identical gap with a snapshot endpoint; this is that
+   * snapshot for the PV health alarms.
+   */
+  getStandingHealthAlerts(): Array<{
+    equipmentId: string;
+    since: string;
+    deficit: number;
+  }> {
+    return (
+      this.db.prepare("SELECT equipment_id, since, deficit FROM pv_health_alert").all() as Array<{
+        equipment_id: string;
+        since: string;
+        deficit: number;
+      }>
+    ).map((r) => ({ equipmentId: r.equipment_id, since: r.since, deficit: r.deficit }));
   }
 
   // ============================================================
@@ -895,14 +979,24 @@ export class PvForecaster {
         { equipmentId, pruned, from: windowFrom },
         "Dropped PV samples recorded before the declared array configuration",
       );
-      // Spec 162 — the health history describes the old array too, and its
-      // normal with it. Keeping it would judge the new array against the one it
-      // replaced: a household that removes two panels would alert for good.
-      const day = localDay(window.fromMs);
+    }
+    // Spec 162 — a declared date says the array was different before it, so the
+    // health history from before it describes hardware that is gone. Recorded as
+    // the change marker rather than a deletion, and NOT gated on `pruned` above:
+    // a change declared after the old samples already aged out of the 45-day
+    // window deletes nothing, yet the year-long health history still needs the
+    // cutoff. The health check reads the marker and excludes those days, and
+    // closes any alert raised against the old array.
+    if (window.boundedBy === "declaration") {
       this.db
-        .prepare("DELETE FROM pv_health_day WHERE equipment_id = ? AND day < ?")
-        .run(equipmentId, day);
-      this.resolveHealthAlert(equipmentId, "the declared array changed");
+        .prepare(
+          "UPDATE pv_forecast_model SET capacity_changed_at = ? WHERE equipment_id = ? AND (capacity_changed_at IS NULL OR capacity_changed_at < ?)",
+        )
+        .run(
+          new Date(window.fromMs).toISOString(),
+          equipmentId,
+          new Date(window.fromMs).toISOString(),
+        );
     }
 
     // The fit describes the declared capacity by construction: the window either
@@ -1147,9 +1241,18 @@ export class PvForecaster {
 
   /** Stamp the moment a declared change was noticed, so freshness is measurable. */
   private markCapacityChange(equipmentId: string, at: string): void {
+    // `capacity_changed_at` outlives `gain_reset_at` on purpose: the gain stamp
+    // is cleared once the rolling window has measured the new array, but the
+    // health history must keep excluding pre-change days for as long as it
+    // reaches back — a year, against 45 days of samples. Without it, a panel
+    // removal left an 80th-centile reference computed on the bigger array, and
+    // the false alert it raised could never resolve: the smaller array cannot
+    // reach 90 % of a normal it never produced.
     this.db
-      .prepare("UPDATE pv_forecast_model SET gain_reset_at = ? WHERE equipment_id = ?")
-      .run(at, equipmentId);
+      .prepare(
+        "UPDATE pv_forecast_model SET gain_reset_at = ?, capacity_changed_at = ? WHERE equipment_id = ?",
+      )
+      .run(at, at, equipmentId);
     this.logger.info(
       { equipmentId, at },
       "Declared peak power changed, waiting for production on the new array",
@@ -1234,8 +1337,7 @@ export class PvForecaster {
 
     // Spec 162 — the beam share decides whether this hour can judge the array's
     // health later. Computed here, where both components are in hand.
-    const total = hour.direct + hour.diffuse;
-    const directFraction = total > 0 ? hour.direct / total : null;
+    const directFraction = beamFraction(hour.direct, hour.diffuse);
 
     const bucket = this.pending.get(equipment.id) ?? {
       hourMs,
@@ -1372,17 +1474,6 @@ export class PvForecaster {
 /** Stable id for an array's health alarm, so a restart addresses the same one. */
 function healthAlarmId(equipmentId: string): string {
   return `pv-health:${equipmentId}`;
-}
-
-/**
- * The local calendar day an instant falls in.
- *
- * Local, not UTC: the midday band is a local notion, and the hours were written
- * with the same `new Date(ms)`, so a day and its hours can never disagree.
- */
-function localDay(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /**

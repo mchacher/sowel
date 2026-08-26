@@ -707,18 +707,45 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
 
       const health = pvForecaster.getHealth(equipment);
+      // Display window only: the full 500-day table stays server-side for the
+      // reference, but shipping it whole put ~500 dots on a 160-px chart and
+      // let one anomalous historic day stretch the Y scale for good.
+      const displayDays = health.days.slice(-120);
       return {
+        // FR6 — with no declared array the feature is silent; the flag lets the
+        // card render nothing instead of a "waiting for clear hours" promise
+        // that can never come true.
+        active: (equipment.solarProfile?.planes?.length ?? 0) > 0,
         // An installation with no qualifying day yet gets an empty series, never
         // a 404: nothing to show is a state of the feature, not a missing route.
-        days: health.days.map((d) => ({ day: d.day, ratio: d.ratio, hours: d.hours })),
+        days: displayDays.map((d) => ({ day: d.day, ratio: d.ratio, hours: d.hours })),
         normal: health.normal,
         latest: health.latest,
         alert: health.alert,
         detection: health.detection,
-        recentQualifyingDays: health.recentQualifyingDays,
       };
     },
   );
+
+  // ============================================================
+  // GET /api/v1/energy/pv-health-alerts — spec 162.
+  //
+  // The snapshot the client's alarm banner rebuilds from. The raise event is
+  // emitted exactly once and then lives in a table, so a session opened after
+  // it — or after any restart — has no event to catch. Same pattern as the
+  // battery alerts of spec 143.
+  // ============================================================
+  app.get("/api/v1/energy/pv-health-alerts", async () => {
+    if (!pvForecaster) return [];
+    return pvForecaster.getStandingHealthAlerts().map((a) => {
+      const equipment = equipmentManager.getById(a.equipmentId);
+      return {
+        ...a,
+        equipmentName: equipment?.name ?? a.equipmentId,
+        zoneId: equipment?.zoneId ?? null,
+      };
+    });
+  });
 
   // ============================================================
   // POST /api/v1/energy/pv-forecast/:equipmentId/backfill — spec 161.

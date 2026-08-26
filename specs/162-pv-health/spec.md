@@ -136,7 +136,13 @@ does not prevent it.
 Raise when the ratio sits below the normal by more than the margin across several
 consecutive qualifying days. One bad day is never enough.
 
-Resolve **only** when a qualifying day comes back above the frozen threshold.
+Resolve **only** after `ALERT_DAYS` consecutive qualifying days back above the
+frozen threshold — symmetric with the raise. One day was enough at first, and
+for a fault sitting near the margin a single lucky day resolved the alert,
+three unlucky ones re-raised it, and the household got a raise/recovery pair
+every few clear days all season. A real repair jumps the ratio by the size of
+the fault and clears within `ALERT_DAYS` clear days regardless.
+
 Two states look alike from the outside and only one is good news: performance
 returned, and the detector went blind — a fortnight of overcast, a meter that
 stopped reporting, a capacity change that pruned the history. Losing the ability
@@ -194,11 +200,44 @@ alerting, not showing a placeholder ratio computed from nothing.
 
 ## Edge cases
 
-| Case                            | Behaviour                                                                                      |
-| ------------------------------- | ---------------------------------------------------------------------------------------------- |
-| A run of overcast days          | No ratios stored, no alert, the card says the detector is waiting                              |
-| Winter                          | Slower by construction; the card reports the slower figure rather than the summer one          |
-| Declared capacity changes       | The normal is discarded and rebuilt, as the model's own gain is                                |
-| Meter offline for part of a day | Those hours are absent, not zero; the day qualifies only on the hours that reported            |
-| A physically impossible reading | Already excluded by the declared peak power, as in spec 160                                    |
-| Model refit moves the gain      | The ratio is against the model; a refit moves both sides and must not by itself raise an alert |
+| Case                            | Behaviour                                                                                                                                                                                                                                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A run of overcast days          | No ratios stored, no alert, the card says the detector is waiting                                                                                                                                                                                                                                                |
+| Winter                          | Slower by construction; the card reports the slower figure rather than the summer one                                                                                                                                                                                                                            |
+| Declared capacity changes       | `capacity_changed_at` is stamped by the trigger and by a declaration-bounded backfill; pre-change health days are excluded from every judgement, and a standing alert raised against the old array is closed as monitoring being reset, never as a recovery. Works on the live path, not only through a backfill |
+| Meter offline for part of a day | Those hours are absent, not zero; the day qualifies only on the hours that reported                                                                                                                                                                                                                              |
+| A physically impossible reading | Already excluded by the declared peak power, as in spec 160                                                                                                                                                                                                                                                      |
+| Model refit moves the gain      | The ratio is against the model; a refit moves both sides and must not by itself raise an alert                                                                                                                                                                                                                   |
+
+## Where this stands against the literature
+
+Checked after implementation against the published state of the art (pvlib /
+RdTools at NREL, IEC 61724, Reno-Hansen clear-sky detection, and a 2026 Solar
+Energy validation of rule-based detection on 1 089 residential systems).
+
+**Aligned.** The "N consecutive clear days below a relative threshold" rule is
+the published industrial practice for meter-level data (the 2026 study uses
+3 days exactly, at 92 % precision). A high-quantile reference — "what the system
+is capable of" — matches that study's 95th-centile normalisation and SLAC's
+clear-sky-envelope baselines; a median of realised output mixes degraded and
+healthy days, which is the failure the outage replay measured. Freezing the
+reference at the raise is a recognised online approximation of change-point
+segmentation. PR = production over modelled POA irradiance on clear hours is
+RdTools' clear-sky workflow in simplified form, legitimate without an on-site
+irradiance sensor.
+
+**Divergent, accepted for now.** The direct-fraction > 0.75 clear-hour criterion
+is a proxy for the canonical Reno-Hansen curve-shape detection, defensible at
+hourly granularity where the canonical method (built for 1-10 min data) applies
+poorly. The winter near-blindness is acknowledged qualitatively in the
+high-latitude literature but nowhere quantified; the 50-vs-182-day measurement
+here is sharper than what is published.
+
+**Known gaps the literature would close, deliberately out of scope here:**
+temperature-corrected PR (IEC 61724-1:2021 §14 — the standard mitigation for
+seasonal spread, cheap: ambient temperature plus NOCT), a slow CUSUM alongside
+the 3-day rule (published methods catch 2-8 % drifts in weeks; such drifts sit
+under the 10 % margin forever and seep into the reference despite the freeze),
+and a soiling-versus-fault discriminant (Deceglie's rate-and-recovery: an abrupt
+positive jump after the episode means cleaning, not repair). Each changes what
+the household is told and deserves its own measured spec.

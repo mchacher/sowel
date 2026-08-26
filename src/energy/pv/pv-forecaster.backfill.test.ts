@@ -27,7 +27,8 @@ function migrate(db: Database.Database): void {
       fitted_at      TEXT NOT NULL,
       samples        INTEGER NOT NULL,
       fitted_peak_wc REAL NOT NULL,
-      gain_reset_at  TEXT
+      gain_reset_at  TEXT,
+      capacity_changed_at TEXT
     );
     CREATE TABLE pv_forecast_sample (
       equipment_id TEXT NOT NULL,

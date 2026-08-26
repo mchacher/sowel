@@ -11,6 +11,12 @@
 -- simply never qualify, which the day-level minimum already handles.
 ALTER TABLE pv_forecast_sample ADD COLUMN direct_fraction REAL;
 
+-- When the declared array last changed. Set by the capacity-change trigger and
+-- by a declaration-bounded backfill, never cleared: `gain_reset_at` closes once
+-- the model has measured the new array, but the health history reaches back a
+-- year and must keep excluding days that describe hardware that is gone.
+ALTER TABLE pv_forecast_model ADD COLUMN capacity_changed_at TEXT;
+
 CREATE TABLE IF NOT EXISTS pv_health_day (
   equipment_id TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
   day          TEXT NOT NULL,

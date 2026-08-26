@@ -46,9 +46,13 @@ vi.mock("./useModes", () => ({ useModes: { getState: () => S.modes } }));
 vi.mock("./useActivity", () => ({ useActivity: { getState: () => S.activity } }));
 vi.mock("./useArbiter", () => ({ useArbiter: { getState: () => S.arbiter } }));
 
-// The only ../api call in this store is getBatteryAlerts (banner restore path).
+// The ../api calls in this store are the banner-restore snapshots: battery
+// alerts (spec 143) and standing PV health alerts (spec 162).
 // Default to an empty list so the health-restore test is unaffected.
-const api = vi.hoisted(() => ({ getBatteryAlerts: vi.fn(async () => [] as unknown[]) }));
+const api = vi.hoisted(() => ({
+  getBatteryAlerts: vi.fn(async () => [] as unknown[]),
+  getPvHealthAlerts: vi.fn(async () => [] as unknown[]),
+}));
 vi.mock("../api", () => api);
 
 // ── Fake WebSocket ──────────────────────────────────────────────────────────

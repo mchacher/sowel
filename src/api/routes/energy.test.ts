@@ -1076,6 +1076,7 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
 
   const forecasterReturning = (health: unknown) => ({
     getHealth: () => health,
+    getStandingHealthAlerts: () => [],
     getModel: () => null,
     getCurve: () => [],
     getIssuedAt: () => null,
@@ -1083,14 +1084,7 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     hasIrradianceSeries: () => false,
   });
 
-  const empty = {
-    days: [],
-    normal: null,
-    latest: null,
-    alert: null,
-    detection: null,
-    recentQualifyingDays: 0,
-  };
+  const empty = { days: [], normal: null, latest: null, alert: null, detection: null };
 
   it("returns an empty series rather than 404 when nothing qualifies yet", async () => {
     const app = await buildApp({
@@ -1101,6 +1095,38 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().days).toEqual([]);
     expect(res.json().detection).toBeNull();
+    // FR6 — no declared array: the card must render nothing, not a "waiting for
+    // clear hours" promise that can never come true.
+    expect(res.json().active).toBe(false);
+    await app.close();
+  });
+
+  it("lists standing alerts for the client's banner rebuild", async () => {
+    // The raise event fires exactly once; a session opened after it has no
+    // event to catch and rebuilds from this snapshot, as battery alerts do.
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: {
+        ...forecasterReturning(empty),
+        getStandingHealthAlerts: () => [
+          { equipmentId: "eq-pv", since: "2026-08-22", deficit: 0.25 },
+        ],
+      },
+    });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/pv-health-alerts" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0].deficit).toBe(0.25);
+    expect(body[0].equipmentName).toBe("Solaire");
+    await app.close();
+  });
+
+  it("answers an empty alert list with no forecaster wired", async () => {
+    const app = await buildApp({ equipments: [solarMeter] });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/pv-health-alerts" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
     await app.close();
   });
 
@@ -1114,12 +1140,10 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
         alert: null,
         detection: {
           minDetectableLoss: 0.1,
-          clearDaysNeeded: 3,
           calendarDays: 6,
           qualifyingDays: 8,
           windowDays: 14,
         },
-        recentQualifyingDays: 8,
       }),
     });
     const res = await app.inject({ method: "GET", url });

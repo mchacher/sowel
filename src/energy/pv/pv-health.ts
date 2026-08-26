@@ -86,6 +86,31 @@ export const ALERT_MARGIN = 0.1;
 /** Consecutive qualifying days below the margin before anything is raised. */
 export const ALERT_DAYS = 3;
 
+/**
+ * Calendar days over which "how many clear days have we had" is observed.
+ *
+ * Its own constant, chosen for the observation window on its own merits. It was
+ * previously derived as `min(NORMAL_DAYS + ALERT_DAYS, WINDOW_DAYS)`, which made
+ * sense when the reference window was 20 days and silently became a constant 45
+ * when the reference grew to 180 — so in early December the card counted clear
+ * days back into October and reported autumn's confidence. A fortnight is short
+ * enough that the answer describes the weather the household is actually in.
+ */
+export const DETECTION_WINDOW_DAYS = 14;
+
+/**
+ * Beam share of an hour's irradiance, or null when there is nothing to share.
+ *
+ * One implementation for the live path and the backfill: the stored fraction
+ * decides whether a past day qualifies, and two drifting copies would make
+ * backfilled hours qualify differently from live ones for the same weather.
+ */
+export function beamFraction(direct: number, diffuse: number): number | null {
+  const total = direct + diffuse;
+  if (!Number.isFinite(total) || total <= 0) return null;
+  return direct / total;
+}
+
 export interface HealthHour {
   /** Local hour, 0 to 23. */
   hourLocal: number;
@@ -258,10 +283,21 @@ export function assess(days: readonly DayRatio[]): HealthVerdict {
  *   a fortnight of overcast or a meter that stopped reporting. Losing the ability
  *   to measure is not recovery, and announcing it as such is worse than silence.
  */
-export function shouldResolve(frozenNormal: number, latest: DayRatio | null): boolean {
-  if (latest === null) return false;
+export function shouldResolve(frozenNormal: number, days: readonly DayRatio[]): boolean {
   if (!Number.isFinite(frozenNormal) || frozenNormal <= 0) return false;
-  return latest.ratio >= frozenNormal * (1 - ALERT_MARGIN);
+
+  // Symmetric with the raise: it took ALERT_DAYS consecutive qualifying days to
+  // say "faulty", and it takes as many to say "recovered". One day was enough
+  // before, and for a fault sitting near the margin — one degraded optimizer,
+  // an 11 % deficit against a 10 % threshold on a 4.3 % noise floor — a single
+  // lucky day resolved the alert, three unlucky ones re-raised it, and the
+  // household got a fresh raise/recovery pair every few clear days all season.
+  // A real repair clears this easily: it jumps the ratio by the size of the
+  // fault, far above the threshold, on every following clear day.
+  const recent = days.slice(-ALERT_DAYS);
+  if (recent.length < ALERT_DAYS) return false;
+  const threshold = frozenNormal * (1 - ALERT_MARGIN);
+  return recent.every((d) => d.ratio >= threshold);
 }
 
 /** How far below the frozen normal the recent days sit, for the standing alert. */
@@ -280,9 +316,7 @@ export interface DetectionSpeed {
    * long one waits. Saying so is the honest form of "how sensitive is this".
    */
   minDetectableLoss: number;
-  /** Clear days a confirmable loss needs, by the rule: `ALERT_DAYS` of them. */
-  clearDaysNeeded: number;
-  /** Those clear days translated into calendar days at the observed rate. */
+  /** The rule's `ALERT_DAYS` clear days, translated to calendar days at the observed rate. */
   calendarDays: number;
   /** Qualifying days seen over the observed window. */
   qualifyingDays: number;
@@ -315,7 +349,6 @@ export function detectionSpeed(qualifyingDays: number, windowDays: number): Dete
   const perQualifyingDay = windowDays / qualifyingDays;
   return {
     minDetectableLoss: ALERT_MARGIN,
-    clearDaysNeeded: ALERT_DAYS,
     calendarDays: Math.ceil(ALERT_DAYS * perQualifyingDay),
     qualifyingDays,
     windowDays,

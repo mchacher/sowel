@@ -1,22 +1,12 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getPvHealth, type PvHealthResponse } from "../../api";
 import { dateLocale } from "../../lib/locale";
 import { dailyTicks } from "./pvForecastUtils";
-
-/**
- * A local-date key as a local instant.
- *
- * `Date.parse("2026-08-24")` is UTC midnight, which renders as the 23rd anywhere
- * west of Greenwich. These keys were built from local components; they have to
- * be read back the same way.
- */
-function localDate(day: string): number {
-  const [y, m, d] = day.split("-").map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1).getTime();
-}
+import { localDayToDate } from "../../lib/local-date";
+import { loadWithRetry } from "../../lib/load-with-retry";
 
 /**
  * Is the array still performing? (spec 162)
@@ -30,24 +20,31 @@ function localDate(day: string): number {
  * fast a fault would show *at the rate this installation is actually getting
  * clear days*, and it says it cannot name a panel.
  */
-export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
+export const PvHealthPanel = memo(function PvHealthPanel({
+  equipmentId,
+}: {
+  equipmentId: string;
+}) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
   const [data, setData] = useState<PvHealthResponse | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    // The async boundary is opened inside the effect, and the result is dropped
-    // if the card went away while the request was in flight.
+    // loadWithRetry rather than a bare fetch: this card loads on every visit to
+    // the page, and a single 429 or the 401 burst of a token refresh would
+    // otherwise blank it for the whole visit — even while an alert is standing.
     let cancelled = false;
     void (async () => {
-      try {
-        const next = await getPvHealth(equipmentId);
-        if (cancelled) return;
-        setData(next);
+      const outcome = await loadWithRetry(() => getPvHealth(equipmentId), {
+        retryDelaysMs: [1000, 3000],
+        isCurrent: () => !cancelled,
+      });
+      if (outcome.status === "ok") {
+        setData(outcome.value);
         setFailed(false);
-      } catch {
-        if (!cancelled) setFailed(true);
+      } else if (outcome.status === "failed") {
+        setFailed(true);
       }
     })();
     return () => {
@@ -55,7 +52,27 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
     };
   }, [equipmentId]);
 
+  // Memoised: the detail page re-renders on every WebSocket equipment update,
+  // several times a minute on a live production meter, and rebuilding a
+  // 120-point array with fresh identity forced Recharts through a full
+  // reconciliation each time.
+  const chart = useMemo(
+    () =>
+      (data?.days ?? []).map((d) => ({
+        ts: localDayToDate(d.day).getTime(),
+        ratio: d.ratio,
+        hours: d.hours,
+      })),
+    [data],
+  );
+  const ticks = useMemo(() => dailyTicks(chart.map((p) => p.ts)), [chart]);
+
   if (failed || !data) return null;
+
+  // FR6 — no declared array means the feature is silent. Rendering the waiting
+  // card here promised clear hours that can never come: nothing is collected
+  // without a declaration, and the card could never progress.
+  if (!data.active) return null;
 
   // Nothing has qualified yet. Say what the detector is waiting for rather than
   // rendering an empty chart that looks broken.
@@ -70,10 +87,11 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
 
   // A spell of overcast leaves plenty of history and no recent judgement. Said
   // out loud, because the alternative is a card that looks current while its
-  // newest figure is three weeks old.
-  const blind = data.recentQualifyingDays === 0;
+  // newest figure is weeks old. `detection` is null exactly when no day
+  // qualified in the observation fortnight.
+  const blind = data.detection === null;
 
-  const chart = data.days.map((d) => ({ ts: localDate(d.day), ratio: d.ratio, hours: d.hours }));
+
   const normal = data.normal;
   const latest = data.latest;
   const deviation = latest ? (latest.ratio / normal - 1) * 100 : null;
@@ -88,7 +106,7 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
           <p className="text-[13px] text-text">
             {t("equipments.pvHealth.alert", {
               pct: Math.round(data.alert.deficit * 100),
-              since: new Date(localDate(data.alert.since)).toLocaleDateString(locale, {
+              since: localDayToDate(data.alert.since).toLocaleDateString(locale, {
                 day: "numeric",
                 month: "long",
               }),
@@ -100,7 +118,7 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
       ) : (
         <p className="text-[13px] text-text-secondary mb-3">
           {t("equipments.pvHealth.normal", {
-            date: latest ? new Date(localDate(latest.day)).toLocaleDateString(locale) : "",
+            date: latest ? localDayToDate(latest.day).toLocaleDateString(locale) : "",
             pct: deviation === null ? 0 : Math.abs(Math.round(deviation)),
             direction: t(
               deviation !== null && deviation < 0
@@ -120,7 +138,7 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
               type="number"
               scale="time"
               domain={["dataMin", "dataMax"]}
-              ticks={dailyTicks(chart.map((p) => p.ts))}
+              ticks={ticks}
               tickFormatter={(ts: number) =>
                 new Date(ts).toLocaleDateString(locale, { day: "numeric", month: "short" })
               }
@@ -176,7 +194,7 @@ export function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
       <p className="mt-1 text-[11px] text-text-tertiary">{t("equipments.pvHealth.noPanelId")}</p>
     </div>
   );
-}
+});
 
 function Header({ t }: { t: (k: string) => string }) {
   return (

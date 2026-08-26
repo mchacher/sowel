@@ -99,22 +99,38 @@ export interface PvHealthDay {
 }
 
 export interface PvHealthResponse {
+  /** False when no array is declared: the feature is silent, not waiting. */
+  active: boolean;
   days: PvHealthDay[];
-  /** The recent normal the days are judged against. Null until there is one. */
+  /** The reference the days are judged against. Null until there is one. */
   normal: number | null;
-  latest: { day: string; ratio: number; hours: number } | null;
+  latest: PvHealthDay | null;
   alert: { since: string; deficit: number } | null;
-  /** Null when no qualifying day has been seen: "cannot say yet", not an infinity. */
+  /**
+   * Null when no day qualified in the recent window — the detector has had
+   * nothing to judge on, which the card must say rather than showing a weeks-old
+   * figure as current.
+   */
   detection: {
     /** Smallest loss the rule can confirm at all, as a fraction. */
     minDetectableLoss: number;
-    clearDaysNeeded: number;
     calendarDays: number;
     qualifyingDays: number;
     windowDays: number;
   } | null;
-  /** Qualifying days over the recent window. Zero means the detector is blind. */
-  recentQualifyingDays: number;
+}
+
+/** Spec 162 — a standing health alert, for the alarm banner rebuild. */
+export interface PvHealthAlert {
+  equipmentId: string;
+  equipmentName: string;
+  since: string;
+  deficit: number;
+  zoneId: string | null;
+}
+
+export async function getPvHealthAlerts(): Promise<PvHealthAlert[]> {
+  return fetchJSON<PvHealthAlert[]>(`${API_BASE}/energy/pv-health-alerts`);
 }
 
 export async function getPvHealth(equipmentId: string): Promise<PvHealthResponse> {

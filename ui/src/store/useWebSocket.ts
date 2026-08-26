@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { BatteryAlert, EngineEvent } from "../types";
-import { getBatteryAlerts } from "../api";
+import { getBatteryAlerts, getPvHealthAlerts } from "../api";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
@@ -356,8 +356,12 @@ export const useWebSocket = create<WebSocketState>((set) => ({
           .then((r) => r.json() as Promise<{ integrations?: Record<string, { status: string }> }>)
           .catch(() => ({}) as { integrations?: Record<string, { status: string }> }),
         fetchBatteryAlerts(),
+        // Spec 162 — standing PV health alerts. Raised exactly once and then
+        // persisted server-side, so a session opened after the raise (or after
+        // any restart, which every self-update causes) has no event to catch.
+        getPvHealthAlerts().catch(() => []),
       ])
-        .then(([health, batteryAlerts]) => {
+        .then(([health, batteryAlerts, pvHealthAlerts]) => {
           const statuses: Record<string, string> = {};
           const alarms = new Map<string, SystemAlarm>();
 
@@ -388,6 +392,18 @@ export const useWebSocket = create<WebSocketState>((set) => ({
               message: bound
                 ? `${batteryAlarmMessage(alert.value)} (${alert.deviceName})`
                 : batteryAlarmMessage(alert.value),
+            });
+          }
+
+          for (const alert of pvHealthAlerts) {
+            const alarmId = `pv-health:${alert.equipmentId}`;
+            // Mirror the engine's live alarm wording, so a restored banner
+            // reads identically to the one the raise produced.
+            alarms.set(alarmId, {
+              alarmId,
+              level: "warning",
+              source: "pv-health",
+              message: `${alert.equipmentName}: production ${Math.round(alert.deficit * 100)} % below its usual level on the last 3 clear days`,
             });
           }
 

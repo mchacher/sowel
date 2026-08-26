@@ -25,7 +25,8 @@ function migrate(db: Database.Database): void {
       fitted_at      TEXT NOT NULL,
       samples        INTEGER NOT NULL,
       fitted_peak_wc REAL NOT NULL,
-      gain_reset_at  TEXT
+      gain_reset_at  TEXT,
+      capacity_changed_at TEXT
     );
     CREATE TABLE pv_forecast_sample (
       equipment_id    TEXT NOT NULL,
@@ -274,7 +275,13 @@ describe("the daily PV health check", () => {
     f.runHealthCheck();
     expect(standingAlerts(db)).toBe(1);
 
+    // Symmetric with the raise: one good day is no longer enough — that is the
+    // anti-flapping rule — so a repaired array clears after ALERT_DAYS of them.
     appendDay(db, 3000);
+    f.runHealthCheck();
+    expect(standingAlerts(db)).toBe(1);
+
+    for (let i = 1; i < ALERT_DAYS; i++) appendDay(db, 3000);
     f.runHealthCheck();
     f.stop();
 
@@ -315,7 +322,7 @@ describe("the daily PV health check", () => {
     b.runHealthCheck();
     expect(second.mock.calls.filter((c) => c[0].type === "system.alarm.raised")).toHaveLength(0);
 
-    appendDay(db, 3000);
+    for (let i = 0; i < ALERT_DAYS; i++) appendDay(db, 3000);
     b.runHealthCheck();
     b.stop();
     // The resolution used to be lost for good: the in-memory flag was empty
@@ -477,5 +484,90 @@ describe("health history outlives the sample window", () => {
 
     // The alert stands on history the samples no longer carry.
     expect(standingAlerts(db)).toBe(1);
+  });
+});
+
+/**
+ * A declared capacity change invalidates the health history (spec 162 edge
+ * case), through the live path — not only through a backfill.
+ *
+ * The failure this pins: a household removes two panels and saves the new peak.
+ * The 80th-centile reference, built on up to a year of bigger-array days, holds
+ * the smaller array to a standard it can never reach; a false "panels failing"
+ * alert is raised after three clear days and can never resolve.
+ */
+describe("a declared capacity change resets the judgement", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    migrate(db);
+    seedModel(db);
+  });
+
+  function markChanged(at: string): void {
+    db.prepare("UPDATE pv_forecast_model SET capacity_changed_at = ? WHERE equipment_id = ?").run(
+      at,
+      EQUIPMENT_ID,
+    );
+  }
+
+  it("closes a standing alert raised against the old array, as a reset, not a recovery", () => {
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    const emit = vi.fn();
+    const f = build(db, emit);
+    f.runHealthCheck();
+    expect(standingAlerts(db)).toBe(1);
+
+    // What `markCapacityChange` writes when the declared peak moves. A second
+    // later than the raise: in real life the two are never simultaneous, and in
+    // a fast test they land in the same millisecond, where the strict "newer
+    // than the raise" comparison correctly does nothing.
+    markChanged(new Date(Date.now() + 1000).toISOString());
+    f.runHealthCheck();
+    f.stop();
+
+    expect(standingAlerts(db)).toBe(0);
+    const resolved = emit.mock.calls
+      .map((c) => c[0])
+      .filter((e) => e.type === "system.alarm.resolved");
+    expect(resolved).toHaveLength(1);
+    // Worded as monitoring being reset — the panels did not recover.
+    expect(String(resolved[0].message)).toContain("declared array changed");
+  });
+
+  it("excludes pre-change days from what the card reports", () => {
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000);
+    const f = build(db);
+    f.runHealthCheck();
+
+    markChanged(new Date().toISOString());
+    const h = f.getHealth({
+      id: EQUIPMENT_ID,
+      name: "Shelly Solar",
+      zoneId: "zone-1",
+      solarProfile: { planes: [{ tiltDeg: 35, azimuthDeg: 180, peakWc: PEAK }] },
+    } as never);
+    f.stop();
+
+    // Every stored day predates the change: the reference must not exist and
+    // the old-array days must not be shown as the new array's record.
+    expect(h.days).toEqual([]);
+    expect(h.normal).toBeNull();
+  });
+
+  it("does not raise against a reference built on the old array", () => {
+    // 25 % lower output on the last days — which is exactly what a smaller
+    // array produces, not a fault. With the pre-change days excluded there is
+    // no reference yet, so nothing may be asserted.
+    seedDays(db, MIN_NORMAL_DAYS + ALERT_DAYS, 3000, ALERT_DAYS, 2250);
+    markChanged(new Date(Date.now() - (ALERT_DAYS + 1) * 86_400_000).toISOString());
+    const emit = vi.fn();
+    const f = build(db, emit);
+    f.runHealthCheck();
+    f.stop();
+
+    expect(standingAlerts(db)).toBe(0);
+    expect(emit.mock.calls.filter((c) => c[0].type === "system.alarm.raised")).toHaveLength(0);
   });
 });

@@ -240,36 +240,52 @@ describe("assess", () => {
 
 describe("shouldResolve", () => {
   const frozen = 4.0;
+  const up = (n: number) => run(n, 3.7, 80);
+  const down = (n: number) => run(n, 3.2, 80);
 
-  it("clears when a qualifying day comes back above the threshold", () => {
-    expect(shouldResolve(frozen, day("2026-07-25", 3.7))).toBe(true);
+  it("clears after a full run of qualifying days above the threshold", () => {
+    expect(shouldResolve(frozen, [...down(3), ...run(ALERT_DAYS, 3.7, 90)])).toBe(true);
   });
 
-  it("does not clear while the day is still below it", () => {
-    expect(shouldResolve(frozen, day("2026-07-25", 3.2))).toBe(false);
+  it("does not clear on a single good day — symmetric with the raise", () => {
+    // The flapping this kills: an 11 % fault against a 10 % margin on a 4.3 %
+    // noise floor got one lucky day every few clear days, resolved, then
+    // re-raised — a raise/recovery notification pair all season.
+    expect(shouldResolve(frozen, [...down(2), ...up(1)])).toBe(false);
+    expect(shouldResolve(frozen, [...up(1), ...down(1), ...up(1)])).toBe(false);
   });
 
-  it("does not clear when there is no recent day at all", () => {
+  it("does not clear while any recent day is still below", () => {
+    expect(shouldResolve(frozen, [...up(2), ...down(1)])).toBe(false);
+  });
+
+  it("does not clear when there is nothing recent to judge on", () => {
     // Losing the ability to measure is not recovery, and announcing it as such
-    // is worse than silence. This is the state a fortnight of overcast, or a
-    // meter that stopped reporting, produces.
-    expect(shouldResolve(frozen, null)).toBe(false);
+    // is worse than silence. A fortnight of overcast, or a meter that stopped
+    // reporting, produces exactly this state.
+    expect(shouldResolve(frozen, [])).toBe(false);
+    expect(shouldResolve(frozen, up(ALERT_DAYS - 1))).toBe(false);
   });
 
   it("refuses a nonsense frozen normal rather than clearing on it", () => {
-    expect(shouldResolve(0, day("2026-07-25", 4.0))).toBe(false);
-    expect(shouldResolve(Number.NaN, day("2026-07-25", 4.0))).toBe(false);
+    expect(shouldResolve(0, up(ALERT_DAYS))).toBe(false);
+    expect(shouldResolve(Number.NaN, up(ALERT_DAYS))).toBe(false);
   });
 
   it("is judged against the frozen normal, never a recomputed one", () => {
-    // The failure this exists for: a rolling median absorbs a sustained fault,
-    // and after fourteen clear days the alert clears itself while the panel is
-    // still dead. A day at the fault level must never clear against the normal
-    // the alert was raised with.
-    const stillFaulty = day("2026-07-25", 3.0);
+    // A rolling reference absorbs a sustained fault; a run of days at the fault
+    // level must never clear against the normal the alert was raised with.
+    const stillFaulty = run(ALERT_DAYS, 3.0, 90);
     expect(shouldResolve(frozen, stillFaulty)).toBe(false);
-    // ...even though a normal recomputed over those faulty days would say fine.
+    // ...even though a normal recomputed over those days would say fine.
     expect(shouldResolve(3.0, stillFaulty)).toBe(true);
+  });
+
+  it("clears easily after a real repair, which jumps far above the threshold", () => {
+    // One panel back in five is +20 %: every following clear day sits well over
+    // the 90 % line, so the symmetric rule costs a couple of clear days, not a
+    // season.
+    expect(shouldResolve(frozen, [...down(5), ...run(ALERT_DAYS, 4.1, 95)])).toBe(true);
   });
 });
 
@@ -300,10 +316,6 @@ describe("detectionSpeed", () => {
     // The honest form of "how sensitive is this". Anything shallower than the
     // margin is never raised, however long one waits.
     expect(detectionSpeed(10, 14)!.minDetectableLoss).toBe(ALERT_MARGIN);
-  });
-
-  it("needs the rule's run of clear days, whatever the weather", () => {
-    expect(detectionSpeed(3, 21)!.clearDaysNeeded).toBe(ALERT_DAYS);
   });
 
   it("never reports an infinity, since it names no panel count", () => {
