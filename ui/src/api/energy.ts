@@ -118,6 +118,14 @@ export interface PvHealthResponse {
     qualifyingDays: number;
     windowDays: number;
   } | null;
+  /**
+   * Qualifying days the reference needs before it asserts anything (#724).
+   * Server-side constant, sent so the card's progress line cannot drift from
+   * the actual rule.
+   */
+  normalTarget: number;
+  /** The capacity-change day the series counts from, when one is stamped. */
+  sinceCutoff: string | null;
 }
 
 /** Spec 162 — a standing health alert, for the alarm banner rebuild. */

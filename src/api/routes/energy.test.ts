@@ -1084,7 +1084,14 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     hasIrradianceSeries: () => false,
   });
 
-  const empty = { days: [], normal: null, latest: null, alert: null, detection: null };
+  const empty = {
+    days: [],
+    normal: null,
+    latest: null,
+    alert: null,
+    detection: null,
+    sinceCutoff: null,
+  };
 
   it("returns an empty series rather than 404 when nothing qualifies yet", async () => {
     const app = await buildApp({
@@ -1098,6 +1105,21 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     // FR6 — no declared array: the card must render nothing, not a "waiting for
     // clear hours" promise that can never come true.
     expect(res.json().active).toBe(false);
+    await app.close();
+  });
+
+  it("ships the building-progress fields: target and capacity cutoff (#724)", async () => {
+    // While the reference builds, the card says "N of M clear days since
+    // <date>". M and the date come from the server so the display cannot
+    // drift from the actual rule.
+    const app = await buildApp({
+      equipments: [solarMeter],
+      pvForecaster: forecasterReturning({ ...empty, sinceCutoff: "2026-08-05" }),
+    });
+    const res = await app.inject({ method: "GET", url });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().normalTarget).toBe(30);
+    expect(res.json().sinceCutoff).toBe("2026-08-05");
     await app.close();
   });
 
