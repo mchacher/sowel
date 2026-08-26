@@ -10,21 +10,26 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { History, Sun } from "lucide-react";
+import { Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { dateLocale } from "../../lib/locale";
+import { useAuth } from "../../store/useAuth";
 import type { PvForecastResponse } from "../../types";
-import { backfillPvForecast, getPvForecast } from "../../api";
-import { SolarProfileForm } from "./SolarProfileForm";
+import { getPvForecast } from "../../api";
 import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
 
 /**
- * Expected PV production (spec 160).
+ * Expected PV production (spec 160), monitoring only since spec 163: the
+ * declaration form and the backfill action live in Settings -> Energy
+ * (`SolarInstallationSettings`), and this panel renders nothing at all for an
+ * undeclared array — the hosting page decides what that case shows.
  *
  * Shows the curve to J+5 and the declared peak power next to it. That second
  * part is not decoration: a household that changes its array without updating
  * the declaration gets a forecast that drifts for weeks, and the stale figure
- * has to be visible where it does the damage.
+ * has to be visible where it does the damage — for admins it links to the
+ * settings section where the declaration is corrected.
  */
 
 interface PvForecastPanelProps {
@@ -33,17 +38,24 @@ interface PvForecastPanelProps {
 
 export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const { t, i18n } = useTranslation();
+  const isAdmin = useAuth((s) => s.user?.role === "admin");
   const [data, setData] = useState<PvForecastResponse | null>(null);
-  const [busy, setBusy] = useState(false);
   /** How far back the forecast-versus-actual comparison looks, in days. */
   const [accuracyDays, setAccuracyDays] = useState(7);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const [failed, setFailed] = useState(false);
+  /**
+   * When the data was fetched. The render splits the timeline at "now" and
+   * ages the weather curve against it; reading the clock during render is
+   * impure (react-hooks/purity), and the fetch time is the honest reference
+   * anyway — it is the moment the drawn data describes.
+   */
+  const [loadedAt, setLoadedAt] = useState(0);
 
   const load = useCallback(async () => {
     try {
       setData(await getPvForecast(equipmentId, accuracyDays));
+      setLoadedAt(Date.now());
       setFailed(false);
     } catch {
       setFailed(true);
@@ -51,12 +63,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   }, [equipmentId, accuracyDays]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only sets state after its awaits resolve
     void load();
   }, [load]);
 
-  // A transient failure must not silently offer an empty form: saving from it
-  // would send an empty declaration and wipe whatever is stored. Say what
-  // happened and offer a retry instead.
+  // A transient failure is said out loud with a retry, never rendered as an
+  // absent panel: silence here would read as "nothing declared".
   if (!data) {
     return failed ? (
       <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
@@ -72,14 +84,15 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
     ) : null;
   }
 
-  // Nothing declared: the form is the whole panel. Not an error state — the
-  // feature simply has not been set up.
+  // Nothing declared: not this panel's story to tell. The Production page
+  // shows admins a pointer to Settings -> Energy; everywhere else the panel
+  // simply is not there.
   if (!data.active) {
-    return <SolarProfileForm equipmentId={equipmentId} planes={[]} onSaved={load} />;
+    return null;
   }
 
   const locale = dateLocale(i18n.language);
-  const now = Date.now();
+  const now = loadedAt;
   // One timeline. Past hours carry what was promised for them, future hours the
   // current curve; see `mergeTimeline`.
   const chart = mergeTimeline(data.accuracy.points, data.curve, now, data.accuracy.measured);
@@ -90,7 +103,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
 
   // FR5 — a curve nobody refreshed must not be drawn like a fresh one.
   const ageHours = data.issuedAt
-    ? (Date.now() - Date.parse(data.issuedAt)) / 3_600_000
+    ? (loadedAt - Date.parse(data.issuedAt)) / 3_600_000
     : null;
   const stale = ageHours !== null && ageHours > 3;
   const staleHours = ageHours === null ? 0 : Math.round(ageHours);
@@ -98,41 +111,26 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const todayKwh = sumKwh(data.curve, 0);
   const tomorrowKwh = sumKwh(data.curve, 1);
 
-  /**
-   * Fit from history the installation already holds (spec 161).
-   *
-   * Offered mainly while there is no model, which is the twelve-day gap this
-   * exists to close, but kept available afterwards: it is also how a household
-   * rebuilds the fit after correcting the declared array or its date.
-   */
-  async function backfill(): Promise<void> {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await backfillPvForecast(equipmentId);
-      setNotice(
-        res.model
-          ? t("equipments.pv.backfilled", { hours: res.hoursPaired })
-          : t("equipments.pv.backfilledShort", { hours: res.hoursPaired }),
-      );
-      await load();
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <div className="mb-6 flex flex-col gap-4">
-      <div className="bg-surface rounded-[10px] border border-border p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Sun size={16} strokeWidth={1.5} className="text-accent" />
-          <h3 className="text-[14px] font-semibold text-text">{t("equipments.pv.title")}</h3>
+    <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Sun size={16} strokeWidth={1.5} className="text-accent" />
+        <h3 className="text-[14px] font-semibold text-text">{t("equipments.pv.title")}</h3>
+        {/* The stale-declaration tell. For admins it is also the way to fix
+            it: the same figure, linking to the section that edits it. */}
+        {isAdmin ? (
+          <Link
+            to="/settings?tab=energy"
+            className="ml-auto text-[11px] text-text-tertiary tabular-nums font-mono hover:text-primary hover:underline"
+          >
+            {t("equipments.pv.declared", { wc: data.declaredPeakWc })}
+          </Link>
+        ) : (
           <span className="ml-auto text-[11px] text-text-tertiary tabular-nums font-mono">
             {t("equipments.pv.declared", { wc: data.declaredPeakWc })}
           </span>
-        </div>
+        )}
+      </div>
 
         {/* An empty curve has two very different causes. Waiting for samples
             resolves itself; a missing weather plugin never does, and saying
@@ -217,7 +215,10 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <defs>
-                    <linearGradient id="pvFill" x1="0" y1="0" x2="0" y2="1">
+                    {/* Suffixed with the equipment id: the Production page
+                        renders one panel per declared meter, and duplicate
+                        SVG ids are invalid HTML. */}
+                    <linearGradient id={`pvFill-${equipmentId}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.35} />
                       <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0.02} />
                     </linearGradient>
@@ -281,7 +282,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     name={t("equipments.pv.expected")}
                     stroke="var(--color-accent)"
                     strokeWidth={1.5}
-                    fill="url(#pvFill)"
+                    fill={`url(#pvFill-${equipmentId})`}
                     connectNulls
                   />
                   <Line
@@ -314,30 +315,6 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             </p>
           </>
         )}
-
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={backfill}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-border text-[13px] text-text-secondary hover:border-primary disabled:opacity-50"
-          >
-            <History size={14} strokeWidth={1.5} />
-            {t("equipments.pv.backfill")}
-          </button>
-          <span className="text-[11px] text-text-tertiary">
-            {t("equipments.pv.backfillHint")}
-          </span>
-          {notice && <span className="text-[12px] text-text-secondary">{notice}</span>}
-        </div>
-      </div>
-
-      <SolarProfileForm
-        equipmentId={equipmentId}
-        planes={data.planes}
-        since={data.since}
-        onSaved={load}
-      />
     </div>
   );
 }
