@@ -132,4 +132,70 @@ describe("normalizeValue", () => {
       expect(normalizeValue("raw", "json")).toEqual({ value: "raw", flagged: false });
     });
   });
+
+  describe("boolean with a declared wire pair (#727)", () => {
+    it("resolves a vocabulary the hard-coded list cannot guess", () => {
+      // The case that motivated this: a Tuya TS011F reports
+      // child_lock: "UNLOCK" on a binary expose. LOCK/UNLOCK is
+      // polarity-ambiguous, so without the pair it is flagged and stored raw.
+      expect(normalizeValue("UNLOCK", "boolean", null, "LOCK", "UNLOCK")).toEqual({
+        value: false,
+        flagged: false,
+      });
+      expect(normalizeValue("LOCK", "boolean", null, "LOCK", "UNLOCK")).toEqual({
+        value: true,
+        flagged: false,
+      });
+    });
+
+    it("is case-insensitive on the declared literals", () => {
+      expect(normalizeValue("unlock", "boolean", null, "LOCK", "UNLOCK")).toEqual({
+        value: false,
+        flagged: false,
+      });
+    });
+
+    it("handles non-string wire literals", () => {
+      expect(normalizeValue(1, "boolean", null, 1, 0)).toEqual({ value: true, flagged: false });
+      expect(normalizeValue("open", "boolean", null, "open", "closed")).toEqual({
+        value: true,
+        flagged: false,
+      });
+    });
+
+    it("wins over the hard-coded vocabulary when they disagree", () => {
+      // A device whose "off" literal is the string "on" would be perverse, but
+      // the declaration is authoritative: it is the device speaking, not a guess.
+      expect(normalizeValue("on", "boolean", null, "off", "on")).toEqual({
+        value: false,
+        flagged: false,
+      });
+    });
+
+    it("still flags a value outside the declared pair", () => {
+      expect(normalizeValue("MAYBE", "boolean", null, "LOCK", "UNLOCK")).toEqual({
+        value: "MAYBE",
+        flagged: true,
+      });
+    });
+
+    it("keeps refusing to guess when nothing is declared", () => {
+      // The spec 150 guard is untouched: half a pair is not a declaration.
+      expect(normalizeValue("UNLOCK", "boolean")).toEqual({ value: "UNLOCK", flagged: true });
+      expect(normalizeValue("UNLOCK", "boolean", null, "LOCK", undefined)).toEqual({
+        value: "UNLOCK",
+        flagged: true,
+      });
+      expect(normalizeValue("OPEN", "boolean")).toEqual({ value: "OPEN", flagged: true });
+    });
+
+    it("leaves the common ON/OFF path working without a declaration", () => {
+      expect(normalizeValue("ON", "boolean")).toEqual({ value: true, flagged: false });
+      expect(normalizeValue("OFF", "boolean")).toEqual({ value: false, flagged: false });
+      expect(normalizeValue(true, "boolean", null, "LOCK", "UNLOCK")).toEqual({
+        value: true,
+        flagged: false,
+      });
+    });
+  });
 });

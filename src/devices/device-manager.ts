@@ -55,6 +55,9 @@ export interface DiscoveredDevice {
     category: DataCategory;
     unit?: string;
     enumValues?: string[];
+    /** Wire literals of a boolean reading, when the integration knows them. */
+    valueOn?: string | number | boolean;
+    valueOff?: string | number | boolean;
   }[];
   orders: {
     key: string;
@@ -132,11 +135,11 @@ export class DeviceManager {
         "SELECT * FROM device_data WHERE device_id = ? AND key = ?",
       ),
       insertDeviceData: this.db.prepare(
-        `INSERT INTO device_data (id, device_id, key, type, category, unit, enum_values)
-         VALUES (@id, @deviceId, @key, @type, @category, @unit, @enumValues)`,
+        `INSERT INTO device_data (id, device_id, key, type, category, unit, enum_values, value_on, value_off)
+         VALUES (@id, @deviceId, @key, @type, @category, @unit, @enumValues, @valueOn, @valueOff)`,
       ),
       updateDeviceDataDef: this.db.prepare(
-        "UPDATE device_data SET type = ?, category = ?, unit = ?, enum_values = ? WHERE id = ?",
+        "UPDATE device_data SET type = ?, category = ?, unit = ?, enum_values = ?, value_on = ?, value_off = ? WHERE id = ?",
       ),
       updateDeviceDataValue: this.db.prepare(
         "UPDATE device_data SET value = ?, last_updated = datetime('now'), last_changed = CASE WHEN value IS NOT ? OR category = 'action' THEN datetime('now') ELSE last_changed END WHERE id = ?",
@@ -235,12 +238,18 @@ export class DeviceManager {
           | { id: string }
           | undefined;
         const enumJson = d.enumValues ? JSON.stringify(d.enumValues) : null;
+        // JSON-encoded like the order columns, so "ON" and true round-trip
+        // distinctly instead of collapsing into the same TEXT.
+        const onJson = d.valueOn !== undefined ? JSON.stringify(d.valueOn) : null;
+        const offJson = d.valueOff !== undefined ? JSON.stringify(d.valueOff) : null;
         if (existingData) {
           this.stmts.updateDeviceDataDef.run(
             d.type,
             d.category,
             d.unit ?? null,
             enumJson,
+            onJson,
+            offJson,
             existingData.id,
           );
         } else {
@@ -252,6 +261,8 @@ export class DeviceManager {
             category: d.category,
             unit: d.unit ?? null,
             enumValues: enumJson,
+            valueOn: onJson,
+            valueOff: offJson,
           });
         }
       }
@@ -552,6 +563,9 @@ export class DeviceManager {
           category,
           unit: unit ?? null,
           enumValues: null,
+          // Auto-created from a raw payload: no expose to read the pair from.
+          valueOn: null,
+          valueOff: null,
         });
         this.logger.info(
           { deviceId: device.id, key, category },
@@ -568,6 +582,8 @@ export class DeviceManager {
         value,
         dataRow.type as DataType,
         parseEnumValues(dataRow.enum_values),
+        parseWireValue(dataRow.value_on),
+        parseWireValue(dataRow.value_off),
       );
       if (normalized.flagged) {
         const warnKey = `coerce:${device.id}:${key}`;
@@ -873,6 +889,8 @@ interface DeviceDataRow {
   value: string | null;
   unit: string | null;
   enum_values: string | null;
+  value_on: string | null;
+  value_off: string | null;
   last_updated: string | null;
 }
 
