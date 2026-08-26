@@ -369,6 +369,14 @@
   /* Span the full section width like the four-pillar grid above. */
 }
 
+/* An odd trailing card (the "In depth" door) spans the full row instead of
+   sitting lopsided in the left column. */
+@media (min-width: 720px) {
+  .sowel-cards--two .sowel-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
 /* "Take a tour" cards: minimal layout. Same hover as other cards. */
 .sowel-cards--two .sowel-card {
   background: var(--md-default-bg-color);
