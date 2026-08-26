@@ -747,6 +747,41 @@ export class PvForecaster {
     return days;
   }
 
+  /**
+   * Record the household's "unchanged since" date as the capacity-change marker.
+   *
+   * Read from the declaration itself, NOT from the backfill window's bound: a
+   * change declared more than 45 days after it happened bounds nothing (the fit
+   * window already starts later), yet the year-long health history still needs
+   * the cutoff — gated on the bound, up to 500 days of old-geometry days kept
+   * feeding the reference, the exact "false alert that can never resolve" the
+   * marker exists to prevent. It is also the only reset path for a change that
+   * keeps the peak power constant (re-orienting planes): the live trigger
+   * compares peak only, so declaring the date and relearning is how such a
+   * change gets its cutoff.
+   */
+  private stampDeclaredChange(equipment: Equipment): void {
+    const declaredMs = Date.parse(equipment.solarProfile?.since ?? "");
+    if (!Number.isFinite(declaredMs) || declaredMs >= Date.now()) return;
+
+    const declaredAt = new Date(declaredMs).toISOString();
+    const stamped = this.db
+      .prepare(
+        "UPDATE pv_forecast_model SET capacity_changed_at = ? WHERE equipment_id = ? AND (capacity_changed_at IS NULL OR capacity_changed_at < ?)",
+      )
+      .run(declaredAt, equipment.id, declaredAt).changes;
+
+    // A fresh stamp while an alert stands: that alert was judged against a
+    // reference the household has just disowned. The health check's strict
+    // newer-than-the-raise comparison cannot close it — a backdated declaration
+    // is older than the raise by construction — so it is closed here, as a
+    // reset. A real deficit on the new array re-raises within three clear days,
+    // against an honest reference.
+    if (stamped > 0) {
+      this.resolveHealthAlert(equipment.id, "the declared array changed");
+    }
+  }
+
   /** When the declared array last changed, or null if it never has. */
   private capacityChangedAt(equipmentId: string): string | null {
     const row = this.db
@@ -947,6 +982,15 @@ export class PvForecaster {
       model: null,
     };
 
+    // Spec 162 — before the fit, deliberately: a change declared days ago gives
+    // a window too short to fit, and the "not enough history" return below is
+    // exactly the state such a declaration produces. Skipping the stamp there
+    // left the stale reference standing — and with it the alert judged against
+    // hardware the household had just said no longer exists. On the first-ever
+    // backfill there is no model row for the marker to land on; it is retried
+    // once the fit has created one.
+    this.stampDeclaredChange(equipment);
+
     // Fit over everything stored *inside the window*, not only what this run
     // added — a second backfill after a live fortnight should use both — and not
     // over everything stored either. Bounding what is added but not what is
@@ -980,25 +1024,6 @@ export class PvForecaster {
         "Dropped PV samples recorded before the declared array configuration",
       );
     }
-    // Spec 162 — a declared date says the array was different before it, so the
-    // health history from before it describes hardware that is gone. Recorded as
-    // the change marker rather than a deletion, and NOT gated on `pruned` above:
-    // a change declared after the old samples already aged out of the 45-day
-    // window deletes nothing, yet the year-long health history still needs the
-    // cutoff. The health check reads the marker and excludes those days, and
-    // closes any alert raised against the old array.
-    if (window.boundedBy === "declaration") {
-      this.db
-        .prepare(
-          "UPDATE pv_forecast_model SET capacity_changed_at = ? WHERE equipment_id = ? AND (capacity_changed_at IS NULL OR capacity_changed_at < ?)",
-        )
-        .run(
-          new Date(window.fromMs).toISOString(),
-          equipmentId,
-          new Date(window.fromMs).toISOString(),
-        );
-    }
-
     // The fit describes the declared capacity by construction: the window either
     // starts at the declared change or reaches back only as far as the rolling
     // window, so there is no pending change left to keep the trigger armed for.
@@ -1006,6 +1031,9 @@ export class PvForecaster {
     this.db
       .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
       .run(equipmentId);
+    // Now the model row certainly exists; on a first backfill the attempt above
+    // had nothing to write to.
+    this.stampDeclaredChange(equipment);
     report.model = model;
 
     this.logger.info(

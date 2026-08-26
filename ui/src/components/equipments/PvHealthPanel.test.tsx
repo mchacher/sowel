@@ -84,11 +84,19 @@ describe("PvHealthPanel", () => {
   });
 
   it("renders nothing when the request ultimately fails", async () => {
-    mockedGet.mockRejectedValue(new Error("network"));
-    const { container } = render(<PvHealthPanel equipmentId="eq-pv" />);
-    // Two retries at 1s/3s are configured; in tests the mock rejects instantly,
-    // so allow the retry loop to exhaust.
-    await new Promise((r) => setTimeout(r, 50));
-    expect(container.firstChild).toBeNull();
+    // Fake timers, so the test actually reaches the failed outcome: with real
+    // timers the retry loop (1 s + 3 s) was still sleeping when the assertion
+    // ran, and the test passed on any implementation — including one that
+    // rendered an error box on failure.
+    vi.useFakeTimers();
+    try {
+      mockedGet.mockRejectedValue(new Error("network"));
+      const { container } = render(<PvHealthPanel equipmentId="eq-pv" />);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(mockedGet).toHaveBeenCalledTimes(3);
+      expect(container.firstChild).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

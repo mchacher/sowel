@@ -26,6 +26,11 @@ import type {
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
 import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
+import { isActiveSolarProfile } from "../../energy/pv/solar-profile.js";
+import { ALERT_DAYS } from "../../energy/pv/pv-health.js";
+
+/** Trailing days of the health series shipped to the card. */
+const HEALTH_DISPLAY_DAYS = 120;
 import { totalPeakWc } from "../../energy/pv/solar-geometry.js";
 
 interface EnergyDeps {
@@ -710,12 +715,14 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // Display window only: the full 500-day table stays server-side for the
       // reference, but shipping it whole put ~500 dots on a 160-px chart and
       // let one anomalous historic day stretch the Y scale for good.
-      const displayDays = health.days.slice(-120);
+      const displayDays = health.days.slice(-HEALTH_DISPLAY_DAYS);
       return {
         // FR6 — with no declared array the feature is silent; the flag lets the
         // card render nothing instead of a "waiting for clear hours" promise
-        // that can never come true.
-        active: (equipment.solarProfile?.planes?.length ?? 0) > 0,
+        // that can never come true. The same test the engine collects with:
+        // planes that fail validation collect nothing, and reporting them as
+        // active resurrects the eternal-waiting card this flag exists to kill.
+        active: isActiveSolarProfile(equipment.solarProfile),
         // An installation with no qualifying day yet gets an empty series, never
         // a 404: nothing to show is a state of the feature, not a missing route.
         days: displayDays.map((d) => ({ day: d.day, ratio: d.ratio, hours: d.hours })),
@@ -737,14 +744,25 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // ============================================================
   app.get("/api/v1/energy/pv-health-alerts", async () => {
     if (!pvForecaster) return [];
-    return pvForecaster.getStandingHealthAlerts().map((a) => {
-      const equipment = equipmentManager.getById(a.equipmentId);
-      return {
-        ...a,
-        equipmentName: equipment?.name ?? a.equipmentId,
-        zoneId: equipment?.zoneId ?? null,
-      };
-    });
+    return (
+      pvForecaster
+        .getStandingHealthAlerts()
+        .map((a) => ({ alert: a, equipment: equipmentManager.getById(a.equipmentId) }))
+        // A just-deleted equipment can hold an alert until the nightly sweep
+        // reconciles it; a banner naming a raw UUID helps nobody, so those rows
+        // wait for the sweep rather than being shown.
+        .filter((x) => x.equipment !== null)
+        .map(({ alert, equipment }) => ({
+          ...alert,
+          equipmentName: equipment!.name,
+          zoneId: equipment!.zoneId ?? null,
+          // Composed here, with the same constant the raise used, so the banner
+          // a client rebuilds reads identically to the one the event produced —
+          // a hardcoded copy in the UI silently diverges the day ALERT_DAYS
+          // changes.
+          message: `${equipment!.name}: production ${Math.round(alert.deficit * 100)} % below its usual level on the last ${ALERT_DAYS} clear days`,
+        }))
+    );
   });
 
   // ============================================================

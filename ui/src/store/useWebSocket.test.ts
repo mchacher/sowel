@@ -248,6 +248,37 @@ describe("connect", () => {
     expect(unbound?.source).toBe("Capteur cave");
     expect(unbound?.message).toBe("Low battery: 8%");
   });
+
+  it("on open: restores a standing PV health alarm from the snapshot (spec 162)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    // The raise event fires exactly once, server-side; a session opened after
+    // it has no event to catch and rebuilds from this snapshot.
+    api.getPvHealthAlerts.mockResolvedValue([
+      {
+        equipmentId: "eq-pv",
+        equipmentName: "Shelly Solar",
+        since: "2026-08-23",
+        deficit: 0.25,
+        zoneId: "z-1",
+        message: "Shelly Solar: production 25 % below its usual level on the last 3 clear days",
+      },
+    ]);
+
+    const ws = connect();
+    ws.simulateOpen();
+
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().alarms.get("pv-health:eq-pv")).toBeDefined();
+    });
+
+    const alarm = useWebSocket.getState().alarms.get("pv-health:eq-pv");
+    expect(alarm?.level).toBe("warning");
+    // The message is the server's, verbatim: a copy composed client-side
+    // silently diverged from the live raise the day a constant changed.
+    expect(alarm?.message).toBe(
+      "Shelly Solar: production 25 % below its usual level on the last 3 clear days",
+    );
+  });
 });
 
 describe("handleEvent dispatch", () => {

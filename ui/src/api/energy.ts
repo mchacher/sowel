@@ -127,6 +127,8 @@ export interface PvHealthAlert {
   since: string;
   deficit: number;
   zoneId: string | null;
+  /** Composed server-side with the same wording and constants as the live raise. */
+  message: string;
 }
 
 export async function getPvHealthAlerts(): Promise<PvHealthAlert[]> {

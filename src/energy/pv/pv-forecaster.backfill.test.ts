@@ -112,7 +112,7 @@ function build(db: Database.Database, opts: BuildOptions = {}): PvForecaster {
   return new PvForecaster({
     db,
     logger,
-    eventBus: { onType: () => noop } as never,
+    eventBus: { onType: () => noop, emit: noop } as never,
     deviceManager: { getAllWithData: () => [{ data: deviceData }] } as never,
     equipmentManager: {
       getAll: () => [{ id: EQUIPMENT_ID, solarProfile: { planes, since: opts.since } }],
@@ -422,5 +422,72 @@ describe("computed aliases while there is no model", () => {
     // The curve is computed on the next recompute, which needs the forward
     // series; what matters here is that the model gate no longer blocks.
     expect(forecaster.getModel(EQUIPMENT_ID)).not.toBeNull();
+  });
+});
+
+/**
+ * The change marker is written from the declaration itself (spec 162), not from
+ * whether it happened to bound the fit window.
+ */
+describe("backfill and the capacity-change marker", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    migrate(db);
+  });
+
+  const changedAt = (): string | null =>
+    (
+      db
+        .prepare("SELECT capacity_changed_at AS c FROM pv_forecast_model WHERE equipment_id = ?")
+        .get(EQUIPMENT_ID) as { c: string | null } | undefined
+    )?.c ?? null;
+
+  it("stamps the marker even when the declaration is older than the fit window", async () => {
+    // 60 days ago: resolveWindow correctly ignores it for the fit (the window
+    // already starts later), but the health history reaches back 500 days and
+    // still needs the cutoff. Gated on the window bound, up to a year of
+    // old-geometry days kept feeding the reference.
+    const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
+    const f = build(db, { since });
+    const report = await f.backfill(EQUIPMENT_ID);
+    f.stop();
+
+    expect(report.boundedBy).toBe("window");
+    expect(changedAt()).toBe(since);
+  });
+
+  it("closes a standing alert when a change is declared, whatever its date", async () => {
+    // The health check's own reset compares the stamp against the raise and is
+    // strict: a backdated declaration is older than the raise by construction,
+    // so it can never close the alert there. The declaration moment is when it
+    // must happen — the household has just disowned the reference the alert
+    // was judged against.
+    const f0 = build(db);
+    await f0.backfill(EQUIPMENT_ID);
+    f0.stop();
+    db.prepare(
+      `INSERT INTO pv_health_alert (equipment_id, since, normal, deficit, raised_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(EQUIPMENT_ID, "2026-08-20", 3.8, 0.25, new Date().toISOString());
+
+    const since = new Date(Date.now() - 10 * 86_400_000).toISOString();
+    const f = build(db, { since });
+    await f.backfill(EQUIPMENT_ID);
+    f.stop();
+
+    const standing = db
+      .prepare("SELECT count(*) AS n FROM pv_health_alert WHERE equipment_id = ?")
+      .get(EQUIPMENT_ID) as { n: number };
+    expect(standing.n).toBe(0);
+  });
+
+  it("does not stamp without a declared date", async () => {
+    const f = build(db);
+    await f.backfill(EQUIPMENT_ID);
+    f.stop();
+
+    expect(changedAt()).toBeNull();
   });
 });

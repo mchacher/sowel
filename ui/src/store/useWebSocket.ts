@@ -397,13 +397,14 @@ export const useWebSocket = create<WebSocketState>((set) => ({
 
           for (const alert of pvHealthAlerts) {
             const alarmId = `pv-health:${alert.equipmentId}`;
-            // Mirror the engine's live alarm wording, so a restored banner
-            // reads identically to the one the raise produced.
+            // The message comes composed from the server, with the same wording
+            // and constants as the live raise — a copy here drifted the day any
+            // constant changed, and nothing would have said so.
             alarms.set(alarmId, {
               alarmId,
               level: "warning",
               source: "pv-health",
-              message: `${alert.equipmentName}: production ${Math.round(alert.deficit * 100)} % below its usual level on the last 3 clear days`,
+              message: alert.message,
             });
           }
 
