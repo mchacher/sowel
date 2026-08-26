@@ -53,6 +53,12 @@ const LEARN_SAMPLE_FLOOR = 0.25; // learner ignores samples below 25 % of nomina
 const LEARN_MIN_SAMPLES = 3;
 const LEARN_SAMPLE_CAP = 500;
 const DIVERGENCE_RATIO = 0.3; // watts-divergence threshold vs declared nominal
+// A load measured below this fraction of its declared nominal (or below the
+// absolute floor, for a load whose nominal is tiny/unset) is not running:
+// standby, a thermostat that has opened, a breaker left off. Used by the
+// revoke watchdog, which must never accuse a load that draws nothing.
+const IDLE_DRAW_RATIO = 0.1;
+const IDLE_DRAW_FLOOR_W = 20;
 const TICK_MS = 10_000;
 
 interface ArbiterConfig {
@@ -1187,6 +1193,25 @@ export class CapacityArbiter {
     return profile?.learned?.watts ?? profile?.nominalPowerW ?? 0;
   }
 
+  /**
+   * Direct evidence that a load is NOT consuming right now.
+   *
+   * Measurement first — a fresh own-power reading below the idle threshold is
+   * proof, whatever the relay reports. Failing that, the load's own reported
+   * on/off STATE. A load with neither (no power binding, never reported a
+   * state) is unknown, and callers fall back to the grid-export proxy.
+   */
+  private notDrawing(equipmentId: string): boolean {
+    const live = this.freshLiveDraw(equipmentId);
+    if (live !== null) {
+      const nominal = this.profileOf(equipmentId)?.nominalPowerW ?? 0;
+      return live < Math.max(IDLE_DRAW_FLOOR_W, nominal * IDLE_DRAW_RATIO);
+    }
+    const reportedOn = this.reportedOnOff.get(equipmentId);
+    if (reportedOn !== undefined) return !reportedOn;
+    return false;
+  }
+
   private freshLiveDraw(equipmentId: string): number | null {
     const entry = this.liveDraw.get(equipmentId);
     if (!entry) return null;
@@ -1236,7 +1261,17 @@ export class CapacityArbiter {
         at: Date.now(),
       });
     }
-    if (reason === "surplus-deficit" || reason === "priority-preempted") {
+    // Arm the watchdog only when there is something to honor. A load
+    // that was drawing nothing at the revoke — physically off, breaker open,
+    // thermostat satisfied — cannot make the export "recover", so the proxy
+    // below would accuse it the moment the sun drops or another load starts.
+    // `watts <= 0` is the same case seen through the effective-watts tier: a
+    // 0 W threshold makes any noise dip read as unhonored.
+    if (
+      (reason === "surplus-deficit" || reason === "priority-preempted") &&
+      watts > 0 &&
+      !this.notDrawing(claim.equipmentId)
+    ) {
       this.watchdogs.push({
         equipmentId: claim.equipmentId,
         at: Date.now(),
@@ -1333,7 +1368,20 @@ export class CapacityArbiter {
     const exportNow = -(this.emaPowerW ?? 0);
     this.watchdogs = this.watchdogs.filter((w) => {
       if (this.grantedClaimFor(w.equipmentId)) return false; // re-granted, moot
-      if (exportNow - w.exportAtRevoke >= 0.5 * w.expectedW) return false; // honored
+      // Honored, by direct evidence: the load's own measurement (or its
+      // reported state) says it has stopped. This outranks the export proxy,
+      // which never recovers when the production falls or another load picks
+      // up the slack in the same window — an evening revoke used to be flagged
+      // unhonored for that reason alone. Drop the background excuse with it:
+      // a load that has genuinely stopped must be back in the release pass.
+      if (this.notDrawing(w.equipmentId)) {
+        this.unresponsiveUntil.delete(w.equipmentId);
+        return false;
+      }
+      if (exportNow - w.exportAtRevoke >= 0.5 * w.expectedW) {
+        this.unresponsiveUntil.delete(w.equipmentId);
+        return false; // honored, export recovered
+      }
       const graceMs =
         Math.max(this.config.releaseHoldS, this.profileOf(w.equipmentId)?.releaseDelayS ?? 0) *
         1000;

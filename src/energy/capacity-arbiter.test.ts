@@ -1004,6 +1004,126 @@ describe("capacity arbiter", () => {
     );
   });
 
+  // ── Unhonored revokes: no accusation without a measured draw ──
+
+  it("a load that was drawing nothing is never accused of ignoring the revoke", () => {
+    const h = makeHarness({
+      priority: ["pump", "heater"],
+      profiles: {
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+        heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 },
+      },
+    });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    // The heater has its grant and its order, but draws nothing — breaker left
+    // off while the household is away (the prod case). The pump is the only
+    // real consumer.
+    h.feedLoadPower("pump", 600);
+    h.feedLoadPower("heater", 0);
+    // Evening: production collapses into a sustained, DEEPENING import. The
+    // bottom of the list (heater) is revoked first.
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+
+    // Export never "recovers" — the sun is setting, not the heater refusing.
+    for (let i = 0; i < 130; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(600);
+      h.feedLoadPower("pump", 600);
+      h.feedLoadPower("heater", 0);
+    }
+    const journal = h.arbiter.getPublicState().journal;
+    expect(journal.some((j) => j.kind === "revoke-not-honored" && j.equipmentId === "heater")).toBe(
+      false,
+    );
+    // And the deficit keeps being worked: the heater is not excused as
+    // background draw, so the pass moves on to the load that is actually
+    // consuming instead of stopping at a phantom.
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("pump");
+  });
+
+  it("an unmetered load that reports itself OFF is not accused either", () => {
+    const h = makeHarness({
+      priority: ["pump", "heater"],
+      profiles: {
+        pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 },
+        heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 },
+      },
+      // No power binding on the heater: its reported state is all the arbiter
+      // gets, so that state must be enough to clear the watchdog.
+      bindings: { heater: [{ alias: "state", category: "generic" }] },
+    });
+    h.claim("pumpI", { equipmentId: "pump" });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-3000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.feedLoadPower("pump", 600);
+    h.feedState("heater", true);
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+    // The recipe honors the revoke: the relay opens and says so.
+    h.feedState("heater", false);
+    for (let i = 0; i < 130; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(600);
+      h.feedLoadPower("pump", 600);
+    }
+    const journal = h.arbiter.getPublicState().journal;
+    expect(journal.some((j) => j.kind === "revoke-not-honored" && j.equipmentId === "heater")).toBe(
+      false,
+    );
+  });
+
+  it("a load that stops late drops its background excuse and can be granted again", () => {
+    const h = makeHarness({
+      priority: ["pac", "heater"],
+      profiles: {
+        pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 0 },
+        heater: {
+          class: "deferrable",
+          nominalPowerW: 2200,
+          minOnS: 0,
+          minOffS: 0,
+          releaseDelayS: 1800, // declared shutdown inertia, > the 600 s hold
+        },
+      },
+    });
+    h.claim("pacI", { equipmentId: "pac" });
+    const heaterClaim = h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    expect(h.grantedEvents()).toHaveLength(2);
+    h.feedLoadPower("heater", 2200);
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+    // Past the global hold with the draw still there: excused as background.
+    for (let i = 0; i < 70; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+      h.feedLoadPower("heater", 2200);
+    }
+    // It does stop — late, but it stops. Export does not recover (a cloud, or
+    // the evening), so only the load's own measurement tells the truth.
+    for (let i = 0; i < 10; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(400);
+      h.feedLoadPower("heater", 0);
+    }
+    const journal = h.arbiter.getPublicState().journal;
+    expect(journal.some((j) => j.kind === "revoke-not-honored" && j.equipmentId === "heater")).toBe(
+      false,
+    );
+    // The excuse is lifted with the watchdog: surplus returns and the heater
+    // is grantable again, instead of sitting out the 2 x grace window.
+    expect(heaterClaim.status()).toBe("pending");
+    h.run(-5000, 150);
+    h.feedLoadPower("heater", 0);
+    h.run(-5000, 150);
+    expect(heaterClaim.status()).toBe("granted");
+  });
+
   // ── Wall-switch divergence (FR-6, review decision 16) ─────
 
   it("a granted load reported OFF at the wall is revoked and suspended", () => {
