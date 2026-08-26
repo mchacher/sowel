@@ -46,9 +46,13 @@ vi.mock("./useModes", () => ({ useModes: { getState: () => S.modes } }));
 vi.mock("./useActivity", () => ({ useActivity: { getState: () => S.activity } }));
 vi.mock("./useArbiter", () => ({ useArbiter: { getState: () => S.arbiter } }));
 
-// The only ../api call in this store is getBatteryAlerts (banner restore path).
+// The ../api calls in this store are the banner-restore snapshots: battery
+// alerts (spec 143) and standing PV health alerts (spec 162).
 // Default to an empty list so the health-restore test is unaffected.
-const api = vi.hoisted(() => ({ getBatteryAlerts: vi.fn(async () => [] as unknown[]) }));
+const api = vi.hoisted(() => ({
+  getBatteryAlerts: vi.fn(async () => [] as unknown[]),
+  getPvHealthAlerts: vi.fn(async () => [] as unknown[]),
+}));
 vi.mock("../api", () => api);
 
 // ── Fake WebSocket ──────────────────────────────────────────────────────────
@@ -243,6 +247,38 @@ describe("connect", () => {
     const unbound = useWebSocket.getState().alarms.get("battery-low:dd-2");
     expect(unbound?.source).toBe("Capteur cave");
     expect(unbound?.message).toBe("Low battery: 8%");
+  });
+
+  it("on open: restores a standing PV health alarm from the snapshot (spec 162)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    // The raise event fires exactly once, server-side; a session opened after
+    // it has no event to catch and rebuilds from this snapshot.
+    api.getPvHealthAlerts.mockResolvedValue([
+      {
+        equipmentId: "eq-pv",
+        equipmentName: "Shelly Solar",
+        since: "2026-08-23",
+        deficit: 0.25,
+        zoneId: "z-1",
+        message: "Shelly Solar: production 25 % below its usual level on the last 3 clear days",
+      },
+    ]);
+
+    const ws = connect();
+    ws.simulateOpen();
+
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().alarms.get("pv-health:eq-pv")).toBeDefined();
+    });
+
+    const alarm = useWebSocket.getState().alarms.get("pv-health:eq-pv");
+    expect(alarm?.level).toBe("warning");
+    // Headlined by the equipment name, as battery alerts are, and localised
+    // client-side from the structured fields: the engine's message is English
+    // by repo convention, the banner is user-facing UI and must not be.
+    expect(alarm?.source).toBe("Shelly Solar");
+    expect(alarm?.message).toMatch(/25\s?%/);
+    expect(alarm?.message).not.toMatch(/on the last 3 clear days/);
   });
 });
 

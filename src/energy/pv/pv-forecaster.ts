@@ -19,6 +19,7 @@ import type { DeviceManager } from "../../devices/device-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { ComputedDataEntry, Equipment } from "../../shared/types.js";
+import { localDateStr } from "../../shared/local-date.js";
 import { planeOfArray, solarPosition, toDni, totalPeakWc } from "./solar-geometry.js";
 import {
   MIN_SAMPLES,
@@ -31,6 +32,18 @@ import {
 } from "./pv-model.js";
 import { isActiveSolarProfile } from "./solar-profile.js";
 import {
+  ALERT_DAYS,
+  DETECTION_WINDOW_DAYS,
+  assess,
+  beamFraction,
+  dailyRatio,
+  deficitAgainst,
+  detectionSpeed,
+  shouldResolve,
+  type DayRatio,
+  type HealthHour,
+} from "./pv-health.js";
+import {
   pairHistory,
   profilePeakWc,
   resolveWindow,
@@ -40,6 +53,26 @@ import {
 
 /** Days of production history the fit runs on. Measured: 45 beats all-history. */
 export const WINDOW_DAYS = 45;
+
+/**
+ * How long a day's performance ratio is kept (spec 162).
+ *
+ * Far longer than the 45-day sample window that produces it. The reference the
+ * health check judges against is a high centile of 180 qualifying days, which on
+ * the reference installation is about a year of calendar; and a fault has to
+ * stay measurable against the array as it was before it began. A real
+ * single-panel outage there lasted eight months.
+ */
+export const HEALTH_HISTORY_DAYS = 500;
+
+/**
+ * Delay before the startup health check runs.
+ *
+ * Long enough for the whole boot sequence — the notification service that
+ * subscribes to alarm events in particular — to be in place, following the same
+ * pattern as the battery monitor's first sweep.
+ */
+export const STARTUP_HEALTH_DELAY_MS = 30_000;
 
 /**
  * Daylight hours needed after a declared capacity change before the gain is
@@ -140,9 +173,11 @@ export class PvForecaster {
   private refitTimer: ReturnType<typeof setTimeout> | null = null;
   private recomputeTimer: ReturnType<typeof setTimeout> | null = null;
   /** equipmentId -> readings accumulated for the hour currently open. */
+  private healthTimer: ReturnType<typeof setTimeout> | null = null;
+
   private readonly pending = new Map<
     string,
-    { hourMs: number; watts: number[]; poa: number; tempC: number }
+    { hourMs: number; watts: number[]; poa: number; tempC: number; directFraction: number | null }
   >();
 
   constructor(deps: PvForecasterDeps) {
@@ -168,6 +203,20 @@ export class PvForecaster {
     });
     this.scheduleRefit();
     this.recomputeAll();
+    // Spec 162 — at startup too, not only at 02:15, but DEFERRED. Run inline it
+    // emitted alarm events before `notificationPublishService.init()` had
+    // subscribed — eleven lines later in the boot sequence — so a fault or a
+    // recovery that crossed the threshold while Sowel was down raised or
+    // resolved into the void, unrecoverably, since the raise is emitted exactly
+    // once. The delay also keeps the full-table health scan off the boot path.
+    this.healthTimer = setTimeout(() => {
+      this.healthTimer = null;
+      try {
+        this.runHealthCheck();
+      } catch (err) {
+        this.logger.error({ err }, "PV health check at startup failed");
+      }
+    }, STARTUP_HEALTH_DELAY_MS);
     this.logger.info("PV forecaster started");
   }
 
@@ -178,6 +227,8 @@ export class PvForecaster {
     this.refitTimer = null;
     if (this.recomputeTimer) clearTimeout(this.recomputeTimer);
     this.recomputeTimer = null;
+    if (this.healthTimer) clearTimeout(this.healthTimer);
+    this.healthTimer = null;
     // Do not lose the hour in progress on a clean stop. Each is closed on its
     // own: an equipment deleted mid-hour leaves a bucket whose insert violates
     // the foreign key, and an unguarded loop would abort there and drop every
@@ -493,6 +544,372 @@ export class PvForecaster {
   }
 
   // ============================================================
+  // Health (spec 162)
+  // ============================================================
+
+  /**
+   * Compare what the panels produced with what they should have, once a day.
+   *
+   * Runs after the nightly refit, on the samples that refit just used. The
+   * modelled side is the plane-of-array irradiance, never the fitted model, so
+   * the refit cannot move the ratio it is about to be judged by.
+   */
+  runHealthCheck(): void {
+    // Reconcile first: an equipment deleted or undeclared while an alert stood
+    // would otherwise leave a ghost in the UI banner for good, since there is no
+    // foreign key to cascade and nothing else to close it.
+    const active = new Set(this.solarEquipments().map((e) => e.id));
+    const standing = this.db.prepare("SELECT equipment_id FROM pv_health_alert").all() as Array<{
+      equipment_id: string;
+    }>;
+    for (const row of standing) {
+      if (active.has(row.equipment_id)) continue;
+      this.resolveHealthAlert(row.equipment_id, "the array is no longer declared");
+    }
+
+    for (const equipment of this.solarEquipments()) {
+      try {
+        // No model, no health. The provisional clear-sky curve reads high by
+        // construction and judging an array against it would report every new
+        // installation as failing.
+        if (!this.getModel(equipment.id)) continue;
+        this.assessEquipmentHealth(equipment);
+      } catch (err) {
+        this.logger.error({ err, equipmentId: equipment.id }, "PV health check failed");
+      }
+    }
+  }
+
+  private assessEquipmentHealth(equipment: Equipment): void {
+    // New days come from the samples, which live 50 days. The judgement reads
+    // the stored table, which lives a year: the reference is a high centile of
+    // 180 qualifying days, and a fault that outlives the sample window has to
+    // remain measurable against the array as it was before it.
+    this.storeHealthDays(equipment.id, this.healthDays(equipment));
+
+    // Days recorded before the declared array last changed describe hardware
+    // that is gone, and a reference built on them holds the new array to the
+    // old one's standard. A household that removes two panels would otherwise
+    // carry a false "panels failing" alert that can never resolve. The filter
+    // is by date rather than deletion because the samples regenerate the days:
+    // deleting rows the next check would rewrite is not an invalidation.
+    const changedAt = this.capacityChangedAt(equipment.id);
+    const cutoffDay = changedAt ? localDateStr(new Date(Date.parse(changedAt))) : null;
+    const days = this.storedHealthDays(equipment.id).filter(
+      (d) => cutoffDay === null || d.day >= cutoffDay,
+    );
+
+    const standing = this.db
+      .prepare(
+        "SELECT since, normal, deficit, raised_at FROM pv_health_alert WHERE equipment_id = ?",
+      )
+      .get(equipment.id) as
+      | { since: string; normal: number; deficit: number; raised_at: string }
+      | undefined;
+
+    // An alert raised before the array changed is judging the wrong hardware.
+    // Close it as monitoring being reset, never as a recovery.
+    if (standing && changedAt && changedAt > standing.raised_at) {
+      this.resolveHealthAlert(equipment.id, "the declared array changed");
+      return;
+    }
+
+    if (standing) {
+      // Judged against the normal frozen when the alert was raised, never a
+      // freshly computed one. A rolling median absorbs a sustained fault and
+      // would clear the alert on its own after a fortnight, telling the
+      // household the panels recovered while they are still dead.
+      if (shouldResolve(standing.normal, days)) {
+        this.db.prepare("DELETE FROM pv_health_alert WHERE equipment_id = ?").run(equipment.id);
+        this.logger.info({ equipmentId: equipment.id }, "PV production is back to its normal");
+        this.eventBus.emit({
+          type: "system.alarm.resolved",
+          alarmId: healthAlarmId(equipment.id),
+          source: "pv-health",
+          message: `${equipment.name}: production is back to its usual level`,
+          zoneId: equipment.zoneId ?? null,
+        });
+        return;
+      }
+
+      // Still down, or no longer measurable. Neither is recovery, so the alert
+      // stands; only the reported depth is refreshed.
+      const deficit = deficitAgainst(standing.normal, days);
+      if (Math.abs(deficit - standing.deficit) > 0.005) {
+        this.db
+          .prepare("UPDATE pv_health_alert SET deficit = ? WHERE equipment_id = ?")
+          .run(deficit, equipment.id);
+      }
+      return;
+    }
+
+    const verdict = assess(days);
+    if (!verdict.alerting || verdict.normal === null || verdict.since === null) return;
+
+    const deficit = verdict.deficit ?? 0;
+    // A plain INSERT: the standing-alert branch above returns before this line
+    // whenever a row exists, and better-sqlite3 is synchronous, so a conflict
+    // handler here would be dead code inviting edits to a path that cannot run.
+    this.db
+      .prepare(
+        `INSERT INTO pv_health_alert (equipment_id, since, normal, deficit, raised_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(equipment.id, verdict.since, verdict.normal, deficit, new Date().toISOString());
+
+    this.logger.warn(
+      { equipmentId: equipment.id, deficit, since: verdict.since, normal: verdict.normal },
+      "PV production has been below its normal for several clear days",
+    );
+    this.eventBus.emit({
+      type: "system.alarm.raised",
+      alarmId: healthAlarmId(equipment.id),
+      level: "warning",
+      source: "pv-health",
+      message: `${equipment.name}: production ${Math.round(deficit * 100)} % below its usual level on the last ${ALERT_DAYS} clear days`,
+      zoneId: equipment.zoneId ?? null,
+    });
+  }
+
+  /**
+   * Clear a standing alert without claiming the panels recovered.
+   *
+   * Used when the question stops applying — the array was undeclared, or its
+   * configuration changed — rather than when performance returns. The alarm must
+   * still be resolved, or it stands in the banner for good.
+   */
+  private resolveHealthAlert(equipmentId: string, why: string): void {
+    const deleted = this.db
+      .prepare("DELETE FROM pv_health_alert WHERE equipment_id = ?")
+      .run(equipmentId).changes;
+    if (deleted === 0) return;
+
+    // Zone-scoped like the raise was, whenever the equipment still exists. A
+    // null zone files the resolution globally: the zone's feed then shows an
+    // incident that never ends while every other zone shows a resolution for an
+    // incident it never saw. Null only for a genuinely deleted equipment.
+    const equipment = this.equipments.getAll().find((e) => e.id === equipmentId);
+
+    this.logger.info({ equipmentId, why }, "PV health alert cleared");
+    this.eventBus.emit({
+      type: "system.alarm.resolved",
+      alarmId: healthAlarmId(equipmentId),
+      source: "pv-health",
+      message: `Solar production monitoring stopped: ${why}`,
+      zoneId: equipment?.zoneId ?? null,
+    });
+  }
+
+  /**
+   * The qualifying days, from the samples that survive the rolling window.
+   *
+   * Both the alarm path and the card read this, so they can never disagree about
+   * which days exist — a stored table read whole while the alarm read a window
+   * let the card show a red banner for a fault the engine had just closed.
+   */
+  private healthDays(equipment: Equipment): DayRatio[] {
+    const rows = this.db
+      .prepare(
+        `SELECT at, hour_local, poa, watts, direct_fraction
+           FROM pv_forecast_sample WHERE equipment_id = ? ORDER BY at`,
+      )
+      .all(equipment.id) as Array<{
+      at: string;
+      hour_local: number;
+      poa: number;
+      watts: number;
+      direct_fraction: number | null;
+    }>;
+
+    // Grouped by local date, because the midday band is a local notion. Built
+    // from the same `new Date(ms)` the hours were written with, so a group and
+    // its hours can never disagree.
+    const byDay = new Map<string, HealthHour[]>();
+    for (const r of rows) {
+      const ms = Date.parse(r.at);
+      if (!Number.isFinite(ms)) continue;
+      const day = localDateStr(new Date(ms));
+      const list = byDay.get(day) ?? [];
+      list.push({
+        hourLocal: r.hour_local,
+        poa: r.poa,
+        watts: r.watts,
+        directFraction: r.direct_fraction,
+      });
+      byDay.set(day, list);
+    }
+
+    const days: DayRatio[] = [];
+    for (const [day, hours] of [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const ratio = dailyRatio(day, hours);
+      if (ratio) days.push(ratio);
+    }
+    return days;
+  }
+
+  /**
+   * Record the household's "unchanged since" date as the capacity-change marker.
+   *
+   * Read from the declaration itself, NOT from the backfill window's bound: a
+   * change declared more than 45 days after it happened bounds nothing (the fit
+   * window already starts later), yet the year-long health history still needs
+   * the cutoff — gated on the bound, up to 500 days of old-geometry days kept
+   * feeding the reference, the exact "false alert that can never resolve" the
+   * marker exists to prevent. It is also the only reset path for a change that
+   * keeps the peak power constant (re-orienting planes): the live trigger
+   * compares peak only, so declaring the date and relearning is how such a
+   * change gets its cutoff.
+   */
+  private stampDeclaredChange(equipment: Equipment): void {
+    const declaredMs = Date.parse(equipment.solarProfile?.since ?? "");
+    if (!Number.isFinite(declaredMs) || declaredMs >= Date.now()) return;
+
+    const declaredAt = new Date(declaredMs).toISOString();
+    const stamped = this.db
+      .prepare(
+        "UPDATE pv_forecast_model SET capacity_changed_at = ? WHERE equipment_id = ? AND (capacity_changed_at IS NULL OR capacity_changed_at < ?)",
+      )
+      .run(declaredAt, equipment.id, declaredAt).changes;
+
+    // A fresh stamp while an alert stands: that alert was judged against a
+    // reference the household has just disowned. The health check's strict
+    // newer-than-the-raise comparison cannot close it — a backdated declaration
+    // is older than the raise by construction — so it is closed here, as a
+    // reset. A real deficit on the new array re-raises within three clear days,
+    // against an honest reference.
+    if (stamped > 0) {
+      this.resolveHealthAlert(equipment.id, "the declared array changed");
+    }
+  }
+
+  /** When the declared array last changed, or null if it never has. */
+  private capacityChangedAt(equipmentId: string): string | null {
+    const row = this.db
+      .prepare("SELECT capacity_changed_at FROM pv_forecast_model WHERE equipment_id = ?")
+      .get(equipmentId) as { capacity_changed_at: string | null } | undefined;
+    return row?.capacity_changed_at ?? null;
+  }
+
+  /** The persisted series: the long memory the reference is built on. */
+  private storedHealthDays(equipmentId: string): DayRatio[] {
+    const rows = this.db
+      .prepare(
+        `SELECT day, ratio, hours, measured_wh, irradiation_wh_m2 FROM pv_health_day
+          WHERE equipment_id = ? ORDER BY day`,
+      )
+      .all(equipmentId) as Array<{
+      day: string;
+      ratio: number;
+      hours: number;
+      measured_wh: number;
+      irradiation_wh_m2: number;
+    }>;
+    return rows.map((r) => ({
+      day: r.day,
+      ratio: r.ratio,
+      hours: r.hours,
+      measuredWh: r.measured_wh,
+      irradiationWhM2: r.irradiation_wh_m2,
+    }));
+  }
+
+  private storeHealthDays(equipmentId: string, days: readonly DayRatio[]): void {
+    const upsert = this.db.prepare(
+      `INSERT INTO pv_health_day (equipment_id, day, ratio, hours, measured_wh, irradiation_wh_m2)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(equipment_id, day) DO UPDATE SET
+         ratio = excluded.ratio, hours = excluded.hours,
+         measured_wh = excluded.measured_wh, irradiation_wh_m2 = excluded.irradiation_wh_m2`,
+    );
+    // Pruned to the memory the reference needs, not to the sample window. The
+    // samples live 50 days; a fault lasting eight months has to stay measurable
+    // against the array as it was before it started, which is why this table is
+    // kept far longer than what produced it.
+    const cutoff = localDateStr(new Date(Date.now() - HEALTH_HISTORY_DAYS * 86_400_000));
+    this.db.transaction(() => {
+      for (const d of days) {
+        upsert.run(equipmentId, d.day, d.ratio, d.hours, d.measuredWh, d.irradiationWhM2);
+      }
+      this.db
+        .prepare("DELETE FROM pv_health_day WHERE equipment_id = ? AND day < ?")
+        .run(equipmentId, cutoff);
+    })();
+  }
+
+  /**
+   * Everything the health card needs, including what the detector cannot do.
+   *
+   * Reads the same days the alarm path judges — recomputed from the samples, not
+   * the stored table read whole. The two used to read different windows, so the
+   * card could show a red banner for a fault the engine had just closed.
+   *
+   * The alert is the persisted one, so the card agrees with what was actually
+   * raised, including its frozen normal.
+   */
+  getHealth(equipment: Equipment): {
+    days: DayRatio[];
+    normal: number | null;
+    latest: DayRatio | null;
+    alert: { since: string; deficit: number } | null;
+    detection: ReturnType<typeof detectionSpeed>;
+  } {
+    // The same cutoff the alarm path applies: days from before the declared
+    // array last changed describe hardware that is gone.
+    const changedAt = this.capacityChangedAt(equipment.id);
+    const cutoffDay = changedAt ? localDateStr(new Date(Date.parse(changedAt))) : null;
+    const days = this.storedHealthDays(equipment.id).filter(
+      (d) => cutoffDay === null || d.day >= cutoffDay,
+    );
+
+    const standing = this.db
+      .prepare("SELECT since, normal, deficit FROM pv_health_alert WHERE equipment_id = ?")
+      .get(equipment.id) as { since: string; normal: number; deficit: number } | undefined;
+
+    const verdict = assess(days);
+
+    // A fortnight, on its own merits — not a window derived from the reference
+    // length. This is what "recently" means on the card, so in December it
+    // describes December's weather, not October's.
+    const cutoff = localDateStr(new Date(Date.now() - DETECTION_WINDOW_DAYS * 86_400_000));
+    const recent = days.filter((d) => d.day >= cutoff).length;
+
+    return {
+      days,
+      // While an alert stands the card shows the normal it was raised against,
+      // not a recomputed one the fault has since dragged down.
+      normal: standing ? standing.normal : verdict.normal,
+      latest: verdict.latest,
+      alert: standing ? { since: standing.since, deficit: standing.deficit } : null,
+      // Null exactly when no day qualified in the window: the card reads that
+      // as "nothing recent to judge on" rather than carrying a separate flag.
+      detection: detectionSpeed(recent, DETECTION_WINDOW_DAYS),
+    };
+  }
+
+  /**
+   * Every standing health alert, for the client's banner rebuild.
+   *
+   * The raise is emitted exactly once and the alert then lives in this table,
+   * so a browser session opened after the raise — or after any restart, which
+   * every self-update causes — has no event to catch. The battery alerts of
+   * spec 143 plugged the identical gap with a snapshot endpoint; this is that
+   * snapshot for the PV health alarms.
+   */
+  getStandingHealthAlerts(): Array<{
+    equipmentId: string;
+    since: string;
+    deficit: number;
+  }> {
+    return (
+      this.db.prepare("SELECT equipment_id, since, deficit FROM pv_health_alert").all() as Array<{
+        equipment_id: string;
+        since: string;
+        deficit: number;
+      }>
+    ).map((r) => ({ equipmentId: r.equipment_id, since: r.since, deficit: r.deficit }));
+  }
+
+  // ============================================================
   // Backfill from existing history (spec 161)
   // ============================================================
 
@@ -543,14 +960,16 @@ export class PvForecaster {
     // rewrites its own rows instead of doubling them, and never fights a live
     // sample for the hour in progress.
     const insert = this.db.prepare(
-      `INSERT INTO pv_forecast_sample (equipment_id, at, hour_local, poa, temp_c, watts)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO pv_forecast_sample
+         (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(equipment_id, at) DO UPDATE SET
-         poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts`,
+         poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts,
+         direct_fraction = excluded.direct_fraction`,
     );
     this.db.transaction(() => {
       for (const s of samples) {
-        insert.run(equipmentId, s.at, s.hourLocal, s.poa, s.tempC, s.watts);
+        insert.run(equipmentId, s.at, s.hourLocal, s.poa, s.tempC, s.watts, s.directFraction);
       }
     })();
 
@@ -562,6 +981,15 @@ export class PvForecaster {
       boundedBy: window.boundedBy,
       model: null,
     };
+
+    // Spec 162 — before the fit, deliberately: a change declared days ago gives
+    // a window too short to fit, and the "not enough history" return below is
+    // exactly the state such a declaration produces. Skipping the stamp there
+    // left the stale reference standing — and with it the alert judged against
+    // hardware the household had just said no longer exists. On the first-ever
+    // backfill there is no model row for the marker to land on; it is retried
+    // once the fit has created one.
+    this.stampDeclaredChange(equipment);
 
     // Fit over everything stored *inside the window*, not only what this run
     // added — a second backfill after a live fortnight should use both — and not
@@ -596,7 +1024,6 @@ export class PvForecaster {
         "Dropped PV samples recorded before the declared array configuration",
       );
     }
-
     // The fit describes the declared capacity by construction: the window either
     // starts at the declared change or reaches back only as far as the rolling
     // window, so there is no pending change left to keep the trigger armed for.
@@ -604,6 +1031,9 @@ export class PvForecaster {
     this.db
       .prepare("UPDATE pv_forecast_model SET gain_reset_at = NULL WHERE equipment_id = ?")
       .run(equipmentId);
+    // Now the model row certainly exists; on a first backfill the attempt above
+    // had nothing to write to.
+    this.stampDeclaredChange(equipment);
     report.model = model;
 
     this.logger.info(
@@ -617,8 +1047,15 @@ export class PvForecaster {
       "PV model fitted from existing history",
     );
 
-    // The curve is stale the moment the model changes.
+    // The curve is stale the moment the model changes, and the health check now
+    // has forty-five days of input it did not have a second ago — waiting for
+    // 02:15 would leave an empty card for a feature whose data just landed.
     this.recomputeSoon();
+    try {
+      this.runHealthCheck();
+    } catch (err) {
+      this.logger.error({ err, equipmentId }, "PV health check after backfill failed");
+    }
     return report;
   }
 
@@ -832,9 +1269,18 @@ export class PvForecaster {
 
   /** Stamp the moment a declared change was noticed, so freshness is measurable. */
   private markCapacityChange(equipmentId: string, at: string): void {
+    // `capacity_changed_at` outlives `gain_reset_at` on purpose: the gain stamp
+    // is cleared once the rolling window has measured the new array, but the
+    // health history must keep excluding pre-change days for as long as it
+    // reaches back — a year, against 45 days of samples. Without it, a panel
+    // removal left an 80th-centile reference computed on the bigger array, and
+    // the false alert it raised could never resolve: the smaller array cannot
+    // reach 90 % of a normal it never produced.
     this.db
-      .prepare("UPDATE pv_forecast_model SET gain_reset_at = ? WHERE equipment_id = ?")
-      .run(at, equipmentId);
+      .prepare(
+        "UPDATE pv_forecast_model SET gain_reset_at = ?, capacity_changed_at = ? WHERE equipment_id = ?",
+      )
+      .run(at, at, equipmentId);
     this.logger.info(
       { equipmentId, at },
       "Declared peak power changed, waiting for production on the new array",
@@ -917,30 +1363,44 @@ export class PvForecaster {
       return;
     }
 
+    // Spec 162 — the beam share decides whether this hour can judge the array's
+    // health later. Computed here, where both components are in hand.
+    const directFraction = beamFraction(hour.direct, hour.diffuse);
+
     const bucket = this.pending.get(equipment.id) ?? {
       hourMs,
       watts: [],
       poa,
       tempC: hour.temp ?? 25,
+      directFraction,
     };
     bucket.watts.push(watts);
     bucket.poa = poa;
     bucket.tempC = hour.temp ?? 25;
+    bucket.directFraction = directFraction;
     this.pending.set(equipment.id, bucket);
   }
 
   private closeHour(
     equipmentId: string,
-    bucket: { hourMs: number; watts: number[]; poa: number; tempC: number },
+    bucket: {
+      hourMs: number;
+      watts: number[];
+      poa: number;
+      tempC: number;
+      directFraction: number | null;
+    },
   ): void {
     if (bucket.watts.length === 0 || bucket.poa <= 0) return;
     const mean = bucket.watts.reduce((a, b) => a + b, 0) / bucket.watts.length;
     this.db
       .prepare(
-        `INSERT INTO pv_forecast_sample (equipment_id, at, hour_local, poa, temp_c, watts)
-         VALUES (?, ?, ?, ?, ?, ?)
+        `INSERT INTO pv_forecast_sample
+           (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(equipment_id, at) DO UPDATE SET
-           poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts`,
+           poa = excluded.poa, temp_c = excluded.temp_c, watts = excluded.watts,
+           direct_fraction = excluded.direct_fraction`,
       )
       .run(
         equipmentId,
@@ -949,6 +1409,7 @@ export class PvForecaster {
         bucket.poa,
         bucket.tempC,
         mean,
+        bucket.directFraction,
       );
   }
 
@@ -1025,9 +1486,22 @@ export class PvForecaster {
       } catch (err) {
         this.logger.error({ err }, "Nightly PV refit failed");
       }
+      // Spec 162, after the refit and in its own try: a health check that threw
+      // must not cost the schedule, and a failed refit must not skip the check —
+      // the health ratio does not depend on the model anyway.
+      try {
+        this.runHealthCheck();
+      } catch (err) {
+        this.logger.error({ err }, "Nightly PV health check failed");
+      }
       this.scheduleRefit();
     }, next.getTime() - Date.now());
   }
+}
+
+/** Stable id for an array's health alarm, so a restart addresses the same one. */
+function healthAlarmId(equipmentId: string): string {
+  return `pv-health:${equipmentId}`;
 }
 
 /**

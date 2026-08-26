@@ -15,3 +15,14 @@ export function localDateStr(d: Date = new Date()): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/**
+ * A local `YYYY-MM-DD` day key as a Date, at local noon.
+ *
+ * `Date.parse("2026-08-24")` is UTC midnight, which renders as the 23rd
+ * anywhere west of Greenwich. Noon keeps the instant inside the intended day in
+ * every timezone, which is the idiom the energy charts already use.
+ */
+export function localDayToDate(day: string): Date {
+  return new Date(`${day}T12:00:00`);
+}

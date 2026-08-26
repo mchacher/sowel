@@ -1,0 +1,213 @@
+# Architecture — Spec 162
+
+## Shape
+
+```
+pv-forecaster (already computes POA per hour, per equipment)
+        │
+        │  daily, after the nightly refit
+        ▼
+  pv-health.ts ── pure ──┐
+    qualifyingHours()    │  10-16 h local, direct fraction > 0.75
+    dailyRatio()         │  measured Wh / modelled Wh
+    rollingNormal()      │  slow trailing reference
+    assess()             │  sustained departure -> alert
+                         │
+        ┌────────────────┘
+        ▼
+  pv_health_day (SQLite)      system.alarm.raised / .resolved
+        │                              │
+        └──────────► API ◄─────────────┘
+                      │
+                  the card
+```
+
+The split is the same one spec 161 used and for the same reason: the rules are a
+function from numbers to a verdict, and everything that made this area hard to
+review was in the code that needed a clock and a database. `pv-health.ts` needs
+neither.
+
+## Where the modelled side comes from
+
+Not from a new computation. `pv-forecaster` already derives the plane-of-array
+irradiance for every daylight hour, and already stores it: `pv_forecast_sample`
+carries `at`, `hour_local`, `poa`, `temp_c`, `watts` — measured production paired
+with the irradiance that produced it, for the rolling 45-day window.
+
+That table is exactly the input this feature needs, and it is already correct:
+same POA model, same impossible-reading rejection, same hour convention. The
+health check reads it and adds nothing to the collection path.
+
+The samples live 45 days, so a day's ratio has to be computed while its hours are
+still there and then **kept far longer than they are**: `pv_health_day` is
+retained 500 days. The reference is a high centile of 180 qualifying days, about
+a calendar year here, and a fault has to stay measurable against the array as it
+was before it started — the real one this was validated on lasted eight months.
+
+Both the alarm path and the card read that stored series, so they can never
+disagree about which days exist.
+
+## Direct fraction, and where it comes from
+
+`pv_forecast_sample` stores POA, not its beam and diffuse parts, so the direct
+fraction is not recoverable from the table alone. Two options were considered:
+
+- **Recompute from the published irradiance series.** The forecaster holds it
+  already (`irradiance_120h` for recent hours, `irradiance_history` for 45 days).
+  No schema change, but the health check then depends on a plugin series being
+  present to judge history it already has.
+- **Store the fraction on the sample.** One REAL column, written by the same
+  code that already has `hour.direct` and `hour.diffuse` in hand.
+
+The second. A stored fraction makes a past day's qualification a fact rather than
+a recomputation that a plugin gap could silently change. Migration 027 adds
+`direct_fraction REAL` to `pv_forecast_sample`, nullable: rows written before it
+have no fraction and are simply never qualifying, which the day-level minimum
+already handles.
+
+## Data model
+
+```sql
+-- migration 027
+ALTER TABLE pv_forecast_sample ADD COLUMN direct_fraction REAL;
+
+CREATE TABLE pv_health_day (
+  equipment_id      TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
+  day               TEXT NOT NULL,     -- local date, YYYY-MM-DD
+  ratio             REAL NOT NULL,     -- measured Wh per Wh/m2 of irradiation
+  hours             INTEGER NOT NULL,  -- qualifying hours behind it
+  measured_wh       REAL NOT NULL,
+  irradiation_wh_m2 REAL NOT NULL,     -- Wh/m2, NOT an energy
+  PRIMARY KEY (equipment_id, day)
+);
+
+-- One row per array currently below its normal. `normal` is frozen at the raise:
+-- recomputed nightly it would absorb the fault and clear the alert on its own
+-- after fourteen clear days. No foreign key, following `battery_alerts`: a
+-- cascade would drop the row without letting the check emit the resolution.
+CREATE TABLE pv_health_alert (
+  equipment_id TEXT PRIMARY KEY,
+  since        TEXT NOT NULL,
+  normal       REAL NOT NULL,
+  deficit      REAL NOT NULL,
+  raised_at    TEXT NOT NULL
+);
+```
+
+Both consumers — the alarm path and the card — read the **same** stored series
+with the **same** capacity cutoff, so they can never disagree about which days
+exist; reading different windows is how the card once showed a red banner for a
+fault the engine had just closed. The samples (45-day retention) only _produce_
+new days; the stored table is the memory, kept `HEALTH_HISTORY_DAYS` = 500 days
+and pruned to that horizon in the same transaction that writes it. The API
+ships only the trailing 120 days — the display window — while the reference is
+computed server-side over the full stored history.
+
+Both tables go into `BACKUP_TABLES`. Spec 161's review found the PV tables
+missing from it, where a restore cascaded them away through `equipments`; the new
+one must not repeat that.
+
+## The rules, and their constants
+
+| Constant                    | Value  | Why                                                                       |
+| --------------------------- | ------ | ------------------------------------------------------------------------- |
+| `MIDDAY_FROM` / `MIDDAY_TO` | 10, 16 | Measured: outside it the noise doubles                                    |
+| `MIN_DIRECT_FRACTION`       | 0.75   | The knee of the measured table                                            |
+| `MIN_QUALIFYING_HOURS`      | 4      | A day of fewer hours is an opinion, not a measurement                     |
+| `NORMAL_DAYS`               | 180    | About a year of qualifying days; the length is the requirement, see below |
+| `MIN_NORMAL_DAYS`           | 30     | Below it there is no reference and nothing is asserted                    |
+| `REFERENCE_QUANTILE`        | 0.8    | A median caught 7 % of a real outage; this catches 91 %                   |
+| `DETECTION_WINDOW_DAYS`     | 14     | What "recently" means on the card — December must describe December       |
+| `ALERT_MARGIN`              | 0.10   | Above the measured 4.3 % floor with room to spare                         |
+| `ALERT_DAYS`                | 3      | Consecutive qualifying days below the margin                              |
+
+`ALERT_MARGIN` is deliberately not the noise floor. At 3σ over three days the
+floor says 7.5 %; alerting there would fire on the tail of ordinary variation
+several times a season. Ten percent is still below one lost panel of eight
+(12.5 %), which is the smallest fault worth waking someone for.
+
+## The reference
+
+The **80th centile of the trailing 180 qualifying days**, excluding the days
+under assessment. Not a median, and this is the whole design: a median follows
+the array down — a fault filling half the window becomes the reference, and the
+detector accepts it as the new normal. Replayed against a real eight-month
+single-panel outage with the repair date known, a 20-day median covered 7 % of
+the fault days; this covers 91 % at the same 2 % false-alert rate. A fault
+filling a fifth of the window cannot move a high centile.
+
+The question it answers is "what is this array capable of", not "what does it
+typically do". A dirty fortnight must not become the standard the array is held
+to — so soiling is _reported_ as a deficit rather than absorbed, which is the
+point.
+
+An earlier revision of this document described a 20-day median here. That is the
+design the outage replay rejected; do not "fix" the code back toward it.
+
+## Judgement, and what a capacity change does
+
+Both the alarm path and the card read the **stored** `pv_health_day` series
+(kept `HEALTH_HISTORY_DAYS` = 500 days), filtered to days on or after
+`capacity_changed_at` — a column on `pv_forecast_model` written by the
+capacity-change trigger and by a declaration-bounded backfill, and never
+cleared. Days from before a declared change describe hardware that is gone; a
+reference built on them holds the new array to the old one's standard, and a
+household that removed two panels would otherwise carry a false alert that can
+never resolve. The filter is by date rather than by deletion because the days
+regenerate from the samples on every check.
+
+An alert raised before the change is closed as monitoring being reset, in those
+words — never as a recovery.
+
+## Alerting
+
+Through `system.alarm.raised` and `system.alarm.resolved`, which the notification
+publishers and the zone activity feed already carry — including the resolution,
+since #709. No new transport, but one snapshot: the raise fires exactly once and
+then lives in `pv_health_alert`, so a client session opened after it (or after
+any restart) rebuilds its banner from `GET /energy/pv-health-alerts`, exactly as
+the battery alerts of spec 143 do. The startup check is deferred 30 s so its
+events land after the notification service has subscribed.
+
+Resolution is **symmetric with the raise**: `ALERT_DAYS` consecutive qualifying
+days back above the frozen threshold, not one. A single lucky day used to clear
+an alert whose fault sat near the margin, three unlucky ones re-raised it, and
+the household got a raise/recovery notification pair every few clear days all
+season. A real repair jumps the ratio by the size of the fault and clears in
+`ALERT_DAYS` clear days regardless.
+
+Raised once per equipment, not once per day. Resolved when a qualifying day comes
+back above the margin.
+
+## API
+
+```
+GET /api/v1/energy/pv-health/:equipmentId    (any authenticated user)
+  200 {
+    ratio, normal, hours,           // today's, or the last qualifying day's
+    days: [{ day, ratio, hours }],  // the trailing series, for the chart
+    qualifyingDaysRecently,         // what the detector has had to work with
+    detection: { onePanelDays, oneInverterDays } | null,
+    alert: { since, deficit } | null
+  }
+```
+
+`detection` is computed from the _observed_ recent rate of qualifying days, not
+from the summer figure. In a fortnight of overcast it reports a slow detector,
+because that is what the household has.
+
+## Files
+
+| File                                             | Change                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| `migrations/027_pv_health.sql`                   | new                                                          |
+| `src/energy/pv/pv-health.ts`                     | new — the rules, pure                                        |
+| `src/energy/pv/pv-forecaster.ts`                 | store `direct_fraction`; run the daily check after the refit |
+| `src/backup/backup-manager.ts`                   | `pv_health_day` in `BACKUP_TABLES`                           |
+| `src/api/routes/energy.ts`                       | the route                                                    |
+| `ui/src/components/equipments/PvHealthPanel.tsx` | new — the card                                               |
+
+## What this does not do
+
+No per-panel attribution, no new declaration, no second data source. The card
+says so rather than leaving the household to infer it.

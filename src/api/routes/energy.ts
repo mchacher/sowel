@@ -26,6 +26,11 @@ import type {
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
 import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
+import { isActiveSolarProfile } from "../../energy/pv/solar-profile.js";
+import { ALERT_DAYS } from "../../energy/pv/pv-health.js";
+
+/** Trailing days of the health series shipped to the card. */
+const HEALTH_DISPLAY_DAYS = 120;
 import { totalPeakWc } from "../../energy/pv/solar-geometry.js";
 
 interface EnergyDeps {
@@ -691,6 +696,75 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   );
 
   // ============================================================
+  // GET /api/v1/energy/pv-health/:equipmentId — spec 162.
+  //
+  // Is the array still performing? One number a day, against its own recent
+  // normal, plus how fast a fault would actually show at the rate this
+  // installation is getting clear days.
+  // ============================================================
+  app.get<{ Params: { equipmentId: string } }>(
+    "/api/v1/energy/pv-health/:equipmentId",
+    async (request, reply) => {
+      if (!pvForecaster) {
+        return reply.status(503).send({ error: "PV forecaster not available" });
+      }
+      const equipment = equipmentManager.getById(request.params.equipmentId);
+      if (!equipment) return reply.status(404).send({ error: "Equipment not found" });
+
+      const health = pvForecaster.getHealth(equipment);
+      // Display window only: the full 500-day table stays server-side for the
+      // reference, but shipping it whole put ~500 dots on a 160-px chart and
+      // let one anomalous historic day stretch the Y scale for good.
+      const displayDays = health.days.slice(-HEALTH_DISPLAY_DAYS);
+      return {
+        // FR6 — with no declared array the feature is silent; the flag lets the
+        // card render nothing instead of a "waiting for clear hours" promise
+        // that can never come true. The same test the engine collects with:
+        // planes that fail validation collect nothing, and reporting them as
+        // active resurrects the eternal-waiting card this flag exists to kill.
+        active: isActiveSolarProfile(equipment.solarProfile),
+        // An installation with no qualifying day yet gets an empty series, never
+        // a 404: nothing to show is a state of the feature, not a missing route.
+        days: displayDays.map((d) => ({ day: d.day, ratio: d.ratio, hours: d.hours })),
+        normal: health.normal,
+        latest: health.latest,
+        alert: health.alert,
+        detection: health.detection,
+      };
+    },
+  );
+
+  // ============================================================
+  // GET /api/v1/energy/pv-health-alerts — spec 162.
+  //
+  // The snapshot the client's alarm banner rebuilds from. The raise event is
+  // emitted exactly once and then lives in a table, so a session opened after
+  // it — or after any restart — has no event to catch. Same pattern as the
+  // battery alerts of spec 143.
+  // ============================================================
+  app.get("/api/v1/energy/pv-health-alerts", async () => {
+    if (!pvForecaster) return [];
+    return (
+      pvForecaster
+        .getStandingHealthAlerts()
+        .map((a) => ({ alert: a, equipment: equipmentManager.getById(a.equipmentId) }))
+        // A just-deleted equipment can hold an alert until the nightly sweep
+        // reconciles it; a banner naming a raw UUID helps nobody, so those rows
+        // wait for the sweep rather than being shown.
+        .filter((x) => x.equipment !== null)
+        .map(({ alert, equipment }) => ({
+          ...alert,
+          equipmentName: equipment!.name,
+          zoneId: equipment!.zoneId ?? null,
+          // Composed here, with the same constant the raise used, so the banner
+          // a client rebuilds reads identically to the one the event produced —
+          // a hardcoded copy in the UI silently diverges the day ALERT_DAYS
+          // changes.
+          message: `${equipment!.name}: production ${Math.round(alert.deficit * 100)} % below its usual level on the last ${ALERT_DAYS} clear days`,
+        }))
+    );
+  });
+
   // ============================================================
   // POST /api/v1/energy/pv-forecast/:equipmentId/backfill — spec 161.
   //

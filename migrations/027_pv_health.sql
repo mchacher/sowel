@@ -1,0 +1,58 @@
+-- Spec 162 — tell the household when the panels stop performing.
+--
+-- The modelled side of the comparison already exists: `pv_forecast_sample`
+-- carries measured production paired with the plane-of-array irradiance that
+-- produced it. What it does not carry is how much of that irradiance arrived as
+-- beam rather than scattered, which is what decides whether an hour is clear
+-- enough to judge on. Measured on the reference installation, restricting to
+-- hours above 0.75 takes the day-to-day noise from 9.5 % to 4.3 %.
+--
+-- Nullable on purpose: rows written before this migration have no fraction and
+-- simply never qualify, which the day-level minimum already handles.
+ALTER TABLE pv_forecast_sample ADD COLUMN direct_fraction REAL;
+
+-- When the declared array last changed. Set by the capacity-change trigger and
+-- by a declaration-bounded backfill, never cleared: `gain_reset_at` closes once
+-- the model has measured the new array, but the health history reaches back a
+-- year and must keep excluding days that describe hardware that is gone.
+ALTER TABLE pv_forecast_model ADD COLUMN capacity_changed_at TEXT;
+
+CREATE TABLE IF NOT EXISTS pv_health_day (
+  equipment_id TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
+  day          TEXT NOT NULL,
+  ratio        REAL NOT NULL,
+  hours        INTEGER NOT NULL,
+  measured_wh  REAL NOT NULL,
+  -- Irradiation on the plane of the array, Wh/m2. Not an energy: the ratio
+  -- above carries a unit and is only ever compared with its own normal.
+  irradiation_wh_m2 REAL NOT NULL,
+  PRIMARY KEY (equipment_id, day)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pv_health_day_equipment
+  ON pv_health_day (equipment_id, day DESC);
+
+-- One row per array whose production is currently below its normal. Deleted
+-- when it recovers.
+--
+-- `normal` is frozen at the moment the alert is raised, and that is the whole
+-- point of the table. Recomputed nightly, a rolling median absorbs a sustained
+-- fault: once the bad days fill the window the median *becomes* the degraded
+-- level, the alert clears itself, and the household is told the panels
+-- recovered while they are still dead. Measured on the real rule, that happens
+-- after fourteen clear days.
+--
+-- Persisting it also fixes what an in-memory flag could not: a restart used to
+-- raise the same alarm twice, and a recovery during downtime lost its
+-- resolution for good.
+--
+-- No foreign key, following `battery_alerts` (spec 143): a cascade delete would
+-- drop the row without letting the check emit `system.alarm.resolved`, leaving
+-- a ghost in the UI banner. The nightly sweep reconciles orphans instead.
+CREATE TABLE IF NOT EXISTS pv_health_alert (
+  equipment_id TEXT PRIMARY KEY,
+  since        TEXT NOT NULL,
+  normal       REAL NOT NULL,
+  deficit      REAL NOT NULL,
+  raised_at    TEXT NOT NULL
+);

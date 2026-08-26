@@ -359,12 +359,20 @@ describe("BACKUP_TABLES covers everything a restore would cascade away", () => {
     expect(BACKUP_TABLES).toContain("pv_forecast_sample");
   });
 
+  it("carries the PV health tables (spec 162)", () => {
+    expect(BACKUP_TABLES).toContain("pv_health_day");
+    // The standing alert too: lost on restore, a fault would be re-raised as
+    // new and its recovery would never be announced.
+    expect(BACKUP_TABLES).toContain("pv_health_alert");
+  });
+
   it("lists every child after the parent it references", () => {
     // The list doubles as the insert order on restore; a child inserted before
     // its parent violates the foreign key.
     const order = BACKUP_TABLES.indexOf("equipments");
     expect(BACKUP_TABLES.indexOf("pv_forecast_model")).toBeGreaterThan(order);
     expect(BACKUP_TABLES.indexOf("pv_forecast_sample")).toBeGreaterThan(order);
+    expect(BACKUP_TABLES.indexOf("pv_health_day")).toBeGreaterThan(order);
     expect(BACKUP_TABLES.indexOf("data_bindings")).toBeGreaterThan(order);
   });
 

@@ -21,6 +21,7 @@ import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { ComputedDataEntry, DataCategory } from "../shared/types.js";
 import type { EquipmentManager } from "./equipment-manager.js";
+import { localDateStr } from "../shared/local-date.js";
 
 interface ExtremesRow {
   equipment_id: string;
@@ -41,13 +42,10 @@ interface Envelope {
 
 const TRACKED_CATEGORIES = new Set<DataCategory>(["temperature", "temperature_outdoor"]);
 
-/** Local calendar day of the server timezone (same convention as energy day boundaries). */
-function localDay(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+// Day keys come from the shared formatter: three private copies of this exact
+// function drifted apart once before (the spec 061 timezone bugs), and a fix
+// landing in one and not the others is precisely how they did.
+const localDay = localDateStr;
 
 export class WeatherTempExtremesTracker {
   private readonly db: Database.Database;
