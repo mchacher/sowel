@@ -24,10 +24,14 @@ const ALL_DECISION_KINDS: Record<ArbiterDecisionKind, true> = {
   "unclaimed-run": true,
   "unclaimed-run-ended": true,
   waiting: true,
+  "draw-stopped": true,
+  "draw-started": true,
+  reset: true,
 };
 
 const ALL_QUARTER_STATES: Record<ArbiterQuarterState, true> = {
   granted: true,
+  "granted-idle": true,
   pending: true,
   revoked: true,
   unmanaged: true,

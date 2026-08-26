@@ -393,6 +393,10 @@ export type ArbiterDecisionKind =
   | "unclaimed-run"
   | "unclaimed-run-ended"
   | "waiting"
+  /** Spec 164 — granted, but the load's own measurement says nothing is
+   *  consuming the surplus (`draw-started` = consuming again). */
+  | "draw-stopped"
+  | "draw-started"
   | "reset";
 
 export interface ArbiterDecision {
@@ -455,7 +459,14 @@ export interface ArbiterPublicState {
 
 /** Spec 148 (Phase B) — the Energy → arbitrage timeline read model.
  *  `pending` (#561) — the load was waiting for surplus (claiming, not granted). */
-export type ArbiterQuarterState = "granted" | "pending" | "revoked" | "unmanaged" | "idle";
+export type ArbiterQuarterState =
+  | "granted"
+  /** Spec 164 — granted, and measured consuming nothing. */
+  | "granted-idle"
+  | "pending"
+  | "revoked"
+  | "unmanaged"
+  | "idle";
 
 export interface ArbiterTimelineLoad {
   equipmentId: string;
@@ -733,8 +744,20 @@ export type EngineEvent =
     }
   | { type: "activity.added"; item: ActivityItem }
   // Spec 140 — energy capacity arbiter
-  | { type: "energy.capacity.granted"; equipmentId: string; instanceId: string; watts: number; note?: string }
-  | { type: "energy.capacity.revoked"; equipmentId: string; instanceId: string; watts: number; reason: string }
+  | {
+      type: "energy.capacity.granted";
+      equipmentId: string;
+      instanceId: string;
+      watts: number;
+      note?: string;
+    }
+  | {
+      type: "energy.capacity.revoked";
+      equipmentId: string;
+      instanceId: string;
+      watts: number;
+      reason: string;
+    }
   | { type: "energy.capacity.denied"; equipmentId: string; instanceId: string; reason: string }
   | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
   | { type: "energy.arbiter.status"; state: ArbiterRunState; availableSurplusW: number | null }

@@ -5,7 +5,24 @@ import {
   isArbiterDormant,
   cellColor,
   PENDING_FILL,
+  GRANTED_IDLE_FILL,
 } from "./arbiterColors";
+
+describe("spec 164 — a grant nothing consumes", () => {
+  it("gives granted-idle its own fill, distinct from a consumed grant", () => {
+    expect(cellColor("granted-idle")).toBe(GRANTED_IDLE_FILL);
+    expect(cellColor("granted-idle")).not.toBe(cellColor("granted"));
+  });
+
+  it("keeps the muted fill in the grant's colour family", () => {
+    expect(GRANTED_IDLE_FILL).toContain("--color-solar-auto");
+  });
+
+  it("keeps both draw kinds in the grant's journal colour", () => {
+    expect(journalDotColor("draw-stopped")).toBe("var(--color-solar-auto)");
+    expect(journalDotColor("draw-started")).toBe("var(--color-solar-auto)");
+  });
+});
 
 describe("journalDotColor (spec 148)", () => {
   it("maps granted/resumed to the auto-consumption green token", () => {
@@ -46,7 +63,9 @@ describe("cellColor (timeline ribbon, #617)", () => {
   });
 
   it("uses a faint neutral tint for idle", () => {
-    expect(cellColor("idle")).toBe("color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)");
+    expect(cellColor("idle")).toBe(
+      "color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)",
+    );
   });
 });
 

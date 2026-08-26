@@ -4,7 +4,8 @@ import type { ArbiterDecision } from "../shared/types.js";
 // from its (persisted) decision journal, bucketed into fixed steps (15 min).
 //
 // Displayed ribbon state per quarter:
-//   "granted"   — accordé (running on surplus)
+//   "granted"      — accordé (running on surplus)
+//   "granted-idle" — accordé, mais rien ne le consomme (spec 164)
 //   "pending"   — en attente (claiming surplus, none granted yet) — #561
 //   "revoked"   — surplus retiré (a revoke happened in this quarter)
 //   "unmanaged" — On (hors arbitrage): manual override or unclaimed run
@@ -15,7 +16,13 @@ import type { ArbiterDecision } from "../shared/types.js";
 // load ends idle — that's the notable event; the exact intra-quarter detail
 // stays in the journal (the UI links a cell click to the journal).
 
-export type QuarterState = "granted" | "pending" | "revoked" | "unmanaged" | "idle";
+export type QuarterState =
+  | "granted"
+  | "granted-idle"
+  | "pending"
+  | "revoked"
+  | "unmanaged"
+  | "idle";
 
 export interface TimelineLoad {
   equipmentId: string;
@@ -32,6 +39,13 @@ export function sustainedAfter(
 ): QuarterState | null {
   switch (kind) {
     case "granted":
+      return "granted";
+    // Spec 164 — the load keeps its grant; only what it does with it changes.
+    // `granted` itself always paints the consuming green, so a grant that is
+    // never consumed shows one `draw-stopped` a confirmation window in.
+    case "draw-stopped":
+      return "granted-idle";
+    case "draw-started":
       return "granted";
     // #561 — the load is claiming surplus but none is granted. Holds until a
     // grant, a release, a suspension, or a revoke-without-reclaim ends it. A

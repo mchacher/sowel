@@ -23,7 +23,7 @@ La page Énergie › Live répond d'un coup d'œil à « qui reçoit le surplus 
 Trois étages, de haut en bas :
 
 - **La table d'état** : chaque charge pilotable avec son état du moment (_Accordé_, _En attente_, _Au repos_), ce qu'elle a demandé, ce qu'elle consomme réellement, et l'import réseau qu'elle est autorisée à tolérer.
-- **La frise** : la journée en créneaux de 15 minutes par charge, face à la courbe de surplus/déficit. On y voit la pompe de piscine prendre le surplus du matin, le chauffe-eau la rejoindre à midi, la PAC de piscine attendre son tour.
+- **La frise** : la journée en créneaux de 15 minutes par charge, face à la courbe de surplus/déficit. On y voit la pompe de piscine prendre le surplus du matin, le chauffe-eau la rejoindre à midi, la PAC de piscine attendre son tour. Le vert plein dit que la charge a bien consommé le surplus qu'on lui a accordé ; un vert plus clair dit qu'elle l'avait, et que sa mesure de puissance ne montre rien — un chauffe-eau dont le disjoncteur est resté ouvert, une pompe qui n'a jamais démarré. Une charge sans mesure de puissance reste en vert plein : Sowel n'affiche pas une information qu'il n'a pas.
 - **Le journal des décisions** : chaque octroi et chaque retrait, horodatés, en toutes lettres. Quand vous vous demandez « pourquoi la PAC s'est arrêtée à 15 h 04 », la réponse y est écrite.
 
 ### Ce que vous configurez

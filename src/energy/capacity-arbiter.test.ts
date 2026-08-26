@@ -1184,6 +1184,167 @@ describe("capacity arbiter", () => {
     expect(h.revokedEvents().filter((e) => e.equipmentId === "pac")).toHaveLength(0);
   });
 
+  // ── Draw observation on a granted load (spec 164) ─────────
+
+  /** Journal entries of the two spec-164 kinds, oldest first. */
+  const drawEntries = (h: ReturnType<typeof makeHarness>) =>
+    [...h.arbiter.getPublicState().journal]
+      .reverse()
+      .filter((j) => j.kind === "draw-stopped" || j.kind === "draw-started");
+
+  it("journals draw-stopped once a granted load has measured idle for 5 min", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    // Consuming for a while: nothing to say, the ribbon already shows that.
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(drawEntries(h)).toHaveLength(0);
+    // Its thermostat opens. The flip needs the full confirmation window.
+    for (let i = 0; i < 25; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    expect(drawEntries(h)).toHaveLength(0); // ~4 min in, not yet
+    // The per-load EMA (tau 30 s) takes ~100 s to fall under the idle
+    // threshold, and the confirmation window runs from there.
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    const entries = drawEntries(h);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].kind).toBe("draw-stopped");
+    expect(entries[0].equipmentId).toBe("heater");
+  });
+
+  it("journals draw-started once, when the load consumes again", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 60; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    expect(drawEntries(h).map((j) => j.kind)).toEqual(["draw-stopped"]);
+    for (let i = 0; i < 60; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(drawEntries(h).map((j) => j.kind)).toEqual(["draw-stopped", "draw-started"]);
+  });
+
+  it("says nothing about a dip shorter than the confirmation window", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    for (let i = 0; i < 12; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0); // 2 min
+    }
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(drawEntries(h)).toHaveLength(0);
+  });
+
+  it("never speaks for a load it cannot measure", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+      bindings: { heater: [{ alias: "state", category: "generic" }] },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    expect(h.grantedEvents()).toHaveLength(1);
+    h.feedState("heater", false); // even reporting itself off
+    h.run(-5000, 1200);
+    expect(drawEntries(h)).toHaveLength(0);
+  });
+
+  it("holds the state when the measurement goes stale mid-window", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    // Three minutes of measured idle, then the load's meter goes silent. The
+    // window must not mature on stale data: LIVE_DRAW_FRESH_MS (120 s) passes,
+    // then a long silence.
+    for (let i = 0; i < 18; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    h.run(-5000, 1200);
+    expect(drawEntries(h)).toHaveLength(0);
+  });
+
+  it("a load that never starts flips exactly once, one window after the grant", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 200; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    expect(drawEntries(h).map((j) => j.kind)).toEqual(["draw-stopped"]);
+  });
+
+  it("a revoke ends the observation: the next grant starts from the green again", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 60; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    expect(drawEntries(h).map((j) => j.kind)).toEqual(["draw-stopped"]);
+    // Deficit revokes it, then surplus returns and it is granted again, this
+    // time drawing. No `draw-started` should be invented for the new grant.
+    h.run(400, 700);
+    expect(h.revokedEvents().map((e) => e.equipmentId)).toContain("heater");
+    for (let i = 0; i < 60; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(h.grantedEvents().length).toBeGreaterThan(1);
+    expect(drawEntries(h).map((j) => j.kind)).toEqual(["draw-stopped"]);
+  });
+
   // ── Wall-switch divergence (FR-6, review decision 16) ─────
 
   it("a granted load reported OFF at the wall is revoked and suspended", () => {
@@ -1711,6 +1872,23 @@ describe("capacity arbiter — unclaimed-run rehydration on restart (#543)", () 
     const tl = h.arbiter.getTimeline(Date.now(), 6);
     const pump = tl.loads.find((l) => l.equipmentId === "pump");
     expect(pump?.quarters.at(-1)).toBe("idle");
+  });
+
+  it("#604 + spec 164 — a granted-IDLE tail with no live claim is closed on startup", () => {
+    // A grant whose last journal row is a `draw-stopped` sits in `granted-idle`,
+    // which is still a grant: without a closing `reset` the ribbon paints the
+    // muted green from the restart to now for ever, and `grantedS` bills it.
+    const h = makeHarness({
+      journal: [
+        dec("granted", "pump", "2026-08-12T08:00:00.000Z"),
+        dec("draw-stopped", "pump", "2026-08-12T08:10:00.000Z"),
+      ],
+    });
+    const resets = h.journalRows.filter((d) => d.kind === "reset" && d.equipmentId === "pump");
+    expect(resets).toHaveLength(1);
+    vi.advanceTimersByTime(15 * 60_000);
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    expect(tl.loads.find((l) => l.equipmentId === "pump")?.quarters.at(-1)).toBe("idle");
   });
 
   it("#604 — a pending (waiting) tail with no live claim is closed on startup", () => {

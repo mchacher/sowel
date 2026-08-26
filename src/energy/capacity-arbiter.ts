@@ -63,6 +63,11 @@ const IDLE_DRAW_RATIO = 0.1;
 const IDLE_DRAW_FLOOR_W = 20;
 const IDLE_DRAW_CEIL_W = 100;
 const TICK_MS = 10_000;
+// Spec 164 — how long a granted load's measured draw must contradict the state
+// the ribbon is showing before the transition is journaled. Long enough that a
+// thermostat cycling mid-run does not fill the journal, short enough to be
+// visible at the ribbon's 15-min resolution.
+const DRAW_CONFIRM_MS = 300_000;
 
 interface ArbiterConfig {
   enabled: boolean;
@@ -175,6 +180,11 @@ export class CapacityArbiter {
    *  as "already diverged for minutes" the instant the grant lands. */
   private divergenceSince = new Map<string, number>();
   private recentComfortRevoke = new Map<string, { instanceId: string; at: number }>();
+  /** Spec 164 — per granted load, the draw state the ribbon is CURRENTLY
+   *  showing (true = consuming), and when the measurement started contradicting
+   *  it. Absent = not observed: no grant, or no measurement seen yet. */
+  private drawState = new Map<string, boolean>();
+  private drawChangeSince = new Map<string, number>();
 
   private deficitSince: number | null = null;
   private watchdogs: RevokeWatchdog[] = [];
@@ -593,9 +603,10 @@ export class CapacityArbiter {
    * #604 — close a phantom claim span left open by a restart. Live claim state
    * is rebuilt from scratch on startup (not persisted), so a grant/pending claim
    * that was live at shutdown has no closing event in the journal: the timeline
-   * replay would paint its `granted`/`pending` state forward to now. For every
-   * equipment whose last *sustained* journal state is granted/pending yet has no
-   * live claim, journal a `reset` (stamped now, i.e. the restart boundary) so
+   * replay would paint its `granted`/`granted-idle`/`pending` state forward to
+   * now. For every equipment whose last *sustained* journal state is
+   * granted/granted-idle/pending yet has no live claim, journal a `reset`
+   * (stamped now, i.e. the restart boundary) so
    * the span closes there instead of running to the present. Runs after
    * `rehydrateUnclaimedRuns` so `unmanaged` runs are owned by that scan, not
    * this one (we only touch claim-derived states).
@@ -609,7 +620,11 @@ export class CapacityArbiter {
     }
     let closed = 0;
     for (const [equipmentId, state] of lastState) {
-      if (state !== "granted" && state !== "pending") continue;
+      // Spec 164 — `granted-idle` is a grant too (a tail ending on a
+      // `draw-stopped`), so it needs the same closing `reset`: left out, the
+      // ribbon would paint the muted green forward to now for ever and
+      // `grantedS` would bill the whole gap.
+      if (state !== "granted" && state !== "granted-idle" && state !== "pending") continue;
       // A live claim (rebuilt by a recipe that already re-claimed) means the tail
       // is genuine — leave it. At startup this is normally empty.
       if (this.grantedClaimFor(equipmentId) || this.pendingClaimFor(equipmentId)) continue;
@@ -684,6 +699,7 @@ export class CapacityArbiter {
     this.reportedOnOff.delete(equipmentId);
     this.divergenceSince.delete(equipmentId);
     this.recentComfortRevoke.delete(equipmentId);
+    this.clearDrawState(equipmentId);
   }
 
   // ── Claim API (recipe-manager + tests) ──────────────────────
@@ -1030,6 +1046,7 @@ export class CapacityArbiter {
 
     this.checkStateDivergence(now);
     this.checkWatchdogs(now);
+    this.checkGrantDraw(now);
 
     const { signedGridW, exportW } = this.accounting();
 
@@ -1214,20 +1231,28 @@ export class CapacityArbiter {
    * the grid-export proxy.
    */
   private notDrawing(equipmentId: string): boolean {
-    const profile = this.profileOf(equipmentId);
-    const live = this.freshLiveDraw(equipmentId);
-    if (live !== null) {
-      const nominal = profile?.nominalPowerW ?? 0;
-      const threshold = Math.min(
-        IDLE_DRAW_CEIL_W,
-        Math.max(IDLE_DRAW_FLOOR_W, nominal * IDLE_DRAW_RATIO),
-      );
-      return live < threshold;
-    }
-    if ((profile?.releaseDelayS ?? 0) > 0) return false;
+    const measured = this.measuredIdle(equipmentId);
+    if (measured !== null) return measured;
+    if ((this.profileOf(equipmentId)?.releaseDelayS ?? 0) > 0) return false;
     const reportedOn = this.reportedOnOff.get(equipmentId);
     if (reportedOn !== undefined) return !reportedOn;
     return false;
+  }
+
+  /**
+   * Idleness as the load's OWN meter reports it — `null` when there is no fresh
+   * reading, which callers must treat as "unknown", never as "idle" (spec 164
+   * FR-2/FR-5: the ribbon may not claim knowledge the arbiter does not have).
+   */
+  private measuredIdle(equipmentId: string): boolean | null {
+    const live = this.freshLiveDraw(equipmentId);
+    if (live === null) return null;
+    const nominal = this.profileOf(equipmentId)?.nominalPowerW ?? 0;
+    const threshold = Math.min(
+      IDLE_DRAW_CEIL_W,
+      Math.max(IDLE_DRAW_FLOOR_W, nominal * IDLE_DRAW_RATIO),
+    );
+    return live < threshold;
   }
 
   private freshLiveDraw(equipmentId: string): number | null {
@@ -1270,6 +1295,7 @@ export class CapacityArbiter {
     claim.status = "pending";
     claim.grantedAt = null;
     claim.engageSince = null;
+    this.clearDrawState(claim.equipmentId);
     this.lastRevokedAt.set(claim.equipmentId, Date.now());
     this.finishLearnerRun(claim.equipmentId);
     const profile = this.profileOf(claim.equipmentId);
@@ -1325,7 +1351,10 @@ export class CapacityArbiter {
     const wasGranted = claim.status === "granted";
     const wasPending = claim.status === "pending";
     claim.status = "released";
-    if (wasGranted) this.finishLearnerRun(claim.equipmentId);
+    if (wasGranted) {
+      this.finishLearnerRun(claim.equipmentId);
+      this.clearDrawState(claim.equipmentId);
+    }
     // #584 — close the timeline span for a pending claim too, not only a
     // granted one. `claimCapacity` journals `waiting` when a claim stays
     // pending (#561); without a matching close, a claim released while still
@@ -1347,6 +1376,7 @@ export class CapacityArbiter {
   }
 
   private suspend(equipmentId: string, why: string, running?: boolean): void {
+    this.clearDrawState(equipmentId);
     const until = Date.now() + this.config.overrideTtlS * 1000;
     this.overridesUntil.set(equipmentId, until);
     const granted = this.grantedClaimFor(equipmentId);
@@ -1421,6 +1451,60 @@ export class CapacityArbiter {
       }
       return true;
     });
+  }
+
+  /**
+   * Spec 164 — does the surplus a load was granted actually go anywhere?
+   *
+   * Audit-only, like the watchdog above: it journals what the load's own meter
+   * says and changes no decision. The ribbon paints a grant green; this tells
+   * it when that green is describing an allocation nothing consumed (a water
+   * heater whose breaker is open, a pump that never started).
+   *
+   * `drawState` holds what the RIBBON currently shows, not the last reading —
+   * a grant paints the consuming green, so the first observation on a grant
+   * seeds `true` whatever the meter says, and a load idle from the start flips
+   * once, one confirmation window in, instead of being taken for
+   * already-journaled.
+   */
+  private checkGrantDraw(now: number): void {
+    for (const claim of this.grantedClaims()) {
+      const eq = claim.equipmentId;
+      const idle = this.measuredIdle(eq);
+      // No fresh measurement: unknown, never "idle". Hold what the ribbon shows
+      // and drop any pending confirmation — a stale window must not mature into
+      // a transition when the data comes back (FR-5).
+      if (idle === null) {
+        this.drawChangeSince.delete(eq);
+        continue;
+      }
+      if (!this.drawState.has(eq)) {
+        this.drawState.set(eq, true);
+        continue;
+      }
+      const drawing = !idle;
+      if (this.drawState.get(eq) === drawing) {
+        this.drawChangeSince.delete(eq);
+        continue;
+      }
+      // Measure how long the contradiction has HELD, from its onset.
+      const since = this.drawChangeSince.get(eq) ?? now;
+      this.drawChangeSince.set(eq, since);
+      if (now - since < DRAW_CONFIRM_MS) continue;
+      this.drawState.set(eq, drawing);
+      this.drawChangeSince.delete(eq);
+      this.journal({
+        kind: drawing ? "draw-started" : "draw-stopped",
+        equipmentId: eq,
+        watts: Math.round(this.freshLiveDraw(eq) ?? 0),
+      });
+    }
+  }
+
+  /** Spec 164 — every path out of a grant ends the draw observation. */
+  private clearDrawState(equipmentId: string): void {
+    this.drawState.delete(equipmentId);
+    this.drawChangeSince.delete(equipmentId);
   }
 
   private checkStateDivergence(now: number): void {

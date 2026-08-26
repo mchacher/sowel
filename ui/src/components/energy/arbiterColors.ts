@@ -7,11 +7,21 @@ import type { ArbiterDecision, ArbiterQuarterState } from "../../types";
  */
 export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 15%, transparent)";
 
+/**
+ * Spec 164 — the surplus was granted, and the load's own meter says nothing
+ * consumed it. Same green as a grant, at 35 %: it must still read as "accordé"
+ * (the allocation did happen), while sitting clearly below the solid cell. The
+ * 15 % of the waiting tint would read as an empty cell here.
+ */
+export const GRANTED_IDLE_FILL = "color-mix(in srgb, var(--color-solar-auto) 35%, transparent)";
+
 /** Spec 148 — map an arbiter timeline quarter state to its ribbon-cell fill. */
 export function cellColor(s: ArbiterQuarterState): string {
   switch (s) {
     case "granted":
       return "var(--color-solar-auto)"; // accordé (auto-conso)
+    case "granted-idle":
+      return GRANTED_IDLE_FILL; // accordé, mais rien ne le consomme (spec 164)
     case "pending":
       return PENDING_FILL; // en attente de surplus (#561, muted per #617)
     case "revoked":
@@ -33,8 +43,12 @@ export function cellColor(s: ArbiterQuarterState): string {
  */
 export function journalDotColor(kind: ArbiterDecision["kind"]): string {
   switch (kind) {
+    // Spec 164 — both draw kinds happen INSIDE a grant, so they stay in the
+    // grant's colour family; the row text says which way the load went.
     case "granted":
     case "resumed":
+    case "draw-started":
+    case "draw-stopped":
       return "var(--color-solar-auto)"; // accordé (auto-conso)
     case "revoked":
     case "revoke-not-honored":

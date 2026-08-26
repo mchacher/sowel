@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildLoadTimelines } from "./arbiter-timeline.js";
+import { buildLoadTimelines, sustainedAfter } from "./arbiter-timeline.js";
 import type { ArbiterDecision } from "../shared/types.js";
 
 // Window: 2026-08-14 12:00 → 13:00, 15-min steps → 4 quarters
@@ -136,6 +136,49 @@ describe("buildLoadTimelines (spec 148)", () => {
   it("returns idle everywhere for a load with no decisions, and ignores other equipments", () => {
     const [load] = buildLoadTimelines([dec(20, "granted", "pompe")], LOADS, START, END);
     expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
+  });
+});
+
+describe("buildLoadTimelines (spec 164) — a grant nothing consumes", () => {
+  it("maps the two draw kinds onto the granted states", () => {
+    expect(sustainedAfter("draw-stopped")).toBe("granted-idle");
+    expect(sustainedAfter("draw-started")).toBe("granted");
+  });
+
+  it("paints the quarters after a draw-stopped as granted-idle, the ones before as granted", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "granted"), dec(20, "draw-stopped")],
+      LOADS,
+      START,
+      END,
+    );
+    // q1 (12:15-12:30) ends after the 12:20 stop, so it already reads idle-granted.
+    expect(load.quarters).toEqual(["granted", "granted-idle", "granted-idle", "granted-idle"]);
+  });
+
+  it("returns to the full green when the load draws again", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "granted"), dec(5, "draw-stopped"), dec(35, "draw-started")],
+      LOADS,
+      START,
+      END,
+    );
+    expect(load.quarters).toEqual(["granted-idle", "granted-idle", "granted", "granted"]);
+  });
+
+  it("a revoke still wins its quarter over an idle grant", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "granted"), dec(5, "draw-stopped"), dec(35, "revoked")],
+      LOADS,
+      START,
+      END,
+    );
+    expect(load.quarters).toEqual(["granted-idle", "granted-idle", "revoked", "idle"]);
+  });
+
+  it("a journal with no draw events reads exactly as before (legacy rows)", () => {
+    const [load] = buildLoadTimelines([dec(-30, "granted")], LOADS, START, END);
+    expect(load.quarters).toEqual(["granted", "granted", "granted", "granted"]);
   });
 });
 
