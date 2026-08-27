@@ -11,6 +11,7 @@ import {
 import type { HistoryPoint } from "../../types";
 import type { TimeRange } from "./history-utils";
 import { aggregateToBuckets, formatLabel, pickTickInterval } from "./chart-utils";
+import { formatBarTooltip } from "./tooltip-format";
 
 interface HistoryBarChartProps {
   points: HistoryPoint[];
@@ -48,23 +49,6 @@ function formatTooltipTime(iso: string, range: TimeRange): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-/** Format a value with its unit for tooltip display. */
-function formatValueWithUnit(value: number, unit?: string): string {
-  // Energy: convert Wh to kWh when appropriate
-  if (unit === "Wh" || unit === "kWh") {
-    const kwh = unit === "kWh" ? value : value / 1000;
-    if (kwh >= 100) return `${Math.round(kwh)} kWh`;
-    if (kwh >= 10) return `${kwh.toFixed(1)} kWh`;
-    if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
-    const wh = unit === "kWh" ? value * 1000 : value;
-    return `${Math.round(wh)} Wh`;
-  }
-
-  // Generic: show value with appropriate precision + unit
-  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 /** Format Y-axis tick value — adapts to unit. */
@@ -244,7 +228,7 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
             borderRadius: "6px",
             fontSize: "12px",
           }}
-          formatter={(value: number | undefined) => [formatValueWithUnit(value ?? 0, unit), tooltipLabel]}
+          formatter={(value: unknown) => formatBarTooltip(value, unit, tooltipLabel)}
           labelFormatter={(_, payload) => {
             if (payload?.[0]?.payload?.time) {
               return formatTooltipTime(payload[0].payload.time as string, range);
