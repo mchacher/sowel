@@ -615,6 +615,10 @@ export class RecipeManager {
             status: () => "denied",
             deniedReason: "arbiter-disabled",
             release: () => {},
+            // Spec 166 — a denied claim describes nothing, so a recipe keeping
+            // its declaration current is a no-op rather than a special case it
+            // has to guard against.
+            reportNeed: () => {},
           };
         }
         return this.capacityArbiter.claim(instanceId, req);

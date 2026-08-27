@@ -200,6 +200,14 @@ export class CapacityArbiter {
    *  it. Absent = not observed: no grant, or no measurement seen yet. */
   private drawState = new Map<string, boolean>();
   private drawChangeSince = new Map<string, number>();
+  /** Spec 166 — per granted load, what its claimant last declared about
+   *  needing current. Consulted only when the load has no fresh measurement of
+   *  its own; cleared with the draw state on every path out of a grant. */
+  private declaredNeed = new Map<string, boolean>();
+  /** Spec 166 — loads whose CURRENT draw state came from a declaration rather
+   *  than from a measurement. The first fresh measurement to contradict one
+   *  overturns it at once instead of serving the confirmation window. */
+  private declarationDriven = new Set<string>();
 
   private deficitSince: number | null = null;
   private watchdogs: RevokeWatchdog[] = [];
@@ -739,6 +747,7 @@ export class CapacityArbiter {
         status: () => "denied",
         deniedReason: reason,
         release: () => {},
+        reportNeed: () => {},
       };
     };
 
@@ -788,6 +797,14 @@ export class CapacityArbiter {
       id: record.id,
       status: () => record.status,
       release: () => this.release(record),
+      // Spec 166 — only a granted claim describes a load that is drawing (or
+      // not). A declaration on a pending or released claim says nothing the
+      // surface could render, and must not linger to be picked up by a later
+      // grant, so it is dropped rather than stored.
+      reportNeed: (need: boolean) => {
+        if (record.status !== "granted") return;
+        this.declaredNeed.set(record.equipmentId, need);
+      },
     };
   }
 
@@ -1642,11 +1659,37 @@ export class CapacityArbiter {
     for (const claim of this.grantedClaims()) {
       const eq = claim.equipmentId;
       const idle = this.measuredIdle(eq);
-      // No fresh measurement: unknown, never "idle". Hold what the ribbon shows
-      // and drop any pending confirmation — a stale window must not mature into
-      // a transition when the data comes back (FR-5).
       if (idle === null) {
+        // Spec 164 — no fresh measurement: a stale window must not mature into
+        // a transition when the data comes back (FR-5).
         this.drawChangeSince.delete(eq);
+        // Spec 166 — a state the METER set is held through staleness, exactly
+        // as spec 164 holds it. An intent must not overwrite an observation
+        // because the device went quiet for a minute: on a load reporting
+        // slower than LIVE_DRAW_FRESH_MS the two would take turns, and the
+        // ribbon (and its journal) would flap once per reporting gap.
+        if (this.drawState.has(eq) && !this.declarationDriven.has(eq)) continue;
+        // What is left is a grant no measurement has ever described, which is
+        // the case this spec exists for: a load with no meter of its own.
+        const declared = this.declaredNeed.get(eq);
+        // Nothing measured and nothing declared: hold what the ribbon shows.
+        if (declared === undefined) continue;
+        // Compare against what the ribbon is ACTUALLY showing: an unobserved
+        // grant renders as drawing (`resolveLoadState` only tests `=== false`),
+        // so declaring `true` first thing changes nothing and must not journal
+        // a transition that never happened.
+        const shown = this.drawState.get(eq) ?? true;
+        this.drawState.set(eq, declared);
+        this.declarationDriven.add(eq);
+        if (shown === declared) continue;
+        // A declaration is a statement, not a noisy sample, so it applies at
+        // once — DRAW_CONFIRM_MS exists to absorb measurement jitter and has
+        // nothing to absorb here.
+        this.journal({
+          kind: declared ? "draw-started" : "draw-stopped",
+          equipmentId: eq,
+          watts: 0,
+        });
         continue;
       }
       if (!this.drawState.has(eq)) {
@@ -1655,7 +1698,27 @@ export class CapacityArbiter {
       }
       const drawing = !idle;
       if (this.drawState.get(eq) === drawing) {
+        this.declarationDriven.delete(eq);
         this.drawChangeSince.delete(eq);
+        continue;
+      }
+      // Spec 166 — the ribbon is showing what a claimant declared, and the
+      // first fresh measurement to contradict it wins immediately. The
+      // confirmation window absorbs measurement jitter; a declaration is not a
+      // measurement, so there is nothing to absorb, and waiting would be worse
+      // than useless: on a load whose meter reports slower than
+      // LIVE_DRAW_FRESH_MS, the stale ticks in between reset `drawChangeSince`
+      // on every pass, so the window could never mature and a load drawing
+      // 2 kW would read "granted, consuming nothing" for ever.
+      if (this.declarationDriven.has(eq)) {
+        this.declarationDriven.delete(eq);
+        this.drawChangeSince.delete(eq);
+        this.drawState.set(eq, drawing);
+        this.journal({
+          kind: drawing ? "draw-started" : "draw-stopped",
+          equipmentId: eq,
+          watts: Math.round(this.freshLiveDraw(eq) ?? 0),
+        });
         continue;
       }
       // Measure how long the contradiction has HELD, from its onset.
@@ -1672,10 +1735,14 @@ export class CapacityArbiter {
     }
   }
 
-  /** Spec 164 — every path out of a grant ends the draw observation. */
+  /** Spec 164 — every path out of a grant ends the draw observation. Spec 166:
+   *  the claimant's declaration goes with it, so it cannot survive into a later
+   *  grant and describe a load from what a previous claim wanted. */
   private clearDrawState(equipmentId: string): void {
     this.drawState.delete(equipmentId);
     this.drawChangeSince.delete(equipmentId);
+    this.declaredNeed.delete(equipmentId);
+    this.declarationDriven.delete(equipmentId);
   }
 
   private checkStateDivergence(now: number): void {

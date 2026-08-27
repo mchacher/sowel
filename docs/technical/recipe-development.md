@@ -281,7 +281,7 @@ const claim = ctx.helpers.energy?.claimCapacity({
 // later: claim.release() when the need disappears
 ```
 
-`claimCapacity` returns a handle (`status()`, `deniedReason`, `release()`).
+`claimCapacity` returns a handle (`status()`, `deniedReason`, `release()`, `reportNeed()`).
 Denials are typed: `not-profiled`, `equipment-already-claimed`,
 `arbiter-disabled`, `override-active`. `energy.getCapacityState()` is a
 read-only snapshot (`enabled`, `availableSurplusW`, `grants`). `availableSurplusW`
@@ -291,20 +291,31 @@ load draws.
 
 Rules for authors (spec 140, enforced socially and audited by the core):
 
-1. **A claim is a bonus, never a plan.** Keep a standalone fallback (tariff
+1. **Report whether your load needs current** (spec 166). While your claim is
+   granted, call `claim.reportNeed(true | false)` on every evaluation tick and
+   again from `onGranted`. You own what your load is meant to be doing; the
+   arbiter should not have to infer intent from electricity, and for a load with
+   no power measurement of its own this is the only way the arbitration surface
+   can show it at rest rather than permanently "granted". The declaration is
+   consulted only for a grant no measurement has ever described: a fresh reading
+   always wins, because it says what the appliance DOES while you say what you
+   WANT. It is scoped to one grant, so a revoke drops it and you must report
+   again after the next `onGranted`.
+
+2. **A claim is a bonus, never a plan.** Keep a standalone fallback (tariff
    windows, schedules, thresholds): it is your behavior on older cores
    (`ctx.helpers.energy === undefined`), when the arbiter is disabled, after
    `meter-stale`, and on the many homes with **no solar production** — where
    tariff-only is a complete mode, never a degraded one.
-2. **Act on callbacks immediately.** The reservation is freed at revocation;
+3. **Act on callbacks immediately.** The reservation is freed at revocation;
    not honoring a revoke is detected (`revoke-not-honored`) and the equipment
    is temporarily excused as background.
-3. **Never read the grid meter** to decide whether to consume when a claim is
+4. **Never read the grid meter** to decide whether to consume when a claim is
    possible — private meter logic reintroduces the oscillation the arbiter
    removes.
-4. **`release()` when the need disappears** — the watts belong to the next
+5. **`release()` when the need disappears** — the watts belong to the next
    load in the list.
-5. **Hard-quota loads**: when your deadline forces you to run without a
+6. **Hard-quota loads**: when your deadline forces you to run without a
    grant, run — but keep the claim open while you do. A grant landing on an
    already-running load makes the arbiter's books exact, and the journal
    shows an `unclaimed-run` entry instead of a mystery hole in the surplus.

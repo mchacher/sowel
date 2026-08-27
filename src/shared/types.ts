@@ -734,6 +734,27 @@ export interface CapacityClaimHandle {
   readonly deniedReason?: CapacityDenyReason;
   /** Withdraw the claim; releasing a granted claim frees the reservation. */
   release(): void;
+  /**
+   * Spec 166 — whether the load needs current right now.
+   *
+   * Every capacity-claiming recipe is expected to keep this current while its
+   * claim is granted: the claimant owns what its load is meant to be doing,
+   * and the arbiter should not have to infer intent from electricity.
+   *
+   * Call it on every evaluation tick, and again from `onGranted`. The
+   * declaration is scoped to one grant: a revoke returns the claim to pending
+   * and drops it, so a recipe that only reports on a change would go quiet
+   * across a revoke/re-grant and its load would read as drawing again.
+   *
+   * It is consulted ONLY when the load has no fresh own measurement. A
+   * measurement always wins, because the declaration says what the recipe
+   * WANTS while the measurement says what the appliance DOES, and the gap
+   * between the two is the point of spec 164 (a recipe wanting to heat while
+   * the appliance drew nothing for a week, #732).
+   *
+   * Ignored unless the claim is granted. Never throws.
+   */
+  reportNeed(need: boolean): void;
 }
 
 export interface RecipeEnergyHelpers {
@@ -766,11 +787,18 @@ export type ArbiterDecisionKind =
    *  "pending" span on the timeline; the next `granted`/`released`/`suspended`
    *  (or a `revoked` with no re-claim) closes it. */
   | "waiting"
-  /** Spec 164 — a granted load's own power measurement has stayed below its
-   *  idle threshold for the confirmation window: the surplus is allocated and
-   *  nothing is consuming it. Paints `granted-idle` on the timeline ribbon. */
+  /** Spec 164 — the surplus is allocated and nothing is consuming it. Paints
+   *  `granted-idle` on the timeline ribbon.
+   *
+   *  Two sources, and the row does not distinguish them because the timeline
+   *  and the spec 158 buckets read the state, not its provenance: the load's
+   *  own power measurement staying below its idle threshold for the
+   *  confirmation window, or (spec 166) its claimant declaring no need on a
+   *  grant no measurement has ever described. A declaration is applied without
+   *  a confirmation window. */
   | "draw-stopped"
-  /** Spec 164 — the same load is measured drawing again, back to `granted`. */
+  /** Spec 164/166 — the same load is drawing again, back to `granted`, by
+   *  measurement or by declaration. */
   | "draw-started"
   /** #604 — a grant/pending claim that was live at shutdown is not carried
    *  across a restart (live claim state is rebuilt from scratch, not persisted).
