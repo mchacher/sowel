@@ -330,7 +330,7 @@
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.6.3",
+    "version": "1.7.0",
     "tags": ["pool", "pump", "heating", "schedule", "automation", "temperature", "solar", "energy"],
     "i18n": {
       "fr": {
@@ -340,7 +340,7 @@
     },
     "sowelVersion": ">=1.52.0",
     "owner": "mchacher",
-    "sha256": "fa2b3c9303ae150a9541a5e6b382abe9a47f9a16aac7f129743b33b6f0db1aaa"
+    "sha256": "a5abcbfabcdbd5521e490507b2773255ec337e4e01ed74b1e047bd50eb287635"
   },
   {
     "id": "freecooling",
@@ -571,7 +571,7 @@
     "icon": "Sun",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-water-heater-solar",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "tags": ["water-heater", "solar", "energy", "surplus", "automation"],
     "i18n": {
       "fr": {
@@ -581,7 +581,7 @@
     },
     "sowelVersion": ">=1.52.0",
     "owner": "mchacher",
-    "sha256": "65570863aa52e4be29561d65d0e60abf4ba05181e9de358f01dfc6a5214290a0"
+    "sha256": "1a3457402124ac0dbb98a7130e0e73bf4e960777a3f1850cee3aedfcce89031d"
   },
   {
     "id": "nut",
