@@ -23,10 +23,13 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { ArbiterJournalStore } from "./arbiter-journal-store.js";
 import type { ArbiterSurplusStore } from "./arbiter-surplus-store.js";
+import type { SunlightManager } from "../zones/sunlight-manager.js";
 import { buildLoadTimelines, sustainedAfter } from "./arbiter-timeline.js";
 import { RETRY_CHANNEL } from "../equipments/order-confirmation-tracker.js";
 import type {
   ArbiterDecision,
+  ArbiterLoadInfo,
+  ArbiterLoadState,
   ArbiterPublicState,
   ArbiterTimeline,
   ArbiterRunState,
@@ -154,6 +157,10 @@ export class CapacityArbiter {
   private journalStore?: ArbiterJournalStore;
   /** Spec 148 — optional persistence for the signed surplus/deficit series. */
   private surplusStore?: ArbiterSurplusStore;
+  /** Spec 165 — daylight source for the dormant flag (#577). Optional and
+   *  read-only: a missing sun source never changes an arbitration decision,
+   *  it only means the surface never reads as dormant. */
+  private sunlight?: SunlightManager;
 
   // Meter
   private meterId: string | null = null;
@@ -211,6 +218,7 @@ export class CapacityArbiter {
     shadowMode = false, // spec 124 — a shadow instance never arbitrates
     journalStore?: ArbiterJournalStore, // spec 147 — persist the decision journal
     surplusStore?: ArbiterSurplusStore, // spec 148 — persist the signed surplus series
+    sunlight?: SunlightManager, // spec 165 — daylight for the dormant flag
   ) {
     this.eventBus = eventBus;
     this.settings = settings;
@@ -219,6 +227,7 @@ export class CapacityArbiter {
     this.shadowMode = shadowMode;
     this.journalStore = journalStore;
     this.surplusStore = surplusStore;
+    this.sunlight = sunlight;
     this.config = this.readConfig();
   }
 
@@ -838,7 +847,19 @@ export class CapacityArbiter {
       });
     }
 
-    const timelines = buildLoadTimelines(decisions, loads, windowStart, windowEnd, stepMin);
+    // Spec 165 — dormancy reads the CURRENT waiting claim as at rest, matching
+    // the roster pill. It applies only when the window actually ends now: a
+    // page scrolled back to yesterday afternoon must not have its last cell
+    // rewritten by tonight's sunset.
+    const dormant = windowEnd >= Date.now() - stepMs && this.isDormant();
+    const timelines = buildLoadTimelines(
+      decisions,
+      loads,
+      windowStart,
+      windowEnd,
+      stepMin,
+      dormant,
+    );
 
     // Surplus: prefer the persisted store; fall back to the in-memory 24h ring.
     let surplus = this.surplusStore?.range(windowStart, windowEnd) ?? [];
@@ -866,10 +887,119 @@ export class CapacityArbiter {
     };
   }
 
+  /**
+   * Spec 165 (#577) — the arbiter is *dormant*: the sun is down and there is no
+   * surplus to distribute. Published in the read model so the roster pill and
+   * the ribbon's current cell read a waiting claim the same way; before, the
+   * roster computed this alone and the ribbon painted "en attente" all night.
+   *
+   * No sun source (not injected, or no home coordinates) means never dormant —
+   * the pre-165 fallback, unchanged. A home battery exporting at night keeps a
+   * positive surplus, which is real capacity to arbitrate, so it stays active.
+   */
+  private isDormant(): boolean {
+    const isDaylight = this.sunlight?.getSunlightData().isDaylight ?? null;
+    if (isDaylight !== false) return false;
+    if (this.runState() !== "active") return false;
+    const exportW = this.accounting().headroomW;
+    return exportW <= 0;
+  }
+
+  /**
+   * Spec 165 — the state of one load right now, in the union the ribbon uses.
+   * This is the ONLY place a current state is decided; the UI renders it.
+   *
+   * Branch order is the pre-165 behaviour, preserved:
+   *  - suspension first, because a suspended load cannot be granted (`evaluate`
+   *    skips it), so the suspension is its truthful dominant state even when a
+   *    pending claim lingers behind it;
+   *  - `unmanaged` before `pending` and before dormancy, because a load that is
+   *    drawing power is never "waiting" and never "at rest", whatever the hour
+   *    and whatever claim sits behind it (#491).
+   *
+   * The granted split reads `drawState` (spec 164), NOT the live measurement:
+   * `drawState` is what the ribbon currently shows, so the two halves cannot
+   * disagree, and a reading the ribbon has not yet accepted cannot flicker the
+   * pill.
+   */
+  private resolveLoadState(equipmentId: string, dormant: boolean): ArbiterLoadState {
+    if (this.isSuspended(equipmentId)) return "suspended";
+    if (this.grantedClaimFor(equipmentId) !== undefined) {
+      return this.drawState.get(equipmentId) === false ? "granted-idle" : "granted";
+    }
+    if (this.unclaimedRunning.has(equipmentId)) return "unmanaged";
+    if (this.pendingClaimFor(equipmentId) !== undefined) return dormant ? "idle" : "pending";
+    return "idle";
+  }
+
+  /** Spec 165 — the roster, resolved engine-side: every declared flexible load
+   *  in configured priority order, each with its state and its figures. */
+  private buildLoads(dormant: boolean, headroomW: number): ArbiterLoadInfo[] {
+    return (
+      this.config.priority
+        // A load whose profile was dropped keeps a row only while it still holds
+        // a claim or a suspension — otherwise there is nothing left to show.
+        .filter(
+          (id) =>
+            this.profileOf(id) !== undefined ||
+            this.grantedClaimFor(id) !== undefined ||
+            this.pendingClaimFor(id) !== undefined ||
+            this.isSuspended(id),
+        )
+        .map((id) => {
+          const state = this.resolveLoadState(id, dormant);
+          const profile = this.profileOf(id);
+          const info: ArbiterLoadInfo = {
+            equipmentId: id,
+            equipmentName: this.nameOf(id),
+            state,
+            watts: null,
+            needW: null,
+            toleratedImportW: profile ? Math.max(0, profile.toleratedImportW ?? 0) : null,
+          };
+          if (state === "granted" || state === "granted-idle") {
+            const granted = this.grantedClaimFor(id);
+            info.watts = granted ? Math.round(this.effectiveWatts(granted)) : null;
+            info.sinceIso = new Date(granted?.grantedAt ?? Date.now()).toISOString();
+            info.instanceId = granted?.instanceId;
+            info.note = granted?.note;
+            return info;
+          }
+          if (state === "suspended") {
+            info.untilIso = new Date(this.overridesUntil.get(id) ?? Date.now()).toISOString();
+            return info;
+          }
+          // Pending, unmanaged and at rest all show what the load draws. A
+          // pending claim knows its own figure; anything else falls back to the
+          // live draw while it runs unmanaged, else its rating (#561: a metered
+          // load that is off reports ~0 W, which would misread as "0 W" rather
+          // than "what it draws when it runs").
+          const pendingClaim = this.pendingClaimFor(id);
+          if (pendingClaim && state === "pending") {
+            info.watts = pendingClaim.watts;
+            info.needW = Math.round(this.engageNeedW(pendingClaim));
+            info.reasonWaiting = this.pendingReason(pendingClaim, headroomW);
+            info.instanceId = pendingClaim.instanceId;
+            info.toleratedImportW = pendingClaim.toleratedImportW;
+            return info;
+          }
+          if (this.unclaimedRunning.has(id)) {
+            info.watts = Math.round(this.drawEstimate(id));
+          } else if (pendingClaim) {
+            info.watts = pendingClaim.watts;
+          } else if (profile) {
+            info.watts = Math.round(profile.learned?.watts ?? profile.nominalPowerW);
+          }
+          return info;
+        })
+    );
+  }
+
   getPublicState(): ArbiterPublicState {
     const now = Date.now();
     const state = this.runState();
     const accounting = this.accounting();
+    const dormant = this.isDormant();
     const grants = [...this.claims.values()]
       .filter((c) => c.status === "granted")
       .map((c) => ({
@@ -953,6 +1083,9 @@ export class CapacityArbiter {
       // Control paths still gate on `config.enabled`; this is display only.
       enabled: this.settings.get(SETTING_PREFIX + "enabled") === "true",
       state,
+      // Spec 165 — the roster, resolved here rather than in the browser.
+      loads: this.buildLoads(dormant, accounting.headroomW),
+      dormant,
       // #563 — the user-facing figure is the TRUE signed grid balance
       // (headroomW ≡ exportW: >0 exporting, <0 importing), NOT the
       // reservation-inflated availableW. A home importing while its managed

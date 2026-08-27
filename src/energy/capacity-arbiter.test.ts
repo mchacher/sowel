@@ -42,6 +42,9 @@ function makeHarness(opts?: {
    *  chronological; the fake mimics ArbiterJournalStore ordering (loadRecent =
    *  most recent `limit` ascending, range = ascending within [from, to]). */
   journal?: ArbiterDecision[];
+  /** Spec 165 — daylight for the dormant flag. `undefined` injects no sun
+   *  source at all, which is the pre-165 shape and must never read dormant. */
+  daylight?: boolean | null;
 }) {
   const settingsMap = new Map<string, string>(
     Object.entries({
@@ -162,6 +165,13 @@ function makeHarness(opts?: {
       } as never)
     : undefined;
 
+  const sunlight =
+    opts?.daylight === undefined
+      ? undefined
+      : ({
+          getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: opts.daylight }),
+        } as never);
+
   const arbiter = new CapacityArbiter(
     eventBus,
     settingsManager,
@@ -169,6 +179,8 @@ function makeHarness(opts?: {
     capturingLogger,
     opts?.shadow ?? false,
     journalStore,
+    undefined, // surplus store
+    sunlight, // spec 165
   );
   arbiter.start();
 
@@ -2143,5 +2155,177 @@ describe("waiting journal (#561)", () => {
     expect(journal.some((j) => j.kind === "revoked" && j.equipmentId === "pump")).toBe(true);
     // Two waiting entries: the initial claim, and the reopen after the revoke.
     expect(journal.filter((j) => j.kind === "waiting" && j.equipmentId === "pump").length).toBe(2);
+  });
+});
+
+// ============================================================
+// Spec 165 — one resolved load state for the roster and the ribbon
+// ============================================================
+
+describe("resolved load roster (spec 165)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** The row for one equipment in the resolved roster. */
+  const row = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter.getPublicState().loads.find((l) => l.equipmentId === id);
+
+  it("resolves a granted load as granted, with its reserved watts", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 140);
+    const r = row(h, "pump");
+    expect(r?.state).toBe("granted");
+    expect(r?.watts).toBe(600);
+    expect(r?.sinceIso).toBeTruthy();
+    expect(r?.needW).toBeNull(); // a grant has nothing left to wait for
+  });
+
+  it("resolves a granted load measured idle as granted-idle (spec 164 parity)", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("heaterI", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    expect(row(h, "heater")?.state).toBe("granted");
+    // Its breaker is open: the load draws nothing for well over the window.
+    for (let i = 0; i < 60; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    // This is issue #732: the ribbon knew, the roster did not.
+    expect(row(h, "heater")?.state).toBe("granted-idle");
+  });
+
+  it("keeps a granted load with no measurement at granted, never granted-idle", () => {
+    // `lamp` has no power binding at all, so the arbiter never learns whether
+    // it consumes: the surface must not claim knowledge it does not have.
+    const h = makeHarness({
+      priority: ["lamp"],
+      profiles: { lamp: { class: "deferrable", nominalPowerW: 100, minOnS: 0, minOffS: 0 } },
+    });
+    h.equipments.set("lamp", {
+      ...(h.equipments.get("lamp") as never),
+      energyProfile: { class: "deferrable", nominalPowerW: 100, minOnS: 0, minOffS: 0 },
+    } as never);
+    h.claim("lampI", { equipmentId: "lamp" });
+    h.run(-1000, 300);
+    expect(row(h, "lamp")?.state).toBe("granted");
+  });
+
+  it("resolves a waiting claim as pending, with the surplus it waits for", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(200, 60); // importing: nothing can be granted
+    const r = row(h, "heater");
+    expect(r?.state).toBe("pending");
+    expect(r?.needW).toBeGreaterThan(0);
+    expect(r?.reasonWaiting).toContain("insufficient-surplus");
+  });
+
+  it("resolves a claimless load with a profile as idle, showing its rating", () => {
+    const h = makeHarness();
+    const r = row(h, "pump");
+    expect(r?.state).toBe("idle");
+    // The rating, not the ~0 W a metered load reports while off (#561).
+    expect(r?.watts).toBe(600);
+  });
+
+  it("lists every declared load, in configured priority order (#616)", () => {
+    const h = makeHarness({ priority: ["heater", "pac", "pump"] });
+    expect(h.arbiter.getPublicState().loads.map((l) => l.equipmentId)).toEqual([
+      "heater",
+      "pac",
+      "pump",
+    ]);
+  });
+
+  it("resolves a suspended load as suspended, with no figures and no duplicate row", () => {
+    const h = makeHarness();
+    // A pending claim placed before the manual order lingers behind the
+    // suspension; the suspension is the truthful dominant state.
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(200, 30);
+    h.order("pump", false, { kind: "manual", instanceId: undefined });
+    const rows = h.arbiter.getPublicState().loads.filter((l) => l.equipmentId === "pump");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].state).toBe("suspended");
+    expect(rows[0].untilIso).toBeTruthy();
+    expect(rows[0].watts).toBeNull();
+  });
+
+  it("keeps the deprecated arrays in step with the resolved roster", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 140);
+    const state = h.arbiter.getPublicState();
+    // FR-7 — external readers keep working until the removal spec.
+    expect(state.grants.map((g) => g.equipmentId)).toEqual(["pump"]);
+    expect(state.loads.filter((l) => l.state === "granted").map((l) => l.equipmentId)).toEqual([
+      "pump",
+    ]);
+  });
+});
+
+describe("dormancy in the read model (spec 165, #577)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T22:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is dormant at night with no surplus, and reads a waiting claim as idle", () => {
+    const h = makeHarness({ daylight: false });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(200, 60); // importing, after sunset
+    const state = h.arbiter.getPublicState();
+    expect(state.dormant).toBe(true);
+    // Not "waiting for a surplus that cannot come before sunrise".
+    expect(state.loads.find((l) => l.equipmentId === "heater")?.state).toBe("idle");
+  });
+
+  it("is NOT dormant when a battery exports at night", () => {
+    const h = makeHarness({ daylight: false });
+    h.run(-800, 60);
+    expect(h.arbiter.getPublicState().dormant).toBe(false);
+  });
+
+  it("is NOT dormant in daylight", () => {
+    const h = makeHarness({ daylight: true });
+    h.run(200, 60);
+    expect(h.arbiter.getPublicState().dormant).toBe(false);
+  });
+
+  it("is NOT dormant when daylight is unknown (no home coordinates)", () => {
+    const h = makeHarness({ daylight: null });
+    h.run(200, 60);
+    expect(h.arbiter.getPublicState().dormant).toBe(false);
+  });
+
+  it("is NOT dormant with no sun source injected at all", () => {
+    const h = makeHarness();
+    h.run(200, 60);
+    expect(h.arbiter.getPublicState().dormant).toBe(false);
+  });
+
+  it("leaves a load running outside arbitration unmanaged, night or not (#491)", () => {
+    const h = makeHarness({ daylight: false });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(200, 30);
+    // A recipe drives it as a must-run fallback: it draws power, so it is
+    // never "at rest", whatever the hour.
+    h.order("heater", true, { kind: "recipe", instanceId: "other" });
+    h.run(200, 30);
+    const state = h.arbiter.getPublicState();
+    expect(state.dormant).toBe(true);
+    expect(state.loads.find((l) => l.equipmentId === "heater")?.state).toBe("unmanaged");
   });
 });

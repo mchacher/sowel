@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { ArbiterTimeline as ArbiterTimelineData } from "../../types";
+import type { ArbiterQuarterState, ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
-import { cellColor, journalDotColor, GRANTED_IDLE_FILL, PENDING_FILL } from "./arbiterColors";
+import { loadStateColor, journalDotColor } from "./arbiterColors";
 import { journalReasonLabel } from "./arbiterReason";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
@@ -48,6 +48,18 @@ function useWindowHours(): number {
 function hhmm(ms: number): string {
   return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+
+/** Spec 165 — the states the ribbon can paint, in reading order. `suspended`
+ *  is absent on purpose: the ribbon folds it into idle/unmanaged (spec 165
+ *  non-goal), so advertising it in the legend would promise a colour that
+ *  never appears. */
+const LEGEND_STATES: ArbiterQuarterState[] = [
+  "granted",
+  "granted-idle",
+  "pending",
+  "revoked",
+  "unmanaged",
+];
 
 export function ArbiterTimeline() {
   const { t } = useTranslation();
@@ -367,12 +379,12 @@ export function ArbiterTimeline() {
                   <button
                     key={i}
                     onClick={() => onCell(cellTime)}
-                    title={`${hhmm(cellTime)} · ${t(`arbiter.timeline.state.${s}`)}`}
+                    title={`${hhmm(cellTime)} · ${t(`arbiter.loadState.${s}`)}`}
                     className="absolute top-0 h-[20px] rounded-[1px] focus:outline-none"
                     style={{
                       left: `calc(${(i / n) * 100}% + 1px)`,
                       width: `calc(${(1 / n) * 100}% - 2px)`,
-                      backgroundColor: cellColor(s),
+                      backgroundColor: loadStateColor(s),
                     }}
                   />
                 );
@@ -403,43 +415,18 @@ export function ArbiterTimeline() {
         ))}
       </div>
 
-      {/* legend */}
+      {/* legend — spec 165: one word and one colour per state, the same two the
+          roster pill uses, so the halves of the surface cannot drift apart. */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-secondary mt-2 items-center">
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-2.5 rounded-sm flex-none"
-            style={{ backgroundColor: "var(--color-solar-auto)" }}
-          />
-          {t("arbiter.legend.granted")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-2.5 rounded-sm flex-none"
-            style={{ backgroundColor: GRANTED_IDLE_FILL }}
-          />
-          {t("arbiter.legend.grantedIdle")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-2.5 rounded-sm flex-none"
-            style={{ backgroundColor: PENDING_FILL }}
-          />
-          {t("arbiter.legend.pending")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-2.5 rounded-sm flex-none"
-            style={{ backgroundColor: "var(--color-error)" }}
-          />
-          {t("arbiter.legend.revoked")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="w-3 h-2.5 rounded-sm flex-none"
-            style={{ backgroundColor: "var(--color-slate)" }}
-          />
-          {t("arbiter.legend.unmanaged")}
-        </span>
+        {LEGEND_STATES.map((s) => (
+          <span key={s} className="flex items-center gap-1.5">
+            <span
+              className="w-3 h-2.5 rounded-sm flex-none"
+              style={{ backgroundColor: loadStateColor(s) }}
+            />
+            {t(`arbiter.loadState.${s}`)}
+          </span>
+        ))}
       </div>
 
       {/* journal, linked to the cell click */}

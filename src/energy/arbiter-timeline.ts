@@ -95,6 +95,13 @@ function isRevoke(kind: ArbiterDecision["kind"]): boolean {
  *
  * `decisions` should include some lookback BEFORE windowStart so the state
  * entering the window is known; entries with no `equipmentId` are ignored.
+ *
+ * Spec 165 — `dormant` (#577: sun down, nothing to share) reads a waiting claim
+ * as at rest, exactly as the roster pill does, so the two halves of the surface
+ * cannot contradict each other at night. It applies to the LAST cell only:
+ * earlier cells are a journal replay and must stay a faithful record, so a
+ * claim genuinely waiting at 14:00 stays "pending" at 14:00 whatever the sun is
+ * doing at render time.
  */
 export function buildLoadTimelines(
   decisions: ArbiterDecision[],
@@ -102,6 +109,7 @@ export function buildLoadTimelines(
   windowStart: number,
   windowEnd: number,
   stepMin = 15,
+  dormant = false,
 ): TimelineLoad[] {
   const stepMs = stepMin * 60_000;
   const nQuarters = Math.max(0, Math.round((windowEnd - windowStart) / stepMs));
@@ -145,6 +153,11 @@ export function buildLoadTimelines(
       }
       quarters.push(revokeHere ? "revoked" : sustained);
     }
+
+    // A revoke still wins its cell: the withdrawal is the notable event, and
+    // hiding it because the sun has set would lose it.
+    const last = quarters.length - 1;
+    if (dormant && last >= 0 && quarters[last] === "pending") quarters[last] = "idle";
 
     return { equipmentId: load.equipmentId, name: load.name, quarters };
   });

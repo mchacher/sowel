@@ -864,17 +864,80 @@ export interface ArbiterIdleInfo {
   runningUnmanaged: boolean;
 }
 
+/**
+ * Spec 165 — the state of one flexible load, now or in a past time step. One
+ * union for the roster table and the timeline ribbon, so a state cannot be
+ * added to one surface and forgotten on the other — which is how spec 164's
+ * `granted-idle` came to exist on the ribbon alone.
+ *
+ * `pending` (#561) — claiming surplus, none granted yet.
+ * `granted-idle` (spec 164) — granted, but its own measurement says nothing
+ * consumed it.
+ * `unmanaged` — drawing outside any grant (a recipe's must-run fallback).
+ */
+export type ArbiterLoadState =
+  | "granted"
+  | "granted-idle"
+  | "pending"
+  | "unmanaged"
+  | "suspended"
+  | "idle";
+
+/**
+ * Spec 165 — one roster row, with its state resolved by the engine. Replaces
+ * the browser-side flattening of grants/pending/suspensions/idle, which was a
+ * second state machine the timeline's could (and did) drift away from.
+ *
+ * Figures irrelevant to a state are null: the roster renders them as a dash.
+ */
+export interface ArbiterLoadInfo {
+  equipmentId: string;
+  equipmentName: string;
+  state: ArbiterLoadState;
+  /** Granted: the reserved watts. Pending / at rest: what it draws when it
+   *  runs (live when running unmanaged, else learned, else nominal). */
+  watts: number | null;
+  /** Pending only: `watts + engageMarginW - toleratedImportW`. */
+  needW: number | null;
+  /** Grid the load accepts to buy, when it has a claim or a profile. */
+  toleratedImportW: number | null;
+  /** Granted: when the grant started. */
+  sinceIso?: string;
+  /** Pending: the stable reason code the UI translates. */
+  reasonWaiting?: string;
+  /** Suspended: when the arbiter takes the load back. */
+  untilIso?: string;
+  /** Granted / pending: the claiming recipe instance. */
+  instanceId?: string;
+  note?: string;
+}
+
 /** Read model of the arbiter for the API route and the UI (FR-10). */
 export interface ArbiterPublicState {
   enabled: boolean;
   state: ArbiterRunState;
   availableSurplusW: number | null;
   productionDetected: boolean;
+  /**
+   * Spec 165 — every declared flexible load, in configured priority order,
+   * with its state already resolved. The single source the roster renders.
+   */
+  loads: ArbiterLoadInfo[];
+  /**
+   * Spec 165 (#577) — the arbiter is dormant: sun down and nothing to share.
+   * Published so the roster and the ribbon's current cell read a waiting claim
+   * the same way, instead of the UI deciding it for one of the two.
+   */
+  dormant: boolean;
+  /** @deprecated Spec 165 — superseded by `loads`, kept one minor version for
+   *  external readers. Removed in the follow-up spec. */
   grants: ArbiterGrantInfo[];
+  /** @deprecated Spec 165 — superseded by `loads`. */
   pending: ArbiterPendingInfo[];
+  /** @deprecated Spec 165 — superseded by `loads`. */
   suspensions: ArbiterSuspensionInfo[];
-  /** #561 — declared flexible loads with no active claim (at rest / running
-   *  outside arbitration). Completes the roster so every priority load shows. */
+  /** @deprecated Spec 165 — superseded by `loads`. #561 — declared flexible
+   *  loads with no active claim (at rest / running outside arbitration). */
   idle: ArbiterIdleInfo[];
   /** #616 — the configured load priority, highest first (equipmentId order).
    *  Lets the UI list every load in priority order, matching the timeline,
@@ -886,17 +949,16 @@ export interface ArbiterPublicState {
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
-/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model.
- *  `pending` (#561) — the load was waiting for surplus (claiming, not granted).
- *  `granted-idle` (spec 164) — the load held its grant but its own measurement
- *  says nothing consumed it. */
-export type ArbiterQuarterState =
-  | "granted"
-  | "granted-idle"
-  | "pending"
-  | "revoked"
-  | "unmanaged"
-  | "idle";
+/**
+ * Spec 148 (Phase B) — the Energy → arbitrage timeline read model. A time step
+ * additionally carries `revoked`: an EVENT inside the step, which wins the cell
+ * over the sustained state, and is never a state a load is in.
+ *
+ * The union is shared with the roster (spec 165); the ribbon simply never emits
+ * `suspended` — a suspension keeps painting idle/unmanaged there, because
+ * splitting it out would move time between the spec 158 metric buckets.
+ */
+export type ArbiterQuarterState = ArbiterLoadState | "revoked";
 
 export interface ArbiterTimelineLoad {
   equipmentId: string;

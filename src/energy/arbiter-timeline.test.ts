@@ -219,3 +219,38 @@ describe("buildLoadTimelines (issue #535) — an OFF load must not read 'unmanag
     expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
   });
 });
+
+describe("dormancy on the current cell (spec 165, #577)", () => {
+  it("reads the last waiting cell as at rest, matching the roster pill", () => {
+    const [load] = buildLoadTimelines([dec(-30, "waiting")], LOADS, START, END, 15, true);
+    // Only the current cell: the earlier ones are history.
+    expect(load.quarters).toEqual(["pending", "pending", "pending", "idle"]);
+  });
+
+  it("leaves every cell alone when not dormant", () => {
+    const [load] = buildLoadTimelines([dec(-30, "waiting")], LOADS, START, END, 15, false);
+    expect(load.quarters).toEqual(["pending", "pending", "pending", "pending"]);
+  });
+
+  it("never rewrites a cell that is not pending", () => {
+    const [load] = buildLoadTimelines([dec(-30, "granted")], LOADS, START, END, 15, true);
+    expect(load.quarters[3]).toBe("granted");
+  });
+
+  it("lets a revoke keep the last cell: the withdrawal is the notable event", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "granted"), dec(50, "revoked"), dec(51, "waiting")],
+      LOADS,
+      START,
+      END,
+      15,
+      true,
+    );
+    expect(load.quarters[3]).toBe("revoked");
+  });
+
+  it("defaults to not dormant, so pre-165 callers are unaffected", () => {
+    const [load] = buildLoadTimelines([dec(-30, "waiting")], LOADS, START, END);
+    expect(load.quarters[3]).toBe("pending");
+  });
+});

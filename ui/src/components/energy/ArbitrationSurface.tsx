@@ -1,8 +1,9 @@
 import { useEffect } from "react";
+import type { ArbiterLoadState } from "../../types";
 import { useTranslation } from "react-i18next";
 import { Scale, Moon } from "lucide-react";
 import { ArbiterTimeline } from "./ArbiterTimeline";
-import { surplusStickerColor, isArbiterDormant } from "./arbiterColors";
+import { surplusStickerColor, loadStateColor, displayState } from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { ROOT_ZONE_ID } from "../../lib/constants";
@@ -16,50 +17,30 @@ import { ROOT_ZONE_ID } from "../../lib/constants";
  * arbitration UI.
  */
 
-/**
- * One roster row, flattened from the four state arrays of the read model into a
- * single list ordered by configured priority (#616), matching the timeline. The
- * `stateKey` pill carries each load's state; figures irrelevant to a state are
- * `null` and render as a dash.
- */
-interface RosterRow {
-  equipmentId: string;
-  equipmentName: string;
-  /** Drives the state pill's label + colour token. */
-  stateKey: "granted" | "waiting" | "running" | "suspended" | "unmanaged" | "idle";
-  needW: number | null;
-  loadW: number | null;
-  toleratedW: number | null;
-}
-
-const STATE_COLOR: Record<RosterRow["stateKey"], string> = {
-  granted: "var(--color-solar-auto)",
-  waiting: "var(--color-warning)", // jaune a-500 — same token as the timeline "pending" cell
-  running: "var(--color-slate)",
-  suspended: "var(--color-text-tertiary)",
-  unmanaged: "var(--color-slate)",
-  idle: "var(--color-text-tertiary)",
-};
-
 /** Grid import is only worth a column value when the load actually accepts some. */
-function tolerated(w: number): number | null {
-  return w > 0 ? w : null;
+function tolerated(w: number | null): number | null {
+  return w !== null && w > 0 ? w : null;
 }
 
 function fmtW(v: number | null): string {
   return v === null ? "—" : `${v} W`;
 }
 
-function StatePill({ stateKey }: { stateKey: RosterRow["stateKey"] }) {
+/**
+ * Spec 165 — the state pill. Its label and colour come from the same two
+ * sources the ribbon uses (`arbiter.loadState.*`, `loadStateColor`), so a state
+ * cannot look one way here and another way three centimetres below.
+ */
+function StatePill({ state }: { state: ArbiterLoadState }) {
   const { t } = useTranslation();
-  const color = STATE_COLOR[stateKey];
+  const color = loadStateColor(state);
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
       style={{ color, background: `color-mix(in srgb, ${color} 15%, transparent)` }}
     >
       <span className="w-2 h-2 rounded-full flex-none" style={{ backgroundColor: color }} />
-      {t(`arbiter.rosterState.${stateKey}`)}
+      {t(`arbiter.loadState.${state}`)}
     </span>
   );
 }
@@ -79,70 +60,23 @@ export function ArbitrationSurface() {
 
   const available = state.availableSurplusW;
 
-  // Issue #577 — at night there is structurally no surplus to arbitrate. Show a
-  // calm "dormant" state instead of the active/importing deficit view.
-  const dormant = isArbiterDormant(state.state, rootAgg?.isDaylight ?? null, available);
+  // Issue #577 — at night there is structurally no surplus to arbitrate. The
+  // engine now decides this (spec 165) so the ribbon reads it the same way.
+  const dormant = state.dormant;
   const stickerColor = dormant ? "var(--color-slate)" : surplusStickerColor(available);
 
-  // Flatten the read model into one roster. Each source array is state-specific
-  // (grants / pending / suspensions / idle); the state pill carries the state,
-  // so the rows themselves are ordered by configured priority (#616) to match
-  // the timeline — not grouped by state.
-  const rows: RosterRow[] = [
-    ...state.grants.map<RosterRow>((g) => ({
-      equipmentId: g.equipmentId,
-      equipmentName: g.equipmentName,
-      stateKey: "granted",
-      needW: null,
-      loadW: g.watts,
-      toleratedW: null,
-    })),
-    ...state.pending.map<RosterRow>((p) => ({
-      equipmentId: p.equipmentId,
-      equipmentName: p.equipmentName,
-      // A pending claim whose load a recipe is already running as a must-run
-      // fallback is drawing power, not idle (#491) — read it "no surplus".
-      // While dormant (night, no surplus), a non-running claim is at rest, not
-      // "waiting" for a surplus that cannot come before sunrise (#577).
-      stateKey: p.running ? "running" : dormant ? "idle" : "waiting",
-      // At rest (running fallback, or dormant night) has no pending "need" to
-      // show — a Need figure next to an "at rest" label reads as a contradiction.
-      needW: p.running || dormant ? null : p.needW,
-      loadW: p.watts,
-      toleratedW: tolerated(p.toleratedImportW),
-    })),
-    ...state.suspensions.map<RosterRow>((s) => ({
-      equipmentId: s.equipmentId,
-      equipmentName: s.equipmentName,
-      stateKey: "suspended",
-      needW: null,
-      loadW: null,
-      toleratedW: null,
-    })),
-    ...state.idle.map<RosterRow>((i) => ({
-      equipmentId: i.equipmentId,
-      equipmentName: i.equipmentName,
-      stateKey: i.runningUnmanaged ? "unmanaged" : "idle",
-      needW: null,
-      loadW: i.watts,
-      toleratedW: tolerated(i.toleratedImportW),
-    })),
-  ];
-
-  // #616 — order by the arbiter's configured priority (highest first), matching
-  // the timeline. A load absent from the list (should not happen) sorts last but
-  // keeps a stable relative order.
-  const rank = (id: string) => {
-    const i = state.priority.indexOf(id);
-    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
-  };
-  rows.sort((a, b) => rank(a.equipmentId) - rank(b.equipmentId));
+  // Spec 165 — the roster is the read model's `loads`, already resolved and
+  // already in priority order (#616). The only presentation rule left here is
+  // the dormant one, and it goes through the shared helper.
+  const rows = state.loads.map((l) => ({
+    ...l,
+    state: displayState(l.state, dormant),
+  }));
 
   // Deficit context (FR-10a): when the meter is importing, no waiting load can
   // start — spell it out so an empty "need" column does not read as inaction.
   // Suppressed while dormant, which shows its own calm night line instead (#577).
-  const showDeficit =
-    !dormant && state.state === "active" && available !== null && available < 0;
+  const showDeficit = !dormant && state.state === "active" && available !== null && available < 0;
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
@@ -217,7 +151,7 @@ export function ArbitrationSurface() {
             </thead>
             <tbody>
               {rows.map((r) => {
-                const atRest = r.stateKey === "idle" || r.stateKey === "suspended";
+                const atRest = r.state === "idle" || r.state === "suspended";
                 return (
                   <tr key={r.equipmentId} className="border-b border-border-light last:border-b-0">
                     <td
@@ -226,16 +160,16 @@ export function ArbitrationSurface() {
                       {r.equipmentName}
                     </td>
                     <td className="text-left py-2.5 px-3">
-                      <StatePill stateKey={r.stateKey} />
+                      <StatePill state={r.state} />
                     </td>
                     <td className="text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
-                      {fmtW(r.needW)}
+                      {fmtW(r.state === "pending" ? r.needW : null)}
                     </td>
                     <td className="text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
-                      {fmtW(r.loadW)}
+                      {fmtW(r.state === "suspended" ? null : r.watts)}
                     </td>
                     <td className="text-right py-2.5 pl-3 font-mono text-text-secondary whitespace-nowrap">
-                      {fmtW(r.toleratedW)}
+                      {fmtW(r.state === "suspended" ? null : tolerated(r.toleratedImportW))}
                     </td>
                   </tr>
                 );

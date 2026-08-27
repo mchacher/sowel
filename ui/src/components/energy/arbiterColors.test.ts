@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
+import type { ArbiterQuarterState } from "../../types";
 import {
   journalDotColor,
   surplusStickerColor,
-  isArbiterDormant,
   cellColor,
+  loadStateColor,
+  displayState,
   PENDING_FILL,
   GRANTED_IDLE_FILL,
 } from "./arbiterColors";
@@ -85,29 +87,49 @@ describe("surplusStickerColor", () => {
   });
 });
 
-describe("isArbiterDormant (issue #577)", () => {
-  it("is dormant at night when active with no surplus", () => {
-    expect(isArbiterDormant("active", false, -1200)).toBe(true);
-    expect(isArbiterDormant("active", false, 0)).toBe(true);
-    // Active with a null reading at night still reads as at rest, not deficit.
-    expect(isArbiterDormant("active", false, null)).toBe(true);
+describe("spec 165 — one colour source for both halves of the surface", () => {
+  const ALL: ArbiterQuarterState[] = [
+    "granted",
+    "granted-idle",
+    "pending",
+    "revoked",
+    "unmanaged",
+    "suspended",
+    "idle",
+  ];
+
+  it("gives every state a colour (exhaustive over the union)", () => {
+    for (const s of ALL) {
+      expect(loadStateColor(s), `no colour for ${s}`).toBeTruthy();
+    }
   });
 
-  it("is NOT dormant when a battery exports at night (positive surplus)", () => {
-    expect(isArbiterDormant("active", false, 800)).toBe(false);
+  it("gives every state a DISTINCT colour", () => {
+    const seen = new Set(ALL.map((s) => loadStateColor(s)));
+    expect(seen.size).toBe(ALL.length);
   });
 
-  it("is NOT dormant during the day, whatever the surplus", () => {
-    expect(isArbiterDormant("active", true, -1200)).toBe(false);
-    expect(isArbiterDormant("active", true, 500)).toBe(false);
+  it("is the same source the ribbon cell uses", () => {
+    for (const s of ALL) {
+      expect(cellColor(s)).toBe(loadStateColor(s));
+    }
+  });
+});
+
+describe("displayState — dormancy applied once, for both halves (#577)", () => {
+  it("reads a waiting claim as at rest at night", () => {
+    expect(displayState("pending", true)).toBe("idle");
   });
 
-  it("is NOT dormant when daylight is unknown (no home coordinates)", () => {
-    expect(isArbiterDormant("active", null, -1200)).toBe(false);
+  it("leaves every other state alone at night", () => {
+    // A load drawing power is never "at rest", whatever the hour (#491).
+    expect(displayState("unmanaged", true)).toBe("unmanaged");
+    expect(displayState("granted", true)).toBe("granted");
+    expect(displayState("granted-idle", true)).toBe("granted-idle");
+    expect(displayState("suspended", true)).toBe("suspended");
   });
 
-  it("is NOT dormant unless the arbiter is active (degraded/disabled)", () => {
-    expect(isArbiterDormant("degraded", false, -1200)).toBe(false);
-    expect(isArbiterDormant("disabled", false, -1200)).toBe(false);
+  it("changes nothing during the day", () => {
+    expect(displayState("pending", false)).toBe("pending");
   });
 });

@@ -29,12 +29,16 @@ const ALL_DECISION_KINDS: Record<ArbiterDecisionKind, true> = {
   reset: true,
 };
 
-const ALL_QUARTER_STATES: Record<ArbiterQuarterState, true> = {
+// Spec 165 — one exhaustive map for both surfaces: the roster pill and the
+// ribbon read the same `arbiter.loadState.*` root, so a state added to the
+// union without a translation fails here once, not twice or never.
+const ALL_LOAD_STATES: Record<ArbiterQuarterState, true> = {
   granted: true,
   "granted-idle": true,
   pending: true,
   revoked: true,
   unmanaged: true,
+  suspended: true,
   idle: true,
 };
 
@@ -59,12 +63,19 @@ describe("locale completeness", () => {
     }
   });
 
-  it("every arbiter timeline quarter state has an arbiter.timeline.state.* label", () => {
-    for (const state of Object.keys(ALL_QUARTER_STATES)) {
-      expect(en_, `missing arbiter.timeline.state.${state}`).toHaveProperty(
-        `arbiter.timeline.state.${state}`,
+  it("every arbiter load state has an arbiter.loadState.* label (spec 165)", () => {
+    for (const state of Object.keys(ALL_LOAD_STATES)) {
+      expect(en_, `missing arbiter.loadState.${state}`).toHaveProperty(
+        `arbiter.loadState.${state}`,
       );
     }
+  });
+
+  it("no per-state key survives outside the arbiter.loadState.* root (spec 165)", () => {
+    const strays = Object.keys(en_).filter(
+      (k) => k.startsWith("arbiter.rosterState.") || k.startsWith("arbiter.timeline.state."),
+    );
+    expect(strays, "pre-165 per-state keys must be gone").toEqual([]);
   });
 
   it("every energy load class has an energyProfile.* label", () => {

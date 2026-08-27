@@ -411,11 +411,48 @@ export interface ArbiterDecision {
   running?: boolean;
 }
 
+/**
+ * Spec 165 — the state of one flexible load, now or in a past time step. One
+ * union for the roster table and the timeline ribbon, so a state cannot be
+ * added to one and forgotten on the other.
+ */
+export type ArbiterLoadState =
+  | "granted"
+  /** Spec 164 — granted, and measured consuming nothing. */
+  | "granted-idle"
+  | "pending"
+  | "unmanaged"
+  | "suspended"
+  | "idle";
+
+/** Spec 165 — one roster row, with its state resolved by the engine. Figures
+ *  irrelevant to a state are null and render as a dash. */
+export interface ArbiterLoadInfo {
+  equipmentId: string;
+  equipmentName: string;
+  state: ArbiterLoadState;
+  watts: number | null;
+  needW: number | null;
+  toleratedImportW: number | null;
+  sinceIso?: string;
+  reasonWaiting?: string;
+  untilIso?: string;
+  instanceId?: string;
+  note?: string;
+}
+
 export interface ArbiterPublicState {
   enabled: boolean;
   state: ArbiterRunState;
   availableSurplusW: number | null;
   productionDetected: boolean;
+  /** Spec 165 — every declared flexible load, in priority order, state already
+   *  resolved. The single source the roster renders. */
+  loads: ArbiterLoadInfo[];
+  /** Spec 165 (#577) — sun down and nothing to share: a waiting claim reads as
+   *  at rest, in the roster AND in the ribbon's current cell. */
+  dormant: boolean;
+  /** @deprecated Spec 165 — superseded by `loads`. */
   grants: Array<{
     equipmentId: string;
     equipmentName: string;
@@ -424,6 +461,7 @@ export interface ArbiterPublicState {
     sinceIso: string;
     note?: string;
   }>;
+  /** @deprecated Spec 165 — superseded by `loads`. */
   pending: Array<{
     equipmentId: string;
     equipmentName: string;
@@ -438,9 +476,10 @@ export interface ArbiterPublicState {
      *  (no surplus granted) — shown as "running (no surplus)", not "waiting" (#491). */
     running: boolean;
   }>;
+  /** @deprecated Spec 165 — superseded by `loads`. */
   suspensions: Array<{ equipmentId: string; equipmentName: string; untilIso: string }>;
-  /** #561 — declared flexible loads with no active claim (at rest / running
-   *  outside arbitration). Completes the roster so every priority load shows. */
+  /** @deprecated Spec 165 — superseded by `loads`. #561 — declared flexible
+   *  loads with no active claim (at rest / running outside arbitration). */
   idle: Array<{
     equipmentId: string;
     equipmentName: string;
@@ -457,16 +496,12 @@ export interface ArbiterPublicState {
   surplusSeries: Array<{ atIso: string; availableW: number }>;
 }
 
-/** Spec 148 (Phase B) — the Energy → arbitrage timeline read model.
- *  `pending` (#561) — the load was waiting for surplus (claiming, not granted). */
-export type ArbiterQuarterState =
-  | "granted"
-  /** Spec 164 — granted, and measured consuming nothing. */
-  | "granted-idle"
-  | "pending"
-  | "revoked"
-  | "unmanaged"
-  | "idle";
+/**
+ * Spec 148 (Phase B) — the Energy → arbitrage timeline read model. A step also
+ * carries `revoked`: an EVENT inside the step, never a state a load is in. The
+ * ribbon never emits `suspended` (spec 165 non-goal).
+ */
+export type ArbiterQuarterState = ArbiterLoadState | "revoked";
 
 export interface ArbiterTimelineLoad {
   equipmentId: string;
