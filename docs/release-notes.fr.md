@@ -11,6 +11,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.60.x : Décrire une charge qui n'a pas de compteur
+
+### v1.60.0 — 2026-08-27 { #v1-60-0 }
+
+- Feat (energy) : **une recette peut désormais dire à l'arbitre si sa charge a réellement besoin de courant** (spec 166). Depuis la v1.59.0 le ruban sait dire qu'une charge accordée ne consomme rien, mais uniquement à partir de la mesure propre à cette charge, ce qui laisse toute charge non mesurée décrite indéfiniment comme « accordée », si longtemps soit-elle à l'arrêt. Sur l'installation de référence, cela concerne deux charges arbitrées sur quatre : une pompe de piscine qui n'expose qu'un état marche/arrêt, et une pompe à chaleur de piscine à inverter pilotée en consigne, dont l'état rapporté vient d'un autre appareil que celui que Sowel commande. Lire cet état relais a été envisagé puis écarté : il ment sur une charge à inertie, et ne dit rien du tout d'un inverter. Celui qui sait, c'est celui qui a demandé le surplus, alors la poignée de demande gagne un moyen de le déclarer, et l'arbitre reste hors des affaires de l'appareil : il reçoit un oui ou un non et ne demande jamais pourquoi une piscine est assez chaude. Une mesure fraîche l'emporte toujours, parce que la déclaration dit ce que la recette veut tandis que le compteur dit ce que l'appareil fait, et l'écart entre les deux est précisément ce que la version précédente a été écrite pour montrer. Deux règles sont venues de la relecture et non de la conception : un état posé par le compteur est tenu pendant un trou de report plutôt que rendu à la recette, sinon une charge qui parle moins souvent que la fenêtre de fraîcheur de deux minutes bascule entre les deux sources à chaque trou ; et la première mesure contradictoire renverse une déclaration immédiatement, puisque sur une telle charge la fenêtre de confirmation ne pourrait jamais arriver à terme et qu'une charge tirant 2 kW serait restée « accordée, ne consomme rien » indéfiniment. Ce n'est délibérément pas une panne : une pompe à chaleur entre deux cycles de compresseur et un chauffe-eau dont le thermostat a coupé sont tous deux déclarés en besoin et mesurés inactifs, et tous deux en parfaite santé. Rien ne change pour une charge dotée de son compteur, et une installation où aucune recette ne déclare quoi que ce soit se comporte exactement comme avant. (#746)
+- Maintenance (packages) : **le plugin Zigbee2MQTT passe en 2.6.0** dans la registry, avec les littéraux de fil des lectures booléennes ajoutés en v1.59.0. (#743)
+
 ## 1.59.x : Un seul état pour la surface d'arbitrage
 
 ### v1.59.0 — 2026-08-27 { #v1-59-0 }
