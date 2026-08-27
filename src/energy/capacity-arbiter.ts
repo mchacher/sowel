@@ -195,7 +195,11 @@ export class CapacityArbiter {
 
   private deficitSince: number | null = null;
   private watchdogs: RevokeWatchdog[] = [];
-  private lastStatus: { state: ArbiterRunState; availableSurplusW: number | null } | null = null;
+  private lastStatus: {
+    state: ArbiterRunState;
+    availableSurplusW: number | null;
+    dormant: boolean;
+  } | null = null;
   /**
    * ~5 min samples of the signed grid surplus for the day-timeline curve
    * (FR-10). #563 — this holds exportW (>0 surplus, <0 déficit), the true grid
@@ -897,12 +901,11 @@ export class CapacityArbiter {
    * the pre-165 fallback, unchanged. A home battery exporting at night keeps a
    * positive surplus, which is real capacity to arbitrate, so it stays active.
    */
-  private isDormant(): boolean {
+  private isDormant(exportW?: number): boolean {
     const isDaylight = this.sunlight?.getSunlightData().isDaylight ?? null;
     if (isDaylight !== false) return false;
     if (this.runState() !== "active") return false;
-    const exportW = this.accounting().headroomW;
-    return exportW <= 0;
+    return (exportW ?? this.accounting().headroomW) <= 0;
   }
 
   /**
@@ -932,11 +935,33 @@ export class CapacityArbiter {
     return "idle";
   }
 
-  /** Spec 165 — the roster, resolved engine-side: every declared flexible load
-   *  in configured priority order, each with its state and its figures. */
+  /**
+   * Spec 165 — the roster, resolved engine-side: every declared flexible load
+   * in configured priority order, each with its state and its figures.
+   *
+   * `config.priority` is NOT the list of profiled loads: it is written only
+   * when an admin opens the arbiter settings page, while `claim()` accepts any
+   * equipment carrying an `energyProfile`. A load claimed and granted before
+   * that page is ever visited is absent from the priority list, and the arrays
+   * this replaces (built from the live claim maps) still showed it — so it
+   * must keep its row here too, appended after the ordered ones, exactly where
+   * the UI's own rank() fallback used to put it.
+   */
   private buildLoads(dormant: boolean, headroomW: number): ArbiterLoadInfo[] {
+    const claimedOrSuspended = [
+      ...new Set([
+        ...[...this.claims.values()]
+          .filter((c) => c.status === "granted" || c.status === "pending")
+          .map((c) => c.equipmentId),
+        ...[...this.overridesUntil.keys()].filter((id) => this.isSuspended(id)),
+      ]),
+    ];
+    const roster = [
+      ...this.config.priority,
+      ...claimedOrSuspended.filter((id) => !this.config.priority.includes(id)),
+    ];
     return (
-      this.config.priority
+      roster
         // A load whose profile was dropped keeps a row only while it still holds
         // a claim or a suspension — otherwise there is nothing left to show.
         .filter(
@@ -1820,9 +1845,21 @@ export class CapacityArbiter {
     // exportW), consistent with the pill in getPublicState.
     const raw = signedSurplusW ?? this.accounting().headroomW;
     const availableSurplusW = state === "active" ? Math.round(raw / 25) * 25 : null;
+    // Spec 165 — dormancy is part of what the surface shows and it flips on
+    // sunset alone, with no meter change behind it. Without it here, an open
+    // tab keeps the deficit sticker (and its loads "waiting") until the next
+    // 25 W move, which after sunset can be minutes away.
+    const dormant = this.isDormant(raw);
     const prev = this.lastStatus;
-    if (prev && prev.state === state && prev.availableSurplusW === availableSurplusW) return;
-    this.lastStatus = { state, availableSurplusW };
+    if (
+      prev &&
+      prev.state === state &&
+      prev.availableSurplusW === availableSurplusW &&
+      prev.dormant === dormant
+    ) {
+      return;
+    }
+    this.lastStatus = { state, availableSurplusW, dormant };
     this.emitEvent({ type: "energy.arbiter.status", state, availableSurplusW });
   }
 

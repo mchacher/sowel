@@ -53,7 +53,9 @@ This is a read-model and presentation refactor.
 "revoked"` — `revoked` stays ribbon-only, because it describes an event
   inside a time step, not a state a load is in.
 - **FR-2** `ArbiterPublicState` gains `loads: ArbiterLoadInfo[]`, one entry per
-  declared flexible load, in configured priority order, each carrying its
+  declared flexible load, in configured priority order followed by any load
+  holding a claim or a suspension without being in that list (it is written
+  only when an admin opens the settings page, so it is not the roster), each carrying its
   resolved `state` plus the figures the roster shows (`watts`, `needW`,
   `toleratedImportW`, `sinceIso`, `reasonWaiting`, `untilIso`). The UI renders
   it as-is and makes no state decision of its own.
@@ -68,9 +70,10 @@ This is a read-model and presentation refactor.
 - **FR-5** One i18n key per state, `arbiter.loadState.<state>`, used by the
   roster pill, the ribbon legend and the cell tooltip. Short legend variants, if
   kept, are suffixed keys of the same root, never independent translations.
-- **FR-6** One colour function, `loadStateColor(state)`, replacing `STATE_COLOR`
-  and `cellColor`. Fill opacity stays a per-surface concern (a ribbon cell is a
-  fill, a pill is a tint), but the hue is decided in one place.
+- **FR-6** One state->colour source replacing `STATE_COLOR` and the old
+  `cellColor` switch: a hue table for the pill (solid, since the pill uses it as
+  text colour) and a fill table for the ribbon (dimmed where the state is a
+  background one). No hue is declared twice.
 - **FR-7** The four state-specific arrays (`grants`, `pending`, `suspensions`,
   `idle`) stay in `ArbiterPublicState` for one minor version, unchanged, so
   external readers of `GET /api/v1/energy/arbiter/state` (recipes, dashboards)

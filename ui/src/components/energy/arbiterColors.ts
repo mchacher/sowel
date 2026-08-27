@@ -1,11 +1,33 @@
 import type { ArbiterDecision, ArbiterLoadState, ArbiterQuarterState } from "../../types";
 
 /**
- * "En attente" cells reuse the muted 15% warning tint of the roster table's
- * waiting pill (ArbitrationSurface StatePill) rather than the solid orange,
- * which read as too aggressive on the timeline ribbon (#617).
+ * Spec 165 — the hue of a load state, solid. This is what the roster pill uses
+ * for its text and dot, and what the ribbon fills are mixed FROM.
+ *
+ * Opacity is a per-surface concern (a ribbon cell is a filled block, a pill is
+ * a coloured word on a tint of itself), so it lives in CELL_FILL below and in
+ * the pill's own 15% background. Returning a pre-blended fill here was the
+ * spec 165 bug: the pill mixed it a second time and rendered its text at ~15%
+ * alpha.
  */
-export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 15%, transparent)";
+const HUE: Record<ArbiterQuarterState, string> = {
+  granted: "var(--color-solar-auto)", // accordé (auto-conso)
+  // Spec 164 — same green, visibly dimmed, but SOLID so the pill stays legible.
+  // The ribbon dims it further through CELL_FILL.
+  "granted-idle": "color-mix(in srgb, var(--color-solar-auto) 55%, var(--color-text-tertiary))",
+  pending: "var(--color-warning)", // en attente de surplus
+  revoked: "var(--color-error)", // surplus retiré
+  unmanaged: "var(--color-slate)", // marche (hors arbitrage)
+  suspended: "var(--color-text-tertiary)", // suspendu — roster only
+  idle: "var(--color-text-tertiary)", // au repos
+};
+
+/**
+ * "En attente" cells are a tint rather than the solid orange, which read as too
+ * aggressive on the ribbon (#617). Raised from 15% to 20% because the pale
+ * version was hard to make out against the ribbon's background.
+ */
+export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 20%, transparent)";
 
 /**
  * Spec 164 — the surplus was granted, and the load's own meter says nothing
@@ -15,40 +37,35 @@ export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 15%, transp
  */
 export const GRANTED_IDLE_FILL = "color-mix(in srgb, var(--color-solar-auto) 35%, transparent)";
 
-/** Spec 165 — "au repos", and the tint the suspended pill uses. */
+/** Spec 165 — "au repos": present enough to show the lane exists, no more. */
 export const IDLE_FILL = "color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)";
 
+/** Spec 148 — the ribbon-cell fill per state: the hue above, dimmed where the
+ *  state is a background one. `suspended` is here for exhaustiveness only; the
+ *  ribbon never emits it (spec 165 non-goal). */
+const CELL_FILL: Record<ArbiterQuarterState, string> = {
+  granted: HUE.granted,
+  "granted-idle": GRANTED_IDLE_FILL,
+  pending: PENDING_FILL,
+  revoked: HUE.revoked,
+  unmanaged: HUE.unmanaged,
+  suspended: HUE.suspended,
+  idle: IDLE_FILL,
+};
+
 /**
- * Spec 165 — the single colour source for a load state, used by the roster pill
- * AND the ribbon cell. Before, `STATE_COLOR` (roster) and `cellColor` (ribbon)
- * agreed by convention only, which is how spec 164's muted green came to land
- * on one surface and not the other.
- *
- * Opacity stays a per-surface concern (a ribbon cell is a fill, a pill is a
- * tint); the hue is decided here, once.
+ * Spec 165 — the single state->colour source for both halves of the surface.
+ * Before, `STATE_COLOR` (roster) and `cellColor` (ribbon) agreed by convention
+ * only, which is how spec 164's muted green came to land on one surface and
+ * not the other.
  */
 export function loadStateColor(s: ArbiterQuarterState): string {
-  switch (s) {
-    case "granted":
-      return "var(--color-solar-auto)"; // accordé (auto-conso)
-    case "granted-idle":
-      return GRANTED_IDLE_FILL; // accordé, mais rien ne le consomme (spec 164)
-    case "pending":
-      return PENDING_FILL; // en attente de surplus (#561, muted per #617)
-    case "revoked":
-      return "var(--color-error)"; // surplus retiré
-    case "unmanaged":
-      return "var(--color-slate)"; // marche (hors arbitrage)
-    case "suspended":
-      return "var(--color-text-tertiary)"; // suspendu — roster only, see spec 165
-    default:
-      return IDLE_FILL; // au repos
-  }
+  return HUE[s];
 }
 
 /** Spec 148 — the ribbon-cell fill for a quarter state. */
 export function cellColor(s: ArbiterQuarterState): string {
-  return loadStateColor(s);
+  return CELL_FILL[s];
 }
 
 /**

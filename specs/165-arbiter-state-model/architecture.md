@@ -145,16 +145,20 @@ four arrays and the `p.running ? ... : dormant ? ... : ...` expression. It maps
 along with the `useZoneAggregation` dependency the surface only had in order to
 compute it.
 
-`arbiterColors.ts` keeps one entry point:
+`arbiterColors.ts` keeps one state->colour source, in two tables:
 
 ```ts
-export function loadStateColor(s: ArbiterLoadState | "revoked"): string;
+const HUE: Record<ArbiterQuarterState, string>; // solid — the pill's text and dot
+const CELL_FILL: Record<ArbiterQuarterState, string>; // the ribbon's blocks
+export function loadStateColor(s: ArbiterQuarterState): string; // HUE
+export function cellColor(s: ArbiterQuarterState): string; // CELL_FILL
 ```
 
-Cell fills stay per-surface (`PENDING_FILL`, `GRANTED_IDLE_FILL` and the new
-`SUSPENDED_FILL` are opacity decisions on top of the hue), but no state's hue is
-declared twice. `journalDotColor` stays as it is: it maps decision kinds, not
-states, not states.
+The split is not cosmetic: the pill uses its colour as TEXT and re-mixes it at
+15% for its own background, so a pre-blended fill (`PENDING_FILL` and friends)
+would render the word at ~15% alpha on a ~2% background. `CELL_FILL` reads the
+same hues and dims only the background states, so nothing is declared twice.
+`journalDotColor` stays as it is: it maps decision kinds, not states.
 
 ### Copy
 

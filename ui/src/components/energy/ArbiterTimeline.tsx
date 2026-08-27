@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ArbiterQuarterState, ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
-import { loadStateColor, journalDotColor } from "./arbiterColors";
+import { cellColor, journalDotColor } from "./arbiterColors";
 import { journalReasonLabel } from "./arbiterReason";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
@@ -384,7 +384,7 @@ export function ArbiterTimeline() {
                     style={{
                       left: `calc(${(i / n) * 100}% + 1px)`,
                       width: `calc(${(1 / n) * 100}% - 2px)`,
-                      backgroundColor: loadStateColor(s),
+                      backgroundColor: cellColor(s),
                     }}
                   />
                 );
@@ -422,7 +422,7 @@ export function ArbiterTimeline() {
           <span key={s} className="flex items-center gap-1.5">
             <span
               className="w-3 h-2.5 rounded-sm flex-none"
-              style={{ backgroundColor: loadStateColor(s) }}
+              style={{ backgroundColor: cellColor(s) }}
             />
             {t(`arbiter.loadState.${s}`)}
           </span>

@@ -165,12 +165,18 @@ function makeHarness(opts?: {
       } as never)
     : undefined;
 
+  let daylight = opts?.daylight ?? null;
   const sunlight =
     opts?.daylight === undefined
       ? undefined
       : ({
-          getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: opts.daylight }),
+          getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: daylight }),
         } as never);
+  /** Move the sun without touching the meter (spec 165 review — sunset alone
+   *  must reach an open tab). */
+  const setDaylight = (v: boolean | null) => {
+    daylight = v;
+  };
 
   const arbiter = new CapacityArbiter(
     eventBus,
@@ -266,6 +272,7 @@ function makeHarness(opts?: {
     emitSettingsChanged,
     revokedEvents,
     grantedEvents,
+    setDaylight,
   };
 }
 
@@ -2327,5 +2334,80 @@ describe("dormancy in the read model (spec 165, #577)", () => {
     const state = h.arbiter.getPublicState();
     expect(state.dormant).toBe(true);
     expect(state.loads.find((l) => l.equipmentId === "heater")?.state).toBe("unmanaged");
+  });
+});
+
+describe("roster coverage outside the configured priority (spec 165 review)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps a granted load that is absent from the priority list", () => {
+    // `energy.arbiter.priority` is only written when an admin opens the arbiter
+    // settings page; a newly profiled load a recipe claims before that must not
+    // vanish from the roster (it was listed, sorted last, before spec 165).
+    const h = makeHarness({ priority: ["pac"] });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 140);
+    const state = h.arbiter.getPublicState();
+    expect(state.grants.map((g) => g.equipmentId)).toEqual(["pump"]);
+    expect(state.loads.map((l) => l.equipmentId)).toEqual(["pac", "pump"]);
+    expect(state.loads.find((l) => l.equipmentId === "pump")?.state).toBe("granted");
+  });
+
+  it("keeps a suspended load that is absent from the priority list", () => {
+    const h = makeHarness({ priority: ["pac"] });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "manual", instanceId: undefined });
+    const state = h.arbiter.getPublicState();
+    expect(state.suspensions.map((s) => s.equipmentId)).toEqual(["pump"]);
+    expect(state.loads.find((l) => l.equipmentId === "pump")?.state).toBe("suspended");
+  });
+
+  it("does not invent a row for a load with neither profile, claim nor suspension", () => {
+    const h = makeHarness({ priority: ["pac", "lamp"] });
+    expect(h.arbiter.getPublicState().loads.map((l) => l.equipmentId)).toEqual(["pac"]);
+  });
+});
+
+describe("sunset reaches an open tab (spec 165 review)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T19:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const statusEvents = (h: ReturnType<typeof makeHarness>) =>
+    h.events.filter((e) => e.type === "energy.arbiter.status");
+
+  it("emits a status event when dormancy flips with no meter change", () => {
+    const h = makeHarness({ daylight: true });
+    h.run(200, 60); // importing, in daylight: not dormant
+    expect(h.arbiter.getPublicState().dormant).toBe(false);
+    const before = statusEvents(h).length;
+
+    // The sun sets. The meter says exactly the same thing it said a minute ago,
+    // so the 25 W-quantized guard alone would emit nothing and an open tab
+    // would keep showing the deficit sticker.
+    h.setDaylight(false);
+    h.run(200, 30);
+
+    expect(h.arbiter.getPublicState().dormant).toBe(true);
+    expect(statusEvents(h).length).toBeGreaterThan(before);
+  });
+
+  it("still coalesces status events when nothing changes at all", () => {
+    const h = makeHarness({ daylight: false });
+    h.run(200, 60);
+    const before = statusEvents(h).length;
+    h.run(200, 60);
+    expect(statusEvents(h).length).toBe(before);
   });
 });
