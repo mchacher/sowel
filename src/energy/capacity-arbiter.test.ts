@@ -2496,3 +2496,309 @@ describe("dormancy reads the quantized export (spec 165 review)", () => {
     expect(statusEvents(h).length).toBeGreaterThan(before);
   });
 });
+
+// ============================================================
+// Spec 166 — claimant-declared need, consulted only without a measurement
+// ============================================================
+
+describe("claimant-declared need (spec 166)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A load with no meter of its own: nothing ever calls feedLoadPower for it. */
+  const grantUnmetered = (h: ReturnType<typeof makeHarness>, id = "pump") => {
+    const handle = h.claim("i1", { equipmentId: id });
+    h.run(-5000, 150);
+    expect(h.grantedEvents().some((e) => e.equipmentId === id)).toBe(true);
+    return handle;
+  };
+
+  const state = (h: ReturnType<typeof makeHarness>, id = "pump") =>
+    h.arbiter.getPublicState().loads.find((l) => l.equipmentId === id)?.state;
+
+  const drawKinds = (h: ReturnType<typeof makeHarness>) =>
+    [...h.arbiter.getPublicState().journal]
+      .reverse()
+      .filter((j) => j.kind === "draw-stopped" || j.kind === "draw-started")
+      .map((j) => j.kind);
+
+  it("1. describes an unmetered load as granted-idle when its claimant declares no need", () => {
+    const h = makeHarness();
+    const handle = grantUnmetered(h);
+    expect(state(h)).toBe("granted");
+
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+
+    expect(state(h)).toBe("granted-idle");
+    expect(drawKinds(h)).toEqual(["draw-stopped"]);
+  });
+
+  it("2. leaves it granted when the claimant declares it needs current", () => {
+    const h = makeHarness();
+    const handle = grantUnmetered(h);
+    handle.reportNeed(true);
+    h.run(-5000, 20);
+    expect(state(h)).toBe("granted");
+  });
+
+  it("3. leaves an unmetered load granted when nothing is declared (unchanged)", () => {
+    const h = makeHarness();
+    grantUnmetered(h);
+    h.run(-5000, 60);
+    expect(state(h)).toBe("granted");
+    expect(drawKinds(h)).toEqual([]);
+  });
+
+  it("4. lets a fresh measurement override a declared need", () => {
+    // The recipe wants to heat; the appliance draws nothing. That gap is the
+    // whole point of spec 164 (#732) and the declaration must not paper over it.
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    const handle = h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    handle.reportNeed(true);
+    for (let i = 0; i < 60; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted-idle",
+    );
+  });
+
+  it("5. lets a fresh measurement override a declared absence of need", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    const handle = h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    handle.reportNeed(false);
+    for (let i = 0; i < 40; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted",
+    );
+  });
+
+  it("6. hands over to the measurement when one starts arriving", () => {
+    // The declaration is a stopgap for a load with no meter. The moment a real
+    // measurement shows up it takes the wheel, even mid-grant.
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    const handle = h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted-idle",
+    );
+
+    // A meter is bound (or starts reporting) and says the load IS drawing.
+    for (let i = 0; i < 40; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted",
+    );
+  });
+
+  it("7. holds the measured state through staleness rather than reverting to the declaration", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    const handle = h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 20; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    handle.reportNeed(false);
+    // The load stops reporting. What the appliance last actually did outranks
+    // what the recipe wants, so the state is held, not rewritten: otherwise a
+    // load reporting slower than the freshness window would flap between the
+    // two sources once per reporting gap, journal entries and all.
+    h.run(-5000, 180);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted",
+    );
+  });
+
+  it("8. holds the last state when the measurement goes stale with nothing declared", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 20; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    h.run(-5000, 180);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted",
+    );
+  });
+
+  it("9. ignores a declaration on a pending claim", () => {
+    const h = makeHarness();
+    const handle = h.claim("i1", { equipmentId: "pump" });
+    h.run(400, 60); // importing: the claim stays pending
+    expect(handle.status()).toBe("pending");
+    expect(() => handle.reportNeed(false)).not.toThrow();
+    h.run(-5000, 150); // surplus arrives, the claim is granted
+    h.run(-5000, 20);
+    // The declaration made while pending was dropped, not stored for later.
+    expect(state(h)).toBe("granted");
+  });
+
+  it("10. drops a declaration made on a released claim instead of storing it", () => {
+    // The weak version of this test asserts the state right after the release,
+    // which is `idle` whatever `declaredNeed` holds. What matters is that the
+    // dropped declaration cannot be picked up by the NEXT grant.
+    const h = makeHarness();
+    const handle = grantUnmetered(h);
+    handle.release();
+    expect(() => handle.reportNeed(false)).not.toThrow();
+
+    h.claim("i2", { equipmentId: "pump" });
+    h.run(-5000, 150);
+    h.run(-5000, 20);
+    expect(state(h)).toBe("granted");
+  });
+
+  it("11. does not carry a declaration into a later grant", () => {
+    const h = makeHarness();
+    const first = grantUnmetered(h);
+    first.reportNeed(false);
+    h.run(-5000, 20);
+    expect(state(h)).toBe("granted-idle");
+
+    first.release();
+    const second = h.claim("i2", { equipmentId: "pump" });
+    h.run(-5000, 150);
+    expect(second.status()).toBe("granted");
+    h.run(-5000, 20);
+    expect(state(h)).toBe("granted");
+  });
+
+  it("12. journals a repeated declaration once", () => {
+    const h = makeHarness();
+    const handle = grantUnmetered(h);
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+    expect(drawKinds(h)).toEqual(["draw-stopped"]);
+  });
+
+  it("13. applies each flip at once, without the measurement confirmation window", () => {
+    // DRAW_CONFIRM_MS absorbs measurement jitter. A declaration is a statement,
+    // not a sample, so it must not wait five minutes to be believed.
+    const h = makeHarness();
+    const handle = grantUnmetered(h);
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+    expect(state(h)).toBe("granted-idle");
+    handle.reportNeed(true);
+    h.run(-5000, 20);
+    expect(state(h)).toBe("granted");
+    expect(drawKinds(h)).toEqual(["draw-stopped", "draw-started"]);
+  });
+
+  it("15. lets a slow meter overturn a declaration (F1: no confirmation window)", () => {
+    // The meter reports every 180 s, longer than LIVE_DRAW_FRESH_MS (120 s), so
+    // most ticks see a stale reading and reset the confirmation window. If the
+    // measurement had to serve that window to overturn a declaration, it never
+    // could, and a load drawing 2.2 kW would read "granted, consuming nothing"
+    // for ever. Z2M defaults to a 3600 s reporting interval, so this is the
+    // common configuration, not a corner case.
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    const handle = h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted-idle",
+    );
+
+    // Three sparse reports, 180 s apart. Never enough to serve DRAW_CONFIRM_MS.
+    for (let round = 0; round < 3; round++) {
+      h.feedLoadPower("heater", 2200);
+      h.run(-5000, 180);
+    }
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted",
+    );
+  });
+
+  it("16. overturns a declaration on the FIRST contradicting measurement", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    const handle = h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    handle.reportNeed(false);
+    h.run(-5000, 20);
+    expect(drawKinds(h)).toEqual(["draw-stopped"]);
+
+    // 30 s of measurement, far short of the 5 min window.
+    for (let i = 0; i < 3; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "granted",
+    );
+    expect(drawKinds(h)).toEqual(["draw-stopped", "draw-started"]);
+  });
+
+  it("17. journals nothing when a declaration restates what the surface shows (F2)", () => {
+    // An unobserved grant already renders as drawing, so declaring `true` on
+    // the first tick is not a transition and must not write a journal row.
+    const h = makeHarness();
+    const handle = grantUnmetered(h);
+    handle.reportNeed(true);
+    h.run(-5000, 40);
+    expect(state(h)).toBe("granted");
+    expect(drawKinds(h)).toEqual([]);
+  });
+
+  it("14. leaves a measured load with no declaration exactly as spec 164 left it", () => {
+    const h = makeHarness({
+      profiles: { heater: { class: "deferrable", nominalPowerW: 2200, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("i1", { equipmentId: "heater" });
+    h.run(-5000, 150);
+    for (let i = 0; i < 30; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 2200);
+    }
+    expect(drawKinds(h)).toEqual([]);
+    for (let i = 0; i < 55; i++) {
+      vi.advanceTimersByTime(10_000);
+      h.feedMeter(-5000);
+      h.feedLoadPower("heater", 0);
+    }
+    expect(drawKinds(h)).toEqual(["draw-stopped"]);
+  });
+});
