@@ -6,6 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import type { ArbiterMetricsStore } from "../../energy/arbiter-metrics-store.js";
+import type { ArbiterPublicState } from "../../shared/types.js";
 import { ARBITER_METRICS_RETENTION_DAYS } from "../../energy/arbiter-metrics-store.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
 import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../../equipments/metering.js";
@@ -422,16 +423,26 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // ============================================================
   // GET /api/v1/energy/arbiter — spec 140 read model (FR-10)
   // ============================================================
-  app.get("/api/v1/energy/arbiter", async () => {
+  // The return type is annotated on purpose: without it the fallback literal
+  // below is inferred, so a field added to ArbiterPublicState (spec 165 added
+  // `loads` and `dormant`, #561 added `idle`, #616 added `priority`) goes
+  // missing here without tsc saying a word. The UI only survives that because
+  // it returns early on `enabled: false`; any other reader mapping over
+  // `state.loads` would throw.
+  app.get("/api/v1/energy/arbiter", async (): Promise<ArbiterPublicState> => {
     if (!capacityArbiter) {
       return {
         enabled: false,
         state: "disabled",
         availableSurplusW: null,
         productionDetected: false,
+        loads: [],
+        dormant: false,
         grants: [],
         pending: [],
         suspensions: [],
+        idle: [],
+        priority: [],
         journal: [],
         surplusSeries: [],
       };
