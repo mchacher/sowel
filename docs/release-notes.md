@@ -11,6 +11,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.60.x: Describing a load that has no meter of its own
+
+### v1.60.0 — 2026-08-27 { #v1-60-0 }
+
+- Feat (energy): **a recipe can now tell the arbiter whether its load actually needs current** (spec 166). Since v1.59.0 the ribbon can say that a granted load is consuming nothing, but only from the load's own power measurement, which leaves every unmetered load permanently described as "granted" however long it sits idle. On the reference installation that is two of four arbitrated loads: a pool pump exposing only an on/off state, and an inverter pool heat pump driven by a setpoint whose reported state comes from a different device than the one Sowel commands. Reading that relay state was considered and rejected, since it lies on a load with shutdown inertia and says nothing at all about an inverter. The component that knows is the one that asked for the surplus, so a claim handle gains a way to declare it, and the arbiter stays out of the appliance's business: it receives a yes or no and never asks why a pool is warm enough. A fresh measurement always wins, because the declaration says what the recipe wants while the meter says what the appliance does, and the gap between the two is exactly what the previous version was built to show. Two rules came from the review rather than the design: a state the meter has already set is held through a gap in reporting rather than handed back to the recipe, otherwise a load reporting more slowly than the two-minute freshness window flips between the two sources at every gap; and the first contradicting measurement overturns a declaration at once, since on such a load the confirmation window could never mature and a load drawing 2 kW would have read "granted, consuming nothing" for ever. Deliberately not a fault: a heat pump between compressor cycles and a water heater whose thermostat has cut off are both declared needing and measured idle, and both perfectly healthy. Nothing changes for a load with its own meter, and an installation where no recipe declares anything behaves exactly as it did. (#746)
+- Maintenance (packages): **the Zigbee2MQTT plugin is bumped to 2.6.0** in the registry, carrying the wire literals of boolean readings added in v1.59.0. (#743)
+
 ## 1.59.x: One state for the arbitration surface
 
 ### v1.59.0 — 2026-08-27 { #v1-59-0 }
