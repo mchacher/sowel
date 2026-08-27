@@ -368,6 +368,7 @@ async function main() {
     config.shadowMode, // spec 124 — a shadow instance never arbitrates
     arbiterJournalStore, // spec 147 — history persistence (journal only)
     arbiterSurplusStore, // spec 148 — signed surplus/deficit series persistence
+    sunlightManager, // spec 165 — daylight for the dormant read-model flag
   );
   capacityArbiter.start();
 

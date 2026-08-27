@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
+import type { ArbiterQuarterState } from "../../types";
 import {
   journalDotColor,
   surplusStickerColor,
-  isArbiterDormant,
   cellColor,
+  loadStateColor,
+  displayState,
   PENDING_FILL,
   GRANTED_IDLE_FILL,
 } from "./arbiterColors";
@@ -48,11 +50,11 @@ describe("journalDotColor (spec 148)", () => {
 });
 
 describe("cellColor (timeline ribbon, #617)", () => {
-  it("paints the 'en attente' cell with the muted table-pill tint, not the solid warning", () => {
-    // #617 — the solid orange read as aggressive; the pending cell must reuse
-    // the same 15% warning mix the roster's waiting pill uses.
+  it("paints the 'en attente' cell with a muted tint, not the solid warning", () => {
+    // #617 — the solid orange read as aggressive. The tint went from 15% to
+    // 20% because the paler version was hard to make out on the ribbon.
     expect(cellColor("pending")).toBe(PENDING_FILL);
-    expect(PENDING_FILL).toBe("color-mix(in srgb, var(--color-warning) 15%, transparent)");
+    expect(PENDING_FILL).toBe("color-mix(in srgb, var(--color-warning) 20%, transparent)");
     expect(cellColor("pending")).not.toBe("var(--color-warning)");
   });
 
@@ -85,29 +87,64 @@ describe("surplusStickerColor", () => {
   });
 });
 
-describe("isArbiterDormant (issue #577)", () => {
-  it("is dormant at night when active with no surplus", () => {
-    expect(isArbiterDormant("active", false, -1200)).toBe(true);
-    expect(isArbiterDormant("active", false, 0)).toBe(true);
-    // Active with a null reading at night still reads as at rest, not deficit.
-    expect(isArbiterDormant("active", false, null)).toBe(true);
+describe("spec 165 — one colour source for both halves of the surface", () => {
+  const ALL: ArbiterQuarterState[] = [
+    "granted",
+    "granted-idle",
+    "pending",
+    "revoked",
+    "unmanaged",
+    "suspended",
+    "idle",
+  ];
+
+  it("gives every state a colour (exhaustive over the union)", () => {
+    for (const s of ALL) {
+      expect(loadStateColor(s), `no colour for ${s}`).toBeTruthy();
+      expect(cellColor(s), `no fill for ${s}`).toBeTruthy();
+    }
   });
 
-  it("is NOT dormant when a battery exports at night (positive surplus)", () => {
-    expect(isArbiterDormant("active", false, 800)).toBe(false);
+  it("gives the roster pill a SOLID hue, never a pre-blended fill", () => {
+    // Review finding: the pill uses this value as its text colour and re-mixes
+    // it at 15% for the background, so a transparent fill here rendered "Au
+    // repos" and "En attente" at ~15% alpha on a ~2% background.
+    for (const s of ALL) {
+      expect(loadStateColor(s), `${s} pill colour is transparent`).not.toContain("transparent");
+    }
   });
 
-  it("is NOT dormant during the day, whatever the surplus", () => {
-    expect(isArbiterDormant("active", true, -1200)).toBe(false);
-    expect(isArbiterDormant("active", true, 500)).toBe(false);
+  it("distinguishes granted from granted-idle on BOTH surfaces", () => {
+    expect(loadStateColor("granted-idle")).not.toBe(loadStateColor("granted"));
+    expect(cellColor("granted-idle")).not.toBe(cellColor("granted"));
   });
 
-  it("is NOT dormant when daylight is unknown (no home coordinates)", () => {
-    expect(isArbiterDormant("active", null, -1200)).toBe(false);
+  it("keeps the muted states in their own hue family", () => {
+    expect(loadStateColor("granted-idle")).toContain("--color-solar-auto");
+    expect(cellColor("pending")).toContain("--color-warning");
   });
 
-  it("is NOT dormant unless the arbiter is active (degraded/disabled)", () => {
-    expect(isArbiterDormant("degraded", false, -1200)).toBe(false);
-    expect(isArbiterDormant("disabled", false, -1200)).toBe(false);
+  it("derives the solid ribbon fills from the same hue as the pill", () => {
+    for (const s of ["granted", "revoked", "unmanaged"] as ArbiterQuarterState[]) {
+      expect(cellColor(s)).toBe(loadStateColor(s));
+    }
+  });
+});
+
+describe("displayState — dormancy applied once, for both halves (#577)", () => {
+  it("reads a waiting claim as at rest at night", () => {
+    expect(displayState("pending", true)).toBe("idle");
+  });
+
+  it("leaves every other state alone at night", () => {
+    // A load drawing power is never "at rest", whatever the hour (#491).
+    expect(displayState("unmanaged", true)).toBe("unmanaged");
+    expect(displayState("granted", true)).toBe("granted");
+    expect(displayState("granted-idle", true)).toBe("granted-idle");
+    expect(displayState("suspended", true)).toBe("suspended");
+  });
+
+  it("changes nothing during the day", () => {
+    expect(displayState("pending", false)).toBe("pending");
   });
 });
