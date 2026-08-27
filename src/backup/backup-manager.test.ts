@@ -135,6 +135,29 @@ describe("BackupManager", () => {
       expect(result.size).toBeGreaterThan(100); // at least the JSON structure
     });
 
+    it("writes a readable archive whose entries carry the backup payload", async () => {
+      db.prepare(`INSERT INTO settings (key, value) VALUES ('archive-probe', 'kept')`).run();
+      const result = await manager.exportToFile("entries.zip");
+
+      // Read the archive back with an independent unzip implementation rather
+      // than trusting that the writer reported success. This is what guards the
+      // archiver major upgrades: the API can change shape (v8 dropped the
+      // `archiver(format, opts)` factory for `new ZipArchive(opts)`) while every
+      // call still resolves and still produces a plausible file size.
+      const zip = new AdmZip(result.path);
+      const names = zip.getEntries().map((e) => e.entryName);
+      expect(names).toContain("sowel-backup.json");
+
+      const payload = JSON.parse(zip.readAsText("sowel-backup.json")) as {
+        version: number;
+        tables: Record<string, Array<{ key: string; value: string }>>;
+      };
+      expect(payload.version).toBe(2);
+      expect(payload.tables.settings).toContainEqual(
+        expect.objectContaining({ key: "archive-probe", value: "kept" }),
+      );
+    });
+
     it("multiple exports create multiple files", async () => {
       await manager.exportToFile("a.zip");
       await new Promise((r) => setTimeout(r, 10));

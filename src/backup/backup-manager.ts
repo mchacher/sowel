@@ -8,7 +8,8 @@ import {
   unlinkSync,
 } from "node:fs";
 import { resolve, dirname, extname, sep } from "node:path";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
+import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
@@ -187,7 +188,7 @@ export class BackupManager {
    * appended; the caller can pipe it to a response or to a file write stream
    * BEFORE calling this method.
    */
-  async buildArchive(archive: archiver.Archiver): Promise<void> {
+  async buildArchive(archive: Archiver): Promise<void> {
     // 1. Collect SQLite data
     const tables: Record<string, unknown[]> = {};
     let totalRows = 0;
@@ -274,7 +275,7 @@ export class BackupManager {
 
     const fullPath = resolve(backupsDir, filename);
 
-    const archive = archiver("zip", { zlib: { level: 6 } });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
     const { createWriteStream } = await import("node:fs");
     const output = createWriteStream(fullPath);
 
