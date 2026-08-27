@@ -22,18 +22,29 @@ const BOOLEAN_FALSE = new Set(["off", "false", "0"]);
  * JS type. Polarity-ambiguous vocabularies (OPEN/CLOSED, DETECTED, ...) are
  * deliberately NOT coerced: a wrong polarity guess is worse than a visible
  * warning, so they come back flagged with the raw value preserved.
+ *
+ * An integration can lift that ambiguity by declaring the pair itself:
+ * `valueOn` / `valueOff` are the literals the device uses on the wire, and
+ * when both are given they take precedence over the vocabulary below. Nothing
+ * is guessed then — the device said which literal means on — so an exotic
+ * vocabulary such as LOCK/UNLOCK resolves without widening the hard-coded
+ * list, which cannot be exhaustive. This is the inbound mirror of
+ * `resolveWireValue`, which maps booleans onto the same pair when dispatching
+ * an order.
  */
 export function normalizeValue(
   value: unknown,
   type: DataType,
   enumValues?: string[] | null,
+  valueOn?: unknown,
+  valueOff?: unknown,
 ): NormalizationResult {
   // Availability/absence is handled elsewhere — never touch null/undefined.
   if (value === null || value === undefined) return { value, flagged: false };
 
   switch (type) {
     case "boolean":
-      return normalizeBoolean(value);
+      return normalizeBoolean(value, valueOn, valueOff);
     case "number":
       return normalizeNumber(value);
     case "enum":
@@ -77,8 +88,31 @@ export function isCategoryTypeMismatch(
   return true;
 }
 
-function normalizeBoolean(value: unknown): NormalizationResult {
+function normalizeBoolean(
+  value: unknown,
+  valueOn?: unknown,
+  valueOff?: unknown,
+): NormalizationResult {
   if (typeof value === "boolean") return { value, flagged: false };
+
+  // Declared wire pair wins over the hard-coded vocabulary below. The device
+  // states which literal means on and which means off, so there is nothing to
+  // guess — that is what makes LOCK/UNLOCK, and any future vocabulary,
+  // resolvable without widening the polarity-ambiguous list.
+  if (valueOn !== undefined && valueOff !== undefined) {
+    if (value === valueOn) return { value: true, flagged: false };
+    if (value === valueOff) return { value: false, flagged: false };
+    if (typeof value === "string") {
+      const lowered = value.trim().toLowerCase();
+      if (typeof valueOn === "string" && lowered === valueOn.toLowerCase()) {
+        return { value: true, flagged: false };
+      }
+      if (typeof valueOff === "string" && lowered === valueOff.toLowerCase()) {
+        return { value: false, flagged: false };
+      }
+    }
+  }
+
   if (typeof value === "string") {
     const lowered = value.trim().toLowerCase();
     if (BOOLEAN_TRUE.has(lowered)) return { value: true, flagged: false };

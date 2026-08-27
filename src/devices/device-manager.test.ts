@@ -1031,3 +1031,65 @@ describe("DeviceManager — batched message writes (#697)", () => {
     expect(storedValues()).toMatchObject({ temperature: 23, pressure: 1013 });
   });
 });
+
+describe("DeviceManager — inbound wire values (#727)", () => {
+  let db: Database.Database;
+  let manager: DeviceManager;
+
+  const lockDevice = {
+    ieeeAddress: "0xa4c138000000beef",
+    friendlyName: "prise_sdb",
+    manufacturer: "Tuya",
+    model: "TS011F",
+    data: [
+      {
+        key: "child_lock",
+        type: "boolean" as const,
+        category: "generic" as const,
+        valueOn: "LOCK",
+        valueOff: "UNLOCK",
+      },
+      { key: "state", type: "boolean" as const, category: "light_state" as const },
+    ],
+    orders: [],
+    rawExpose: [],
+  };
+
+  const valueOf = (key: string) =>
+    manager
+      .getAllWithData()
+      .find((d) => d.name === "prise_sdb")
+      ?.data.find((d) => d.key === key)?.value;
+
+  beforeEach(() => {
+    db = createTestDb();
+    manager = new DeviceManager(db, new EventBus(logger), logger);
+    manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", lockDevice);
+  });
+
+  afterEach(() => db.close());
+
+  it("coerces a declared vocabulary instead of storing it raw", () => {
+    // Before: child_lock was declared boolean, the plug reported "UNLOCK",
+    // normalizeValue could not guess the polarity, and the string was stored
+    // with a "does not match declared type" warning on every discovery.
+    manager.updateDeviceData("zigbee2mqtt", "prise_sdb", { child_lock: "UNLOCK" });
+    expect(valueOf("child_lock")).toBe(false);
+
+    manager.updateDeviceData("zigbee2mqtt", "prise_sdb", { child_lock: "LOCK" });
+    expect(valueOf("child_lock")).toBe(true);
+  });
+
+  it("keeps the pair across a re-discovery", () => {
+    // Second announcement takes the UPDATE path, which must carry the columns
+    // too — otherwise the pair is dropped at every plugin reconnect.
+    manager.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", lockDevice);
+    manager.updateDeviceData("zigbee2mqtt", "prise_sdb", { child_lock: "LOCK" });
+    expect(valueOf("child_lock")).toBe(true);
+  });
+
+  it("leaves a key without a declared pair on the usual vocabulary", () => {
+    manager.updateDeviceData("zigbee2mqtt", "prise_sdb", { state: "ON" });
+    expect(valueOf("state")).toBe(true);
+  });
+});
