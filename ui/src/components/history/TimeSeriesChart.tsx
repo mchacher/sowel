@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import type { HistoryPoint } from "../../types";
 import { rangeToDurationMs, type TimeRange } from "./history-utils";
+import { formatSeriesTooltip } from "./tooltip-format";
 
 interface TimeSeriesChartProps {
   points: HistoryPoint[];
@@ -46,16 +47,6 @@ function formatTooltipTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatValue(v: number, unit?: string): string {
-  const formatted = Number.isInteger(v) ? String(v) : v.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
-}
-
-function formatPower(w: number): string {
-  if (w >= 1000) return `${(w / 1000).toFixed(1)} kW`;
-  return `${Math.round(w)} W`;
 }
 
 /** Returns a human-readable relative time string, or null if gap < 5 minutes. */
@@ -196,16 +187,9 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
             }
             return "";
           }}
-          formatter={(value?: number, name?: string) => {
-            const v = value ?? 0;
-            if (isPower) {
-              if (name === "min" || name === "max") return [formatPower(v), name];
-              return [formatPower(v), "Puissance"];
-            }
-            if (name === "min" || name === "max") return [formatValue(v, unit), name];
-            if (isDiscrete) return [v === 1 ? "ON" : "OFF", ""];
-            return [formatValue(v, unit), ""];
-          }}
+          formatter={(value: unknown, name: unknown) =>
+            formatSeriesTooltip(value, name, { unit, isPower, isDiscrete })
+          }
         />
 
         {/* Min/Max area fill for aggregated data (non-power) */}

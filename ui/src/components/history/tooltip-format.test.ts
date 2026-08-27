@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
 import type { TFunction } from "i18next";
-import { formatTooltipRow, seriesFullLabel, type TooltipSeries } from "./tooltip-format";
+import {
+  formatBarTooltip,
+  formatSeriesTooltip,
+  formatTooltipRow,
+  formatValueWithUnit,
+  seriesFullLabel,
+  tooltipName,
+  tooltipNumber,
+  type TooltipSeries,
+} from "./tooltip-format";
 
 // Identity t: returns the i18n key, enough to assert which key is picked.
 const t = ((k: string) => k) as unknown as TFunction;
@@ -66,5 +75,110 @@ describe("formatTooltipRow (#498, point 4)", () => {
 describe("seriesFullLabel", () => {
   it("joins zone / equipment / metric", () => {
     expect(seriesFullLabel(measurement, t).startsWith("Salon / Thermostat /")).toBe(true);
+  });
+});
+
+// The recharts <Tooltip formatter> path (#681). Recharts calls a formatter with
+// `(value, name, item, index, payload)` and types value/name wide, so these
+// helpers are what stands between the widened signature and the rendered text.
+describe("tooltipNumber (#681)", () => {
+  it("passes a number through", () => {
+    expect(tooltipNumber(20.5)).toBe(20.5);
+  });
+
+  it("reads 0 for undefined, matching the previous `value ?? 0` call sites", () => {
+    expect(tooltipNumber(undefined)).toBe(0);
+    expect(tooltipNumber(null)).toBe(0);
+  });
+
+  it("coerces the numeric string recharts may hand over", () => {
+    expect(tooltipNumber("42")).toBe(42);
+  });
+
+  it("takes the first entry of a range value (ValueType allows an array)", () => {
+    expect(tooltipNumber([12, 34])).toBe(12);
+  });
+
+  it("reads 0 rather than NaN for a non-numeric value", () => {
+    expect(tooltipNumber("n/a")).toBe(0);
+    expect(tooltipNumber({})).toBe(0);
+  });
+});
+
+describe("tooltipName (#681)", () => {
+  it("passes a string name through", () => {
+    expect(tooltipName("min")).toBe("min");
+  });
+
+  it("stringifies a numeric name (NameType allows a number)", () => {
+    expect(tooltipName(3)).toBe("3");
+  });
+
+  it("reads empty for a missing name", () => {
+    expect(tooltipName(undefined)).toBe("");
+  });
+});
+
+describe("formatBarTooltip (#681)", () => {
+  it("formats a plain measurement with its unit and keeps the series label", () => {
+    expect(formatBarTooltip(20.5, "°C", "Valeur")).toEqual(["20.5 °C", "Valeur"]);
+  });
+
+  it("drops a trailing .0 on an integer", () => {
+    expect(formatBarTooltip(20, "°C", "Valeur")).toEqual(["20 °C", "Valeur"]);
+  });
+
+  it("converts Wh to kWh above 1 kWh", () => {
+    expect(formatBarTooltip(2500, "Wh", "Consommation")[0]).toBe("2.50 kWh");
+    expect(formatBarTooltip(15000, "Wh", "Consommation")[0]).toBe("15.0 kWh");
+    expect(formatBarTooltip(150000, "Wh", "Consommation")[0]).toBe("150 kWh");
+  });
+
+  it("stays in Wh below 1 kWh", () => {
+    expect(formatBarTooltip(750, "Wh", "Consommation")[0]).toBe("750 Wh");
+  });
+
+  it("renders an undefined value as 0 instead of NaN", () => {
+    expect(formatBarTooltip(undefined, "°C", "Valeur")).toEqual(["0 °C", "Valeur"]);
+  });
+});
+
+describe("formatSeriesTooltip (#681)", () => {
+  const plain = { unit: "°C", isPower: false, isDiscrete: false };
+
+  it("formats a measurement with its unit and no row label", () => {
+    expect(formatSeriesTooltip(20.5, "value", plain)).toEqual(["20.5 °C", ""]);
+  });
+
+  it("labels the min/max envelope rows with their own name", () => {
+    expect(formatSeriesTooltip(18, "min", plain)).toEqual(["18 °C", "min"]);
+    expect(formatSeriesTooltip(24, "max", plain)).toEqual(["24 °C", "max"]);
+  });
+
+  it("renders power in W below 1 kW and in kW above", () => {
+    const power = { unit: "W", isPower: true, isDiscrete: false };
+    expect(formatSeriesTooltip(750, "value", power)).toEqual(["750 W", "Puissance"]);
+    expect(formatSeriesTooltip(2500, "value", power)).toEqual(["2.5 kW", "Puissance"]);
+  });
+
+  it("keeps the envelope name on a power series", () => {
+    const power = { unit: "W", isPower: true, isDiscrete: false };
+    expect(formatSeriesTooltip(2500, "max", power)).toEqual(["2.5 kW", "max"]);
+  });
+
+  it("renders a discrete series as ON/OFF", () => {
+    const discrete = { unit: undefined, isPower: false, isDiscrete: true };
+    expect(formatSeriesTooltip(1, "value", discrete)).toEqual(["ON", ""]);
+    expect(formatSeriesTooltip(0, "value", discrete)).toEqual(["OFF", ""]);
+  });
+
+  it("renders an undefined value as 0 instead of NaN", () => {
+    expect(formatSeriesTooltip(undefined, undefined, plain)).toEqual(["0 °C", ""]);
+  });
+});
+
+describe("formatValueWithUnit", () => {
+  it("renders a bare value when no unit is given", () => {
+    expect(formatValueWithUnit(20.5)).toBe("20.5");
   });
 });
