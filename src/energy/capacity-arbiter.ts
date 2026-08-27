@@ -65,6 +65,14 @@ const DIVERGENCE_RATIO = 0.3; // watts-divergence threshold vs declared nominal
 const IDLE_DRAW_RATIO = 0.1;
 const IDLE_DRAW_FLOOR_W = 20;
 const IDLE_DRAW_CEIL_W = 100;
+// Spec 165 review — the status event coalesces on a 25 W-quantized surplus so
+// it fires on a meaningful change, not on every meter sample. Dormancy is part
+// of that same coalescing key, so it has to read the export through the SAME
+// quantum: comparing the raw export to 0 flips `dormant` on the ±1 W jitter a
+// battery home shows at night, which defeated the guard and made an open tab
+// refetch (and flicker) on every sample.
+const STATUS_QUANTUM_W = 25;
+const quantizeW = (w: number): number => Math.round(w / STATUS_QUANTUM_W) * STATUS_QUANTUM_W;
 const TICK_MS = 10_000;
 // Spec 164 — how long a granted load's measured draw must contradict the state
 // the ribbon is showing before the transition is journaled. Long enough that a
@@ -836,7 +844,10 @@ export class CapacityArbiter {
     const windowEnd = Math.floor(endMs / stepMs) * stepMs;
     const windowStart = windowEnd - hours * 3_600_000;
     const lookback = windowStart - 24 * 3_600_000; // enough to know the entering state
-    const loads = this.config.priority.map((id) => ({ equipmentId: id, name: this.nameOf(id) }));
+    // Spec 165 review — the same roster the read model builds, so a load
+    // claimed before an admin ever opened the settings page gets a ribbon lane
+    // under its roster row instead of a row with nothing beneath it.
+    const loads = this.rosterIds().map((id) => ({ equipmentId: id, name: this.nameOf(id) }));
 
     // Decisions: prefer the persisted store; fall back to the in-memory ring.
     let decisions =
@@ -905,7 +916,7 @@ export class CapacityArbiter {
     const isDaylight = this.sunlight?.getSunlightData().isDaylight ?? null;
     if (isDaylight !== false) return false;
     if (this.runState() !== "active") return false;
-    return (exportW ?? this.accounting().headroomW) <= 0;
+    return quantizeW(exportW ?? this.accounting().headroomW) <= 0;
   }
 
   /**
@@ -936,18 +947,18 @@ export class CapacityArbiter {
   }
 
   /**
-   * Spec 165 — the roster, resolved engine-side: every declared flexible load
-   * in configured priority order, each with its state and its figures.
+   * Spec 165 — the equipment ids the surface shows, in the order it shows them:
+   * the configured priority first, then any load holding a claim or a
+   * suspension without being in that list. A load whose profile was dropped
+   * keeps its place only while it still holds a claim or a suspension,
+   * otherwise there is nothing left to show.
    *
-   * `config.priority` is NOT the list of profiled loads: it is written only
-   * when an admin opens the arbiter settings page, while `claim()` accepts any
-   * equipment carrying an `energyProfile`. A load claimed and granted before
-   * that page is ever visited is absent from the priority list, and the arrays
-   * this replaces (built from the live claim maps) still showed it — so it
-   * must keep its row here too, appended after the ordered ones, exactly where
-   * the UI's own rank() fallback used to put it.
+   * Spec 165 review — the read model roster and the timeline ribbon BOTH read
+   * this. Building the ribbon lanes from `config.priority` alone put a
+   * "Granted" roster row on screen with no lane under it, which is exactly the
+   * roster/ribbon divergence this spec exists to remove.
    */
-  private buildLoads(dormant: boolean, headroomW: number): ArbiterLoadInfo[] {
+  private rosterIds(): string[] {
     const claimedOrSuspended = [
       ...new Set([
         ...[...this.claims.values()]
@@ -956,68 +967,70 @@ export class CapacityArbiter {
         ...[...this.overridesUntil.keys()].filter((id) => this.isSuspended(id)),
       ]),
     ];
-    const roster = [
+    return [
       ...this.config.priority,
       ...claimedOrSuspended.filter((id) => !this.config.priority.includes(id)),
-    ];
-    return (
-      roster
-        // A load whose profile was dropped keeps a row only while it still holds
-        // a claim or a suspension — otherwise there is nothing left to show.
-        .filter(
-          (id) =>
-            this.profileOf(id) !== undefined ||
-            this.grantedClaimFor(id) !== undefined ||
-            this.pendingClaimFor(id) !== undefined ||
-            this.isSuspended(id),
-        )
-        .map((id) => {
-          const state = this.resolveLoadState(id, dormant);
-          const profile = this.profileOf(id);
-          const info: ArbiterLoadInfo = {
-            equipmentId: id,
-            equipmentName: this.nameOf(id),
-            state,
-            watts: null,
-            needW: null,
-            toleratedImportW: profile ? Math.max(0, profile.toleratedImportW ?? 0) : null,
-          };
-          if (state === "granted" || state === "granted-idle") {
-            const granted = this.grantedClaimFor(id);
-            info.watts = granted ? Math.round(this.effectiveWatts(granted)) : null;
-            info.sinceIso = new Date(granted?.grantedAt ?? Date.now()).toISOString();
-            info.instanceId = granted?.instanceId;
-            info.note = granted?.note;
-            return info;
-          }
-          if (state === "suspended") {
-            info.untilIso = new Date(this.overridesUntil.get(id) ?? Date.now()).toISOString();
-            return info;
-          }
-          // Pending, unmanaged and at rest all show what the load draws. A
-          // pending claim knows its own figure; anything else falls back to the
-          // live draw while it runs unmanaged, else its rating (#561: a metered
-          // load that is off reports ~0 W, which would misread as "0 W" rather
-          // than "what it draws when it runs").
-          const pendingClaim = this.pendingClaimFor(id);
-          if (pendingClaim && state === "pending") {
-            info.watts = pendingClaim.watts;
-            info.needW = Math.round(this.engageNeedW(pendingClaim));
-            info.reasonWaiting = this.pendingReason(pendingClaim, headroomW);
-            info.instanceId = pendingClaim.instanceId;
-            info.toleratedImportW = pendingClaim.toleratedImportW;
-            return info;
-          }
-          if (this.unclaimedRunning.has(id)) {
-            info.watts = Math.round(this.drawEstimate(id));
-          } else if (pendingClaim) {
-            info.watts = pendingClaim.watts;
-          } else if (profile) {
-            info.watts = Math.round(profile.learned?.watts ?? profile.nominalPowerW);
-          }
-          return info;
-        })
+    ].filter(
+      (id) =>
+        this.profileOf(id) !== undefined ||
+        this.grantedClaimFor(id) !== undefined ||
+        this.pendingClaimFor(id) !== undefined ||
+        this.isSuspended(id),
     );
+  }
+
+  /**
+   * Spec 165 — the roster, resolved engine-side: every load `rosterIds()` lists,
+   * each with its state and its figures. This is the single source the UI
+   * renders; it decides nothing on its own.
+   */
+  private buildLoads(dormant: boolean, headroomW: number): ArbiterLoadInfo[] {
+    return this.rosterIds().map((id) => {
+      const state = this.resolveLoadState(id, dormant);
+      const profile = this.profileOf(id);
+      const info: ArbiterLoadInfo = {
+        equipmentId: id,
+        equipmentName: this.nameOf(id),
+        state,
+        watts: null,
+        needW: null,
+        toleratedImportW: profile ? Math.max(0, profile.toleratedImportW ?? 0) : null,
+      };
+      if (state === "granted" || state === "granted-idle") {
+        const granted = this.grantedClaimFor(id);
+        info.watts = granted ? Math.round(this.effectiveWatts(granted)) : null;
+        info.sinceIso = new Date(granted?.grantedAt ?? Date.now()).toISOString();
+        info.instanceId = granted?.instanceId;
+        info.note = granted?.note;
+        return info;
+      }
+      if (state === "suspended") {
+        info.untilIso = new Date(this.overridesUntil.get(id) ?? Date.now()).toISOString();
+        return info;
+      }
+      // Pending, unmanaged and at rest all show what the load draws. A
+      // pending claim knows its own figure; anything else falls back to the
+      // live draw while it runs unmanaged, else its rating (#561: a metered
+      // load that is off reports ~0 W, which would misread as "0 W" rather
+      // than "what it draws when it runs").
+      const pendingClaim = this.pendingClaimFor(id);
+      if (pendingClaim && state === "pending") {
+        info.watts = pendingClaim.watts;
+        info.needW = Math.round(this.engageNeedW(pendingClaim));
+        info.reasonWaiting = this.pendingReason(pendingClaim, headroomW);
+        info.instanceId = pendingClaim.instanceId;
+        info.toleratedImportW = pendingClaim.toleratedImportW;
+        return info;
+      }
+      if (this.unclaimedRunning.has(id)) {
+        info.watts = Math.round(this.drawEstimate(id));
+      } else if (pendingClaim) {
+        info.watts = pendingClaim.watts;
+      } else if (profile) {
+        info.watts = Math.round(profile.learned?.watts ?? profile.nominalPowerW);
+      }
+      return info;
+    });
   }
 
   getPublicState(): ArbiterPublicState {
@@ -1844,12 +1857,13 @@ export class CapacityArbiter {
     // #563 — the emitted figure is the TRUE signed grid balance (headroomW ≡
     // exportW), consistent with the pill in getPublicState.
     const raw = signedSurplusW ?? this.accounting().headroomW;
-    const availableSurplusW = state === "active" ? Math.round(raw / 25) * 25 : null;
+    const quantized = quantizeW(raw);
+    const availableSurplusW = state === "active" ? quantized : null;
     // Spec 165 — dormancy is part of what the surface shows and it flips on
     // sunset alone, with no meter change behind it. Without it here, an open
     // tab keeps the deficit sticker (and its loads "waiting") until the next
     // 25 W move, which after sunset can be minutes away.
-    const dormant = this.isDormant(raw);
+    const dormant = this.isDormant(quantized);
     const prev = this.lastStatus;
     if (
       prev &&

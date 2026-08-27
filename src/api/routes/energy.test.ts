@@ -1204,3 +1204,47 @@ describe("Spec 162 — GET /energy/pv-health/:id", () => {
     await app.close();
   });
 });
+
+// ============================================================
+// Spec 165 review — GET /api/v1/energy/arbiter with no arbiter wired
+// ============================================================
+
+describe("Spec 165 review — /api/v1/energy/arbiter fallback", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("answers the full ArbiterPublicState shape, arrays included", async () => {
+    // The harness wires `capacityArbiter: null`, which is the "arbiter never
+    // started" case. The literal used to omit the fields added after it
+    // (`loads`, `dormant`, `idle`, `priority`), and the inferred return type
+    // hid that from tsc. The UI only survived it by returning early on
+    // `enabled: false`; anything mapping over `loads` first would throw.
+    app = await buildApp();
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/arbiter" });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.enabled).toBe(false);
+    expect(body.state).toBe("disabled");
+    expect(body.dormant).toBe(false);
+    expect(body.availableSurplusW).toBeNull();
+    expect(body.productionDetected).toBe(false);
+    for (const key of [
+      "loads",
+      "grants",
+      "pending",
+      "suspensions",
+      "idle",
+      "priority",
+      "journal",
+      "surplusSeries",
+    ]) {
+      expect(Array.isArray(body[key]), `${key} must be an array`).toBe(true);
+      expect(body[key]).toHaveLength(0);
+    }
+  });
+});

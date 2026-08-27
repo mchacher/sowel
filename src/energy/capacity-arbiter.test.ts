@@ -2411,3 +2411,88 @@ describe("sunset reaches an open tab (spec 165 review)", () => {
     expect(statusEvents(h).length).toBe(before);
   });
 });
+
+describe("ribbon lanes follow the roster (spec 165 review)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("opens a timeline lane for a granted load absent from the priority list", () => {
+    // The roster appends a claimed load that no admin ever ordered in the
+    // settings page. Building the lanes from `config.priority` alone left that
+    // roster row with nothing under it in the ribbon.
+    const h = makeHarness({ priority: ["pac"] });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 140);
+
+    const roster = h.arbiter.getPublicState().loads.map((l) => l.equipmentId);
+    const lanes = h.arbiter.getTimeline(Date.now(), 6).loads.map((l) => l.equipmentId);
+    expect(roster).toEqual(["pac", "pump"]);
+    expect(lanes).toEqual(roster);
+  });
+
+  it("opens a lane for a suspended load absent from the priority list", () => {
+    const h = makeHarness({ priority: ["pac"] });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    h.order("pump", false, { kind: "manual", instanceId: undefined });
+
+    const roster = h.arbiter.getPublicState().loads.map((l) => l.equipmentId);
+    const lanes = h.arbiter.getTimeline(Date.now(), 6).loads.map((l) => l.equipmentId);
+    expect(roster).toContain("pump");
+    expect(lanes).toEqual(roster);
+  });
+
+  it("opens no lane for a load with neither profile, claim nor suspension", () => {
+    const h = makeHarness({ priority: ["pac", "lamp"] });
+    const lanes = h.arbiter.getTimeline(Date.now(), 6).loads.map((l) => l.equipmentId);
+    expect(lanes).toEqual(["pac"]);
+    expect(lanes).toEqual(h.arbiter.getPublicState().loads.map((l) => l.equipmentId));
+  });
+});
+
+describe("dormancy reads the quantized export (spec 165 review)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T22:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const statusEvents = (h: ReturnType<typeof makeHarness>) =>
+    h.events.filter((e) => e.type === "energy.arbiter.status");
+
+  it("does not flip dormancy on sub-quantum jitter around zero export", () => {
+    // A battery home at night sits at ~0 W and crosses the sign constantly.
+    // Comparing the RAW export to 0 flipped `dormant` on every sample, and
+    // since dormancy sits in the coalescing key, each flip emitted a status
+    // event, which refetches the arbiter read model in every open tab.
+    const h = makeHarness({ daylight: false });
+    h.run(1, 60); // importing 1 W
+    expect(h.arbiter.getPublicState().dormant).toBe(true);
+    const before = statusEvents(h).length;
+
+    h.run(-1, 60); // exporting 1 W: same quarter of a quantum, same state
+    h.run(1, 60);
+    h.run(-12, 60);
+
+    expect(h.arbiter.getPublicState().dormant).toBe(true);
+    expect(statusEvents(h).length).toBe(before);
+  });
+
+  it("still leaves dormancy behind on a real export at night", () => {
+    const h = makeHarness({ daylight: false });
+    h.run(1, 60);
+    expect(h.arbiter.getPublicState().dormant).toBe(true);
+    const before = statusEvents(h).length;
+
+    h.run(-800, 60); // the battery starts pushing: a genuine surplus
+    expect(h.arbiter.getPublicState().dormant).toBe(false);
+    expect(statusEvents(h).length).toBeGreaterThan(before);
+  });
+});
