@@ -27,7 +27,9 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     succeeded = document.execCommand("copy");
   } catch {
-    succeeded = false;
+    // `succeeded` keeps its initial false; re-assigning it here made the
+    // initializer dead, which is what no-useless-assignment (new in
+    // @eslint/js 10) flagged.
   } finally {
     document.body.removeChild(textarea);
   }
