@@ -23,7 +23,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@fastify/cors": "^10.0.2",
+    "@fastify/cors": "^11.3.0",
     "@fastify/helmet": "^13.1.0",
     "@fastify/multipart": "^10.1.1",
     "@fastify/rate-limit": "^10.3.0",
