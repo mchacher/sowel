@@ -766,6 +766,38 @@ async function main() {
     } catch (err) {
       logger.error({ err }, "Error stopping order confirmation tracker");
     }
+    // #792 — must run before `db.close()`. destroy() does two things that both
+    // matter here: it clears the 200ms debounce and the 60s tick, and it
+    // unsubscribes from the event bus. The unsubscribe is the important half:
+    // without it the tracker keeps arming fresh timers from live device
+    // traffic for the whole shutdown, which is not instant (it awaits the MQTT
+    // publisher, Influx, the HTTP server, and a per-plugin stop race below).
+    // Any timer that survives into `db.close()` crashes in recompute().
+    try {
+      equipmentStatusTracker.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping equipment status tracker");
+    }
+    // Same class of defect as #792, found by the shutdown-completeness guard.
+    // These three own no timer, so they cannot fire late on their own, but they
+    // stay subscribed to the event bus and their handlers read the database.
+    // An event emitted while the engine is tearing down would run them, and
+    // there is no reason to keep listening once shutdown has started.
+    try {
+      buttonActionManager.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping button action manager");
+    }
+    try {
+      zoneAggregator.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping zone aggregator");
+    }
+    try {
+      equipmentManager.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping equipment manager");
+    }
     try {
       batteryMonitor.destroy();
     } catch (err) {
