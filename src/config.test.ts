@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -108,5 +109,31 @@ describe("config — SOWEL_SHADOW_MODE", () => {
   it("tolerates surrounding whitespace", () => {
     process.env["SOWEL_SHADOW_MODE"] = "  TRUE  ";
     expect(loadConfig().shadowMode).toBe(true);
+  });
+});
+
+describe("config — dotenv loading is silent", () => {
+  // Production logs are newline-delimited JSON on stdout, captured by Docker.
+  // dotenv v17 defaults `quiet` to false and prints a banner on load, and it
+  // does so even with no .env file present, which is exactly the production
+  // case since .env is dockerignored. That banner would be the one line in the
+  // stream that does not parse, so config.ts passes `quiet: true`.
+  //
+  // Observed from a child process: importing the module in-process here would
+  // be too late, the side effect runs at import time and this file has already
+  // imported it.
+  it("prints nothing to stdout when the module is imported", () => {
+    const stdout = execFileSync(
+      process.execPath,
+      ["--import", "tsx", "-e", "import('./src/config.ts').then(() => process.exit(0))"],
+      {
+        cwd: process.cwd(),
+        env: { ...process.env, SQLITE_PATH: join(tmpdir(), "sowel-dotenv-quiet-probe.db") },
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    );
+
+    expect(stdout).toBe("");
   });
 });

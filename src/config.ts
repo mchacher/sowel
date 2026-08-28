@@ -4,7 +4,12 @@ import { dirname, resolve } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 import type { AppConfig } from "./shared/types.js";
 
-dotenvConfig();
+// `quiet` so dotenv stays silent on load. Since v17 it defaults to printing a
+// banner on stdout, and it does so even when there is no .env file to read,
+// which is the production case (.env is dockerignored). Production logs are
+// newline-delimited JSON on stdout, so that banner is the one line in the
+// stream that will not parse.
+dotenvConfig({ quiet: true });
 
 function env(key: string, fallback?: string): string {
   const value = process.env[key] ?? fallback;
