@@ -1,4 +1,4 @@
-import SunCalc from "suncalc";
+import { getTimes, getPosition } from "suncalc";
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
@@ -108,15 +108,27 @@ export class SunlightManager {
     }
 
     const now = new Date();
-    const times = SunCalc.getTimes(now, settings.latitude, settings.longitude);
+    const times = getTimes(now, settings.latitude, settings.longitude);
 
-    const sunrise = this.formatTime(times.sunrise);
-    const sunset = this.formatTime(times.sunset);
+    // suncalc 2 returns null where version 1 returned an Invalid Date: above
+    // the polar circles the sun may never rise or never set. The old code did
+    // the arithmetic anyway and produced NaN, which made every comparison
+    // false, so a polar summer read as permanent night. Answer from the sun's
+    // actual elevation instead, which is right in both directions.
+    let sunrise = "--:--";
+    let sunset = "--:--";
+    let isDaylight: boolean;
 
-    // isDaylight: true when now > sunrise + sunriseOffset AND now < sunset - sunsetOffset
-    const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
-    const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
-    const isDaylight = now >= sunriseWithOffset && now < sunsetWithOffset;
+    if (times.sunrise && times.sunset) {
+      sunrise = this.formatTime(times.sunrise);
+      sunset = this.formatTime(times.sunset);
+      // true when now > sunrise + sunriseOffset AND now < sunset - sunsetOffset
+      const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
+      const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
+      isDaylight = now >= sunriseWithOffset && now < sunsetWithOffset;
+    } else {
+      isDaylight = getPosition(now, settings.latitude, settings.longitude).altitude > 0;
+    }
 
     const prev = this.currentData;
     this.currentData = { sunrise, sunset, isDaylight };
@@ -142,10 +154,17 @@ export class SunlightManager {
     const settings = this.getSettings();
     if (!settings || !this.currentData.sunrise || !this.currentData.sunset) return;
 
-    const times = SunCalc.getTimes(now, settings.latitude, settings.longitude);
-    const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
-    const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
-    const isDaylight = now >= sunriseWithOffset && now < sunsetWithOffset;
+    const times = getTimes(now, settings.latitude, settings.longitude);
+    // Same polar guard as compute(): suncalc 2 returns null rather than an
+    // Invalid Date when the sun does not cross the horizon that day.
+    let isDaylight: boolean;
+    if (times.sunrise && times.sunset) {
+      const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
+      const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
+      isDaylight = now >= sunriseWithOffset && now < sunsetWithOffset;
+    } else {
+      isDaylight = getPosition(now, settings.latitude, settings.longitude).altitude > 0;
+    }
 
     if (isDaylight !== this.currentData.isDaylight) {
       this.logger.info(

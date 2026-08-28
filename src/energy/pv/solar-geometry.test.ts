@@ -158,3 +158,45 @@ describe("totalPeakWc", () => {
     expect(totalPeakWc([{ tiltDeg: 30, azimuthDeg: 180, peakWc: Number.NaN }])).toBe(0);
   });
 });
+
+// ── suncalc contract, pinned ──────────────────────────────
+// The tests above check the convention with loose bounds, which is right for
+// them and useless here: suncalc 2 changed the contract in four ways at once
+// (named exports only, degrees instead of radians, azimuth from north instead
+// of from south, null instead of Invalid Date), and three of those four would
+// have gone through the loose bounds unnoticed if the conversion were wrong.
+//
+// So pin the numbers. A unit change, a reference-direction change, or a
+// silently different altitude model moves these by far more than the
+// tolerance. Values are the library's, not hand-computed: the point is to
+// notice when they move, not to assert astronomical truth.
+//
+// Recorded against suncalc 2.0.1. Moving from 1.9.0 shifted altitude by 0.10
+// degrees on average above 5 degrees of elevation (0.27 in the 0-to-5 band,
+// where refraction dominates) because version 2 reports apparent rather than
+// true altitude. Azimuth moved by at most 0.26 degrees anywhere.
+describe("solarPosition — pinned against the library's contract", () => {
+  const PINNED: [string, number, number][] = [
+    ["2026-06-21T11:37:00Z", 68.2668, 179.0012],
+    ["2026-06-21T06:00:00Z", 20.0767, 76.482],
+    ["2026-12-21T11:37:00Z", 21.428, 180.5298],
+    ["2026-03-20T08:15:00Z", 25.4757, 118.7831],
+  ];
+
+  for (const [iso, elevationDeg, azimuthDeg] of PINNED) {
+    it(`holds elevation and azimuth at ${iso}`, () => {
+      const sun = solarPosition(new Date(iso), GRENOBLE.lat, GRENOBLE.lon);
+      expect(deg(sun.elevationRad)).toBeCloseTo(elevationDeg, 2);
+      expect(deg(sun.azimuthRad)).toBeCloseTo(azimuthDeg, 2);
+    });
+  }
+
+  it("returns radians, not the degrees suncalc 2 now reports", () => {
+    // The whole file downstream feeds these to Math.sin/Math.cos. Passing
+    // degrees through would be silent and catastrophic, and every loose-bound
+    // test above would still pass on the noon case.
+    const sun = solarPosition(new Date("2026-06-21T11:37:00Z"), GRENOBLE.lat, GRENOBLE.lon);
+    expect(sun.elevationRad).toBeLessThan(Math.PI / 2);
+    expect(sun.azimuthRad).toBeLessThanOrEqual(2 * Math.PI);
+  });
+});
