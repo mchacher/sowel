@@ -4,7 +4,7 @@ This page walks you through installing Sowel, logging in for the first time, and
 
 ## Prerequisites
 
-- **Docker** (recommended) or **Node.js 22+** for manual installation
+- **Docker** (recommended) or **Node.js 24+** for manual installation
 - At least one integration installed from the in-app catalogue (**Administration > Plugins**). Sowel ships with plugins for Zigbee2MQTT, Shelly, Panasonic, MCZ, Netatmo, Legrand, Tasmota, SmartThings, and more. New plugins install in seconds and the list grows over time.
 
 !!! tip "Fresh host?"

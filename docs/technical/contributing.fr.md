@@ -8,7 +8,7 @@ Ce guide couvre tout ce qu'un contributeur doit savoir pour mettre en place l'en
 
 ### Prérequis
 
-- **Node.js 22+**
+- **Node.js 24+**
 - **npm** (livré avec Node.js)
 - **Docker + docker-compose** (pour InfluxDB)
 - **Git**

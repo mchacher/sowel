@@ -173,9 +173,18 @@ The recipe below is what the Node 20 to 22 migration actually followed:
   going anywhere near production.
 - Merging the PR does not deploy. Roll the new images out on your own window.
 
-Note the LTS calendar when picking a target: at the time of the 22 move, Node 22
-was already in maintenance with end of life on 2027-04-30, so it buys support
-rather than settling the question permanently.
+Note the LTS calendar when picking a target, and prefer the **active** LTS.
+Sowel learned this the expensive way: the 20 to 22 move landed on a release that
+was already in maintenance with end of life on 2027-04-30, and was followed
+almost immediately by a 22 to 24 move onto the active LTS (end of life
+2028-04-28). Aiming at active LTS in the first place would have been one
+migration instead of two.
+
+The second move also showed the prebuild question is not settled by the first:
+`better-sqlite3` 11.10.0 publishes prebuilds up to ABI 131 (Node 23) and none
+for Node 24's ABI 137, so the runtime stage compiles it from source instead of
+downloading it. That is fine here because the stage already installs the
+toolchain, but it is worth checking before assuming a runtime bump is free.
 
 ---
 
