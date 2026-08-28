@@ -56,7 +56,7 @@ export function DeviceDetailPage() {
     if (!id) return;
 
     let cancelled = false;
-    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- loading state before async fetch
+    setLoading(true);
     setError(null);
 
     Promise.all([getDevice(id), getDeviceRawExpose(id)])

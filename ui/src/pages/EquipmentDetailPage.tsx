@@ -25,7 +25,7 @@ import { UpsPanel } from "../components/equipments/UpsPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBadge";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
-import { TYPE_LABELS } from "../components/equipments/EquipmentCard";
+import { TYPE_LABELS } from "../components/equipments/equipment-type-meta";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import { isSubmeterEquipment } from "../lib/metering";
 import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";

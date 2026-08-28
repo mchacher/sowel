@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Radio, Check, ChevronDown, ChevronUp, Search } from "lucide-react";
-import type { DataCategory, EquipmentType } from "../../types";
+import type { EquipmentType } from "../../types";
 import { getDevices, type DeviceWithData } from "../../api";
 import {
   CANDIDATE_BASED_TYPES,
@@ -9,52 +9,8 @@ import {
   type BindingCandidate,
 } from "../../lib/binding-candidates";
 import { freeCandidates } from "../../lib/binding-utils";
+import { EQUIPMENT_TYPE_CATEGORIES } from "./equipment-type-meta";
 
-/** Maps EquipmentType to required DataCategories for filtering. */
-const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCategory[]>> = {
-  light_onoff: ["light_state"],
-  light_dimmable: ["light_state", "light_brightness"],
-  light_color: ["light_state", "light_brightness", "light_color"],
-  shutter: ["shutter_position"],
-  switch: ["light_state"],
-  // Spec 135 — water heater: an on/off relay (light_state) is the
-  // discriminator; the water temperature is an optional extra binding.
-  water_heater: ["light_state"],
-  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke"],
-  button: ["action"],
-  weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise"],
-  // gate is candidate-based (spec 150) — no category entry here.
-  heater: ["generic", "light_state"],
-  energy_meter: ["energy", "power"],
-  main_energy_meter: ["energy"],
-  energy_production_meter: ["energy", "power"],
-  // Solar panel devices expose per-channel DC power; that's the discriminator.
-  solar_panel: ["power", "current"],
-  // Polytropic PAC matches via pool_water_temperature; Sonoff filtration relay
-  // matches via light_state (used as the optional `filtration_state` binding).
-  pool_heat_pump: ["pool_water_temperature", "light_state"],
-  // Spec 120 — Sowel-supervised displays (energy display, e-paper, ...).
-  // Any device that exposes one of the canonical display fields is a
-  // candidate. `firmware_version` / `uptime` would be too generic on
-  // their own (a future Zigbee plugin might emit them too), so the
-  // match keys on `display_brightness` / `language` first; if a vendor
-  // ships a passive single-screen display reporting only uptime, the
-  // user can still pick it via "Show all" toggle.
-  display: ["display_brightness", "language", "rssi"],
-  // Spec 133 — cameras. Any of the 5 categories signals a camera-capable
-  // device; which ones a given device actually exposes is vendor-specific
-  // (see spec 133 "Vendor neutrality").
-  camera: [
-    "camera_snapshot_url",
-    "camera_stream_url",
-    "camera_monitoring",
-    "camera_light_mode",
-    "camera_detection",
-  ],
-  // Spec 156 — UPS. Only the three UPS-specific categories discriminate:
-  // `battery` and `voltage` would match every Zigbee sensor in the house.
-  ups: ["ups_status", "battery_runtime", "ups_load"],
-};
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
 const EQUIPMENT_TYPE_DATA_KEYS: Partial<Record<EquipmentType, string[]>> = {
@@ -129,7 +85,7 @@ export function DeviceSelector({
   const [candidateByDevice, setCandidateByDevice] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- loading state before async fetch
+    setLoading(true);
     getDevices()
       .then((all) => {
         setAllDevices(all);
@@ -423,5 +379,3 @@ export function DeviceSelector({
     </div>
   );
 }
-
-export { EQUIPMENT_TYPE_CATEGORIES };

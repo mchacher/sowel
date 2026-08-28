@@ -127,7 +127,7 @@ export function ZoneDetailPage() {
     if (!id) return;
     let cancelled = false;
 
-    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- loading state before async fetch
+    setLoading(true);
     setError(null);
     getZone(id)
       .then((data) => {

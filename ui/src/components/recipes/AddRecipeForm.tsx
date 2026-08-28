@@ -137,14 +137,14 @@ export function AddRecipeForm({
         defaults[slot.id] = "";
       }
     }
-    setParams(defaults); // eslint-disable-line react-hooks/set-state-in-effect -- sync defaults when recipe selection changes
+    setParams(defaults);
     setError("");
     // Show required groups by default, hide optional ones
     const requiredGroups = new Set<string>();
     for (const gk of getGroupKeys(selectedRecipe.slots)) {
       if (isGroupRequired(gk, selectedRecipe.slots)) requiredGroups.add(gk);
     }
-    setVisibleGroups(requiredGroups); // eslint-disable-line react-hooks/set-state-in-effect -- sync with recipe selection
+    setVisibleGroups(requiredGroups);
   }, [selectedRecipeId, selectedRecipe, zoneId]);
 
   const handleSubmit = async () => {

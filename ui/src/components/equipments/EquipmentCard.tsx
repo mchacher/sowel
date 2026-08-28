@@ -1,31 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import {
-  Lightbulb,
-  SunDim,
-  Palette,
-  Gauge,
-  ToggleLeft,
-  CircleDot,
-  Thermometer,
-  CloudSun,
-  DoorOpen,
-  Heater,
-  Zap,
-  Tv,
-  Monitor,
-  WashingMachine,
-  Waves,
-  Droplets,
-  Camera,
-  Fan,
-  BatteryCharging,
-} from "lucide-react";
-import { ShutterClosedIcon } from "../icons/ShutterIcons";
-import { WaterValveIcon } from "../icons/WaterValveIcon";
-import { AwningIcon } from "../icons/AwningIcon";
-import { SolarPanelIcon } from "../icons/SolarPanelIcon";
-import type { EquipmentType, EquipmentWithDetails } from "../../types";
+import type { EquipmentWithDetails } from "../../types";
 import { LightControl } from "./LightControl";
 import { SolarControl } from "./SolarControl";
 import { findMainOnOffOrder } from "./bindingUtils";
@@ -36,68 +11,9 @@ import { GateControl } from "./GateControl";
 import { WaterValveControl } from "./WaterValveControl";
 import { VmcControl } from "./VmcControl";
 import { useEquipmentState } from "./useEquipmentState";
+import { TYPE_LABELS } from "./equipment-type-meta";
 
-const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
-  light_onoff: <Lightbulb size={18} strokeWidth={1.5} />,
-  light_dimmable: <SunDim size={18} strokeWidth={1.5} />,
-  light_color: <Palette size={18} strokeWidth={1.5} />,
-  shutter: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
-  awning: <AwningIcon size={18} strokeWidth={1.5} />,
-  switch: <ToggleLeft size={18} strokeWidth={1.5} />,
-  sensor: <Gauge size={18} strokeWidth={1.5} />,
-  button: <CircleDot size={18} strokeWidth={1.5} />,
-  thermostat: <Thermometer size={18} strokeWidth={1.5} />,
-  weather: <CloudSun size={18} strokeWidth={1.5} />,
-  weather_forecast: <CloudSun size={18} strokeWidth={1.5} />,
-  gate: <DoorOpen size={18} strokeWidth={1.5} />,
-  heater: <Heater size={18} strokeWidth={1.5} />,
-  water_heater: <Droplets size={18} strokeWidth={1.5} />,
-  energy_meter: <Zap size={18} strokeWidth={1.5} />,
-  main_energy_meter: <Zap size={18} strokeWidth={1.5} />,
-  energy_production_meter: <Zap size={18} strokeWidth={1.5} />,
-  solar_panel: <SolarPanelIcon size={18} strokeWidth={1.5} />,
-  media_player: <Tv size={18} strokeWidth={1.5} />,
-  appliance: <WashingMachine size={18} strokeWidth={1.5} />,
-  water_valve: <WaterValveIcon size={18} strokeWidth={1.5} />,
-  pool_pump: <Waves size={18} strokeWidth={1.5} />,
-  pool_cover: <ShutterClosedIcon size={18} strokeWidth={1.5} />,
-  pool_heat_pump: <Thermometer size={18} strokeWidth={1.5} />,
-  display: <Monitor size={18} strokeWidth={1.5} />,
-  camera: <Camera size={18} strokeWidth={1.5} />,
-  vmc: <Fan size={18} strokeWidth={1.5} />,
-  ups: <BatteryCharging size={18} strokeWidth={1.5} />,
-};
 
-const TYPE_LABELS: Record<EquipmentType, string> = {
-  light_onoff: "equipments.type.light_onoff",
-  light_dimmable: "equipments.type.light_dimmable",
-  light_color: "equipments.type.light_color",
-  shutter: "equipments.type.shutter",
-  awning: "equipments.type.awning",
-  switch: "equipments.type.switch",
-  sensor: "equipments.type.sensor",
-  button: "equipments.type.button",
-  thermostat: "equipments.type.thermostat",
-  weather: "equipments.type.weather",
-  weather_forecast: "equipments.type.weather_forecast",
-  gate: "equipments.type.gate",
-  heater: "equipments.type.heater",
-  water_heater: "equipments.type.water_heater",
-  energy_meter: "equipments.type.energy_meter",
-  main_energy_meter: "equipments.type.main_energy_meter",
-  energy_production_meter: "equipments.type.energy_production_meter",
-  solar_panel: "equipments.type.solar_panel",
-  media_player: "equipments.type.media_player",
-  appliance: "equipments.type.appliance",
-  water_valve: "equipments.type.water_valve",
-  pool_pump: "equipments.type.pool_pump",
-  pool_cover: "equipments.type.pool_cover",
-  pool_heat_pump: "equipments.type.pool_heat_pump",
-  display: "equipments.type.display",
-  camera: "equipments.type.camera",
-  vmc: "equipments.type.vmc",
-  ups: "equipments.type.ups",
-};
 
 interface EquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -244,5 +160,3 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
     </div>
   );
 }
-
-export { TYPE_ICONS, TYPE_LABELS };
