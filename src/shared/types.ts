@@ -709,10 +709,7 @@ export type CapacityRevokeReason =
   | "disabled";
 
 export type CapacityDenyReason =
-  | "not-profiled"
-  | "equipment-already-claimed"
-  | "arbiter-disabled"
-  | "override-active";
+  "not-profiled" | "equipment-already-claimed" | "arbiter-disabled" | "override-active";
 
 export interface CapacityClaimRequest {
   equipmentId: string;
@@ -904,12 +901,7 @@ export interface ArbiterIdleInfo {
  * `unmanaged` — drawing outside any grant (a recipe's must-run fallback).
  */
 export type ArbiterLoadState =
-  | "granted"
-  | "granted-idle"
-  | "pending"
-  | "unmanaged"
-  | "suspended"
-  | "idle";
+  "granted" | "granted-idle" | "pending" | "unmanaged" | "suspended" | "idle";
 
 /**
  * Spec 165 — one roster row, with its state resolved by the engine. Replaces
@@ -1121,11 +1113,7 @@ export interface ModeWithDetails extends Mode {
 // ============================================================
 
 export type ButtonEffectType =
-  | "mode_activate"
-  | "mode_toggle"
-  | "equipment_order"
-  | "recipe_toggle"
-  | "zone_order";
+  "mode_activate" | "mode_toggle" | "equipment_order" | "recipe_toggle" | "zone_order";
 
 export interface ButtonActionBinding {
   id: string;

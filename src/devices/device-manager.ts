@@ -182,8 +182,7 @@ export class DeviceManager {
     discovered: DiscoveredDevice,
   ): void {
     const existing = this.stmts.findDeviceBySource.get(integrationId, discovered.friendlyName) as
-      | DeviceRow
-      | undefined;
+      DeviceRow | undefined;
 
     const deviceId = existing?.id ?? randomUUID();
 
@@ -235,8 +234,7 @@ export class DeviceManager {
           }
         }
         const existingData = this.stmts.findDeviceDataByDeviceAndKey.get(deviceId, d.key) as
-          | { id: string }
-          | undefined;
+          { id: string } | undefined;
         const enumJson = d.enumValues ? JSON.stringify(d.enumValues) : null;
         // JSON-encoded like the order columns, so "ON" and true round-trip
         // distinctly instead of collapsing into the same TEXT.
@@ -277,8 +275,7 @@ export class DeviceManager {
       for (const row of existingDataRows) {
         if (discoveredDataKeys.has(row.key)) continue;
         const bound = this.stmts.countDataBindingsForDeviceData.get(row.id) as
-          | { c: number }
-          | undefined;
+          { c: number } | undefined;
         if (bound && bound.c > 0) {
           this.logger.info(
             { deviceId, dataId: row.id, key: row.key },
@@ -293,8 +290,7 @@ export class DeviceManager {
       const discoveredOrderKeys = new Set(discovered.orders.map((o) => o.key));
       for (const o of discovered.orders) {
         const existingOrder = this.stmts.findDeviceOrderByDeviceAndKey.get(deviceId, o.key) as
-          | { id: string }
-          | undefined;
+          { id: string } | undefined;
         if (existingOrder) {
           this.stmts.updateDeviceOrderDef.run(
             o.type,
@@ -333,8 +329,7 @@ export class DeviceManager {
       for (const row of existingOrderRows) {
         if (discoveredOrderKeys.has(row.key)) continue;
         const bound = this.stmts.countOrderBindingsForDeviceOrder.get(row.id) as
-          | { c: number }
-          | undefined;
+          { c: number } | undefined;
         if (bound && bound.c > 0) {
           this.logger.info(
             { deviceId, orderId: row.id, key: row.key },
@@ -370,8 +365,7 @@ export class DeviceManager {
    */
   markRemoved(integrationId: string, sourceDeviceId: string): void {
     const existing = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
-      | DeviceRow
-      | undefined;
+      DeviceRow | undefined;
     if (existing) {
       this.stmts.deleteDevice.run(existing.id);
       this.logger.warn(
@@ -433,8 +427,7 @@ export class DeviceManager {
     sourceTimestamp?: number,
   ): void {
     const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
-      | DeviceRow
-      | undefined;
+      DeviceRow | undefined;
     if (!device) return;
 
     // Issue #697 — one transaction per MESSAGE, not one per data point.
@@ -627,8 +620,7 @@ export class DeviceManager {
     status: "online" | "offline",
   ): void {
     const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
-      | DeviceRow
-      | undefined;
+      DeviceRow | undefined;
     if (!device) return;
 
     if (device.status !== status) {
@@ -699,12 +691,10 @@ export class DeviceManager {
     key: string,
   ): string | number | boolean | null {
     const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
-      | DeviceRow
-      | undefined;
+      DeviceRow | undefined;
     if (!device) return null;
     const row = this.stmts.findDeviceDataByDeviceAndKey.get(device.id, key) as
-      | DeviceDataRow
-      | undefined;
+      DeviceDataRow | undefined;
     if (!row || row.value === null) return null;
     let parsed: unknown;
     try {
@@ -736,12 +726,10 @@ export class DeviceManager {
     key: string,
   ): string | null {
     const device = this.stmts.findDeviceBySource.get(integrationId, sourceDeviceId) as
-      | DeviceRow
-      | undefined;
+      DeviceRow | undefined;
     if (!device) return null;
     const row = this.stmts.findDeviceDataByDeviceAndKey.get(device.id, key) as
-      | DeviceDataRow
-      | undefined;
+      DeviceDataRow | undefined;
     if (!row?.last_updated) return null;
     return toISOUtc(row.last_updated);
   }

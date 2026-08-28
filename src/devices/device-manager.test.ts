@@ -207,8 +207,7 @@ describe("DeviceManager", () => {
       expect(orders.map((o) => o.key).sort()).toContain("state");
       // Binding still references the same device_order id.
       const binding = db.prepare("SELECT * FROM order_bindings WHERE id = 'ob-1'").get() as
-        | { device_order_id: string }
-        | undefined;
+        { device_order_id: string } | undefined;
       expect(binding?.device_order_id).toBe(stateOrder!.id);
     });
 
@@ -234,8 +233,7 @@ describe("DeviceManager", () => {
       const data = manager.getDeviceData(device.id);
       expect(data.map((d) => d.key).sort()).toContain("state");
       const binding = db.prepare("SELECT * FROM data_bindings WHERE id = 'db-1'").get() as
-        | { device_data_id: string }
-        | undefined;
+        { device_data_id: string } | undefined;
       expect(binding?.device_data_id).toBe(stateData!.id);
     });
 

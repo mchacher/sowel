@@ -123,11 +123,7 @@ export interface BackfillReport {
   model?: PvModel | null;
   /** Set when nothing could be fitted, or nothing could be done at all. */
   reason?:
-    | "no-profile"
-    | "no-history"
-    | "no-coordinates"
-    | "influx-unavailable"
-    | "not-enough-history";
+    "no-profile" | "no-history" | "no-coordinates" | "influx-unavailable" | "not-enough-history";
 }
 
 export interface ForecastPoint {
@@ -604,8 +600,7 @@ export class PvForecaster {
         "SELECT since, normal, deficit, raised_at FROM pv_health_alert WHERE equipment_id = ?",
       )
       .get(equipment.id) as
-      | { since: string; normal: number; deficit: number; raised_at: string }
-      | undefined;
+      { since: string; normal: number; deficit: number; raised_at: string } | undefined;
 
     // An alert raised before the array changed is judging the wrong hardware.
     // Close it as monitoring being reset, never as a recovery.
@@ -1161,8 +1156,7 @@ export class PvForecaster {
             "SELECT gain_reset_at, fitted_peak_wc FROM pv_forecast_model WHERE equipment_id = ?",
           )
           .get(equipment.id) as
-          | { gain_reset_at: string | null; fitted_peak_wc: number }
-          | undefined;
+          { gain_reset_at: string | null; fitted_peak_wc: number } | undefined;
         const existingPeakWc = pending?.fitted_peak_wc;
         const fresh = pending?.gain_reset_at
           ? this.readSamplesSince(equipment, pending.gain_reset_at).length
