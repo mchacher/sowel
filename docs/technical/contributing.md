@@ -8,7 +8,7 @@ This guide covers everything a contributor needs to know to set up the developme
 
 ### Prerequisites
 
-- **Node.js 20+**
+- **Node.js 22+**
 - **npm** (comes with Node.js)
 - **Docker + docker-compose** (for InfluxDB)
 - **Git**

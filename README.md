@@ -38,7 +38,7 @@ See [docs/technical/deployment.md](docs/technical/deployment.md) for self-update
 
 ## Tech stack
 
-Node.js 20+ / TypeScript / Fastify / SQLite / InfluxDB 2.x · React 18 / Vite / Tailwind / Zustand · Docker / GHCR · pino.
+Node.js 22+ / TypeScript / Fastify / SQLite / InfluxDB 2.x · React 18 / Vite / Tailwind / Zustand · Docker / GHCR · pino.
 
 ## Documentation
 

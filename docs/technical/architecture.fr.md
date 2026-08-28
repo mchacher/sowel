@@ -10,7 +10,7 @@ Ce document décrit l'architecture technique de Sowel : la stack technique, la s
 
 | Technologie                  | Rôle                                                 |
 | ---------------------------- | ---------------------------------------------------- |
-| **Node.js 20+**              | Runtime                                              |
+| **Node.js 22+**              | Runtime                                              |
 | **TypeScript** (strict mode) | Langage                                              |
 | **Fastify**                  | Framework HTTP                                       |
 | **SQLite** (better-sqlite3)  | Base de données principale (API synchrone, mode WAL) |
@@ -448,9 +448,9 @@ Une skill Claude Code emballe ça dans `.claude/skills/sowel-release/SKILL.md`.
 
 Build multi-étages :
 
-1. **backend-build** : Node 20, `tsc` backend
-2. **ui-build** : Node 20, build Vite UI
-3. **runtime** : Debian Trixie (pour Python 3.13), Node 20 installé via NodeSource, Python 3.13 + venv pour les plugins qui en ont besoin (par ex. Panasonic CC), `better-sqlite3` recompilé pour la plateforme
+1. **backend-build** : Node 22, `tsc` backend
+2. **ui-build** : Node 22, build Vite UI
+3. **runtime** : Debian Trixie (pour Python 3.13), Node 22 installé via NodeSource, Python 3.13 + venv pour les plugins qui en ont besoin (par ex. Panasonic CC), `better-sqlite3` recompilé pour la plateforme
 
 L'image runtime fait environ 950 Mo non compressée (environ 210 Mo de contenu). L'exigence Python 3.13 vient du plugin Panasonic CC qui a besoin d'une syntaxe f-string indisponible en Python 3.11.
 

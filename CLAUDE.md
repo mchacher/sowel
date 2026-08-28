@@ -52,7 +52,7 @@ Guiding principle: **a Device is what's on the network. An Equipment is what's i
 
 ## Tech stack
 
-- **Backend**: Node.js 20+, TypeScript strict, Fastify, SQLite (better-sqlite3), InfluxDB 2.x, ws, mqtt.js, pino
+- **Backend**: Node.js 22+, TypeScript strict, Fastify, SQLite (better-sqlite3), InfluxDB 2.x, ws, mqtt.js, pino
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Zustand, Lucide React
 - **Infra**: Docker + docker-compose, GitHub Actions release to ghcr.io
 
