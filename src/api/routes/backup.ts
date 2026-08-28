@@ -1,4 +1,4 @@
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import type { FastifyInstance } from "fastify";
 import { localDateStr } from "../../shared/local-date.js";
 import type { Logger } from "../../core/logger.js";
@@ -48,7 +48,7 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupRouteDeps
       .header("Content-Type", "application/zip")
       .header("Content-Disposition", `attachment; filename="sowel-backup-${dateStr}.zip"`);
 
-    const archive = archiver("zip", { zlib: { level: 6 } });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
 
     // Build archive — append + finalize handled by BackupManager
     backupManager.buildArchive(archive).then(
