@@ -1,5 +1,5 @@
 import type { EquipmentWithDetails } from "../../types";
-import { TYPE_ICONS } from "./EquipmentCard";
+import { TYPE_ICONS } from "./equipment-type-meta";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { AwningIcon } from "../icons/AwningIcon";
 import {

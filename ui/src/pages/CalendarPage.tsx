@@ -36,7 +36,7 @@ export function CalendarPage() {
   // Sync selected profile with active profile
   useEffect(() => {
     if (activeProfileId && !selectedProfileId) {
-      setSelectedProfileId(activeProfileId); // eslint-disable-line react-hooks/set-state-in-effect -- sync state from store
+      setSelectedProfileId(activeProfileId);
     }
   }, [activeProfileId, selectedProfileId]);
 

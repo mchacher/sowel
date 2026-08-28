@@ -70,7 +70,6 @@ export function EnergyPage() {
   useEffect(() => {
     if (viewMode !== "by-usage") return;
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setByUsageLoading(true);
     getEnergyByUsage(period, date)
       .then((res) => {

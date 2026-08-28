@@ -165,7 +165,7 @@ export function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const [remaining, setRemaining] = useState(() => computeRemaining(expiresAt));
 
   useEffect(() => {
-    setRemaining(computeRemaining(expiresAt)); // eslint-disable-line react-hooks/set-state-in-effect -- sync initial remaining before starting interval
+    setRemaining(computeRemaining(expiresAt));
     const id = setInterval(() => setRemaining(computeRemaining(expiresAt)), 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
