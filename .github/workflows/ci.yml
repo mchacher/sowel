@@ -6,12 +6,22 @@ on:
   pull_request:
     branches: [main]
 
+# Supersede a PR's in-flight run when a fixup lands, so the run that matters
+# starts immediately instead of queueing behind one nobody is waiting for.
+# Pushes to main are never cancelled: a half-run on main tells you nothing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Least privilege: CI only reads the repo. No job here writes to the repo,
 # publishes packages, or posts statuses, so the default token needs no more.
 permissions:
   contents: read
 
 jobs:
+  # NOTE: the `name:` of this job and of `frontend` are the check names the
+  # `main-protection` ruleset requires. Renaming either one silently stops it
+  # from gating merges. Change the ruleset first if you ever need to.
   backend:
     name: Backend (lint, typecheck, test)
     runs-on: ubuntu-latest
@@ -21,15 +31,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # Explicit, and only the root lockfile: this job installs root deps
+          # and nothing else. Left implicit it still keyed on the root
+          # lockfile while the job also installed ui deps, so a ui-only
+          # lockfile change restored a cache missing those tarballs and never
+          # re-saved it.
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      # UI tests run from ui/ (component-test tier, issue #458), so ui deps are
-      # installed here and the UI suite runs after the backend one below.
-      - run: cd ui && npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
       - run: npm test
-      - run: cd ui && npm test
 
   frontend:
     name: Frontend (lint, typecheck, build)
@@ -43,6 +55,12 @@ jobs:
           cache-dependency-path: ui/package-lock.json
       - run: cd ui && npm ci
       - run: cd ui && npm run lint
+      # The UI suite (component-test tier, issue #458) runs from ui/ and used
+      # to sit in the backend job, which meant installing ui deps twice and
+      # putting ~30s on the critical path of the slowest job. It belongs where
+      # the ui deps already are. The job's check name is deliberately left
+      # unchanged; see the note above.
+      - run: cd ui && npm test
       - run: cd ui && npm run build
 
   specs:

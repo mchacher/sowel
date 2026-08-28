@@ -1,8 +1,16 @@
 name: gitleaks
 
 on:
+  # `push:` was bare, so every push to a PR branch fired a push run AND a
+  # pull_request run: two workflow runs reporting the same required `scan`
+  # check. Branch pushes are still scanned, through the pull_request event.
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
