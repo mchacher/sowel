@@ -28,11 +28,29 @@ function read(file: string): string {
   return readFileSync(resolve(process.cwd(), file), "utf8");
 }
 
-/** The body of the `shutdown` arrow function, up to the end of the file. */
+/**
+ * The body of the `shutdown` arrow function, bounded at the point the closure
+ * is handed to the shutdown controller.
+ *
+ * Bounding technique taken from @alpitux's own fix for #792 (#793), which was
+ * open before this guard was written.
+ *
+ * What it buys is an accurate diagnosis rather than extra detection. Anything
+ * textually after the closure is also after `db.close()`, so an unbounded
+ * slice still fails on a teardown call placed outside `shutdown()`, but it
+ * fails in the ordering assertion, reporting "stopped after db.close()", which
+ * describes a different fault. Unbounded, the completeness assertions count
+ * that misplaced call as satisfying the requirement. Bounded, they do not, and
+ * the failure names the real problem. It also stops unrelated teardown calls
+ * elsewhere in the file from being read as part of the sequence at all.
+ */
 function shutdownBody(src: string): string {
   const start = src.indexOf("const shutdown = async () =>");
   expect(start, "shutdown() is defined in index.ts").toBeGreaterThanOrEqual(0);
-  return src.slice(start);
+  const rest = src.slice(start);
+  const end = rest.indexOf("shutdownController.setGraceful(");
+  expect(end, "the shutdown closure is handed to the controller").toBeGreaterThan(0);
+  return rest.slice(0, end);
 }
 
 /** `const foo = new Bar(` pairs, i.e. every subsystem the composition root owns. */
