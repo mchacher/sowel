@@ -767,6 +767,11 @@ async function main() {
       logger.error({ err }, "Error stopping order confirmation tracker");
     }
     try {
+      equipmentStatusTracker.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping equipment status tracker");
+    }
+    try {
       batteryMonitor.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping battery monitor");
