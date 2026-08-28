@@ -130,7 +130,10 @@ describe("config — dotenv loading is silent", () => {
         cwd: process.cwd(),
         env: { ...process.env, SQLITE_PATH: join(tmpdir(), "sowel-dotenv-quiet-probe.db") },
         encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
+        // stderr piped, not ignored: the assertion only reads stdout, but if
+        // the child fails to resolve tsx or throws on import, execFileSync
+        // reports the child's stderr instead of a bare "Command failed".
+        stdio: ["ignore", "pipe", "pipe"],
       },
     );
 
