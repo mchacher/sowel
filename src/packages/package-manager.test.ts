@@ -582,8 +582,7 @@ describe("PackageManager — spec 136 personal plugin sources", () => {
     id: string,
   ): { source: string; pinned_sha256: string | null; version: string } | undefined {
     return db.prepare("SELECT source, pinned_sha256, version FROM plugins WHERE id = ?").get(id) as
-      | { source: string; pinned_sha256: string | null; version: string }
-      | undefined;
+      { source: string; pinned_sha256: string | null; version: string } | undefined;
   }
 
   async function addSourceAndInstall(): Promise<void> {

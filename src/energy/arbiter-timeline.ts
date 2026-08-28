@@ -17,12 +17,7 @@ import type { ArbiterDecision } from "../shared/types.js";
 // stays in the journal (the UI links a cell click to the journal).
 
 export type QuarterState =
-  | "granted"
-  | "granted-idle"
-  | "pending"
-  | "revoked"
-  | "unmanaged"
-  | "idle";
+  "granted" | "granted-idle" | "pending" | "revoked" | "unmanaged" | "idle";
 
 export interface TimelineLoad {
   equipmentId: string;
