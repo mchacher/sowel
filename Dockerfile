@@ -3,7 +3,7 @@
 # ============================================================
 
 # ── Stage 1: Build Backend ────────────────────────────────
-FROM node:22 AS backend-build
+FROM node:24 AS backend-build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -12,7 +12,7 @@ COPY src/ src/
 RUN npx tsc
 
 # ── Stage 2: Build UI ────────────────────────────────────
-FROM node:22-slim AS ui-build
+FROM node:24-slim AS ui-build
 WORKDIR /app/ui
 COPY ui/package.json ui/package-lock.json ./
 RUN npm ci
@@ -30,10 +30,10 @@ RUN npm run build
 FROM debian:trixie-slim
 WORKDIR /app
 
-# Install Node.js 22 + Python 3.13 + build tools + gosu (for entrypoint privilege drop)
+# Install Node.js 24 + Python 3.13 + build tools + gosu (for entrypoint privilege drop)
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates python3 python3-venv make g++ gosu \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
