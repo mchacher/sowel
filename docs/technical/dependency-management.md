@@ -150,20 +150,32 @@ Root cause: the module declares `engines: { node: ">=X" }` and ships no prebuild
 for the CI/runtime Node. `npm` installs anyway (engines is a warning by default),
 then the addon fails to load.
 
-The precedent: **better-sqlite3 13 requires Node >= 22.** Sowel runs **Node 20**
-everywhere (`Dockerfile`, `.github/workflows/*.yml`, `engines: >=20.0.0`) and
-depends on `better-sqlite3 ^11.x`. The day a better-sqlite3 major lands, Sowel
-hits this wall on production.
+The precedent, and how Sowel handled it: **better-sqlite3 13 requires Node >= 22**
+while Sowel ran **Node 20** everywhere and depended on `better-sqlite3 ^11.x`.
+The day a better-sqlite3 major landed, that wall was production's problem.
 
-**Do not react to it as a dependency bump.** Plan the Node move on its own terms:
+**Do not react to it as a dependency bump.** Plan the Node move on its own terms.
+The recipe below is what the Node 20 to 22 migration actually followed:
 
-- Node 20 is past its LTS end of life, so this is overdue hygiene regardless.
-- Bump `Dockerfile` (every `FROM node:` stage), all `node-version` in CI and
-  release workflows, and `engines` in `package.json` (root and any subpackage).
+- Node 20 reached end of life on 2026-04-30, so the move was overdue hygiene
+  regardless of any single dependency.
+- **Change one variable.** Bump the runtime alone and freeze every dependency,
+  `better-sqlite3` included. Riding a native-module major in on the same PR
+  means a failure has two possible causes instead of one.
+- Bump `Dockerfile` (every `FROM node:` stage **and** the NodeSource
+  `setup_XX.x` line in the runtime stage, which is easy to miss because it is
+  not a `FROM`), all `node-version` in CI and release workflows, and `engines`
+  in `package.json` (root and any subpackage).
 - Verify with a real `docker build` of each image on the new Node, and load the
   native module inside the built image (`node -e "require('better-sqlite3')..."`),
   which is the exact path that crashes on the wrong Node.
+- Then run a **shadow** instance against a copy of production data before
+  going anywhere near production.
 - Merging the PR does not deploy. Roll the new images out on your own window.
+
+Note the LTS calendar when picking a target: at the time of the 22 move, Node 22
+was already in maintenance with end of life on 2027-04-30, so it buys support
+rather than settling the question permanently.
 
 ---
 
