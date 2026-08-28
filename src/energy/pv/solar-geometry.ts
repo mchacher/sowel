@@ -6,7 +6,9 @@
  * output — it just makes the forecast quietly worse.
  */
 
-import SunCalc from "suncalc";
+import { getPosition } from "suncalc";
+
+const DEG_TO_RAD = Math.PI / 180;
 import type { SolarPlane } from "../../shared/types.js";
 
 /**
@@ -39,17 +41,20 @@ export interface SunPosition {
 /**
  * Sun position for an instant and a location.
  *
- * `suncalc` reports azimuth in radians from **south**, growing westward. The
- * whole of the rest of this file, and every azimuth a household types, uses the
- * compass convention where south is 180. Converting here, once, is what keeps
- * that confusion out of the model.
+ * `suncalc` 2 reports **degrees** and measures azimuth from **north**, so the
+ * only conversion left here is to radians. Version 1 reported radians from
+ * south and this function added PI; that addition is gone, not moved.
+ *
+ * The whole of the rest of this file, and every azimuth a household types, uses
+ * the compass convention where south is 180. Converting here, once, is what
+ * keeps that confusion out of the model.
  */
 export function solarPosition(when: Date, latitude: number, longitude: number): SunPosition {
-  const pos = SunCalc.getPosition(when, latitude, longitude);
-  let azimuthRad = pos.azimuth + Math.PI;
+  const pos = getPosition(when, latitude, longitude);
   const twoPi = 2 * Math.PI;
+  let azimuthRad = pos.azimuth * DEG_TO_RAD;
   azimuthRad = ((azimuthRad % twoPi) + twoPi) % twoPi;
-  return { elevationRad: pos.altitude, azimuthRad };
+  return { elevationRad: pos.altitude * DEG_TO_RAD, azimuthRad };
 }
 
 /**
