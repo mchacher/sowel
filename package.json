@@ -55,7 +55,7 @@
     "@eslint/js": "^10.0.1",
     "@types/adm-zip": "^0.5.8",
     "@types/bcrypt": "^6.0.0",
-    "@types/better-sqlite3": "^7.6.12",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/dockerode": "^4.0.1",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.3.0",
