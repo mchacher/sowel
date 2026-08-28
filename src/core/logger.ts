@@ -111,11 +111,21 @@ export function purgeLegacyLogFiles(logger: Logger, dir = "data/logs"): void {
  */
 export function createLogger(level: string, logBuffer?: LogRingBuffer): LoggerHandle {
   const isDev = process.env["NODE_ENV"] !== "production";
+  // A silent logger has nothing to pretty-print, so spawning pino-pretty for
+  // one is pure waste. It is also not harmless: `pino.transport()` starts a
+  // worker thread, and the suite builds a silent logger in 66 test files. On
+  // pino 9 that was slow; on pino 10 the workers stop being reaped and the
+  // suite hangs (mfa.test.ts alone sat at 0% CPU for 2005s). Deciding this on
+  // the level rather than on NODE_ENV keeps the dev experience identical and
+  // fixes anything that asks for silence, tests included.
 
   // Build stream entries for multistream
   const streams: pino.StreamEntry[] = [];
-  // Track transports (worker threads) that need closing
-  const transports: NodeJS.WritableStream[] = [];
+  // Track transports (worker threads) that need closing. Typed by what the
+  // close path below actually uses, not by NodeJS.WritableStream: pino 10
+  // returns a ThreadStream from `pino.transport()`, which has no `writable`
+  // property, and widening to the full interface was only ever incidental.
+  const transports: { end(): void }[] = [];
 
   // 1. Ring buffer stream — always captures at debug level
   if (logBuffer) {
@@ -135,7 +145,9 @@ export function createLogger(level: string, logBuffer?: LogRingBuffer): LoggerHa
   }
 
   // 2. Console output
-  if (isDev) {
+  if (level === "silent") {
+    // No console stream at all: nothing would be written through it.
+  } else if (isDev) {
     // Development: use pino-pretty via transport-like stream
     const transport = pino.transport({
       target: "pino-pretty",
