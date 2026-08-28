@@ -201,15 +201,30 @@ jobs:
             echo "is_release=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Compute image tags
+        id: tags
+        env:
+          REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          V: ${{ steps.version.outputs.version }}
+          IS_RELEASE: ${{ steps.version.outputs.is_release }}
+        run: |
+          tags="${REPO}:${V}-arm64"
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            tags="${tags}"$'\n'"${REPO}:latest-arm64"
+          fi
+          {
+            echo 'list<<EOF'
+            echo "$tags"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
       - name: Build and push (arm64)
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/arm64
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}-arm64
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-arm64
+          tags: ${{ steps.tags.outputs.list }}
           cache-from: type=gha,scope=arm64
           cache-to: type=gha,scope=arm64,mode=max
 
