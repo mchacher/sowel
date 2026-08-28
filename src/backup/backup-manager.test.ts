@@ -156,6 +156,14 @@ describe("BackupManager", () => {
       expect(payload.tables.settings).toContainEqual(
         expect.objectContaining({ key: "archive-probe", value: "kept" }),
       );
+
+      // Compression method 8 is deflate, 0 is stored. `zlib: { level: 6 }` is
+      // passed to the archive constructor, and an upgrade that quietly stopped
+      // forwarding that option would still produce a readable archive, just a
+      // much larger one. Assert the method so the option cannot go missing
+      // without a test noticing.
+      const entry = zip.getEntries().find((e) => e.entryName === "sowel-backup.json");
+      expect(entry?.header.method).toBe(8);
     });
 
     it("multiple exports create multiple files", async () => {
