@@ -182,4 +182,85 @@ describe("EquipmentStatusTracker", () => {
     expect(emitted).toHaveLength(0);
     tracker.destroy();
   });
+  // ── #792 — shutdown safety ────────────────────────────────
+  // The tracker outlived shutdown because `destroy()` was never called from
+  // the engine's shutdown sequence, so a timer could fire after `db.close()`
+  // and crash the process in recompute(). These lock the contract that fix
+  // relies on. A manager that throws stands in for the closed connection.
+  describe("destroy", () => {
+    function throwingManager(): EquipmentManager {
+      return {
+        getAllWithDetails: () => {
+          throw new Error("The database connection is not open");
+        },
+      } as unknown as EquipmentManager;
+    }
+
+    it("clears a pending debounced recompute", () => {
+      const snapshots = [[makeEquipment("eq-1", "online")]];
+      const { manager } = makeEquipmentManager(snapshots);
+      const tracker = new EquipmentStatusTracker(manager, bus, testLogger);
+      tracker.start();
+
+      // Arm the 200ms debounce the way live device traffic does.
+      bus.emit({
+        type: "equipment.updated",
+        equipmentId: "eq-1",
+        equipmentName: "Eq",
+        zoneId: "z",
+      });
+
+      // Swap in a manager that behaves like a closed database, then shut down.
+      (tracker as unknown as { equipmentManager: EquipmentManager }).equipmentManager =
+        throwingManager();
+      tracker.destroy();
+
+      // Before the fix the pending timer survived and this threw.
+      expect(() => vi.advanceTimersByTime(1000)).not.toThrow();
+    });
+
+    it("clears the wallclock tick", () => {
+      const { manager } = makeEquipmentManager([[makeEquipment("eq-1", "online")]]);
+      const tracker = new EquipmentStatusTracker(manager, bus, testLogger);
+      tracker.start();
+
+      (tracker as unknown as { equipmentManager: EquipmentManager }).equipmentManager =
+        throwingManager();
+      tracker.destroy();
+
+      expect(() => vi.advanceTimersByTime(5 * 60_000)).not.toThrow();
+    });
+
+    it("unsubscribes, so device traffic during shutdown cannot arm a new timer", () => {
+      // This is the half that made the bug reachable on any restart: shutdown
+      // is not instant, and while the tracker stayed subscribed every incoming
+      // device event scheduled a fresh recompute right up to `db.close()`.
+      const { manager } = makeEquipmentManager([[makeEquipment("eq-1", "online")]]);
+      const tracker = new EquipmentStatusTracker(manager, bus, testLogger);
+      tracker.start();
+      tracker.destroy();
+
+      (tracker as unknown as { equipmentManager: EquipmentManager }).equipmentManager =
+        throwingManager();
+      bus.emit({
+        type: "device.data.updated",
+        deviceId: "dev-1",
+        integrationId: "z2m",
+        data: {},
+      } as unknown as EngineEvent);
+
+      expect(() => vi.advanceTimersByTime(1000)).not.toThrow();
+    });
+
+    it("is idempotent", () => {
+      const { manager } = makeEquipmentManager([[makeEquipment("eq-1", "online")]]);
+      const tracker = new EquipmentStatusTracker(manager, bus, testLogger);
+      tracker.start();
+
+      expect(() => {
+        tracker.destroy();
+        tracker.destroy();
+      }).not.toThrow();
+    });
+  });
 });
