@@ -2,14 +2,28 @@ version: 2
 
 # Grouping strategy
 # -----------------
-# The minor/patch groups auto-collect ordinary library bumps into a single PR
-# per ecosystem. Linters, formatters and the TypeScript compiler are excluded
-# from those groups: a version bump to any of them can fail CI on UNCHANGED
-# code (a new lint rule, a reformat, a stricter type check), which would poison
-# the whole group and block every unrelated library update. They still get
-# updated, but as individual PRs so their toolchain upgrade can be reviewed on
-# its own (run the formatter/linter fixups, triage new rules) instead of slipped
-# into an unattended merge.
+# Two groups per npm ecosystem, on purpose.
+#
+# `*-minor-patch` collects ordinary library bumps. Linters, formatters and the
+# TypeScript compiler are kept OUT of it: a bump to any of them can fail CI on
+# UNCHANGED code (a new lint rule, a reformat, a stricter type check), and
+# inside the library group that failure would block every unrelated update.
+#
+# `*-toolchain` then collects those same tools into one PR of their own, minor
+# and patch only. Excluding them from the library group was right; letting them
+# arrive one PR per package was not. Enabling Dependabot produced six separate
+# eslint-ecosystem PRs that could not even install individually, because the
+# packages peer-lock to each other (#797). One toolchain PR per week fixes the
+# noise without slowing anything down.
+#
+# Majors stay individual, for both kinds. A blocked major inside a group blocks
+# the group: typescript 7 has been unlandable for months (typescript-eslint
+# peers on <6.1.0, and 7.0 ships no programmatic compiler API), and it must not
+# be able to hold the rest of the toolchain hostage.
+#
+# The schedule stays weekly. The current backlog is the one-off catch-up from
+# turning Dependabot on, not the steady-state rate, and stretching the interval
+# would slow security patches to fix a problem grouping solves better.
 
 updates:
   # Backend npm dependencies
@@ -33,6 +47,18 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      backend-toolchain:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "typescript"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Frontend npm dependencies
   - package-ecosystem: "npm"
@@ -45,6 +71,18 @@ updates:
     groups:
       ui-minor-patch:
         exclude-patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "typescript"
+        update-types:
+          - "minor"
+          - "patch"
+      ui-toolchain:
+        patterns:
           - "eslint"
           - "eslint-*"
           - "@eslint/*"
