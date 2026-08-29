@@ -26,6 +26,16 @@ import { createShutdownController } from "./core/shutdown-controller.js";
 
 /** Half the shutdown budget, so the steps after stopAll() always get a share. */
 const INTEGRATION_STOP_TIMEOUT_MS = 4000;
+/**
+ * Issue #702 — how long recipe instances wait for the integrations they drive
+ * to report "connected" before starting anyway. Recipes used to go live while
+ * `startAll()` was still connecting, so their first orders were dispatched at
+ * integrations that could not carry them and were dropped. The wait is bounded
+ * so one unreachable cloud integration cannot hold every automation: whatever
+ * still slips through is caught by the order confirmation tracker, which
+ * replays it when the integration connects.
+ */
+const RECIPE_START_READINESS_TIMEOUT_MS = 30_000;
 import { CapacityArbiter } from "./energy/capacity-arbiter.js";
 import { ArbiterJournalStore } from "./energy/arbiter-journal-store.js";
 import { ArbiterSurplusStore } from "./energy/arbiter-surplus-store.js";
@@ -626,11 +636,9 @@ async function main() {
   // 17. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
 
-  // 17. Initialize recipe manager (restore persisted instances — after aggregation is ready)
-  // Spec 124 — skip in shadow mode (no recipe should re-arm on a
-  // shadow). The runtime gate on startInstance is the second line
-  // of defence for runtime UI actions.
-  await runUnlessShadow("recipeManager.init()", () => recipeManager.init());
+  // 17. Recipe instances are NOT restored here. They start at the very end of
+  // boot, once the integrations they drive can actually carry an order — see
+  // "21. Restore recipe instances" below (issue #702).
 
   // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
   poolRuntimeTracker.start();
@@ -723,9 +731,22 @@ async function main() {
     logger.error({ err }, "Failed to start integrations");
   });
 
+  // 20b. Watch every plugin's connection status so the engine emits
+  // system.integration.{connected,disconnected} itself (issue #702). The event
+  // type existed and plugins were allowed to emit it, but nothing in core did,
+  // so nothing could depend on it. The order confirmation tracker now does.
+  integrationRegistry.startStatusWatch(eventBus);
+
   // Graceful shutdown — each step is isolated so one failure doesn't block the rest
+  let shuttingDown = false;
   const shutdown = async () => {
+    shuttingDown = true;
     logger.info("Shutting down...");
+    try {
+      integrationRegistry.stopStatusWatch();
+    } catch (err) {
+      logger.error({ err }, "Error stopping integration status watch");
+    }
     try {
       capacityArbiter.stop();
     } catch (err) {
@@ -897,6 +918,35 @@ async function main() {
   // controller owns the exit, so `shutdown` no longer calls process.exit
   // itself — that is what lets it be awaited to completion.
   shutdownController.setGraceful(shutdown, logger);
+
+  // 21. Restore recipe instances (spec 124 — never on a shadow).
+  //
+  // Last step of boot, and deliberately after the shutdown handler is wired:
+  // an instance evaluates as soon as it starts and dispatches orders straight
+  // away, so starting it before its integration is reachable guaranteed a lost
+  // command on every single restart (issue #702).
+  //
+  // The server has been listening since step 15 and the recipe packages were
+  // loaded at step 14b, so recipes stay listed and editable throughout. What
+  // does wait is running-instance state: a recipe action posted during this
+  // window is rejected with "Instance not running" until init() has run.
+  await runUnlessShadow("recipeManager.init()", async () => {
+    const { pending } = await integrationRegistry.waitForConnections(
+      RECIPE_START_READINESS_TIMEOUT_MS,
+    );
+    if (pending.length > 0) {
+      logger.warn(
+        { integrations: pending, timeoutMs: RECIPE_START_READINESS_TIMEOUT_MS },
+        "Starting recipes before every integration is connected — orders to these will be held and replayed",
+      );
+    }
+    // The wait is long enough that a shutdown can land inside it.
+    if (shuttingDown) {
+      logger.info("Shutdown started during the readiness wait — not restoring recipe instances");
+      return;
+    }
+    recipeManager.init();
+  });
 }
 
 main().catch((err) => {

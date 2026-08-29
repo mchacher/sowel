@@ -98,6 +98,8 @@ describe("EquipmentManager", () => {
   let events: EngineEvent[];
   let mockPublished: { topic: string; payload: string }[];
   let deviceManager: DeviceManager;
+  // Connection status the mock integration reports (test hook for #702).
+  let pluginStatus: "connected" | "disconnected";
   // Order keys whose dispatch should throw (test hook for failure paths).
   let failOrderKeys: Set<string>;
   // Order keys whose dispatch throws exactly once, then recovers (transient
@@ -109,12 +111,13 @@ describe("EquipmentManager", () => {
     eventBus = new EventBus(logger);
     zoneManager = new ZoneManager(db, eventBus, logger);
     mockPublished = [];
+    pluginStatus = "connected";
     failOrderKeys = new Set();
     failOnceOrderKeys = new Set();
     deviceManager = new DeviceManager(db, eventBus, logger);
     const mockPlugin = {
       id: "zigbee2mqtt",
-      getStatus: () => "connected" as const,
+      getStatus: () => pluginStatus,
       executeOrder: async (_device: any, orderKey: string, value: unknown) => {
         if (failOnceOrderKeys.delete(orderKey)) {
           throw new Error(`transient dispatch failure for ${orderKey}`);
@@ -1701,6 +1704,62 @@ describe("EquipmentManager", () => {
       expect(mockPublished[0].topic).toBe("z2m/SolarRelay/set");
 
       await expect(manager.executeOrder(eq.id, "state", true)).rejects.toThrow(/not found/i);
+    });
+  });
+
+  // ============================================================
+  // Issue #702 — an order that cannot reach the wire must be reported
+  // ============================================================
+
+  describe("order at a disconnected integration (#702)", () => {
+    function seedSwitch() {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const eq = manager.create({ name: "Pompe Piscine", type: "switch", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "PompeDev",
+        orderKeys: [{ key: "state", type: "boolean", category: "power" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+      return eq;
+    }
+
+    it("emits equipment.order.failed instead of dropping the order silently", async () => {
+      const eq = seedSwitch();
+      pluginStatus = "disconnected";
+      events.length = 0;
+
+      await expect(manager.executeOrder(eq.id, "state", false)).rejects.toThrow(/not connected/);
+
+      // The throw used to skip emitOrderOutcome entirely, so the order was
+      // neither executed nor failed and nothing downstream could see it.
+      const failed = events.filter((e) => e.type === "equipment.order.failed");
+      expect(failed).toHaveLength(1);
+      expect(failed[0]).toMatchObject({
+        equipmentId: eq.id,
+        orderAlias: "state",
+        value: false,
+      });
+      // Nothing reached the wire.
+      expect(mockPublished).toHaveLength(0);
+    });
+
+    it("still throws, so recipes and API callers keep today's contract", async () => {
+      const eq = seedSwitch();
+      pluginStatus = "disconnected";
+
+      await expect(manager.executeOrder(eq.id, "state", true)).rejects.toThrow(
+        "Integration zigbee2mqtt not connected",
+      );
+    });
+
+    it("emits order.executed as usual once the integration is connected", async () => {
+      const eq = seedSwitch();
+      events.length = 0;
+
+      await manager.executeOrder(eq.id, "state", true);
+
+      expect(events.filter((e) => e.type === "equipment.order.failed")).toHaveLength(0);
+      expect(events.filter((e) => e.type === "equipment.order.executed")).toHaveLength(1);
     });
   });
 });

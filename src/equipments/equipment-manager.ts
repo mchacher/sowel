@@ -880,11 +880,32 @@ export class EquipmentManager {
     // Dispatch to every bound device order via its integration plugin.
     let successes = 0;
     let lastError: string | undefined;
-    for (const binding of bindings) {
-      const outcome = await this.dispatchToBinding(binding, resolvedValue, equipment, alias);
-      if (!outcome) continue; // device missing — binding skipped
-      if (outcome.error !== undefined) lastError = outcome.error;
-      if (outcome.dispatched) successes++;
+    try {
+      for (const binding of bindings) {
+        const outcome = await this.dispatchToBinding(binding, resolvedValue, equipment, alias);
+        if (!outcome) continue; // device missing — binding skipped
+        if (outcome.error !== undefined) lastError = outcome.error;
+        if (outcome.dispatched) successes++;
+      }
+    } catch (err) {
+      // Issue #702 — a missing or disconnected integration aborts the order
+      // from inside dispatchToBinding. Until now that throw skipped
+      // emitOrderOutcome entirely, so the order was neither `executed` nor
+      // `failed`: the order confirmation tracker (spec 141) never saw it, and
+      // the command was dropped with nothing but a log line. Emit the outcome
+      // first so the tracker can hold the order and replay it when the
+      // integration comes back, then rethrow — callers (recipes, modes, zone
+      // bulk, API) keep the exact contract they have today.
+      this.emitOrderOutcome({
+        equipment,
+        alias,
+        resolvedValue,
+        successes,
+        targets: bindings.length,
+        lastError: err instanceof Error ? err.message : String(err),
+        source,
+      });
+      throw err;
     }
 
     this.emitOrderOutcome({
