@@ -2190,7 +2190,10 @@ describe("resolved load roster (spec 165)", () => {
     expect(r?.state).toBe("granted");
     expect(r?.watts).toBe(600);
     expect(r?.sinceIso).toBeTruthy();
-    expect(r?.needW).toBeNull(); // a grant has nothing left to wait for
+    // #807 - the need is now filled on a grant too (600 + 100 margin); what a
+    // grant has nothing left to wait for is the SHORTFALL.
+    expect(r?.needW).toBe(700);
+    expect(r?.shortfallW).toBeNull();
   });
 
   it("resolves a granted load measured idle as granted-idle (spec 164 parity)", () => {
@@ -2800,5 +2803,189 @@ describe("claimant-declared need (spec 166)", () => {
       h.feedLoadPower("heater", 0);
     }
     expect(drawKinds(h)).toEqual(["draw-stopped"]);
+  });
+});
+
+// ============================================================
+// #807 — the need is a property of the load (every row that has watts), and
+// the gap is what a waiting claim is still short of.
+// ============================================================
+
+describe("roster need and shortfall (#807)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const row = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter.getPublicState().loads.find((l) => l.equipmentId === id);
+
+  it("fills the need of a granted load from the watts the roster shows", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 140);
+    const r = row(h, "pump");
+    expect(r?.state).toBe("granted");
+    // The invariant a reader can check against the two columns beside it:
+    // need = watts + margin - tolerated.
+    expect(r?.needW).toBe(700); // 600 + 100 - 0
+    expect(r?.shortfallW).toBeNull(); // nothing left to wait for
+  });
+
+  it("fills the need of an at-rest load from its rating", () => {
+    const h = makeHarness();
+    const r = row(h, "pump");
+    expect(r?.state).toBe("idle");
+    expect(r?.needW).toBe(700);
+    expect(r?.shortfallW).toBeNull();
+  });
+
+  it("subtracts the tolerated import, and does not floor a negative need", () => {
+    // A load willing to buy more grid than it draws starts with no surplus at
+    // all. The grant pass does not floor that figure (review #6 on spec 140),
+    // and neither does the roster: presentation decides how to render it.
+    const h = makeHarness({
+      profiles: {
+        pac: {
+          class: "comfort",
+          nominalPowerW: 691,
+          minOnS: 0,
+          minOffS: 0,
+          toleratedImportW: 1000,
+        },
+      },
+    });
+    const r = row(h, "pac");
+    expect(r?.watts).toBe(691);
+    expect(r?.toleratedImportW).toBe(1000);
+    expect(r?.needW).toBe(-209); // 691 + 100 - 1000
+  });
+
+  it("leaves a suspended row with no need, like the figures beside it", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(200, 30);
+    h.order("pump", false, { kind: "manual", instanceId: undefined });
+    const r = row(h, "pump");
+    expect(r?.state).toBe("suspended");
+    expect(r?.watts).toBeNull();
+    expect(r?.needW).toBeNull();
+    expect(r?.shortfallW).toBeNull();
+  });
+
+  it("reports what a waiting claim is short of, against the live headroom", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(-1000, 30); // exporting 1 kW, not enough for a 2300 W need
+    const r = row(h, "heater");
+    expect(r?.state).toBe("pending");
+    expect(r?.needW).toBe(2300); // 2200 + 100 - 0
+    expect(r?.shortfallW).toBe(1300); // 2300 - 1000
+  });
+
+  it("reports no shortfall while a covered claim serves its engage hold", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    // Surplus covers the need, but engageHoldS (120 s) has not elapsed: the
+    // claim is still pending and nothing is missing. The UI reads this as
+    // "confirming", not as a zero-watt gap.
+    h.run(-5000, 30);
+    const r = row(h, "heater");
+    expect(r?.state).toBe("pending");
+    expect(r?.shortfallW).toBe(0);
+  });
+
+  it("measures a claimant's shortfall against what the claims ahead of it will take", () => {
+    // pac is served first and will spend 2000 W of the 2200 W headroom, so
+    // pump is 500 W short — not covered, which is what dividing the global
+    // headroom per row would have said.
+    const h = makeHarness({ priority: ["pac", "pump"] });
+    h.claim("i1", { equipmentId: "pac" });
+    h.claim("i2", { equipmentId: "pump" });
+    h.run(-2200, 30); // both still pending: engageHoldS is 120 s
+    expect(row(h, "pac")?.state).toBe("pending");
+    expect(row(h, "pac")?.shortfallW).toBe(0); // 2100 needed, 2200 available
+    expect(row(h, "pump")?.state).toBe("pending");
+    expect(row(h, "pump")?.shortfallW).toBe(500); // 700 - (2200 - 2000)
+  });
+
+  it("counts the claim that has been holding longest as the one about to be served", () => {
+    // The pass grants whichever covered claim matures first, not the highest
+    // priority: pump has been holding since before pac claimed anything, so it
+    // is 20 s from starting. Reserving for pac instead painted an amber gap on
+    // a load the engine was seconds from granting, and the roster's reason line
+    // then contradicted the engine.
+    const h = makeHarness({ priority: ["pac", "pump"] });
+    h.claim("i2", { equipmentId: "pump" });
+    h.run(-2200, 60);
+    h.claim("i1", { equipmentId: "pac" });
+    h.run(-2200, 50);
+    expect(row(h, "pump")?.state).toBe("pending");
+    expect(row(h, "pump")?.shortfallW).toBe(0); // holding, nothing missing
+    expect(row(h, "pac")?.shortfallW).toBe(500); // 2100 - (2200 - 600)
+  });
+
+  it("does not reserve headroom for a claim the pass would skip on cooldown", () => {
+    // pac cannot be granted while its min-off cooldown runs, so `evaluate`
+    // skips it without spending anything and the claim behind it still sees
+    // the whole surplus. heater's need (2300 W) is NOT covered by the 2200 W
+    // on offer, so its engage hold never starts and the two claims fall back
+    // to priority order — pac first, which is the only arrangement where this
+    // skip decides anything.
+    const h = makeHarness({
+      priority: ["pac", "heater"],
+      // minOnS 0 so the revoke is not shielded; minOffS 600 is the cooldown.
+      profiles: { pac: { class: "comfort", nominalPowerW: 2000, minOnS: 0, minOffS: 600 } },
+    });
+    h.claim("i1", { equipmentId: "pac" });
+    h.run(-3000, 150); // pac granted
+    expect(row(h, "pac")?.state).toBe("granted");
+    h.feedMeter(3000); // deep import: pac is revoked, starting its min-off
+    h.run(3000, 620); // past releaseHoldS, into the cooldown
+    expect(row(h, "pac")?.state).toBe("pending");
+    h.claim("i2", { equipmentId: "heater", watts: 2200 });
+    h.run(-2200, 30);
+    expect(row(h, "pac")?.reasonWaiting).toBe("min-off-cooldown");
+    // 2300 - 2200. Were pac allowed to reserve its 2000 W while cooling down,
+    // this would read 2100 W: a load told to wait for a surplus nothing is
+    // competing for.
+    expect(row(h, "heater")?.shortfallW).toBe(100);
+  });
+
+  it("does not reserve headroom for a suspended claim either", () => {
+    // Same mirror, other skip: a manual override suspends pump, whose pending
+    // claim lingers behind it. `evaluate` skips it without spending, so heater
+    // still sees the whole surplus.
+    const h = makeHarness({ priority: ["pump", "heater"] });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(200, 30);
+    h.order("pump", false, { kind: "manual", instanceId: undefined });
+    h.claim("i2", { equipmentId: "heater", watts: 2200 });
+    h.run(-2200, 30);
+    expect(row(h, "pump")?.state).toBe("suspended");
+    expect(row(h, "heater")?.shortfallW).toBe(100); // 2300 - 2200, pump reserved nothing
+  });
+
+  it("derives the need from a claim's own tolerance, not the profile's (#550)", () => {
+    // A claim may override the tolerance and the arbiter gates on ITS figure;
+    // taking the profile's would misstate both the Tolerates and Need columns.
+    const h = makeHarness({
+      profiles: { pump: { class: "deferrable", nominalPowerW: 600, minOnS: 0, minOffS: 0 } },
+    });
+    h.claim("i1", { equipmentId: "pump", watts: 600, toleratedImportW: 300 });
+    h.run(-1000, 140);
+    const r = row(h, "pump");
+    expect(r?.state).toBe("granted");
+    expect(r?.toleratedImportW).toBe(300);
+    expect(r?.needW).toBe(400); // 600 + 100 - 300, the figure the pass gated on
+  });
+
+  it("publishes the engage margin so the roster can state its arithmetic", () => {
+    const h = makeHarness({ settings: { "energy.arbiter.engageMarginW": "250" } });
+    expect(h.arbiter.getPublicState().engageMarginW).toBe(250);
+    expect(row(h, "pump")?.needW).toBe(850); // 600 + 250 - 0
   });
 });

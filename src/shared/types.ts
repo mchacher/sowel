@@ -917,8 +917,22 @@ export interface ArbiterLoadInfo {
   /** Granted: the reserved watts. Pending / at rest: what it draws when it
    *  runs (live when running unmanaged, else learned, else nominal). */
   watts: number | null;
-  /** Pending only: `watts + engageMarginW - toleratedImportW`. */
+  /** #807 — `watts + engageMarginW - toleratedImportW`, on every row that has
+   *  watts (suspended has neither), so the invariant
+   *  `needW = watts + margin - toleratedImportW` holds across the roster and a
+   *  reader can check it against the two columns beside it. The basis is the
+   *  row's own `watts`: the reserved/measured draw of a grant, the claim's
+   *  figure while waiting, the rating at rest — so a granted load measured
+   *  near zero reads a near-zero need, describing the row rather than a
+   *  hypothetical restart.
+   *  Can be negative when the tolerance exceeds the draw: such a load starts
+   *  with no surplus at all, and the grant pass does not floor it either. */
   needW: number | null;
+  /** #807 — pending only: the surplus still missing before this claim can be
+   *  granted, `max(0, needW - headroom - own draw)`, computed by walking the
+   *  pending claims in the order the grant pass serves them. Null on every
+   *  other state, where there is no start to wait for. */
+  shortfallW: number | null;
   /** Grid the load accepts to buy, when it has a claim or a profile. */
   toleratedImportW: number | null;
   /** Granted: when the grant started. */
@@ -949,6 +963,9 @@ export interface ArbiterPublicState {
    * the same way, instead of the UI deciding it for one of the two.
    */
   dormant: boolean;
+  /** #807 - the configured engage margin, so the roster can state the
+   *  arithmetic behind `needW` instead of hiding it in a tooltip. */
+  engageMarginW: number;
   /** @deprecated Spec 165 — superseded by `loads`, kept one minor version for
    *  external readers. Removed in the follow-up spec. */
   grants: ArbiterGrantInfo[];

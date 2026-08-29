@@ -20,6 +20,7 @@ function load(over: Partial<ArbiterLoadInfo> & { equipmentId: string }): Arbiter
     state: "idle",
     watts: null,
     needW: null,
+    shortfallW: null,
     toleratedImportW: null,
     ...over,
   };
@@ -32,6 +33,7 @@ function fullState(over: Partial<ArbiterPublicState> = {}): ArbiterPublicState {
     availableSurplusW: -1091,
     productionDetected: true,
     loads: [],
+    engageMarginW: 100,
     dormant: false,
     grants: [],
     pending: [],
@@ -71,7 +73,8 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("Pompe Piscine")).toBeTruthy();
+    // Once in its row, once in the context panel naming what switches next.
+    expect(screen.getAllByText("Pompe Piscine")).toHaveLength(2);
     expect(screen.getByText("Waiting")).toBeTruthy();
     expect(screen.getByText("400 W")).toBeTruthy(); // need
     expect(screen.getByText("600 W")).toBeTruthy(); // load
@@ -102,7 +105,9 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
 
     expect(screen.getByText("PAC")).toBeTruthy();
     expect(screen.getByText("At rest")).toBeTruthy();
-    expect(screen.getByText("1500 W")).toBeTruthy();
+    // #807 - thousands are separated by a thin space in the DOM; testing-library
+    // normalizes it back to a plain one, which is what the matcher sees.
+    expect(screen.getByText("1 500 W")).toBeTruthy();
   });
 
   it("shows a granted load consuming nothing as 'Granted (not consuming)' (spec 164/165)", () => {
@@ -121,7 +126,11 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
 
     // The gap issue #732 left open: the ribbon knew, the roster did not.
     expect(screen.getByText("Granted (not consuming)")).toBeTruthy();
-    expect(screen.queryByText("Granted")).toBeNull();
+    // #807 - the phone pill says just "Granted" (the full label is 150 px and
+    // breaks the row); the dimmed dot carries the distinction there. Above
+    // 640 px only the full label shows.
+    expect(screen.getByText("Granted").className).toContain("sm:hidden");
+    expect(screen.getByText("Granted (not consuming)").className).toContain("hidden sm:inline");
   });
 
   it("renders a suspended load with no figures", () => {
@@ -162,7 +171,10 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
 
     expect(screen.getByText("At rest")).toBeTruthy();
     expect(screen.queryByText("Waiting")).toBeNull();
-    expect(screen.queryByText("400 W")).toBeNull(); // the need makes no sense at night
+    // #807 - the need is what it takes to start the load, so it survives the
+    // night; what the night removes is the waiting, and the gap says so.
+    expect(screen.getByText("400 W")).toBeTruthy();
+    expect(screen.getByText("not requested")).toBeTruthy();
   });
 
   it("renders granted, waiting and at-rest loads together, in the order given", () => {
@@ -198,7 +210,8 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     const names = screen
       .getAllByRole("row")
       .slice(1) // drop the header row
-      .map((row) => row.querySelector("td")?.textContent);
+      // #807 - the cell now opens with the priority rank; drop it.
+      .map((row) => row.querySelector("td")?.textContent?.replace(/^[0-9]+/, ""));
     expect(names).toEqual(["PAC", "Chauffe-eau", "Pompe", "PAC Piscine"]);
   });
 
@@ -210,5 +223,295 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     render(<ArbitrationSurface />);
 
     expect(screen.getByText("Importing 1.1 kW, no load can start yet.")).toBeTruthy();
+  });
+});
+
+describe("ArbitrationSurface need and gap columns (#807)", () => {
+  beforeEach(() => {
+    useArbiter.setState({ state: null, loading: false });
+  });
+
+  it("shows the need on every row that has watts, not only on a waiting one", () => {
+    seed({
+      loads: [
+        load({
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          state: "granted",
+          watts: 600,
+          needW: 300,
+        }),
+        load({ equipmentId: "pac", equipmentName: "PAC", watts: 691, needW: 791 }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("300 W")).toBeTruthy(); // granted
+    expect(screen.getByText("791 W")).toBeTruthy(); // at rest
+  });
+
+  it("renders a negative need as 0 W, never as a negative figure", () => {
+    // A load tolerating more grid import than it draws starts with no surplus
+    // at all. The engine keeps the figure truthful; the column rounds it up.
+    seed({
+      loads: [
+        load({
+          equipmentId: "pac",
+          equipmentName: "PAC",
+          watts: 691,
+          needW: -209,
+          toleratedImportW: 1000,
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("0 W")).toBeTruthy();
+    expect(screen.queryByText("-209 W")).toBeNull();
+  });
+
+  it("renders a zero tolerance as 0 W, so the row arithmetic stays checkable", () => {
+    seed({
+      loads: [
+        load({
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          watts: 600,
+          needW: 700,
+          toleratedImportW: 0,
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    // 600 + 100 margin - 0 = 700: a dash here would make that unverifiable.
+    expect(screen.getByText("0 W")).toBeTruthy();
+    expect(screen.getByText("700 W")).toBeTruthy();
+  });
+
+  it("separates thousands with a thin space", () => {
+    seed({
+      loads: [
+        load({ equipmentId: "pacp", equipmentName: "PAC Piscine", watts: 1800, needW: 1850 }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("1 850 W")).toBeTruthy();
+    expect(screen.queryByText("1850 W")).toBeNull();
+  });
+
+  it("gives every state a word in the gap column rather than a dash", () => {
+    seed({
+      loads: [
+        load({
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          state: "granted",
+          watts: 600,
+          needW: 700,
+        }),
+        load({
+          equipmentId: "heater",
+          equipmentName: "Chauffe-eau",
+          state: "granted-idle",
+          watts: 624,
+          needW: 574,
+        }),
+        load({ equipmentId: "pac", equipmentName: "PAC", watts: 691, needW: 0 }),
+        load({
+          equipmentId: "boiler",
+          equipmentName: "Ballon",
+          state: "unmanaged",
+          watts: 800,
+          needW: 900,
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getAllByText("covered")).toHaveLength(2); // granted + granted-idle
+    expect(screen.getByText("not requested")).toBeTruthy(); // at rest
+    expect(screen.getByText("outside arbitration")).toBeTruthy(); // unmanaged
+  });
+
+  it("shows the missing watts of a waiting claim, and why it waits", () => {
+    seed({
+      loads: [
+        load({
+          equipmentId: "pacp",
+          equipmentName: "PAC Piscine",
+          state: "pending",
+          watts: 1800,
+          needW: 1850,
+          shortfallW: 650,
+          toleratedImportW: 50,
+          reasonWaiting: "insufficient-surplus:1200",
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("650 W")).toBeTruthy();
+    expect(screen.getByText("waiting for surplus")).toBeTruthy();
+  });
+
+  it("names the blocking reason when the surplus is there but the claim is not granted", () => {
+    seed({
+      loads: [
+        load({
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          state: "pending",
+          watts: 600,
+          needW: 700,
+          shortfallW: 0,
+          reasonWaiting: "min-off-cooldown",
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("cooling down")).toBeTruthy();
+    // Nothing is missing, so no gap figure and no "waiting for surplus" line.
+    expect(screen.queryByText("0 W")).toBeNull();
+    expect(screen.queryByText("waiting for surplus")).toBeNull();
+  });
+
+  it("falls back to the confirming window for an unrecognised waiting reason", () => {
+    seed({
+      loads: [
+        load({
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          state: "pending",
+          watts: 600,
+          needW: 700,
+          shortfallW: 0,
+          reasonWaiting: "insufficient-surplus:5000",
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("confirming")).toBeTruthy();
+  });
+
+  it("names the load about to switch, and what it is short by", () => {
+    seed({
+      availableSurplusW: 1200,
+      loads: [
+        load({
+          equipmentId: "pump",
+          equipmentName: "Pompe",
+          state: "granted",
+          watts: 600,
+          needW: 400,
+        }),
+        load({
+          equipmentId: "pacp",
+          equipmentName: "PAC Piscine",
+          state: "pending",
+          watts: 1800,
+          needW: 1850,
+          shortfallW: 650,
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Next to switch")).toBeTruthy();
+    // Once in its roster row, once in the panel.
+    expect(screen.getAllByText("PAC Piscine")).toHaveLength(2);
+    expect(screen.getByText("Starts at 1 850 W, short by 650 W")).toBeTruthy();
+  });
+
+  it("states the arithmetic with the configured margin", () => {
+    seed({
+      engageMarginW: 250,
+      loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 850 })],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Need = load + 250 W margin - tolerance")).toBeTruthy();
+  });
+
+  it("drops the columns by tier so a phone never scrolls sideways", () => {
+    seed({
+      loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 700 })],
+    });
+    render(<ArbitrationSurface />);
+
+    const header = (label: string) =>
+      screen.getAllByRole("columnheader").find((th) => th.textContent === label);
+    // Below 640 px: equipment, state and gap only — the three that answer
+    // "who has the surplus, and what blocks the next one".
+    expect(header("Equipment")?.className).not.toContain("hidden");
+    expect(header("State")?.className).not.toContain("hidden");
+    expect(header("Gap")?.className).not.toContain("hidden");
+    expect(header("Need")?.className).toContain("hidden sm:table-cell");
+    expect(header("Load")?.className).toContain("hidden lg:table-cell");
+    expect(header("Tolerates")?.className).toContain("hidden lg:table-cell");
+  });
+
+  it("names a claim whose surplus is already covered as the one about to switch", () => {
+    // The seconds before something happens are exactly when the panel should
+    // speak; excluding a covered claim left it blank right then.
+    seed({
+      availableSurplusW: 2500,
+      loads: [
+        load({
+          equipmentId: "pacp",
+          equipmentName: "PAC Piscine",
+          state: "pending",
+          watts: 1800,
+          needW: 1850,
+          shortfallW: 0,
+          reasonWaiting: "insufficient-surplus:2500",
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Next to switch")).toBeTruthy();
+    expect(screen.getByText("Its 1 850 W need is covered, start being confirmed")).toBeTruthy();
+  });
+
+  it("keeps the context panel off the phone tier when it would be empty", () => {
+    // Below 640 px the surplus tile is hidden, so with nothing pending the
+    // panel would render as a rule over an empty strip.
+    seed({
+      availableSurplusW: 1200,
+      loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 700 })],
+    });
+    const { container } = render(<ArbitrationSurface />);
+
+    expect(container.querySelector("aside")?.className).toContain("hidden sm:flex");
+  });
+
+  it("lets the gap words wrap rather than push the card sideways", () => {
+    // "outside arbitration" under `whitespace-nowrap` overflows a 375 px card,
+    // which is the one thing the phone tier promises not to do.
+    seed({
+      loads: [
+        load({ equipmentId: "boiler", equipmentName: "Ballon", state: "unmanaged", watts: 800 }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    const cell = screen.getByText("outside arbitration").closest("td");
+    expect(cell?.className).not.toContain("whitespace-nowrap");
+  });
+
+  it("hides the context panel at night, where the dormant line already explains", () => {
+    seed({
+      dormant: true,
+      availableSurplusW: 0,
+      loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 700 })],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.queryByText("Available surplus")).toBeNull();
+    expect(screen.getAllByText("not requested")).toHaveLength(1);
   });
 });

@@ -432,7 +432,14 @@ export interface ArbiterLoadInfo {
   equipmentName: string;
   state: ArbiterLoadState;
   watts: number | null;
+  /** #807 — `watts + margin - tolerated`, on every row that has watts, from
+   *  the row's own basis: the reserved/measured draw of a grant, the claim's
+   *  figure while waiting, the rating at rest. Negative when the tolerance
+   *  exceeds the draw, which the roster renders as 0 W. */
   needW: number | null;
+  /** #807 — pending only: the surplus still missing before the claim can be
+   *  granted. Null on every other state. */
+  shortfallW: number | null;
   toleratedImportW: number | null;
   sinceIso?: string;
   reasonWaiting?: string;
@@ -452,6 +459,8 @@ export interface ArbiterPublicState {
   /** Spec 165 (#577) — sun down and nothing to share: a waiting claim reads as
    *  at rest, in the roster AND in the ribbon's current cell. */
   dormant: boolean;
+  /** #807 - the configured engage margin, stated under the roster table. */
+  engageMarginW: number;
   /** @deprecated Spec 165 — superseded by `loads`. */
   grants: Array<{
     equipmentId: string;
