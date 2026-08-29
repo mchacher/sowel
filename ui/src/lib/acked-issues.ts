@@ -7,28 +7,33 @@
  * it is re-raised as a materially different one, so a genuinely new problem is
  * never silently swallowed.
  *
- * The acknowledgement is keyed on a signature of source + level + message, so
+ * The acknowledgement is keyed on a signature of source + level + wording, so
  * the SAME issue stays hidden across reloads while a DIFFERENT one re-appears.
  * State is stored in localStorage (per browser); a shared, server-persisted
  * acknowledgement is a separate feature.
  */
 
+import { wordingSignature, type AlarmWording } from "./alarm-message";
+
 const STORAGE_KEY = "sowel_acked_issues";
-/** Control-char separator that cannot appear in a source id, level, or message. */
+/** Control-char separator that cannot appear in a source id, level, or wording. */
 const SEP = "\u0000";
 
-export interface IssueSignatureInput {
+export interface IssueSignatureInput extends AlarmWording {
   source: string;
   level: string;
-  message: string;
 }
 
 /**
  * Stable signature of an issue. Acknowledging hides THIS exact issue; any change
- * to source, level, or message yields a new signature and re-surfaces it.
+ * to source, level, or wording yields a new signature and re-surfaces it.
+ *
+ * A localised alarm (#720) signs on its i18n key and parameters, never on the
+ * rendered text: the same alarm has to stay acknowledged across a language
+ * switch, and a change of parameters still has to re-surface it.
  */
 export function issueSignature(issue: IssueSignatureInput): string {
-  return [issue.source, issue.level, issue.message].join(SEP);
+  return [issue.source, issue.level, wordingSignature(issue)].join(SEP);
 }
 
 /** Read acknowledged signatures from localStorage. Never throws. */

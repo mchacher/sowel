@@ -1,9 +1,7 @@
 import { create } from "zustand";
 import type { BatteryAlert, EngineEvent } from "../types";
 import { getBatteryAlerts, getPvHealthAlerts, type PvHealthAlert } from "../api";
-import i18n from "../i18n";
-import { dateLocale } from "../lib/locale";
-import { localDayToDate } from "../lib/local-date";
+import { dayParam, type AlarmWording } from "../lib/alarm-message";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
@@ -12,7 +10,6 @@ import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
 import { useActivity } from "./useActivity";
 import { useArbiter } from "./useArbiter";
-import { INTEGRATION_LABELS } from "../constants";
 
 export type WsTopic =
   | "devices"
@@ -27,11 +24,10 @@ export type WsTopic =
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
-export interface SystemAlarm {
+export interface SystemAlarm extends AlarmWording {
   alarmId: string;
   level: "warning" | "error";
   source: string;
-  message: string;
 }
 
 export interface UpdateAvailableInfo {
@@ -62,31 +58,72 @@ const BATTERY_ALARM_PREFIX = "battery-low:";
 /**
  * Battery alarms carry no device id (the alarm event shape is generic), so the
  * authoritative list is refetched whenever one moves. Rare event, one small GET.
+ *
+ * A live raise arrives with the engine's English message; the refetched
+ * snapshot carries the structured fields the banner words itself from, so the
+ * standing alarm is re-worded here (#720) the way pv-health alarms are.
  */
 function refreshBatteryAlertsIfNeeded(alarmId: string): void {
   if (!alarmId.startsWith(BATTERY_ALARM_PREFIX)) return;
-  void fetchBatteryAlerts();
+  void fetchBatteryAlerts().then((alerts) => {
+    useWebSocket.setState((s) => {
+      const alarms = new Map(s.alarms);
+      for (const alert of alerts) {
+        const id = `${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`;
+        // A resolved alarm is already gone from the map; do not resurrect it.
+        if (!alarms.has(id)) continue;
+        alarms.set(id, batteryAlarm(alert));
+      }
+      return { alarms };
+    });
+  });
+}
+
+/**
+ * Banner alarm for a low-battery alert (spec 143), worded from the snapshot's
+ * structured fields. The equipment name(s) headline the alarm; the device name
+ * stays in the message, and an unbound device keeps the device name as source.
+ */
+export function batteryAlarm(alert: BatteryAlert): SystemAlarm {
+  const equipmentNames = alert.equipmentNames ?? [];
+  const bound = equipmentNames.length > 0;
+  const num = Number(alert.value);
+  const isPercentage =
+    alert.value.trim() !== "" && Number.isFinite(num) && num >= 0 && num <= 100;
+  return {
+    alarmId: `${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`,
+    level: "warning",
+    source: bound ? equipmentNames.join(", ") : alert.deviceName,
+    messageKey: isPercentage
+      ? bound
+        ? "alarms.battery.lowPctOnDevice"
+        : "alarms.battery.lowPct"
+      : bound
+        ? "alarms.battery.lowOnDevice"
+        : "alarms.battery.low",
+    messageParams: { value: alert.value, device: alert.deviceName },
+  };
 }
 
 const PV_HEALTH_ALARM_PREFIX = "pv-health:";
 
 /**
- * Localised banner text for a standing PV health alert (spec 162).
+ * Banner alarm for a standing PV health alert (spec 162).
  *
- * Composed client-side from the snapshot's structured fields, NOT taken from
- * the engine's message: engine events are English by repo convention, but the
+ * Worded client-side from the snapshot's structured fields, NOT taken from the
+ * engine's message: engine events are English by repo convention, but the
  * banner is user-facing UI and has to speak the user's language. One function
  * for both the on-open seeding and the live-raise refresh, so the two can
  * never word the same alert differently.
  */
-function pvHealthBannerMessage(alert: PvHealthAlert): string {
-  return i18n.t("equipments.pvHealth.alarmBanner", {
-    pct: Math.round(alert.deficit * 100),
-    since: localDayToDate(alert.since).toLocaleDateString(dateLocale(i18n.language), {
-      day: "numeric",
-      month: "long",
-    }),
-  });
+export function pvHealthAlarm(alert: PvHealthAlert): SystemAlarm {
+  return {
+    alarmId: `${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`,
+    level: "warning",
+    source: alert.equipmentName,
+    messageKey: "equipments.pvHealth.alarmBanner",
+    messageParams: { pct: Math.round(alert.deficit * 100), since: dayParam(alert.since) },
+  };
 }
 
 /**
@@ -102,12 +139,7 @@ function refreshPvHealthAlertsIfNeeded(alarmId: string): void {
         for (const alert of alerts) {
           const id = `${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`;
           if (!alarms.has(id)) continue;
-          alarms.set(id, {
-            alarmId: id,
-            level: "warning",
-            source: alert.equipmentName,
-            message: pvHealthBannerMessage(alert),
-          });
+          alarms.set(id, pvHealthAlarm(alert));
         }
         return { alarms };
       });
@@ -115,13 +147,6 @@ function refreshPvHealthAlertsIfNeeded(alarmId: string): void {
     .catch(() => {
       // The English live message stays; better than nothing.
     });
-}
-
-/** Same wording as the engine alarm, so a restored banner reads identically. */
-export function batteryAlarmMessage(value: string): string {
-  const num = Number(value);
-  const isPercentage = value.trim() !== "" && Number.isFinite(num) && num >= 0 && num <= 100;
-  return isPercentage ? `Low battery: ${value}%` : "Low battery";
 }
 
 async function fetchBatteryAlerts(): Promise<BatteryAlert[]> {
@@ -418,47 +443,21 @@ export const useWebSocket = create<WebSocketState>((set) => ({
           const statuses: Record<string, string> = {};
           const alarms = new Map<string, SystemAlarm>();
 
+          // An integration in error needs no alarm of its own: the status alone
+          // is turned into a translated issue by `useAggregatedIssues`. Seeding
+          // one here used to add a second, French, row for the same failure,
+          // keyed on the display label where the status path keys on the plugin
+          // id, so the dedup by source never caught it (#720).
           for (const [id, info] of Object.entries(health.integrations ?? {})) {
             statuses[id] = info.status;
-            // Restore alarm banner for integrations in error state
-            if (info.status === "error") {
-              const label = INTEGRATION_LABELS[id] ?? id;
-              alarms.set(`poll-fail:${id}`, {
-                alarmId: `poll-fail:${id}`,
-                level: "error",
-                source: label,
-                message: "Communication en échec",
-              });
-            }
           }
 
           for (const alert of batteryAlerts) {
-            const alarmId = `${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`;
-            // Mirror the engine's live alarm (spec 143/#472): the equipment
-            // name(s) headline the banner, the device name stays in the message.
-            const equipmentNames = alert.equipmentNames ?? [];
-            const bound = equipmentNames.length > 0;
-            alarms.set(alarmId, {
-              alarmId,
-              level: "warning",
-              source: bound ? equipmentNames.join(", ") : alert.deviceName,
-              message: bound
-                ? `${batteryAlarmMessage(alert.value)} (${alert.deviceName})`
-                : batteryAlarmMessage(alert.value),
-            });
+            alarms.set(`${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`, batteryAlarm(alert));
           }
 
           for (const alert of pvHealthAlerts) {
-            const alarmId = `${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`;
-            // Localised client-side from the structured fields: the engine's
-            // message is English by repo convention, the banner is not. The
-            // equipment name headlines, as the battery alerts do.
-            alarms.set(alarmId, {
-              alarmId,
-              level: "warning",
-              source: alert.equipmentName,
-              message: pvHealthBannerMessage(alert),
-            });
+            alarms.set(`${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`, pvHealthAlarm(alert));
           }
 
           set({ integrationStatuses: statuses, alarms });

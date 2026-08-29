@@ -6,6 +6,7 @@ import { INTEGRATION_LABELS } from "../../constants";
 import { useAggregatedIssues, type AggregatedIssue } from "./useAggregatedIssues";
 import { useAckedIssues } from "../../store/useAckedIssues";
 import { issueSignature } from "../../lib/acked-issues";
+import { alarmText } from "../../lib/alarm-message";
 
 interface AlarmsSheetProps {
   open: boolean;
@@ -91,10 +92,11 @@ function IssueRow({
   const tone = isError ? "text-error" : "text-warning";
   const sourceLabel = INTEGRATION_LABELS[issue.source] ?? issue.source;
 
-  // Aggregated issues from integration status carry an i18n key as the
-  // message. Alarms emitted by the engine carry a free-form message.
-  // The convention is "alarms.*" → translate; anything else → render as-is.
-  const message = issue.message.startsWith("alarms.") ? t(issue.message) : issue.message;
+  // An issue the UI knows how to word carries an i18n key and its parameters,
+  // translated here at render so a language switch re-words the alarms already
+  // standing (#720). The rest carry the engine's English text, which has no
+  // structured form to compose from (a raw driver error).
+  const message = alarmText(t, issue);
 
   return (
     <li

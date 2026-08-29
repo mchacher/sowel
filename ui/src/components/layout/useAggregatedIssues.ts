@@ -1,15 +1,15 @@
 import { useMemo } from "react";
+import type { AlarmWording } from "../../lib/alarm-message";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useAckedIssues } from "../../store/useAckedIssues";
 import { issueSignature } from "../../lib/acked-issues";
 
-export interface AggregatedIssue {
+export interface AggregatedIssue extends AlarmWording {
   /** Stable key for React rendering: `<source>:<kind>` */
   key: string;
   /** Plugin id ("netatmo_weather"), or "system" for non-integration alarms. */
   source: string;
   level: "error" | "warning";
-  message: string;
 }
 
 /**
@@ -41,6 +41,8 @@ export function useAggregatedIssues(): AggregatedIssue[] {
         source: a.source,
         level: a.level,
         message: a.message,
+        messageKey: a.messageKey,
+        messageParams: a.messageParams,
       });
     }
 
@@ -53,14 +55,14 @@ export function useAggregatedIssues(): AggregatedIssue[] {
           key: `${pluginId}:status`,
           source: pluginId,
           level: "error",
-          message: integrationDisconnectMessage("error"),
+          messageKey: "alarms.integration.error",
         });
       } else if (status === "disconnected") {
         bySource.set(pluginId, {
           key: `${pluginId}:status`,
           source: pluginId,
           level: "warning",
-          message: integrationDisconnectMessage("disconnected"),
+          messageKey: "alarms.integration.disconnected",
         });
       }
     }
@@ -86,13 +88,4 @@ export function useVisibleIssues(): AggregatedIssue[] {
     () => issues.filter((issue) => !acked.has(issueSignature(issue))),
     [issues, acked],
   );
-}
-
-/** Translation lookup is done inside the components; this helper just
- *  returns a key suffix that the consumer maps to i18n. Keeping the
- *  message untranslated here avoids coupling the hook to react-i18next. */
-function integrationDisconnectMessage(reason: "error" | "disconnected"): string {
-  return reason === "error"
-    ? "alarms.integration.error" // i18n key
-    : "alarms.integration.disconnected";
 }
