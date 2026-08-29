@@ -190,6 +190,26 @@ Gère les devices découverts par votre plugin. Deux méthodes principales sont 
 
 Voir [Découverte de devices](#decouverte-de-devices) et [Mises à jour de données device](#mises-a-jour-de-donnees-device) pour l'usage détaillé.
 
+!!! warning "Une nouvelle donnée n'atteint pas toute seule les équipements existants"
+Ajouter une clé dans `DiscoveredDevice.data` crée bien la ligne `device_data`
+à la découverte suivante, mais la liaison automatique ne tourne qu'à la
+**création d'un équipement**. Tout équipement déjà lié à ce device conserve
+les liaisons qu'il avait : la nouvelle valeur est vivante côté device et
+invisible côté équipement.
+
+    C'est volontaire : reconstruire les liaisons automatiquement remettrait
+    celles que le propriétaire a supprimées exprès, et modifierait en silence la
+    forme d'un équipement qu'il a configuré à la main. Il récupère les nouvelles
+    valeurs depuis la section **Liaisons** de l'équipement, qui signale ce qui
+    manque et le propose sous forme de liste à cocher.
+
+    Ce que cela implique quand vous publiez une version de plugin qui ajoute des
+    données : signalez-le dans vos notes de version, et attendez-vous à ce que
+    les installations existantes aient un clic à faire par équipement. Renommer
+    une clé existante est pire qu'en ajouter une : la liaison de l'ancienne clé
+    continue de pointer vers une ligne que plus rien ne met à jour. Préférez
+    ajouter à côté et déprécier.
+
 ### `pluginDir`
 
 Chemin absolu vers le répertoire installé du plugin (par ex. `/app/plugins/weather-forecast`). Utilisez-le pour lire des fichiers locaux ou stocker des données spécifiques au plugin.
