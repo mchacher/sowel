@@ -139,16 +139,14 @@ Passer en **Mois** ou **Année** garde les mêmes couleurs et totaux, mais chaqu
 
 ### Vue Production
 
-La page Production affiche l'historique de la production solaire (ou autre production locale) :
+La page Production regroupe tout ce qui concerne vos panneaux. Elle affiche l'historique de production, réparti entre autoconsommation (produite et consommée sur place) et injection réseau, avec les totaux du jour, du mois ou de l'année.
 
-![Production journalière](../screenshots/energy-production-day-fr.png)
+Depuis la v1.57.0 elle porte aussi deux panneaux, tous deux nourris par votre propre installation plutôt que par un modèle générique :
 
-| Couleur    | Signification                                       |
-| ---------- | --------------------------------------------------- |
-| Vert clair | Autoconsommation, produit et consommé sur place     |
-| Vert foncé | Injection réseau, produit et renvoyé vers le réseau |
+- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours, apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
+- **Santé**, qui signale quand les panneaux cessent de produire ce que votre propre historique laisse attendre. Déclarer un nouveau pan de toiture, ou changer la puissance crête, ré-estime le gain sur les jours qui suivent au lieu d'attendre que la fenêtre glisse.
 
-Les totaux sous le graphique somment les deux tranches en production journalière, mensuelle ou annuelle.
+Les deux sont détaillés dans [Suivre sa production solaire](../deep-dives/pv-health.md).
 
 ## Arbitrage du surplus
 
@@ -182,6 +180,7 @@ Allez dans **Réglages > Administration > Énergie**, activez l'**Arbitre de sur
 La page **Énergie > En direct** gagne un panneau d'arbitrage du surplus en trois parties :
 
 - une **barre d'allocation** montrant où va la production en ce moment (maison, chaque charge accordée, surplus libre), et une ligne nommant toute charge en attente et pourquoi ;
+- un **tableau des charges**, une ligne par charge flexible, avec ce qu'il lui faut pour démarrer, ce qu'elle tire réellement, et l'**écart** qui manque encore quand elle attend. Le besoin est rempli sur chaque ligne, pas seulement celles en attente : ce qu'il faut à une charge pour démarrer reste vrai qu'elle tourne, attende ou soit à l'arrêt ;
 - une **frise du jour** avec un couloir par charge pilotable — vert là où elle a tenu le surplus, un repère rouge (avec la raison au survol) là où elle s'est effacée ;
 - un **journal des décisions** en langage clair, pour que rien de ce que fait l'arbitre ne soit un mystère.
 

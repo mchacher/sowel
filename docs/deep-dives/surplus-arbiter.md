@@ -23,7 +23,7 @@ The Energy › Live page answers "who has the surplus right now, and why" at a g
 Three layers, top to bottom:
 
 - **The state table**: each flexible load with its live state (_Granted_, _Granted (not consuming)_, _Waiting_, _At rest_), what it asked for, what it actually draws, and how much grid import it is allowed to tolerate. The table and the ribbon use the same word for the same state: they are two views of one reading, not two readings.
-- **The timeline**: the day in 15-minute slots per load, against the surplus/deficit curve. You can see the pool pump picking up the morning surplus, the water heater joining at noon, the pool heat pump waiting its turn. The solid green says the load actually consumed the surplus it was granted; a lighter green says it held the grant and its own power measurement shows nothing — a water heater whose breaker was left open, a pump that never started. A load with no power measurement stays solid green: Sowel does not display what it does not know.
+- **The timeline**: the day in 15-minute slots per load, against the surplus/deficit curve. You can see the pool pump picking up the morning surplus, the water heater joining at noon, the pool heat pump waiting its turn. The solid green says the load actually consumed the surplus it was granted; a lighter green says it held the grant and its own power measurement shows nothing — a water heater whose breaker was left open, a pump that never started. A load with no power measurement used to stay solid green, on the principle that Sowel does not display what it does not know. Since spec 166 the recipe holding the grant can say whether its load actually needs current, so an unmetered load that declares it needs nothing is drawn as not consuming too. A measurement, when there is one, always overrules the declaration.
 - **The decision journal**: every grant and revoke, timestamped, in plain words. When you wonder "why did the heat pump stop at 15:04", the answer is written there.
 
 ### What you configure
@@ -51,7 +51,7 @@ Three touchpoints, in increasing order of "you will probably never need this":
 
 ## Part 2: How it works, precisely
 
-_This section documents the actual algorithm and every setting, with the design decisions and their reasons. Feature history: specs 140 (core arbiter), 148 (timeline), 158 (baseline metrics) in the [specs index](../specs-index.md)._
+_This section documents the actual algorithm and every setting, with the design decisions and their reasons. Feature history: specs 140 (core arbiter), 148 (timeline), 158 (baseline metrics), 164 (granted-but-idle), 165 (one load state model), 166 (claimant-declared need) in the [specs index](../specs-index.md)._
 
 ### Architecture
 

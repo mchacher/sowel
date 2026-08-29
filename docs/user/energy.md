@@ -139,16 +139,14 @@ Switching to **Month** or **Year** keeps the same colors and totals, but each ba
 
 ### Production view
 
-The Production page renders solar (or other local production) history:
+The Production page is the home of everything about your panels. It shows the production history, split between autoconsumption (produced and consumed locally) and grid injection, with totals for the day, month or year.
 
-![Daily production chart](../screenshots/energy-production-day-en.png)
+Since v1.57.0 it also carries two panels, both driven by your own installation rather than by a generic model:
 
-| Color       | Meaning                                               |
-| ----------- | ----------------------------------------------------- |
-| Light green | Autoconsumption — produced and consumed locally       |
-| Dark green  | Grid injection — produced and pushed back to the grid |
+- **Forecast**, an hourly expected-production curve out to five days, learned from your history. It needs the `weather-forecast` plugin at 2.3.0 or later, and about six weeks of production before the model settles. Before that, Sowel shows a provisional clear-sky estimate and says so.
+- **Health**, which tells you when the panels stop performing against what your own history says they should. Declaring a new array, or changing the peak power, re-estimates the gain from the days that follow rather than waiting for the window to drift.
 
-Totals below the chart sum the two slices into the day's, month's, or year's total production.
+Both are described at length in [Following your solar production](../deep-dives/pv-health.md).
 
 ## Surplus arbitration
 
@@ -183,6 +181,7 @@ Go to **Settings > Administration > Energy**, enable **Surplus arbiter**, and or
 The **Energy > Live** page gains a surplus-arbitration panel with three parts:
 
 - an **allocation bar** showing where the production is going right now (household, each granted load, free surplus), and a line naming any load that is waiting and why;
+- a **load table**, one row per flexible load, with what it needs to start, what it actually draws, and the **gap** still missing when it is waiting. The need is filled on every row, not just the waiting ones: what a load takes to start is true whether it runs, waits or sits idle;
 - a **day timeline** with one lane per flexible load — green where it held the surplus, a red marker (with the reason on hover) where it was stepped back;
 - a **decision journal** in plain language, so nothing the arbiter does is a mystery.
 
