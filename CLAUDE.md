@@ -192,6 +192,49 @@ The `verify-release-notes` job in `.github/workflows/release.yml` greps the tagg
 
 **Do NOT bypass this check** by editing the workflow or skipping the grep — it is the contract that keeps `docs.sowel.org/release-notes` aligned with what is actually shipped.
 
+### Documentation currency (spec 167 — MANDATORY for AI agents)
+
+Two CI checks run on every pull request. Both run locally, and running them before pushing is
+cheaper than reading a red check:
+
+```bash
+bash scripts/check-docs-parity.sh
+bash scripts/check-docs-impact.sh
+```
+
+**EN/FR parity.** Most pages under `docs/` exist as a pair, `x.md` and `x.fr.md`. Touch one and
+you must touch the other. If that is genuinely not wanted, name the untouched file and say why:
+
+```
+Docs-Parity: docs/technical/api-reference.fr.md — typo fix in the EN copy only
+```
+
+The check is silent when the counterpart does not exist, so creating a page in one language is
+allowed and translating it is a separate decision.
+
+**Documentation impact.** A `feat` or `fix` pull request that touches `src/` or `ui/src/` must
+either change something under `docs/`, or carry:
+
+```
+Docs-Impact: none — <why nothing a reader can observe changed>
+```
+
+**The reason is required.** A bare `Docs-Impact: none` fails on purpose: a checkbox gets ticked
+without thought, a sentence does not. `chore`, `refactor`, `test`, `docs`, `style`, `ci`,
+`build` and `perf` are not gated at all.
+
+The check also prints the pages your change probably affects, from the map in
+`scripts/docs-impact-map.sh`. That part never fails a build — it is there to turn "did you think
+about the docs" into "this page needs a look". When you find drift in an area the map misses,
+add a row; it is data, not logic.
+
+**Why this exists.** The 2026-08-29 audit (`docs/audit/2026-08-29-documentation.md`) found three
+months of drift, including a plugin guide teaching an `executeOrder` signature that migration
+004 removed. In the same repository, `docs/release-notes.md` and `.fr.md` carry 158 version
+anchors, identical in both files, with no divergence at all — because spec 108 fails the release
+workflow on a missing anchor. Same authors, same pace; the difference is the gate. Do not weaken
+these checks to get a pull request through: update the page, or write the sentence.
+
 ### Plugin soft isolation (spec 111)
 
 Every integration plugin runs with scoped Proxies on its `PluginDeps`. There is no opt-out: the isolation is unconditional since v1.11.0. The contract is enforced by `src/plugins/scoped-deps.ts`:
