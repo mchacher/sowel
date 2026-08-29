@@ -436,20 +436,28 @@ Pourquoi un helper ? Appeler `dockerode.stop()` sur le conteneur en cours depuis
 
 `.github/workflows/release.yml` se déclenche sur les tags poussés correspondant à `v*`. Il exécute :
 
-1. **job ci** : typecheck, lint, tests (backend + UI)
-2. **job docker** : build l'image `linux/amd64` avec Buildx, pousse vers `ghcr.io/mchacher/sowel:<version>` et `:latest`, puis crée une GitHub Release avec des notes auto-générées
+1. **job verify-release-notes** : fait échouer le workflow avant tout build si le commit taggé n'a pas d'ancre de release notes (spec 108)
+2. **job ci** : typecheck, lint, tests (backend + UI)
+3. **jobs docker** : build `linux/amd64` et `linux/arm64` avec Buildx en parallèle, chacun poussant son propre tag (`:<version>`, et `:<version>-arm64` plus `:latest-arm64` pour le job arm64)
+4. **job promote-manifest** : fusionne les deux en un `:<version>` multi-architecture, puis fait pointer `:latest` dessus
+5. **job release** : crée la GitHub Release avec des notes auto-générées
+6. **job arm64-required** : fait échouer le run quand la release a été retenue, pour qu'un échec arm64 ne soit pas juste un job grisé sur un run vert
+7. **job prune-ghcr** : conserve les 30 versions GHCR les plus récentes après une release réussie, sans jamais toucher aux tags flottants `:latest`
 
-Le build Docker est **amd64-only** (spec simplifiée en avril 2026 pour des builds environ 3x plus rapides ; arm64 abandonné car aucun utilisateur ne tourne sur des hôtes Linux Apple Silicon en production).
+Le build Docker est **multi-architecture** : amd64 et arm64 sont construits dans des jobs parallèles puis fusionnés en un seul manifeste, de sorte que `docker pull` résout la bonne image.
+
+L'ordre des trois dernières étapes est une exigence de correction, pas de confort. `UpdateChecker` interroge la GitHub Release et non le manifeste GHCR : une Release publiée alors que `:<version>` est encore amd64-only annoncerait une mise à jour à tous les Raspberry Pi puis ferait échouer leur `docker pull`. `promote-manifest` et `release` sont donc conditionnés à la réussite du build arm64, et `:latest` n'est publié que par `promote-manifest`, jamais par le job amd64. Un échec arm64 laisse `:<version>` poussé en amd64-only et retient à la fois `:latest` et la Release : rien n'annonce une version que la moitié du parc ne peut pas récupérer. La récupération passe par **Re-run all jobs** sur ce run, jamais par un dispatch du workflow sur le tag : le chemin dispatch résout la version depuis `test_tag`, donc il construit des images de test et ne publie rien sous la version du tag.
 
 ### Script de release
 
 `scripts/release.sh <version>` :
 
 1. Valide le format semver et un working tree propre
-2. Bump les versions de `package.json` + `ui/package.json`
-3. Lance la validation complète (`npm run validate`)
-4. Commit `release: vX.Y.Z`, tag `vX.Y.Z`, push vers origin
-5. GitHub Actions prend le relais
+2. **Vérifie** que `package.json` et `ui/package.json` sont déjà à cette version, et sort sinon. Il ne les bump pas : c'est une PR normale qui le fait, et elle est mergée avant le tag
+3. Tag `vX.Y.Z` et pousse le tag vers origin
+4. GitHub Actions prend le relais
+
+Il ne lance aucune validation de son côté et ne commite pas. La protection de branche impose que le bump de version et les release notes passent d'abord par une PR.
 
 Une skill Claude Code emballe ça dans `.claude/skills/sowel-release/SKILL.md`.
 
