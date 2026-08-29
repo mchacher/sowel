@@ -72,3 +72,24 @@ jobs:
           fetch-depth: 0 # need main's history for the merge-base diff
       - name: Every new spec folder has spec.md + architecture.md + plan.md
         run: bash scripts/check-specs-complete.sh
+
+  docs-currency:
+    name: Documentation currency
+    runs-on: ubuntu-latest
+    # Spec 167 — the only documentation artefact with a gate (release notes,
+    # spec 108) is the only one that never drifted. These two generalise it to
+    # the rest of docs/, at the moment the author still has the context: in the
+    # PR, not at the tag where sixteen commits have to be reconstructed.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # need main's history for the merge-base diff
+      - name: EN/FR pages move together
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash scripts/check-docs-parity.sh
+      - name: A feat/fix states its documentation impact
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash scripts/check-docs-impact.sh
