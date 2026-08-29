@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, within } from "../../test-utils";
+import { act, render, screen, within } from "../../test-utils";
 import { MemoryRouter } from "react-router-dom";
 import { LiveEnergyPage } from "./LiveEnergyPage";
 import { useEquipments } from "../../store/useEquipments";
@@ -92,9 +92,9 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
     expect(within(row("Piscine")).getByText(/1\.2/)).toBeTruthy();
   });
 
-  it("never renders a part at more than 100% of the whole", () => {
+  it("shows no share at all for the stale part that used to print 776%", () => {
     // The reported screenshot: a 35 W house against a 275 W pool reading left
-    // over from before the pump stopped, printed as 776 %.
+    // over from before the pump stopped.
     seed([
       meter("Grid", "main_energy_meter", -2675),
       meter("Solar", "energy_production_meter", 2710),
@@ -103,6 +103,22 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
     expect(container.textContent).not.toMatch(/776\s*%/);
+    expect(within(row("Piscine")).getByText(/reading outdated/)).toBeTruthy();
+    expect(within(row("Piscine")).queryByText(/%/)).toBeNull();
+  });
+
+  it("never renders a part at more than 100% when the parts genuinely overshoot", () => {
+    // Every reading here is FRESH, so the clamp is what is under test rather
+    // than the freshness rule. Two 900 W loads in a 100 W house is what a
+    // clamp error or two meters read microseconds apart can produce.
+    seed([
+      meter("Grid", "main_energy_meter", 100),
+      meter("Piscine", "energy_meter", 900),
+      meter("PAC", "energy_meter", 900),
+    ]);
+    const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+
+    expect(within(row("Piscine")).getByText("100%")).toBeTruthy();
     for (const m of container.textContent?.matchAll(/(\d+)\s*%/g) ?? []) {
       expect(Number(m[1])).toBeLessThanOrEqual(100);
     }
@@ -120,13 +136,46 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
 
     const circles = [...container.querySelectorAll("circle[stroke-dasharray]")];
     expect(circles.length).toBeGreaterThan(0);
-    const circumference = 2 * Math.PI * 78;
+    // RADIUS in LiveSubmeterBreakdown.tsx. Getting this wrong by even a few
+    // units turns the assertion into a tolerance for the overrun it exists to
+    // catch.
+    const circumference = 2 * Math.PI * 72;
     const drawn = circles.reduce((acc, c) => {
       const [len] = (c.getAttribute("stroke-dasharray") ?? "0 0").split(" ");
       return acc + Number(len);
     }, 0);
     // Sum of the painted arc lengths never exceeds the ring itself.
     expect(drawn).toBeLessThanOrEqual(circumference + 0.01);
+  });
+
+  it("ages a row out on the wall clock, with no equipment event", () => {
+    // Before the tick, a row only aged out when something else re-rendered the
+    // page. A home whose only sources poll every 300 s would recompute at the
+    // poll, with the reading 0 s old, and the rule would never apply at all.
+    seed([
+      meter("Grid", "main_energy_meter", 1000),
+      meter("Piscine", "energy_meter", 900, 30_000),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(within(row("Piscine")).queryByText(/reading outdated/)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(3 * 60 * 1000);
+    });
+
+    expect(within(row("Piscine")).getByText(/reading outdated/)).toBeTruthy();
+  });
+
+  it("says where a stale load's watts went", () => {
+    // The row contributes nothing, but its consumption is still in the house
+    // total, so it lands in the residual. Both facts are true and nothing on
+    // screen used to connect them.
+    seed([
+      meter("Grid", "main_energy_meter", 1000),
+      meter("Chauffe-eau", "water_heater", 560, 20 * 60 * 1000),
+    ]);
+    const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(container.textContent).toMatch(/is not counted, so its consumption shows up in Other/);
   });
 
   it("agrees with its own centre label", () => {

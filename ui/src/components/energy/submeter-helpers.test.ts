@@ -13,6 +13,7 @@ import {
   readSubmeterReading,
   sharePercent,
   SUBMETER_FRESHNESS_MS,
+  SUBMETER_FRESHNESS_SLOW_MS,
 } from "./submeter-helpers";
 
 /**
@@ -149,9 +150,10 @@ describe("readSubmeterReading", () => {
 // weight. During export the total is a small difference of two large numbers,
 // so a stale part can dwarf it: 275 W against a 35 W house read as 776 %.
 describe("readSubmeterReading — freshness (#744)", () => {
-  it("refuses a reading older than the engine's own power window", () => {
-    const eq = makeEquipment("a", "Chauffe-eau", {
-      power: 560,
+  it("refuses a reading older than the engine's own power window, on a meter", () => {
+    const eq = makeEquipment("a", "Piscine", {
+      type: "energy_meter",
+      power: 1233,
       readingAgeMs: SUBMETER_FRESHNESS_MS + 1_000,
     });
     const reading = readSubmeterReading(eq, NOW);
@@ -161,11 +163,37 @@ describe("readSubmeterReading — freshness (#744)", () => {
   });
 
   it("accepts a reading right at the edge of the window", () => {
-    const eq = makeEquipment("a", "Chauffe-eau", {
-      power: 560,
+    const eq = makeEquipment("a", "Piscine", {
+      type: "energy_meter",
+      power: 1233,
       readingAgeMs: SUBMETER_FRESHNESS_MS,
     });
-    expect(readSubmeterReading(eq, NOW).power).toBe(560);
+    expect(readSubmeterReading(eq, NOW).power).toBe(1233);
+  });
+
+  it("gives a non-meter type the looser budget, so a 300 s poller never flickers", () => {
+    // SmartThings, Legrand, Panasonic Comfort Cloud and MCZ Maestro all default
+    // to a 300 s poll. The issue's own production snapshot shows two such rows
+    // at an age of 270 s with nothing wrong; under the tight window they would
+    // have read "outdated" for three minutes out of every five.
+    const eq = makeEquipment("a", "Lave-linge", {
+      type: "appliance",
+      power: 0,
+      readingAgeMs: 270 * 1000,
+    });
+    expect(readSubmeterReading(eq, NOW).unknown).toBeNull();
+    expect(SUBMETER_FRESHNESS_SLOW_MS).toBeGreaterThanOrEqual(2 * 300 * 1000);
+  });
+
+  it("still refuses the reported case: a 560 W water heater 13.5 minutes behind", () => {
+    // The measurement that closed the root-cause question. Whatever the budget,
+    // this one has to be caught.
+    const eq = makeEquipment("a", "Chauffe-eau", {
+      type: "water_heater",
+      power: 0,
+      readingAgeMs: 944 * 1000,
+    });
+    expect(readSubmeterReading(eq, NOW).unknown).toBe("stale");
   });
 
   it("refuses a stale zero, which is the quiet case", () => {
@@ -173,7 +201,7 @@ describe("readSubmeterReading — freshness (#744)", () => {
     // for a water heater to be, so nothing on screen invites doubt.
     const eq = makeEquipment("a", "Chauffe-eau", {
       power: 0,
-      readingAgeMs: 16 * 60 * 1000,
+      readingAgeMs: SUBMETER_FRESHNESS_SLOW_MS + 60_000,
     });
     expect(readSubmeterReading(eq, NOW).unknown).toBe("stale");
   });
@@ -305,7 +333,11 @@ describe("buildSubmeterRows", () => {
   it("keeps a submeter whose reading aged out, with no number (#744)", () => {
     const rows = buildRows([
       makeEquipment("a", "PAC", { power: 100 }),
-      makeEquipment("b", "Chauffe-eau", { power: 560, readingAgeMs: 16 * 60 * 1000 }),
+      makeEquipment("b", "Chauffe-eau", {
+        type: "water_heater",
+        power: 560,
+        readingAgeMs: 16 * 60 * 1000,
+      }),
     ]);
     // It stays, because "we do not know" is information. What it does not do
     // is contribute 560 W to a total measured 25 seconds ago.
@@ -337,7 +369,11 @@ describe("buildSubmeterRows", () => {
     // 560 W leftover was subtracted from the house total as if it were current.
     const rows = buildRows([
       makeEquipment("a", "PAC", { power: 1200 }),
-      makeEquipment("b", "Chauffe-eau", { power: 560, readingAgeMs: 16 * 60 * 1000 }),
+      makeEquipment("b", "Chauffe-eau", {
+        type: "water_heater",
+        power: 560,
+        readingAgeMs: 16 * 60 * 1000,
+      }),
     ]);
     expect(computeOther(2000, rows)).toBe(800);
   });
@@ -358,6 +394,14 @@ describe("displayedPower and sharePercent (#744)", () => {
   it("rounds kilowatts to the displayed decimal", () => {
     expect(displayedPower(1632.9)).toBe(1600);
     expect(displayedPower(999)).toBe(1000);
+  });
+
+  it("rounds a half-step the way toFixed(1) does, not the way Math.round does", () => {
+    // The binary double nearest 1.15 sits just below the half, so toFixed(1)
+    // gives "1.1" while Math.round(1150 / 100) * 100 gives 1200. A 575 W part
+    // in a 1150 W house printed 48 % under a label reading 1.1 kW.
+    expect(displayedPower(1150)).toBe(1100);
+    expect(sharePercent(575, 1150)).toBe(52);
   });
 
   it("never reports a part larger than the whole", () => {

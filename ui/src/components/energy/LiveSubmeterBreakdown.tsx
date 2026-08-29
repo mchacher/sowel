@@ -7,13 +7,14 @@
  * parent page subscribes to.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import {
   buildSubmeterRows,
   computeOther,
+  displayedPower,
   sharePercent,
   type SubmeterRow,
 } from "./submeter-helpers";
@@ -34,6 +35,16 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const IDLE_THRESHOLD_W = 5;
 /** Show the overshoot footnote only when Σ exceeds house by > 5%. */
 const OVERSHOOT_RATIO = 0.05;
+/**
+ * How often the card re-checks reading ages against the wall clock (#744).
+ *
+ * Without it a row only ages out when some unrelated equipment event happens
+ * to re-render the page. In a home whose only sources poll every 300 s the
+ * recompute would land at the poll, with the reading 0 s old, so the rule
+ * would silently never apply; in a home with a 1 Hz main meter it would apply
+ * continuously. Same code, opposite behaviour, decided by unrelated hardware.
+ */
+const STALENESS_TICK_MS = 30_000;
 
 interface Props {
   /** House consumption in W (grid + solar). Null when both are unknown. */
@@ -43,10 +54,13 @@ interface Props {
 }
 
 function formatPower(value: number): { num: string; unit: "W" | "kW" } {
+  // One rounding, shared with sharePercent's denominator, so the figures on
+  // screen cannot contradict each other (#744).
+  const shown = displayedPower(value);
   if (value < 1000) {
-    return { num: String(Math.round(value / 5) * 5), unit: "W" };
+    return { num: String(shown), unit: "W" };
   }
-  return { num: (value / 1000).toFixed(1), unit: "kW" };
+  return { num: (shown / 1000).toFixed(1), unit: "kW" };
 }
 
 function formatRelative(iso: string | null): string {
@@ -72,13 +86,19 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
 
   // Homonym submeters get a `name — zone` label (spec 139); the qualifier
   // only appears when two submeters actually share a name.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setClock(Date.now()), STALENESS_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
   const rows = useMemo(() => {
     const labels = equipmentLabelMap(
       equipments.filter((eq) => isSubmeterEquipment(eq)),
       zoneChainMap(flattenZonesWithPath(zoneTree)),
     );
-    return buildSubmeterRows(equipments, labels);
-  }, [equipments, zoneTree]);
+    return buildSubmeterRows(equipments, labels, clock);
+  }, [equipments, zoneTree, clock]);
   if (rows.length === 0) return null;
 
   const submeterSum = rows.reduce((acc, r) => acc + (r.power ?? 0), 0);
@@ -88,6 +108,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const other = hasMainMeter ? computeOther(total, rows) : 0;
   const overshoot =
     hasMainMeter && submeterSum > total * (1 + OVERSHOOT_RATIO);
+  const hasStale = rows.some((r) => r.unknown === "stale");
 
   const isIdle = total < IDLE_THRESHOLD_W;
   const segments = isIdle
@@ -140,6 +161,16 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
       {overshoot && (
         <p className="mt-3 text-[12px] text-warning italic">
           {t("energy.live.breakdown.overshoot")}
+        </p>
+      )}
+
+      {/* A load with no recent reading contributes nothing, so its watts are
+          still in the house total and land in the residual. Both facts are
+          true and nothing on screen connected them, which reads as an
+          unmetered load appearing from nowhere (#744). */}
+      {hasStale && (
+        <p className="mt-3 text-[12px] text-text-tertiary italic">
+          {t("energy.live.breakdown.staleNote")}
         </p>
       )}
     </div>

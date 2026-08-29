@@ -1132,6 +1132,7 @@
   "energy.live.breakdown.other": "Other",
   "energy.live.breakdown.offline": "offline",
   "energy.live.breakdown.stale": "reading outdated",
+  "energy.live.breakdown.staleNote": "A load with no recent reading is not counted, so its consumption shows up in Other.",
   "energy.live.breakdown.houseIdle": "House idle",
   "energy.live.breakdown.overshoot": "Σ submeters ≥ house total",
   "energy.live.phases.title": "Phase breakdown",

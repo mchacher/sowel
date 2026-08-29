@@ -9,17 +9,47 @@ import { pickSubmeterColor } from "./submeterPalette";
 import { isSubmeterEquipment } from "../../lib/metering";
 import {
   DEFAULT_STREAMING_TIMEOUT_MS,
+  METERING_EQUIPMENT_TYPES,
   STREAMING_TIMEOUT_MS,
 } from "../../../../src/shared/constants";
 
 /**
- * How old a `power` reading may be and still count as a live measurement.
+ * How old a reading may be, on an equipment the engine itself treats as a
+ * meter, and still count as a live measurement.
  *
  * Taken from the engine's own per-category window rather than a number picked
- * here, so the breakdown ages a reading out at the same moment everything else
- * does. Two minutes for `power` (issue #744).
+ * here, so those rows age out at the same moment everything else does. Two
+ * minutes for `power` (issue #744).
  */
 export const SUBMETER_FRESHNESS_MS = STREAMING_TIMEOUT_MS.power ?? DEFAULT_STREAMING_TIMEOUT_MS;
+
+/**
+ * The same budget for every other submeter type, and it has to be looser.
+ *
+ * `equipment-status.ts` applies the tight electrical window only to
+ * METERING_EQUIPMENT_TYPES, and says why: a steady load stops producing
+ * updates, so a two-minute window would flag a perfectly healthy appliance on
+ * every reporting cycle. That reasoning applies here too. Four official
+ * integrations (SmartThings, Legrand, Panasonic Comfort Cloud, MCZ Maestro)
+ * poll on a 300 s default, and the issue's own production snapshot shows two
+ * of those rows at an age of 270 s with nothing wrong. A two-minute budget
+ * would have made them read "outdated" for three minutes out of every five.
+ *
+ * Ten minutes is twice the slowest supported default cadence, so no supported
+ * source oscillates, and it is still far below both cases this issue is about:
+ * a water heater whose reading was 13.5 minutes old while it drew 560 W, and a
+ * wood stove 124 days behind. It also buys margin against a viewer's browser
+ * clock running ahead of the Sowel host, which is the other thing this
+ * comparison is exposed to.
+ */
+export const SUBMETER_FRESHNESS_SLOW_MS = 10 * 60 * 1000;
+
+/** The budget that applies to this equipment. */
+export function freshnessBudgetFor(eq: EquipmentWithDetails): number {
+  return METERING_EQUIPMENT_TYPES.has(eq.type)
+    ? SUBMETER_FRESHNESS_MS
+    : SUBMETER_FRESHNESS_SLOW_MS;
+}
 
 /** Why a submeter contributes no number to the breakdown. */
 export type SubmeterUnknown = "offline" | "stale" | "missing";
@@ -62,8 +92,8 @@ export function parseReadingTime(iso: string | null | undefined): number | null 
 /**
  * Read the `power` alias from a submeter equipment.
  *
- * A reading older than SUBMETER_FRESHNESS_MS is NOT returned as a number
- * (issue #744). Before this rule, the only thing that could drop a reading was
+ * A reading past its freshness budget is NOT returned as a number (issue
+ * #744). Before this rule, the only thing that could drop a reading was
  * `status === "offline"`, so an equipment considered online contributed its
  * last known power at full weight however old it was. Measured on production:
  * a water heater drawing 560 W was displayed as 0 W because its clamp had last
@@ -71,9 +101,13 @@ export function parseReadingTime(iso: string | null | undefined): number | null 
  * 124 days old. The failure is quiet, since a stale `0 W` reads as "this
  * appliance is off", which is a perfectly plausible thing for it to be.
  *
- * The binding's own `stale` flag cannot be used for this: the backend applies
- * the `power` window only to METERING_EQUIPMENT_TYPES, so a `thermostat` or a
- * `water_heater` carrying a power channel reports `stale: false` forever.
+ * The binding's own `stale` flag cannot stand in for this. The backend applies
+ * the electrical window only to METERING_EQUIPMENT_TYPES, on purpose, so a
+ * `thermostat` or `water_heater` carrying a power channel reports
+ * `stale: false` however old the value is. That exemption is right for
+ * equipment status, where flagging a quiet appliance as degraded would be
+ * wrong; it just leaves the display with no answer to "is this number
+ * current", which is what freshnessBudgetFor supplies.
  *
  * Negative values are returned as their absolute value (clamp wired backwards,
  * same convention as the spec 091 backend integration).
@@ -90,7 +124,7 @@ export function readSubmeterReading(
   const at = parseReadingTime(binding.lastUpdated);
   // No usable timestamp means no evidence the value is old, which is how the
   // backend reads it too (a binding with lastUpdated === null is not stale).
-  if (at !== null && now - at > SUBMETER_FRESHNESS_MS) {
+  if (at !== null && now - at > freshnessBudgetFor(eq)) {
     return { power: null, unknown: "stale", lastUpdated: binding.lastUpdated };
   }
   return { power: Math.abs(binding.value), unknown: null, lastUpdated: binding.lastUpdated };
@@ -164,7 +198,12 @@ export function buildSubmeterRows(
  * each other, which is worse than either being slightly off.
  */
 export function displayedPower(value: number): number {
-  return value < 1000 ? Math.round(value / 5) * 5 : Math.round(value / 100) * 100;
+  if (value < 1000) return Math.round(value / 5) * 5;
+  // NOT Math.round(value / 100) * 100: toFixed(1) rounds 1.15 down, because
+  // the binary double nearest 1.15 is below the half. The two disagreed on
+  // every X50 W step, so a 575 W part in a 1150 W house printed 48 % under a
+  // label reading 1.1 kW.
+  return Number((value / 1000).toFixed(1)) * 1000;
 }
 
 /**
