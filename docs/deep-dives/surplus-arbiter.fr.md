@@ -23,7 +23,7 @@ La page Énergie › Live répond d'un coup d'œil à « qui reçoit le surplus 
 Trois étages, de haut en bas :
 
 - **La table d'état** : chaque charge pilotable avec son état du moment (_Accordé_, _Accordé (ne consomme pas)_, _En attente_, _Au repos_), ce qu'elle a demandé, ce qu'elle consomme réellement, et l'import réseau qu'elle est autorisée à tolérer. La table et la frise disent le même mot pour le même état : ce sont deux vues d'une même lecture, pas deux lectures.
-- **La frise** : la journée en créneaux de 15 minutes par charge, face à la courbe de surplus/déficit. On y voit la pompe de piscine prendre le surplus du matin, le chauffe-eau la rejoindre à midi, la PAC de piscine attendre son tour. Le vert plein dit que la charge a bien consommé le surplus qu'on lui a accordé ; un vert plus clair dit qu'elle l'avait, et que sa mesure de puissance ne montre rien — un chauffe-eau dont le disjoncteur est resté ouvert, une pompe qui n'a jamais démarré. Une charge sans mesure de puissance reste en vert plein : Sowel n'affiche pas une information qu'il n'a pas.
+- **La frise** : la journée en créneaux de 15 minutes par charge, face à la courbe de surplus/déficit. On y voit la pompe de piscine prendre le surplus du matin, le chauffe-eau la rejoindre à midi, la PAC de piscine attendre son tour. Le vert plein dit que la charge a bien consommé le surplus qu'on lui a accordé ; un vert plus clair dit qu'elle l'avait, et que sa mesure de puissance ne montre rien — un chauffe-eau dont le disjoncteur est resté ouvert, une pompe qui n'a jamais démarré. Une charge sans mesure de puissance restait en vert plein, au motif que Sowel n'affiche pas une information qu'il n'a pas. Depuis la spec 166, la recette qui détient l'octroi peut dire si sa charge a réellement besoin de courant : une charge non mesurée qui déclare n'avoir besoin de rien est donc dessinée comme ne consommant pas, elle aussi. Quand une mesure existe, elle l'emporte toujours sur la déclaration.
 - **Le journal des décisions** : chaque octroi et chaque retrait, horodatés, en toutes lettres. Quand vous vous demandez « pourquoi la PAC s'est arrêtée à 15 h 04 », la réponse y est écrite.
 
 ### Ce que vous configurez
@@ -51,7 +51,7 @@ Trois points de contact, par ordre croissant de « vous n'en aurez probablement 
 
 ## Partie 2 : Comment ça marche, précisément
 
-_Cette section documente l'algorithme réel et chaque réglage, avec les décisions de conception et leurs raisons. Historique de la fonctionnalité : specs 140 (arbitre), 148 (frise), 158 (métriques de référence) dans l'[index des specs](../specs-index.md)._
+_Cette section documente l'algorithme réel et chaque réglage, avec les décisions de conception et leurs raisons. Historique de la fonctionnalité : specs 140 (arbitre), 148 (frise), 158 (métriques de référence), 164 (accordée mais inactive), 165 (modèle d'état unique), 166 (besoin déclaré par la recette) dans l'[index des specs](../specs-index.md)._
 
 ### Architecture
 
