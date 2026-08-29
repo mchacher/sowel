@@ -1,5 +1,6 @@
 import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import { localDateStr } from "../../lib/local-date";
 import {
   ResponsiveContainer,
@@ -101,7 +102,7 @@ function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
 }
 
 /** Week view: always 7 bars (Mon–Sun) */
-function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
+function aggregateWeek(points: EnergyPoint[], locale: string, dateStr?: string): ChartDatum[] {
   const byDay = new Map<string, BucketAcc>();
   for (const p of points) {
     const key = localDateKey(new Date(p.time));
@@ -122,8 +123,8 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     const key = localDateKey(day);
     const a = byDay.get(key) ?? newAcc();
     return toDatum(
-      capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })),
-      capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+      capitalizeFirst(day.toLocaleDateString(locale, { weekday: "short", day: "numeric" })),
+      capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
       a.hp,
       a.hc,
       a.auto,
@@ -134,7 +135,7 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
 }
 
 /** Month view: always N bars (1 per day of the month) */
-function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
+function aggregateMonth(points: EnergyPoint[], locale: string, dateStr?: string): ChartDatum[] {
   const byDay = new Map<string, BucketAcc>();
   for (const p of points) {
     const key = localDateKey(new Date(p.time));
@@ -154,7 +155,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     const a = byDay.get(key) ?? newAcc();
     return toDatum(
       String(i + 1),
-      capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+      capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
       a.hp,
       a.hc,
       a.auto,
@@ -165,7 +166,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
 }
 
 /** Year view: always 12 bars (Jan–Dec) */
-function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
+function aggregateYear(points: EnergyPoint[], locale: string, dateStr?: string): ChartDatum[] {
   const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
   const year = ref.getFullYear();
 
@@ -178,8 +179,8 @@ function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     const d = new Date(year, i, 1);
     const a = accs[i];
     return toDatum(
-      capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "short" })),
-      capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })),
+      capitalizeFirst(d.toLocaleDateString(locale, { month: "short" })),
+      capitalizeFirst(d.toLocaleDateString(locale, { month: "long", year: "numeric" })),
       a.hp,
       a.hc,
       a.auto,
@@ -197,12 +198,17 @@ function capitalizeFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function buildChartData(points: EnergyPoint[], period: string, date?: string): ChartDatum[] {
+function buildChartData(
+  points: EnergyPoint[],
+  period: string,
+  locale: string,
+  date?: string,
+): ChartDatum[] {
   switch (period) {
     case "day": return aggregateDay(points);
-    case "week": return aggregateWeek(points, date);
-    case "month": return aggregateMonth(points, date);
-    case "year": return aggregateYear(points, date);
+    case "week": return aggregateWeek(points, locale, date);
+    case "month": return aggregateMonth(points, locale, date);
+    case "year": return aggregateYear(points, locale, date);
     default: return aggregateDay(points);
   }
 }
@@ -238,8 +244,12 @@ function roundedTopRect(x: number, y: number, w: number, h: number, r: number): 
 // ============================================================
 
 export function EnergyBarChart({ points, period, date, height = 300, unit = "wh" }: EnergyBarChartProps) {
-  const { t } = useTranslation();
-  const data = useMemo(() => buildChartData(points, period, date), [points, period, date]);
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const data = useMemo(
+    () => buildChartData(points, period, locale, date),
+    [points, period, locale, date],
+  );
 
   // Spec 123 — when unit==="eur", bars show cost_hp / cost_hc instead
   // of hp / hc kWh. Autoconso has no billed cost so its overlay is
@@ -297,7 +307,7 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
           tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={isEur ? formatEur : formatYAxis}
+          tickFormatter={isEur ? (eur: number) => formatEur(eur, locale) : formatYAxis}
           width={70}
           domain={isEur ? [0, "auto"] : [0, yTicks?.[yTicks.length - 1] ?? "dataMax"]}
           ticks={isEur ? undefined : yTicks}
@@ -335,15 +345,15 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>
                   {t("energy.consumption")} :{" "}
-                  {isEur ? formatEur(costTotal) : formatKWh(consoTotal)}
+                  {isEur ? formatEur(costTotal, locale) : formatKWh(consoTotal)}
                 </div>
                 <div style={{ color: HP_COLOR }}>
                   {t("energy.peakHours")} :{" "}
-                  {isEur ? formatEur(datum.cost_hp) : formatKWh(hpGrid)}
+                  {isEur ? formatEur(datum.cost_hp, locale) : formatKWh(hpGrid)}
                 </div>
                 <div style={{ color: HC_COLOR }}>
                   {t("energy.offPeakHours")} :{" "}
-                  {isEur ? formatEur(datum.cost_hc) : formatKWh(hcGrid)}
+                  {isEur ? formatEur(datum.cost_hc, locale) : formatKWh(hcGrid)}
                 </div>
                 {!isEur && datum.autoconso > 0 && (
                   <div style={{ color: AUTOCONSO_COLOR }}>

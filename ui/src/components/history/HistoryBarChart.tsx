@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import {
   ResponsiveContainer,
   BarChart,
@@ -138,6 +140,8 @@ function CustomTick({ x = 0, y = 0, index, payload, fontSize, labels }: CustomTi
 }
 
 export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBarChartProps) {
+  const { i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
   const viewportWidth = useViewportWidth();
   const isNarrow = viewportWidth < 360;
 
@@ -148,10 +152,10 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
     // bar instead of 2 detached spikes.
     const bucketed = aggregateToBuckets(points, range);
     return bucketed.map((p) => {
-      const { line1, line2 } = formatLabel(p.time, range);
+      const { line1, line2 } = formatLabel(p.time, range, locale);
       return { label: line1, label2: line2, time: p.time, value: p.value };
     });
-  }, [points, range]);
+  }, [points, range, locale]);
 
   if (data.length === 0) {
     return (

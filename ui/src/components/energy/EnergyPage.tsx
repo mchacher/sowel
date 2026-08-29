@@ -9,6 +9,7 @@ import { EnergyByUsageChart } from "./EnergyByUsageChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { UnitToggle } from "./UnitToggle";
 import { formatEnergyOrCost, formatKWh } from "./format";
+import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse } from "../../types";
 import {
@@ -23,7 +24,8 @@ const AUTOCONSO_COLOR = "#6BCB77";
 type ViewMode = "total" | "by-usage";
 
 export function EnergyPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
   const history = useEnergy((s) => s.history);
   const period = useEnergy((s) => s.period);
   const date = useEnergy((s) => s.date);
@@ -200,6 +202,7 @@ export function EnergyPage() {
                       history.totals.cost_total,
                       effectiveUnit,
                       period,
+                      locale,
                     )}
                   </span>
                   {hasHpHc && (
@@ -210,6 +213,7 @@ export function EnergyPage() {
                         history.totals.cost_hp,
                         effectiveUnit,
                         period,
+                        locale,
                       )}{" "}
                       / {t("energy.offPeakHours")} :{" "}
                       {formatEnergyOrCost(
@@ -217,6 +221,7 @@ export function EnergyPage() {
                         history.totals.cost_hc,
                         effectiveUnit,
                         period,
+                        locale,
                       )})
                     </span>
                   )}
@@ -228,12 +233,13 @@ export function EnergyPage() {
                   )}
                 </div>
                 <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                  Total :{" "}
+                  {t("energy.total")} :{" "}
                   {formatEnergyOrCost(
                     history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
                     history.totals.cost_total,
                     effectiveUnit,
                     period,
+                    locale,
                   )}
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">

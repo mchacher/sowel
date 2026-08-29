@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import { localDateStr } from "../../lib/local-date";
 import {
   ResponsiveContainer,
@@ -66,7 +67,7 @@ function capitalizeFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function makeBuckets(period: string, dateStr?: string): { keyOf: (time: string) => string | null; buckets: { key: string; label: string; tooltipLabel: string }[] } {
+function makeBuckets(period: string, locale: string, dateStr?: string): { keyOf: (time: string) => string | null; buckets: { key: string; label: string; tooltipLabel: string }[] } {
   if (period === "day") {
     const buckets = Array.from({ length: 24 }, (_, hour) => ({
       key: String(hour),
@@ -90,8 +91,8 @@ function makeBuckets(period: string, dateStr?: string): { keyOf: (time: string) 
       day.setDate(day.getDate() + i);
       return {
         key: localDateKey(day),
-        label: capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })),
-        tooltipLabel: capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+        label: capitalizeFirst(day.toLocaleDateString(locale, { weekday: "short", day: "numeric" })),
+        tooltipLabel: capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
       };
     });
     return { keyOf: (time) => localDateKey(new Date(time)), buckets };
@@ -107,7 +108,7 @@ function makeBuckets(period: string, dateStr?: string): { keyOf: (time: string) 
       return {
         key: localDateKey(day),
         label: String(i + 1),
-        tooltipLabel: capitalizeFirst(day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+        tooltipLabel: capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
       };
     });
     return { keyOf: (time) => localDateKey(new Date(time)), buckets };
@@ -120,18 +121,23 @@ function makeBuckets(period: string, dateStr?: string): { keyOf: (time: string) 
     const d = new Date(year, i, 1);
     return {
       key: String(i),
-      label: capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "short" })),
-      tooltipLabel: capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })),
+      label: capitalizeFirst(d.toLocaleDateString(locale, { month: "short" })),
+      tooltipLabel: capitalizeFirst(d.toLocaleDateString(locale, { month: "long", year: "numeric" })),
     };
   });
   return { keyOf: (time) => String(new Date(time).getMonth()), buckets };
 }
 
-function buildChart(data: EnergyByUsageResponse, period: string, dateStr?: string): {
+function buildChart(
+  data: EnergyByUsageResponse,
+  period: string,
+  locale: string,
+  dateStr?: string,
+): {
   data: Datum[];
   series: Series[];
 } {
-  const { keyOf, buckets } = makeBuckets(period, dateStr);
+  const { keyOf, buckets } = makeBuckets(period, locale, dateStr);
 
   const otherKey = OTHER_KEY;
   const series: Series[] = [
@@ -181,8 +187,12 @@ function formatYAxis(kwh: number): string {
 }
 
 export function EnergyByUsageChart({ data, period, date, height = 300, unit = "wh" }: Props) {
-  const { t } = useTranslation();
-  const { data: rows, series } = useMemo(() => buildChart(data, period, date), [data, period, date]);
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const { data: rows, series } = useMemo(
+    () => buildChart(data, period, locale, date),
+    [data, period, locale, date],
+  );
   const isEur = unit === "eur";
 
   // Spec 123 — derive the period's blended €/kWh from the totals
@@ -200,7 +210,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
     return series.map((s) => (s.id === OTHER_KEY ? { ...s, name: t("energy.byUsage.other") } : s));
   }, [series, t]);
 
-  const formatValue = (kwh: number): string => (isEur ? formatEur(kwh * blendedRate) : formatKWh(kwh));
+  const formatValue = (kwh: number): string => (isEur ? formatEur(kwh * blendedRate, locale) : formatKWh(kwh));
 
   return (
     <div style={{ width: "100%", height }}>
@@ -209,7 +219,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="label" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
           <YAxis
-            tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate) : formatYAxis}
+            tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate, locale) : formatYAxis}
             tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
           />
           <Tooltip
@@ -234,7 +244,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
                   })}
                   {total > 0 && (
                     <div className="mt-1 pt-1 border-t border-border flex items-center text-text">
-                      <span className="font-semibold">Total</span>
+                      <span className="font-semibold">{t("energy.total")}</span>
                       <span className="ml-auto tabular-nums font-semibold">{formatValue(total)}</span>
                     </div>
                   )}

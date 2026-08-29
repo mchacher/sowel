@@ -83,16 +83,20 @@ export function aggregateToBuckets(points: HistoryPoint[], range: TimeRange): Hi
  * Build the tick label(s) for a given timestamp at a given range.
  * 7d uses two lines (weekday + day) to avoid overlapping; other ranges stay on one line.
  */
-export function formatLabel(iso: string, range: TimeRange): { line1: string; line2?: string } {
+export function formatLabel(
+  iso: string,
+  range: TimeRange,
+  locale: string,
+): { line1: string; line2?: string } {
   const d = new Date(iso);
   if (range === "6h" || range === "24h") {
     return {
-      line1: d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+      line1: d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),
     };
   }
   if (range === "7d") {
     return {
-      line1: d.toLocaleDateString("fr-FR", { weekday: "short" }),
+      line1: d.toLocaleDateString(locale, { weekday: "short" }),
       line2: String(d.getDate()).padStart(2, "0"),
     };
   }

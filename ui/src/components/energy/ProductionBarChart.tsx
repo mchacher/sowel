@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import { localDateStr } from "../../lib/local-date";
 import {
   ResponsiveContainer,
@@ -80,7 +81,7 @@ function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
   }));
 }
 
-function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
+function aggregateWeek(points: EnergyPoint[], locale: string, dateStr?: string): ChartDatum[] {
   const byDay = bucketize(points, localDateKey);
 
   const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
@@ -94,10 +95,10 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     day.setDate(day.getDate() + i);
     const key = localDateKey(day);
     const label = capitalizeFirst(
-      day.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }),
+      day.toLocaleDateString(locale, { weekday: "short", day: "numeric" }),
     );
     const tooltipLabel = capitalizeFirst(
-      day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+      day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
     );
     return {
       label,
@@ -107,7 +108,7 @@ function aggregateWeek(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   });
 }
 
-function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
+function aggregateMonth(points: EnergyPoint[], locale: string, dateStr?: string): ChartDatum[] {
   const byDay = bucketize(points, localDateKey);
 
   const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
@@ -119,7 +120,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
     const day = new Date(year, month, i + 1);
     const key = localDateKey(day);
     const tooltipLabel = capitalizeFirst(
-      day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+      day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
     );
     return {
       label: String(i + 1),
@@ -129,7 +130,7 @@ function aggregateMonth(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   });
 }
 
-function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
+function aggregateYear(points: EnergyPoint[], locale: string, dateStr?: string): ChartDatum[] {
   const ref = new Date((dateStr ?? localDateStr()) + "T12:00:00");
   const year = ref.getFullYear();
   const byMonth = bucketize(points, (d) => d.getMonth());
@@ -137,26 +138,31 @@ function aggregateYear(points: EnergyPoint[], dateStr?: string): ChartDatum[] {
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(year, i, 1);
     const tooltipLabel = capitalizeFirst(
-      d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }),
+      d.toLocaleDateString(locale, { month: "long", year: "numeric" }),
     );
     return {
-      label: capitalizeFirst(d.toLocaleDateString("fr-FR", { month: "short" })),
+      label: capitalizeFirst(d.toLocaleDateString(locale, { month: "short" })),
       tooltipLabel,
       ...toKWh(byMonth.get(i) ?? EMPTY),
     };
   });
 }
 
-function buildChartData(points: EnergyPoint[], period: string, date?: string): ChartDatum[] {
+function buildChartData(
+  points: EnergyPoint[],
+  period: string,
+  locale: string,
+  date?: string,
+): ChartDatum[] {
   switch (period) {
     case "day":
       return aggregateDay(points);
     case "week":
-      return aggregateWeek(points, date);
+      return aggregateWeek(points, locale, date);
     case "month":
-      return aggregateMonth(points, date);
+      return aggregateMonth(points, locale, date);
     case "year":
-      return aggregateYear(points, date);
+      return aggregateYear(points, locale, date);
     default:
       return aggregateDay(points);
   }
@@ -176,8 +182,12 @@ function formatYAxis(kwh: number): string {
 }
 
 export function ProductionBarChart({ points, period, date, height = 300 }: ProductionBarChartProps) {
-  const { t } = useTranslation();
-  const data = useMemo(() => buildChartData(points, period, date), [points, period, date]);
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const data = useMemo(
+    () => buildChartData(points, period, locale, date),
+    [points, period, locale, date],
+  );
 
   // The autoconso / injection split needs BOTH a production and a grid meter.
   // With only a production meter — or while the grid side is silent — the raw
