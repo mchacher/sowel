@@ -180,9 +180,22 @@ Go to **Settings > Administration > Energy**, enable **Surplus arbiter**, and or
 
 The **Energy > Live** page gains a surplus-arbitration panel with three parts:
 
-- a **roster**, one row per flexible load: its state, the **gap** still missing before it can start, what it currently draws, how much grid import it tolerates, and what it **needs**. The need is filled on every row, not only on waiting ones, because what a load takes to start is true whether it runs, waits or sits idle;
-- a **day timeline** with one lane per flexible load — green where it held the surplus, a red marker (with the reason on hover) where it was stepped back;
+- a **roster** listing every flexible load in your priority order, with its state and its figures;
+- a **timeline** with one lane per flexible load: green where it held the surplus, a red marker (with the reason on hover) where it was stepped back;
 - a **decision journal** in plain language, so nothing the arbiter does is a mystery.
+
+The roster answers the two questions you actually have in front of it: who has the surplus, and what is holding up the next one.
+
+| Column        | What it says                                                                                                                                                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Gap**       | What a waiting load is still short of, in watts. When nothing is missing it says so in words instead: _covered_ for a load that already has the surplus, _not requested_ for one no automation has asked for, or the reason it is held back (confirming, cooling down). |
+| **Load**      | What the load draws: measured while it runs, its rating while it rests.                                                                                                                                                                                                 |
+| **Tolerates** | The grid import it accepts, from its energy management settings.                                                                                                                                                                                                        |
+| **Need**      | The surplus it takes to start it: **load + engage margin - tolerated import**. The margin is stated under the table, so you can check the arithmetic on any row. A load tolerating more import than it draws needs no surplus at all and reads 0 W.                     |
+
+The number in front of each name is its rank in your priority list. On a narrow screen the table keeps the equipment, its state and the gap, and drops the rest.
+
+At night the arbiter goes dormant: there is no surplus to hand out, every load reads _at rest_, and the panel says when it resumes.
 
 ### You always win
 
