@@ -8,11 +8,15 @@ import {
 import type {
   DataBindingWithValue,
   DataCategory,
+  DeviceData,
+  DeviceOrder,
+  DeviceWithDetails,
   EquipmentType,
   OrderBindingWithDetails,
   OrderCategory,
 } from "../../types";
 import { CANDIDATE_BASED_TYPES, computeBindingCandidates } from "../../lib/binding-candidates";
+import { resolveHistorize } from "../../lib/history-defaults";
 
 // ============================================================
 // Read-side resolvers (category-first, alias fallback)
@@ -397,6 +401,287 @@ export function isRelevantOrder(key: string, equipmentType: string, category?: O
 // module (single source of truth with the backend), re-exported by
 // ../../lib/binding-candidates (imported at the top of this file).
 
+// ============================================================
+// Binding plan (issue #707)
+//
+// Deciding WHAT to bind and actually binding it used to be one pass, so the
+// only way to pick up a data point a plugin added after the equipment was
+// created was to wipe every binding and rebuild — losing custom aliases and
+// historization along the way. The decision is now a pure function the UI can
+// show the owner before anything is written.
+// ============================================================
+
+/** One binding the auto-binder would create. */
+export interface PlannedBinding {
+  kind: "data" | "order";
+  deviceId: string;
+  deviceName: string;
+  /** `device_data.id` for data, `device_order.id` for orders. */
+  sourceId: string;
+  /** The key as the device publishes it. */
+  key: string;
+  /** The alias it would be bound under, already deduplicated. */
+  alias: string;
+  category?: string;
+  /** Whether this binding would be written to InfluxDB. Always false for orders. */
+  historized: boolean;
+}
+
+interface PlanOptions {
+  /** deviceId → chosen candidate.id (from the DeviceSelector picker). */
+  candidateByDevice?: Record<string, string>;
+  /** Aliases already taken on the equipment, so a plan added to an existing
+   *  equipment cannot collide with `UNIQUE(equipment_id, alias)`. */
+  usedDataAliases?: Iterable<string>;
+  usedOrderAliases?: Iterable<string>;
+  /**
+   * Device data/order ids to leave out of the plan entirely. Skipped BEFORE an
+   * alias is allocated: a point that is already bound under a renamed alias
+   * must not burn its natural one, or a new point of the same category is
+   * offered as `temperature_2` and the zone aggregator, which only folds
+   * `alias === "temperature"` into the room average, silently leaves it out.
+   */
+  skipSourceIds?: ReadonlySet<string>;
+}
+
+/**
+ * The bindings the auto-binder would create for these devices. Pure: it writes
+ * nothing and fetches nothing, so it can back a confirmation list.
+ */
+export function computeBindingPlan(
+  devices: DeviceWithDetails[],
+  equipmentType: string,
+  options: PlanOptions = {},
+): PlannedBinding[] {
+  const usedDataAliases = new Set<string>(options.usedDataAliases ?? []);
+  const usedOrderAliases = new Set<string>(options.usedOrderAliases ?? []);
+  const useCandidates = CANDIDATE_BASED_TYPES.has(equipmentType as EquipmentType);
+  const plan: PlannedBinding[] = [];
+
+  const skip = options.skipSourceIds;
+
+  const pushData = (device: DeviceWithDetails, data: DeviceData, base: string) => {
+    if (skip?.has(data.id)) return;
+    const alias = uniqueAlias(base, usedDataAliases);
+    usedDataAliases.add(alias);
+    plan.push({
+      kind: "data",
+      deviceId: device.id,
+      deviceName: device.name,
+      sourceId: data.id,
+      key: data.key,
+      alias,
+      ...(data.category !== undefined ? { category: data.category } : {}),
+      historized: resolveHistorize(null, alias, data.category ?? "generic"),
+    });
+  };
+
+  const pushOrder = (device: DeviceWithDetails, order: DeviceOrder, base: string) => {
+    if (skip?.has(order.id)) return;
+    const alias = uniqueAlias(base, usedOrderAliases);
+    usedOrderAliases.add(alias);
+    plan.push({
+      kind: "order",
+      deviceId: device.id,
+      deviceName: device.name,
+      sourceId: order.id,
+      key: order.key,
+      alias,
+      ...(order.category !== undefined ? { category: order.category } : {}),
+      historized: false,
+    });
+  };
+
+  for (const device of devices) {
+    try {
+      planDevice(device);
+    } catch {
+      // Skip a device whose candidates cannot be computed, as the original
+      // per-device try/catch did — one bad device must not lose the rest.
+    }
+  }
+
+  function planDevice(device: DeviceWithDetails): void {
+    // Candidate-based binding: compute the functional channels the device
+    // offers for this equipment type and bind only the selected candidate's
+    // data/orders. Guarantees spec-conformant bindings (no cross-channel
+    // pollution on multi-relay devices like Tasmota 4CH Pro).
+    if (useCandidates) {
+      const candidates = computeBindingCandidates(
+        equipmentType as EquipmentType,
+        device.data,
+        device.orders,
+      );
+      if (candidates.length === 0) {
+        // No matching channel on this device — skip silently
+        return;
+      }
+      // Honour the explicit pick when present; otherwise default to the
+      // first candidate (deterministic).
+      const chosenId = options.candidateByDevice?.[device.id];
+      const chosen = candidates.find((c) => c.id === chosenId) ?? candidates[0];
+      const allowedData = new Set(chosen.dataKeys);
+      const allowedOrders = new Set(chosen.orderKeys);
+
+      // Spec 153 — a VMC maps its two on/off relay channels to fixed roles
+      // `low` (first channel) and `high` (second), so the speed controller can
+      // resolve them. Same alias for the matching state data. The generic
+      // category aliasing would collapse both channels to `state`, so this
+      // per-key map is applied first.
+      const vmcAlias: Record<string, string> | null =
+        equipmentType === "vmc"
+          ? Object.fromEntries(
+              chosen.orderKeys
+                .slice()
+                .sort((a, b) => a.localeCompare(b))
+                .map((k, i) => [k, i === 0 ? "low" : "high"]),
+            )
+          : null;
+
+      for (const data of device.data) {
+        if (!allowedData.has(data.key)) continue;
+        pushData(
+          device,
+          data,
+          vmcAlias?.[data.key] ??
+            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+        );
+      }
+      for (const order of device.orders) {
+        if (!allowedOrders.has(order.key)) continue;
+        pushOrder(
+          device,
+          order,
+          vmcAlias?.[order.key] ??
+            resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
+        );
+      }
+      return;
+    }
+
+    // Legacy path for all other equipment types — bind everything that
+    // matches the RELEVANT_DATA / RELEVANT_ORDERS whitelists.
+    for (const data of device.data) {
+      if (!isRelevantData(data.category, equipmentType)) continue;
+      pushData(
+        device,
+        data,
+        resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+      );
+    }
+    for (const order of device.orders) {
+      if (!isRelevantOrder(order.key, equipmentType, order.category)) continue;
+      pushOrder(
+        device,
+        order,
+        resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
+      );
+    }
+  }
+
+  return plan;
+}
+
+/**
+ * The planned bindings this equipment does not have yet.
+ *
+ * This is what a plugin publishing a new data point produces: the key reaches
+ * `device_data` at discovery, but nothing revisits an equipment bound before
+ * it existed, so the point stays invisible (issue #707). Existing aliases seed
+ * the deduplication, so a new key whose natural alias is already taken is
+ * offered as `alias_2` rather than failing the unique constraint.
+ */
+export function computeMissingBindings(
+  devices: DeviceWithDetails[],
+  equipmentType: string,
+  dataBindings: DataBindingWithValue[],
+  orderBindings: OrderBindingWithDetails[],
+): PlannedBinding[] {
+  const boundData = new Set(dataBindings.map((b) => b.deviceDataId));
+  const boundOrders = new Set(orderBindings.map((b) => b.deviceOrderId));
+
+  // On a multi-channel device the equipment owns ONE functional channel, and
+  // which one is only recorded in the bindings it already has. Planning with
+  // the default (first) candidate would offer a foreign relay's state and
+  // command — the cross-channel pollution spec 150 exists to prevent — and the
+  // count could never reach zero for anyone bound to channel 2. Infer the
+  // channel from the keys already bound, and leave the device out when nothing
+  // matches rather than guessing.
+  const candidateByDevice: Record<string, string> = {};
+  let planned = devices;
+  if (CANDIDATE_BASED_TYPES.has(equipmentType as EquipmentType)) {
+    const boundKeys = new Map<string, Set<string>>();
+    for (const b of [...dataBindings, ...orderBindings]) {
+      const keys = boundKeys.get(b.deviceId) ?? new Set<string>();
+      keys.add(b.key);
+      boundKeys.set(b.deviceId, keys);
+    }
+    planned = devices.filter((device) => {
+      const keys = boundKeys.get(device.id);
+      if (!keys || keys.size === 0) return false;
+      const candidates = computeBindingCandidates(
+        equipmentType as EquipmentType,
+        device.data,
+        device.orders,
+      );
+      const owned = candidates.find(
+        (c) =>
+          c.dataKeys.some((k) => keys.has(k)) || c.orderKeys.some((k) => keys.has(k)),
+      );
+      if (!owned) return false;
+      candidateByDevice[device.id] = owned.id;
+      return true;
+    });
+  }
+
+  return computeBindingPlan(planned, equipmentType, {
+    candidateByDevice,
+    usedDataAliases: dataBindings.map((b) => b.alias),
+    usedOrderAliases: orderBindings.map((b) => b.alias),
+    skipSourceIds: new Set([...boundData, ...boundOrders]),
+  });
+}
+
+/**
+ * Write a plan, one binding at a time. A binding that cannot be written (alias
+ * conflict, already bound) does not abort the rest; the aliases that failed are
+ * returned so a caller acting on an explicit confirmation can say so instead of
+ * reporting a success that did not happen.
+ */
+export async function applyBindingPlan(
+  equipmentId: string,
+  plan: PlannedBinding[],
+): Promise<{ added: number; failed: string[] }> {
+  let added = 0;
+  const failed: string[] = [];
+  for (const item of plan) {
+    try {
+      if (item.kind === "data") {
+        await addDataBinding(equipmentId, { deviceDataId: item.sourceId, alias: item.alias });
+      } else {
+        await addOrderBinding(equipmentId, { deviceOrderId: item.sourceId, alias: item.alias });
+      }
+      added++;
+    } catch {
+      failed.push(item.alias);
+    }
+  }
+  return { added, failed };
+}
+
+/** Fetch the devices behind a set of ids, skipping any that cannot be read. */
+export async function fetchDevices(deviceIds: string[]): Promise<DeviceWithDetails[]> {
+  const devices: DeviceWithDetails[] = [];
+  for (const deviceId of deviceIds) {
+    try {
+      devices.push(await getDevice(deviceId));
+    } catch {
+      // Skip failed device
+    }
+  }
+  return devices;
+}
+
 /** Auto-create DataBindings and OrderBindings for selected devices. */
 export async function autoCreateBindings(
   equipmentId: string,
@@ -406,116 +691,11 @@ export async function autoCreateBindings(
    * when missing, falls back to the first candidate. */
   candidateByDevice?: Record<string, string>,
 ): Promise<void> {
-  const usedDataAliases = new Set<string>();
-  const usedOrderAliases = new Set<string>();
-  const useCandidates = CANDIDATE_BASED_TYPES.has(equipmentType as EquipmentType);
-
-  for (const deviceId of deviceIds) {
-    try {
-      const device = await getDevice(deviceId);
-
-      // Candidate-based binding: compute the functional channels the device
-      // offers for this equipment type and bind only the selected candidate's
-      // data/orders. Guarantees spec-conformant bindings (no cross-channel
-      // pollution on multi-relay devices like Tasmota 4CH Pro).
-      if (useCandidates) {
-        const candidates = computeBindingCandidates(
-          equipmentType as EquipmentType,
-          device.data,
-          device.orders,
-        );
-        if (candidates.length === 0) {
-          // No matching channel on this device — skip silently
-          continue;
-        }
-        // Honour the explicit pick when present; otherwise default to the
-        // first candidate (deterministic).
-        const chosenId = candidateByDevice?.[deviceId];
-        const chosen = candidates.find((c) => c.id === chosenId) ?? candidates[0];
-        const allowedData = new Set(chosen.dataKeys);
-        const allowedOrders = new Set(chosen.orderKeys);
-
-        // Spec 153 — a VMC maps its two on/off relay channels to fixed roles
-        // `low` (first channel) and `high` (second), so the speed controller can
-        // resolve them. Same alias for the matching state data. The generic
-        // category aliasing would collapse both channels to `state`, so this
-        // per-key map is applied first.
-        const vmcAlias: Record<string, string> | null =
-          equipmentType === "vmc"
-            ? Object.fromEntries(
-                chosen.orderKeys
-                  .slice()
-                  .sort((a, b) => a.localeCompare(b))
-                  .map((k, i) => [k, i === 0 ? "low" : "high"]),
-              )
-            : null;
-
-        for (const data of device.data) {
-          if (!allowedData.has(data.key)) continue;
-          const alias = uniqueAlias(
-            vmcAlias?.[data.key] ??
-              resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
-            usedDataAliases,
-          );
-          try {
-            await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
-            usedDataAliases.add(alias);
-          } catch {
-            // Alias conflict — skip
-          }
-        }
-        for (const order of device.orders) {
-          if (!allowedOrders.has(order.key)) continue;
-          const alias = uniqueAlias(
-            vmcAlias?.[order.key] ??
-              resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
-            usedOrderAliases,
-          );
-          try {
-            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
-            usedOrderAliases.add(alias);
-          } catch {
-            // Already bound — skip
-          }
-        }
-        continue;
-      }
-
-      // Legacy path for all other equipment types — bind everything that
-      // matches the RELEVANT_DATA / RELEVANT_ORDERS whitelists.
-      for (const data of device.data) {
-        if (isRelevantData(data.category, equipmentType)) {
-          const alias = uniqueAlias(
-            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
-            usedDataAliases,
-          );
-          try {
-            await addDataBinding(equipmentId, { deviceDataId: data.id, alias });
-            usedDataAliases.add(alias);
-          } catch {
-            // Alias conflict — skip
-          }
-        }
-      }
-
-      for (const order of device.orders) {
-        if (isRelevantOrder(order.key, equipmentType, order.category)) {
-          const alias = uniqueAlias(
-            resolveAlias(order.key, equipmentType, ORDER_CATEGORY_ALIASES, order.category),
-            usedOrderAliases,
-          );
-          try {
-            await addOrderBinding(equipmentId, { deviceOrderId: order.id, alias });
-            usedOrderAliases.add(alias);
-          } catch {
-            // Already bound — skip
-          }
-        }
-      }
-    } catch {
-      // Skip failed device
-    }
-  }
+  const devices = await fetchDevices(deviceIds);
+  const plan = computeBindingPlan(devices, equipmentType, {
+    ...(candidateByDevice !== undefined ? { candidateByDevice } : {}),
+  });
+  await applyBindingPlan(equipmentId, plan);
 }
 
 /** Return a unique alias: "battery", "battery_2", "battery_3", etc. */

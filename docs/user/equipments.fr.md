@@ -270,6 +270,24 @@ Cliquez sur n'importe quel équipement pour voir sa page de détail :
 
 Depuis la page de détail, cliquez sur **Changer de device** pour relier l'équipement à un ou plusieurs devices différents. Sowel supprime toutes les liaisons existantes et les recrée automatiquement à partir des nouveaux devices.
 
+!!! warning
+Les liaisons sont reconstruites de zéro : les alias personnalisés et les
+réglages d'historisation par liaison sont perdus. Pour récupérer de
+nouvelles valeurs sans les perdre, utilisez **Ajouter les liaisons
+manquantes** ci-dessous.
+
+### Ajouter les liaisons manquantes
+
+La mise à jour d'un plugin peut publier des valeurs que le device ne remontait pas avant. Ces valeurs arrivent bien jusqu'au device, mais un équipement lié avant leur apparition ne les récupère pas tout seul.
+
+Ouvrez **Configuration > Liaisons** sur la page de détail. Quand il manque quelque chose, Sowel le signale et propose **Examiner** :
+
+- chaque valeur manquante est listée, cochée par défaut
+- décochez ce que vous ne voulez pas, puis confirmez
+- les valeurs qui seront enregistrées dans l'historique sont marquées, et leur nombre est indiqué avant de confirmer
+
+Rien n'est ajouté tant que vous n'avez pas confirmé : une valeur que vous aviez retirée volontairement ne revient que si vous le demandez. Sur un device multi-canal, seul le canal déjà utilisé par cet équipement est proposé.
+
 ### Historisation
 
 Chaque valeur de donnée est historisée vers InfluxDB par défaut, selon sa catégorie (température, humidité, puissance...). Depuis la page de détail, vous pouvez surcharger ce comportement par liaison :
