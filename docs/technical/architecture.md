@@ -539,10 +539,15 @@ Why a helper? Calling `dockerode.stop()` on the current container from within th
 
 `.github/workflows/release.yml` triggers on pushed tags matching `v*`. It runs:
 
-1. **ci job** — typecheck, lint, tests (backend + UI)
-2. **docker jobs** — build `linux/amd64` and `linux/arm64` with Buildx, push to `ghcr.io/mchacher/sowel:<version>`, then a `promote-manifest` job merges them into one multi-architecture `:latest`, and a GitHub Release is created with auto-generated notes
+1. **verify-release-notes job**: fails the workflow before any layer is built if the tagged commit has no release-notes anchor (spec 108)
+2. **ci job**: typecheck, lint, tests (backend + UI)
+3. **docker jobs**: build `linux/amd64` and `linux/arm64` with Buildx in parallel, each pushing its own tag (`:<version>` and `:<version>-arm64`)
+4. **promote-manifest job**: merges the two into one multi-architecture `:<version>`, then points `:latest` at it
+5. **release job**: creates the GitHub Release with auto-generated notes
 
 The Docker build is **multi-architecture**: amd64 and arm64 are built in parallel jobs and merged into a single manifest, so `docker pull` resolves the right one.
+
+The ordering of the last three steps is a correctness requirement, not a convenience. `UpdateChecker` polls the GitHub Release rather than the GHCR manifest, so a Release published while `:<version>` is still amd64-only would announce an update to every Raspberry Pi and then fail their `docker pull`. Both `promote-manifest` and `release` are therefore gated on the arm64 build succeeding, and `:latest` is published only by `promote-manifest`, never by the amd64 job. An arm64 failure leaves `:<version>` pushed as amd64-only and withholds both `:latest` and the Release: nothing announces a version half the fleet cannot pull, and re-running the workflow on the same tag completes it.
 
 ### Release script
 

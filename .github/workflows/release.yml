@@ -55,8 +55,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Check release-notes entry
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "Skipping release-notes check on workflow_dispatch event"
             exit 0
           fi
@@ -113,7 +115,7 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
     steps:
       - uses: actions/checkout@v7
@@ -130,29 +132,32 @@ jobs:
 
       - name: Resolve version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TEST_TAG: ${{ inputs.test_tag }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ inputs.test_tag }}" >> $GITHUB_OUTPUT
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "version=${TEST_TAG}" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
           else
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
             echo "is_release=true" >> $GITHUB_OUTPUT
           fi
 
+      # :latest is deliberately NOT pushed here (#764). This job produces an
+      # amd64-only manifest, so pushing :latest before promote-manifest merges
+      # the two architectures leaves a window, short but real on every healthy
+      # release, in which an arm64 host pulling :latest gets no matching
+      # manifest. promote-manifest points :latest at the merged :V instead.
       - name: Compute image tags
         id: tags
         env:
           REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           V: ${{ steps.version.outputs.version }}
-          IS_RELEASE: ${{ steps.version.outputs.is_release }}
         run: |
-          tags="${REPO}:${V}"
-          if [[ "$IS_RELEASE" == "true" ]]; then
-            tags="${tags}"$'\n'"${REPO}:latest"
-          fi
           {
             echo 'list<<EOF'
-            echo "$tags"
+            echo "${REPO}:${V}"
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
@@ -171,8 +176,12 @@ jobs:
   # No QEMU emulation — build time drops from ~12 min to ~2 min and runs
   # in parallel with the amd64 job. Once both archs are pushed, the
   # multi-arch manifest is promoted in this job's last step.
-  # Failure here does NOT fail the release — amd64 image stays valid,
-  # the main tags just remain amd64-only until the next release.
+  # continue-on-error keeps an arm64 failure from failing the workflow, but
+  # it does not make the release proceed without arm64: promote-manifest and
+  # the GitHub Release job are both gated on this job succeeding (#764). An
+  # arm64 failure therefore leaves :V pushed as amd64-only and withholds both
+  # :latest and the Release, so no instance is told about a version half the
+  # fleet cannot pull. Re-running the workflow on the same tag completes it.
   docker-arm64:
     needs: ci
     runs-on: ubuntu-24.04-arm
@@ -194,9 +203,12 @@ jobs:
 
       - name: Resolve version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TEST_TAG: ${{ inputs.test_tag }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ inputs.test_tag }}" >> $GITHUB_OUTPUT
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "version=${TEST_TAG}" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
           else
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
@@ -252,9 +264,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Resolve version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TEST_TAG: ${{ inputs.test_tag }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ inputs.test_tag }}" >> $GITHUB_OUTPUT
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "version=${TEST_TAG}" >> $GITHUB_OUTPUT
             echo "is_release=false" >> $GITHUB_OUTPUT
           else
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
@@ -268,20 +283,30 @@ jobs:
         run: |
           docker buildx imagetools create --tag ${REPO}:${V} ${REPO}:${V} ${REPO}:${V}-arm64
           if [[ "$IS_RELEASE" == "true" ]]; then
-            docker buildx imagetools create --tag ${REPO}:latest ${REPO}:latest ${REPO}:latest-arm64
+            # :V is multi-arch as of the line above, so :latest is a copy of it
+            # rather than a second merge of the two per-arch tags. This is the
+            # only step that publishes :latest, so the tag is never transiently
+            # single-arch (#764).
+            docker buildx imagetools create --tag ${REPO}:latest ${REPO}:${V}
           fi
 
   # ── Create GitHub Release (after multi-arch manifest is published) ──
-  # Gated behind promote-manifest so the Release is not visible until
-  # the multi-arch manifest exists. Otherwise arm64 instances (Pi) would
-  # see "update available" while `docker pull` still fails for them.
-  # If arm64 fails (continue-on-error), promote-manifest is skipped, and
-  # this job still runs because of `always() && needs.docker.result ==
-  # 'success'` — the main tag stays amd64-only and arm64 users correctly
-  # see no update.
+  # Gated behind promote-manifest so the Release is not visible until the
+  # multi-arch manifest exists. UpdateChecker polls the GitHub Release
+  # (`/releases/latest` in src/core/version-checker.ts), not the GHCR
+  # manifest, so a Release published while :V is still amd64-only tells
+  # every Raspberry Pi an update is available and then fails their
+  # `docker pull` with no matching manifest.
+  #
+  # arm64 is continue-on-error, so an arm64 failure skips promote-manifest
+  # and must skip this job too (#764). Before that condition was added the
+  # release job only checked `docker`, so it published anyway and produced
+  # exactly the failure the gate exists to prevent, silently and on a green
+  # run. amd64 images remain pullable by tag or digest either way; what an
+  # arm64 failure withholds is the update announcement.
   release:
     needs: [docker, docker-arm64, promote-manifest]
-    if: always() && needs.docker.result == 'success' && startsWith(github.ref, 'refs/tags/v')
+    if: always() && needs.docker.result == 'success' && needs.promote-manifest.result == 'success' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
