@@ -102,8 +102,9 @@ After pushing the tag, GitHub Actions will:
 
 1. Verify release notes anchors (fails fast if missing — recovery: add the entries, amend, `git tag -f v<version> && git push --force origin v<version>`)
 2. Run CI checks (typecheck, lint, tests)
-3. Build Docker images (amd64 + arm64) and push `ghcr.io/mchacher/sowel:<version>` and `:latest`
-4. Create the GitHub Release with changelog
+3. Build Docker images (amd64 + arm64) in parallel and push `ghcr.io/mchacher/sowel:<version>` and `:<version>-arm64`
+4. Promote the two into one multi-arch `:<version>`, then point `:latest` at it
+5. Create the GitHub Release with changelog
 
 ```bash
 gh run list --limit 3
@@ -111,6 +112,8 @@ gh run view <run-id> --log-failed   # if it fails
 ```
 
 Do NOT poll in a fire-and-forget background loop; check directly, then act.
+
+**If the arm64 build fails** (#764): steps 4 and 5 are skipped on purpose, so `:latest` and the GitHub Release are withheld and no instance is told about a version half the fleet cannot pull. The `arm64-required` job turns the run red so this never reads as a success. Recover with **Re-run all jobs** on that run. Do NOT dispatch the workflow on the tag: the dispatch path resolves the version from `test_tag`, so it builds test images and publishes nothing under the tag's own version.
 
 > **CHECK**: GitHub Actions workflow completed successfully.
 

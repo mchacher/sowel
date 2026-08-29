@@ -22,17 +22,26 @@ const WORKFLOW_PATH = resolve(import.meta.dirname, "../../.github/workflows/rele
 const workflow = readFileSync(WORKFLOW_PATH, "utf-8");
 
 /**
- * Every `run:` script body in the file, with the step it belongs to.
- * YAML block scalars are found by indentation: the body is the run of lines
- * indented deeper than the `run:` key itself.
+ * Every `run:` line in the file, whether it introduces a block scalar or a
+ * one-liner, and whether or not it is the first key of a compact sequence
+ * entry (`- run: npm ci`). Block bodies are found by indentation: the body is
+ * the run of lines indented deeper than the `run:` key itself.
+ *
+ * The compact-sequence form is the one that matters. An earlier version of
+ * this parser anchored on `^\s*run:`, which cannot match a leading `-`, so it
+ * silently skipped `- run: npm ci` and would have kept passing had someone
+ * later written `- run: echo "${{ inputs.test_tag }}"`. A scanner that misses
+ * a shape is worse than no scanner, because it reads as coverage.
  */
-function runBlocks(): { line: number; body: string }[] {
-  const lines = workflow.split("\n");
+function runLines(source = workflow): { line: number; body: string }[] {
+  const lines = source.split("\n");
   const blocks: { line: number; body: string }[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const m = /^(\s*)run: (\||>)-?\s*$/.exec(lines[i]);
-    if (m) {
-      const indent = m[1].length;
+    // `- run:` counts the dash and its spacing as indentation, which is what
+    // YAML itself does for the keys of a compact sequence entry.
+    const block = /^(\s*(?:-\s+)?)run: [|>][+-]?\d*\s*$/.exec(lines[i]);
+    if (block) {
+      const indent = block[1].length;
       const body: string[] = [];
       let j = i + 1;
       for (; j < lines.length; j++) {
@@ -49,14 +58,18 @@ function runBlocks(): { line: number; body: string }[] {
       i = j - 1;
       continue;
     }
-    // Single-line form: `run: some command`
-    const single = /^\s*run: (?!\||>)(.+)$/.exec(lines[i]);
+    const single = /^\s*(?:-\s+)?run: (?![|>])(.+)$/.exec(lines[i]);
     if (single) blocks.push({ line: i + 1, body: single[1] });
   }
   return blocks;
 }
 
-describe("release.yml — the GitHub Release is gated on a multi-arch manifest (#764)", () => {
+/** Every line that opens a `run:` script, however it is written. */
+function countRunKeys(source = workflow): number {
+  return source.split("\n").filter((l) => /^\s*(?:-\s+)?run:/.test(l)).length;
+}
+
+describe("release.yml: the GitHub Release is gated on a multi-arch manifest (#764)", () => {
   function jobCondition(job: string): string {
     // The `if:` on the job itself, i.e. the first `if:` after the job key at
     // job indentation (4 spaces for keys inside a job).
@@ -74,6 +87,27 @@ describe("release.yml — the GitHub Release is gated on a multi-arch manifest (
     // which is exactly the #764 defect: promote-manifest is skipped by its own
     // arm64 gate while the Release goes out regardless.
     expect(cond).toContain("needs.promote-manifest.result == 'success'");
+  });
+
+  it("does not publish a Release for a tag that was merely dispatched", () => {
+    // The "Run workflow" dropdown accepts a tag as its ref. On that path every
+    // Resolve version step takes the workflow_dispatch branch and builds only
+    // :<test_tag>, so a Release created under the tag's own version would name
+    // a version that has no images anywhere, and UpdateChecker would announce
+    // it to the fleet.
+    expect(jobCondition("release")).toContain("github.event_name == 'push'");
+  });
+
+  it("turns the run red when the release was withheld", () => {
+    // continue-on-error on the arm64 build means an arm64 failure otherwise
+    // produces a green run with a merely grey release job, and GitHub notifies
+    // on red runs, not on skipped ones.
+    expect(workflow).toContain("  arm64-required:");
+    const start = workflow.indexOf("  arm64-required:");
+    const job = workflow.slice(start, workflow.indexOf("  prune-ghcr:"));
+    expect(job).toContain("needs.docker-arm64.result");
+    expect(job).toContain("exit 1");
+    expect(jobCondition("arm64-required")).toContain("github.event_name == 'push'");
   });
 
   it("keeps promote-manifest itself gated on both architectures", () => {
@@ -95,33 +129,86 @@ describe("release.yml — the GitHub Release is gated on a multi-arch manifest (
     );
     expect(buildJobs.length).toBeGreaterThan(0);
     expect(buildJobs).toContain("packages: write"); // sanity: we sliced the right region
-    // `:latest-arm64` is fine: it is a per-arch convenience tag, not the tag
-    // docker-compose.yml pulls. The negative lookahead keeps it out of scope.
-    expect(buildJobs).not.toMatch(/REPO\}:latest(?![-\w])/);
-    expect(buildJobs).toMatch(/REPO\}:latest-arm64/); // sanity: the lookahead is doing work
+    // `:latest-arm64` is out of scope: it is a per-arch convenience tag, not
+    // the tag docker-compose.yml pulls. The lookahead is exercised against a
+    // fixture rather than against the live file, so removing that now-unused
+    // push (nothing consumes it since :latest stopped being merged from the
+    // per-arch tags) does not have to come back through this test.
+    const latestTag = /REPO\}:latest(?![-\w])/;
+    expect('docker buildx imagetools create --tag "${REPO}:latest-arm64"').not.toMatch(latestTag);
+    expect('tags="${REPO}:latest"').toMatch(latestTag);
+    expect(buildJobs).not.toMatch(latestTag);
   });
 });
 
-describe("release.yml — no workflow expression is interpolated into a shell script (#638)", () => {
+describe("release.yml: no workflow expression is interpolated into a shell script (#638)", () => {
   it("routes every ${{ }} value through env: instead of the run: body", () => {
     // `${{ inputs.test_tag }}` expanded straight into `run:` is a command
     // injection: the value is substituted before the shell ever sees it, so
     // quoting in the script cannot help. Only actors with workflow-dispatch
     // rights can set it, which bounds the severity but not the shape.
-    const offenders = runBlocks()
+    const offenders = runLines()
       .filter((b) => b.body.includes("${{"))
       .map((b) => `line ${b.line}`);
     expect(offenders).toEqual([]);
   });
 
-  it("finds the run blocks it claims to scan", () => {
-    // A parser that silently matched nothing would make the assertion above
-    // pass forever. Pin a lower bound instead of trusting it.
-    expect(runBlocks().length).toBeGreaterThanOrEqual(6);
+  it("scans every run: in the file, so the assertion above cannot pass by blindness", () => {
+    // Self-calibrating rather than a hand-set lower bound: a shape the parser
+    // cannot see still shows up as a `run:` line, so the two counts diverge.
+    expect(runLines().length).toBe(countRunKeys());
+    expect(countRunKeys()).toBeGreaterThan(6); // sanity: we read the real file
+  });
+
+  it("sees the shapes a hand-rolled YAML scanner usually misses", () => {
+    const fixture = [
+      "jobs:",
+      "  a:",
+      "    steps:",
+      "      - run: echo ${{ inputs.compact_oneliner }}",
+      "      - run: |",
+      "          echo ${{ inputs.compact_block }}",
+      "      - name: keyed",
+      "        run: |2",
+      "          echo ${{ inputs.indent_indicator }}",
+      "      - name: chomped",
+      "        run: |+",
+      "          echo ${{ inputs.keep_chomping }}",
+      "      - name: folded",
+      "        run: >-",
+      "          echo ${{ inputs.folded }}",
+      "",
+    ].join("\n");
+
+    const found = runLines(fixture);
+    expect(found).toHaveLength(countRunKeys(fixture));
+    expect(found).toHaveLength(5);
+    // Every one of them carries an interpolation, so a parser that saw them
+    // all reports five offenders and a parser with a hole reports fewer.
+    expect(found.filter((b) => b.body.includes("${{"))).toHaveLength(5);
   });
 });
 
-describe("release.yml — least privilege on the release token (#638)", () => {
+describe("release.yml: a resolved version is always a valid image tag", () => {
+  it("refuses a version carrying a newline or a space", () => {
+    // The value reaches an unquoted ${REPO}:${V} and is written to
+    // GITHUB_OUTPUT one line at a time, so a newline in a dispatched test_tag
+    // injects a second output key and a space word-splits into extra CLI
+    // arguments. Routing through env: stops the shell from re-evaluating the
+    // value; it does not stop either of those.
+    const guards = workflow.match(/\^\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*\$/g) ?? [];
+    // One per "Resolve version" step: docker, docker-arm64, promote-manifest.
+    expect(guards).toHaveLength(3);
+    const rejects = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+    expect(rejects.test("1.62.0")).toBe(true);
+    expect(rejects.test("ci-test")).toBe(true);
+    expect(rejects.test("ci-test\nis_release=true")).toBe(false);
+    expect(rejects.test("ci test")).toBe(false);
+    expect(rejects.test("-leading-dash")).toBe(false);
+  });
+});
+
+describe("release.yml: least privilege on the release token (#638)", () => {
   it("gives the amd64 docker job packages:write but not contents:write", () => {
     const start = workflow.indexOf("  docker:\n");
     expect(start).toBeGreaterThan(-1);

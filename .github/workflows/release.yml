@@ -41,7 +41,7 @@ jobs:
           REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           FROM: ${{ inputs.restore_latest_from }}
         run: |
-          docker buildx imagetools create --tag ${REPO}:latest ${REPO}:${FROM}
+          docker buildx imagetools create --tag "${REPO}:latest" "${REPO}:${FROM}"
 
   # ── Verify release-notes entry exists (spec 108) ─────────
   # Greps both EN and FR release-notes pages for the version anchor that
@@ -137,12 +137,23 @@ jobs:
           TEST_TAG: ${{ inputs.test_tag }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            echo "version=${TEST_TAG}" >> $GITHUB_OUTPUT
-            echo "is_release=false" >> $GITHUB_OUTPUT
+            VERSION="${TEST_TAG}"
+            IS_RELEASE=false
           else
-            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-            echo "is_release=true" >> $GITHUB_OUTPUT
+            VERSION="${GITHUB_REF_NAME#v}"
+            IS_RELEASE=true
           fi
+          # A version reaches an unquoted `${REPO}:${V}` in imagetools and the
+          # `tags:` list of build-push-action, and is written to GITHUB_OUTPUT
+          # a line at a time. A newline in it would inject a second output key;
+          # a space would word-split into extra CLI arguments. Neither is a
+          # legitimate image tag, so refuse rather than sanitise.
+          if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "::error::Refusing version '${VERSION}': not a valid image tag"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
 
       # :latest is deliberately NOT pushed here (#764). This job produces an
       # amd64-only manifest, so pushing :latest before promote-manifest merges
@@ -181,7 +192,10 @@ jobs:
   # the GitHub Release job are both gated on this job succeeding (#764). An
   # arm64 failure therefore leaves :V pushed as amd64-only and withholds both
   # :latest and the Release, so no instance is told about a version half the
-  # fleet cannot pull. Re-running the workflow on the same tag completes it.
+  # fleet cannot pull, and the `arm64-required` job turns the run red so the
+  # omission is not silent. Recover with "Re-run all jobs" on that run, NOT by
+  # dispatching the workflow on the tag: the dispatch path builds :<test_tag>
+  # images and publishes nothing under the tag's own version.
   docker-arm64:
     needs: ci
     runs-on: ubuntu-24.04-arm
@@ -208,12 +222,23 @@ jobs:
           TEST_TAG: ${{ inputs.test_tag }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            echo "version=${TEST_TAG}" >> $GITHUB_OUTPUT
-            echo "is_release=false" >> $GITHUB_OUTPUT
+            VERSION="${TEST_TAG}"
+            IS_RELEASE=false
           else
-            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-            echo "is_release=true" >> $GITHUB_OUTPUT
+            VERSION="${GITHUB_REF_NAME#v}"
+            IS_RELEASE=true
           fi
+          # A version reaches an unquoted `${REPO}:${V}` in imagetools and the
+          # `tags:` list of build-push-action, and is written to GITHUB_OUTPUT
+          # a line at a time. A newline in it would inject a second output key;
+          # a space would word-split into extra CLI arguments. Neither is a
+          # legitimate image tag, so refuse rather than sanitise.
+          if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "::error::Refusing version '${VERSION}': not a valid image tag"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
 
       - name: Compute image tags
         id: tags
@@ -269,25 +294,36 @@ jobs:
           TEST_TAG: ${{ inputs.test_tag }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            echo "version=${TEST_TAG}" >> $GITHUB_OUTPUT
-            echo "is_release=false" >> $GITHUB_OUTPUT
+            VERSION="${TEST_TAG}"
+            IS_RELEASE=false
           else
-            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-            echo "is_release=true" >> $GITHUB_OUTPUT
+            VERSION="${GITHUB_REF_NAME#v}"
+            IS_RELEASE=true
           fi
+          # A version reaches an unquoted `${REPO}:${V}` in imagetools and the
+          # `tags:` list of build-push-action, and is written to GITHUB_OUTPUT
+          # a line at a time. A newline in it would inject a second output key;
+          # a space would word-split into extra CLI arguments. Neither is a
+          # legitimate image tag, so refuse rather than sanitise.
+          if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "::error::Refusing version '${VERSION}': not a valid image tag"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
       - name: Promote tags to multi-arch manifest
         env:
           REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           V: ${{ steps.version.outputs.version }}
           IS_RELEASE: ${{ steps.version.outputs.is_release }}
         run: |
-          docker buildx imagetools create --tag ${REPO}:${V} ${REPO}:${V} ${REPO}:${V}-arm64
+          docker buildx imagetools create --tag "${REPO}:${V}" "${REPO}:${V}" "${REPO}:${V}-arm64"
           if [[ "$IS_RELEASE" == "true" ]]; then
             # :V is multi-arch as of the line above, so :latest is a copy of it
             # rather than a second merge of the two per-arch tags. This is the
             # only step that publishes :latest, so the tag is never transiently
             # single-arch (#764).
-            docker buildx imagetools create --tag ${REPO}:latest ${REPO}:${V}
+            docker buildx imagetools create --tag "${REPO}:latest" "${REPO}:${V}"
           fi
 
   # ── Create GitHub Release (after multi-arch manifest is published) ──
@@ -304,9 +340,20 @@ jobs:
   # exactly the failure the gate exists to prevent, silently and on a green
   # run. amd64 images remain pullable by tag or digest either way; what an
   # arm64 failure withholds is the update announcement.
+  #
+  # `github.event_name == 'push'` is load-bearing, not decoration. The "Run
+  # workflow" dropdown accepts a TAG as its ref, and on that path every
+  # "Resolve version" step takes the workflow_dispatch branch: only
+  # :<test_tag> images are built, nothing is published under the tag's own
+  # version. Without this term `startsWith(github.ref, 'refs/tags/v')` still
+  # holds, so the job would create a GitHub Release for a version that has no
+  # images anywhere, and UpdateChecker would announce it to the whole fleet.
+  #
+  # `!cancelled()` rather than `always()`: cancelling a run after
+  # promote-manifest succeeded should not still publish the Release.
   release:
     needs: [docker, docker-arm64, promote-manifest]
-    if: always() && needs.docker.result == 'success' && needs.promote-manifest.result == 'success' && startsWith(github.ref, 'refs/tags/v')
+    if: ${{ !cancelled() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.docker.result == 'success' && needs.promote-manifest.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -320,6 +367,36 @@ jobs:
           gh release create "$V" \
             --title "Sowel ${V#v}" \
             --generate-notes
+
+  # ── Make an arm64 failure loud ────────────────────────────
+  # `continue-on-error` on docker-arm64 buys ordering: amd64 finishes and its
+  # image is published while arm64 is still building, and a broken arm64 build
+  # does not abort a job that has already succeeded. What it must not buy is
+  # silence. Without this job an arm64 failure produces a GREEN run in which
+  # `release` is merely grey, and GitHub notifies on red runs, not on skipped
+  # jobs: the maintainer tags v1.58.0, sees green, moves on, and nobody ever
+  # receives 1.58.0 while :latest stays on the previous version.
+  #
+  # Kept as a separate terminal job rather than dropping continue-on-error so
+  # the amd64 image still reaches GHCR on a mixed run and can be pulled by
+  # digest while the arm64 build is repaired.
+  arm64-required:
+    needs: [docker-arm64, promote-manifest, release]
+    if: ${{ !cancelled() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail the run when the release was withheld
+        env:
+          ARM64: ${{ needs.docker-arm64.result }}
+          PROMOTE: ${{ needs.promote-manifest.result }}
+          RELEASE: ${{ needs.release.result }}
+        run: |
+          if [[ "$ARM64" == "success" && "$PROMOTE" == "success" && "$RELEASE" == "success" ]]; then
+            echo "arm64 built, manifest promoted, Release published."
+            exit 0
+          fi
+          echo "::error::Release withheld (arm64=${ARM64}, promote-manifest=${PROMOTE}, release=${RELEASE}). The amd64 image is on GHCR under its version tag, but :latest and the GitHub Release were not published, so no instance is told about a version half the fleet cannot pull. Fix the arm64 build and use Re-run all jobs on this run."
+          exit 1
 
   # ── GHCR retention policy ─────────────────────────────────
   # After a successful release, prune old container versions on GHCR so
