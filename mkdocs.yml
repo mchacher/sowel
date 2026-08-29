@@ -68,6 +68,18 @@ markdown_extensions:
 exclude_docs: |
   audit/
   planning/
+  _legacy/
+  mockups/
+  fixtures/
+  sowel-spec.md
+
+# Broken internal links and anchors are INFO by default, which is how two of
+# them survived in the published site. Promote them so `mkdocs build --strict`
+# actually fails (spec 167).
+validation:
+  links:
+    anchors: warn
+    not_found: warn
 
 plugins:
   - search

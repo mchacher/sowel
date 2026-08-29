@@ -635,7 +635,7 @@ Conventions:
 
 ---
 
-## Timezone handling (spec 061)
+## Timezone handling (spec 061) { #timezone-handling }
 
 Sowel backend logic depends heavily on local time: calendar cron slots (`croner`), energy HP/HC tariff classification, energy day boundaries, sunrise/sunset display, notifications. All use native `Date` methods that depend on `process.env.TZ`.
 
