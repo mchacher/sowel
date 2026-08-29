@@ -84,16 +84,16 @@ export function ProductionPage() {
                 <div className="flex items-center gap-4 text-[13px] text-text-secondary">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                    {t("energy.autoconsumption")} : {formatKWh(history.totals.total_autoconso, period)} kWh
+                    {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(history.totals.total_autoconso, period)} kWh
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: INJECTION_COLOR }} />
-                    {t("energy.gridInjection")} : {formatKWh(history.totals.total_injection, period)} kWh
+                    {t("energy.gridInjection")}{t("common.colon")}{formatKWh(history.totals.total_injection, period)} kWh
                   </span>
                 </div>
               )}
               <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                Total : {formatKWh(displayedProductionTotalWh(history.totals), period)} kWh
+                {t("energy.total")}{t("common.colon")}{formatKWh(displayedProductionTotalWh(history.totals), period)} kWh
               </div>
             </div>
           )}

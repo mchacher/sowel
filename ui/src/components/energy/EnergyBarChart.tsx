@@ -344,20 +344,20 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                  {t("energy.consumption")} :{" "}
+                  {t("energy.consumption")}{t("common.colon")}
                   {isEur ? formatEur(costTotal, locale) : formatKWh(consoTotal)}
                 </div>
                 <div style={{ color: HP_COLOR }}>
-                  {t("energy.peakHours")} :{" "}
+                  {t("energy.peakHours")}{t("common.colon")}
                   {isEur ? formatEur(datum.cost_hp, locale) : formatKWh(hpGrid)}
                 </div>
                 <div style={{ color: HC_COLOR }}>
-                  {t("energy.offPeakHours")} :{" "}
+                  {t("energy.offPeakHours")}{t("common.colon")}
                   {isEur ? formatEur(datum.cost_hc, locale) : formatKWh(hcGrid)}
                 </div>
                 {!isEur && datum.autoconso > 0 && (
                   <div style={{ color: AUTOCONSO_COLOR }}>
-                    {t("energy.autoconsumption")} : {formatKWh(datum.autoconso)}
+                    {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(datum.autoconso)}
                   </div>
                 )}
               </div>

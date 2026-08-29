@@ -258,12 +258,12 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
-                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")} : {formatKWh(total)}</div>
+                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")}{t("common.colon")}{formatKWh(total)}</div>
                 {hasSplit && (
                   <>
-                    <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")} : {formatKWh(datum.autoconso)}</div>
+                    <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")}{t("common.colon")}{formatKWh(datum.autoconso)}</div>
                     {datum.injection > 0 && (
-                      <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")} : {formatKWh(datum.injection)}</div>
+                      <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")}{t("common.colon")}{formatKWh(datum.injection)}</div>
                     )}
                   </>
                 )}

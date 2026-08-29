@@ -33,6 +33,7 @@
   "auth.mfa.verify": "Vérifier",
   "auth.mfa.verifyFailed": "Code invalide",
   "common.save": "Enregistrer",
+  "common.colon": " : ",
   "common.cancel": "Annuler",
   "common.delete": "Supprimer",
   "common.edit": "Modifier",
