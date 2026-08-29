@@ -10,12 +10,14 @@ Plugins are managed from **Administration > Plugins** (admin only).
 
 **Installed** lists what runs on your instance:
 
-- **Integrations** show their connection status and how many devices they feed. From here you can disable, re-enable, update, or uninstall each one.
+- **Integrations** show their connection status and how many devices they feed. Selecting one opens its details, where you can disable, re-enable, update or uninstall it.
 - **Recipes** are the automation templates available when you create recipe instances.
 
 **Store** lists what you can install. Entries come from the official Sowel catalogue, plus your own personal sources (see below). The **Refresh** button re-reads the catalogue immediately, useful right after a new plugin or version is announced.
 
 When a newer version of an installed plugin is available, an update badge appears on its row (and in the topbar updates sheet). Updating keeps all your settings, devices, equipment bindings and history: only the plugin code changes.
+
+When several plugins are behind, a banner above the list updates them all at once. Packages installed from a personal source are named apart in that banner: each one needs its own fingerprint confirmation, so you update those from their own row.
 
 ---
 

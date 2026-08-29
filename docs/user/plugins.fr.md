@@ -10,12 +10,14 @@ Les plugins se gèrent depuis **Administration > Plugins** (admin uniquement).
 
 **Installés** liste ce qui tourne sur votre instance :
 
-- Les **intégrations** affichent leur état de connexion et le nombre d'appareils qu'elles alimentent. Depuis cette liste, vous pouvez désactiver, réactiver, mettre à jour ou désinstaller chacune.
+- Les **intégrations** affichent leur état de connexion et le nombre d'appareils qu'elles alimentent. Sélectionner une ligne ouvre son détail, d'où vous pouvez la désactiver, la réactiver, la mettre à jour ou la désinstaller.
 - Les **recettes** sont les modèles d'automatisation disponibles quand vous créez des instances de recettes.
 
 **Store** liste ce que vous pouvez installer. Les entrées viennent du catalogue officiel Sowel, plus vos propres sources personnelles (voir plus bas). Le bouton **Rafraîchir** relit le catalogue immédiatement, utile juste après l'annonce d'un nouveau plugin ou d'une nouvelle version.
 
 Quand une version plus récente d'un plugin installé est disponible, un badge de mise à jour apparaît sur sa ligne (et dans le panneau de mises à jour de la barre du haut). La mise à jour conserve tous vos réglages, appareils, liaisons d'équipements et historiques : seul le code du plugin change.
+
+Quand plusieurs plugins sont en retard, un bandeau au-dessus de la liste les met tous à jour d'un coup. Les paquets installés depuis une source personnelle y sont annoncés à part : chacun demande sa propre confirmation d'empreinte, vous les mettez donc à jour depuis leur ligne.
 
 ---
 
