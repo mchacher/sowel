@@ -533,7 +533,7 @@ Conventions :
 
 ---
 
-## Gestion des fuseaux horaires (spec 061)
+## Gestion des fuseaux horaires (spec 061) { #timezone-handling }
 
 La logique backend de Sowel dépend fortement de l'heure locale : créneaux cron du calendrier (`croner`), classification tarifaire HP/HC énergie, frontières de jour énergétique, affichage des levers/couchers de soleil, notifications. Tout utilise les méthodes natives `Date` qui dépendent de `process.env.TZ`.
 

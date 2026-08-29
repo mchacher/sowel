@@ -420,7 +420,7 @@ Si vous restaurez sur une machine fraîche, InfluxDB peut ne pas encore avoir de
 
 ### Logique horaire cassée (volets à la mauvaise heure, HP/HC erroné)
 
-Le conteneur démarre par défaut en UTC. Définissez `TZ=Europe/Paris` (ou votre fuseau) dans `docker-compose.yml` puis redémarrez. Voir [architecture.md § Gestion des fuseaux horaires](architecture.md#gestion-des-fuseaux-horaires-spec-061) et la spec 061 sur [github.com/mchacher/sowel/tree/main/specs/061-timezone-from-home-location](https://github.com/mchacher/sowel/tree/main/specs/061-timezone-from-home-location).
+Le conteneur démarre par défaut en UTC. Définissez `TZ=Europe/Paris` (ou votre fuseau) dans `docker-compose.yml` puis redémarrez. Voir [architecture.md § Gestion des fuseaux horaires](architecture.md#timezone-handling) et la spec 061 sur [github.com/mchacher/sowel/tree/main/specs/061-timezone-from-home-location](https://github.com/mchacher/sowel/tree/main/specs/061-timezone-from-home-location).
 
 ---
 

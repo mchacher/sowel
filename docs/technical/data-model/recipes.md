@@ -2,7 +2,7 @@
 
 > **Orchestration**: reusable automation templates distributed as plugins. Users instantiate a recipe by filling in its typed slots; the engine runs the resulting `RecipeInstance`.
 >
-> See also: [Plugin](../data-model.md#3-plugin) in the data-model index for how recipes are distributed and loaded.
+> See also: [the data model index](../data-model.md) in the data-model index for how recipes are distributed and loaded.
 
 ## Recipe
 
