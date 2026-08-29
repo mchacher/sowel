@@ -200,13 +200,20 @@ Chaque plugin embarque un `manifest.json` avec `id`, `type` (`integration` ou `r
 ### Cycle de vie d'une intégration
 
 1. **Load** : `PluginLoader.loadAll()` parcourt la table `plugins`, importe chaque entrée activée, appelle `createPlugin(deps)`, enregistre dans `IntegrationRegistry`.
-2. **Start** : `IntegrationRegistry.startAll()` démarre les plugins séquentiellement avec de petits délais. Le `start()` de chaque plugin se connecte, découvre les devices, démarre le polling.
-3. **Runtime** : le plugin pousse les données via `deviceManager.updateDeviceData()`. Les ordres sortent via `plugin.executeOrder()`.
-4. **Stop** : `stop()` annule les timers, ferme les connexions.
-5. **Update** : Unload → `PackageManager.updateFiles()` → reload.
-6. **Uninstall** : Unload → `PackageManager.removeFiles()`.
+2. **Start** : `IntegrationRegistry.startAll()` démarre les plugins séquentiellement avec de petits délais. Le `start()` de chaque plugin se connecte, découvre les devices, démarre le polling. Le retour de `start()` ne signifie **pas** que le plugin est joignable : les connexions MQTT et les authentifications cloud se terminent ensuite, de façon asynchrone.
+3. **Connected** : le registre échantillonne le `getStatus()` de chaque plugin et émet `system.integration.connected` / `system.integration.disconnected` à chaque transition. C'est le signal du moteur lui-même, indépendant de ce qu'un plugin choisit d'émettre, et c'est lui qui rend observable le retour d'une intégration (voir [Livraison des ordres](#livraison-des-ordres-quand-une-integration-est-injoignable) ci-dessous).
+4. **Runtime** : le plugin pousse les données via `deviceManager.updateDeviceData()`. Les ordres sortent via `plugin.executeOrder()`.
+5. **Stop** : `stop()` annule les timers, ferme les connexions.
+6. **Update** : Unload → `PackageManager.updateFiles()` → reload.
+7. **Uninstall** : Unload → `PackageManager.removeFiles()`.
 
 Les réglages d'intégration sont stockés en SQLite dans `settings` sous `integration.<id>.<key>`, configurés depuis l'UI.
+
+#### Livraison des ordres quand une intégration est injoignable
+
+Un ordre envoyé vers une intégration déconnectée n'atteint jamais le fil. Plutôt que d'être jeté avec une ligne de log, il est retenu par le tracker de confirmation d'ordre (spec 141) et rejoué **une fois** quand cette intégration se connecte, dans une fenêtre courte : une commande planifiée rejouée longtemps après son créneau serait pire que celle qui a été perdue. L'appelant reçoit toujours la même erreur qu'avant.
+
+Les instances de recettes sont la raison pour laquelle cela se produisait à chaque redémarrage : elles démarrent tout à la fin du boot, derrière une attente bornée sur la connexion des intégrations, car une instance évalue et envoie des ordres dès son démarrage. L'attente est plafonnée pour qu'une intégration cloud injoignable ne bloque pas tous les automatismes, et ce qui passe malgré tout est rattrapé par la rétention décrite ci-dessus. L'API et la liste des recettes n'attendent pas ; seul l'état des instances en cours d'exécution attend.
 
 ### Écosystème actuel des plugins officiels
 

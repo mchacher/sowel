@@ -200,13 +200,20 @@ Each plugin ships a `manifest.json` with `id`, `type` (`integration` or `recipe`
 ### Integration lifecycle
 
 1. **Load** — `PluginLoader.loadAll()` scans the `plugins` table, imports each enabled entry, calls `createPlugin(deps)`, registers with `IntegrationRegistry`.
-2. **Start** — `IntegrationRegistry.startAll()` starts plugins sequentially with small delays. Each plugin's `start()` connects, discovers devices, begins polling.
-3. **Runtime** — Plugin pushes data via `deviceManager.updateDeviceData()`. Orders go out via `plugin.executeOrder()`.
-4. **Stop** — `stop()` cancels timers, closes connections.
-5. **Update** — Unload → `PackageManager.updateFiles()` → reload.
-6. **Uninstall** — Unload → `PackageManager.removeFiles()`.
+2. **Start** — `IntegrationRegistry.startAll()` starts plugins sequentially with small delays. Each plugin's `start()` connects, discovers devices, begins polling. `start()` returning does **not** mean the plugin is reachable: MQTT connects and cloud logins complete asynchronously afterwards.
+3. **Connected** — the registry samples every plugin's `getStatus()` and emits `system.integration.connected` / `system.integration.disconnected` on each transition. This is the engine's own signal, independent of what a plugin chooses to emit, and it is what makes an integration's recovery observable (see [Order delivery](#order-delivery-when-an-integration-is-unreachable) below).
+4. **Runtime** — Plugin pushes data via `deviceManager.updateDeviceData()`. Orders go out via `plugin.executeOrder()`.
+5. **Stop** — `stop()` cancels timers, closes connections.
+6. **Update** — Unload → `PackageManager.updateFiles()` → reload.
+7. **Uninstall** — Unload → `PackageManager.removeFiles()`.
 
 Settings for integrations are stored in SQLite `settings` under `integration.<id>.<key>`, configured from the UI.
+
+#### Order delivery when an integration is unreachable
+
+An order dispatched at a disconnected integration never reaches the wire. Rather than being dropped with a log line, it is held by the order confirmation tracker (spec 141) and re-dispatched **once** when that integration connects, within a short window: a schedule-driven command replayed long after its slot would be worse than the one that was lost. The caller still gets the same error it always did.
+
+Recipe instances are the reason this used to matter on every restart: they start at the very end of boot, behind a bounded wait on the integrations reporting connected, because an instance evaluates and dispatches as soon as it starts. The wait is capped so one unreachable cloud integration cannot hold every automation, and whatever still slips through is caught by the hold-and-replay above. The API and the recipe list do not wait; only running-instance state does.
 
 ### Current official plugin ecosystem
 

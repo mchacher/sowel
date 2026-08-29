@@ -191,6 +191,25 @@ Manage devices discovered by your plugin. Three main methods are used:
 
 See [Device Discovery](#device-discovery) and [Device Data Updates](#device-data-updates) for detailed usage.
 
+!!! warning "A new data point does not reach existing equipments on its own"
+Adding a key to `DiscoveredDevice.data` creates the `device_data` row at the
+next discovery, but auto-binding only ever runs when an **equipment is
+created**. Every equipment already bound to that device keeps the bindings
+it had, so the new value is live on the device and invisible on the
+equipment.
+
+    This is deliberate: rebuilding bindings automatically would put back the
+    ones the owner deleted on purpose, and would silently change the shape of an
+    equipment they configured by hand. The owner picks the new values up from
+    the equipment's **Bindings** section, which reports what is missing and
+    offers it as a checklist.
+
+    What this means when you publish a plugin release that adds data points: say
+    so in the release notes, and expect existing installations to need one
+    click per equipment. Renaming an existing key is worse than adding one — the
+    old key's binding keeps pointing at a row nothing updates any more, so
+    prefer adding alongside and deprecating.
+
 ---
 
 ## Device availability contract (spec 116)
