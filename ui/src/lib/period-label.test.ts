@@ -18,14 +18,14 @@ describe("formatDateLabel", () => {
   it("spans a week from its Monday to its Sunday", () => {
     // 2026-03-11 is a Wednesday: the label must still start on the 9th.
     const fr = formatDateLabel("2026-03-11", "week", "fr-FR");
-    expect(fr).toBe("9 mars – 15 mars 2026");
+    expect(fr).toBe("9 mars - 15 mars 2026");
     const en = formatDateLabel("2026-03-11", "week", "en-US");
-    expect(en).toBe("Mar 9 – Mar 15, 2026");
+    expect(en).toBe("Mar 9 - Mar 15, 2026");
   });
 
   it("treats Sunday as the last day of its week, not the first", () => {
     // getDay() === 0 is the edge the -6 offset exists for.
-    expect(formatDateLabel("2026-03-15", "week", "fr-FR")).toBe("9 mars – 15 mars 2026");
+    expect(formatDateLabel("2026-03-15", "week", "fr-FR")).toBe("9 mars - 15 mars 2026");
   });
 
   it("renders a year as digits, identical in every locale", () => {

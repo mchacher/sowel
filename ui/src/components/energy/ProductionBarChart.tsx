@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
+import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
 import {
   ResponsiveContainer,
@@ -71,12 +72,12 @@ function toKWh(t: Totals): Totals {
   return { autoconso: t.autoconso / 1000, injection: t.injection / 1000, prod: t.prod / 1000 };
 }
 
-function aggregateDay(points: EnergyPoint[]): ChartDatum[] {
+function aggregateDay(points: EnergyPoint[], locale: string): ChartDatum[] {
   const byHour = bucketize(points, (d) => d.getHours());
 
   return Array.from({ length: 24 }, (_, hour) => ({
-    label: `${String(hour).padStart(2, "0")}h`,
-    tooltipLabel: `${String(hour).padStart(2, "0")}h00 – ${String((hour + 1) % 24).padStart(2, "0")}h00`,
+    label: formatHourLabel(hour, locale),
+    tooltipLabel: formatHourRange(hour, locale),
     ...toKWh(byHour.get(hour) ?? EMPTY),
   }));
 }
@@ -156,7 +157,7 @@ function buildChartData(
 ): ChartDatum[] {
   switch (period) {
     case "day":
-      return aggregateDay(points);
+      return aggregateDay(points, locale);
     case "week":
       return aggregateWeek(points, locale, date);
     case "month":
@@ -164,7 +165,7 @@ function buildChartData(
     case "year":
       return aggregateYear(points, locale, date);
     default:
-      return aggregateDay(points);
+      return aggregateDay(points, locale);
   }
 }
 

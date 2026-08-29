@@ -89,3 +89,41 @@ describe("PeriodSelector (#730)", () => {
     expect((screen.getByRole("button", { name: "Today" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+// The bug was never in this component, it was in a second, untranslated copy of
+// it. These render the two wrappers so that re-forking one would fail here.
+
+describe("the page wrappers (#730)", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("the Energy wrapper renders the shared, translated selector", async () => {
+    const { PeriodSelector: EnergyPeriodSelector } = await import("./energy/PeriodSelector");
+    render(<EnergyPeriodSelector />);
+
+    for (const label of ["Day", "Week", "Month", "Year", "Today"]) {
+      expect(screen.getByRole("button", { name: label })).toBeTruthy();
+    }
+    expect(screen.queryByText("Aujourd'hui")).toBeNull();
+    // The store starts on today, so the reset is already spent.
+    expect((screen.getByRole("button", { name: "Today" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("the Analyse wrapper renders it too, and moves the date by one period", async () => {
+    const { PeriodSelector: AnalysePeriodSelector } = await import("./history/PeriodSelector");
+    const onDateChange = vi.fn();
+    render(
+      <AnalysePeriodSelector
+        period="day"
+        date="2026-03-09"
+        onPeriodChange={vi.fn()}
+        onDateChange={onDateChange}
+      />,
+    );
+
+    expect(screen.getByText("March 9, 2026")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Previous period" }));
+    expect(onDateChange).toHaveBeenCalledWith("2026-03-08");
+  });
+});

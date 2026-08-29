@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
+import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
 import {
   ResponsiveContainer,
@@ -71,8 +72,8 @@ function makeBuckets(period: string, locale: string, dateStr?: string): { keyOf:
   if (period === "day") {
     const buckets = Array.from({ length: 24 }, (_, hour) => ({
       key: String(hour),
-      label: `${String(hour).padStart(2, "0")}h`,
-      tooltipLabel: `${String(hour).padStart(2, "0")}h00 – ${String((hour + 1) % 24).padStart(2, "0")}h00`,
+      label: formatHourLabel(hour, locale),
+      tooltipLabel: formatHourRange(hour, locale),
     }));
     return {
       keyOf: (time) => String(new Date(time).getHours()),

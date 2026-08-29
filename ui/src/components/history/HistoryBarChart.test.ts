@@ -146,6 +146,17 @@ describe("formatLabel", () => {
     expect(r.line2).toBe("09");
   });
 
+  it("keeps a 24-hour clock on 6h and 24h, in every locale (#730)", () => {
+    // Driving the format off the UI language handed en-US its 12-hour clock,
+    // turning "14:00" into "02:00 PM" and outgrowing the tick width budget.
+    const afternoon = "2026-03-09T14:00:00.000Z";
+    for (const locale of ["en-US", "fr-FR"]) {
+      const label = formatLabel(afternoon, "24h", locale).line1;
+      expect(label).not.toMatch(/[AP]M/i);
+      expect(label).toMatch(/^\d{2}[:h]\d{2}$/);
+    }
+  });
+
   it("takes the weekday from the locale it is given (#730)", () => {
     // It used to be pinned to "fr-FR", so an English user got French weekdays.
     expect(formatLabel(iso, "7d", "en-US").line1.toLowerCase()).toMatch(/^mon/);

@@ -31,7 +31,7 @@ export function formatDateLabel(
         month: "short",
         year: "numeric",
       });
-      return `${startLabel} – ${endLabel}`;
+      return `${startLabel} - ${endLabel}`;
     }
     case "month":
       return d.toLocaleDateString(locale, { month: "long", year: "numeric" });

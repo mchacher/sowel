@@ -91,7 +91,7 @@ export function formatLabel(
   const d = new Date(iso);
   if (range === "6h" || range === "24h") {
     return {
-      line1: d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),
+      line1: d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false }),
     };
   }
   if (range === "7d") {
