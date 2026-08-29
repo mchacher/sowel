@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Package,
   Loader2,
   Download,
-  Trash2,
   Cpu,
+  ChevronRight,
   ArrowUpCircle,
   RefreshCw,
   AlertTriangle,
@@ -19,6 +20,8 @@ import {
   X,
 } from "lucide-react";
 import { refreshPluginUpdateCount } from "../components/layout/usePluginUpdates";
+import { PluginDetailSheet } from "../components/plugins/PluginDetailSheet";
+import { UpdateAllBanner } from "../components/plugins/UpdateAllBanner";
 import * as LucideIcons from "lucide-react";
 import {
   getPlugins,
@@ -148,95 +151,104 @@ export function PluginsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Header */}
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
-            <h1>
-              {t("plugins.title")}
-            </h1>
+      {/* One column for the whole page: the header used to stretch to the page
+          edge while the content stopped at 720px, leaving the refresh button
+          floating on its own on wide screens (#749). */}
+      <div className="max-w-[720px]">
+        {/* Header */}
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
+              <h1>
+                {t("plugins.title")}
+              </h1>
+            </div>
+            <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
           </div>
-          <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-          title={t("plugins.refreshRegistryTitle")}
-        >
-          {refreshing ? (
-            <Loader2 size={14} className="animate-spin" strokeWidth={1.5} />
-          ) : (
-            <RefreshCw size={14} strokeWidth={1.5} />
-          )}
-          {t("plugins.refreshRegistry")}
-        </button>
-      </div>
-
-      {/* Tabs: Installed / Store */}
-      <div className="flex gap-1 mb-4 max-w-[720px]">
-        <TabButton
-          active={activeTab === "installed"}
-          onClick={() => setActiveTab("installed")}
-          label={t("plugins.installed")}
-          count={plugins.length}
-        />
-        <TabButton
-          active={activeTab === "store"}
-          onClick={() => setActiveTab("store")}
-          label={t("plugins.store")}
-          count={store.length}
-        />
-      </div>
-
-      {/* Category filter: Integrations / Recipes */}
-      {hasRecipes && (
-        <div className="flex items-center gap-1 mb-4 border-b border-border max-w-[720px]">
-          <CategoryTab
-            label={t("plugins.integrations")}
-            count={integrationCount}
-            active={category === "integration"}
-            onClick={() => setCategory("integration")}
-          />
-          <CategoryTab
-            label={t("plugins.recipes")}
-            count={recipeCount}
-            active={category === "recipe"}
-            onClick={() => setCategory("recipe")}
-          />
-        </div>
-      )}
-
-      {/* Search (spec 137) — shared across tabs and types */}
-      <div className="relative mb-4 max-w-[720px]">
-        <Search
-          size={15}
-          strokeWidth={1.5}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
-        />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("plugins.search.placeholder")}
-          spellCheck={false}
-          className="w-full pl-9 pr-9 py-2 text-[13px] text-text bg-surface border border-border rounded-[6px] placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
-        />
-        {searching && (
           <button
             type="button"
-            onClick={() => setQuery("")}
-            title={t("common.clear")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-[4px] transition-colors cursor-pointer"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 self-start shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t("plugins.refreshRegistryTitle")}
           >
-            <X size={14} strokeWidth={1.5} />
+            {refreshing ? (
+              <Loader2 size={14} className="animate-spin" strokeWidth={1.5} />
+            ) : (
+              <RefreshCw size={14} strokeWidth={1.5} />
+            )}
+            {t("plugins.refreshRegistry")}
           </button>
-        )}
-      </div>
+        </div>
 
-      {/* Content */}
-      <div className="max-w-[720px]">
+        {/* Tabs: Installed / Store */}
+        <div className="flex gap-1 mb-4">
+          <TabButton
+            active={activeTab === "installed"}
+            onClick={() => setActiveTab("installed")}
+            label={t("plugins.installed")}
+            count={plugins.length}
+          />
+          <TabButton
+            active={activeTab === "store"}
+            onClick={() => setActiveTab("store")}
+            label={t("plugins.store")}
+            count={store.length}
+          />
+        </div>
+
+        {/* Category filter: Integrations / Recipes */}
+        {hasRecipes && (
+          <div className="flex items-center gap-1 mb-4 border-b border-border">
+            <CategoryTab
+              label={t("plugins.integrations")}
+              count={integrationCount}
+              active={category === "integration"}
+              onClick={() => setCategory("integration")}
+            />
+            <CategoryTab
+              label={t("plugins.recipes")}
+              count={recipeCount}
+              active={category === "recipe"}
+              onClick={() => setCategory("recipe")}
+            />
+          </div>
+        )}
+
+        {/* Search (spec 137) — shared across tabs and types */}
+        <div className="relative mb-4">
+          <Search
+            size={15}
+            strokeWidth={1.5}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("plugins.search.placeholder")}
+            spellCheck={false}
+            className="w-full pl-9 pr-9 py-2 text-[13px] text-text bg-surface border border-border rounded-[6px] placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              title={t("common.clear")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-[4px] transition-colors cursor-pointer"
+            >
+              <X size={14} strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+
+        {/* Pending updates across every installed package, whatever the active
+            category filter (#749). */}
+        {activeTab === "installed" && (
+          <UpdateAllBanner plugins={plugins} lang={lang} onRefresh={load} />
+        )}
+
+        {/* Content */}
         {activeTab === "installed" ? (
           <InstalledTab
             plugins={filteredPlugins}
@@ -441,6 +453,7 @@ function PluginRow({
   const { t } = useTranslation();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmUninstall, setConfirmUninstall] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmPersonalUpdate, setConfirmPersonalUpdate] = useState<PersonalConfirmInfo | null>(
     null,
   );
@@ -454,6 +467,7 @@ function PluginRow({
 
   const doUpdate = async (opts: { confirmed?: boolean; expectedSha256?: string } = {}) => {
     setActionLoading("update");
+    setConfirmUninstall(false);
     try {
       await updatePlugin(plugin.manifest.id, opts);
       setConfirmPersonalUpdate(null);
@@ -476,15 +490,18 @@ function PluginRow({
     }
   };
 
-  const handleUpdate = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Both the inline desktop shortcuts and the detail sheet drive these, so the
+  // event is optional (#749).
+  const handleUpdate = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     void doUpdate();
   };
 
-  const handleToggle = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggle = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const action = plugin.enabled ? "disable" : "enable";
     setActionLoading(action);
+    setConfirmUninstall(false);
     try {
       if (plugin.enabled) {
         await disablePlugin(plugin.manifest.id);
@@ -499,8 +516,8 @@ function PluginRow({
     }
   };
 
-  const handleUninstall = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUninstall = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!confirmUninstall) {
       setConfirmUninstall(true);
       return;
@@ -517,113 +534,132 @@ function PluginRow({
     }
   };
 
+  const name = getLocalizedName(plugin.manifest, lang);
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setConfirmUninstall(false);
+  };
+
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-surface border border-border rounded-[10px]">
-      {/* Icon */}
-      <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-        <IconComponent size={18} className="text-accent" />
-      </div>
-
-      {/* Name + meta */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-text truncate">
-            {getLocalizedName(plugin.manifest, lang)}
-          </span>
-          <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
-            {plugin.manifest.version}
-          </span>
-          {isPersonal && <PersonalBadge />}
-          {hasUpdate && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-error/10 rounded-[4px] text-error font-mono shrink-0 flex items-center gap-0.5">
-              <ArrowUpCircle size={10} />
-              {plugin.latestVersion}
-            </span>
-          )}
+    <div
+      className={`flex items-center bg-surface border border-border rounded-[10px] ${
+        plugin.enabled ? "" : "opacity-70"
+      }`}
+    >
+      {/* Identity. This is the only thing the row carries, so it cannot be
+          crushed by the controls that used to sit next to it (#749). */}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        title={t("plugins.openDetails", { name })}
+        className="flex items-center gap-3 min-w-0 flex-1 px-4 py-3 text-left rounded-l-[10px] hover:bg-border-light/40 transition-colors cursor-pointer"
+      >
+        <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
+          <IconComponent size={18} className="text-accent" />
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          {!isRecipe ? (
-            <>
-              <StatusBadge status={plugin.status} />
-              <span className="text-[11px] text-text-tertiary">
-                {plugin.deviceCount} {t("plugins.devices")}
-                {plugin.offlineDeviceCount > 0 && (
-                  <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
-                )}
-              </span>
-            </>
-          ) : (
-            <span className="text-[11px] text-text-tertiary">
-              {getLocalizedDescription(plugin.manifest, lang)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0">
-        {/* Update */}
-        {hasUpdate && (
-          <button
-            onClick={handleUpdate}
-            disabled={actionLoading !== null}
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 text-error hover:bg-error/10"
-          >
-            {actionLoading === "update" ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="text-[14px] font-semibold text-text truncate">{name}</span>
+            {isPersonal && <PersonalBadge />}
+          </div>
+          <div className="mt-0.5 flex items-center gap-2 min-w-0">
+            {!isRecipe ? (
               <>
-                <ArrowUpCircle size={12} />
-                {t("plugins.update")}
+                <StatusBadge status={plugin.status} />
+                <span className="text-[11px] text-text-tertiary truncate">
+                  {plugin.deviceCount} {t("plugins.devices")}
+                  {plugin.offlineDeviceCount > 0 && (
+                    <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
+                  )}
+                </span>
               </>
+            ) : (
+              <span className="text-[11px] text-text-tertiary truncate">
+                {t("plugins.version")} <span className="font-mono">{plugin.manifest.version}</span>
+              </span>
             )}
-          </button>
+            {!plugin.enabled && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary shrink-0">
+                {t("plugins.disabledBadge")}
+              </span>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {/* State and shortcuts. Uninstall deliberately lives in the sheet only:
+          it used to sit 8px from the enable/disable toggle. */}
+      <div className="flex items-center gap-1 shrink-0 pr-2 sm:pr-3">
+        {hasUpdate && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-error/10 rounded-[4px] text-error font-mono shrink-0 flex items-center gap-0.5">
+            <ArrowUpCircle size={10} />
+            {plugin.latestVersion}
+          </span>
         )}
 
-        {/* Toggle enable/disable */}
-        <button
-          onClick={handleToggle}
-          disabled={actionLoading !== null}
-          className={`
-            px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50
-            ${plugin.enabled
-              ? "text-text-tertiary hover:bg-border-light hover:text-text-secondary"
-              : "text-success/70 hover:bg-success/10 hover:text-success"
-            }
-          `}
-        >
-          {actionLoading === "enable" || actionLoading === "disable" ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : plugin.enabled ? (
-            t("plugins.disable")
-          ) : (
-            t("plugins.enable")
+        <div className="hidden sm:flex items-center gap-1">
+          {hasUpdate && (
+            <button
+              onClick={handleUpdate}
+              disabled={actionLoading !== null}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 text-error hover:bg-error/10"
+            >
+              {actionLoading === "update" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <>
+                  <ArrowUpCircle size={12} />
+                  {t("plugins.update")}
+                </>
+              )}
+            </button>
           )}
-        </button>
+          <button
+            onClick={handleToggle}
+            disabled={actionLoading !== null}
+            className={`
+              px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50
+              ${plugin.enabled
+                ? "text-text-tertiary hover:bg-border-light hover:text-text-secondary"
+                : "text-success/70 hover:bg-success/10 hover:text-success"
+              }
+            `}
+          >
+            {actionLoading === "enable" || actionLoading === "disable" ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : plugin.enabled ? (
+              t("plugins.disable")
+            ) : (
+              t("plugins.enable")
+            )}
+          </button>
+        </div>
 
-        {/* Uninstall */}
-        <button
-          onClick={handleUninstall}
-          onBlur={() => setConfirmUninstall(false)}
-          disabled={actionLoading === "uninstall"}
-          title={t("plugins.uninstall")}
-          className={`
-            flex items-center gap-1 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50
-            ${confirmUninstall
-              ? "text-error bg-error/10 px-2 py-1 text-xs font-medium"
-              : "p-1.5 text-text-tertiary hover:bg-border-light hover:text-error"
-            }
-          `}
-        >
-          {actionLoading === "uninstall" ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : confirmUninstall ? (
-            <>{plugin.enabled ? t("plugins.uninstallConfirmActive") : t("plugins.uninstallConfirm")}</>
-          ) : (
-            <Trash2 size={14} />
-          )}
-        </button>
+        <ChevronRight size={16} strokeWidth={1.5} className="text-text-tertiary shrink-0" />
       </div>
+
+      <PluginDetailSheet
+        open={sheetOpen}
+        onClose={closeSheet}
+        name={name}
+        description={getLocalizedDescription(plugin.manifest, lang)}
+        icon={<IconComponent size={18} className="text-accent" />}
+        type={isRecipe ? "recipe" : "integration"}
+        installedVersion={plugin.manifest.version}
+        latestVersion={plugin.latestVersion}
+        author={plugin.manifest.author}
+        source={plugin.source ?? "registry"}
+        enabled={plugin.enabled}
+        status={isRecipe ? undefined : plugin.status}
+        deviceCount={isRecipe ? undefined : plugin.deviceCount}
+        offlineDeviceCount={isRecipe ? undefined : plugin.offlineDeviceCount}
+        actionLoading={actionLoading}
+        confirmUninstall={confirmUninstall}
+        onUpdate={() => handleUpdate()}
+        onToggle={() => void handleToggle()}
+        onUninstall={() => void handleUninstall()}
+      />
 
       {/* Personal plugin TOFU re-confirmation modal (spec 136) */}
       {confirmPersonalUpdate && (
@@ -758,15 +794,17 @@ function StoreRow({
   const handleInstall = () => doInstall(false);
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-surface border border-border rounded-[10px]">
-      {/* Icon */}
-      <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-        <IconComponent size={18} className="text-accent" />
-      </div>
+    <div className="flex flex-col gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] sm:flex-row sm:items-center">
+      <div className="flex items-start gap-3 min-w-0 flex-1">
+        {/* Icon */}
+        <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
+          <IconComponent size={18} className="text-accent" />
+        </div>
 
-      {/* Name + description */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        {/* Name + description */}
+        <div className="min-w-0 flex-1">
+        {/* Wrapping, so the badges push down instead of crushing the name (#749). */}
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[14px] font-semibold text-text truncate">
             {getLocalizedName(manifest, lang)}
           </span>
@@ -791,7 +829,7 @@ function StoreRow({
           {/* Personal badge — user-added source (spec 136) */}
           {tier === "personal" && <PersonalBadge />}
         </div>
-        <p className="text-[12px] text-text-secondary mt-0.5 line-clamp-1">
+        <p className="text-[12px] text-text-secondary mt-0.5 line-clamp-2 sm:line-clamp-1">
           {getLocalizedDescription(manifest, lang)}
         </p>
         {manifest.author && (
@@ -799,10 +837,11 @@ function StoreRow({
             {t("plugins.author")}: {manifest.author}
           </span>
         )}
+        </div>
       </div>
 
       {/* Install button or installed badge */}
-      <div className="shrink-0">
+      <div className="shrink-0 self-end sm:self-auto">
         {installed ? (
           <span className="px-3 py-1.5 text-[12px] font-medium text-success bg-success/10 rounded-[6px]">
             {t("plugins.installed_badge")}
@@ -928,8 +967,10 @@ function PersonalConfirmModal({
   const { t } = useTranslation();
   const isInstall = mode === "install";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  // Portaled above the detail sheet (also portaled, z-50): a security
+  // confirmation must never render behind the surface that triggered it.
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
       <div className="bg-surface rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-lg">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -983,7 +1024,8 @@ function PersonalConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
