@@ -8,7 +8,12 @@ This guide covers everything a contributor needs to know to set up the developme
 
 ### Prerequisites
 
-- **Node.js 24+**
+- **Node.js 24**, the line CI, the release build and the shipped image all run.
+  `.nvmrc` and `.node-version` pin it, so nvm, fnm and asdf pick it up on `cd`.
+  Do not read the `>=24.0.0` in `package.json` as an invitation to run 25: odd
+  Node lines never become LTS, and Homebrew's plain `node` formula tracks them.
+  Without a version manager, `brew install node@24` and put
+  `/opt/homebrew/opt/node@24/bin` ahead on your PATH.
 - **npm** (comes with Node.js)
 - **Docker + docker-compose** (for InfluxDB)
 - **Git**

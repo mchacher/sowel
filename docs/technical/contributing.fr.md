@@ -8,7 +8,13 @@ Ce guide couvre tout ce qu'un contributeur doit savoir pour mettre en place l'en
 
 ### Prérequis
 
-- **Node.js 24+**
+- **Node.js 24**, la ligne qu'utilisent la CI, le build de release et l'image
+  livrée. `.nvmrc` et `.node-version` la figent, donc nvm, fnm et asdf la
+  prennent automatiquement au `cd`. Le `>=24.0.0` du `package.json` n'est pas
+  une invitation à passer en 25 : les lignes impaires de Node ne deviennent
+  jamais LTS, et c'est ce que suit la formule `node` de Homebrew. Sans
+  gestionnaire de versions, `brew install node@24` puis placez
+  `/opt/homebrew/opt/node@24/bin` en tête du PATH.
 - **npm** (livré avec Node.js)
 - **Docker + docker-compose** (pour InfluxDB)
 - **Git**
