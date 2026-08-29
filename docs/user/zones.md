@@ -133,7 +133,7 @@ The pill in the top right shows `● live` when the app is connected to Sowel vi
 
 ### Memory window
 
-The Sowel engine keeps the last **24 hours** of events in memory (capped at 2000 entries). The buffer is reset when the container restarts, the same way the logs ring buffer works. For deeper or older investigation, use the Logs page.
+The Sowel engine keeps the last **7 days** of events (capped at 2000 entries) and **keeps them across a restart**. For anything older, use the Logs page.
 
 ## Zone orders
 

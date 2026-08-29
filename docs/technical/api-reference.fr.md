@@ -373,7 +373,7 @@ Mappe les appuis sur des boutons physiques (boutons Zigbee, etc.) à des actions
 
 ## Activité
 
-Événements moteur récents pour le panneau d'activité de la vue Zone. Lit depuis le ring buffer en mémoire (rétention 24 h, plafonné à 2000 entrées, remis à zéro au redémarrage). Voir [Zones — Fil d'activité](../user/zones.md#fil-dactivite) pour la description côté utilisateur.
+Événements moteur récents pour le panneau d'activité de la vue Zone. Rétention de 7 jours, plafonnée à 2000 entrées, persistée en SQLite et rechargée au démarrage. Voir [Zones — Fil d'activité](../user/zones.md#fil-dactivite) pour la description côté utilisateur.
 
 | Method | Path               | Description                                                                                                                       |
 | ------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |

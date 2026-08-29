@@ -472,7 +472,7 @@ Map physical button presses (Zigbee buttons, etc.) to actions (mode activation, 
 
 ## Activity
 
-Recent engine events for the zone-view activity panel. Reads from the in-memory ring buffer (24h retention, capped at 2000 entries, reset on restart). See [Zones — Activity feed](../user/zones.md#activity-feed) for the user-facing description.
+Recent engine events for the zone-view activity panel. 7-day retention, capped at 2000 entries, persisted in SQLite and reloaded on boot. See [Zones — Activity feed](../user/zones.md#activity-feed) for the user-facing description.
 
 | Method | Path               | Description                                                                                                                  |
 | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
