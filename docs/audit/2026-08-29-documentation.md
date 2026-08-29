@@ -11,6 +11,34 @@ contradicting source location, and what the truth is.
 
 ---
 
+## Status — updated 2026-08-29 evening
+
+Six of the seven PRs are merged. What each one actually shipped:
+
+| #   | PR                                    | State                                                                                                                  |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | #819 stop publishing the legacy tree  | **merged**. Also excluded `sowel-spec.md`, which the Do-list had missed; 127 of 1674 search entries were legacy, now 0 |
+| 2   | #820 plugin author contract           | **merged**. Corrections applied in EN **and FR**; the additions are EN-only, recorded in the PR                        |
+| 3   | #821 activity feed is persistent      | **merged**, both languages                                                                                             |
+| 4   | #822 retire the French data model     | **merged**. Deleted rather than translated                                                                             |
+| 5   | #823 architecture.md vs the code      | **merged**, plus `CLAUDE.md` and `contributing.md`                                                                     |
+| 6   | #824 specs index + release gate       | **merged**. 42 rows missing in EN, **65 in FR** (the French index was never complete, not merely lagging)              |
+| 7   | #825 energy arbiter + Production page | **merged**, first half only. See below                                                                                 |
+
+Two corrections to this document's own findings, worth knowing before trusting the rest:
+
+- **The arbiter sections were NOT accurate.** This audit listed them under "checked and found accurate". The maintainer said otherwise and was right: `api-reference.md` documented the pre-spec-165 read model, listing three fields the types mark `@deprecated` and omitting `loads` entirely, and the deep dive still carried a claim spec 166 had falsified. Treat the "found accurate" list as untested, not as cleared.
+- **Counts were low.** 42 missing index rows in EN rather than 34; 65 in FR rather than "roughly 30 behind".
+
+### Still open, in priority order
+
+1. **PR 7 second half — the user guide.** Nothing in the tree mentions shutter/gate **invert direction** (specs 154/155), which is the answer to "my awning goes the wrong way"; `user/equipments.md:57` still states the fixed convention as unchangeable. UPS (156) and VMC (153) absent from a catalogue that bills itself as closed. Gate action confirmation (146), order delivery confirmation (141), low battery (143), RBAC roles (131) all zero-hit on the user side. Plus the `user/index.md` card grid missing three pages and the duplicate `Calendar scheduling` heading in `user/modes.md`.
+2. **PR 6 second half — the API and data-model reference.** Six 404 routes, the eight missing event union members, the enum and column drift, the undocumented route surface (`/system/*`, `/audit`, backup, arbiter timeline, the four PV endpoints, OAuth), and `recipe-development.md` (`dispatchOrder`, the `override readonly` syntax error, `RecipeActionDef`).
+3. **EN/FR sections that are missing rather than stale.** The French API reference has no arbiter section and no Energy claims endpoints; the French recipe guide has no capacity-claim chapter; the French architecture page lacks the arbiter and four auth subsections and is behaviourally stale on spec 105 auth; the French plugin guide lacks spec 116 and spec 089. Each was deferred with a `Docs-Parity` trailer rather than half-done.
+4. **Screenshots.** Unchanged from the section at the end of this file. Deferred to a session with the fixture pipeline.
+
+---
+
 ## How to read the confidence markers
 
 | Marker  | Meaning                                                                                                                                              |
