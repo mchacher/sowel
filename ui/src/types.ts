@@ -432,8 +432,10 @@ export interface ArbiterLoadInfo {
   equipmentName: string;
   state: ArbiterLoadState;
   watts: number | null;
-  /** #807 — what it takes to start the load: `watts + margin - tolerated`, on
-   *  every row that has watts. Negative when the tolerance exceeds the draw. */
+  /** #807 — `watts + margin - tolerated`, on every row that has watts, from
+   *  the row's own basis: the reserved/measured draw of a grant, the claim's
+   *  figure while waiting, the rating at rest. Negative when the tolerance
+   *  exceeds the draw, which the roster renders as 0 W. */
   needW: number | null;
   /** #807 — pending only: the surplus still missing before the claim can be
    *  granted. Null on every other state. */
@@ -990,7 +992,11 @@ export interface ModeWithDetails extends Mode {
 }
 
 export type ButtonEffectType =
-  "mode_activate" | "mode_toggle" | "equipment_order" | "recipe_toggle" | "zone_order";
+  | "mode_activate"
+  | "mode_toggle"
+  | "equipment_order"
+  | "recipe_toggle"
+  | "zone_order";
 
 export interface ButtonActionBinding {
   id: string;

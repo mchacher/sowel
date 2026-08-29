@@ -142,9 +142,14 @@ export function ArbitrationSurface() {
   // Suppressed while dormant, which shows its own calm night line instead (#577).
   const showDeficit = !dormant && state.state === "active" && available !== null && available < 0;
 
-  // #807 — the load the arbiter would serve next, and what it is short by. The
-  // roster is in priority order, so the first waiting row IS the next one up.
-  const nextUp = rows.find((r) => r.state === "pending" && (r.shortfallW ?? 0) > 0);
+  // #807 — the load the arbiter is working on next: the first waiting row, in
+  // the priority order the roster is listed in. That is a good guess, not a
+  // promise — the engine serves whichever covered claim matures first, and a
+  // claim declaring no slack jumps ahead of one that does — so the panel says
+  // what the load needs, never that it is guaranteed to be served first.
+  // A claim whose surplus is already covered is included on purpose: it is
+  // the closest thing to "about to happen" the roster has.
+  const nextUp = rows.find((r) => r.state === "pending");
   const showAside = !dormant && (available !== null || nextUp !== undefined);
 
   return (
@@ -252,7 +257,11 @@ export function ArbitrationSurface() {
                         <td className="text-left py-2.5 px-3">
                           <StatePill state={r.state} />
                         </td>
-                        <td className="text-right py-2.5 px-3 font-mono text-text-tertiary whitespace-nowrap">
+                        {/* No `whitespace-nowrap` here, unlike the figure
+                            columns: the longest words ("outside arbitration")
+                            would push a 375 px card into a sideways scroll,
+                            and wrapping them costs nothing. */}
+                        <td className="text-right py-2.5 px-3 font-mono text-text-tertiary">
                           <GapCell row={r} />
                         </td>
                         <td className="hidden lg:table-cell text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
@@ -279,7 +288,13 @@ export function ArbitrationSurface() {
           </div>
 
           {showAside && (
-            <aside className="flex flex-row lg:flex-col gap-6 lg:gap-4 flex-wrap lg:flex-nowrap lg:flex-none lg:w-[208px] border-t lg:border-t-0 lg:border-l border-border-light pt-3 lg:pt-0 lg:pl-5">
+            <aside
+              className={`${
+                // Its only content below 640 px is the next-up block: without
+                // one, the panel would be a rule over an empty strip there.
+                nextUp ? "flex" : "hidden sm:flex"
+              } flex-row lg:flex-col gap-6 lg:gap-4 flex-wrap lg:flex-nowrap lg:flex-none lg:w-[208px] border-t lg:border-t-0 lg:border-l border-border-light pt-3 lg:pt-0 lg:pl-5`}
+            >
               {available !== null && (
                 // Below 640 px this repeats the header sticker, which is enough
                 // on a phone; from there up it is the figure the need column is
@@ -308,10 +323,12 @@ export function ArbitrationSurface() {
                     {nextUp.equipmentName}
                   </div>
                   <div className="text-[11.5px] text-text-tertiary mt-1">
-                    {t("arbiter.aside.nextHint", {
-                      need: fmtNeed(nextUp.needW),
-                      gap: fmtW(nextUp.shortfallW),
-                    })}
+                    {(nextUp.shortfallW ?? 0) > 0
+                      ? t("arbiter.aside.nextHint", {
+                          need: fmtNeed(nextUp.needW),
+                          gap: fmtW(nextUp.shortfallW),
+                        })
+                      : t("arbiter.aside.nextCovered", { need: fmtNeed(nextUp.needW) })}
                   </div>
                 </div>
               )}

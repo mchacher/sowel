@@ -73,7 +73,8 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("Pompe Piscine")).toBeTruthy();
+    // Once in its row, once in the context panel naming what switches next.
+    expect(screen.getAllByText("Pompe Piscine")).toHaveLength(2);
     expect(screen.getByText("Waiting")).toBeTruthy();
     expect(screen.getByText("400 W")).toBeTruthy(); // need
     expect(screen.getByText("600 W")).toBeTruthy(); // load
@@ -451,6 +452,55 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     expect(header("Need")?.className).toContain("hidden sm:table-cell");
     expect(header("Load")?.className).toContain("hidden lg:table-cell");
     expect(header("Tolerates")?.className).toContain("hidden lg:table-cell");
+  });
+
+  it("names a claim whose surplus is already covered as the one about to switch", () => {
+    // The seconds before something happens are exactly when the panel should
+    // speak; excluding a covered claim left it blank right then.
+    seed({
+      availableSurplusW: 2500,
+      loads: [
+        load({
+          equipmentId: "pacp",
+          equipmentName: "PAC Piscine",
+          state: "pending",
+          watts: 1800,
+          needW: 1850,
+          shortfallW: 0,
+          reasonWaiting: "insufficient-surplus:2500",
+        }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Next to switch")).toBeTruthy();
+    expect(screen.getByText("Its 1 850 W need is covered, start being confirmed")).toBeTruthy();
+  });
+
+  it("keeps the context panel off the phone tier when it would be empty", () => {
+    // Below 640 px the surplus tile is hidden, so with nothing pending the
+    // panel would render as a rule over an empty strip.
+    seed({
+      availableSurplusW: 1200,
+      loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 700 })],
+    });
+    const { container } = render(<ArbitrationSurface />);
+
+    expect(container.querySelector("aside")?.className).toContain("hidden sm:flex");
+  });
+
+  it("lets the gap words wrap rather than push the card sideways", () => {
+    // "outside arbitration" under `whitespace-nowrap` overflows a 375 px card,
+    // which is the one thing the phone tier promises not to do.
+    seed({
+      loads: [
+        load({ equipmentId: "boiler", equipmentName: "Ballon", state: "unmanaged", watts: 800 }),
+      ],
+    });
+    render(<ArbitrationSurface />);
+
+    const cell = screen.getByText("outside arbitration").closest("td");
+    expect(cell?.className).not.toContain("whitespace-nowrap");
   });
 
   it("hides the context panel at night, where the dormant line already explains", () => {

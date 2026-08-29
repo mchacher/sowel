@@ -917,10 +917,14 @@ export interface ArbiterLoadInfo {
   /** Granted: the reserved watts. Pending / at rest: what it draws when it
    *  runs (live when running unmanaged, else learned, else nominal). */
   watts: number | null;
-  /** #807 — what it takes to start this load: `watts + engageMarginW -
-   *  toleratedImportW`, on every row that has watts (suspended has neither).
-   *  A property of the load, not of its state, so the invariant
-   *  `needW = watts + margin - toleratedImportW` holds across the roster.
+  /** #807 — `watts + engageMarginW - toleratedImportW`, on every row that has
+   *  watts (suspended has neither), so the invariant
+   *  `needW = watts + margin - toleratedImportW` holds across the roster and a
+   *  reader can check it against the two columns beside it. The basis is the
+   *  row's own `watts`: the reserved/measured draw of a grant, the claim's
+   *  figure while waiting, the rating at rest — so a granted load measured
+   *  near zero reads a near-zero need, describing the row rather than a
+   *  hypothetical restart.
    *  Can be negative when the tolerance exceeds the draw: such a load starts
    *  with no surplus at all, and the grant pass does not floor it either. */
   needW: number | null;

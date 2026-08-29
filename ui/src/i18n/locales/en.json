@@ -1417,6 +1417,7 @@
   "arbiter.aside.availableHint": "Live grid export",
   "arbiter.aside.next": "Next to switch",
   "arbiter.aside.nextHint": "Starts at {{need}}, short by {{gap}}",
+  "arbiter.aside.nextCovered": "Its {{need}} need is covered, start being confirmed",
   "arbiter.deficitContext": "Importing {{kw}} kW, no load can start yet.",
   "arbiter.revokeReason.surplus-deficit": "production dropped",
   "arbiter.revokeReason.priority-preempted": "yielded to a higher-priority load",
