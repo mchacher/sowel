@@ -179,9 +179,22 @@ Allez dans **Réglages > Administration > Énergie**, activez l'**Arbitre de sur
 
 La page **Énergie > En direct** gagne un panneau d'arbitrage du surplus en trois parties :
 
-- un **tableau des charges**, une ligne par charge flexible : son état, l'**écart** qui manque encore avant qu'elle puisse démarrer, ce qu'elle tire actuellement, l'import réseau qu'elle tolère, et ce dont elle a **besoin**. Le besoin est rempli sur chaque ligne, pas seulement celles en attente : ce qu'il faut à une charge pour démarrer reste vrai qu'elle tourne, attende ou soit à l'arrêt ;
-- une **frise du jour** avec un couloir par charge pilotable — vert là où elle a tenu le surplus, un repère rouge (avec la raison au survol) là où elle s'est effacée ;
+- un **tableau** listant chaque charge pilotable dans votre ordre de priorité, avec son état et ses chiffres ;
+- une **frise** avec un couloir par charge pilotable : vert là où elle a tenu le surplus, un repère rouge (avec la raison au survol) là où elle s'est effacée ;
 - un **journal des décisions** en langage clair, pour que rien de ce que fait l'arbitre ne soit un mystère.
+
+Le tableau répond aux deux questions que vous vous posez vraiment devant lui : qui a le surplus, et qu'est-ce qui retient la suivante.
+
+| Colonne    | Ce qu'elle dit                                                                                                                                                                                                                                                                                                    |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Manque** | Ce qui manque encore à une charge en attente, en watts. Quand rien ne manque, elle le dit avec un mot plutôt qu'un chiffre : _couvert_ pour une charge qui a déjà le surplus, _non demandé_ pour une charge qu'aucune automatisation n'a réclamée, ou la raison qui la retient (temporisation, anti-cycle court). |
+| **Charge** | Ce que la charge consomme : mesuré quand elle tourne, sa puissance nominale au repos.                                                                                                                                                                                                                             |
+| **Tolère** | L'import réseau qu'elle accepte, tel que réglé dans sa gestion d'énergie.                                                                                                                                                                                                                                         |
+| **Besoin** | Le surplus qu'il faut pour la démarrer : **charge + marge d'engagement - tolérance**. La marge est rappelée sous le tableau, vous pouvez donc vérifier le calcul sur n'importe quelle ligne. Une charge qui tolère plus d'import qu'elle ne consomme n'a besoin d'aucun surplus et affiche 0 W.                   |
+
+Le numéro devant chaque nom est son rang dans votre liste de priorité. Sur un écran étroit, le tableau garde l'équipement, son état et le manque, et laisse tomber le reste.
+
+La nuit, l'arbitre se met en veille : il n'y a pas de surplus à distribuer, chaque charge est _au repos_, et le panneau indique la reprise.
 
 ### Vous avez toujours le dernier mot
 
