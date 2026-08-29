@@ -27,6 +27,23 @@ const CONFIRMATION_TIMEOUT_MS = 30_000;
 /** Maximum age of an unconfirmed order eligible for the reconnect re-dispatch. */
 const REDISPATCH_TTL_MS = 3_600_000;
 /**
+ * Maximum age of a never-dispatched order eligible for the replay that follows
+ * its integration reconnecting (issue #702). Much tighter than the device
+ * reconnect TTL above: this one exists for the boot window and for a short
+ * integration outage, and a schedule-driven command replayed long after its
+ * slot has passed would be worse than the command that was lost.
+ */
+const DISCONNECTED_REDISPATCH_TTL_MS = 300_000;
+/**
+ * Grace given to a held order before it is surfaced as unconfirmed. The
+ * integration is expected back within seconds (a boot, an MQTT reconnect), and
+ * the replay then resolves the whole thing silently. Alarming on the failure
+ * itself would push a failure and a recovery notification per held order on an
+ * ordinary restart. Same reasoning as STATUS_SETTLE_MS above: a signal read
+ * during the settling window is not yet evidence.
+ */
+const DISCONNECTED_ALARM_GRACE_MS = 60_000;
+/**
  * Settle window after start during which a device's persisted "offline" is not
  * evidence on its own. Statuses survive a restart in SQLite and integrations
  * restore the real one asynchronously — Zigbee2MQTT replays its retained
@@ -53,7 +70,27 @@ interface PendingOrder {
   retried: boolean;
   /** Every target device was believed offline when the order was dispatched. */
   offlineAtDispatch: boolean;
+  /**
+   * How old this order may get and still be replayed. Two triggers can replay
+   * it (a device coming online, its integration connecting) and they must agree
+   * on the window, or the tighter one is bypassed by the other.
+   */
+  redispatchTtlMs: number;
+  /**
+   * The order never reached the wire: its integration was missing or
+   * disconnected (issue #702). Such an order is replayed when that integration
+   * connects, not when a device comes back online.
+   */
+  neverDispatched: boolean;
+  /**
+   * Whether equipment state can ever confirm this order. False for stateless
+   * orders (scenes, a display wake) — they are still replayed when they were
+   * never dispatched, but they raise no alarm, because nothing could resolve it.
+   */
+  confirmable: boolean;
   deviceIds: string[];
+  /** Integrations behind the order bindings — the replay trigger for #702. */
+  integrationIds: string[];
   source?: OrderSource | undefined;
 }
 
@@ -131,6 +168,28 @@ export class OrderConfirmationTracker {
           this.logger.error({ err }, "Reconnect re-dispatch failed");
         }
       }),
+      // Issue #702 — an order whose integration was unreachable never reached
+      // the wire. It is held here and replayed once that integration connects.
+      this.eventBus.onType("equipment.order.failed", (event) => {
+        try {
+          this.handleOrderFailed(
+            event.equipmentId,
+            event.orderAlias,
+            event.value,
+            event.error,
+            event.source,
+          );
+        } catch (err) {
+          this.logger.error({ err }, "Failed order tracking failed");
+        }
+      }),
+      this.eventBus.onType("system.integration.connected", (event) => {
+        try {
+          this.handleIntegrationConnected(event.integrationId);
+        } catch (err) {
+          this.logger.error({ err }, "Integration reconnect re-dispatch failed");
+        }
+      }),
     );
     this.logger.info("Order confirmation tracker started");
   }
@@ -184,10 +243,7 @@ export class OrderConfirmationTracker {
       return;
     }
 
-    const deviceIds = this.equipmentManager
-      .getOrderBindingsWithDetails(equipmentId)
-      .filter((b) => b.alias === alias)
-      .map((b) => b.deviceId);
+    const { deviceIds, integrationIds } = this.targetsFor(equipmentId, alias);
 
     const entry: PendingOrder = {
       equipmentId,
@@ -200,7 +256,11 @@ export class OrderConfirmationTracker {
       alarmRaised: previous?.alarmRaised ?? false,
       retried: false,
       offlineAtDispatch: this.allTargetsOffline(deviceIds),
+      redispatchTtlMs: REDISPATCH_TTL_MS,
+      neverDispatched: false,
+      confirmable: true,
       deviceIds,
+      integrationIds,
       source,
     };
 
@@ -222,6 +282,30 @@ export class OrderConfirmationTracker {
     }
 
     this.armTimer(entry);
+  }
+
+  /**
+   * The devices behind an order alias, and the integrations that own them.
+   * The integrations are what #702 keys its replay on: at boot a device
+   * persisted as online never emits a status change, so the integration
+   * connecting is the only signal that the wire is live again.
+   */
+  private targetsFor(
+    equipmentId: string,
+    alias: string,
+  ): { deviceIds: string[]; integrationIds: string[] } {
+    const deviceIds = this.equipmentManager
+      .getOrderBindingsWithDetails(equipmentId)
+      .filter((b) => b.alias === alias)
+      .map((b) => b.deviceId);
+    const integrationIds = [
+      ...new Set(
+        deviceIds
+          .map((id) => this.deviceManager.getById(id)?.integrationId)
+          .filter((id): id is string => id !== undefined),
+      ),
+    ];
+    return { deviceIds, integrationIds };
   }
 
   /** Whether every device behind the order bindings is currently offline. */
@@ -272,7 +356,10 @@ export class OrderConfirmationTracker {
     }, entry.timeoutMs);
   }
 
-  private markUnconfirmed(entry: PendingOrder, reason: "timeout" | "device_offline"): void {
+  private markUnconfirmed(
+    entry: PendingOrder,
+    reason: "timeout" | "device_offline" | "integration_disconnected",
+  ): void {
     if (entry.timer) {
       clearTimeout(entry.timer);
       entry.timer = null;
@@ -300,12 +387,17 @@ export class OrderConfirmationTracker {
       ...(entry.source !== undefined ? { source: entry.source } : {}),
     });
 
-    if (!entry.alarmRaised) {
+    // A stateless order (a scene, a display wake) has nothing that could ever
+    // report the ordered value, so an alarm on it could never resolve. It is
+    // still tracked and replayed — it just stays out of the alarm surface.
+    if (!entry.alarmRaised && entry.confirmable) {
       entry.alarmRaised = true;
       const detail =
         reason === "device_offline"
           ? "device offline"
-          : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
+          : reason === "integration_disconnected"
+            ? "integration unreachable"
+            : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
       this.eventBus.emit({
         type: "system.alarm.raised",
         alarmId: this.alarmId(entry),
@@ -348,17 +440,162 @@ export class OrderConfirmationTracker {
     return `order-unconfirmed:${entry.equipmentId}:${entry.alias}`;
   }
 
+  // ── Undispatched orders (issue #702) ─────────────────────────
+
+  /**
+   * An order that failed before reaching the wire because its integration was
+   * missing or disconnected. Until #702 this threw out of `executeOrder`
+   * without emitting anything, so the command was dropped with only a log line
+   * behind it: the recipe's own state advanced as if it had acted, and nothing
+   * brought the device back in line until the next trigger.
+   *
+   * The order is held here and replayed once when that integration connects.
+   * Only the undispatched class is held: a failure raised by a plugin that was
+   * connected is a different problem with no reconnect signal to hang a replay
+   * on, and is left alone.
+   */
+  private handleOrderFailed(
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+    error: string,
+    source?: OrderSource,
+  ): void {
+    // Our own replay failing again must not enrol the order a second time.
+    // The existing entry already carries retried=true, so the single-replay
+    // guarantee holds.
+    if (source?.kind === "external" && source.channel === RETRY_CHANNEL) return;
+
+    const { deviceIds, integrationIds } = this.targetsFor(equipmentId, alias);
+    const unreachable = integrationIds.filter(
+      (id) => this.integrationRegistry.getById(id)?.getStatus() !== "connected",
+    );
+    if (unreachable.length === 0) return;
+
+    const key = `${equipmentId}:${alias}`;
+    const previous = this.pending.get(key);
+    if (previous) {
+      if (previous.timer) clearTimeout(previous.timer);
+      this.pending.delete(key);
+    }
+
+    const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
+    const mirror = bindings.find((b) => b.alias === alias);
+    const confirmable = mirror !== undefined && isConfirmableValue(value, mirror.enumValues);
+
+    // Already in the ordered state: the command being lost changes nothing.
+    if (confirmable && mirror && valuesMatch(value, mirror.value)) {
+      if (previous?.alarmRaised) this.resolveAlarm(previous, "state finally confirmed");
+      return;
+    }
+
+    // A carried-over alarm needs something that can still resolve it. A
+    // stateless order cannot, so it is released here rather than left standing
+    // until the next restart — same rule the executed path applies to an
+    // exempt order superseding an alarmed one.
+    if (!confirmable && previous?.alarmRaised) {
+      this.resolveAlarm(previous, "superseded by an exempt order");
+    }
+
+    const entry: PendingOrder = {
+      equipmentId,
+      alias,
+      value,
+      orderedAt: Date.now(),
+      timer: null,
+      timeoutMs: this.confirmationTimeoutFor(deviceIds),
+      unconfirmed: false,
+      alarmRaised: confirmable ? (previous?.alarmRaised ?? false) : false,
+      retried: false,
+      offlineAtDispatch: false,
+      redispatchTtlMs: DISCONNECTED_REDISPATCH_TTL_MS,
+      neverDispatched: true,
+      confirmable,
+      deviceIds,
+      integrationIds,
+      source,
+    };
+    this.pending.set(key, entry);
+
+    this.logger.warn(
+      { equipmentId, alias, value, error, integrationIds: unreachable },
+      "Order could not be dispatched — holding it until the integration connects",
+    );
+
+    // Make sure the next status sweep sees a transition even if the plugin
+    // recovers between two samples: without this, a brief flap emits no
+    // connected event and the order would be held with nothing to release it.
+    for (const id of unreachable) this.integrationRegistry.noteUnreachable(id);
+
+    // No watchdog on the ordered value: nothing was sent, so there is no effect
+    // to wait for. What is timed instead is how long the order stays held —
+    // the alarm is for an integration that does not come back.
+    entry.timer = setTimeout(() => {
+      entry.timer = null;
+      this.markUnconfirmed(entry, "integration_disconnected");
+    }, DISCONNECTED_ALARM_GRACE_MS);
+  }
+
+  /**
+   * An integration is reachable again: replay every order that was lost
+   * because it was not. At boot this is the only usable signal — a device
+   * persisted as online never emits a status change when its integration
+   * finally connects, so `handleDeviceOnline` would never fire.
+   */
+  private handleIntegrationConnected(integrationId: string): void {
+    for (const [key, entry] of [...this.pending.entries()]) {
+      if (entry.retried || !entry.neverDispatched) continue;
+      if (!entry.integrationIds.includes(integrationId)) continue;
+      // Too old to be replayed safely. The entry is kept rather than dropped:
+      // if it raised an alarm, a later state report still has to resolve it.
+      if (Date.now() - entry.orderedAt > entry.redispatchTtlMs) continue;
+
+      entry.retried = true;
+      const name = this.equipmentManager.getById(entry.equipmentId)?.name ?? entry.equipmentId;
+      this.logger.warn(
+        {
+          equipmentId: entry.equipmentId,
+          equipmentName: name,
+          alias: entry.alias,
+          value: entry.value,
+          integrationId,
+        },
+        "Integration connected — re-dispatching the order it could not deliver",
+      );
+      void this.equipmentManager
+        .executeOrder(entry.equipmentId, entry.alias, entry.value, {
+          kind: "external",
+          channel: RETRY_CHANNEL,
+        })
+        .catch((err: unknown) => {
+          this.logger.error(
+            { err, equipmentId: entry.equipmentId, alias: entry.alias },
+            "Re-dispatch after integration connect failed",
+          );
+        });
+      // Nothing can ever confirm a stateless order, so it is released as soon
+      // as it has been replayed rather than lingering forever.
+      if (!entry.confirmable) {
+        if (entry.timer) clearTimeout(entry.timer);
+        this.pending.delete(key);
+      }
+    }
+  }
+
   // ── Reconnect re-dispatch ────────────────────────────────────
 
   private handleDeviceOnline(deviceId: string): void {
     for (const entry of this.pending.values()) {
       if (entry.retried) continue;
-      // Unconfirmed, or still inside its watchdog after being dispatched at a
-      // device believed offline: either way the command may never have landed,
-      // and this reconnect is the moment to re-assert it.
-      if (!entry.unconfirmed && !entry.offlineAtDispatch) continue;
+      // Unconfirmed, still inside its watchdog after being dispatched at a
+      // device believed offline, or never dispatched at all: either way the
+      // command may never have landed, and this reconnect is the moment to
+      // re-assert it. A held order is eligible here as well as on its
+      // integration connecting, because that event can be missed when a plugin
+      // drops and recovers between two status sweeps.
+      if (!entry.unconfirmed && !entry.offlineAtDispatch && !entry.neverDispatched) continue;
       if (!entry.deviceIds.includes(deviceId)) continue;
-      if (Date.now() - entry.orderedAt > REDISPATCH_TTL_MS) continue;
+      if (Date.now() - entry.orderedAt > entry.redispatchTtlMs) continue;
 
       entry.retried = true;
       const name = this.equipmentManager.getById(entry.equipmentId)?.name ?? entry.equipmentId;

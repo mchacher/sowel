@@ -1353,7 +1353,9 @@ export type EngineEvent =
       equipmentId: string;
       orderAlias: string;
       value: unknown;
-      reason: "timeout" | "device_offline";
+      // "integration_disconnected" (issue #702): the order never reached the
+      // wire at all, the integration was unreachable when it was dispatched.
+      reason: "timeout" | "device_offline" | "integration_disconnected";
       source?: OrderSource;
     }
   | {

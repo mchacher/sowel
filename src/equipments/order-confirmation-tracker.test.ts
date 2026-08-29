@@ -88,8 +88,14 @@ describe("OrderConfirmationTracker", () => {
   } as unknown as DeviceManager;
 
   let pollingIntervalMs: number | null = null;
+  let integrationStatus: "connected" | "disconnected" = "connected";
+  let noteUnreachableCalls: string[] = [];
   const integrationRegistry = {
+    noteUnreachable: (id: string) => {
+      noteUnreachableCalls.push(id);
+    },
     getById: () => ({
+      getStatus: () => integrationStatus,
       getPollingInfo: () =>
         pollingIntervalMs === null
           ? null
@@ -146,6 +152,8 @@ describe("OrderConfirmationTracker", () => {
     bindingValue = "OFF";
     executeOrderCalls = [];
     pollingIntervalMs = null;
+    integrationStatus = "connected";
+    noteUnreachableCalls = [];
     eventBus.on((event) => {
       emitted.push(event);
     });
@@ -382,5 +390,212 @@ describe("OrderConfirmationTracker", () => {
     vi.advanceTimersByTime(60_000);
 
     expect(alarmsRaised().length).toBe(0);
+  });
+
+  // ============================================================
+  // Issue #702 — orders that never reached the wire
+  // ============================================================
+
+  describe("orders lost to a disconnected integration (#702)", () => {
+    function emitOrderFailed(value: unknown, source?: unknown): void {
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value,
+        error: "Integration int-1 not connected",
+        ...(source !== undefined ? { source } : {}),
+      } as EngineEvent);
+    }
+
+    function emitIntegrationConnected(integrationId = "int-1"): void {
+      integrationStatus = "connected";
+      eventBus.emit({ type: "system.integration.connected", integrationId });
+    }
+
+    it("holds an order its integration could not carry, and replays it on connect", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      expect(executeOrderCalls).toHaveLength(0);
+
+      emitIntegrationConnected();
+
+      expect(executeOrderCalls).toEqual([{ equipmentId: "eq-1", alias: "state", value: "ON" }]);
+    });
+
+    it("heals a boot-window loss silently, with no alarm and no push", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      // The integration is back within the grace window, which is the ordinary
+      // restart. Alarming on the failure itself would push a failure and a
+      // recovery notification per held order on every reboot.
+      vi.advanceTimersByTime(5_000);
+      expect(alarmsRaised()).toHaveLength(0);
+      expect(unconfirmedEvents()).toHaveLength(0);
+
+      emitIntegrationConnected();
+      emitData("ON");
+      vi.advanceTimersByTime(120_000);
+
+      expect(executeOrderCalls).toHaveLength(1);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("surfaces the loss once the integration stays away", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      vi.advanceTimersByTime(60_001);
+
+      expect(unconfirmedEvents()).toHaveLength(1);
+      expect(unconfirmedEvents()[0]).toMatchObject({ reason: "integration_disconnected" });
+      expect(alarmsRaised()).toHaveLength(1);
+    });
+
+    it("replays once only, however many times the integration reconnects", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      emitIntegrationConnected();
+      emitIntegrationConnected();
+      emitIntegrationConnected();
+
+      expect(executeOrderCalls).toHaveLength(1);
+    });
+
+    it("does not replay an order when a different integration connects", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      emitIntegrationConnected("some-other-integration");
+
+      expect(executeOrderCalls).toHaveLength(0);
+    });
+
+    it("does not replay a command whose window has passed", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      // A schedule-driven OFF replayed long after its slot would be worse than
+      // the command that was lost, so the replay window is short.
+      vi.advanceTimersByTime(300_001);
+      emitIntegrationConnected();
+
+      expect(executeOrderCalls).toHaveLength(0);
+      // The alarm stays raised: the order genuinely never landed.
+      expect(alarmsResolved()).toHaveLength(0);
+    });
+
+    it("applies the same short window to the device-online trigger", () => {
+      // Both triggers must agree on the window. The device path used to carry
+      // a one hour TTL, which silently overrode this one: an integration
+      // reconnect correctly declined the replay, and the device coming online
+      // a moment later did it anyway.
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      vi.advanceTimersByTime(300_001);
+      emitDeviceStatus("online");
+
+      expect(executeOrderCalls).toHaveLength(0);
+    });
+
+    it("still replays on device-online when the connect event was missed", () => {
+      // A plugin that drops and recovers between two status sweeps emits no
+      // connected event, so the device path is the remaining way out.
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      integrationStatus = "connected";
+      emitDeviceStatus("online");
+
+      expect(executeOrderCalls).toHaveLength(1);
+    });
+
+    it("releases a stateless order's inherited alarm instead of orphaning it", () => {
+      // An alarmed order superseded by one nothing can confirm: the entry is
+      // dropped after its replay, so the alarm has to be resolved here or it
+      // stands until the next restart.
+      emitOrder("ON");
+      vi.advanceTimersByTime(60_000);
+      expect(alarmsRaised()).toHaveLength(1);
+
+      (equipmentManager.getDataBindingsWithValues as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+        [],
+      );
+      integrationStatus = "disconnected";
+      emitOrderFailed("WAKE");
+
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
+    it("marks the integration unreachable so a flap still produces a transition", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      expect(noteUnreachableCalls).toEqual(["int-1"]);
+    });
+
+    it("resolves the alarm when the replayed order is finally observed", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+      vi.advanceTimersByTime(60_001);
+      expect(alarmsRaised()).toHaveLength(1);
+
+      emitIntegrationConnected();
+      emitData("ON");
+
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
+    it("does not enrol its own replay when that fails again", () => {
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+      emitIntegrationConnected();
+      expect(executeOrderCalls).toHaveLength(1);
+
+      // The replay lands while the integration has dropped again.
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON", { kind: "external", channel: RETRY_CHANNEL });
+      emitIntegrationConnected();
+
+      // Still one: a replay that fails must not start the cycle over.
+      expect(executeOrderCalls).toHaveLength(1);
+    });
+
+    it("ignores a failure raised by an integration that was connected", () => {
+      // A plugin that threw while reachable is a different problem, with no
+      // reconnect signal to hang a replay on.
+      integrationStatus = "connected";
+      emitOrderFailed("ON");
+
+      expect(unconfirmedEvents()).toHaveLength(0);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("ignores an order the equipment already satisfies", () => {
+      bindingValue = "ON";
+      integrationStatus = "disconnected";
+      emitOrderFailed("ON");
+
+      expect(alarmsRaised()).toHaveLength(0);
+      expect(unconfirmedEvents()).toHaveLength(0);
+    });
+
+    it("replays a stateless order without raising an alarm nothing could resolve", () => {
+      (equipmentManager.getDataBindingsWithValues as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+        [],
+      );
+      integrationStatus = "disconnected";
+      emitOrderFailed("WAKE");
+
+      expect(alarmsRaised()).toHaveLength(0);
+
+      emitIntegrationConnected();
+
+      expect(executeOrderCalls).toEqual([{ equipmentId: "eq-1", alias: "state", value: "WAKE" }]);
+    });
   });
 });
