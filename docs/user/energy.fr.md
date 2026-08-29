@@ -179,8 +179,7 @@ Allez dans **Réglages > Administration > Énergie**, activez l'**Arbitre de sur
 
 La page **Énergie > En direct** gagne un panneau d'arbitrage du surplus en trois parties :
 
-- une **barre d'allocation** montrant où va la production en ce moment (maison, chaque charge accordée, surplus libre), et une ligne nommant toute charge en attente et pourquoi ;
-- un **tableau des charges**, une ligne par charge flexible, avec ce qu'il lui faut pour démarrer, ce qu'elle tire réellement, et l'**écart** qui manque encore quand elle attend. Le besoin est rempli sur chaque ligne, pas seulement celles en attente : ce qu'il faut à une charge pour démarrer reste vrai qu'elle tourne, attende ou soit à l'arrêt ;
+- un **tableau des charges**, une ligne par charge flexible : son état, l'**écart** qui manque encore avant qu'elle puisse démarrer, ce qu'elle tire actuellement, l'import réseau qu'elle tolère, et ce dont elle a **besoin**. Le besoin est rempli sur chaque ligne, pas seulement celles en attente : ce qu'il faut à une charge pour démarrer reste vrai qu'elle tourne, attende ou soit à l'arrêt ;
 - une **frise du jour** avec un couloir par charge pilotable — vert là où elle a tenu le surplus, un repère rouge (avec la raison au survol) là où elle s'est effacée ;
 - un **journal des décisions** en langage clair, pour que rien de ce que fait l'arbitre ne soit un mystère.
 
