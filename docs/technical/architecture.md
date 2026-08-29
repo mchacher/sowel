@@ -567,7 +567,7 @@ Runtime image is ~950 MB uncompressed (~210 MB content). The Python 3.13 require
 
 ## Activity Buffer (spec 101)
 
-`src/activity/activity-buffer.ts` keeps the last **24 hours** of zone-scoped engine events in a single in-memory ring buffer (capped at 2000 items). It powers the **Activity** panel in the zone view ([user guide](../user/zones.md#activity-feed)).
+`src/activity/activity-buffer.ts` keeps the last **7 days** of zone-scoped engine events (capped at 2000 items in memory), persisted to the `activity_log` table and reloaded on boot. It powers the **Activity** panel in the zone view ([user guide](../user/zones.md#activity-feed)).
 
 ### Event flow
 
@@ -582,7 +582,7 @@ Runtime image is ~950 MB uncompressed (~210 MB content). The Python 3.13 require
 
 ### Memory footprint
 
-At ~400 bytes per item, 2000 items = ~800 KB — under 0.3 % of a typical Sowel container's RSS. Buffer is lost on container restart, same as the logs ring buffer.
+At ~400 bytes per item, 2000 items = ~800 KB — under 0.3 % of a typical Sowel container's RSS. Unlike the logs ring buffer, the feed **survives a restart**: it is backed by SQLite (spec 147).
 
 ---
 

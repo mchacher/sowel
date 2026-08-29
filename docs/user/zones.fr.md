@@ -133,7 +133,7 @@ La pastille en haut à droite affiche `● live` quand l'application est connect
 
 ### Fenêtre mémoire
 
-Le moteur Sowel garde les **dernières 24 heures** d'événements en mémoire (avec un plafond à 2000 entrées). Le tampon est remis à zéro au redémarrage du conteneur, comme le ring buffer des logs. Pour une investigation plus profonde ou plus ancienne, utilisez la page Journaux.
+Le moteur Sowel garde les **7 derniers jours** d'événements (avec un plafond à 2000 entrées) et **les conserve au redémarrage**. Pour remonter plus loin, utilisez la page Journaux.
 
 ## Ordres de zone
 

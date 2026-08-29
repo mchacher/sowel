@@ -465,7 +465,7 @@ L'image runtime fait environ 950 Mo non compressée (environ 210 Mo de contenu).
 
 ## Activity Buffer (spec 101)
 
-`src/activity/activity-buffer.ts` garde les **dernières 24 heures** d'événements moteur (filtrés et enrichis pour la vue zone) dans un ring buffer en mémoire unique (plafonné à 2000 items). Il alimente le panneau **Activité** dans la vue zone ([guide utilisateur](../user/zones.md#fil-dactivite)).
+`src/activity/activity-buffer.ts` garde les **7 derniers jours** d'événements moteur (filtrés et enrichis pour la vue zone, plafonnés à 2000 items en mémoire), persistés dans la table `activity_log` et rechargés au démarrage. Il alimente le panneau **Activité** dans la vue zone ([guide utilisateur](../user/zones.md#fil-dactivite)).
 
 ### Flux d'événements
 
@@ -480,7 +480,7 @@ L'image runtime fait environ 950 Mo non compressée (environ 210 Mo de contenu).
 
 ### Empreinte mémoire
 
-À environ 400 octets par item, 2000 items représentent environ 800 Ko, soit moins de 0,3 % du RSS d'un conteneur Sowel typique. Le buffer est perdu au redémarrage du conteneur, comme le ring buffer des logs.
+À environ 400 octets par item, 2000 items représentent environ 800 Ko, soit moins de 0,3 % du RSS d'un conteneur Sowel typique. Contrairement au ring buffer des logs, le fil **survit au redémarrage** : il est adossé à SQLite (spec 147).
 
 ---
 
