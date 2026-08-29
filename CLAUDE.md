@@ -53,7 +53,7 @@ Guiding principle: **a Device is what's on the network. An Equipment is what's i
 ## Tech stack
 
 - **Backend**: Node.js 24+, TypeScript strict, Fastify, SQLite (better-sqlite3), InfluxDB 2.x, ws, mqtt.js, pino
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Zustand, Lucide React
+- **Frontend**: React 19, TypeScript, Vite 8, Tailwind CSS 4 (config-less), Zustand, Lucide React
 - **Infra**: Docker + docker-compose, GitHub Actions release to ghcr.io
 
 ## Project structure (current, spec 053+)
@@ -80,8 +80,7 @@ sowel/
 │   ├── history/                 # InfluxDB history writer
 │   ├── mqtt-publishers/         # Outbound MQTT (broker + publisher managers)
 │   ├── notifications/           # Telegram/webhook/FCM/ntfy notification publishers
-│   ├── auth/                    # JWT + API tokens, middleware, first-run setup
-│   ├── users/                   # User CRUD, preferences
+│   ├── auth/                    # JWT + API tokens, MFA, middleware, user manager, first-run setup
 │   ├── api/                     # Fastify server, WebSocket, route files
 │   └── shared/                  # types.ts (all interfaces), constants.ts, plugin-api.ts
 ├── ui/                          # React frontend (separate Vite project)
@@ -293,9 +292,9 @@ Production logs go to both stdout (captured by Docker) and `data/logs/sowel.<yyy
 ## Design system
 
 - **Fonts**: Inter (body), JetBrains Mono (values, logs)
-- **Primary**: `#1A4F6E` (ocean blue), hover `#13405A`, light `#E6F0F6`
-- **Accent**: `#D4963F` (amber), hover `#BB8232`
-- **Spacing**: 4px base, 6px radius (buttons), 10px (cards), 14px (modals)
+- **Primary**: `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`
+- **Accent**: `#F2C035` (amber), hover `#D4A41C`
+- **Spacing**: 4px base; radii 6px / 8px / 12px (`--radius-sm/md/lg`)
 - **Font sizes**: 14px body, 28px data values
 
 ## Installation-specific context (private companion repo)

@@ -24,7 +24,7 @@ This guide covers everything a contributor needs to know to set up the developme
 git clone <repo-url>
 cd sowel
 npm install
-npm run dev          # Development with hot reload (ts-node + nodemon)
+npm run dev          # Development with hot reload (tsx watch)
 ```
 
 ### Frontend
@@ -60,7 +60,7 @@ npm start
 
 ```bash
 npm test                          # Run all tests
-npm test -- --grep "pattern"      # Run specific tests
+npx vitest run -t "pattern"      # Run specific tests
 ```
 
 Tests use Vitest with in-memory SQLite databases and fake timers.
@@ -137,14 +137,8 @@ docs(api): update endpoint documentation
 
 - bcrypt (cost 12) for passwords, `jsonwebtoken` (HS256) for JWT.
 - API tokens: `swl_` prefix, SHA-256 hash stored, generated via `crypto.randomBytes(32)`.
-- Auth middleware: try JWT decode first, then API token lookup.
-- Roles: `admin` > `standard` > `viewer` (hierarchical permissions).
-
-### Expression Engine
-
-- Safe expression parser (NOT `eval`) -- consider `expr-eval` or custom.
-- References: `binding.<alias>`, `equipment.<id>.<key>`, `zone.<zoneId>.<key>`.
-- Operators: `OR`, `AND`, `NOT`, `AVG`, `MIN`, `MAX`, `SUM`, `IF`, `THRESHOLD`.
+- Auth is on by default: an `onRequest` hook authenticates every route except `PUBLIC_ROUTES` (spec 105).
+- Roles: `admin` > `standard` (two roles; there is no `viewer`) (hierarchical permissions).
 
 ### Frontend
 

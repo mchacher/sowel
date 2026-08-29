@@ -21,34 +21,33 @@ This document describes Sowel's technical architecture: the tech stack, project 
 
 ### Frontend
 
-| Technology       | Role                                          |
-| ---------------- | --------------------------------------------- |
-| **React 18+**    | UI framework                                  |
-| **TypeScript**   | Language                                      |
-| **Vite**         | Build tool and dev server                     |
-| **Tailwind CSS** | Styling (utility classes only, no custom CSS) |
-| **Zustand**      | State management                              |
-| **Lucide React** | Icon library (stroke 1.5px)                   |
+| Technology         | Role                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| **React 19**       | UI framework                                                                                                                   |
+| **TypeScript**     | Language                                                                                                                       |
+| **Vite**           | Build tool and dev server                                                                                                      |
+| **Tailwind CSS 4** | Styling (utility classes only). v4 is config-less: there is no `tailwind.config.js`, tokens live in `design-system/tokens.css` |
+| **Zustand**        | State management                                                                                                               |
+| **Lucide React**   | Icon library (stroke 1.5px)                                                                                                    |
 
 ### Infrastructure
 
-| Technology                  | Role                            |
-| --------------------------- | ------------------------------- |
-| **Docker + docker-compose** | Containerized deployment        |
-| **PM2**                     | Process management (production) |
+| Technology                  | Role                             |
+| --------------------------- | -------------------------------- |
+| **Docker + docker-compose** | Containerized deployment         |
+| **Docker restart policy**   | Process supervision (production) |
 
 ---
 
 ## Key Domain Concepts
 
-| Term          | Role                                                                                                                    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Device**    | Physical hardware, auto-discovered from integrations. Exposes raw Data and Orders.                                      |
-| **Equipment** | User-facing functional unit. Binds to one or more Devices. Can have computed Data and dispatched Orders.                |
-| **Zone**      | Spatial grouping (nestable tree). Auto-aggregates Equipment Data (motion=OR, temperature=AVG, lightsOn=COUNT, etc.).    |
-| **Scenario**  | Automation rule: trigger(s) -> condition(s) -> action(s).                                                               |
-| **Recipe**    | Reusable Scenario template with typed parameter slots.                                                                  |
-| **Mode**      | Named state (e.g. "Night", "Away") with zone-level impacts. Can be activated manually, by calendar, or by button press. |
+| Term          | Role                                                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Device**    | Physical hardware, auto-discovered from integrations. Exposes raw Data and Orders.                                                      |
+| **Equipment** | User-facing functional unit. Binds to one or more Devices. Can have computed Data and dispatched Orders.                                |
+| **Zone**      | Spatial grouping (nestable tree). Auto-aggregates Equipment Data (motion=OR, temperature=AVG, lightsOn=COUNT, etc.).                    |
+| **Recipe**    | Automation template with typed parameter slots: trigger(s) -> condition(s) -> action(s). A configured, running copy is an **instance**. |
+| **Mode**      | Named state (e.g. "Night", "Away") with zone-level impacts. Can be activated manually, by calendar, or by button press.                 |
 
 **Guiding principle**: A Device is what's on the network. An Equipment is what's in the room.
 
@@ -90,16 +89,16 @@ The Event Bus is a typed `EventEmitter` using TypeScript discriminated unions (`
 | `device.removed`                  | `deviceId, deviceName`                               | Device deleted                        |
 | `device.status_changed`           | `deviceId, deviceName, status`                       | Online/offline                        |
 | `device.data.updated`             | `deviceId, deviceName, dataId, key, value, previous` | Property change                       |
-| `equipment.data.changed`          | `equipmentId, key, value, previous`                  | Bound data changed                    |
+| `equipment.data.changed`          | `equipmentId, alias, value, previous`                | Bound data changed                    |
 | `equipment.order.executed`        | `equipmentId, orderAlias, value, source?`            | Order dispatched                      |
-| `zone.data.changed`               | `zoneId, key, value, previous`                       | Aggregated data changed               |
+| `zone.data.changed`               | `zoneId, aggregatedData`                             | Aggregated data changed (whole set)   |
 | `system.started`                  | --                                                   | Engine boot complete                  |
 | `system.integration.connected`    | `integrationId`                                      | Integration connected                 |
 | `system.integration.disconnected` | `integrationId`                                      | Integration disconnected              |
 | `settings.changed`                | `keys`                                               | Settings updated                      |
 | `mode.activated`                  | mode details                                         | Mode activated                        |
 | `mode.deactivated`                | mode details                                         | Mode deactivated                      |
-| `recipe.state_changed`            | instance details                                     | Recipe state changed                  |
+| `recipe.instance.state.changed`   | instance details                                     | Recipe state changed                  |
 | `activity.added`                  | `item: ActivityItem`                                 | New activity item buffered (spec 101) |
 
 ---
@@ -111,38 +110,43 @@ sowel/
 ├── src/
 │   ├── index.ts                 # Entry point
 │   ├── config.ts                # Env config loading
-│   ├── core/                    # event-bus, database (SQLite), influx, logger, settings-manager
-│   ├── integrations/            # Integration plugins (zigbee2mqtt, panasonic-cc, mcz-maestro, ...)
-│   ├── plugins/                 # Plugin manager (third-party plugin loading)
+│   ├── core/                    # event-bus, database (SQLite), influx, logger, settings-manager,
+│   │                            # timezone, version-checker, update-manager, shutdown
+│   ├── integrations/            # IntegrationRegistry only — the runtime registry plugins
+│   │                            # register into. No integration lives here (spec 053)
+│   ├── plugins/                 # PluginLoader + scoped-deps (soft isolation, spec 111)
+│   ├── packages/                # PackageManager: GitHub distribution, registry, personal sources
 │   ├── devices/                 # Device manager, auto-discovery, category inference
-│   ├── equipments/              # Equipment manager, bindings, computed engine, order dispatcher
-│   ├── energy/                  # Energy aggregator, tariff classifier (HP/HC)
-│   ├── zones/                   # Zone manager, auto-aggregation engine
+│   ├── equipments/              # Equipment manager, bindings, computed engine, order dispatcher,
+│   │                            # order confirmation tracker (spec 141)
+│   ├── energy/                  # Energy aggregator, tariff classifier, capacity arbiter
+│   ├── zones/                   # Zone manager, auto-aggregation engine, sunlight
 │   ├── modes/                   # Mode manager, calendar manager
-│   ├── recipes/                 # Recipe engine, built-in recipes (motion-light, switch-light)
+│   ├── recipes/                 # RecipeLoader + engine. Recipes themselves are packages
+│   ├── weather/                 # Weather aggregation, forecast models, PV forecast
+│   ├── activity/                # Activity buffer + store (spec 147)
+│   ├── backup/                  # BackupManager (export/restore, local backups)
 │   ├── buttons/                 # Button action bindings (physical button -> mode/order)
 │   ├── charts/                  # Saved chart configurations
 │   ├── history/                 # InfluxDB history writer and query helpers
-│   ├── mqtt-publishers/         # Outbound MQTT publishing (broker manager, publisher manager, on-change filter)
-│   ├── notifications/           # Notification channels (Telegram, etc.)
-│   ├── ai/                      # LLM integration (Claude/OpenAI/Ollama) -- V1.0+
-│   ├── auth/                    # JWT + API tokens, middleware, first-run setup
-│   ├── users/                   # User CRUD, preferences
+│   ├── mqtt-publishers/         # Outbound MQTT publishing (broker, publisher, on-change filter)
+│   ├── notifications/           # Notification channels (Telegram, ntfy, web push)
+│   ├── auth/                    # JWT + API tokens, MFA, middleware, user manager, first-run setup
 │   ├── api/                     # Fastify server, WebSocket handler, route files
 │   │   ├── server.ts            # Server setup and route registration
 │   │   ├── websocket.ts         # WebSocket handler with topic subscriptions
 │   │   └── routes/              # One file per domain (auth, devices, zones, etc.)
-│   └── shared/                  # types.ts (all interfaces), constants.ts
+│   ├── test-helpers/            # Shared test fixtures
+│   └── shared/                  # types.ts (all interfaces), constants.ts, plugin-api.ts
 ├── ui/                          # React frontend (separate Vite project)
 │   └── src/
 │       ├── store/               # Zustand stores (devices, equipments, zones, WebSocket)
-│       ├── components/          # By domain: dashboard/, devices/, equipments/, zones/, scenarios/
-│       ├── pages/               # Dashboard, Devices, Equipments, Zones, Scenarios, Settings
+│       ├── components/          # By domain: dashboard/, devices/, equipments/, energy/, recipes/
+│       ├── pages/               # Dashboard, Devices, Equipments, Zones, Energy, Settings
 │       └── i18n/                # Internationalization (en.json, fr.json)
-├── plugins/                     # Third-party plugin install directory
-├── recipes/                     # Built-in Recipe JSON templates
+├── plugins/                     # Installed plugin directory + registry.json
 ├── migrations/                  # SQLite migration SQL files
-├── specs/                       # Feature specifications (XXX-version-name/)
+├── specs/                       # Feature specifications (XXX-name/)
 └── scripts/                     # Maintenance & diagnostic scripts
     ├── energy/                  # InfluxDB energy backfill, diagnostic, admin
     └── logs/                    # Log retrieval via API
@@ -200,7 +204,7 @@ Each plugin ships a `manifest.json` with `id`, `type` (`integration` or `recipe`
 ### Integration lifecycle
 
 1. **Load** — `PluginLoader.loadAll()` scans the `plugins` table, imports each enabled entry, calls `createPlugin(deps)`, registers with `IntegrationRegistry`.
-2. **Start** — `IntegrationRegistry.startAll()` starts plugins sequentially with small delays. Each plugin's `start()` connects, discovers devices, begins polling. `start()` returning does **not** mean the plugin is reachable: MQTT connects and cloud logins complete asynchronously afterwards.
+2. **Start** — `IntegrationRegistry.startAll()` starts plugins one after another, awaiting each. The 10 s stagger is a `pollOffset` handed to polling plugins, not a delay between starts. Each plugin's `start()` connects, discovers devices, begins polling. `start()` returning does **not** mean the plugin is reachable: MQTT connects and cloud logins complete asynchronously afterwards.
 3. **Connected** — the registry samples every plugin's `getStatus()` and emits `system.integration.connected` / `system.integration.disconnected` on each transition. This is the engine's own signal, independent of what a plugin chooses to emit, and it is what makes an integration's recovery observable (see [Order delivery](#order-delivery-when-an-integration-is-unreachable) below).
 4. **Runtime** — Plugin pushes data via `deviceManager.updateDeviceData()`. Orders go out via `plugin.executeOrder()`.
 5. **Stop** — `stop()` cancels timers, closes connections.
@@ -226,7 +230,6 @@ Recipe instances are the reason this used to matter on every restart: they start
 | `legrand_control`       | `mchacher/sowel-plugin-legrand-control`       | integration |
 | `legrand_energy`        | `mchacher/sowel-plugin-legrand-energy`        | integration |
 | `netatmo_weather`       | `mchacher/sowel-plugin-netatmo-weather`       | integration |
-| `netatmo-security`      | `mchacher/sowel-plugin-netatmo-security`      | integration |
 | `weather-forecast`      | `mchacher/sowel-plugin-weather-forecast`      | integration |
 | `smartthings`           | `mchacher/sowel-plugin-smartthings`           | integration |
 | `motion-light`          | `mchacher/sowel-recipe-motion-light`          | recipe      |
@@ -281,7 +284,7 @@ sowel-energy-daily       -- 10-year retention -- daily sums
 
 Additional downsampled buckets (`sowel-hourly`, `sowel-daily`) exist for non-energy time-series data.
 
-InfluxDB is mandatory -- Sowel connects on startup and auto-creates buckets, downsampling tasks, and energy aggregation tasks.
+InfluxDB is optional -- a failed connection is logged and the engine keeps running, with history and energy aggregation degraded. When it does connect, Sowel auto-creates buckets, downsampling tasks, and energy aggregation tasks.
 
 #### Energy deltas are accumulated, never sampled
 
@@ -427,17 +430,17 @@ The Fastify server registers `@fastify/helmet` with a Content-Security-Policy th
 
 ## Design System
 
-| Property           | Value                                                      |
-| ------------------ | ---------------------------------------------------------- |
-| **Body font**      | Inter                                                      |
-| **Monospace font** | JetBrains Mono (values, logs)                              |
-| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#13405A`, light: `#E6F0F6` |
-| **Accent color**   | `#D4963F` (amber), hover: `#BB8232`                        |
-| **Spacing base**   | 4px                                                        |
-| **Border radius**  | 6px (buttons), 10px (cards), 14px (modals)                 |
-| **Body font size** | 14px (dense dashboard)                                     |
-| **Data values**    | 28px (readable at a glance)                                |
-| **Icons**          | Lucide React, stroke 1.5px                                 |
+| Property           | Value                                                    |
+| ------------------ | -------------------------------------------------------- |
+| **Body font**      | Inter                                                    |
+| **Monospace font** | JetBrains Mono (values, logs)                            |
+| **Primary color**  | `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8` |
+| **Accent color**   | `#F2C035` (amber), hover `#D4A41C`                       |
+| **Spacing base**   | 4px                                                      |
+| **Border radius**  | 6px / 8px / 12px (`--radius-sm/md/lg`)                   |
+| **Body font size** | 14px (dense dashboard)                                   |
+| **Data values**    | 28px (readable at a glance)                              |
+| **Icons**          | Lucide React, stroke 1.5px                               |
 
 ---
 
@@ -515,7 +518,7 @@ Sowel can update itself from the UI when running under `docker compose`. The des
    - Image: `docker:25-cli` (has `docker compose` built-in)
    - Mounts: `/var/run/docker.sock` + the compose working dir as `/workdir`
    - Cmd: `sh -c "sleep 5 && docker compose pull <service> && docker compose up -d <service>"`
-   - `AutoRemove: true`
+   - `AutoRemove: false`, deliberately, so `docker logs sowel-updater` survives the run
 5. **Return from API immediately** — the helper survives sowel's death
 6. **UI shows overlay** ("Updating...") during the swap, polls `/system/version` every 3s
 7. **On version change** → `window.location.reload()`
@@ -537,19 +540,20 @@ Why a helper? Calling `dockerode.stop()` on the current container from within th
 `.github/workflows/release.yml` triggers on pushed tags matching `v*`. It runs:
 
 1. **ci job** — typecheck, lint, tests (backend + UI)
-2. **docker job** — builds `linux/amd64` image with Buildx, pushes to `ghcr.io/mchacher/sowel:<version>` and `:latest`, then creates a GitHub Release with auto-generated notes
+2. **docker jobs** — build `linux/amd64` and `linux/arm64` with Buildx, push to `ghcr.io/mchacher/sowel:<version>`, then a `promote-manifest` job merges them into one multi-architecture `:latest`, and a GitHub Release is created with auto-generated notes
 
-The Docker build is **amd64-only** (spec simplified in April 2026 for ~3x faster builds; arm64 dropped because no users run on Apple Silicon Linux hosts in production).
+The Docker build is **multi-architecture**: amd64 and arm64 are built in parallel jobs and merged into a single manifest, so `docker pull` resolves the right one.
 
 ### Release script
 
 `scripts/release.sh <version>`:
 
 1. Validates semver format and clean working tree
-2. Bumps `package.json` + `ui/package.json` versions
-3. Runs full validation (`npm run validate`)
-4. Commits `release: vX.Y.Z`, tags `vX.Y.Z`, pushes to origin
-5. GitHub Actions takes over from there
+2. **Asserts** `package.json` and `ui/package.json` are already at that version, and exits otherwise. It does not bump them: a normal PR does, and merges before the tag
+3. Tags `vX.Y.Z` and pushes the tag to origin
+4. GitHub Actions takes over from there
+
+It runs no validation of its own, and it does not commit. Branch protection means the version bump and release notes land through a PR first.
 
 A Claude Code skill wraps this at `.claude/skills/sowel-release/SKILL.md`.
 
@@ -655,7 +659,7 @@ Node caches the TZ on first use. If the user changes `home.latitude` / `home.lon
 
 1. The settings route logs a warn and emits `system.restart_required` on the EventBus
 2. The UI receives the event via WebSocket and displays `RestartToast` with a "Restart now" button
-3. Clicking the button calls `POST /api/v1/system/restart` which spawns a `docker:25-cli` helper container (same pattern as spec 060 self-update) that runs `docker compose up -d sowel`
+3. Clicking the button calls `POST /api/v1/system/restart` which spawns a `docker:25-cli` helper container (same pattern as spec 060 self-update) that runs `docker compose up -d --force-recreate sowel` (without `--force-recreate` compose sees no diff and silently does nothing)
 4. The helper survives Sowel's death and recreates the container, which picks up the new env and re-runs `detectTimezone()` with the new coordinates
 5. The existing `UpdateOverlay` reloads the UI on WS reconnect
 
@@ -674,20 +678,20 @@ See spec 061 at [github.com/mchacher/sowel/tree/main/specs/061-timezone-from-hom
 
 All settings are optional with sensible defaults -- Sowel runs zero-config out of the box. Override via `.env` if needed:
 
-| Variable          | Default                        | Notes                                                                    |
-| ----------------- | ------------------------------ | ------------------------------------------------------------------------ |
-| `SQLITE_PATH`     | `./data/sowel.db`              | SQLite database path                                                     |
-| `API_PORT`        | `3000`                         | HTTP server port                                                         |
-| `API_HOST`        | `0.0.0.0`                      | Bind address                                                             |
-| `JWT_SECRET`      | auto-generated                 | Persisted in `data/.jwt-secret` on first launch                          |
-| `JWT_ACCESS_TTL`  | `900`                          | Access token TTL in seconds (15 min)                                     |
-| `JWT_REFRESH_TTL` | `2592000`                      | Refresh token TTL in seconds (30 days)                                   |
-| `LOG_LEVEL`       | `info`                         | Pino log level                                                           |
-| `CORS_ORIGINS`    | `*`                            | Comma-separated allowed origins                                          |
-| `INFLUX_URL`      | `http://localhost:8086`        | InfluxDB 2.x URL                                                         |
-| `INFLUX_TOKEN`    | auto-generated                 | Persisted in `data/.influx-token` on first launch                        |
-| `INFLUX_ORG`      | `sowel`                        | InfluxDB organization                                                    |
-| `INFLUX_BUCKET`   | `sowel`                        | InfluxDB primary bucket                                                  |
-| `TZ`              | system default (UTC in Docker) | IANA timezone. Set explicitly in docker-compose to fix time-based logic. |
+| Variable          | Default                         | Notes                                                                                |
+| ----------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
+| `SQLITE_PATH`     | `./data/sowel.db`               | SQLite database path                                                                 |
+| `API_PORT`        | `3000`                          | HTTP server port                                                                     |
+| `API_HOST`        | `0.0.0.0`                       | Bind address                                                                         |
+| `JWT_SECRET`      | auto-generated                  | Persisted in `data/.jwt-secret` on first launch                                      |
+| `JWT_ACCESS_TTL`  | `900`                           | Access token TTL in seconds (15 min)                                                 |
+| `JWT_REFRESH_TTL` | `2592000`                       | Refresh token TTL in seconds (30 days)                                               |
+| `LOG_LEVEL`       | `info`                          | Pino log level                                                                       |
+| `CORS_ORIGINS`    | `localhost:3000,localhost:5173` | Comma-separated allowed origins. `*` is permitted but warns at startup               |
+| `INFLUX_URL`      | `http://localhost:8086`         | InfluxDB 2.x URL                                                                     |
+| `INFLUX_TOKEN`    | shared default constant         | Matches `docker-compose.yml`. `data/.influx-token` is read if present, never written |
+| `INFLUX_ORG`      | `sowel`                         | InfluxDB organization                                                                |
+| `INFLUX_BUCKET`   | `sowel`                         | InfluxDB primary bucket                                                              |
+| `TZ`              | system default (UTC in Docker)  | IANA timezone. Set explicitly in docker-compose to fix time-based logic.             |
 
 Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI, not from `.env`.
