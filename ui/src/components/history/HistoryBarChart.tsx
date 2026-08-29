@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { dateLocale } from "../../lib/locale";
 import {
   ResponsiveContainer,
   BarChart,
@@ -32,22 +34,23 @@ interface ChartDatum {
   value: number;
 }
 
-function formatTooltipTime(iso: string, range: TimeRange): string {
+function formatTooltipTime(iso: string, range: TimeRange, locale: string): string {
   const d = new Date(iso);
   if (range === "7d" || range === "30d") {
     // Daily bucket — show the day in full, no hour.
-    return d.toLocaleDateString(undefined, {
+    return d.toLocaleDateString(locale, {
       weekday: "long",
       day: "numeric",
       month: "long",
     });
   }
   // Hourly bucket — show the day + start hour.
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -138,6 +141,8 @@ function CustomTick({ x = 0, y = 0, index, payload, fontSize, labels }: CustomTi
 }
 
 export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBarChartProps) {
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
   const viewportWidth = useViewportWidth();
   const isNarrow = viewportWidth < 360;
 
@@ -148,15 +153,15 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
     // bar instead of 2 detached spikes.
     const bucketed = aggregateToBuckets(points, range);
     return bucketed.map((p) => {
-      const { line1, line2 } = formatLabel(p.time, range);
+      const { line1, line2 } = formatLabel(p.time, range, locale);
       return { label: line1, label2: line2, time: p.time, value: p.value };
     });
-  }, [points, range]);
+  }, [points, range, locale]);
 
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center text-[12px] text-text-tertiary" style={{ height }}>
-        Aucune donnée
+        {t("common.noData")}
       </div>
     );
   }
@@ -184,10 +189,10 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
 
   // Tooltip label adapts to unit
   const tooltipLabel = unit === "Wh" || unit === "kWh"
-    ? "Consommation"
+    ? t("energy.consumption")
     : unit === "mm"
-      ? "Pluie"
-      : "Valeur";
+      ? t("category.rain")
+      : t("common.value");
 
   return (
     <ResponsiveContainer width="100%" height={chartHeight}>
@@ -231,7 +236,7 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
           formatter={(value: unknown) => formatBarTooltip(value, unit, tooltipLabel)}
           labelFormatter={(_, payload) => {
             if (payload?.[0]?.payload?.time) {
-              return formatTooltipTime(payload[0].payload.time as string, range);
+              return formatTooltipTime(payload[0].payload.time as string, range, locale);
             }
             return "";
           }}

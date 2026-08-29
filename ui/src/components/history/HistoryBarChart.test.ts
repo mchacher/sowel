@@ -132,8 +132,8 @@ describe("formatLabel", () => {
   const iso = "2026-03-09T12:00:00.000Z"; // Monday March 9, 2026
 
   it("returns HH:MM on a single line for 6h/24h ranges", () => {
-    const r1 = formatLabel(iso, "6h");
-    const r2 = formatLabel(iso, "24h");
+    const r1 = formatLabel(iso, "6h", "fr-FR");
+    const r2 = formatLabel(iso, "24h", "fr-FR");
     expect(r1.line2).toBeUndefined();
     expect(r2.line2).toBeUndefined();
     // line1 is locale-dependent — assert shape rather than exact value.
@@ -141,24 +141,41 @@ describe("formatLabel", () => {
   });
 
   it("returns weekday + day on two lines for 7d", () => {
-    const r = formatLabel(iso, "7d");
+    const r = formatLabel(iso, "7d", "fr-FR");
     expect(r.line1.toLowerCase()).toMatch(/^lun\.?/);
     expect(r.line2).toBe("09");
   });
 
+  it("keeps a 24-hour clock on 6h and 24h, in every locale (#730)", () => {
+    // Driving the format off the UI language handed en-US its 12-hour clock,
+    // turning "14:00" into "02:00 PM" and outgrowing the tick width budget.
+    const afternoon = "2026-03-09T14:00:00.000Z";
+    for (const locale of ["en-US", "fr-FR"]) {
+      const label = formatLabel(afternoon, "24h", locale).line1;
+      expect(label).not.toMatch(/[AP]M/i);
+      expect(label).toMatch(/^\d{2}[:h]\d{2}$/);
+    }
+  });
+
+  it("takes the weekday from the locale it is given (#730)", () => {
+    // It used to be pinned to "fr-FR", so an English user got French weekdays.
+    expect(formatLabel(iso, "7d", "en-US").line1.toLowerCase()).toMatch(/^mon/);
+    expect(formatLabel(iso, "7d", "fr-FR").line1.toLowerCase()).toMatch(/^lun/);
+  });
+
   it("pads single-digit days with a leading zero on 7d", () => {
-    const r = formatLabel("2026-03-03T12:00:00.000Z", "7d");
+    const r = formatLabel("2026-03-03T12:00:00.000Z", "7d", "fr-FR");
     expect(r.line2).toBe("03");
   });
 
   it("returns compact DD/MM on a single line for 30d", () => {
-    const r = formatLabel(iso, "30d");
+    const r = formatLabel(iso, "30d", "fr-FR");
     expect(r.line1).toBe("09/03");
     expect(r.line2).toBeUndefined();
   });
 
   it("pads month and day on 30d", () => {
-    const r = formatLabel("2026-01-05T12:00:00.000Z", "30d");
+    const r = formatLabel("2026-01-05T12:00:00.000Z", "30d", "fr-FR");
     expect(r.line1).toBe("05/01");
   });
 
@@ -178,7 +195,7 @@ describe("formatLabel", () => {
       "2026-07-25T12:00:00.000Z",
       "2026-07-26T12:00:00.000Z", // Sunday again — duplicate weekday label
     ];
-    const labels = days.map((d) => formatLabel(d, "7d").line1);
+    const labels = days.map((d) => formatLabel(d, "7d", "fr-FR").line1);
     expect(new Set(labels).size).toBeLessThan(labels.length);
     expect(new Set(days).size).toBe(days.length);
   });

@@ -5,11 +5,24 @@
 
 import type { EnergyUnit } from "../../store/useUiState";
 
-const EUR = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 2,
-});
+// One formatter per locale, built on first use: the tick formatters call this
+// on every frame, and constructing an Intl.NumberFormat is not free. The
+// currency stays EUR whatever the language (the tariff is in euros); only the
+// number and symbol placement follow the locale (#730).
+const EUR_BY_LOCALE = new Map<string, Intl.NumberFormat>();
+
+function eurFormatter(locale: string): Intl.NumberFormat {
+  let formatter = EUR_BY_LOCALE.get(locale);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 2,
+    });
+    EUR_BY_LOCALE.set(locale, formatter);
+  }
+  return formatter;
+}
 
 /** Format a Wh value as "X.XX" (day) or "N" (longer periods). */
 export function formatKWh(wh: number, period: string): string {
@@ -19,9 +32,10 @@ export function formatKWh(wh: number, period: string): string {
 }
 
 /** Format an € value, always 2 decimals, with the localized currency symbol. */
-export function formatEur(eur: number): string {
-  if (!Number.isFinite(eur)) return EUR.format(0);
-  return EUR.format(eur);
+export function formatEur(eur: number, locale: string): string {
+  const formatter = eurFormatter(locale);
+  if (!Number.isFinite(eur)) return formatter.format(0);
+  return formatter.format(eur);
 }
 
 /**
@@ -35,7 +49,8 @@ export function formatEnergyOrCost(
   eurValue: number,
   unit: EnergyUnit,
   period: string,
+  locale: string,
 ): string {
-  if (unit === "eur") return formatEur(eurValue);
+  if (unit === "eur") return formatEur(eurValue, locale);
   return `${formatKWh(whValue, period)} kWh`;
 }

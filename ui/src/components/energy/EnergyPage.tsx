@@ -9,6 +9,7 @@ import { EnergyByUsageChart } from "./EnergyByUsageChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { UnitToggle } from "./UnitToggle";
 import { formatEnergyOrCost, formatKWh } from "./format";
+import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse } from "../../types";
 import {
@@ -23,7 +24,8 @@ const AUTOCONSO_COLOR = "#6BCB77";
 type ViewMode = "total" | "by-usage";
 
 export function EnergyPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
   const history = useEnergy((s) => s.history);
   const period = useEnergy((s) => s.period);
   const date = useEnergy((s) => s.date);
@@ -194,46 +196,50 @@ export function EnergyPage() {
                 <div className="flex items-center gap-4 text-[13px] text-text-secondary flex-wrap justify-center">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4F7BE8" }} />
-                    {t("energy.gridConsumption")} :{" "}
+                    {t("energy.gridConsumption")}{t("common.colon")}
                     {formatEnergyOrCost(
                       history.totals.total_consumption,
                       history.totals.cost_total,
                       effectiveUnit,
                       period,
+                      locale,
                     )}
                   </span>
                   {hasHpHc && (
                     <span className="text-text-tertiary">
-                      ({t("energy.peakHours")} :{" "}
+                      ({t("energy.peakHours")}{t("common.colon")}
                       {formatEnergyOrCost(
                         history.totals.total_hp,
                         history.totals.cost_hp,
                         effectiveUnit,
                         period,
+                        locale,
                       )}{" "}
-                      / {t("energy.offPeakHours")} :{" "}
+                      / {t("energy.offPeakHours")}{t("common.colon")}
                       {formatEnergyOrCost(
                         history.totals.total_hc,
                         history.totals.cost_hc,
                         effectiveUnit,
                         period,
+                        locale,
                       )})
                     </span>
                   )}
                   {hasProduction && history.totals.total_autoconso > 0 && (
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                      {t("energy.autoconsumption")} : {formatKWh(history.totals.total_autoconso, period)} kWh
+                      {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(history.totals.total_autoconso, period)} kWh
                     </span>
                   )}
                 </div>
                 <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                  Total :{" "}
+                  {t("energy.total")}{t("common.colon")}
                   {formatEnergyOrCost(
                     history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
                     history.totals.cost_total,
                     effectiveUnit,
                     period,
+                    locale,
                   )}
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">
