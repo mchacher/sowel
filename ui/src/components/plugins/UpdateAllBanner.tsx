@@ -8,9 +8,15 @@ import type { PluginInfo } from "../../types";
 /**
  * Bulk update affordance for the Plugins page (issue #749).
  *
- * Personal-source packages are excluded: spec 136 requires an explicit TOFU
- * re-confirmation of the tarball fingerprint for each one, which is a per-plugin
- * decision and cannot be batched. They keep their own update pill in the list.
+ * The banner counts exactly what the navigation badge counts
+ * (`usePluginUpdates`): every installed package with a newer version. The two
+ * disagreeing was confusing, the badge saying "2 updates" while the page showed
+ * nothing.
+ *
+ * What it can *act* on is narrower: spec 136 requires an explicit TOFU
+ * re-confirmation of the tarball fingerprint for each personal-source package,
+ * which is a per-plugin decision and cannot be batched. Those are named in the
+ * banner and updated from their own row instead.
  */
 export function UpdateAllBanner({
   plugins,
@@ -25,7 +31,12 @@ export function UpdateAllBanner({
   const [updating, setUpdating] = useState(false);
   const [failed, setFailed] = useState(0);
 
-  const pending = plugins.filter((p) => p.latestVersion && p.source !== "personal");
+  // Same rule as the navigation badge.
+  const pending = plugins.filter((p) => p.latestVersion);
+  const batchable = pending.filter((p) => p.source !== "personal");
+  const personalCount = pending.length - batchable.length;
+
+  // A single pending update is already fully served by its own row.
   if (pending.length < 2) return null;
 
   const handleUpdateAll = async () => {
@@ -34,7 +45,7 @@ export function UpdateAllBanner({
     let failures = 0;
     try {
       // Sequential on purpose: each update restarts a plugin server-side.
-      for (const plugin of pending) {
+      for (const plugin of batchable) {
         try {
           await updatePlugin(plugin.manifest.id);
         } catch {
@@ -64,20 +75,31 @@ export function UpdateAllBanner({
             ? t("plugins.updateAllFailed", { count: failed })
             : pending.map((p) => localizedName(p.manifest, lang)).join(", ")}
         </p>
-      </div>
-      <button
-        type="button"
-        onClick={handleUpdateAll}
-        disabled={updating}
-        className="inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto px-3 py-2 text-[12px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
-      >
-        {updating ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : (
-          <ArrowUpCircle size={14} strokeWidth={1.5} />
+        {personalCount > 0 && (
+          <p className="text-[11px] text-text-tertiary">
+            {t("plugins.updateAllPersonalHint", { count: personalCount })}
+          </p>
         )}
-        {updating ? t("plugins.updating") : t("plugins.updateAll")}
-      </button>
+      </div>
+      {batchable.length > 0 && (
+        <button
+          type="button"
+          onClick={handleUpdateAll}
+          disabled={updating}
+          className="inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto px-3 py-2 text-[12px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
+        >
+          {updating ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <ArrowUpCircle size={14} strokeWidth={1.5} />
+          )}
+          {updating
+            ? t("plugins.updating")
+            : personalCount > 0
+              ? t("plugins.updateOthers")
+              : t("plugins.updateAll")}
+        </button>
+      )}
     </div>
   );
 }

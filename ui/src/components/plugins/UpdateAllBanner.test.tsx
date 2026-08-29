@@ -79,16 +79,34 @@ describe("UpdateAllBanner (#749)", () => {
     expect(screen.getByText("zigbee2mqtt, netatmo")).toBeTruthy();
   });
 
-  it("excludes personal sources, whose fingerprint must be confirmed one by one (spec 136)", () => {
-    const { container } = render(
+  it("counts personal sources like the navigation badge does, and names them apart", () => {
+    render(
       <UpdateAllBanner
         plugins={[plugin("a", "2.0.0"), plugin("mine", "0.3.0", "personal")]}
         lang="en"
         onRefresh={() => {}}
       />,
     );
-    // Only one batchable update left, so the banner does not appear at all.
-    expect(container.firstChild).toBeNull();
+    // The badge counts every pending update; the banner must agree with it.
+    expect(screen.getByText("2 plugin updates available")).toBeTruthy();
+    expect(
+      screen.getByText("1 comes from a personal source and is updated from its own row."),
+    ).toBeTruthy();
+    // The button no longer claims to update everything, because it cannot.
+    expect(screen.getByRole("button", { name: "Update the others" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Update all" })).toBeNull();
+  });
+
+  it("drops the button when every pending update needs its own confirmation", () => {
+    render(
+      <UpdateAllBanner
+        plugins={[plugin("mine", "0.3.0", "personal"), plugin("lab", "1.2.0", "personal")]}
+        lang="en"
+        onRefresh={() => {}}
+      />,
+    );
+    expect(screen.getByText("2 plugin updates available")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("updates every pending package, then refreshes", async () => {
@@ -102,7 +120,7 @@ describe("UpdateAllBanner (#749)", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Update all" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update the others" }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1600);
     });
