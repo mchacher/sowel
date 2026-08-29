@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Package,
@@ -154,121 +155,121 @@ export function PluginsPage() {
           edge while the content stopped at 720px, leaving the refresh button
           floating on its own on wide screens (#749). */}
       <div className="max-w-[720px]">
-      {/* Header */}
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
-            <h1>
-              {t("plugins.title")}
-            </h1>
+        {/* Header */}
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
+              <h1>
+                {t("plugins.title")}
+              </h1>
+            </div>
+            <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
           </div>
-          <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 self-start shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-          title={t("plugins.refreshRegistryTitle")}
-        >
-          {refreshing ? (
-            <Loader2 size={14} className="animate-spin" strokeWidth={1.5} />
-          ) : (
-            <RefreshCw size={14} strokeWidth={1.5} />
-          )}
-          {t("plugins.refreshRegistry")}
-        </button>
-      </div>
-
-      {/* Tabs: Installed / Store */}
-      <div className="flex gap-1 mb-4">
-        <TabButton
-          active={activeTab === "installed"}
-          onClick={() => setActiveTab("installed")}
-          label={t("plugins.installed")}
-          count={plugins.length}
-        />
-        <TabButton
-          active={activeTab === "store"}
-          onClick={() => setActiveTab("store")}
-          label={t("plugins.store")}
-          count={store.length}
-        />
-      </div>
-
-      {/* Category filter: Integrations / Recipes */}
-      {hasRecipes && (
-        <div className="flex items-center gap-1 mb-4 border-b border-border">
-          <CategoryTab
-            label={t("plugins.integrations")}
-            count={integrationCount}
-            active={category === "integration"}
-            onClick={() => setCategory("integration")}
-          />
-          <CategoryTab
-            label={t("plugins.recipes")}
-            count={recipeCount}
-            active={category === "recipe"}
-            onClick={() => setCategory("recipe")}
-          />
-        </div>
-      )}
-
-      {/* Search (spec 137) — shared across tabs and types */}
-      <div className="relative mb-4">
-        <Search
-          size={15}
-          strokeWidth={1.5}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
-        />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("plugins.search.placeholder")}
-          spellCheck={false}
-          className="w-full pl-9 pr-9 py-2 text-[13px] text-text bg-surface border border-border rounded-[6px] placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
-        />
-        {searching && (
           <button
             type="button"
-            onClick={() => setQuery("")}
-            title={t("common.clear")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-[4px] transition-colors cursor-pointer"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 self-start shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t("plugins.refreshRegistryTitle")}
           >
-            <X size={14} strokeWidth={1.5} />
+            {refreshing ? (
+              <Loader2 size={14} className="animate-spin" strokeWidth={1.5} />
+            ) : (
+              <RefreshCw size={14} strokeWidth={1.5} />
+            )}
+            {t("plugins.refreshRegistry")}
           </button>
+        </div>
+
+        {/* Tabs: Installed / Store */}
+        <div className="flex gap-1 mb-4">
+          <TabButton
+            active={activeTab === "installed"}
+            onClick={() => setActiveTab("installed")}
+            label={t("plugins.installed")}
+            count={plugins.length}
+          />
+          <TabButton
+            active={activeTab === "store"}
+            onClick={() => setActiveTab("store")}
+            label={t("plugins.store")}
+            count={store.length}
+          />
+        </div>
+
+        {/* Category filter: Integrations / Recipes */}
+        {hasRecipes && (
+          <div className="flex items-center gap-1 mb-4 border-b border-border">
+            <CategoryTab
+              label={t("plugins.integrations")}
+              count={integrationCount}
+              active={category === "integration"}
+              onClick={() => setCategory("integration")}
+            />
+            <CategoryTab
+              label={t("plugins.recipes")}
+              count={recipeCount}
+              active={category === "recipe"}
+              onClick={() => setCategory("recipe")}
+            />
+          </div>
         )}
-      </div>
 
-      {/* Pending updates across every installed package, whatever the active
-          category filter (#749). */}
-      {activeTab === "installed" && (
-        <UpdateAllBanner plugins={plugins} lang={lang} onRefresh={load} />
-      )}
+        {/* Search (spec 137) — shared across tabs and types */}
+        <div className="relative mb-4">
+          <Search
+            size={15}
+            strokeWidth={1.5}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("plugins.search.placeholder")}
+            spellCheck={false}
+            className="w-full pl-9 pr-9 py-2 text-[13px] text-text bg-surface border border-border rounded-[6px] placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              title={t("common.clear")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-[4px] transition-colors cursor-pointer"
+            >
+              <X size={14} strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
 
-      {/* Content */}
-      {activeTab === "installed" ? (
-        <InstalledTab
-          plugins={filteredPlugins}
-          grouped={category === "recipe"}
-          searching={searching}
-          query={query}
-          lang={lang}
-          onRefresh={load}
-        />
-      ) : (
-        <StoreTab
-          store={filteredStore}
-          grouped={category === "recipe"}
-          searching={searching}
-          query={query}
-          installedIds={installedIds}
-          sources={sources}
-          lang={lang}
-          onRefresh={load}
-        />
-      )}
+        {/* Pending updates across every installed package, whatever the active
+            category filter (#749). */}
+        {activeTab === "installed" && (
+          <UpdateAllBanner plugins={plugins} lang={lang} onRefresh={load} />
+        )}
+
+        {/* Content */}
+        {activeTab === "installed" ? (
+          <InstalledTab
+            plugins={filteredPlugins}
+            grouped={category === "recipe"}
+            searching={searching}
+            query={query}
+            lang={lang}
+            onRefresh={load}
+          />
+        ) : (
+          <StoreTab
+            store={filteredStore}
+            grouped={category === "recipe"}
+            searching={searching}
+            query={query}
+            installedIds={installedIds}
+            sources={sources}
+            lang={lang}
+            onRefresh={load}
+          />
+        )}
       </div>
     </div>
   );
@@ -466,6 +467,7 @@ function PluginRow({
 
   const doUpdate = async (opts: { confirmed?: boolean; expectedSha256?: string } = {}) => {
     setActionLoading("update");
+    setConfirmUninstall(false);
     try {
       await updatePlugin(plugin.manifest.id, opts);
       setConfirmPersonalUpdate(null);
@@ -499,6 +501,7 @@ function PluginRow({
     e?.stopPropagation();
     const action = plugin.enabled ? "disable" : "enable";
     setActionLoading(action);
+    setConfirmUninstall(false);
     try {
       if (plugin.enabled) {
         await disablePlugin(plugin.manifest.id);
@@ -549,14 +552,14 @@ function PluginRow({
       <button
         type="button"
         onClick={() => setSheetOpen(true)}
-        aria-label={t("plugins.openDetails", { name })}
+        title={t("plugins.openDetails", { name })}
         className="flex items-center gap-3 min-w-0 flex-1 px-4 py-3 text-left rounded-l-[10px] hover:bg-border-light/40 transition-colors cursor-pointer"
       >
         <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
           <IconComponent size={18} className="text-accent" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <span className="text-[14px] font-semibold text-text truncate">{name}</span>
             {isPersonal && <PersonalBadge />}
           </div>
@@ -964,8 +967,10 @@ function PersonalConfirmModal({
   const { t } = useTranslation();
   const isInstall = mode === "install";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  // Portaled above the detail sheet (also portaled, z-50): a security
+  // confirmation must never render behind the surface that triggered it.
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
       <div className="bg-surface rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-lg">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -1019,7 +1024,8 @@ function PersonalConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

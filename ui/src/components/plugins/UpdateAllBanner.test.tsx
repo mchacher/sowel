@@ -114,6 +114,27 @@ describe("UpdateAllBanner (#749)", () => {
     expect(onRefresh).toHaveBeenCalled();
   });
 
+  it("says how many packages could not be updated", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.updatePlugin).mockRejectedValue(new Error("checksum mismatch"));
+    render(
+      <UpdateAllBanner
+        plugins={[plugin("a", "2.0.0"), plugin("b", "3.0.0")]}
+        lang="en"
+        onRefresh={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Update all" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600);
+    });
+
+    // A stale registry SHA256 fails every package; the banner used to re-render
+    // identically and tell the user nothing.
+    expect(screen.getByText("2 packages could not be updated.")).toBeTruthy();
+  });
+
   it("keeps going when one package fails", async () => {
     vi.useFakeTimers();
     vi.mocked(api.updatePlugin)

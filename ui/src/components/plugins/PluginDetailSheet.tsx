@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X, Loader2, ArrowUpCircle, Power, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -14,8 +14,8 @@ import type { IntegrationStatus, PackageSource, PackageType } from "../../types"
  * and everything else lives here: full description, versions, provenance, and
  * the actions as full-width targets with uninstall isolated at the bottom.
  *
- * Bottom sheet under 640px, right-hand drawer above — same split as the recipe
- * log panel (#615).
+ * Bottom sheet under 640px (the shared BottomSheet, as the recipe log panel
+ * uses at #615), right-hand drawer above.
  */
 
 export interface PluginDetailSheetProps {
@@ -76,10 +76,41 @@ function SidePanel({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+  const panelRef = useRef<HTMLElement>(null);
+
+  // BottomSheet already does this for the mobile branch; the drawer needs the
+  // same treatment or the page keeps scrolling and tabbing behind the backdrop.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    panelRef.current?.focus();
+    return () => {
+      document.body.style.overflow = "";
+      previous?.focus?.();
+    };
+  }, []);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === panelRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
@@ -89,8 +120,11 @@ function SidePanel({
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <aside
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         className="absolute right-0 top-0 bottom-0 w-full max-w-[380px] bg-surface border-l border-border shadow-xl flex flex-col"
       >
         <div className="flex items-start gap-3 px-5 pt-5 pb-4">
@@ -164,7 +198,12 @@ function DetailBody({
           )}
         />
         {type === "integration" && status && (
-          <IdentityRow label={t("plugins.detail.state")} value={t(`status.${status}`)} />
+          <IdentityRow
+            label={t("plugins.detail.state")}
+            // Same folding as the row's StatusBadge: an unconfigured plugin
+            // reads as disconnected, not as its own third state.
+            value={t(`status.${status === "not_configured" ? "disconnected" : status}`)}
+          />
         )}
         {type === "integration" && deviceCount !== undefined && (
           <IdentityRow

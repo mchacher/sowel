@@ -140,8 +140,10 @@ describe("PluginDetailSheet (#749)", () => {
     unmount();
 
     setMobile(true);
-    render(<PluginDetailSheet {...props()} />);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    const { baseElement } = render(<PluginDetailSheet {...props()} />);
+    // The shared BottomSheet takes over: no drawer shell, same content.
+    expect(baseElement.querySelector("aside")).toBeNull();
     expect(screen.getByText("Solar water heater")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Update to 0.2.0" })).toBeTruthy();
   });
 });

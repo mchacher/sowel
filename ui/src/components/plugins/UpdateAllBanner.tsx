@@ -23,21 +23,28 @@ export function UpdateAllBanner({
 }) {
   const { t } = useTranslation();
   const [updating, setUpdating] = useState(false);
+  const [failed, setFailed] = useState(0);
 
   const pending = plugins.filter((p) => p.latestVersion && p.source !== "personal");
   if (pending.length < 2) return null;
 
   const handleUpdateAll = async () => {
     setUpdating(true);
+    setFailed(0);
+    let failures = 0;
     try {
       // Sequential on purpose: each update restarts a plugin server-side.
       for (const plugin of pending) {
         try {
           await updatePlugin(plugin.manifest.id);
         } catch {
-          // Keep going — one failing package must not strand the others.
+          // Keep going — one failing package must not strand the others — but
+          // say so afterwards: a stale registry SHA256 fails every package and
+          // used to leave the banner looking like nothing had happened.
+          failures += 1;
         }
       }
+      setFailed(failures);
       // Give the restarted plugins a moment before re-reading their state.
       await new Promise((r) => setTimeout(r, 1500));
       onRefresh();
@@ -53,7 +60,9 @@ export function UpdateAllBanner({
           {t("plugins.updatesAvailable", { count: pending.length })}
         </p>
         <p className="text-[11px] text-text-tertiary truncate">
-          {pending.map((p) => localizedName(p.manifest, lang)).join(", ")}
+          {failed > 0
+            ? t("plugins.updateAllFailed", { count: failed })
+            : pending.map((p) => localizedName(p.manifest, lang)).join(", ")}
         </p>
       </div>
       <button

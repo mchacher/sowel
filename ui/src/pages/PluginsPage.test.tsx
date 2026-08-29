@@ -1,13 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, userEvent } from "../test-utils";
+import { render, screen, waitFor, within, userEvent } from "../test-utils";
 import i18n from "../i18n";
 import { PluginsPage } from "./PluginsPage";
 import * as api from "../api";
+import { PersonalPluginConfirmationRequiredError } from "../api";
 import type { PluginInfo, PluginManifest } from "../types";
 
 vi.mock("../api", async (orig) => ({
   ...(await orig<typeof import("../api")>()),
   getPlugins: vi.fn(),
+  disablePlugin: vi.fn().mockResolvedValue(undefined),
+  uninstallPlugin: vi.fn().mockResolvedValue(undefined),
   getPluginStore: vi.fn().mockResolvedValue([]),
   getPluginSources: vi.fn().mockResolvedValue([]),
   refreshPluginStore: vi.fn().mockResolvedValue(undefined),
@@ -64,13 +67,20 @@ describe("PluginsPage (#749)", () => {
     vi.mocked(api.getPluginSources).mockResolvedValue([]);
   });
 
-  it("keeps the name readable next to an available update", async () => {
+  it("keeps the update marker out of the element that carries the name", async () => {
     vi.mocked(api.getPlugins).mockResolvedValue([installed({ latestVersion: "2.5.0" })]);
     render(<PluginsPage />);
 
-    // The name and the update marker coexist instead of competing for width.
-    expect(await screen.findByText("Zigbee2MQTT")).toBeTruthy();
-    expect(screen.getByText("2.5.0")).toBeTruthy();
+    const name = await screen.findByText("Zigbee2MQTT");
+    const pill = screen.getByText("2.5.0");
+
+    // The collapse came from laying the badges out inside the same flex line as
+    // the name, where their `shrink-0` won and the truncated name lost all its
+    // width. They are now in sibling blocks, so neither can starve the other.
+    const identity = name.closest("button");
+    expect(identity).toBeTruthy();
+    expect(identity!.contains(pill)).toBe(false);
+    expect(identity!.textContent).toContain("Zigbee2MQTT");
   });
 
   it("keeps the installed version and the description out of the row", async () => {
@@ -88,9 +98,7 @@ describe("PluginsPage (#749)", () => {
     vi.mocked(api.getPlugins).mockResolvedValue([installed()]);
     render(<PluginsPage />);
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Open details for Zigbee2MQTT" }),
-    );
+    await userEvent.click(await screen.findByTitle("Open details for Zigbee2MQTT"));
 
     const sheet = screen.getByRole("dialog", { name: "Zigbee2MQTT" });
     expect(sheet).toBeTruthy();
@@ -113,6 +121,46 @@ describe("PluginsPage (#749)", () => {
     vi.mocked(api.getPlugins).mockResolvedValue([installed({ enabled: false })]);
     render(<PluginsPage />);
     expect(await screen.findByText("Disabled")).toBeTruthy();
+  });
+
+  it("disarms a pending uninstall when another action runs in the same sheet", async () => {
+    vi.mocked(api.getPlugins).mockResolvedValue([installed()]);
+    vi.mocked(api.disablePlugin).mockResolvedValue(undefined as never);
+    render(<PluginsPage />);
+
+    await userEvent.click(await screen.findByTitle("Open details for Zigbee2MQTT"));
+    // Scoped to the sheet: the desktop row shortcut carries the same label, and
+    // jsdom applies no CSS so `hidden sm:flex` still leaves it in the DOM.
+    const sheet = within(screen.getByRole("dialog", { name: "Zigbee2MQTT" }));
+    await userEvent.click(sheet.getByRole("button", { name: "Uninstall" }));
+    expect(sheet.getByRole("button", { name: "Stop and uninstall?" })).toBeTruthy();
+
+    // The inline button used to disarm on blur. Now the confirmation shares a
+    // surface with the other actions, so using one of them must reset it.
+    await userEvent.click(sheet.getByRole("button", { name: "Disable" }));
+
+    await waitFor(() => expect(sheet.getByRole("button", { name: "Uninstall" })).toBeTruthy());
+    expect(api.uninstallPlugin).not.toHaveBeenCalled();
+  });
+
+  it("raises the personal fingerprint confirmation above the sheet (spec 136)", async () => {
+    vi.mocked(api.getPlugins).mockResolvedValue([
+      installed({ latestVersion: "2.5.0", source: "personal" }),
+    ]);
+    vi.mocked(api.updatePlugin).mockRejectedValue(
+      new PersonalPluginConfirmationRequiredError("mchacher/lab", "mchacher", "2.5.0", "abc123"),
+    );
+    render(<PluginsPage />);
+
+    await userEvent.click(await screen.findByTitle("Open details for Zigbee2MQTT"));
+    await userEvent.click(screen.getByRole("button", { name: "Update to 2.5.0" }));
+
+    // The sheet is portaled to the body; a confirmation rendered inside the
+    // React root would sit behind its backdrop, and on a phone the sheet is the
+    // only way to reach the update button at all.
+    const confirm = await screen.findByRole("button", { name: "Trust and update" });
+    const modal = confirm.closest("div.fixed");
+    expect(modal?.parentElement).toBe(document.body);
   });
 
   it("offers a single bulk update when several packages are behind", async () => {

@@ -1230,6 +1230,8 @@
   "plugins.detail.sourcePersonal": "Personal source",
   "plugins.detail.state": "State",
   "plugins.detail.devicesWithOffline": "{{devices}} ({{offline}} offline)",
+  "plugins.updateAllFailed_one": "{{count}} package could not be updated.",
+  "plugins.updateAllFailed_other": "{{count}} packages could not be updated.",
   "settings.tabs.general": "General",
   "settings.tabs.account": "Account",
   "settings.tabs.energy": "Energy",
