@@ -7,11 +7,11 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-zigbee2mqtt",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "tags": ["zigbee", "mqtt", "z2m", "sensors", "lights", "switches"],
     "sowelVersion": ">=1.59.0",
     "owner": "mchacher",
-    "sha256": "003944b2fbe09586e850634c9cb4457e7a951d86bccfdf0c81697c1eae762189"
+    "sha256": "7d6adb7d9dda06943e871bb0882df81c759d5f874be1fd987b718d76a783bb78"
   },
   {
     "id": "lora2mqtt",
