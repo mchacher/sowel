@@ -227,6 +227,8 @@ docker compose restart sowel
 
 L'identifiant d'instance stocké dans la table settings voyage dans les backups. Quand une base restaurée porte l'identifiant d'un autre déploiement (backup de prod ouvert sur une machine de dev, migration vers un nouveau matériel), le moteur démarre **inerte** : intégrations sortantes, recettes, publishers et notifications restent désactivés, et un bandeau rouge s'affiche dans l'UI. Un admin confirme la reprise depuis ce bandeau (le moteur redémarre alors armé), ou vous pouvez pré-confirmer avec `SOWEL_TAKEOVER=1` dans l'environnement. Cela empêche une copie des données de production de se connecter vers l'extérieur et de perturber le déploiement d'origine (collisions de clientId MQTT, courses sur les refresh tokens OAuth).
 
+L'autre moitié de la comparaison est le fichier marqueur `.instance-id` situé à côté de la base, qui décrit le déploiement en cours d'exécution. Ce fichier n'est délibérément **jamais** embarqué dans un backup ni réécrit par une restauration : une instance conserve donc sa propre identité quelle que soit l'archive qu'on lui donne. Restaurer une archive de production sur une seconde machine déclenche donc bien le bandeau, et c'est précisément l'objectif : la restauration est la façon dont des données de production arrivent normalement là où elles n'ont rien à faire. Les versions antérieures embarquaient le marqueur dans l'archive, ce qui faisait venir les deux moitiés de la comparaison du même déploiement et empêchait silencieusement le garde-fou de se déclencher lors d'une restauration (issue #790).
+
 ### Contenu de l'archive
 
 Voir la section "Backup et restauration" dans [architecture.md](architecture.md) pour le format complet.

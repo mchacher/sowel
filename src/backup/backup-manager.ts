@@ -14,6 +14,7 @@ import AdmZip from "adm-zip";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { InfluxClient } from "../core/influx-client.js";
+import { INSTANCE_MARKER_FILE } from "../core/instance-identity.js";
 
 export interface BackupManagerDeps {
   db: Database.Database;
@@ -112,8 +113,23 @@ export const BACKUP_TABLES = [
 // Reverse order for deletion (children first) + tables not exported but must be cleared
 const DELETE_ORDER = ["recipe_log", ...[...BACKUP_TABLES].reverse()];
 
-// Exclude these files from data/ backup (managed separately or transient)
-const DATA_FILES_EXCLUDE = new Set(["sowel.db", "sowel.db-wal", "sowel.db-shm", "sowel.pid"]);
+// Exclude these files from data/ backup (managed separately or transient).
+//
+// `.instance-id` is here for a different reason than the rest (#790). It is the
+// local half of the #401 restored-data guardrail: the settings table carries the
+// instance id of the deployment that produced the data, and this marker carries
+// the identity of THIS deployment. The guardrail fires when the two disagree, so
+// a marker that travels inside the archive makes both halves come from the same
+// source and `takeoverPending` structurally false. Excluding it here covers both
+// directions at once: `scanDataFiles` keeps it out of new archives, and the
+// restore loop skips it in archives already in the wild.
+const DATA_FILES_EXCLUDE = new Set([
+  "sowel.db",
+  "sowel.db-wal",
+  "sowel.db-shm",
+  "sowel.pid",
+  INSTANCE_MARKER_FILE,
+]);
 const DATA_FILES_EXCLUDE_EXT = new Set([".db", ".pid", ".log"]);
 
 // Local backups subdirectory inside dataDir
@@ -500,7 +516,19 @@ export class BackupManager {
       }
 
       const filename = entry.entryName.slice("data/".length);
-      if (!filename || DATA_FILES_EXCLUDE.has(filename)) continue;
+      if (!filename) continue;
+      if (filename === INSTANCE_MARKER_FILE) {
+        // Archives produced before #790 carry the origin deployment's marker.
+        // Writing it back would hand this instance the identity of the machine
+        // the data came from, which is exactly what the #401 guardrail exists
+        // to notice. Keep our own marker.
+        this.logger.info(
+          { entry: entry.entryName },
+          "Backup restore: instance marker in archive ignored — this deployment keeps its own identity (#790)",
+        );
+        continue;
+      }
+      if (DATA_FILES_EXCLUDE.has(filename)) continue;
 
       // Path confinement: resolve + verify the result stays under dataDir.
       // Defeats `data/../../etc/passwd` and absolute-name games.
