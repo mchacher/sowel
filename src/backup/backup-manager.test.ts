@@ -6,6 +6,12 @@ import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
 import { BACKUP_TABLES, BackupManager, BackupSizeCapExceededError } from "./backup-manager.js";
 import { createLogger } from "../core/logger.js";
+import {
+  INSTANCE_ID_SETTING,
+  INSTANCE_MARKER_FILE,
+  resolveInstanceIdentity,
+} from "../core/instance-identity.js";
+import { SettingsManager } from "../core/settings-manager.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import type { InfluxClient } from "../core/influx-client.js";
 
@@ -164,6 +170,25 @@ describe("BackupManager", () => {
       // without a test noticing.
       const entry = zip.getEntries().find((e) => e.entryName === "sowel-backup.json");
       expect(entry?.header.method).toBe(8);
+    });
+
+    // #790 — the instance marker is the local half of the #401 guardrail.
+    // Shipping it inside the archive makes both halves of the comparison come
+    // from the same deployment, so the guardrail can never fire.
+    it("never carries the instance marker into the archive (#790)", async () => {
+      writeFileSync(
+        resolve(tmpDir, INSTANCE_MARKER_FILE),
+        "55c68282-8cae-4a4a-b86c-46ae9347fa46\n",
+      );
+      // A neighbouring data file proves the scan is still picking files up, so
+      // an assertion passing because nothing was scanned at all would be caught.
+      writeFileSync(resolve(tmpDir, "tokens.json"), '{"ok":true}');
+
+      const result = await manager.exportToFile("identity.zip");
+      const names = new AdmZip(result.path).getEntries().map((e) => e.entryName);
+
+      expect(names).toContain("data/tokens.json");
+      expect(names).not.toContain(`data/${INSTANCE_MARKER_FILE}`);
     });
 
     it("multiple exports create multiple files", async () => {
@@ -372,6 +397,107 @@ describe("BackupManager", () => {
 
       expect(existsSync(resolve(tmpDir, "legit.json"))).toBe(true);
       expect(readFileSync(resolve(tmpDir, "legit.json"), "utf-8")).toBe('{"ok": true}');
+    });
+  });
+
+  // ── #790 — the restore must not hand this deployment a foreign identity ──
+  //
+  // The #401 guardrail compares the instance id carried in the settings table
+  // (which travels inside backups by design) with the `.instance-id` marker
+  // beside the database (which describes THIS deployment). Restoring the marker
+  // too made both halves come from the same source, so `takeoverPending` could
+  // never become true and a prod backup restored on a second machine came up
+  // fully armed against the origin instance.
+  describe("restoreFromBuffer — #401 guardrail survives a restore (#790)", () => {
+    const ORIGIN_ID = "55c68282-8cae-4a4a-b86c-46ae9347fa46";
+    const LOCAL_ID = "23972d52-8cff-43ce-b9c8-1ed459ae27d9";
+
+    /** Archive as an instance predating #790 would have produced it. */
+    function buildArchiveCarryingOriginIdentity(): Buffer {
+      const zip = new AdmZip();
+      const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, [] as unknown[]]));
+      tables.settings = [
+        { key: INSTANCE_ID_SETTING, value: ORIGIN_ID, updated_at: "2026-08-01T00:00:00.000Z" },
+      ];
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+      );
+      zip.addFile(`data/${INSTANCE_MARKER_FILE}`, Buffer.from(ORIGIN_ID + "\n"));
+      return zip.toBuffer();
+    }
+
+    function localMarker(): string | null {
+      const p = resolve(tmpDir, INSTANCE_MARKER_FILE);
+      return existsSync(p) ? readFileSync(p, "utf-8").trim() : null;
+    }
+
+    it("leaves the local instance marker untouched", async () => {
+      writeFileSync(resolve(tmpDir, INSTANCE_MARKER_FILE), LOCAL_ID + "\n");
+
+      await manager.restoreFromBuffer(buildArchiveCarryingOriginIdentity());
+
+      expect(localMarker()).toBe(LOCAL_ID);
+    });
+
+    it("arms the takeover guardrail on the next boot", async () => {
+      writeFileSync(resolve(tmpDir, INSTANCE_MARKER_FILE), LOCAL_ID + "\n");
+
+      await manager.restoreFromBuffer(buildArchiveCarryingOriginIdentity());
+
+      // The settings table now carries the origin deployment's id — that half
+      // is meant to travel. What must not travel is the marker.
+      const settingsManager = new SettingsManager(db);
+      expect(settingsManager.get(INSTANCE_ID_SETTING)).toBe(ORIGIN_ID);
+
+      const identity = resolveInstanceIdentity({
+        settingsManager,
+        dataDir: tmpDir,
+        takeoverConfirmed: false,
+        logger,
+      });
+
+      expect(identity.takeoverPending).toBe(true);
+      expect(identity.instanceId).toBe(ORIGIN_ID);
+    });
+
+    it("leaves the guardrail disarmed when an instance restores its own backup", async () => {
+      // The common case, and the one this exclusion could plausibly break: the
+      // marker is skipped, but the settings row carries this instance's own id,
+      // so the two halves still agree and nothing is prompted.
+      writeFileSync(resolve(tmpDir, INSTANCE_MARKER_FILE), LOCAL_ID + "\n");
+
+      const zip = new AdmZip();
+      const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, [] as unknown[]]));
+      tables.settings = [
+        { key: INSTANCE_ID_SETTING, value: LOCAL_ID, updated_at: "2026-08-01T00:00:00.000Z" },
+      ];
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+      );
+      zip.addFile(`data/${INSTANCE_MARKER_FILE}`, Buffer.from(LOCAL_ID + "\n"));
+
+      await manager.restoreFromBuffer(zip.toBuffer());
+
+      expect(localMarker()).toBe(LOCAL_ID);
+      const identity = resolveInstanceIdentity({
+        settingsManager: new SettingsManager(db),
+        dataDir: tmpDir,
+        takeoverConfirmed: false,
+        logger,
+      });
+      expect(identity.takeoverPending).toBe(false);
+    });
+
+    it("does not create a marker on an instance that has none yet", async () => {
+      // A restore onto a pristine data dir must leave the identity to be minted
+      // on the next boot, not adopt the origin's.
+      expect(localMarker()).toBeNull();
+
+      await manager.restoreFromBuffer(buildArchiveCarryingOriginIdentity());
+
+      expect(localMarker()).toBeNull();
     });
   });
 });

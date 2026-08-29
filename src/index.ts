@@ -51,7 +51,11 @@ import { UserManager } from "./auth/user-manager.js";
 import { AuthService } from "./auth/auth-service.js";
 import { MfaService } from "./auth/mfa-service.js";
 import { SettingsManager } from "./core/settings-manager.js";
-import { resolveInstanceIdentity, confirmTakeover } from "./core/instance-identity.js";
+import {
+  resolveInstanceIdentity,
+  confirmTakeover,
+  shouldPromptTakeover,
+} from "./core/instance-identity.js";
 import { ModeManager } from "./modes/mode-manager.js";
 import { CalendarManager } from "./modes/calendar-manager.js";
 import { ButtonActionManager } from "./buttons/button-action-manager.js";
@@ -229,6 +233,10 @@ async function main() {
   // stored instance id disagrees with the local marker, force the spec 124
   // shadow gates for this boot; the admin confirms the takeover in the UI
   // (or via SOWEL_TAKEOVER=1) and restarts to arm the instance.
+  // Read before the block below mutates it: a pending takeover forces shadow
+  // mode on, so `config.shadowMode` no longer tells us whether the operator
+  // asked for a shadow run. `shouldPromptTakeover` needs the operator's intent.
+  const shadowModeFromEnv = config.shadowMode;
   const identity = resolveInstanceIdentity({
     settingsManager,
     dataDir: config.dataDir,
@@ -598,7 +606,10 @@ async function main() {
     logger,
     corsOrigins: config.cors.origins,
     shadowMode: config.shadowMode,
-    takeoverPending: identity.takeoverPending,
+    takeoverPending: shouldPromptTakeover({
+      takeoverPending: identity.takeoverPending,
+      shadowModeFromEnv,
+    }),
     confirmTakeover: () => {
       confirmTakeover({ settingsManager, dataDir: config.dataDir, logger });
     },

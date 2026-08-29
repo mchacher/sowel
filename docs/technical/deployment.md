@@ -233,6 +233,10 @@ docker compose restart sowel
 
 The instance id stored in the settings table travels inside backups. When a restored database carries another deployment's id (a prod backup opened on a dev machine, a migration to new hardware), the engine starts **inert**: outbound integrations, recipes, publishers, and notifications stay disabled, and a red banner appears in the UI. An admin confirms the takeover from that banner (the engine then restarts armed), or you can pre-confirm with `SOWEL_TAKEOVER=1` in the environment. This prevents a copy of production data from dialing out and fighting the original deployment (MQTT client id collisions, OAuth refresh-token races).
 
+The other half of the comparison is the `.instance-id` marker file next to the database, which describes the deployment currently running. That file is deliberately **never** carried by a backup and never written by a restore, so an instance keeps its own identity whatever archive you feed it. Restoring a production archive onto a second machine therefore trips the banner, which is the point: the restore path is how production data normally arrives somewhere it does not belong. Earlier versions carried the marker inside the archive, which made both halves of the comparison come from the same deployment and left the guardrail silently unable to fire on a restore (issue #790).
+
+An instance started with `SOWEL_SHADOW_MODE=1` is a deliberate copy of production data, so it always has a pending takeover and the banner is suppressed there. The shadow gates already hold it inert, and confirming would stamp the origin's identity onto the shadow's marker, removing the second line of defence for the day the environment variable is forgotten.
+
 ### Archive contents
 
 See the "Backup & Restore" section in [architecture.md](architecture.md) for the full format.
