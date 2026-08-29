@@ -42,6 +42,21 @@ describe("issueSignature", () => {
     expect(issueSignature(base)).not.toBe(issueSignature({ ...base, source: "other" }));
   });
 
+  it("signs a localised alarm on its key and parameters, not on the rendered text", () => {
+    // Issue #720 — the wording is composed at render from an i18n key, so the
+    // signature has to be language-independent, and still change when the
+    // parameters do: a battery acknowledged at 12 % must re-surface at 5 %.
+    const at = (value: string) =>
+      issueSignature({
+        source: "Détecteur salon",
+        level: "warning",
+        messageKey: "alarms.battery.lowPct",
+        messageParams: { value },
+      });
+    expect(at("12")).toBe(at("12"));
+    expect(at("12")).not.toBe(at("5"));
+  });
+
   it("does not collide across field boundaries", () => {
     // "a" + "b|c" must not equal "a|b" + "c" — the separator prevents it.
     const x = issueSignature({ source: "a", level: "b", message: "c" });

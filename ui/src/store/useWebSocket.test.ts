@@ -203,7 +203,7 @@ describe("connect", () => {
     expect(S.activity.retry).toHaveBeenCalled();
   });
 
-  it("on open: restores integration statuses and error alarms from the health endpoint", async () => {
+  it("on open: restores integration statuses, without a second alarm for the same failure", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -222,7 +222,11 @@ describe("connect", () => {
 
     const s = useWebSocket.getState();
     expect(s.integrationStatuses.panasonic).toBe("error");
-    expect(s.alarms.get("poll-fail:panasonic")?.level).toBe("error");
+    // Issue #720 — the seeding used to synthesise a `poll-fail:` alarm on top
+    // of the status, in hardcoded French and keyed on the display label where
+    // the status path keys on the plugin id, so `useAggregatedIssues` showed
+    // the same failure twice. The status alone drives the banner now.
+    expect(s.alarms.size).toBe(0);
   });
 
   it("on open: restores a battery banner headlined by the equipment name (spec 143/#472)", async () => {
@@ -241,12 +245,35 @@ describe("connect", () => {
 
     const bound = useWebSocket.getState().alarms.get("battery-low:dd-1");
     expect(bound?.source).toBe("Détecteur salon");
-    expect(bound?.message).toBe("Low battery: 12% (Capteur porte)");
+    // Issue #720 — the banner carries the key and its parameters, not a
+    // pre-composed English string, so the sheet words it in the user's language.
+    expect(bound?.messageKey).toBe("alarms.battery.lowPctOnDevice");
+    expect(bound?.messageParams).toEqual({ value: "12", device: "Capteur porte" });
 
     // Unbound device falls back to the device name, no equipment in the message.
     const unbound = useWebSocket.getState().alarms.get("battery-low:dd-2");
     expect(unbound?.source).toBe("Capteur cave");
-    expect(unbound?.message).toBe("Low battery: 8%");
+    expect(unbound?.messageKey).toBe("alarms.battery.lowPct");
+    expect(unbound?.messageParams).toEqual({ value: "8", device: "Capteur cave" });
+  });
+
+  it("on open: words a battery flag without a percentage", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    // A `battery_low` flag reports "true", not a level: there is no percentage
+    // to show, so the alarm uses the plain key.
+    api.getBatteryAlerts.mockResolvedValue([
+      { deviceDataId: "dd-3", deviceName: "Capteur fuite", value: "true", equipmentNames: [] },
+    ]);
+
+    const ws = connect();
+    ws.simulateOpen();
+
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().alarms.get("battery-low:dd-3")).toBeDefined();
+    });
+    expect(useWebSocket.getState().alarms.get("battery-low:dd-3")?.messageKey).toBe(
+      "alarms.battery.low",
+    );
   });
 
   it("on open: restores a standing PV health alarm from the snapshot (spec 162)", async () => {
@@ -277,8 +304,95 @@ describe("connect", () => {
     // client-side from the structured fields: the engine's message is English
     // by repo convention, the banner is user-facing UI and must not be.
     expect(alarm?.source).toBe("Shelly Solar");
-    expect(alarm?.message).toMatch(/25\s?%/);
-    expect(alarm?.message).not.toMatch(/on the last 3 clear days/);
+    expect(alarm?.messageKey).toBe("equipments.pvHealth.alarmBanner");
+    expect(alarm?.messageParams).toEqual({ pct: 25, since: { kind: "day", day: "2026-08-23" } });
+    expect(alarm?.message).toBeUndefined();
+  });
+
+  it("re-words a live battery raise from the snapshot instead of keeping the engine's English", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    api.getBatteryAlerts.mockResolvedValue([
+      { deviceDataId: "dd-9", deviceName: "Capteur porte", value: "9", equipmentNames: ["Détecteur salon"] },
+    ]);
+
+    const ws = connect();
+    // Issue #720 — the live path used to refetch the alert list for the
+    // equipment indicator and leave the alarm holding the engine's English
+    // message until the next reload.
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "battery-low:dd-9",
+      level: "warning",
+      source: "Détecteur salon",
+      message: "Low battery: 9% (Capteur porte)",
+    });
+
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().alarms.get("battery-low:dd-9")?.messageKey).toBe(
+        "alarms.battery.lowPctOnDevice",
+      );
+    });
+    expect(useWebSocket.getState().alarms.get("battery-low:dd-9")?.messageParams).toEqual({
+      value: "9",
+      device: "Capteur porte",
+    });
+  });
+
+  it("does not resurrect a battery alarm that was just resolved", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    // The snapshot can still list the alert when the resolve event overtakes it;
+    // the re-wording must only touch alarms that are still standing.
+    api.getBatteryAlerts.mockResolvedValue([
+      { deviceDataId: "dd-9", deviceName: "Capteur porte", value: "9", equipmentNames: [] },
+    ]);
+
+    const ws = connect();
+    ws.simulateMessage({ type: "system.alarm.resolved", alarmId: "battery-low:dd-9" });
+
+    // Wait for the refetch to have been APPLIED, not merely called: waiting on
+    // the call alone lets the assertion run before the re-wording microtask,
+    // and the test then passes with or without the guard.
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().batteryAlerts).toHaveLength(1);
+    });
+    expect(useWebSocket.getState().alarms.get("battery-low:dd-9")).toBeUndefined();
+  });
+
+  it("re-words a live poll-fail raise and keys it on the plugin id, not the label", async () => {
+    const ws = connect();
+    // Integration plugins raise this one themselves, in their own language and
+    // headlined by a display label. Both are replaced here: the label would
+    // dedup under a different source than the integration status for the same
+    // failure, and the sentence would reach an English household in French.
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "poll-fail:panasonic_cc",
+      level: "error",
+      source: "Panasonic CC",
+      message: "Poll en échec : ETIMEDOUT",
+    });
+
+    const alarm = useWebSocket.getState().alarms.get("poll-fail:panasonic_cc");
+    expect(alarm?.source).toBe("panasonic_cc");
+    expect(alarm?.messageKey).toBe("alarms.integration.error");
+    expect(alarm?.message).toBeUndefined();
+    expect(alarm?.level).toBe("error");
+  });
+
+  it("keeps the engine text for an alarm it has no wording for", () => {
+    const ws = connect();
+    // Order dispatch failures embed a raw driver error: nothing to compose from.
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "order-fail:zigbee2mqtt",
+      level: "error",
+      source: "zigbee2mqtt",
+      message: "Order dispatch failed: Volet salon open",
+    });
+
+    const alarm = useWebSocket.getState().alarms.get("order-fail:zigbee2mqtt");
+    expect(alarm?.message).toBe("Order dispatch failed: Volet salon open");
+    expect(alarm?.messageKey).toBeUndefined();
   });
 });
 
