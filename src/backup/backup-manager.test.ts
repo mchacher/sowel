@@ -461,6 +461,35 @@ describe("BackupManager", () => {
       expect(identity.instanceId).toBe(ORIGIN_ID);
     });
 
+    it("leaves the guardrail disarmed when an instance restores its own backup", async () => {
+      // The common case, and the one this exclusion could plausibly break: the
+      // marker is skipped, but the settings row carries this instance's own id,
+      // so the two halves still agree and nothing is prompted.
+      writeFileSync(resolve(tmpDir, INSTANCE_MARKER_FILE), LOCAL_ID + "\n");
+
+      const zip = new AdmZip();
+      const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, [] as unknown[]]));
+      tables.settings = [
+        { key: INSTANCE_ID_SETTING, value: LOCAL_ID, updated_at: "2026-08-01T00:00:00.000Z" },
+      ];
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+      );
+      zip.addFile(`data/${INSTANCE_MARKER_FILE}`, Buffer.from(LOCAL_ID + "\n"));
+
+      await manager.restoreFromBuffer(zip.toBuffer());
+
+      expect(localMarker()).toBe(LOCAL_ID);
+      const identity = resolveInstanceIdentity({
+        settingsManager: new SettingsManager(db),
+        dataDir: tmpDir,
+        takeoverConfirmed: false,
+        logger,
+      });
+      expect(identity.takeoverPending).toBe(false);
+    });
+
     it("does not create a marker on an instance that has none yet", async () => {
       // A restore onto a pristine data dir must leave the identity to be minted
       // on the next boot, not adopt the origin's.

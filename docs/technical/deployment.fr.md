@@ -229,6 +229,8 @@ L'identifiant d'instance stocké dans la table settings voyage dans les backups.
 
 L'autre moitié de la comparaison est le fichier marqueur `.instance-id` situé à côté de la base, qui décrit le déploiement en cours d'exécution. Ce fichier n'est délibérément **jamais** embarqué dans un backup ni réécrit par une restauration : une instance conserve donc sa propre identité quelle que soit l'archive qu'on lui donne. Restaurer une archive de production sur une seconde machine déclenche donc bien le bandeau, et c'est précisément l'objectif : la restauration est la façon dont des données de production arrivent normalement là où elles n'ont rien à faire. Les versions antérieures embarquaient le marqueur dans l'archive, ce qui faisait venir les deux moitiés de la comparaison du même déploiement et empêchait silencieusement le garde-fou de se déclencher lors d'une restauration (issue #790).
 
+Une instance démarrée avec `SOWEL_SHADOW_MODE=1` est par construction une copie volontaire des données de production : elle a donc toujours une reprise en attente, et le bandeau y est supprimé. Les gates du mode shadow la maintiennent déjà inerte, et confirmer graverait l'identité d'origine dans le marqueur du shadow, supprimant la seconde ligne de défense pour le jour où la variable d'environnement sera oubliée.
+
 ### Contenu de l'archive
 
 Voir la section "Backup et restauration" dans [architecture.md](architecture.md) pour le format complet.

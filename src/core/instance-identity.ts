@@ -95,6 +95,25 @@ export function resolveInstanceIdentity(opts: {
   return { instanceId: dbId, takeoverPending: true };
 }
 
+/**
+ * Whether the UI should surface the takeover prompt.
+ *
+ * A deliberate shadow run (`SOWEL_SHADOW_MODE=1`) is a copy of production data
+ * by definition, so `takeoverPending` is true there by design and the prompt is
+ * pure noise. Worse, it is a trap: confirming writes the ORIGIN deployment's id
+ * into the shadow's marker, so the day the env var falls off the command line
+ * the guardrail no longer catches the very run it was built to catch. The spec
+ * 124 gates already hold the instance inert, so the prompt adds no protection
+ * a shadow does not already have.
+ */
+export function shouldPromptTakeover(opts: {
+  takeoverPending: boolean;
+  /** Shadow mode as requested by the environment, BEFORE a pending takeover forces it on. */
+  shadowModeFromEnv: boolean;
+}): boolean {
+  return opts.takeoverPending && !opts.shadowModeFromEnv;
+}
+
 /** Adopt the current database as this deployment's own (UI confirm path). */
 export function confirmTakeover(opts: {
   settingsManager: SettingsManager;

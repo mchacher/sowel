@@ -120,9 +120,10 @@ const DELETE_ORDER = ["recipe_log", ...[...BACKUP_TABLES].reverse()];
 // instance id of the deployment that produced the data, and this marker carries
 // the identity of THIS deployment. The guardrail fires when the two disagree, so
 // a marker that travels inside the archive makes both halves come from the same
-// source and `takeoverPending` structurally false. Excluding it here covers both
-// directions at once: `scanDataFiles` keeps it out of new archives, and the
-// restore loop skips it in archives already in the wild.
+// source and `takeoverPending` structurally false. Listing it here is what keeps
+// it out of new archives (`scanDataFiles`) and is the backstop on restore; the
+// restore loop names it explicitly one step earlier so that an archive produced
+// before this fix leaves a log line rather than being skipped in silence.
 const DATA_FILES_EXCLUDE = new Set([
   "sowel.db",
   "sowel.db-wal",

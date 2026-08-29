@@ -6,6 +6,7 @@ import { createLogger } from "./logger.js";
 import {
   resolveInstanceIdentity,
   confirmTakeover,
+  shouldPromptTakeover,
   INSTANCE_ID_SETTING,
   INSTANCE_MARKER_FILE,
 } from "./instance-identity.js";
@@ -131,5 +132,25 @@ describe("resolveInstanceIdentity", () => {
       logger,
     });
     expect(identity.takeoverPending).toBe(false);
+  });
+});
+
+// #790 — restoring a prod backup onto a shadow instance is the documented
+// workflow (`scripts/shadow-deploy.sh seed`), and now that the marker no longer
+// travels, every shadow has a pending takeover for the whole of its life.
+// Prompting there is worse than useless: confirming stamps the origin id onto
+// the shadow's marker and disarms the guardrail for good.
+describe("shouldPromptTakeover", () => {
+  it("prompts on a normal instance whose data came from elsewhere", () => {
+    expect(shouldPromptTakeover({ takeoverPending: true, shadowModeFromEnv: false })).toBe(true);
+  });
+
+  it("stays silent on a deliberate shadow run", () => {
+    expect(shouldPromptTakeover({ takeoverPending: true, shadowModeFromEnv: true })).toBe(false);
+  });
+
+  it("stays silent when nothing is pending, shadow or not", () => {
+    expect(shouldPromptTakeover({ takeoverPending: false, shadowModeFromEnv: false })).toBe(false);
+    expect(shouldPromptTakeover({ takeoverPending: false, shadowModeFromEnv: true })).toBe(false);
   });
 });
