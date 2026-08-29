@@ -1131,6 +1131,8 @@
   "energy.live.breakdown.title": "Décomposition consommation",
   "energy.live.breakdown.other": "Autre",
   "energy.live.breakdown.offline": "hors-ligne",
+  "energy.live.breakdown.stale": "mesure ancienne",
+  "energy.live.breakdown.staleNote": "Une charge sans mesure récente n'est pas comptée : sa consommation se retrouve dans Autre.",
   "energy.live.breakdown.houseIdle": "Maison à l'arrêt",
   "energy.live.breakdown.overshoot": "Σ sous-compteurs ≥ total maison",
   "energy.live.phases.title": "Répartition par phase",

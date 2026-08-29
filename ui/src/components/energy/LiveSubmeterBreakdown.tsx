@@ -7,13 +7,15 @@
  * parent page subscribes to.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import {
   buildSubmeterRows,
   computeOther,
+  displayedPower,
+  sharePercent,
   type SubmeterRow,
 } from "./submeter-helpers";
 import { isSubmeterEquipment } from "../../lib/metering";
@@ -33,6 +35,16 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const IDLE_THRESHOLD_W = 5;
 /** Show the overshoot footnote only when Σ exceeds house by > 5%. */
 const OVERSHOOT_RATIO = 0.05;
+/**
+ * How often the card re-checks reading ages against the wall clock (#744).
+ *
+ * Without it a row only ages out when some unrelated equipment event happens
+ * to re-render the page. In a home whose only sources poll every 300 s the
+ * recompute would land at the poll, with the reading 0 s old, so the rule
+ * would silently never apply; in a home with a 1 Hz main meter it would apply
+ * continuously. Same code, opposite behaviour, decided by unrelated hardware.
+ */
+const STALENESS_TICK_MS = 30_000;
 
 interface Props {
   /** House consumption in W (grid + solar). Null when both are unknown. */
@@ -42,10 +54,13 @@ interface Props {
 }
 
 function formatPower(value: number): { num: string; unit: "W" | "kW" } {
+  // One rounding, shared with sharePercent's denominator, so the figures on
+  // screen cannot contradict each other (#744).
+  const shown = displayedPower(value);
   if (value < 1000) {
-    return { num: String(Math.round(value / 5) * 5), unit: "W" };
+    return { num: String(shown), unit: "W" };
   }
-  return { num: (value / 1000).toFixed(1), unit: "kW" };
+  return { num: (shown / 1000).toFixed(1), unit: "kW" };
 }
 
 function formatRelative(iso: string | null): string {
@@ -71,13 +86,19 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
 
   // Homonym submeters get a `name — zone` label (spec 139); the qualifier
   // only appears when two submeters actually share a name.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setClock(Date.now()), STALENESS_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
   const rows = useMemo(() => {
     const labels = equipmentLabelMap(
       equipments.filter((eq) => isSubmeterEquipment(eq)),
       zoneChainMap(flattenZonesWithPath(zoneTree)),
     );
-    return buildSubmeterRows(equipments, labels);
-  }, [equipments, zoneTree]);
+    return buildSubmeterRows(equipments, labels, clock);
+  }, [equipments, zoneTree, clock]);
   if (rows.length === 0) return null;
 
   const submeterSum = rows.reduce((acc, r) => acc + (r.power ?? 0), 0);
@@ -87,6 +108,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const other = hasMainMeter ? computeOther(total, rows) : 0;
   const overshoot =
     hasMainMeter && submeterSum > total * (1 + OVERSHOOT_RATIO);
+  const hasStale = rows.some((r) => r.unknown === "stale");
 
   const isIdle = total < IDLE_THRESHOLD_W;
   const segments = isIdle
@@ -129,7 +151,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
                 {formatPower(other).num} {formatPower(other).unit}
               </span>
               <span className="font-mono font-semibold text-text-tertiary min-w-[40px] text-right">
-                {total > 0 ? `${Math.round((other / total) * 100)}%` : "—"}
+                {sharePercent(other, total) !== null ? `${sharePercent(other, total)}%` : "—"}
               </span>
             </div>
           )}
@@ -139,6 +161,16 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
       {overshoot && (
         <p className="mt-3 text-[12px] text-warning italic">
           {t("energy.live.breakdown.overshoot")}
+        </p>
+      )}
+
+      {/* A load with no recent reading contributes nothing, so its watts are
+          still in the house total and land in the residual. Both facts are
+          true and nothing on screen connected them, which reads as an
+          unmetered load appearing from nowhere (#744). */}
+      {hasStale && (
+        <p className="mt-3 text-[12px] text-text-tertiary italic">
+          {t("energy.live.breakdown.staleNote")}
         </p>
       )}
     </div>
@@ -158,14 +190,25 @@ function buildSegments(
   total: number,
 ): DonutSegment[] {
   if (total <= 0) return [];
+  // The parts are held to one circle. Before #744 the fractions were drawn
+  // unclamped, so a part larger than the whole produced arcs that wrapped over
+  // themselves: two plausible-looking wedges bearing no relation to the numbers
+  // beneath them. A ring that stops at full is at least readable as "we cannot
+  // account for this", which is what the footnote then says.
   const segments: DonutSegment[] = [];
+  let remaining = 1;
+  const push = (id: string, color: string, value: number) => {
+    if (remaining <= 0) return;
+    const fraction = Math.min(value / total, remaining);
+    if (fraction <= 0) return;
+    segments.push({ id, color, fraction });
+    remaining -= fraction;
+  };
   for (const r of rows) {
     if (r.power === null || r.power <= 0) continue;
-    segments.push({ id: r.id, color: r.color, fraction: r.power / total });
+    push(r.id, r.color, r.power);
   }
-  if (other > 0) {
-    segments.push({ id: "__other__", color: OTHER_COLOR, fraction: other / total });
-  }
+  if (other > 0) push("__other__", OTHER_COLOR, other);
   return segments;
 }
 
@@ -259,16 +302,14 @@ function LegendRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const isOffline = row.status === "offline";
-  const pct =
-    row.power !== null && total > 0
-      ? Math.round((row.power / total) * 100)
-      : null;
+  const isStale = row.unknown === "stale";
+  const pct = row.power !== null ? sharePercent(row.power, total) : null;
   const power = row.power !== null ? formatPower(row.power) : null;
 
   return (
     <div
       className={`grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-[13px] ${
-        isOffline ? "opacity-60" : ""
+        isOffline || isStale ? "opacity-60" : ""
       }`}
     >
       <span
@@ -281,6 +322,14 @@ function LegendRow({
           <span className="text-[11px] text-text-tertiary">
             {t("energy.live.breakdown.offline")}
             {row.offlineSince && ` · ${formatRelative(row.offlineSince)}`}
+          </span>
+        )}
+        {/* Not "0 W": the row says the reading is old rather than presenting a
+            number the household has no reason to doubt (#744). */}
+        {!isOffline && isStale && (
+          <span className="text-[11px] text-text-tertiary">
+            {t("energy.live.breakdown.stale")}
+            {row.staleSince && ` · ${formatRelative(row.staleSince)}`}
           </span>
         )}
       </div>
@@ -304,12 +353,23 @@ function buildAriaLabel(
   const p = formatPower(total);
   const parts = [`${p.num} ${p.unit}`];
   for (const r of rows) {
-    if (r.power === null) continue;
-    const pct = total > 0 ? Math.round((r.power / total) * 100) : 0;
-    parts.push(`${r.name} ${pct}%`);
+    if (r.power === null) {
+      // A screen reader gets the same answer the sighted reader does: this row
+      // has no current measurement, rather than a silently omitted one (#744).
+      const why =
+        r.status === "offline"
+          ? t("energy.live.breakdown.offline")
+          : r.unknown === "stale"
+            ? t("energy.live.breakdown.stale")
+            : null;
+      if (why) parts.push(`${r.name} ${why}`);
+      continue;
+    }
+    parts.push(`${r.name} ${sharePercent(r.power, total) ?? 0}%`);
   }
-  if (hasMainMeter && other > 0 && total > 0) {
-    parts.push(`${t("energy.live.breakdown.other")} ${Math.round((other / total) * 100)}%`);
+  if (hasMainMeter && other > 0) {
+    const pct = sharePercent(other, total);
+    if (pct !== null) parts.push(`${t("energy.live.breakdown.other")} ${pct}%`);
   }
   return parts.join(", ");
 }

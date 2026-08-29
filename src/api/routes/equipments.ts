@@ -123,7 +123,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   // cumulative `energy` (Wh) channel — e.g. a SmartThings appliance whose sole
   // `power` binding is a boolean on/off state, not watts — has no live watts to
   // draw and would otherwise render as a "no measurement" row on the display.
-  // Mirror the web UI fix (#560, ui submeter-helpers `readSubmeterPower`): keep
+  // Mirror the web UI fix (#560, ui submeter-helpers `readSubmeterReading`): keep
   // a submeter only when it can contribute a live segment or is meaningful as a
   // legend row. See #590.  Kept when the equipment:
   //   - is offline — an "offline since X" row is meaningful, not noise; OR

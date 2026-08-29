@@ -16,6 +16,8 @@ Below it, the consumption breakdown says where the watts are going, live, per me
 
 ![The live consumption breakdown per load](../screenshots/energy-tour-breakdown-en.png)
 
+A load whose plug has gone quiet for too long reads **reading outdated**, with no figure and no share, rather than showing the last value it sent. "Too long" is two minutes for a declared meter, which the engine already expects to report continuously, and ten minutes for anything else, because several integrations poll on a five-minute cycle and a healthy appliance must not flicker in and out on every poll. That matters more than it sounds. A stale `0 W` looks exactly like an appliance that is off, and nothing on screen would tell you the number was a quarter of an hour old. It also matters most during surplus, because the house total is then a small difference between two large numbers, so a leftover reading can dwarf it (issue #744).
+
 ### Over time: the Consumption page
 
 Day, week, month or year, with one bar per hour or per day. Two things make this page more than a chart:

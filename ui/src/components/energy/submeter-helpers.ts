@@ -7,30 +7,127 @@
 import type { EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor } from "./submeterPalette";
 import { isSubmeterEquipment } from "../../lib/metering";
+import {
+  DEFAULT_STREAMING_TIMEOUT_MS,
+  METERING_EQUIPMENT_TYPES,
+  STREAMING_TIMEOUT_MS,
+} from "../../../../src/shared/constants";
+
+/**
+ * How old a reading may be, on an equipment the engine itself treats as a
+ * meter, and still count as a live measurement.
+ *
+ * Taken from the engine's own per-category window rather than a number picked
+ * here, so those rows age out at the same moment everything else does. Two
+ * minutes for `power` (issue #744).
+ */
+export const SUBMETER_FRESHNESS_MS = STREAMING_TIMEOUT_MS.power ?? DEFAULT_STREAMING_TIMEOUT_MS;
+
+/**
+ * The same budget for every other submeter type, and it has to be looser.
+ *
+ * `equipment-status.ts` applies the tight electrical window only to
+ * METERING_EQUIPMENT_TYPES, and says why: a steady load stops producing
+ * updates, so a two-minute window would flag a perfectly healthy appliance on
+ * every reporting cycle. That reasoning applies here too. Four official
+ * integrations (SmartThings, Legrand, Panasonic Comfort Cloud, MCZ Maestro)
+ * poll on a 300 s default, and the issue's own production snapshot shows two
+ * of those rows at an age of 270 s with nothing wrong. A two-minute budget
+ * would have made them read "outdated" for three minutes out of every five.
+ *
+ * Ten minutes is twice the slowest supported default cadence, so no supported
+ * source oscillates, and it is still far below both cases this issue is about:
+ * a water heater whose reading was 13.5 minutes old while it drew 560 W, and a
+ * wood stove 124 days behind. It also buys margin against a viewer's browser
+ * clock running ahead of the Sowel host, which is the other thing this
+ * comparison is exposed to.
+ */
+export const SUBMETER_FRESHNESS_SLOW_MS = 10 * 60 * 1000;
+
+/** The budget that applies to this equipment. */
+export function freshnessBudgetFor(eq: EquipmentWithDetails): number {
+  return METERING_EQUIPMENT_TYPES.has(eq.type)
+    ? SUBMETER_FRESHNESS_MS
+    : SUBMETER_FRESHNESS_SLOW_MS;
+}
+
+/** Why a submeter contributes no number to the breakdown. */
+export type SubmeterUnknown = "offline" | "stale" | "missing";
 
 export interface SubmeterRow {
   id: string;
   name: string;
-  /** Instantaneous power in W. Null when binding is missing or equipment offline. */
+  /** Instantaneous power in W. Null when there is no current measurement. */
   power: number | null;
+  /** Set when `power` is null: what is missing, so the row can say so. */
+  unknown: SubmeterUnknown | null;
   status: EquipmentStatus;
   /** ISO timestamp from spec 116 statusReason, if available. */
   offlineSince: string | null;
+  /** ISO timestamp of the reading that aged out, when `unknown === "stale"`. */
+  staleSince: string | null;
   color: string;
+}
+
+export interface SubmeterReading {
+  power: number | null;
+  unknown: SubmeterUnknown | null;
+  /** `lastUpdated` of the reading, whether or not it aged out. */
+  lastUpdated: string | null;
+}
+
+/**
+ * Parse a binding timestamp. The API emits both `2026-05-27T08:00:00Z` and the
+ * SQLite-flavoured `2026-05-27 08:00:00Z`; treat them alike.
+ * Returns null when there is nothing parseable, which callers read as
+ * "no information about age", never as "old".
+ */
+export function parseReadingTime(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const normalized = iso.includes("T") ? iso : iso.replace(" ", "T").replace("Z", "") + "Z";
+  const ms = Date.parse(normalized);
+  return Number.isFinite(ms) ? ms : null;
 }
 
 /**
  * Read the `power` alias from a submeter equipment.
- * Returns null when the equipment is fully offline, when no `power` binding
- * exists, or when the value is non-numeric. Negative values are returned as
- * their absolute value (clamp wired backwards — same convention as spec 091
- * backend integration).
+ *
+ * A reading past its freshness budget is NOT returned as a number (issue
+ * #744). Before this rule, the only thing that could drop a reading was
+ * `status === "offline"`, so an equipment considered online contributed its
+ * last known power at full weight however old it was. Measured on production:
+ * a water heater drawing 560 W was displayed as 0 W because its clamp had last
+ * reported sixteen minutes earlier, and a wood stove was contributing a value
+ * 124 days old. The failure is quiet, since a stale `0 W` reads as "this
+ * appliance is off", which is a perfectly plausible thing for it to be.
+ *
+ * The binding's own `stale` flag cannot stand in for this. The backend applies
+ * the electrical window only to METERING_EQUIPMENT_TYPES, on purpose, so a
+ * `thermostat` or `water_heater` carrying a power channel reports
+ * `stale: false` however old the value is. That exemption is right for
+ * equipment status, where flagging a quiet appliance as degraded would be
+ * wrong; it just leaves the display with no answer to "is this number
+ * current", which is what freshnessBudgetFor supplies.
+ *
+ * Negative values are returned as their absolute value (clamp wired backwards,
+ * same convention as the spec 091 backend integration).
  */
-export function readSubmeterPower(eq: EquipmentWithDetails): number | null {
-  if (eq.status === "offline") return null;
+export function readSubmeterReading(
+  eq: EquipmentWithDetails,
+  now: number = Date.now(),
+): SubmeterReading {
+  if (eq.status === "offline") return { power: null, unknown: "offline", lastUpdated: null };
   const binding = eq.dataBindings.find((b) => b.alias === "power");
-  if (!binding || typeof binding.value !== "number") return null;
-  return Math.abs(binding.value);
+  if (!binding || typeof binding.value !== "number") {
+    return { power: null, unknown: "missing", lastUpdated: null };
+  }
+  const at = parseReadingTime(binding.lastUpdated);
+  // No usable timestamp means no evidence the value is old, which is how the
+  // backend reads it too (a binding with lastUpdated === null is not stale).
+  if (at !== null && now - at > freshnessBudgetFor(eq)) {
+    return { power: null, unknown: "stale", lastUpdated: binding.lastUpdated };
+  }
+  return { power: Math.abs(binding.value), unknown: null, lastUpdated: binding.lastUpdated };
 }
 
 /**
@@ -40,12 +137,14 @@ export function readSubmeterPower(eq: EquipmentWithDetails): number | null {
  *   2. Sort by `id` ascending and assign a palette color by index — this is
  *      the SAME indexing rule the backend uses for the historical By-usage
  *      chart, so a given equipment gets the same color in both views.
- *   3. Drop rows that carry no power measurement at all (null power while the
- *      equipment is *online*): a declared submeter with no `power` binding
- *      contributes nothing and is pure noise in the legend (#560). Offline
- *      rows keep their null power — they are meaningful and stay.
- *   4. Re-sort the rows for display: by power descending, then null-power
- *      (offline) last.
+ *   3. Drop rows that carry no power measurement at all: a declared submeter
+ *      with no `power` binding contributes nothing and is pure noise in the
+ *      legend (#560). Offline rows and rows whose reading aged out both stay:
+ *      "we do not know" is information, and hiding a stale row would put the
+ *      household back where #744 found it, reading a plausible number that
+ *      happens to be wrong.
+ *   4. Re-sort the rows for display: by power descending, then the rows with
+ *      no number (offline, stale) last.
  *
  * `labels` optionally overrides display names by equipment id (spec 139 —
  * `name — zone` for homonym submeters); sorting uses the displayed name.
@@ -53,22 +152,28 @@ export function readSubmeterPower(eq: EquipmentWithDetails): number | null {
 export function buildSubmeterRows(
   equipments: EquipmentWithDetails[],
   labels?: Map<string, string>,
+  now: number = Date.now(),
 ): SubmeterRow[] {
   const byId = [...equipments]
     .filter((eq) => isSubmeterEquipment(eq))
     .sort((a, b) => a.id.localeCompare(b.id));
 
   const rows: SubmeterRow[] = byId
-    .map((eq, idx) => ({
-      id: eq.id,
-      name: labels?.get(eq.id) ?? eq.name,
-      power: readSubmeterPower(eq),
-      status: eq.status,
-      offlineSince: eq.statusReason?.offlineSince ?? null,
-      color: pickSubmeterColor(idx),
-    }))
-    // No measurement and not offline → nothing to show (#560).
-    .filter((row) => row.power !== null || row.status === "offline");
+    .map((eq, idx) => {
+      const reading = readSubmeterReading(eq, now);
+      return {
+        id: eq.id,
+        name: labels?.get(eq.id) ?? eq.name,
+        power: reading.power,
+        unknown: reading.unknown,
+        status: eq.status,
+        offlineSince: eq.statusReason?.offlineSince ?? null,
+        staleSince: reading.unknown === "stale" ? reading.lastUpdated : null,
+        color: pickSubmeterColor(idx),
+      };
+    })
+    // Never bound, so nothing to say about it (#560).
+    .filter((row) => row.unknown !== "missing");
 
   rows.sort((a, b) => {
     const aNull = a.power === null;
@@ -80,6 +185,40 @@ export function buildSubmeterRows(
   });
 
   return rows;
+}
+
+/**
+ * The numeric value `formatPower` actually puts on screen: watts rounded to
+ * the nearest 5 below a kilowatt, and to one decimal of a kilowatt above.
+ *
+ * Shares are computed from this rather than from the raw reading so that the
+ * figures on screen agree with each other. Dividing raw values while
+ * displaying rounded ones is how a PAC at 10 W of a 32.4 W house came to read
+ * "31 % of 35 W" (#744): both numbers were defensible and they contradicted
+ * each other, which is worse than either being slightly off.
+ */
+export function displayedPower(value: number): number {
+  if (value < 1000) return Math.round(value / 5) * 5;
+  // NOT Math.round(value / 100) * 100: toFixed(1) rounds 1.15 down, because
+  // the binary double nearest 1.15 is below the half. The two disagreed on
+  // every X50 W step, so a 575 W part in a 1150 W house printed 48 % under a
+  // label reading 1.1 kW.
+  return Number((value / 1000).toFixed(1)) * 1000;
+}
+
+/**
+ * A part's share of the whole, in whole percent, as the reader sees both.
+ *
+ * Clamped to 100. A breakdown cannot have a part larger than the whole, so
+ * when the arithmetic says otherwise the honest output is the boundary, not
+ * "776 %" (#744). The clamp is a guard, not the fix: it is the freshness rule
+ * in `readSubmeterReading` that stops the two sides being measured at
+ * different moments in the first place.
+ */
+export function sharePercent(part: number, whole: number): number | null {
+  const w = displayedPower(whole);
+  if (w <= 0) return null;
+  return Math.min(100, Math.round((displayedPower(part) / w) * 100));
 }
 
 /**

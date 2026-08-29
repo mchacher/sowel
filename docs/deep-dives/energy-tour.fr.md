@@ -16,6 +16,8 @@ En dessous, la décomposition de la consommation dit où partent les watts, en d
 
 ![La décomposition de la consommation en direct, par charge](../screenshots/energy-tour-breakdown-fr.png)
 
+Une charge dont la prise se tait depuis trop longtemps affiche **mesure ancienne**, sans chiffre ni pourcentage, plutôt que la dernière valeur reçue. « Trop longtemps », c'est deux minutes pour un compteur déclaré, dont le moteur attend déjà des remontées continues, et dix minutes pour le reste, car plusieurs intégrations interrogent leur source toutes les cinq minutes et un appareil en bon état ne doit pas clignoter à chaque cycle. Ce détail compte plus qu'il n'en a l'air : un `0 W` périmé ressemble exactement à un appareil éteint, et rien à l'écran ne dirait que le chiffre date d'un quart d'heure. Il compte surtout pendant le surplus, car le total de la maison est alors une petite différence entre deux grands nombres : une mesure oubliée peut l'écraser (issue #744).
+
 ### Dans le temps : la page Consommation
 
 Jour, semaine, mois ou année, avec une barre par heure ou par jour. Deux choses font de cette page plus qu'un graphique :
