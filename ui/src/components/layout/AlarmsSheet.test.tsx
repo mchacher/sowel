@@ -64,14 +64,26 @@ describe("AlarmsSheet wording (#720)", () => {
     expect(screen.queryByText(/Low battery/)).toBeNull();
   });
 
-  it("shows a failing integration once, translated, not twice", async () => {
+  it("shows a failing integration once when its alarm and its status coexist", async () => {
     await i18n.changeLanguage("fr");
-    // The health snapshot sets the status; it used to also synthesise a
-    // `poll-fail:` alarm keyed on the display label, which the dedup by source
-    // missed, so the sheet listed the same failure twice.
-    seed([], { panasonic_cc: "error" });
+    // The plugin's own `poll-fail:` alarm and the integration status describe
+    // the same failure. They used to dedup under two different sources, the
+    // display label against the plugin id, so the sheet listed it twice; the
+    // store normalises the alarm's source to the plugin id now.
+    seed(
+      [
+        {
+          alarmId: "poll-fail:panasonic_cc",
+          level: "error",
+          source: "panasonic_cc",
+          messageKey: "alarms.integration.error",
+        },
+      ],
+      { panasonic_cc: "error" },
+    );
     render(<AlarmsSheet open onClose={() => {}} />);
 
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getAllByText("Panasonic CC")).toHaveLength(1);
     expect(screen.getAllByText(i18n.t("alarms.integration.error"))).toHaveLength(1);
     expect(screen.queryByText("Communication en échec")).toBeNull();

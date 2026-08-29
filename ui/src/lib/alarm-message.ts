@@ -79,8 +79,11 @@ export function alarmText(
 export function wordingSignature(wording: AlarmWording): string {
   if (!wording.messageKey) return wording.message ?? "";
   const params = wording.messageParams ?? {};
-  const serialised = Object.keys(params)
-    .sort()
+  const keys = Object.keys(params).sort();
+  // A key with no parameters signs on the key alone, so an acknowledgement made
+  // before the wording moved from text to key survives the upgrade.
+  if (keys.length === 0) return wording.messageKey;
+  const serialised = keys
     .map((key) => {
       const value = params[key];
       return `${key}=${isDayParam(value) ? value.day : String(value)}`;

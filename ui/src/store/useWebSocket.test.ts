@@ -349,10 +349,50 @@ describe("connect", () => {
     const ws = connect();
     ws.simulateMessage({ type: "system.alarm.resolved", alarmId: "battery-low:dd-9" });
 
+    // Wait for the refetch to have been APPLIED, not merely called: waiting on
+    // the call alone lets the assertion run before the re-wording microtask,
+    // and the test then passes with or without the guard.
     await vi.waitFor(() => {
-      expect(api.getBatteryAlerts).toHaveBeenCalled();
+      expect(useWebSocket.getState().batteryAlerts).toHaveLength(1);
     });
     expect(useWebSocket.getState().alarms.get("battery-low:dd-9")).toBeUndefined();
+  });
+
+  it("re-words a live poll-fail raise and keys it on the plugin id, not the label", async () => {
+    const ws = connect();
+    // Integration plugins raise this one themselves, in their own language and
+    // headlined by a display label. Both are replaced here: the label would
+    // dedup under a different source than the integration status for the same
+    // failure, and the sentence would reach an English household in French.
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "poll-fail:panasonic_cc",
+      level: "error",
+      source: "Panasonic CC",
+      message: "Poll en échec : ETIMEDOUT",
+    });
+
+    const alarm = useWebSocket.getState().alarms.get("poll-fail:panasonic_cc");
+    expect(alarm?.source).toBe("panasonic_cc");
+    expect(alarm?.messageKey).toBe("alarms.integration.error");
+    expect(alarm?.message).toBeUndefined();
+    expect(alarm?.level).toBe("error");
+  });
+
+  it("keeps the engine text for an alarm it has no wording for", () => {
+    const ws = connect();
+    // Order dispatch failures embed a raw driver error: nothing to compose from.
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "order-fail:zigbee2mqtt",
+      level: "error",
+      source: "zigbee2mqtt",
+      message: "Order dispatch failed: Volet salon open",
+    });
+
+    const alarm = useWebSocket.getState().alarms.get("order-fail:zigbee2mqtt");
+    expect(alarm?.message).toBe("Order dispatch failed: Volet salon open");
+    expect(alarm?.messageKey).toBeUndefined();
   });
 });
 

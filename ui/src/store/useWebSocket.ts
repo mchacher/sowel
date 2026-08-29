@@ -88,8 +88,7 @@ export function batteryAlarm(alert: BatteryAlert): SystemAlarm {
   const equipmentNames = alert.equipmentNames ?? [];
   const bound = equipmentNames.length > 0;
   const num = Number(alert.value);
-  const isPercentage =
-    alert.value.trim() !== "" && Number.isFinite(num) && num >= 0 && num <= 100;
+  const isPercentage = alert.value.trim() !== "" && Number.isFinite(num) && num >= 0 && num <= 100;
   return {
     alarmId: `${BATTERY_ALARM_PREFIX}${alert.deviceDataId}`,
     level: "warning",
@@ -102,6 +101,47 @@ export function batteryAlarm(alert: BatteryAlert): SystemAlarm {
         ? "alarms.battery.lowOnDevice"
         : "alarms.battery.low",
     messageParams: { value: alert.value, device: alert.deviceName },
+  };
+}
+
+const POLL_FAIL_ALARM_PREFIX = "poll-fail:";
+
+/**
+ * Banner alarm for a raise event.
+ *
+ * Integration plugins raise `poll-fail:<pluginId>` themselves, and they do it
+ * with their own wording, in their own language ("Poll en échec : ETIMEDOUT"),
+ * headlined by a display label rather than the plugin id. Two things follow,
+ * both fixed here rather than in four plugin repos (#720):
+ *
+ *  - the banner spoke French to an English household. The failure is already
+ *    something the UI knows how to word, so the plugin's sentence is replaced
+ *    by the same key the integration status uses. The driver's error text is
+ *    dropped, as it is on the status path; it stays in the logs and the feed.
+ *  - headlining with the label made the alarm and the `integrationStatuses`
+ *    entry for the same failure dedup under two different sources, so it
+ *    rendered twice. Normalising the source to the plugin id, which the alarm
+ *    id carries, makes the two collide as intended.
+ */
+function alarmFromEvent(event: {
+  alarmId: string;
+  level: "warning" | "error";
+  source: string;
+  message: string;
+}): SystemAlarm {
+  if (event.alarmId.startsWith(POLL_FAIL_ALARM_PREFIX)) {
+    return {
+      alarmId: event.alarmId,
+      level: event.level,
+      source: event.alarmId.slice(POLL_FAIL_ALARM_PREFIX.length),
+      messageKey: "alarms.integration.error",
+    };
+  }
+  return {
+    alarmId: event.alarmId,
+    level: event.level,
+    source: event.source,
+    message: event.message,
   };
 }
 
@@ -326,12 +366,7 @@ function handleEvent(event: EngineEvent): void {
     case "system.alarm.raised":
       useWebSocket.setState((s) => {
         const alarms = new Map(s.alarms);
-        alarms.set(event.alarmId, {
-          alarmId: event.alarmId,
-          level: event.level,
-          source: event.source,
-          message: event.message,
-        });
+        alarms.set(event.alarmId, alarmFromEvent(event));
         return { alarms };
       });
       refreshBatteryAlertsIfNeeded(event.alarmId);
@@ -443,11 +478,13 @@ export const useWebSocket = create<WebSocketState>((set) => ({
           const statuses: Record<string, string> = {};
           const alarms = new Map<string, SystemAlarm>();
 
-          // An integration in error needs no alarm of its own: the status alone
-          // is turned into a translated issue by `useAggregatedIssues`. Seeding
-          // one here used to add a second, French, row for the same failure,
-          // keyed on the display label where the status path keys on the plugin
-          // id, so the dedup by source never caught it (#720).
+          // No alarm is restored for an integration in error: the status alone
+          // is turned into a translated issue by `useAggregatedIssues`, and a
+          // plugin that is still failing re-raises its own `poll-fail:` alarm
+          // on its next cycle. Rebuilding one here restated the same failure
+          // in hardcoded French, under the display label where the status path
+          // keys on the plugin id, so the dedup by source never caught it and
+          // the sheet listed it twice (#720).
           for (const [id, info] of Object.entries(health.integrations ?? {})) {
             statuses[id] = info.status;
           }
