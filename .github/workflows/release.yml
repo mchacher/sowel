@@ -74,6 +74,8 @@ jobs:
             exit 1
           fi
           echo "Release notes present for v$VERSION ✓"
+      - name: Specs index is complete (spec 167)
+        run: bash scripts/check-specs-index.sh
 
   # ── CI checks ─────────────────────────────────────────────
   ci:
