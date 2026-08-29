@@ -180,8 +180,7 @@ Go to **Settings > Administration > Energy**, enable **Surplus arbiter**, and or
 
 The **Energy > Live** page gains a surplus-arbitration panel with three parts:
 
-- an **allocation bar** showing where the production is going right now (household, each granted load, free surplus), and a line naming any load that is waiting and why;
-- a **load table**, one row per flexible load, with what it needs to start, what it actually draws, and the **gap** still missing when it is waiting. The need is filled on every row, not just the waiting ones: what a load takes to start is true whether it runs, waits or sits idle;
+- a **roster**, one row per flexible load: its state, the **gap** still missing before it can start, what it currently draws, how much grid import it tolerates, and what it **needs**. The need is filled on every row, not only on waiting ones, because what a load takes to start is true whether it runs, waits or sits idle;
 - a **day timeline** with one lane per flexible load — green where it held the surplus, a red marker (with the reason on hover) where it was stepped back;
 - a **decision journal** in plain language, so nothing the arbiter does is a mystery.
 
