@@ -318,11 +318,7 @@ interface IntegrationPlugin {
   getSettingsSchema(): IntegrationSettingDef[];
   start(options?: { pollOffset?: number }): Promise<void>;
   stop(): Promise<void>;
-  executeOrder(
-    device: Device,
-    dispatchConfig: Record<string, unknown>,
-    value: unknown,
-  ): Promise<void>;
+  executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
 }
@@ -440,7 +436,7 @@ interface DiscoveredDevice {
   orders: {
     key: string;
     type: string;
-    dispatchConfig: Record<string, unknown>;
+    category?: OrderCategory;
     min?: number;
     max?: number;
     enumValues?: string[];
@@ -495,11 +491,7 @@ interface IntegrationPlugin {
   getSettingsSchema(): IntegrationSettingDef[];
   start(options?: { pollOffset?: number }): Promise<void>;
   stop(): Promise<void>;
-  executeOrder(
-    device: Device,
-    dispatchConfig: Record<string, unknown>,
-    value: unknown,
-  ): Promise<void>;
+  executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
 }
@@ -600,11 +592,7 @@ class MyDevicePlugin implements IntegrationPlugin {
     this.logger.info("Plugin stopped");
   }
 
-  async executeOrder(
-    _device: Device,
-    _dispatchConfig: Record<string, unknown>,
-    _value: unknown,
-  ): Promise<void> {
+  async executeOrder(_device: Device, _orderKey: string, _value: unknown): Promise<void> {
     throw new Error("My Device plugin does not support orders");
   }
 
@@ -766,7 +754,7 @@ interface DiscoveredDevice {
     // Commands this device accepts
     key: string; // Order key (e.g. "set_monitoring")
     type: string; // Value type: "boolean" | "number" | "enum" | "text"
-    dispatchConfig: Record<string, unknown>; // Integration-specific config for order dispatch
+    category?: string; // Catégorie de l'ordre — c'est par elle que les liaisons se résolvent (spec 110)
     min?: number; // For numeric orders: minimum value
     max?: number; // For numeric orders: maximum value
     enumValues?: string[]; // For enum orders: allowed values
@@ -857,23 +845,17 @@ Quand un utilisateur ou un scénario envoie une commande à un device géré par
 
 ```typescript
 executeOrder(
-  device: Device,                             // The target device object
-  dispatchConfig: Record<string, unknown>,    // Integration-specific config from the order definition
-  value: unknown,                             // The value to set
+  device: Device,   // L'appareil visé
+  orderKey: string, // La `key` de l'ordre, telle que déclarée à la découverte
+  value: unknown,   // La valeur à appliquer
 ): Promise<void>;
 ```
 
 ### Exemple
 
 ```typescript
-async executeOrder(
-  device: Device,
-  dispatchConfig: Record<string, unknown>,
-  value: unknown,
-): Promise<void> {
-  const action = dispatchConfig.action as string;
-
-  switch (action) {
+async executeOrder(device: Device, orderKey: string, value: unknown): Promise<void> {
+  switch (orderKey) {
     case "set_monitoring":
       await this.api.setMonitoring(device.sourceDeviceId, value as boolean);
       break;
@@ -888,11 +870,11 @@ async executeOrder(
 1. L'utilisateur appuie sur un bouton dans l'UI ou une action de scénario se déclenche
 2. L'équipement dispatche l'ordre vers le device lié
 3. Sowel route l'ordre vers l'intégration propriétaire du device
-4. La méthode `executeOrder()` du plugin est appelée avec l'objet Device complet, le `dispatchConfig` issu de la définition d'ordre, et la valeur
+4. La méthode `executeOrder()` du plugin est appelée avec l'objet Device complet, la `key` de l'ordre déclarée à la découverte, et la valeur
 5. Le plugin envoie la commande au device physique
 6. Au prochain poll (ou refresh immédiat), le nouvel état est reflété
 
-**Important — plugins basés sur MQTT** : ne figez pas le réglage `base_topic` dans `dispatchConfig.topic` pendant la découverte. À la place, stockez seulement le suffixe relatif au device (par ex. `topicSuffix: "garage/set"`) et résolvez le topic complet au runtime dans `executeOrder()` en utilisant le réglage `base_topic` courant. Cela garantit que les ordres restent corrects si l'utilisateur change le base topic. Utilisez `dispatchConfig.topic` comme fallback pour la rétrocompatibilité avec les entrées DB existantes.
+**Important — plugins basés sur MQTT** : résolvez le topic complet au runtime dans `executeOrder()`, à partir de la clé d'ordre et du réglage `base_topic` courant. Rien n'est persisté par ordre, donc un changement de base topic ne laisse pas de topics périmés derrière lui.
 
 Si votre plugin ne supporte pas les ordres (par ex. un plugin météo en lecture seule), levez une erreur :
 
@@ -1002,7 +984,7 @@ tar -czf sowel-plugin-my-device-0.1.0.tar.gz \
   dist/
 ```
 
-Si votre plugin a des dépendances de production (listées dans `dependencies`, pas `devDependencies`), incluez aussi `package.json` pour que Sowel puisse exécuter `npm install --production` après extraction. S'il n'y a pas de dépendances runtime, `package.json` est quand même recommandé mais `node_modules/` ne doit pas être inclus.
+Si votre plugin a des dépendances de production, **embarquez-les dans le bundle** : Sowel n'exécute pas `npm install` après extraction, donc exclure `node_modules/` sans bundler produit un artefact qui s'installe proprement puis échoue à l'import dynamique.
 
 ### Créer une release GitHub
 
@@ -1016,13 +998,11 @@ gh release create v0.1.0 \
 **Flux d'installation :** quand un utilisateur clique sur "Installer" dans le store de plugins Sowel, Sowel :
 
 1. Récupère la dernière release depuis l'API GitHub
-2. Préfère un asset `.tar.gz` uploadé (qui inclut `dist/`), retombe sur le tarball source GitHub
-3. Extrait dans `plugins/<id>/`
-4. Exécute `npm install --production` si `package.json` existe
-5. Si `dist/` est manquant mais que `tsconfig.json` existe, tente `npx tsc` pour build depuis les sources
-6. Enregistre le plugin dans la base et le charge
+2. Exige un asset de release nommé `sowel-*.tar.gz`. Il n'y a **aucun repli** : sans lui l'installation échoue
+3. Vérifie son SHA256 contre la registry, puis extrait dans `plugins/<id>/`
+4. Enregistre le plugin en base et le charge
 
-Bonne pratique : **uploadez toujours un tarball pré-compilé** comme asset de release. Cela évite à l'instance Sowel de l'utilisateur d'avoir besoin de TypeScript installé.
+Sowel n'exécute **aucune étape de build** : ni `npm install`, ni `tsc`. Le tarball est ce qui tourne, donc `dist/` doit être construit et les dépendances runtime embarquées.
 
 ### Mettre à jour un plugin
 
@@ -1161,8 +1141,8 @@ Il y a **deux endroits** où la version compte, et ils ont des objectifs différ
 
 **Les ordres ne sont pas reçus :**
 
-- Vérifiez que votre plugin implémente `executeOrder()` avec la bonne signature : `(device: Device, dispatchConfig: Record<string, unknown>, value: unknown)`
-- Vérifiez que le tableau `orders` du device inclut la définition d'ordre avec un `dispatchConfig`
+- Vérifiez que votre plugin implémente `executeOrder()` avec la bonne signature : `(device: Device, orderKey: string, value: unknown)`
+- Vérifiez que le tableau `orders` du device déclare bien la clé d'ordre
 - Cherchez les événements de dispatch d'ordre dans les logs
 
 ---

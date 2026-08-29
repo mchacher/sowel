@@ -32,7 +32,7 @@ Plugins live in the `plugins/` directory at the Sowel root. Each plugin has its 
 **Lifecycle:**
 
 1. Sowel reads the `plugins` database table on startup
-2. For each enabled plugin, Sowel dynamically imports `plugins/<id>/dist/index.js` (ESM)
+2. Sowel copies `plugins/<id>/dist/` to `plugins/<id>/.hot/<timestamp>/` and imports `index.js` from there (ESM)
 3. The exported `createPlugin` factory receives `PluginDeps` and returns an `IntegrationPlugin` instance
 4. Sowel registers the plugin with the `IntegrationRegistry`
 5. If the plugin is configured (`isConfigured()` returns true), Sowel calls `plugin.start()`
@@ -56,7 +56,7 @@ sowel-plugin-my-device/
 
 **Key rules:**
 
-- The entry point is always `dist/index.js` -- this is hardcoded in the plugin loader
+- The entry point is always `dist/index.js`, which the loader copies to a fresh `.hot/<timestamp>/` on **every** load, keeping the last two. A plugin that resolves sibling files from `import.meta.url` therefore resolves them inside a directory that will be pruned: read your own files from `deps.pluginDir`, which points at `plugins/<id>/`
 - Use **ESM format** (`export { createPlugin }`) -- Sowel uses dynamic `import()` to load plugins
 - Set `"type": "module"` in `package.json`
 - Set `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` in `tsconfig.json`
@@ -102,11 +102,14 @@ The `manifest.json` file describes the plugin to Sowel. It lives at the root of 
 | `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                        |
 | `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                           |
 | `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                      |
+| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.  |
 | `author`       | string                  | No       | Author name or organization.                                                                                                |
-| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`).                                                                |
+| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                        |
+| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.     |
+| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.               |
 | `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                      |
 
-**Fields that do NOT exist in the manifest:** `entry`, `integrationId`, `license`, `repository`. Do not include these.
+**Fields that do NOT exist in the manifest:** `entry`, `integrationId`, `license`, `repository`. Do not include these. Note `repo` above is required and is a different field from `repository`.
 
 ---
 
@@ -183,11 +186,11 @@ deps.settingsManager.set("integration.weather-forecast.last_poll", Date.now().to
 
 Manage devices discovered by your plugin. Three main methods are used:
 
-| Method                | Signature                                                                                   | Description                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`             | Create or update a device from discovery data                                                                       |
-| `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>) => void` | Push new data values for an existing device                                                                         |
-| `updateDeviceStatus`  | `(integrationId: string, sourceDeviceId: string, status: "online" \| "offline") => void`    | Reflect device availability (mandatory, see [Device availability contract](#device-availability-contract-spec-116)) |
+| Method                | Signature                                                                                | Description                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`          | Create or update a device from discovery data                                                                       |
+| `updateDeviceData`    | `(integrationId, sourceDeviceId, payload, sourceTimestamp?) => void`                     | Push new data values. Pass `sourceTimestamp` (ms) when the reading is older than now.                               |
+| `updateDeviceStatus`  | `(integrationId: string, sourceDeviceId: string, status: "online" \| "offline") => void` | Reflect device availability (mandatory, see [Device availability contract](#device-availability-contract-spec-116)) |
 
 See [Device Discovery](#device-discovery) and [Device Data Updates](#device-data-updates) for detailed usage.
 
@@ -320,6 +323,21 @@ A throw in `start()`, `stop()`, `executeOrder()` or `handleOAuthCallback()` is s
 
 You are free to throw inside any lifecycle method without worrying about taking down Sowel.
 
+### Where the Proxy throws rather than degrades
+
+Gates that fail loudly, because a silent `undefined` there would hide a real mistake:
+
+| Call                                                                              | Throws when                                                                                        |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `settingsManager.setMany()`                                                       | **any** key in the batch is outside `integration.<your-id>.*` — the whole batch, not just that key |
+| `settingsManager.getMqttConfig()` / `getZ2mConfig()`                              | your plugin id is not `zigbee2mqtt`. These are not general helpers                                 |
+| `deviceManager.markRemoved()` / `removeStaleDevices()` / `migrateIntegrationId()` | the device is not yours                                                                            |
+
+Two more things worth knowing:
+
+- A call taking over a second logs `Slow plugin call` with your id, every time. A polling loop that blocks will fill the log.
+- The object Sowel wraps is a fresh literal of the interface methods. Anything else your class exposes, and its identity, does not survive the wrapper. Omitting one of the six mandatory methods fails the load with `Cannot read properties of undefined (reading 'bind')`.
+
 ### What the Proxy does not protect against
 
 For full transparency, the soft isolation does not block:
@@ -351,11 +369,7 @@ interface IntegrationPlugin {
   getSettingsSchema(): IntegrationSettingDef[];
   start(options?: { pollOffset?: number }): Promise<void>;
   stop(): Promise<void>;
-  executeOrder(
-    device: Device,
-    dispatchConfig: Record<string, unknown>,
-    value: unknown,
-  ): Promise<void>;
+  executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
 }
@@ -365,16 +379,28 @@ type IntegrationStatus = "connected" | "disconnected" | "not_configured" | "erro
 
 ### Method Reference
 
-| Method                | Required | Description                                                                                      |
-| --------------------- | -------- | ------------------------------------------------------------------------------------------------ |
-| `getStatus()`         | Yes      | Return the current connection status. Return `"not_configured"` if `isConfigured()` is false.    |
-| `isConfigured()`      | Yes      | Return true if all required settings are present. Sowel only calls `start()` when this is true.  |
-| `getSettingsSchema()` | Yes      | Return the settings form definition (same as manifest `settings`).                               |
-| `start(options?)`     | Yes      | Start the integration. `pollOffset` is provided by Sowel to stagger multiple polling plugins.    |
-| `stop()`              | Yes      | Stop gracefully: cancel timers, close connections.                                               |
-| `executeOrder()`      | Yes      | Execute a command on a device. Throw an error if the plugin does not support orders.             |
-| `refresh()`           | No       | Force an immediate data refresh (e.g. re-poll the cloud API). Called from the UI refresh button. |
-| `getPollingInfo()`    | No       | Return last poll timestamp and interval. Shown in the integrations UI for polling-based plugins. |
+| Method                  | Required | Description                                                                                      |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `getStatus()`           | Yes      | Return the current connection status. Return `"not_configured"` if `isConfigured()` is false.    |
+| `isConfigured()`        | Yes      | Return true if all required settings are present. Sowel only calls `start()` when this is true.  |
+| `getSettingsSchema()`   | Yes      | Return the settings form definition (same as manifest `settings`).                               |
+| `start(options?)`       | Yes      | Start the integration. `pollOffset` is provided by Sowel to stagger multiple polling plugins.    |
+| `stop()`                | Yes      | Stop gracefully: cancel timers, close connections.                                               |
+| `executeOrder()`        | Yes      | Execute a command on a device. Throw an error if the plugin does not support orders.             |
+| `refresh()`             | No       | Force an immediate data refresh (e.g. re-poll the cloud API). Called from the UI refresh button. |
+| `getPollingInfo()`      | No       | Return last poll timestamp and interval. **Implement it if you poll** — see the warning below.   |
+| `getOAuthUrl()`         | No       | Return the authorization URL. Implementing it is what makes the OAuth button appear.             |
+| `handleOAuthCallback()` | No       | Exchange the callback code for tokens.                                                           |
+
+!!! warning "Polling plugins: implement `getPollingInfo()`"
+Since spec 141, Sowel watches every order it dispatches and expects the equipment to report
+the ordered value within 30 s. For a polling plugin the value cannot move before the next
+poll, so without `getPollingInfo()` **every order you execute raises a system alarm and a
+push notification** about 30 s later. With it, the window stretches to twice your poll
+interval.
+
+    The same mechanism can call `executeOrder()` again on its own, once, when a device comes
+    back online within the hour. **Orders must be idempotent.**
 
 ---
 
@@ -473,7 +499,7 @@ interface DiscoveredDevice {
   orders: {
     key: string;
     type: string;
-    dispatchConfig: Record<string, unknown>;
+    category?: OrderCategory;
     min?: number;
     max?: number;
     enumValues?: string[];
@@ -489,6 +515,7 @@ interface DeviceManager {
     integrationId: string,
     sourceDeviceId: string,
     payload: Record<string, unknown>,
+    sourceTimestamp?: number,
   ): void;
 }
 
@@ -530,11 +557,7 @@ interface IntegrationPlugin {
   getSettingsSchema(): IntegrationSettingDef[];
   start(options?: { pollOffset?: number }): Promise<void>;
   stop(): Promise<void>;
-  executeOrder(
-    device: Device,
-    dispatchConfig: Record<string, unknown>,
-    value: unknown,
-  ): Promise<void>;
+  executeOrder(device: Device, orderKey: string, value: unknown): Promise<void>;
   refresh?(): Promise<void>;
   getPollingInfo?(): { lastPollAt: string; intervalMs: number } | null;
 }
@@ -635,11 +658,7 @@ class MyDevicePlugin implements IntegrationPlugin {
     this.logger.info("Plugin stopped");
   }
 
-  async executeOrder(
-    _device: Device,
-    _dispatchConfig: Record<string, unknown>,
-    _value: unknown,
-  ): Promise<void> {
+  async executeOrder(_device: Device, _orderKey: string, _value: unknown): Promise<void> {
     throw new Error("My Device plugin does not support orders");
   }
 
@@ -776,7 +795,9 @@ When your plugin detects devices (from an API, MQTT, or local scan), register th
 ```typescript
 deviceManager.upsertFromDiscovery(
   integrationId: string,     // Your plugin ID (e.g. "weather-forecast")
-  source: string,            // Device source identifier (typically your plugin ID)
+  source: DeviceSource,      // Closed union, not free text: zigbee2mqtt | lora2mqtt | tasmota |
+                             // esphome | shelly | custom_mqtt | panasonic_cc | mcz_maestro | netatmo_hc.
+                             // Use "custom_mqtt" rather than claiming a transport you do not speak.
   discovered: DiscoveredDevice,
 ): void;
 ```
@@ -801,7 +822,7 @@ interface DiscoveredDevice {
     // Commands this device accepts
     key: string; // Order key (e.g. "set_monitoring")
     type: string; // Value type: "boolean" | "number" | "enum" | "text"
-    dispatchConfig: Record<string, unknown>; // Integration-specific config for order dispatch
+    category?: string; // Order category — how bindings resolve this order (spec 110)
     min?: number; // For numeric orders: minimum value
     max?: number; // For numeric orders: maximum value
     enumValues?: string[]; // For enum orders: allowed values
@@ -813,6 +834,8 @@ interface DiscoveredDevice {
 ```
 
 **Boolean orders and wire values.** If the device does not accept JSON booleans on the wire (Zigbee2MQTT `binary` exposes expect `"ON"`/`"OFF"`, some locks expect `"LOCK"`/`"UNLOCK"`), declare `valueOn`/`valueOff` at discovery time. The core order dispatcher then maps boolean-ish values (`true`/`false`, `"on"`/`"off"`, `"true"`/`"false"`, `1`/`0`, and the wire values themselves case-insensitively) onto the declared wire representation before calling your `executeOrder()`, which can stay a pass-through. Orders without `valueOn`/`valueOff` receive the caller's value untouched.
+
+**Inbound values are normalized once, at ingestion** (spec 150). `updateDeviceData` coerces what you push to the type you declared for that key at discovery, so a `boolean` data point declared as such stores `true` whether you pushed `true`, `"ON"` or `1`. A value it cannot coerce is stored raw with a warn-once. Polarity-ambiguous vocabularies (`OPEN`/`CLOSED`) are deliberately never guessed. Declare the type honestly at discovery and push whatever your transport gives you.
 
 ### Example (from weather-forecast)
 
@@ -840,7 +863,8 @@ this.deviceManager.upsertFromDiscovery(PLUGIN_ID, SOURCE_DEVICE_ID, WEATHER_DISC
 
 - `friendlyName` becomes the `source_device_id` in the database. It must match the `sourceDeviceId` argument used in `updateDeviceData()`.
 - Call `upsertFromDiscovery()` on every poll cycle -- it is idempotent (creates on first call, updates metadata on subsequent calls).
-- Include all data points and orders in the `DiscoveredDevice` definition. Stale data/order entries not in the current discovery are cleaned up automatically.
+- Include all data points and orders in the `DiscoveredDevice` definition. Entries missing from a later discovery are dropped **unless an equipment is bound to them**, which are kept so a transient discovery gap cannot silently unbind a user's equipment.
+- A data point added in a later version reaches `device_data` but **not** the equipments already bound to that device: auto-binding runs only when an equipment is created. Owners pick the new values up from the equipment's Bindings section. Say so in your release notes. Renaming a key is worse than adding one, since the old binding keeps pointing at a row nothing updates any more: add alongside and deprecate.
 
 ---
 
@@ -896,28 +920,22 @@ When a user or scenario sends a command to a device managed by your plugin, Sowe
 
 ```typescript
 executeOrder(
-  device: Device,                             // The target device object
-  dispatchConfig: Record<string, unknown>,    // Integration-specific config from the order definition
-  value: unknown,                             // The value to set
+  device: Device,   // The target device object
+  orderKey: string, // The `key` of the order, as declared at discovery
+  value: unknown,   // The value to set
 ): Promise<void>;
 ```
 
 ### Example
 
 ```typescript
-async executeOrder(
-  device: Device,
-  dispatchConfig: Record<string, unknown>,
-  value: unknown,
-): Promise<void> {
-  const action = dispatchConfig.action as string;
-
-  switch (action) {
+async executeOrder(device: Device, orderKey: string, value: unknown): Promise<void> {
+  switch (orderKey) {
     case "set_monitoring":
       await this.api.setMonitoring(device.sourceDeviceId, value as boolean);
       break;
     default:
-      this.logger.warn({ action }, "Unknown order action");
+      this.logger.warn({ orderKey }, "Unknown order key");
   }
 }
 ```
@@ -927,11 +945,11 @@ async executeOrder(
 1. User taps a button in the UI or a scenario action fires
 2. Equipment dispatches order to the bound device
 3. Sowel routes the order to the integration that owns the device
-4. Plugin's `executeOrder()` is called with the full Device object, the `dispatchConfig` from the order definition, and the value
+4. Plugin's `executeOrder()` is called with the full Device object, the order `key` declared at discovery, and the value
 5. Plugin sends the command to the physical device
 6. On next poll (or immediate refresh), the new state is reflected
 
-**Important — MQTT-based plugins**: Do not bake the `base_topic` setting into `dispatchConfig.topic` during discovery. Instead, store only the device-relative suffix (e.g. `topicSuffix: "garage/set"`) and resolve the full topic at runtime in `executeOrder()` using the current `base_topic` setting. This ensures orders remain correct if the user changes the base topic. Use `dispatchConfig.topic` as a fallback for backward compatibility with existing DB entries.
+**Important — MQTT-based plugins**: resolve the full topic at runtime in `executeOrder()`, from the order key and the current `base_topic` setting. Nothing per-order is persisted, so a user changing the base topic does not leave stale topics behind.
 
 If your plugin does not support orders (e.g. a read-only weather plugin), throw an error:
 
@@ -1055,13 +1073,16 @@ gh release create v0.1.0 \
 **Installation flow:** When a user clicks "Install" in the Sowel plugin store, Sowel:
 
 1. Fetches the latest release from the GitHub API
-2. Prefers an uploaded `.tar.gz` asset (which includes `dist/`); falls back to the GitHub source tarball
-3. Extracts to `plugins/<id>/`
-4. Runs `npm install --production` if `package.json` exists
-5. If `dist/` is missing but `tsconfig.json` exists, attempts `npx tsc` to build from source
-6. Registers the plugin in the database and loads it
+2. Requires a release asset named `sowel-*.tar.gz`. There is **no fallback**: without one the install fails with `Release <tag> has no pre-built tarball asset`
+3. Verifies its SHA256 against the registry, then extracts to `plugins/<id>/`
+4. Registers the plugin in the database and loads it
 
-Best practice: **always upload a pre-built tarball** as a release asset. This avoids the need for the user's Sowel instance to have TypeScript installed.
+Sowel runs **no build step**: no `npm install`, no `tsc`. The tarball is what runs.
+
+Two consequences for what you ship:
+
+- `dist/` must be built and included.
+- Runtime dependencies must be bundled. Excluding `node_modules/` from the tarball without bundling produces an artifact that installs cleanly and then fails at dynamic import.
 
 ### Updating a Plugin
 
@@ -1072,9 +1093,8 @@ When a newer version is available in `registry.json` compared to the installed v
 1. Stops the running plugin
 2. Downloads the latest release from GitHub (same logic as install)
 3. Replaces the plugin files in `plugins/<id>/`
-4. Runs `npm install` and builds if needed
-5. Updates the version and manifest in the database
-6. Restarts the plugin if it was enabled
+4. Updates the version and manifest in the database
+5. Restarts the plugin if it was enabled
 
 **What is preserved:** all plugin settings, discovered devices, equipment bindings, and historization configuration. The update only replaces the plugin code — it does not touch the database.
 
@@ -1145,6 +1165,8 @@ chore(registry): bump my-device to 0.2.0
 The Sowel code hard-codes a small `OFFICIAL_OWNERS` whitelist (currently `["mchacher"]`). Plugins from these owners install with no UI friction. **Any other owner** is treated as a community plugin: the UI shows a "Community" badge in the store and opens an explicit confirmation modal before install, warning the user that Sowel verifies the SHA256 but does not vouch for the code.
 
 To become an official owner today, ping the Sowel maintainer — the whitelist is intentionally short and grows by review.
+
+Two things the modal wording hides. The install path **throws** `CommunityPluginConfirmationRequiredError` until the confirmation is passed through, which every non-official author meets on their first install. And three separate refusals sit in front of it, each with its own error: a registry entry with no `sha256` at all fails before anything is downloaded (`RegistryEntryInvalidError`), a tarball whose hash does not match fails after (`ChecksumMismatchError`), and a tarball containing a symlink that escapes the extraction directory is refused outright (`SymlinkInTarballError`).
 
 ### Personal sources (spec 136)
 
@@ -1244,8 +1266,8 @@ There are **two places** where the version matters, and they serve different pur
 
 **Orders not received:**
 
-- Verify your plugin implements `executeOrder()` with the correct signature: `(device: Device, dispatchConfig: Record<string, unknown>, value: unknown)`
-- Check that the device's `orders` array includes the order definition with a `dispatchConfig`
+- Verify your plugin implements `executeOrder()` with the correct signature: `(device: Device, orderKey: string, value: unknown)`
+- Check that the device's `orders` array declares the order key
 - Look for order dispatch events in the logs
 
 ---
