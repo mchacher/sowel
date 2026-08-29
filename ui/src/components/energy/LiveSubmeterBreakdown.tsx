@@ -14,6 +14,7 @@ import { useZones } from "../../store/useZones";
 import {
   buildSubmeterRows,
   computeOther,
+  sharePercent,
   type SubmeterRow,
 } from "./submeter-helpers";
 import { isSubmeterEquipment } from "../../lib/metering";
@@ -129,7 +130,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
                 {formatPower(other).num} {formatPower(other).unit}
               </span>
               <span className="font-mono font-semibold text-text-tertiary min-w-[40px] text-right">
-                {total > 0 ? `${Math.round((other / total) * 100)}%` : "—"}
+                {sharePercent(other, total) !== null ? `${sharePercent(other, total)}%` : "—"}
               </span>
             </div>
           )}
@@ -158,14 +159,25 @@ function buildSegments(
   total: number,
 ): DonutSegment[] {
   if (total <= 0) return [];
+  // The parts are held to one circle. Before #744 the fractions were drawn
+  // unclamped, so a part larger than the whole produced arcs that wrapped over
+  // themselves: two plausible-looking wedges bearing no relation to the numbers
+  // beneath them. A ring that stops at full is at least readable as "we cannot
+  // account for this", which is what the footnote then says.
   const segments: DonutSegment[] = [];
+  let remaining = 1;
+  const push = (id: string, color: string, value: number) => {
+    if (remaining <= 0) return;
+    const fraction = Math.min(value / total, remaining);
+    if (fraction <= 0) return;
+    segments.push({ id, color, fraction });
+    remaining -= fraction;
+  };
   for (const r of rows) {
     if (r.power === null || r.power <= 0) continue;
-    segments.push({ id: r.id, color: r.color, fraction: r.power / total });
+    push(r.id, r.color, r.power);
   }
-  if (other > 0) {
-    segments.push({ id: "__other__", color: OTHER_COLOR, fraction: other / total });
-  }
+  if (other > 0) push("__other__", OTHER_COLOR, other);
   return segments;
 }
 
@@ -259,16 +271,14 @@ function LegendRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const isOffline = row.status === "offline";
-  const pct =
-    row.power !== null && total > 0
-      ? Math.round((row.power / total) * 100)
-      : null;
+  const isStale = row.unknown === "stale";
+  const pct = row.power !== null ? sharePercent(row.power, total) : null;
   const power = row.power !== null ? formatPower(row.power) : null;
 
   return (
     <div
       className={`grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-[13px] ${
-        isOffline ? "opacity-60" : ""
+        isOffline || isStale ? "opacity-60" : ""
       }`}
     >
       <span
@@ -281,6 +291,14 @@ function LegendRow({
           <span className="text-[11px] text-text-tertiary">
             {t("energy.live.breakdown.offline")}
             {row.offlineSince && ` · ${formatRelative(row.offlineSince)}`}
+          </span>
+        )}
+        {/* Not "0 W": the row says the reading is old rather than presenting a
+            number the household has no reason to doubt (#744). */}
+        {!isOffline && isStale && (
+          <span className="text-[11px] text-text-tertiary">
+            {t("energy.live.breakdown.stale")}
+            {row.staleSince && ` · ${formatRelative(row.staleSince)}`}
           </span>
         )}
       </div>
@@ -304,12 +322,23 @@ function buildAriaLabel(
   const p = formatPower(total);
   const parts = [`${p.num} ${p.unit}`];
   for (const r of rows) {
-    if (r.power === null) continue;
-    const pct = total > 0 ? Math.round((r.power / total) * 100) : 0;
-    parts.push(`${r.name} ${pct}%`);
+    if (r.power === null) {
+      // A screen reader gets the same answer the sighted reader does: this row
+      // has no current measurement, rather than a silently omitted one (#744).
+      const why =
+        r.status === "offline"
+          ? t("energy.live.breakdown.offline")
+          : r.unknown === "stale"
+            ? t("energy.live.breakdown.stale")
+            : null;
+      if (why) parts.push(`${r.name} ${why}`);
+      continue;
+    }
+    parts.push(`${r.name} ${sharePercent(r.power, total) ?? 0}%`);
   }
-  if (hasMainMeter && other > 0 && total > 0) {
-    parts.push(`${t("energy.live.breakdown.other")} ${Math.round((other / total) * 100)}%`);
+  if (hasMainMeter && other > 0) {
+    const pct = sharePercent(other, total);
+    if (pct !== null) parts.push(`${t("energy.live.breakdown.other")} ${pct}%`);
   }
   return parts.join(", ");
 }

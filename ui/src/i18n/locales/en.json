@@ -1131,6 +1131,7 @@
   "energy.live.breakdown.title": "Consumption breakdown",
   "energy.live.breakdown.other": "Other",
   "energy.live.breakdown.offline": "offline",
+  "energy.live.breakdown.stale": "reading outdated",
   "energy.live.breakdown.houseIdle": "House idle",
   "energy.live.breakdown.overshoot": "Σ submeters ≥ house total",
   "energy.live.phases.title": "Phase breakdown",
