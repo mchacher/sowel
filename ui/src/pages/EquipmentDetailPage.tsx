@@ -28,7 +28,8 @@ import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_LABELS } from "../components/equipments/equipment-type-meta";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import { isSubmeterEquipment } from "../lib/metering";
-import { autoCreateBindings, removeAllBindings } from "../components/equipments/bindingUtils";
+import { autoCreateBindings, removeAllBindings, computeMissingBindings, fetchDevices } from "../components/equipments/bindingUtils";
+import { MissingBindingsModal } from "../components/equipments/MissingBindingsModal";
 import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
@@ -58,6 +59,7 @@ import {
   Database,
   Settings,
   Activity,
+  Sparkles,
 } from "lucide-react";
 import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails, HistoryBindingState } from "../types";
@@ -92,12 +94,68 @@ export function EquipmentDetailPage() {
   const [showAddOrderBinding, setShowAddOrderBinding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showBindings, setShowBindings] = useState(false);
+  // Issue #707 — data points a plugin started publishing after this equipment
+  // was bound. Counted only once the section is opened: it needs one fetch per
+  // backing device, and the page should not pay for that on every visit.
+  const [showMissingBindings, setShowMissingBindings] = useState(false);
+  const [missingBindingCount, setMissingBindingCount] = useState<number | null>(null);
   const [showChangeDevice, setShowChangeDevice] = useState(false);
   const [historyBindings, setHistoryBindings] = useState<HistoryBindingState[]>([]);
 
   useEffect(() => {
     fetchZones();
   }, [fetchZones]);
+
+  // Issue #707 — count what the auto-binder would add that is not bound yet.
+  //
+  // Gated on the section being open: it costs one GET per backing device, and
+  // it is only ever read from inside that section. Keyed on the BINDINGS, not
+  // on `equipment`: that object is replaced on every value refetch (see the
+  // 429 note on thisEquipmentSnapshot below), so depending on it would
+  // re-fetch every device each time a sensor reports. Tracking the bindings
+  // means a plugin publishing a new point while the page sits open is picked
+  // up on the next binding change or revisit, not live — which is the right
+  // trade for a count read only inside an expanded section.
+  const bindingSignature = useMemo(() => {
+    if (!equipment) return "";
+    return JSON.stringify({
+      type: equipment.type,
+      data: equipment.dataBindings.map((b) => [b.id, b.deviceId, b.deviceDataId, b.alias]),
+      orders: equipment.orderBindings.map((b) => [b.id, b.deviceId, b.deviceOrderId, b.alias]),
+    });
+  }, [equipment]);
+
+  useEffect(() => {
+    if (!showBindings || !equipment) return;
+    let cancelled = false;
+    const { type, dataBindings, orderBindings } = equipment;
+    const deviceIds = [
+      ...new Set([
+        ...dataBindings.map((b) => b.deviceId),
+        ...orderBindings.map((b) => b.deviceId),
+      ]),
+    ];
+    if (deviceIds.length === 0) {
+      setMissingBindingCount(0);
+      return;
+    }
+    fetchDevices(deviceIds)
+      .then((devices) => {
+        if (cancelled) return;
+        setMissingBindingCount(
+          computeMissingBindings(devices, type, dataBindings, orderBindings).length,
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setMissingBindingCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `equipment` is read for its bindings only, and bindingSignature is
+    // exactly the part of it this effect depends on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBindings, bindingSignature]);
 
   // Must call hooks before any early returns
   const EMPTY: EquipmentWithDetails = { id: "", name: "", type: "sensor", zoneId: "", enabled: true, createdAt: "", updatedAt: "", dataBindings: [], orderBindings: [], status: "online" };
@@ -528,6 +586,26 @@ export function EquipmentDetailPage() {
 
           {showBindings && (
             <div className="px-4 pb-4 space-y-4">
+              {/* Issue #707 — a plugin can start publishing data points long
+                  after the equipment was bound, and nothing revisits the
+                  bindings on its own. Rebuilding through the device selector
+                  would wipe custom aliases and historization, so this offers
+                  the missing ones additively. */}
+              {missingBindingCount !== null && missingBindingCount > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-[6px] bg-primary-light border border-primary/20">
+                  <Sparkles size={14} strokeWidth={1.5} className="text-primary flex-shrink-0" />
+                  <span className="flex-1 text-[12px] text-text-secondary">
+                    {t("binding.missingAvailable", { count: missingBindingCount })}
+                  </span>
+                  <button
+                    onClick={() => setShowMissingBindings(true)}
+                    className="px-2 py-1 text-[11px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[4px] transition-colors duration-150 flex-shrink-0"
+                  >
+                    {t("binding.missingReview")}
+                  </button>
+                </div>
+              )}
+
               {/* Data Bindings */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -653,6 +731,22 @@ export function EquipmentDetailPage() {
             });
           }}
           onClose={() => setShowEditForm(false)}
+        />
+      )}
+
+      {/* Missing bindings modal (issue #707) */}
+      {showMissingBindings && equipment && (
+        <MissingBindingsModal
+          equipmentId={equipment.id}
+          equipmentType={equipment.type}
+          dataBindings={equipment.dataBindings}
+          orderBindings={equipment.orderBindings}
+          onClose={() => setShowMissingBindings(false)}
+          onAdded={() => {
+            setShowMissingBindings(false);
+            setMissingBindingCount(null);
+            void fetchEquipments();
+          }}
         />
       )}
 

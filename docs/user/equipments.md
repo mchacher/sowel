@@ -186,6 +186,23 @@ Click on any equipment to see its detail page:
 
 From the detail page, click **Change device** to rebind the equipment to different devices. Sowel removes all existing bindings and recreates them automatically from the new device(s).
 
+!!! warning
+This rebuilds the bindings from scratch, so custom aliases and per-binding
+historization settings are lost. To pick up new values without losing them,
+use **Add missing bindings** below.
+
+### Adding missing bindings
+
+A plugin update can start publishing values a device did not report before. Those values reach the device, but an equipment bound before they existed does not pick them up on its own.
+
+Open **Configuration > Bindings** on the detail page. When something is missing, Sowel says so and offers **Review**:
+
+- every missing value is listed, checked by default
+- uncheck anything you do not want, then confirm
+- values that would be recorded in history are marked, and the total is shown before you confirm
+
+Nothing is added until you confirm, so a value you removed on purpose only comes back if you ask for it. On a multi-channel device, only the channel this equipment already uses is offered.
+
 ### Historization
 
 Each data value is historized to InfluxDB by default based on its category (temperature, humidity, power...). From the detail page, you can override this per binding:

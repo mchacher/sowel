@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { isRelevantData, isRelevantOrder, resolveAlias } from "./bindingUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
+import { computeBindingPlan, computeMissingBindings } from "./bindingUtils";
+import type {
+  DataBindingWithValue,
+  DeviceWithDetails,
+  OrderBindingWithDetails,
+} from "../../types";
 
 describe("findOrderByCategory", () => {
   it("matches the first binding by category", () => {
@@ -294,5 +300,232 @@ describe("camera equipment type relevance (spec 133 default auto-binding split)"
 
   it("without a category, falls back to the (empty) key whitelist — no accidental auto-bind", () => {
     expect(isRelevantOrder("monitoring", "camera")).toBe(false);
+  });
+});
+
+// ============================================================
+// Issue #707 — binding plan and missing bindings
+// ============================================================
+
+describe("computeBindingPlan", () => {
+  const weatherDevice = {
+    id: "dev-1",
+    name: "Weather Forecast",
+    data: [
+      { id: "d1", key: "temp_now", category: "temperature_outdoor", type: "number" },
+      { id: "d2", key: "humidity_now", category: "humidity_outdoor", type: "number" },
+      { id: "d3", key: "j1_temp_max", category: "temperature_outdoor", type: "number" },
+    ],
+    orders: [],
+  } as unknown as DeviceWithDetails;
+
+  it("plans a binding per relevant data point without writing anything", () => {
+    const plan = computeBindingPlan([weatherDevice], "weather");
+
+    expect(plan.map((p) => p.key)).toEqual(["temp_now", "humidity_now", "j1_temp_max"]);
+    expect(plan.every((p) => p.kind === "data")).toBe(true);
+    expect(plan[0].deviceName).toBe("Weather Forecast");
+  });
+
+  it("marks which planned bindings would be recorded in history", () => {
+    const plan = computeBindingPlan([weatherDevice], "weather");
+    const byKey = Object.fromEntries(plan.map((p) => [p.key, p.historized]));
+
+    expect(byKey.temp_now).toBe(true);
+    // Forecast jX_* bindings are deliberately never historized, so the owner is
+    // not told that adding a 5-day forecast starts five new series.
+    expect(byKey.j1_temp_max).toBe(false);
+  });
+
+  it("does not collide with aliases the equipment already uses", () => {
+    // The unique constraint is (equipment_id, alias): a new key whose natural
+    // alias is taken has to be offered under a free one, not fail on insert.
+    const plan = computeBindingPlan([weatherDevice], "weather", {
+      usedDataAliases: ["temp_now"],
+    });
+
+    expect(plan.find((p) => p.key === "temp_now")?.alias).toBe("temp_now_2");
+  });
+});
+
+describe("computeMissingBindings", () => {
+  const device = {
+    id: "dev-1",
+    name: "Weather Forecast",
+    data: [
+      { id: "d1", key: "temp_now", category: "temperature_outdoor", type: "number" },
+      { id: "d2", key: "humidity_now", category: "humidity_outdoor", type: "number" },
+    ],
+    orders: [],
+  } as unknown as DeviceWithDetails;
+
+  const bound = (deviceDataId: string, alias: string) =>
+    ({
+      id: `b-${deviceDataId}`,
+      equipmentId: "eq-1",
+      deviceDataId,
+      alias,
+      deviceId: "dev-1",
+    }) as unknown as DataBindingWithValue;
+
+  it("returns only what the equipment is not bound to yet", () => {
+    const missing = computeMissingBindings(
+      [device],
+      "weather",
+      [bound("d1", "temp_now")],
+      [],
+    );
+
+    expect(missing.map((m) => m.key)).toEqual(["humidity_now"]);
+  });
+
+  it("returns nothing when every published point is already bound", () => {
+    const missing = computeMissingBindings(
+      [device],
+      "weather",
+      [bound("d1", "temp_now"), bound("d2", "humidity_now")],
+      [],
+    );
+
+    expect(missing).toEqual([]);
+  });
+
+  it("matches on the device data id, not the alias the owner chose", () => {
+    // Renaming a binding must not make its own data point look unbound and get
+    // offered a second time under its raw key.
+    const missing = computeMissingBindings(
+      [device],
+      "weather",
+      [bound("d1", "outside"), bound("d2", "humidity_now")],
+      [],
+    );
+
+    expect(missing).toEqual([]);
+  });
+
+  it("offers a free alias when the natural one is taken by another binding", () => {
+    const missing = computeMissingBindings(
+      [device],
+      "weather",
+      [bound("d1", "humidity_now")],
+      [],
+    );
+
+    expect(missing).toHaveLength(1);
+    expect(missing[0].key).toBe("humidity_now");
+    expect(missing[0].alias).toBe("humidity_now_2");
+  });
+});
+
+describe("computeMissingBindings on a multi-channel device", () => {
+  // A 2-relay Tasmota. An equipment binds ONE channel; which one is recorded
+  // nowhere but in its own bindings.
+  const twoRelays = {
+    id: "dev-1",
+    name: "Tasmota 2CH",
+    data: [
+      { id: "d1", key: "power1", category: "light_state", type: "enum", enumValues: ["ON", "OFF"] },
+      { id: "d2", key: "power2", category: "light_state", type: "enum", enumValues: ["ON", "OFF"] },
+    ],
+    orders: [
+      { id: "o1", key: "power1", category: "light_toggle", type: "enum", enumValues: ["ON", "OFF"] },
+      { id: "o2", key: "power2", category: "light_toggle", type: "enum", enumValues: ["ON", "OFF"] },
+    ],
+  } as unknown as DeviceWithDetails;
+
+  const dataBinding = (deviceDataId: string, key: string, alias: string) =>
+    ({
+      id: `b-${deviceDataId}`,
+      equipmentId: "eq-1",
+      deviceDataId,
+      alias,
+      deviceId: "dev-1",
+      key,
+    }) as unknown as DataBindingWithValue;
+
+  const orderBinding = (deviceOrderId: string, key: string, alias: string) =>
+    ({
+      id: `ob-${deviceOrderId}`,
+      equipmentId: "eq-1",
+      deviceOrderId,
+      alias,
+      deviceId: "dev-1",
+      key,
+    }) as unknown as OrderBindingWithDetails;
+
+  it("offers nothing when the equipment already owns its whole channel", () => {
+    // Bound to channel 2. Planning with the default first candidate would offer
+    // channel 1's state and command: a foreign relay on this equipment, and a
+    // prompt that could never be cleared.
+    const missing = computeMissingBindings(
+      [twoRelays],
+      "switch",
+      [dataBinding("d2", "power2", "state")],
+      [orderBinding("o2", "power2", "state")],
+    );
+
+    expect(missing).toEqual([]);
+  });
+
+  it("offers the rest of the owned channel, never the other one", () => {
+    // Bound to channel 2's command only: its state is genuinely missing.
+    const missing = computeMissingBindings(
+      [twoRelays],
+      "switch",
+      [],
+      [orderBinding("o2", "power2", "state")],
+    );
+
+    expect(missing.map((m) => m.key)).toEqual(["power2"]);
+    expect(missing[0].kind).toBe("data");
+  });
+
+  it("leaves a device alone when no candidate matches what is bound", () => {
+    const missing = computeMissingBindings([twoRelays], "switch", [], []);
+
+    expect(missing).toEqual([]);
+  });
+});
+
+describe("computeMissingBindings alias allocation", () => {
+  it("does not let an already-bound point consume the alias a new one needs", () => {
+    // The bound temperature was renamed, so "temperature" is free. If the plan
+    // allocated an alias for it before filtering it out, the new sensor would
+    // be offered "temperature_2" — and zone-aggregator only folds bindings
+    // aliased exactly "temperature" into the room average, so the new sensor
+    // would silently never reach it.
+    const devices = [
+      {
+        id: "dev-a",
+        name: "Salon",
+        data: [{ id: "d1", key: "temperature", category: "temperature", type: "number" }],
+        orders: [],
+      },
+      {
+        id: "dev-b",
+        name: "Salon bis",
+        data: [{ id: "d2", key: "temperature", category: "temperature", type: "number" }],
+        orders: [],
+      },
+    ] as unknown as DeviceWithDetails[];
+
+    const missing = computeMissingBindings(
+      devices,
+      "sensor",
+      [
+        {
+          id: "b-1",
+          equipmentId: "eq-1",
+          deviceDataId: "d1",
+          alias: "salon_temp",
+          deviceId: "dev-a",
+          key: "temperature",
+        } as unknown as DataBindingWithValue,
+      ],
+      [],
+    );
+
+    expect(missing).toHaveLength(1);
+    expect(missing[0].alias).toBe("temperature");
   });
 });
