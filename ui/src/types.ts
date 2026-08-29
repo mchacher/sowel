@@ -432,7 +432,12 @@ export interface ArbiterLoadInfo {
   equipmentName: string;
   state: ArbiterLoadState;
   watts: number | null;
+  /** #807 — what it takes to start the load: `watts + margin - tolerated`, on
+   *  every row that has watts. Negative when the tolerance exceeds the draw. */
   needW: number | null;
+  /** #807 — pending only: the surplus still missing before the claim can be
+   *  granted. Null on every other state. */
+  shortfallW: number | null;
   toleratedImportW: number | null;
   sinceIso?: string;
   reasonWaiting?: string;
@@ -452,6 +457,8 @@ export interface ArbiterPublicState {
   /** Spec 165 (#577) — sun down and nothing to share: a waiting claim reads as
    *  at rest, in the roster AND in the ribbon's current cell. */
   dormant: boolean;
+  /** #807 - the configured engage margin, stated under the roster table. */
+  engageMarginW: number;
   /** @deprecated Spec 165 — superseded by `loads`. */
   grants: Array<{
     equipmentId: string;
@@ -983,11 +990,7 @@ export interface ModeWithDetails extends Mode {
 }
 
 export type ButtonEffectType =
-  | "mode_activate"
-  | "mode_toggle"
-  | "equipment_order"
-  | "recipe_toggle"
-  | "zone_order";
+  "mode_activate" | "mode_toggle" | "equipment_order" | "recipe_toggle" | "zone_order";
 
 export interface ButtonActionBinding {
   id: string;

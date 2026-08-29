@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, screen, within } from "../../test-utils";
+import { render, act, screen } from "../../test-utils";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 import { useArbiter } from "../../store/useArbiter";
 import { useEquipments } from "../../store/useEquipments";
@@ -39,10 +39,12 @@ function seed(state: ArbiterLoadState): void {
         state,
         watts: 2200,
         needW: null,
+        shortfallW: null,
         toleratedImportW: null,
         sinceIso: "2026-08-27T08:00:00.000Z",
       },
     ],
+    engageMarginW: 100,
     dormant: false,
     grants: [],
     pending: [],
@@ -92,11 +94,18 @@ describe("spec 165 — the two halves of the surface agree", () => {
         render(<ArbitrationSurface />);
       });
 
-      const pill = within(screen.getAllByRole("row")[1]).getByText(/\w/, {
-        selector: "span.rounded-full",
-      });
-      expect(pill.textContent?.trim()).toBeTruthy();
-      expect(ribbonCellLabel()).toBe(pill.textContent?.trim());
+      const pill = screen.getAllByRole("row")[1].querySelector("span.rounded-full");
+      expect(pill, "the roster rendered no pill").toBeTruthy();
+      // #807 - granted-idle carries a second, shorter label for phones (the
+      // full one is 150 px and breaks the row there). The word the desktop
+      // shows is the last labelled span; every other state has none and falls
+      // back to the pill's own text.
+      const labels = [...(pill?.querySelectorAll("span") ?? [])].filter(
+        (el) => (el.textContent ?? "").trim().length > 0,
+      );
+      const word = (labels.at(-1)?.textContent ?? pill?.textContent ?? "").trim();
+      expect(word).toBeTruthy();
+      expect(ribbonCellLabel()).toBe(word);
     });
   }
 });

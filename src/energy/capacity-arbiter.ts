@@ -1002,6 +1002,7 @@ export class CapacityArbiter {
    * renders; it decides nothing on its own.
    */
   private buildLoads(dormant: boolean, headroomW: number): ArbiterLoadInfo[] {
+    const shortfalls = this.simulateShortfalls(headroomW);
     return this.rosterIds().map((id) => {
       const state = this.resolveLoadState(id, dormant);
       const profile = this.profileOf(id);
@@ -1011,43 +1012,81 @@ export class CapacityArbiter {
         state,
         watts: null,
         needW: null,
+        shortfallW: null,
         toleratedImportW: profile ? Math.max(0, profile.toleratedImportW ?? 0) : null,
       };
-      if (state === "granted" || state === "granted-idle") {
-        const granted = this.grantedClaimFor(id);
-        info.watts = granted ? Math.round(this.effectiveWatts(granted)) : null;
-        info.sinceIso = new Date(granted?.grantedAt ?? Date.now()).toISOString();
-        info.instanceId = granted?.instanceId;
-        info.note = granted?.note;
-        return info;
-      }
-      if (state === "suspended") {
-        info.untilIso = new Date(this.overridesUntil.get(id) ?? Date.now()).toISOString();
-        return info;
-      }
       // Pending, unmanaged and at rest all show what the load draws. A
       // pending claim knows its own figure; anything else falls back to the
       // live draw while it runs unmanaged, else its rating (#561: a metered
       // load that is off reports ~0 W, which would misread as "0 W" rather
       // than "what it draws when it runs").
       const pendingClaim = this.pendingClaimFor(id);
-      if (pendingClaim && state === "pending") {
+      if (state === "granted" || state === "granted-idle") {
+        const granted = this.grantedClaimFor(id);
+        info.watts = granted ? Math.round(this.effectiveWatts(granted)) : null;
+        info.sinceIso = new Date(granted?.grantedAt ?? Date.now()).toISOString();
+        info.instanceId = granted?.instanceId;
+        info.note = granted?.note;
+      } else if (state === "suspended") {
+        info.untilIso = new Date(this.overridesUntil.get(id) ?? Date.now()).toISOString();
+      } else if (pendingClaim && state === "pending") {
         info.watts = pendingClaim.watts;
-        info.needW = Math.round(this.engageNeedW(pendingClaim));
+        info.shortfallW = shortfalls.get(id) ?? 0;
         info.reasonWaiting = this.pendingReason(pendingClaim, headroomW);
         info.instanceId = pendingClaim.instanceId;
         info.toleratedImportW = pendingClaim.toleratedImportW;
-        return info;
-      }
-      if (this.unclaimedRunning.has(id)) {
+      } else if (this.unclaimedRunning.has(id)) {
         info.watts = Math.round(this.drawEstimate(id));
       } else if (pendingClaim) {
         info.watts = pendingClaim.watts;
       } else if (profile) {
         info.watts = Math.round(profile.learned?.watts ?? profile.nominalPowerW);
       }
+      // #807 — the need is a property of the LOAD, not of its state: what it
+      // takes to start it. Deriving it here, from the watts the roster is
+      // about to show, keeps one invariant true on every row —
+      // `need = watts + margin - tolerated` — so a reader can check the
+      // arithmetic against the other two columns. A suspended row keeps its
+      // null watts and therefore no need, like the figures beside it.
+      // Deliberately NOT floored at 0: a load tolerating more import than it
+      // draws has a negative need (it starts without any surplus), and the
+      // gate at `engageNeedW` does not floor it either. Presentation decides
+      // how to render that, the read model stays truthful.
+      if (info.watts !== null) {
+        info.needW = Math.round(
+          info.watts + this.config.engageMarginW - (info.toleratedImportW ?? 0),
+        );
+      }
       return info;
     });
+  }
+
+  /**
+   * #807 — what each pending claim is short of right now, keyed by equipment.
+   *
+   * This mirrors the grant pass rather than dividing the global headroom per
+   * row, because the pass serves claims top-down and every grant spends watts
+   * the claims below it will never see. A per-row `need - headroom` would tell
+   * the lowest-priority claimant it is nearly there while the loads above it
+   * are about to take everything.
+   */
+  private simulateShortfalls(headroomW: number): Map<string, number> {
+    const now = Date.now();
+    const out = new Map<string, number>();
+    let running = headroomW;
+    for (const claim of this.pendingOrdered()) {
+      const eq = claim.equipmentId;
+      const ownDrawW = this.freshLiveDraw(eq) ?? 0;
+      const shortfallW = this.engageNeedW(claim) - running - ownDrawW;
+      out.set(eq, Math.max(0, Math.round(shortfallW)));
+      // Blocked by something other than surplus: `evaluate` skips the claim
+      // without spending headroom, so the ones below it still see it all.
+      if (this.isSuspended(eq) || this.unresponsiveUntil.has(eq)) continue;
+      const revokedAt = this.lastRevokedAt.get(eq);
+      if (revokedAt !== undefined && now - revokedAt < this.minOffMs(eq)) continue;
+      if (shortfallW <= 0) running -= Math.max(0, claim.watts - ownDrawW);
+    }
+    return out;
   }
 
   getPublicState(): ArbiterPublicState {
@@ -1140,6 +1179,9 @@ export class CapacityArbiter {
       state,
       // Spec 165 — the roster, resolved here rather than in the browser.
       loads: this.buildLoads(dormant, accounting.headroomW),
+      // #807 - the roster spells out `need = watts + margin - tolerated` under
+      // the table; the margin appears in no other user-facing place.
+      engageMarginW: this.config.engageMarginW,
       dormant,
       // #563 — the user-facing figure is the TRUE signed grid balance
       // (headroomW ≡ exportW: >0 exporting, <0 importing), NOT the

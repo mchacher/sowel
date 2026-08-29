@@ -437,6 +437,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         availableSurplusW: null,
         productionDetected: false,
         loads: [],
+        engageMarginW: 0,
         dormant: false,
         grants: [],
         pending: [],
