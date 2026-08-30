@@ -2,11 +2,18 @@ import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import { toISOUtc } from "../../core/database.js";
 import type { DashboardWidget, WidgetConfig, WidgetFamily } from "../../shared/types.js";
+import type { RecipeManager } from "../../recipes/engine/recipe-manager.js";
 import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 
 interface DashboardDeps {
   db: Database.Database;
+  /**
+   * Spec 169 — consulted to refuse pinning a recipe that declares no tile.
+   * Narrowed to the one lookup the route makes: the dashboard has no business
+   * holding a whole RecipeManager, and a test can stub a single method.
+   */
+  recipeManager: Pick<RecipeManager, "getRecipeById">;
 }
 
 interface WidgetRow {
@@ -16,6 +23,7 @@ interface WidgetRow {
   icon: string | null;
   equipment_id: string | null;
   zone_id: string | null;
+  recipe_instance_id: string | null;
   family: string | null;
   config: string | null;
   display_order: number;
@@ -25,7 +33,7 @@ interface WidgetRow {
 function rowToWidget(row: WidgetRow): DashboardWidget {
   const widget: DashboardWidget = {
     id: row.id,
-    type: row.type as "equipment" | "zone",
+    type: row.type as "equipment" | "zone" | "recipe",
     displayOrder: row.display_order,
     createdAt: toISOUtc(row.created_at),
   };
@@ -33,6 +41,7 @@ function rowToWidget(row: WidgetRow): DashboardWidget {
   if (row.icon) widget.icon = row.icon;
   if (row.equipment_id) widget.equipmentId = row.equipment_id;
   if (row.zone_id) widget.zoneId = row.zone_id;
+  if (row.recipe_instance_id) widget.recipeInstanceId = row.recipe_instance_id;
   if (row.family) widget.family = row.family as WidgetFamily;
   if (row.config) {
     try {
@@ -66,9 +75,10 @@ const widgetCreateSchema = {
   type: "object",
   required: ["type"],
   properties: {
-    type: { enum: ["equipment", "zone"] },
+    type: { enum: ["equipment", "zone", "recipe"] },
     equipmentId: nonEmptyString,
     zoneId: nonEmptyString,
+    recipeInstanceId: nonEmptyString,
     family: { enum: [...VALID_FAMILIES] },
     // Nullable on purpose. The old code type-checked neither, and stored
     // `label ?? null`, so an explicit null was accepted and meant "no label".
@@ -85,6 +95,12 @@ const widgetCreateSchema = {
     {
       if: { properties: { type: { const: "zone" } }, required: ["type"] },
       then: { required: ["zoneId", "family"] },
+    },
+    // Spec 169. No `family` here: a recipe tile is not grouped the way a zone
+    // widget is — what it shows comes from the recipe's own declaration.
+    {
+      if: { properties: { type: { const: "recipe" } }, required: ["type"] },
+      then: { required: ["recipeInstanceId"] },
     },
   ],
 } as const;
@@ -115,7 +131,7 @@ const widgetOrderSchema = {
 } as const;
 
 export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDeps): void {
-  const { db } = deps;
+  const { db, recipeManager } = deps;
 
   // Every write is admin-only; GET is not. The hook runs before body-schema
   // validation, so 403 still precedes 400 for a non-admin sending a malformed
@@ -149,9 +165,10 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
   // POST /api/v1/dashboard/widgets — Create a widget (admin only)
   app.post<{
     Body: {
-      type: "equipment" | "zone";
+      type: "equipment" | "zone" | "recipe";
       equipmentId?: string;
       zoneId?: string;
+      recipeInstanceId?: string;
       family?: WidgetFamily;
       label?: string;
       icon?: string;
@@ -160,7 +177,7 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
     "/api/v1/dashboard/widgets",
     { schema: { body: widgetCreateSchema } },
     async (request, reply) => {
-      const { type, equipmentId, zoneId, family, label, icon } = request.body;
+      const { type, equipmentId, zoneId, recipeInstanceId, family, label, icon } = request.body;
 
       // The schema has settled the shape by here; what is left is existence,
       // which it cannot express. Both keep their original 400.
@@ -178,6 +195,22 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
         }
       }
 
+      // Spec 169. Two checks, both 400 like their siblings: the instance has to
+      // exist, and its recipe has to have asked for a tile. The second one is
+      // the whole point of the opt-in — without it the core would hand every
+      // recipe a Dashboard surface its author never designed.
+      if (type === "recipe") {
+        const inst = db
+          .prepare("SELECT recipe_id FROM recipe_instances WHERE id = ?")
+          .get(recipeInstanceId) as { recipe_id: string } | undefined;
+        if (!inst) {
+          return reply.code(400).send({ error: "Recipe instance not found" });
+        }
+        if (!recipeManager.getRecipeById(inst.recipe_id)?.tile) {
+          return reply.code(400).send({ error: "Recipe declares no tile" });
+        }
+      }
+
       // Get next display_order
       const maxRow = db
         .prepare("SELECT COALESCE(MAX(display_order), -1) AS max_order FROM dashboard_widgets")
@@ -186,8 +219,8 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
 
       const id = crypto.randomUUID();
       db.prepare(
-        `INSERT INTO dashboard_widgets (id, type, label, icon, equipment_id, zone_id, family, display_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO dashboard_widgets (id, type, label, icon, equipment_id, zone_id, recipe_instance_id, family, display_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         type,
@@ -195,6 +228,7 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
         icon ?? null,
         type === "equipment" ? equipmentId! : null,
         type === "zone" ? zoneId! : null,
+        type === "recipe" ? recipeInstanceId! : null,
         type === "zone" ? family! : null,
         nextOrder,
       );

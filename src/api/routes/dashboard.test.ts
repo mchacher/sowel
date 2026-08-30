@@ -19,7 +19,7 @@ import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { registerDashboardRoutes } from "./dashboard.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import { applyMigrations } from "../../test-helpers/migrations.js";
-import type { UserRole } from "../../shared/types.js";
+import type { RecipeInfo, UserRole } from "../../shared/types.js";
 
 let db: Database.Database;
 
@@ -28,7 +28,26 @@ function seedFixtures(): void {
   db.prepare(
     "INSERT INTO equipments (id, name, type, zone_id) VALUES ('e1', 'Lampe', 'light', 'z1')",
   ).run();
+  // Spec 169 — two instances: one whose recipe declares a tile, one whose
+  // recipe does not. The pair is what makes the opt-in testable.
+  db.prepare(
+    "INSERT INTO recipe_instances (id, recipe_id, params) VALUES ('ri1', 'with-tile', '{}')",
+  ).run();
+  db.prepare(
+    "INSERT INTO recipe_instances (id, recipe_id, params) VALUES ('ri2', 'no-tile', '{}')",
+  ).run();
 }
+
+const RECIPES: Record<string, RecipeInfo> = {
+  "with-tile": {
+    id: "with-tile",
+    name: "With tile",
+    description: "",
+    slots: [],
+    tile: { icon: "Truck", actions: ["set_mode"] },
+  },
+  "no-tile": { id: "no-tile", name: "No tile", description: "", slots: [] },
+};
 
 async function buildApp(opts: { authed?: boolean; role?: UserRole } = {}) {
   const app = Fastify({ logger: false, ajv: validationAjvOptions });
@@ -38,7 +57,10 @@ async function buildApp(opts: { authed?: boolean; role?: UserRole } = {}) {
       request.auth = { userId: "u1", role: opts.role ?? "admin" };
     });
   }
-  registerDashboardRoutes(app, { db });
+  registerDashboardRoutes(app, {
+    db,
+    recipeManager: { getRecipeById: (id: string) => RECIPES[id] ?? null },
+  });
   await app.ready();
   return app;
 }
@@ -439,6 +461,130 @@ describe("dashboard widget routes", () => {
     it("still serves the read", async () => {
       app = await buildApp({ authed: false });
       expect((await app.inject({ method: "GET", url: WIDGETS })).statusCode).toBe(200);
+    });
+  });
+  // ── Spec 169 — recipe tiles ───────────────────────────────────────────────
+
+  describe("recipe widgets (spec 169)", () => {
+    it("creates one for an instance whose recipe declares a tile", async () => {
+      app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "recipe", recipeInstanceId: "ri1" },
+      });
+      expect(res.statusCode).toBe(201);
+      const body = res.json() as Record<string, unknown>;
+      expect(body.type).toBe("recipe");
+      expect(body.recipeInstanceId).toBe("ri1");
+      // The two sibling ids stay absent rather than coming back as null.
+      expect(body.equipmentId).toBeUndefined();
+      expect(body.zoneId).toBeUndefined();
+    });
+
+    it("400s without recipeInstanceId — the schema's if/then", async () => {
+      app = await buildApp();
+      const res = await app.inject({ method: "POST", url: WIDGETS, payload: { type: "recipe" } });
+      expect(res.statusCode).toBe(400);
+      expectAppErrorShape(res.json());
+    });
+
+    it("400s on an unknown instance", async () => {
+      app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "recipe", recipeInstanceId: "nope" },
+      });
+      expect(res.statusCode).toBe(400);
+      expect((res.json() as { error: string }).error).toBe("Recipe instance not found");
+    });
+
+    it("400s when the recipe declares no tile — the opt-in", async () => {
+      // The instance exists and is perfectly valid; what is missing is the
+      // recipe author's consent to have a Dashboard surface at all.
+      app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "recipe", recipeInstanceId: "ri2" },
+      });
+      expect(res.statusCode).toBe(400);
+      expect((res.json() as { error: string }).error).toBe("Recipe declares no tile");
+    });
+
+    it("403s a non-admin before it ever looks the instance up", async () => {
+      app = await buildApp({ role: "standard" });
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "recipe", recipeInstanceId: "ri1" },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("lists all three widget types side by side, each with only its own id", async () => {
+      app = await buildApp();
+      await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "equipment", equipmentId: "e1" },
+      });
+      await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "zone", zoneId: "z1", family: "lights" },
+      });
+      await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "recipe", recipeInstanceId: "ri1" },
+      });
+
+      const res = await app.inject({ method: "GET", url: WIDGETS });
+      const widgets = res.json() as Record<string, unknown>[];
+      expect(widgets.map((w) => w.type)).toEqual(["equipment", "zone", "recipe"]);
+      expect(widgets[2].recipeInstanceId).toBe("ri1");
+      expect(widgets[0].recipeInstanceId).toBeUndefined();
+    });
+
+    it("deleting the instance takes its widget with it (FK cascade)", async () => {
+      app = await buildApp();
+      await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "recipe", recipeInstanceId: "ri1" },
+      });
+      expect((await app.inject({ method: "GET", url: WIDGETS })).json()).toHaveLength(1);
+
+      db.prepare("DELETE FROM recipe_instances WHERE id = 'ri1'").run();
+
+      expect((await app.inject({ method: "GET", url: WIDGETS })).json()).toHaveLength(0);
+    });
+
+    it("keeps the equipment and zone widgets working across the recreated table", async () => {
+      // The migration drops and rebuilds dashboard_widgets; the two original
+      // foreign keys have to survive that, not just the new one.
+      app = await buildApp();
+      await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "equipment", equipmentId: "e1" },
+      });
+      await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "zone", zoneId: "z1", family: "lights" },
+      });
+
+      db.prepare("DELETE FROM equipments WHERE id = 'e1'").run();
+      const afterEquipment = (
+        await app.inject({ method: "GET", url: WIDGETS })
+      ).json() as unknown[];
+      expect(afterEquipment).toHaveLength(1);
+
+      db.prepare("DELETE FROM zones WHERE id = 'z1'").run();
+      expect((await app.inject({ method: "GET", url: WIDGETS })).json()).toHaveLength(0);
     });
   });
 });

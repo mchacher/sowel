@@ -25,6 +25,7 @@ import { ZoneWidget } from "./ZoneWidget";
 import { IconPicker } from "./IconPicker";
 import { BindingsPicker } from "./BindingsPicker";
 import { MobileWidgetCard } from "./MobileWidgetCard";
+import { RecipeTile } from "./RecipeTile";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
@@ -435,6 +436,14 @@ function WidgetRenderer({
   editMode?: boolean;
 }) {
   const { t } = useTranslation();
+
+  // Spec 169 — a recipe tile serves itself from the recipes store: its content
+  // comes from the instance state, not from the equipment/zone maps threaded
+  // through this renderer.
+  if (widget.type === "recipe") {
+    return <RecipeTile widget={widget} isMobile={isMobile} editMode={editMode} />;
+  }
+
   if (widget.type === "equipment" && widget.equipmentId) {
     const equipment = equipmentMap.get(widget.equipmentId);
     if (!equipment) return null;

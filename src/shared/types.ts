@@ -560,12 +560,38 @@ export interface RecipeActionDef {
   options: { value: string; label: string }[];
 }
 
+/**
+ * Opt-in Dashboard tile, declared by a recipe package (spec 169).
+ *
+ * A recipe knows whether it has anything worth watching at a glance; most do
+ * not. So the declaration lives here rather than in the core: a definition
+ * without `tile` is never listed in the widget picker and never pinnable.
+ * The core renders what the recipe declared — it does not decide what a
+ * recipe means.
+ */
+export interface RecipeTileDef {
+  /**
+   * Icon key from the tile icon set (`RecipeTile.TILE_ICONS` — ChefHat, Truck,
+   * Timer, Droplets, Flame, …). A closed set, so the UI keeps tree-shaking its
+   * icon package; an unknown key falls back to the default rather than failing.
+   */
+  icon?: string;
+  /** Instance-state key holding the one-line status. Default `"summary"`. */
+  summaryKey?: string;
+  /** Instance-state key holding an ISO deadline to count down. Default `"timerExpiresAt"`. */
+  countdownKey?: string;
+  /** Ids from this recipe's `actions` exposed as controls on the tile. */
+  actions?: string[];
+}
+
 export interface RecipeInfo {
   id: string;
   name: string;
   description: string;
   slots: RecipeSlotDef[];
   actions?: RecipeActionDef[];
+  /** Spec 169 — present only when the package declares a Dashboard tile. */
+  tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
 }
 
@@ -601,6 +627,8 @@ export interface RecipeDefinition {
   description: string;
   slots: RecipeSlotDef[];
   actions?: RecipeActionDef[];
+  /** Spec 169 — declare a Dashboard tile. Absent = this recipe is not pinnable. */
+  tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
   validate(params: Record<string, unknown>, ctx: RecipeCtx): void;
   createInstance(params: Record<string, unknown>, ctx: RecipeCtx): RecipeInstanceHandle;
@@ -1771,12 +1799,14 @@ export interface WidgetConfig {
 
 export interface DashboardWidget {
   id: string;
-  type: "equipment" | "zone";
+  type: "equipment" | "zone" | "recipe";
   label?: string;
   icon?: string;
   config?: WidgetConfig;
   equipmentId?: string;
   zoneId?: string;
+  /** Spec 169 — set on `recipe` widgets, whose recipe declares a tile. */
+  recipeInstanceId?: string;
   family?: WidgetFamily;
   displayOrder: number;
   createdAt: string;

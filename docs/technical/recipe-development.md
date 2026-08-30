@@ -208,6 +208,56 @@ Fallback chain: `i18n[lang].name -> recipe.name` (English embedded in class).
 
 Add a new key to the `i18n` record in your recipe class. No platform files to modify.
 
+## Dashboard tile (spec 169)
+
+A recipe can offer a **tile on the Dashboard**, next to the equipment widgets it acts on. It is opt-in: a definition without `tile` is never listed in the widget picker and cannot be pinned. Most recipes have nothing worth watching at a glance and should declare nothing.
+
+```typescript
+export function createRecipe(): RecipeDefinition {
+  return {
+    id: "delivery-gate",
+    // ...
+    actions: [{ id: "set_mode", type: "cycle", stateKey: "mode", options: [...] }],
+    tile: {
+      icon: "Truck",              // key from the tile icon set (below)
+      summaryKey: "summary",      // default; omit to use it
+      countdownKey: "timerExpiresAt", // default; omit to use it
+      actions: ["set_mode"],      // which of your actions get a control
+    },
+  };
+}
+```
+
+### What the tile renders
+
+Everything comes from **instance state** your recipe writes with `ctx.state.set()`, and every element is optional — a key your state does not carry renders nothing rather than an empty slot.
+
+| Element     | Source                                                 | Notes                                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Icon        | `tile.icon`                                            | Closed set: `ChefHat`, `Clock`, `DoorClosed`, `Droplets`, `Fan`, `Flame`, `Lightbulb`, `Snowflake`, `Sun`, `Thermometer`, `Timer`, `Truck`, `Waves`, `Zap`. An unknown key falls back to `ChefHat`. |
+| Title       | the widget label, else your recipe's localized name    | The user can rename a tile; their label wins.                                                                                                                                                       |
+| Status line | `state[tile.summaryKey ?? "summary"]`                  | A short string. Keep it under ~40 characters — a tile is ~240 px wide.                                                                                                                              |
+| Countdown   | `state[tile.countdownKey ?? "timerExpiresAt"]`         | An **ISO-8601 instant**. The UI ticks it down each second and hides it once passed.                                                                                                                 |
+| Controls    | the `tile.actions` ids, matched against your `actions` | Rendered as the same pill the recipe row shows. An id you do not declare in `actions` is skipped.                                                                                                   |
+
+These are the same three state keys the recipe row already renders on the zone page, so a recipe that publishes them gets a coherent presentation on both surfaces.
+
+```typescript
+// Inside createInstance — what makes the tile live.
+ctx.state.set("summary", `Ouvert pour le livreur — refermeture à ${hhmm}`);
+ctx.state.set("timerExpiresAt", new Date(Date.now() + holdMs).toISOString());
+ctx.state.set("mode", "short"); // the stateKey your cycle action reads
+```
+
+Publish the resting value of a cycle action's `stateKey` from the start of `createInstance`, not only when something happens: the control does not render while its state key is absent, so a tile whose recipe is idle would show no button at all.
+
+### Rules worth knowing
+
+- The tile follows the instance live over the `recipe.instance.state.changed` event — no polling, nothing to declare.
+- A **disabled instance** renders greyed with its controls suppressed. It is not hidden: a user who disabled a recipe should see why the tile went quiet.
+- Removing `tile` in a later version does **not** delete a user's widget; it renders as unavailable. Removing it is therefore a user-visible change, worth a release note.
+- The tile shows state; it does not configure. Parameters stay on the zone page.
+
 ## RecipeContext
 
 The `ctx` object injected into `validate()` and `createInstance()` provides:

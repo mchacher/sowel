@@ -15,9 +15,10 @@ interface DashboardState {
 
   fetchWidgets: () => Promise<void>;
   createWidget: (data: {
-    type: "equipment" | "zone";
+    type: "equipment" | "zone" | "recipe";
     equipmentId?: string;
     zoneId?: string;
+    recipeInstanceId?: string;
     family?: WidgetFamily;
     label?: string;
     icon?: string;

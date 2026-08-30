@@ -371,7 +371,7 @@ export async function createServer(deps: ServerDeps) {
     arbiterMetricsStore,
     logger,
   });
-  registerDashboardRoutes(app, { db });
+  registerDashboardRoutes(app, { db, recipeManager });
   registerPluginRoutes(app, {
     packageManager,
     pluginLoader,

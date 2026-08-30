@@ -14,9 +14,10 @@ export async function getDashboardWidgets(): Promise<DashboardWidget[]> {
 }
 
 export async function createDashboardWidget(data: {
-  type: "equipment" | "zone";
+  type: "equipment" | "zone" | "recipe";
   equipmentId?: string;
   zoneId?: string;
+  recipeInstanceId?: string;
   family?: WidgetFamily;
   label?: string;
   icon?: string;

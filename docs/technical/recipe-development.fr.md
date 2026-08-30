@@ -203,6 +203,56 @@ Chaîne de fallback : `i18n[lang].name -> recipe.name` (anglais embarqué dans l
 
 Ajoutez une nouvelle clé au record `i18n` dans la classe de votre recette. Aucun fichier de plateforme à modifier.
 
+## Tuile de tableau de bord (spec 169)
+
+Une recette peut proposer une **tuile sur le tableau de bord**, à côté des widgets d'équipement sur lesquels elle agit. C'est un opt-in : une définition sans `tile` n'apparaît jamais dans le sélecteur de widgets et ne peut pas être épinglée. La plupart des recettes n'ont rien à montrer d'un coup d'œil et ne doivent rien déclarer.
+
+```typescript
+export function createRecipe(): RecipeDefinition {
+  return {
+    id: "delivery-gate",
+    // ...
+    actions: [{ id: "set_mode", type: "cycle", stateKey: "mode", options: [...] }],
+    tile: {
+      icon: "Truck",              // clé du jeu d'icônes de tuile (ci-dessous)
+      summaryKey: "summary",      // valeur par défaut, à omettre
+      countdownKey: "timerExpiresAt", // valeur par défaut, à omettre
+      actions: ["set_mode"],      // celles de vos actions qui deviennent des boutons
+    },
+  };
+}
+```
+
+### Ce que la tuile affiche
+
+Tout vient de l'**état de l'instance** que votre recette écrit avec `ctx.state.set()`, et chaque élément est facultatif : une clé absente de votre état n'affiche rien, plutôt qu'un emplacement vide.
+
+| Élément      | Source                                                       | Remarques                                                                                                                                                                                           |
+| ------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Icône        | `tile.icon`                                                  | Jeu fermé : `ChefHat`, `Clock`, `DoorClosed`, `Droplets`, `Fan`, `Flame`, `Lightbulb`, `Snowflake`, `Sun`, `Thermometer`, `Timer`, `Truck`, `Waves`, `Zap`. Une clé inconnue retombe sur `ChefHat`. |
+| Titre        | le libellé du widget, sinon le nom localisé de votre recette | L'utilisateur peut renommer une tuile ; son libellé l'emporte.                                                                                                                                      |
+| Ligne d'état | `state[tile.summaryKey ?? "summary"]`                        | Une chaîne courte. Restez sous ~40 caractères : une tuile fait ~240 px de large.                                                                                                                    |
+| Décompte     | `state[tile.countdownKey ?? "timerExpiresAt"]`               | Un instant **ISO-8601**. L'UI le décompte à la seconde et le masque une fois l'échéance passée.                                                                                                     |
+| Boutons      | les ids de `tile.actions`, croisés avec vos `actions`        | Rendus avec la même pastille que sur la ligne de recette. Un id que vous ne déclarez pas dans `actions` est ignoré.                                                                                 |
+
+Ce sont les trois mêmes clés d'état que la ligne de recette rend déjà sur la page de zone : une recette qui les publie obtient une présentation cohérente sur les deux surfaces.
+
+```typescript
+// Dans createInstance — ce qui rend la tuile vivante.
+ctx.state.set("summary", `Ouvert pour le livreur — refermeture à ${hhmm}`);
+ctx.state.set("timerExpiresAt", new Date(Date.now() + holdMs).toISOString());
+ctx.state.set("mode", "short"); // la stateKey que lit votre action de type cycle
+```
+
+Publiez la valeur de repos de la `stateKey` d'une action `cycle` dès le début de `createInstance`, et pas seulement quand il se passe quelque chose : le bouton ne s'affiche pas tant que sa clé d'état est absente, donc une tuile dont la recette est au repos n'aurait aucun bouton du tout.
+
+### Règles à connaître
+
+- La tuile suit l'instance en direct via l'événement `recipe.instance.state.changed` — rien à déclarer, aucun polling.
+- Une **instance désactivée** s'affiche grisée, sans ses boutons. Elle n'est pas masquée : celui qui a désactivé une recette doit voir pourquoi la tuile s'est tue.
+- Retirer `tile` dans une version ultérieure **ne supprime pas** le widget de l'utilisateur : il s'affiche comme indisponible. Le retrait est donc un changement visible, qui mérite une note de version.
+- La tuile montre un état ; elle ne configure rien. Les paramètres restent sur la page de zone.
+
 ## RecipeContext
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :

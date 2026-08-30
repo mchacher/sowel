@@ -39,6 +39,18 @@ Affiche les données agrégées d'une zone entière. Vous choisissez quelle **fa
 
 Les widgets de zone vous donnent une vue d'ensemble rapide d'une pièce sans voir les détails de chaque équipement.
 
+### Tuile de recette
+
+Certaines recettes proposent leur propre tuile — un créneau livreur sur un portail, un cycle de filtration, un mode de chauffage. Seules les recettes qui en **déclarent** une apparaissent dans le sélecteur : la plupart des automatisations n'ont rien à montrer d'un coup d'œil et n'en proposent pas.
+
+Ce qu'affiche une tuile de recette est choisi par la recette elle-même, parmi trois éléments :
+
+- une **ligne d'état** : ce que l'automatisation est en train de faire, en une phrase ;
+- un **décompte** : le moment où elle agira toute seule, qui descend à la seconde ;
+- un ou plusieurs **boutons** qui font défiler les modes de la recette, actionnables directement depuis le Tableau de bord.
+
+Une tuile dont l'instance est désactivée s'affiche grisée et garde sa place : une tuile silencieuse n'est jamais un mystère. Si une recette cesse de proposer une tuile après une mise à jour, le widget le dit au lieu de disparaître — supprimez-le vous-même si vous n'en voulez plus.
+
 ## Ajouter des widgets
 
 1. Entrez en **mode édition** en cliquant sur l'icône crayon en haut à droite du Tableau de bord
@@ -46,6 +58,7 @@ Les widgets de zone vous donnent une vue d'ensemble rapide d'une pièce sans voi
 3. Dans la fenêtre, choisissez entre :
    - **Équipement** : parcourez et sélectionnez n'importe quel équipement
    - **Zone** : sélectionnez une zone et une famille de données
+   - **Recette** : choisissez l'une des instances de recette qui proposent une tuile
 
 Le widget apparaît à la fin de votre grille.
 
