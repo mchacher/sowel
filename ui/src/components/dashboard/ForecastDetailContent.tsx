@@ -64,21 +64,24 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
     : "text-text-tertiary";
 
   return (
-    // At 390px the five parts of a row do not fit on one line. What wraps is
-    // rain and wind, not the pill: the pill qualifies the day, so it belongs
-    // beside the day name and the temperature it is a verdict on. The second
-    // line is indented to the width of the day column so the metrics sit under
-    // the temperatures rather than under the name.
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-2.5 border-b border-border-light last:border-b-0">
-      <span className="w-[76px] shrink-0 text-[13px] font-semibold text-text truncate">
-        {dayName}
-      </span>
-
-      <span className={`${conditionColor} shrink-0`}>
+    // A row is a grid on a phone and a single line above 640px. The five parts
+    // do not fit on one line at 390px, and letting them wrap freely left every
+    // row ragged: the pill landed wherever the previous element ended. The
+    // grid pins three columns instead, so day names line up on the left,
+    // temperatures and pills line up on the right, and rain and wind sit
+    // indented under the day they belong to.
+    <div
+      className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1 py-2.5 border-b border-border-light last:border-b-0 sm:flex sm:gap-x-3"
+    >
+      <span className={`${conditionColor} shrink-0 sm:order-2`}>
         <ConditionIcon size={22} strokeWidth={1.5} />
       </span>
 
-      <span className="flex items-baseline gap-1 font-mono tabular-nums shrink-0">
+      <span className="min-w-0 truncate text-[13px] font-semibold text-text sm:order-1 sm:w-[76px] sm:shrink-0">
+        {dayName}
+      </span>
+
+      <span className="justify-self-end flex items-baseline gap-1 font-mono tabular-nums shrink-0 sm:order-3 sm:justify-self-auto">
         <span className="text-[16px] font-bold text-text">
           {day.tempMax !== null ? `${Math.round(day.tempMax)}°` : "—"}
         </span>
@@ -87,7 +90,7 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
         )}
       </span>
 
-      <span className="order-last basis-full pl-[88px] sm:order-none sm:basis-auto sm:pl-0 flex items-center gap-3 min-w-0">
+      <span className="col-start-2 flex items-center gap-3 min-w-0 sm:order-4 sm:col-start-auto">
         {day.rainProb !== null && (
           <span className="flex items-center gap-1 text-[12px] text-text-secondary font-mono tabular-nums">
             <Droplets size={12} strokeWidth={1.5} className="text-primary shrink-0" />
@@ -106,7 +109,7 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
           grey badge would read as a verdict, and "we do not know" is not one. */}
       {day.confidence && (
         <span
-          className={`ml-auto shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+          className={`justify-self-end shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold sm:order-5 sm:ml-auto ${
             CONFIDENCE_STYLES[day.confidence]
           }`}
           title={

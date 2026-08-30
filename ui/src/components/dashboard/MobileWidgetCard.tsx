@@ -399,7 +399,9 @@ function useMobileState(
         lines.push(`💧${Math.round(tomorrow.rainProb)}%`);
       }
       return {
-        icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
+        // Smaller than the other tiles' 96: this is the only card carrying a
+        // footer, and at 96 the icon crowded the title above it.
+        icon: <ConditionIcon size={72} strokeWidth={1.2} className={conditionColor} />,
         stateLines: lines,
         footer: <ForecastStrip days={days} />,
       };

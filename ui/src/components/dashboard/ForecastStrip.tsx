@@ -33,7 +33,7 @@ export function ForecastStrip({ days }: { days: ForecastDay[] }) {
 
   const locale = dateLocale(i18n.language);
   return (
-    <div className="flex gap-1 border-t border-border-light pt-1.5 mt-1 w-full">
+    <div className="flex gap-1 border-t border-border-light pt-1.5 mt-1.5 w-full">
       {strip.map((day) => (
         <StripColumn key={day.dayIndex} day={day} locale={locale} />
       ))}
@@ -56,14 +56,16 @@ function StripColumn({ day, locale }: { day: ForecastDay; locale: string }) {
 
   return (
     <div className="flex-1 flex flex-col items-center gap-0.5 min-w-0" title={confidenceLabel}>
-      <span className="text-[9px] leading-none text-text-tertiary truncate max-w-full">{name}</span>
-      <span className="text-[11px] leading-none font-mono font-semibold text-text tabular-nums">
+      <span className="text-[8px] sm:text-[9px] leading-none text-text-tertiary truncate max-w-full">
+        {name}
+      </span>
+      <span className="text-[10px] sm:text-[11px] leading-none font-mono font-semibold text-text tabular-nums">
         {day.tempMax !== null ? Math.round(day.tempMax) : "—"}
       </span>
       {/* A day the plugin cannot qualify gets the neutral border colour, never
           a confidence colour: an absent verdict must not read as a good one. */}
       <span
-        className={`w-full h-[3px] rounded-full ${
+        className={`w-full h-[2px] sm:h-[3px] rounded-full ${
           day.confidence ? CONFIDENCE_BAR[day.confidence] : CONFIDENCE_BAR_UNKNOWN
         }`}
         aria-label={confidenceLabel}
