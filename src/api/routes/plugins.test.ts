@@ -30,7 +30,7 @@ interface BuildOpts {
 }
 
 /** What each stub was asked to do, so a test can prove the handler ran. */
-let calls: Array<[string, unknown]> = [];
+let calls: Array<[string, ...unknown[]]> = [];
 
 async function buildApp(opts: BuildOpts = {}): Promise<FastifyInstance> {
   calls = [];
