@@ -4,7 +4,7 @@
 
 The Sowel UI has grown organically over 90+ specs. Today it works — but visually it carries technical debt: arbitrary `text-[13px]` / `rounded-[6px]` values, inconsistent spacing across panels, two palettes (warm + dark) that pre-date the design language we've since refined, and no formal component layer. Every new feature reinvents button styles, panel headers, and row layouts.
 
-A full design system has been authored in [design-system/](../../design-system/) (tokens, components, motion, accessibility) and validated against a reference HTML mock at [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html). The remaining work is to migrate the production codebase to that system without breaking anything.
+A full design system has been authored in [design-system/](../../design-system/) (tokens, components, motion, accessibility) and validated against a reference HTML mock at [ui-redesign-B-polished.html](mockups/ui-redesign-B-polished.html). The remaining work is to migrate the production codebase to that system without breaking anything.
 
 ## Goal
 
@@ -80,5 +80,5 @@ Recommended shipping order: **0 → 2 → 3 → 4** first (visible wins, low ris
 - [design-system/README.md](../../design-system/README.md) — System philosophy
 - [design-system/tokens.css](../../design-system/tokens.css) — Source of truth for all CSS variables
 - [design-system/migration.md](../../design-system/migration.md) — Full migration narrative
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) — Reference implementation mock
+- [ui-redesign-B-polished.html](mockups/ui-redesign-B-polished.html) — Reference implementation mock
 - [ui/src/theme.ts](../../ui/src/theme.ts) — Existing light/dark/system mechanism (unchanged)

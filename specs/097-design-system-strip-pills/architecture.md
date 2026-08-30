@@ -163,4 +163,4 @@ That's it. One file modified. No new file created (the `StripPill` is internal â
 ## References
 
 - [design-system/components/strip.md](../../design-system/components/strip.md)
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) lines 421-481 (CSS), 2521-2565 (HTML)
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) lines 421-481 (CSS), 2521-2565 (HTML)

@@ -90,14 +90,14 @@ The polished mock shows the hero spanning the same width as the grid (Option A).
 
 ## Risk assessment
 
-| Risk                                                                 | Likelihood | Mitigation                                                                                                                                                                                       |
+| Risk | Likelihood | Mitigation |
 | -------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ----------------------------------------------------------------------------------------------------------- |
-| Right column too narrow at intermediate desktop sizes (1024-1200 px) | Medium     | 1.5fr/1fr gives the right column ~40% of available width. At 1024 px viewport - sidebar 260 px - padding 32 px = ~730 px content. 40% = ~290 px — tight but workable for Modes + Recettes. Test. |
-| Long zone names overflow hero block when wider                       | Low        | H1 has `truncate` already (verified)                                                                                                                                                             |
-| Tablet 768 px viewport shows awkward in-between state                | Verified   | Tailwind `lg:` only activates ≥ 1024 px. Tablets stay single column.                                                                                                                             |
-| CollapsibleSection state persistence broken                          | Very low   | The component is untouched; its storageKey-based useState persists per section regardless of parent.                                                                                             |
-| Right column empty when zone has no modes/recipes                    | Low        | `(modes                                                                                                                                                                                          |     | recipes) && (...)` already gates rendering. If false, right column is empty placeholder ready for spec 101. |
-| Mobile order regression                                              | Low        | JSX order = render order in a stack grid. Équipements appears first, Comportements second. Matches user choice.                                                                                  |
+| Right column too narrow at intermediate desktop sizes (1024-1200 px) | Medium | 1.5fr/1fr gives the right column ~40% of available width. At 1024 px viewport - sidebar 260 px - padding 32 px = ~730 px content. 40% = ~290 px — tight but workable for Modes + Recettes. Test. |
+| Long zone names overflow hero block when wider | Low | H1 has `truncate` already (verified) |
+| Tablet 768 px viewport shows awkward in-between state | Verified | Tailwind `lg:` only activates ≥ 1024 px. Tablets stay single column. |
+| CollapsibleSection state persistence broken | Very low | The component is untouched; its storageKey-based useState persists per section regardless of parent. |
+| Right column empty when zone has no modes/recipes | Low | `(modes                                                                                                                                                                                          |     | recipes) && (...)` already gates rendering. If false, right column is empty placeholder ready for spec 101. |
+| Mobile order regression | Low | JSX order = render order in a stack grid. Équipements appears first, Comportements second. Matches user choice. |
 
 ## Rollback
 
@@ -106,5 +106,5 @@ The polished mock shows the hero spanning the same width as the grid (Option A).
 ## References
 
 - [ui/src/pages/HomePage.tsx](../../ui/src/pages/HomePage.tsx) — current layout
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) — visual reference
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) — visual reference
 - [Tailwind responsive design](https://tailwindcss.com/docs/responsive-design) — breakpoint reference

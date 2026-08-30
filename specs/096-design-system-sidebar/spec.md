@@ -88,4 +88,4 @@ Refactor the sidebar around a shared `<SidebarItem>` component and adjacent help
 - [design-system/components/sidebar-nav.md](../../design-system/components/sidebar-nav.md) — Pattern reference
 - [design-system/migration.md](../../design-system/migration.md) Phase 2
 - [ui/src/components/layout/Sidebar.tsx](../../ui/src/components/layout/Sidebar.tsx) — Current implementation
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) — Visual reference for hover/active behavior
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) — Visual reference for hover/active behavior

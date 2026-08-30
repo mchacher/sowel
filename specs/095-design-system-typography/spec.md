@@ -105,4 +105,4 @@ Add to `ui/src/index.css`:
 
 - [design-system/tokens.md](../../design-system/tokens.md) §2.3 (text features) and §2.2 (type scale)
 - [design-system/migration.md](../../design-system/migration.md) Phase 1
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) — visual reference for letter-spacing
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) — visual reference for letter-spacing

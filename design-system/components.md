@@ -69,7 +69,7 @@ All three row types share a **3-column grid** with a 32×32 icon, 1fr name, and 
 
 ## Equipment type coverage
 
-Sowel supports 21 equipment types. They all reduce to **6 canonical patterns** below, demonstrated in the `ui-redesign-B-polished.html` "Patterns d'équipements" section.
+Sowel supports 21 equipment types. They all reduce to **6 canonical patterns** below, demonstrated in the `specs/094-ui-redesign/mockups/ui-redesign-B-polished.html` "Patterns d'équipements" section.
 
 | Pattern                             | Maps to types                                                                                                                                  | Layout                                          |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |

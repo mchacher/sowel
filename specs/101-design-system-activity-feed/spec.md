@@ -4,7 +4,7 @@
 
 ## Problem
 
-The zone view has no answer to "what just happened here?". To investigate today, users open Logs (technical, cross-zone, raw) or guess from current equipment state. The polished mock ([ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) lines 2800-2840) introduces an `ActivityPanel` in the zone view's right column that shows the last hour of events, grouped by time bucket, with semantic icon colors and human-readable wording like "Appliques x2 → 4 % par Motion Light".
+The zone view has no answer to "what just happened here?". To investigate today, users open Logs (technical, cross-zone, raw) or guess from current equipment state. The polished mock ([ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) lines 2800-2840) introduces an `ActivityPanel` in the zone view's right column that shows the last hour of events, grouped by time bucket, with semantic icon colors and human-readable wording like "Appliques x2 → 4 % par Motion Light".
 
 Two backend gaps block the mock's UX:
 
@@ -133,6 +133,6 @@ Cross-zone recipes (slot `crossZone`) emit `zoneId = null` (global, visible in e
 
 - [design-system/components/activity-item.md](../../design-system/components/activity-item.md)
 - [design-system/migration.md](../../design-system/migration.md) Phase 7
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) lines 2800-2840 (desktop) and `.mob__act` (mobile)
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) lines 2800-2840 (desktop) and `.mob__act` (mobile)
 - [architecture.md](architecture.md)
 - [plan.md](plan.md)
