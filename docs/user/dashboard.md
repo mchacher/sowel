@@ -39,6 +39,18 @@ Displays aggregated data for an entire zone. You choose which **family** of data
 
 Zone widgets give you a quick overview of an entire room without seeing individual equipment details.
 
+### Recipe tile
+
+Some recipes offer a tile of their own — a delivery window on a gate, a filtration cycle, a heating mode. Only recipes that **declare** one appear in the picker: most automations have nothing to watch at a glance and offer nothing.
+
+What a recipe tile shows is chosen by the recipe itself, out of three things:
+
+- a **status line** — what the automation is doing right now, in one sentence;
+- a **countdown** — when it will act on its own, ticking down each second;
+- one or more **buttons** cycling through the recipe's modes, which you can press straight from the Dashboard.
+
+A tile whose recipe instance is disabled is greyed out and keeps its place, so a quiet tile is never a mystery. If a recipe stops offering a tile after an update, the widget says so instead of vanishing — remove it yourself if you no longer want it.
+
 ## Adding widgets
 
 1. Enter **edit mode** by clicking the pencil icon in the top-right corner of the Dashboard
@@ -46,6 +58,7 @@ Zone widgets give you a quick overview of an entire room without seeing individu
 3. In the modal, choose between:
    - **Equipment** -- browse and select any equipment
    - **Zone** -- select a zone and a data family
+   - **Recipe** -- pick one of the recipe instances that offer a tile
 
 The widget appears at the end of your grid.
 
