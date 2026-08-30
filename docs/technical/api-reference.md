@@ -214,6 +214,20 @@ No separate auth scheme — these routes sit behind the same JWT/API-token middl
 
 ---
 
+### The submeter role (`?role=submeter`)
+
+`GET /api/v1/equipments?role=submeter` returns the consumption submeters, ordered clamps first, then metering relays, then other metered loads, each group by name, so a fixed-capacity client truncating the list keeps the meters that matter. `?type=energy_meter` is honoured as the same role for the energy display's older firmware.
+
+Each entry carries an extra field on this role only:
+
+| Field                 | Meaning                                                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `powerReadingCurrent` | `true` when the `power` reading may be drawn as a live measurement, `false` when it is older than its freshness budget, `null` when there is no numeric `power` reading to judge. |
+
+A client must consult it before drawing a segment. A reading past its budget is a leftover, not a measurement, and it is quiet: a stale `0 W` looks exactly like an appliance that is off. The budget is two minutes for a declared meter, which the engine already expects to report continuously, and ten minutes otherwise, because several integrations poll on a five-minute cycle and a healthy appliance must not flicker (issues #744 and #832).
+
+The rule lives in `src/shared/reading-freshness.ts` and the web UI imports the same function, so the two surfaces cannot drift apart.
+
 ## Zones
 
 | Method   | Path                                 | Description                                                                             |

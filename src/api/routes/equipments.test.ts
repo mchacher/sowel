@@ -12,7 +12,13 @@ interface FixtureEq {
   name: string;
   type: string;
   status?: string;
-  dataBindings?: Array<{ alias?: string; category?: string; type?: string }>;
+  dataBindings?: Array<{
+    alias?: string;
+    category?: string;
+    type?: string;
+    value?: unknown;
+    lastUpdated?: string | null;
+  }>;
 }
 function makeManager(fixture: FixtureEq[]) {
   return {
@@ -508,5 +514,99 @@ describe("PUT /api/v1/equipments/:id — solar profile (spec 160)", () => {
     });
     expect(res.statusCode).toBe(400);
     expect(received).toBeNull();
+  });
+});
+
+// ── #832 — the feed must not serve a leftover as a current measurement ──
+//
+// The energy display is this feed's consumer and cannot work a reading's age
+// out for itself without restating the rule, which is exactly how the web
+// breakdown and the arbitration card came to describe one appliance two
+// contradictory ways (#744). The verdict is computed here, from the same
+// shared rule the web UI uses.
+describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", () => {
+  let app: ReturnType<typeof Fastify>;
+  const logger = createLogger("silent").logger;
+
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+  const powerAt = (value: unknown, lastUpdated: string | null) => [
+    { alias: "power", category: "power", type: "number", value, lastUpdated },
+  ];
+
+  async function build(fixture: FixtureEq[]) {
+    const a = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(a);
+    registerEquipmentRoutes(a, {
+      equipmentManager: makeManager(fixture),
+      logger,
+    } as unknown as Parameters<typeof registerEquipmentRoutes>[1]);
+    await a.ready();
+    return a;
+  }
+
+  afterEach(async () => {
+    if (app) await app.close();
+  });
+
+  async function verdicts(fixture: FixtureEq[]) {
+    app = await build(fixture);
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?role=submeter" });
+    return Object.fromEntries(
+      (res.json() as { name: string; powerReadingCurrent: boolean | null }[]).map((e) => [
+        e.name,
+        e.powerReadingCurrent,
+      ]),
+    );
+  }
+
+  it("marks a fresh reading current and an aged one not", async () => {
+    const v = await verdicts([
+      { id: "1", name: "Piscine", type: "energy_meter", dataBindings: powerAt(1233, ago(40_000)) },
+      {
+        id: "2",
+        name: "Chauffe-eau",
+        type: "water_heater",
+        // The measured case: 560 W drawn, last reported 944 s earlier.
+        dataBindings: powerAt(0, ago(944_000)),
+      },
+    ]);
+    expect(v["Piscine"]).toBe(true);
+    expect(v["Chauffe-eau"]).toBe(false);
+  });
+
+  it("does not flag a 300 s poller, which is a supported default cadence", async () => {
+    // Four official integrations poll every 300 s. The #744 snapshot shows two
+    // such rows at 270 s with nothing wrong.
+    const v = await verdicts([
+      { id: "1", name: "Lave-linge", type: "appliance", dataBindings: powerAt(0, ago(270_000)) },
+    ]);
+    expect(v["Lave-linge"]).toBe(true);
+  });
+
+  it("holds a declared meter to the tighter window", async () => {
+    const v = await verdicts([
+      { id: "1", name: "Clamp", type: "energy_meter", dataBindings: powerAt(500, ago(270_000)) },
+    ]);
+    expect(v["Clamp"]).toBe(false);
+  });
+
+  it("reports null when there is no numeric power reading to judge", async () => {
+    // A declared meter awaiting its first report is kept in the feed on
+    // purpose (#527); "current" is not a question that applies to it.
+    const v = await verdicts([{ id: "1", name: "Neuf", type: "energy_meter", dataBindings: [] }]);
+    expect(v["Neuf"]).toBeNull();
+  });
+
+  it("leaves the rest of the payload untouched", async () => {
+    // Additive: an existing client keeps parsing exactly what it parses today.
+    app = await build([
+      { id: "1", name: "Piscine", type: "energy_meter", dataBindings: powerAt(1233, ago(40_000)) },
+    ]);
+    const res = await app.inject({ method: "GET", url: "/api/v1/equipments?role=submeter" });
+    const [eq] = res.json() as Record<string, unknown>[];
+    expect(eq.id).toBe("1");
+    expect(eq.name).toBe("Piscine");
+    expect(eq.type).toBe("energy_meter");
+    expect((eq.dataBindings as { value: number }[])[0].value).toBe(1233);
   });
 });
