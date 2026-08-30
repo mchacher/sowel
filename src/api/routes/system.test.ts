@@ -3,12 +3,13 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerSystemRoutes, type TzInfo } from "./system.js";
 import type { SunlightManager, SunlightData } from "../../zones/sunlight-manager.js";
+import type { UserRole } from "../../shared/types.js";
 
 const logger = createLogger("silent").logger;
 
 interface BuildOpts {
   authed?: boolean;
-  role?: "admin" | "user" | "viewer";
+  role?: UserRole;
   sunlight?: SunlightData;
   shadowMode?: boolean;
   takeoverPending?: boolean;
@@ -142,7 +143,7 @@ describe("POST /api/v1/system/takeover", () => {
   });
 
   it("rejects non-admin callers with 403", async () => {
-    openApp = await buildApp({ authed: true, role: "user", takeoverPending: true });
+    openApp = await buildApp({ authed: true, role: "standard", takeoverPending: true });
     const res = await openApp.inject({ method: "POST", url: "/api/v1/system/takeover" });
     expect(res.statusCode).toBe(403);
   });

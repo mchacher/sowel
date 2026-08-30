@@ -31,6 +31,18 @@ let capturedSun: {
 let capturedTariff: RecipeTariff | null = null;
 
 /**
+ * Read what the recipe captured.
+ *
+ * `capturedTariff` is assigned inside a recipe callback, which control-flow
+ * analysis cannot see, so a direct read narrows to `null` and every property
+ * access is typed `never`. Invisible while test files were excluded from the
+ * typecheck (#834).
+ */
+function readCapturedTariff(): RecipeTariff | null {
+  return capturedTariff;
+}
+
+/**
  * Backing config for the mock classifier. Handed out by reference on purpose —
  * that is what the real TariffClassifier does, and it is what lets the tests
  * prove the snapshot is copied out rather than aliased.
@@ -250,13 +262,15 @@ describe("RecipeManager", () => {
     capturedTariff = null;
     manager.createInstance("tariff-set", {});
 
-    expect(capturedTariff?.configured).toBe(true);
+    expect(readCapturedTariff()?.configured).toBe(true);
     // Only HC slots, and only the schedule covering today.
-    expect(capturedTariff?.offPeakToday).toEqual([{ start: "22:00", end: "06:00", tariff: "hc" }]);
+    expect(readCapturedTariff()?.offPeakToday).toEqual([
+      { start: "22:00", end: "06:00", tariff: "hc" },
+    ]);
     // Prices are commercial data and must never reach a recipe package.
-    expect(capturedTariff).not.toHaveProperty("prices");
-    expect(JSON.stringify(capturedTariff)).not.toContain("0.2516");
-    expect(JSON.stringify(capturedTariff)).not.toContain("0.2068");
+    expect(readCapturedTariff()).not.toHaveProperty("prices");
+    expect(JSON.stringify(readCapturedTariff())).not.toContain("0.2516");
+    expect(JSON.stringify(readCapturedTariff())).not.toContain("0.2068");
   });
 
   it("resolves whether the current time is off-peak across a midnight wrap", () => {
@@ -280,7 +294,7 @@ describe("RecipeManager", () => {
     capturedTariff = null;
     manager.createInstance("tariff-wrap", {});
 
-    expect(capturedTariff?.isOffPeakNow).toBe(true);
+    expect(readCapturedTariff()?.isOffPeakNow).toBe(true);
   });
 
   it("hands recipes a copy — mutating the snapshot cannot corrupt the config", () => {
@@ -305,7 +319,9 @@ describe("RecipeManager", () => {
     // And the next reader still sees the real schedule.
     capturedTariff = null;
     manager.createInstance("tariff-copy", {});
-    expect(capturedTariff?.offPeakToday).toEqual([{ start: "22:00", end: "06:00", tariff: "hc" }]);
+    expect(readCapturedTariff()?.offPeakToday).toEqual([
+      { start: "22:00", end: "06:00", tariff: "hc" },
+    ]);
   });
 
   it("exposes ctx.helpers.getSunlight() to a running instance", () => {

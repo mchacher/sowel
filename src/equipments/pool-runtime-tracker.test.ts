@@ -226,7 +226,9 @@ describe("PoolRuntimeTracker", () => {
       type: "equipment.removed",
       equipmentId: eqId,
       equipmentName: "Pompe",
-      zoneId: null,
+      // `zoneId` is a string on the event, as it is on Equipment: a removed
+      // equipment always had a zone.
+      zoneId: "zone-1",
     });
 
     const row = db.prepare("SELECT * FROM pool_runtime_state WHERE equipment_id = ?").get(eqId);

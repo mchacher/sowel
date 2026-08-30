@@ -764,47 +764,43 @@ describe("DeviceManager", () => {
     };
 
     it("returns null for an unknown device", () => {
-      expect(manager.getDeviceDataValue("shelly_mqtt", "ghost", "energy_forward")).toBeNull();
+      expect(manager.getDeviceDataValue("shelly", "ghost", "energy_forward")).toBeNull();
     });
 
     it("returns null for an unknown key on an existing device", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
       expect(
-        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "missing_key"),
+        manager.getDeviceDataValue("shelly", "shelly-pro3em_00-em0", "missing_key"),
       ).toBeNull();
     });
 
     it("returns null when the key value has never been written", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
       expect(
-        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "energy_forward"),
+        manager.getDeviceDataValue("shelly", "shelly-pro3em_00-em0", "energy_forward"),
       ).toBeNull();
     });
 
     it("returns the numeric value for a number-typed key", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
-      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", {
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
+      manager.updateDeviceData("shelly", "shelly-pro3em_00-em0", {
         energy_forward: 6105.7,
       });
-      expect(
-        manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "energy_forward"),
-      ).toBe(6105.7);
+      expect(manager.getDeviceDataValue("shelly", "shelly-pro3em_00-em0", "energy_forward")).toBe(
+        6105.7,
+      );
     });
 
     it("returns the boolean value for a boolean-typed key", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
-      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", { online: true });
-      expect(manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "online")).toBe(
-        true,
-      );
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
+      manager.updateDeviceData("shelly", "shelly-pro3em_00-em0", { online: true });
+      expect(manager.getDeviceDataValue("shelly", "shelly-pro3em_00-em0", "online")).toBe(true);
     });
 
     it("returns the string value for a text-typed key", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
-      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", { label: "main" });
-      expect(manager.getDeviceDataValue("shelly_mqtt", "shelly-pro3em_00-em0", "label")).toBe(
-        "main",
-      );
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
+      manager.updateDeviceData("shelly", "shelly-pro3em_00-em0", { label: "main" });
+      expect(manager.getDeviceDataValue("shelly", "shelly-pro3em_00-em0", "label")).toBe("main");
     });
   });
 
@@ -822,23 +818,23 @@ describe("DeviceManager", () => {
     };
 
     it("returns null for an unknown device", () => {
-      expect(manager.getDeviceDataLastUpdated("shelly_mqtt", "ghost", "energy_forward")).toBeNull();
+      expect(manager.getDeviceDataLastUpdated("shelly", "ghost", "energy_forward")).toBeNull();
     });
 
     it("returns null when the key has never been written", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
       expect(
-        manager.getDeviceDataLastUpdated("shelly_mqtt", "shelly-pro3em_00-em0", "energy_forward"),
+        manager.getDeviceDataLastUpdated("shelly", "shelly-pro3em_00-em0", "energy_forward"),
       ).toBeNull();
     });
 
     it("returns an ISO 8601 UTC timestamp after a write", () => {
-      manager.upsertFromDiscovery("shelly_mqtt", "shelly_mqtt", sampleEm);
-      manager.updateDeviceData("shelly_mqtt", "shelly-pro3em_00-em0", {
+      manager.upsertFromDiscovery("shelly", "shelly", sampleEm);
+      manager.updateDeviceData("shelly", "shelly-pro3em_00-em0", {
         energy_forward: 6105.7,
       });
       const ts = manager.getDeviceDataLastUpdated(
-        "shelly_mqtt",
+        "shelly",
         "shelly-pro3em_00-em0",
         "energy_forward",
       );

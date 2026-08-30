@@ -893,8 +893,8 @@ describe("PV forecast routes (spec 160)", () => {
   const solarMeter = {
     id: "eq-pv",
     name: "Shelly Solar",
-    type: "energy_production_meter",
-  } as never;
+    type: "energy_production_meter" as const,
+  };
 
   it("404s on an unknown equipment", async () => {
     const app = await buildApp();
@@ -1045,7 +1045,7 @@ describe("Spec 161 — POST /energy/pv-forecast/:id/backfill", () => {
   it("refuses a non-admin before touching the forecaster", async () => {
     const app = await buildApp({
       equipments: [solarMeter],
-      authRole: "user",
+      authRole: "standard",
       pvForecaster: forecasterReturning({ ok: true, hoursPaired: 999, model: null }),
     });
     const res = await app.inject({ method: "POST", url });

@@ -15,6 +15,8 @@ function makeDevice(overrides: Partial<Device>): Device {
     zoneId: null,
     source: "zigbee2mqtt",
     status: "online",
+    // Spec 143 added this to Device; the fixture predates it.
+    powerSource: "unknown",
     lastSeen: "2026-05-26 09:59:50Z",
     createdAt: "2026-01-01 00:00:00Z",
     updatedAt: "2026-05-26 09:59:50Z",

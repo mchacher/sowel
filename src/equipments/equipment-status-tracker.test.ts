@@ -205,9 +205,9 @@ describe("EquipmentStatusTracker", () => {
       // Arm the 200ms debounce the way live device traffic does.
       bus.emit({
         type: "equipment.updated",
-        equipmentId: "eq-1",
-        equipmentName: "Eq",
-        zoneId: "z",
+        // The event carries the whole Equipment; the flat fields this used to
+        // pass were a shape the bus cannot produce (#834).
+        equipment: makeEquipment("eq-1", "online"),
       });
 
       // Swap in a manager that behaves like a closed database, then shut down.

@@ -211,7 +211,13 @@ describe("ModeManager", () => {
       const impacts = manager.getImpactsByMode(modeId);
       expect(impacts).toHaveLength(1);
       expect(impacts[0].actions).toHaveLength(2);
-      expect(impacts[0].actions[0].value).toBe("OFF");
+      // ZoneModeImpactAction is a union and only the `order` variant carries
+      // a value; asserting on it unnarrowed was reading a property the type
+      // does not have on every branch (#834).
+      const action = impacts[0].actions[0];
+      expect(action.type).toBe("order");
+      if (action.type !== "order") throw new Error("expected an order action");
+      expect(action.value).toBe("OFF");
     });
 
     it("removes a zone impact", () => {

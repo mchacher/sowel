@@ -858,7 +858,7 @@ describe("EquipmentManager", () => {
       const eq = manager.create({ name: "Spots", type: "light_onoff", zoneId: zone.id });
       const { orderIds } = seedDevice(db, {
         name: "Switch",
-        orderKeys: [{ key: "state", payloadKey: "state" }],
+        orderKeys: [{ key: "state" }],
       });
       manager.addOrderBinding(eq.id, orderIds[0], "state");
 
@@ -901,10 +901,7 @@ describe("EquipmentManager", () => {
       const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
       const { orderIds } = seedDevice(db, {
         name: "MiniDuo",
-        orderKeys: [
-          { key: "l1", payloadKey: "l1" },
-          { key: "l2", payloadKey: "l2" },
-        ],
+        orderKeys: [{ key: "l1" }, { key: "l2" }],
       });
       manager.addOrderBinding(eq.id, orderIds[0], "low");
       manager.addOrderBinding(eq.id, orderIds[1], "high");
@@ -936,7 +933,7 @@ describe("EquipmentManager", () => {
       const eq = manager.create({ name: "Extracteur", type: "vmc", zoneId: zone.id });
       const { orderIds } = seedDevice(db, {
         name: "Relay",
-        orderKeys: [{ key: "state", payloadKey: "state" }],
+        orderKeys: [{ key: "state" }],
       });
       manager.addOrderBinding(eq.id, orderIds[0], "low");
 
@@ -950,10 +947,7 @@ describe("EquipmentManager", () => {
         const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
         const { orderIds } = seedDevice(db, {
           name: "MiniDuo",
-          orderKeys: [
-            { key: "l1", payloadKey: "l1" },
-            { key: "l2", payloadKey: "l2" },
-          ],
+          orderKeys: [{ key: "l1" }, { key: "l2" }],
         });
         manager.addOrderBinding(eq.id, orderIds[0], "low");
         manager.addOrderBinding(eq.id, orderIds[1], "high");
@@ -975,8 +969,8 @@ describe("EquipmentManager", () => {
     it.skip("dispatches to multiple devices (multi-device)", async () => {
       const zone = zoneManager.create({ name: "Salon" });
       const eq = manager.create({ name: "All Lights", type: "light_onoff", zoneId: zone.id });
-      const d1 = seedDevice(db, { name: "L1", orderKeys: [{ key: "state", payloadKey: "state" }] });
-      const d2 = seedDevice(db, { name: "L2", orderKeys: [{ key: "state", payloadKey: "state" }] });
+      const d1 = seedDevice(db, { name: "L1", orderKeys: [{ key: "state" }] });
+      const d2 = seedDevice(db, { name: "L2", orderKeys: [{ key: "state" }] });
       manager.addOrderBinding(eq.id, d1.orderIds[0], "state");
       manager.addOrderBinding(eq.id, d2.orderIds[0], "state");
 
@@ -1597,7 +1591,8 @@ describe("EquipmentManager", () => {
             key: "shutter_position",
             type: "number",
             category: "shutter_position",
-            value: positionValue,
+            // `null` means "no value seeded"; the option is optional, not nullable.
+            value: positionValue ?? undefined,
           },
         ],
       });
@@ -1783,6 +1778,8 @@ describe("deriveCoverState", () => {
       value,
       lastUpdated: null,
       lastChanged: null,
+      // Spec 116 added this to DataBindingWithValue; the fixture predates it.
+      stale: false,
     };
   }
 

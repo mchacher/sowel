@@ -40,6 +40,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      # Test files are excluded from `typecheck` (tsconfig.json's `exclude`),
+      # which let a test assert on a type that does not exist while CI stayed
+      # green: roles the engine never had, an event type removed from
+      # EngineEvent, string literals outside their union (#834). Blocking from
+      # the start, because it is at zero and the point is to keep it there.
+      - run: npm run typecheck:tests
       - run: npm run format:check
       - run: npm test
 

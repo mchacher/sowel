@@ -19,7 +19,7 @@ async function buildApp(opts: BuildOpts = {}) {
 
   if (opts.authed) {
     app.addHook("onRequest", async (request) => {
-      request.auth = { userId: "u1", role: "user" };
+      request.auth = { userId: "u1", role: "standard" };
     });
   }
 

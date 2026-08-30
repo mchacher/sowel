@@ -10,6 +10,7 @@ import {
 } from "./auth-middleware.js";
 import type { AuthService, JwtPayload } from "./auth-service.js";
 import type { UserManager } from "./user-manager.js";
+import type { FastifyRequest } from "fastify";
 
 const logger = createLogger("silent").logger;
 
@@ -88,7 +89,7 @@ describe("auth-middleware", () => {
         logger,
       });
       // Fake protected route
-      app.get("/api/v1/test", async (req) => ({ auth: req.auth }));
+      app.get("/api/v1/test", async (req: FastifyRequest) => ({ auth: req.auth }));
       app.get("/api/v1/health", async () => ({ status: "ok" }));
       app.post("/api/v1/auth/setup", async () => ({ ok: true }));
       app.get("/non-api/foo", async () => ({ ok: true }));

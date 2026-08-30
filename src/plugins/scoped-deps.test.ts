@@ -220,7 +220,7 @@ describe("DeviceManagerProxy", () => {
     const inner = makeMockDeviceManager();
     const proxy = makeDeviceManagerProxy("zigbee2mqtt", inner, logger);
     expect(() =>
-      proxy.upsertFromDiscovery("netatmo", "cloud", {
+      proxy.upsertFromDiscovery("netatmo", "netatmo_hc", {
         friendlyName: "x",
         data: [],
         orders: [],
@@ -233,14 +233,14 @@ describe("DeviceManagerProxy", () => {
   it("allows upsertFromDiscovery on own integrationId", () => {
     const inner = makeMockDeviceManager();
     const proxy = makeDeviceManagerProxy("zigbee2mqtt", inner, logger);
-    proxy.upsertFromDiscovery("zigbee2mqtt", "mqtt", {
+    proxy.upsertFromDiscovery("zigbee2mqtt", "zigbee2mqtt", {
       friendlyName: "bulb_1",
       data: [],
       orders: [],
     });
     expect(inner.upsertFromDiscovery).toHaveBeenCalledWith(
       "zigbee2mqtt",
-      "mqtt",
+      "zigbee2mqtt",
       expect.objectContaining({ friendlyName: "bulb_1" }),
     );
   });
