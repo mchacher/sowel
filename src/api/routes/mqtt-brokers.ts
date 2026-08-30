@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { MqttBrokerManager } from "../../mqtt-publishers/mqtt-broker-manager.js";
 import { MqttBrokerError } from "../../mqtt-publishers/mqtt-broker-manager.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 
 // Input schemas (issue #452). Old guards were bare `!name` / `!url` (no trim),
@@ -27,7 +27,7 @@ export function registerMqttBrokerRoutes(app: FastifyInstance, deps: MqttBrokers
   // Admin only: broker config carries plaintext passwords, so even the GET
   // reads must be gated (spec 131 — the mutation gate does not cover reads).
   app.addHook("onRequest", async (request, reply) => {
-    if (request.url.startsWith("/api/v1/mqtt-brokers")) requireAdmin(request, reply);
+    if (pathIsUnder(request, "/api/v1/mqtt-brokers")) requireAdmin(request, reply);
   });
 
   // GET /api/v1/mqtt-brokers

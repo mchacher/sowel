@@ -3,7 +3,7 @@ import type { NotificationPublisherManager } from "../../notifications/notificat
 import type { NotificationPublishService } from "../../notifications/notification-publish-service.js";
 import { NotificationPublisherError } from "../../notifications/notification-publisher-manager.js";
 import type { NotificationChannelType, NotificationChannelConfig } from "../../shared/types.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 
 // Input schemas (issue #452). Old guards were bare `!x` (no trim), so
@@ -44,7 +44,7 @@ export function registerNotificationPublisherRoutes(
   // Admin only: channel config carries secrets (Telegram botToken, webhook
   // URLs), so even the GET reads must be gated (spec 131).
   app.addHook("onRequest", async (request, reply) => {
-    if (request.url.startsWith("/api/v1/notification-publishers")) requireAdmin(request, reply);
+    if (pathIsUnder(request, "/api/v1/notification-publishers")) requireAdmin(request, reply);
   });
 
   // GET /api/v1/notification-publishers

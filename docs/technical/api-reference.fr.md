@@ -52,6 +52,26 @@ Endpoints publics, aucune auth requise pour `status` et `setup`.
 
 ---
 
+## Rôles et autorisation
+
+Deux rôles existent : `admin` et `standard`. La plupart des lectures (`GET`) sont accessibles à tout utilisateur authentifié, mais pas toutes : les sections marquées **(Admin)** ci-dessous le sont aussi en lecture, parce que ce qu'elles renvoient est de la configuration et des secrets (le backup complet, le journal serveur, la table des réglages, les identifiants de broker, les tokens de canaux de notification, la liste des utilisateurs). Ces lectures sont gardées par la route qui les sert, pas par la barrière globale sur les mutations, qui n'inspecte que `POST/PUT/PATCH/DELETE`.
+
+**Toutes les mutations de configuration sont réservées aux admins** (spec 131) : un utilisateur `standard` reçoit `403 { "error": "Admin access required" }` sur tout `POST/PUT/PATCH/DELETE` hors de la liste blanche d'usage ci-dessous. La barrière est fail-closed : tout endpoint mutant absent de la liste est admin-only.
+
+**Liste blanche des écritures `standard`** (les seules mutations qu'un utilisateur standard peut faire) :
+
+| Method        | Path                                                                                                      | Usage                      |
+| ------------- | --------------------------------------------------------------------------------------------------------- | -------------------------- |
+| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actionner un équipement    |
+| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Commande de zone           |
+| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Son propre compte          |
+| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Ses propres tokens API     |
+| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Sa propre MFA (spec 151)   |
+| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Son propre abonnement push |
+| POST          | `/api/v1/auth/logout`                                                                                     | Terminer sa propre session |
+
+Un token API hérite du rôle de son créateur : un token de portée standard est soumis à la même barrière, sans escalade de privilège possible.
+
 ## Current User (Me)
 
 Profil et tokens de l'utilisateur authentifié.

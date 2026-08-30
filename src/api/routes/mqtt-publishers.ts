@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { MqttPublisherManager } from "../../mqtt-publishers/mqtt-publisher-manager.js";
 import type { MqttPublishService } from "../../mqtt-publishers/mqtt-publish-service.js";
 import { MqttPublisherError } from "../../mqtt-publishers/mqtt-publisher-manager.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 
 // Input schemas (issue #452). Old guards were bare `!x` (no trim), so
@@ -38,7 +38,7 @@ export function registerMqttPublisherRoutes(app: FastifyInstance, deps: MqttPubl
 
   // Admin only: publisher/mapping config is infrastructure — gate reads too.
   app.addHook("onRequest", async (request, reply) => {
-    if (request.url.startsWith("/api/v1/mqtt-publishers")) requireAdmin(request, reply);
+    if (pathIsUnder(request, "/api/v1/mqtt-publishers")) requireAdmin(request, reply);
   });
 
   // GET /api/v1/mqtt-publishers

@@ -77,8 +77,15 @@ An `mfaToken` returned by `/auth/login` is single-purpose (JWT `purpose: "mfa_pe
 
 ## Roles & authorization
 
-Two roles exist: `admin` and `standard`. Reads (`GET`) are available to any
-authenticated user. **All configuration mutations are admin-only** (spec 131): a
+Two roles exist: `admin` and `standard`. Most reads (`GET`) are available to any
+authenticated user, but not all: the sections tagged **(Admin)** below are
+admin-only for reads too, because what they return is configuration and secrets
+(the full backup, the server log, the settings map, broker credentials,
+notification channel tokens, the user list). Those reads are gated by the route
+that serves them, not by the global mutation gate, which only inspects
+`POST/PUT/PATCH/DELETE`.
+
+**All configuration mutations are admin-only** (spec 131): a
 `standard` user gets `403 { "error": "Admin access required" }` on any
 `POST/PUT/PATCH/DELETE` except the usage/personal allowlist below. Sections tagged
 **(Admin)** require the admin role; the gate is fail-closed, so any mutating

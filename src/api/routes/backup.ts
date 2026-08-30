@@ -5,7 +5,7 @@ import type { Logger } from "../../core/logger.js";
 import type { BackupManager } from "../../backup/backup-manager.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
 import type { UserManager } from "../../auth/user-manager.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { buildActor } from "../audit-context.js";
 
 interface BackupRouteDeps {
@@ -33,8 +33,7 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupRouteDeps
   // validation, preserving the original 403-before-400 ordering; bounded to the
   // /backup subtree so it can't over-match a sibling route.
   app.addHook("onRequest", async (request, reply) => {
-    const path = request.url.split("?")[0];
-    if (path === "/api/v1/backup" || path.startsWith("/api/v1/backup/")) {
+    if (pathIsUnder(request, "/api/v1/backup")) {
       requireAdmin(request, reply);
     }
   });
