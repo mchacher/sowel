@@ -22,9 +22,9 @@ Affiche un équipement unique avec son état courant et ses contrôles rapides.
 
 Les équipements on/off (lumières, interrupteurs, prises, chauffe-eau, vannes, radiateurs, pompes de piscine, lecteurs multimédia, portails à action unique) changent d'état quand vous cliquez **n'importe où sur la tuile**, et pas seulement sur le bouton sous l'icône. Les tuiles à plusieurs contrôles -- volets, thermostats, volets de piscine, VMC -- gardent leurs boutons. En mode édition la tuile n'agit plus, pour que vous puissiez la déplacer et la renommer sans risque.
 
-La tuile **prévisions météo** affiche demain, et indique à quel point les modèles s'accordent sur cette journée : un point coloré et le mot, à côté de la condition (vert fiable, ambre assez fiable, rouge peu fiable). Cliquez ou touchez la tuile, sur ordinateur comme sur téléphone, pour ouvrir un panneau qui montre les cinq jours de prévision côte à côte, chacun avec sa condition, son maximum, son minimum, son vent et sa fiabilité, ainsi que le modèle d'où vient la prévision.
+La tuile **prévisions météo** affiche demain, et indique à quel point les modèles s'accordent sur cette journée : un point coloré et le mot, à côté de la condition (vert fiable, ambre assez fiable, rouge peu fiable). Cliquez ou touchez la tuile, sur ordinateur comme sur téléphone, pour ouvrir un panneau qui montre les cinq jours de prévision côte à côte, chacun avec sa condition, son maximum, son minimum, son vent et une pastille de fiabilité, ainsi que le modèle d'où vient la prévision. C'est la même pastille que sur la page de l'équipement.
 
-La fiabilité est publiée par le plugin météo à partir de la version 2.0. Avec un plugin plus ancien, la tuile n'affiche aucune fiabilité et le panneau garde un trait gris sous chaque jour : un jour non qualifié ne doit jamais ressembler à un jour fiable.
+La fiabilité est publiée par le plugin météo à partir de la version 2.0. Avec un plugin plus ancien, la tuile n'affiche aucune fiabilité et le panneau n'affiche aucune pastille : un jour non qualifié ne doit jamais ressembler à un jour fiable.
 
 ### Widget de zone
 

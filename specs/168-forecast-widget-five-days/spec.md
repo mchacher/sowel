@@ -27,7 +27,8 @@ Two consequences, both observed on the reference installation:
 - The sheet gains a `weather_forecast` branch (option C2): the card anatomy of
   the equipment page, narrowed so the five days fit across a 390px sheet with
   no horizontal scrolling. Day, condition, maximum, minimum, wind, and the
-  confidence as a coloured rule with the word where there is room for it.
+  confidence as the equipment page's pill, wrapped to two lines where the
+  column is too narrow for one.
 - Rain is not repeated in the sheet: a 68px column has room for one metric, the
   tile already carries rain for tomorrow, and wind is the one that changes what
   you do with a shutter or an awning.
@@ -59,9 +60,10 @@ ragged.
 - [x] Clicking the tile opens the detail sheet, on desktop and on mobile.
 - [x] The sheet renders every available day as a column that fits without a
       horizontal scroll at 390px: name, condition icon, max, min, wind.
-- [x] Each column carries a confidence rule in the same three colours; a day
-      with no confidence keeps the neutral rule and gets no word.
-- [x] The five rules land on one baseline whatever each day published.
+- [x] Each column carries the equipment page's confidence pill; a day with no
+      confidence gets no pill at all, not an empty or grey one.
+- [x] The pill's slot is reserved whether or not there is a pill, so the five
+      columns end on one line whatever each day published.
 - [x] The sheet shows the source line when the plugin publishes the model used.
 - [x] Nothing changes for a household whose plugin predates 2.0: no dot on the
       tile, neutral rules in the sheet, and the tile still opens the sheet.
@@ -72,7 +74,7 @@ ragged.
 | -------------------------------------- | --------------------------------------------------------------------------------------------- |
 | No forecast bindings at all            | Tile renders nothing (unchanged), so no click target                                          |
 | Only J+1 bound                         | Tile unchanged; the sheet shows one column                                                    |
-| `confidence` absent (plugin < 2.0)     | No dot on the tile, neutral rule in the sheet, everything else renders                        |
+| `confidence` absent (plugin < 2.0)     | No dot on the tile, no pill in the sheet, everything else renders                             |
 | `tempMax` null on a day                | Column shows a dash instead of a number                                                       |
 | `tempMax` published as NaN             | Rejected by the parser (`Number.isFinite`), so the column shows the dash, not the literal NaN |
 | Days bound out of order (j3 before j1) | Ordered by `dayIndex`, as `parseForecastDays` already guarantees                              |

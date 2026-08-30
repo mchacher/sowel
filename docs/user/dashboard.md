@@ -22,9 +22,9 @@ Displays a single equipment with its current state and quick controls.
 
 On/off equipments (lights, switches, plugs, water heaters, water valves, heaters, pool pumps, media players, single-action gates) toggle when you click **anywhere on the tile**, not just the button under the icon. Tiles with several controls -- shutters, thermostats, pool covers, VMC -- keep their own buttons. In edit mode the tile stops acting, so you can drag and rename it safely.
 
-The **weather forecast** tile shows tomorrow, and says how much the models agree on it: a coloured dot and the word, next to the condition (green reliable, amber fairly reliable, red unreliable). Click or tap the tile, on a computer as well as on a phone, to open a panel showing the five forecast days side by side, each with its condition, maximum, minimum, wind and reliability, plus the model the forecast came from.
+The **weather forecast** tile shows tomorrow, and says how much the models agree on it: a coloured dot and the word, next to the condition (green reliable, amber fairly reliable, red unreliable). Click or tap the tile, on a computer as well as on a phone, to open a panel showing the five forecast days side by side, each with its condition, maximum, minimum, wind and a reliability badge, plus the model the forecast came from. It is the same badge as on the equipment page.
 
-Reliability is published by the weather plugin from version 2.0 onwards. With an older plugin the tile shows no reliability at all and the panel keeps a neutral grey rule under each day, because an unqualified day must never look like a reliable one.
+Reliability is published by the weather plugin from version 2.0 onwards. With an older plugin the tile shows no reliability at all and the panel shows no badge, because an unqualified day must never look like a reliable one.
 
 ### Zone widget
 
