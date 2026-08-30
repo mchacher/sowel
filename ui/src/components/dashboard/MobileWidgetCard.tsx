@@ -37,7 +37,7 @@ import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments
 import { TempExtremes } from "../TempExtremes";
 import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging } from "lucide-react";
 import { gateNeedsConfirm } from "./gate-confirm";
-import { ForecastStrip } from "./ForecastStrip";
+import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
   formatRuntime,
@@ -401,7 +401,7 @@ function useMobileState(
       return {
         icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
         stateLines: lines,
-        footer: <ForecastStrip days={days} />,
+        footer: <ForecastConfidenceMark confidence={tomorrow.confidence} className="mt-0.5" />,
       };
     }
     return {

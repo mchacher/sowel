@@ -1,9 +1,9 @@
 /**
- * Spec 168 — the vertical day list behind the tile.
+ * Spec 168 — the five day columns behind the tile (option C2).
  *
- * The equipment page scrolls its day cards horizontally. Inside a sheet that
- * is a fixed-width surface on both viewports, that hides the last days behind
- * a gesture nothing announces, so this one stacks.
+ * The equipment page scrolls its day cards horizontally. A sheet cannot: the
+ * days you would scroll past are exactly the ones the forecast is least sure
+ * about. Same card anatomy, narrowed so all five fit across a 390px sheet.
  */
 
 import { describe, it, expect } from "vitest";
@@ -62,15 +62,40 @@ function fiveDays(withConfidence = true): DataBindingWithValue[] {
   return out;
 }
 
-const rows = (c: HTMLElement) => [...c.querySelectorAll("div.border-b, div.last\\:border-b-0")];
+/** One column per published day. */
+const columns = (c: HTMLElement) => [...c.querySelectorAll("div.flex-1")];
+
+/** The confidence pills, in day order, by their semantic colour class. */
+const pills = (c: HTMLElement) =>
+  [...c.querySelectorAll("span")]
+    .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
+    .map(
+      (s) =>
+        [...s.classList].find((k) => /^text-(success|warning|error)$/.test(k)) ?? "",
+    );
 
 describe("ForecastDetailContent (spec 168)", () => {
-  it("renders one row per day, in day order", () => {
+  it("renders one column per day, in day order", () => {
     const { container } = render(<ForecastDetailContent equipment={equipmentWith(fiveDays())} />);
-    expect(rows(container).length).toBeGreaterThanOrEqual(5);
+    expect(columns(container)).toHaveLength(5);
     // Maxima appear in the published order.
     const text = container.textContent ?? "";
-    expect(text.indexOf("26°")).toBeLessThan(text.indexOf("30°"));
+    expect(text.indexOf("26")).toBeLessThan(text.indexOf("30"));
+  });
+
+  it("gives every qualified column the pill of the equipment page", () => {
+    const { container } = render(<ForecastDetailContent equipment={equipmentWith(fiveDays())} />);
+    expect(pills(container)).toEqual(Array(5).fill("text-warning"));
+    expect(screen.getAllByText("fairly reliable")).toHaveLength(5);
+  });
+
+  it("shows the wind and not the rain", () => {
+    // One metric fits a 68px column, and wind is the one that changes what you
+    // do with a shutter or an awning. Rain stays on the tile for tomorrow.
+    const { container } = render(<ForecastDetailContent equipment={equipmentWith(fiveDays())} />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("20");
+    expect(text).not.toContain("86%");
   });
 
   it("shows the confidence wording on each day that has one", () => {
@@ -78,14 +103,32 @@ describe("ForecastDetailContent (spec 168)", () => {
     expect(screen.getAllByText("fairly reliable")).toHaveLength(5);
   });
 
-  it("renders a day with no confidence without a pill", () => {
-    // A plugin older than 2.0. An empty or grey badge would read as a verdict,
-    // and "we do not know" is not one.
-    render(<ForecastDetailContent equipment={equipmentWith(fiveDays(false))} />);
+  it("gives a day with no confidence no pill at all", () => {
+    // A plugin older than 2.0. A grey badge would read as a verdict, and
+    // "we do not know" is not one.
+    const { container } = render(
+      <ForecastDetailContent equipment={equipmentWith(fiveDays(false))} />,
+    );
+    expect(pills(container)).toEqual([]);
     expect(screen.queryByText("fairly reliable")).toBeNull();
     expect(screen.queryByText("reliable")).toBeNull();
     // The day itself is still there.
-    expect(screen.getAllByText("30°").length).toBe(1);
+    expect(screen.getAllByText("30").length).toBe(1);
+  });
+
+  it("reserves the pill slot so the five columns end on one line", () => {
+    // Three days qualified, two not: without a reserved slot the two bare
+    // columns end higher than the others.
+    const bindings = fiveDays();
+    const bare = bindings.filter(
+      (b) => !["j4_confidence", "j5_confidence"].includes(b.alias),
+    );
+    const { container } = render(<ForecastDetailContent equipment={equipmentWith(bare)} />);
+    const feet = [...container.querySelectorAll("span")].filter((s) =>
+      s.className.includes("min-h-["),
+    );
+    expect(feet).toHaveLength(5);
+    expect(pills(container)).toHaveLength(3);
   });
 
   it("shows the source line when the plugin publishes the model used", () => {
@@ -104,7 +147,7 @@ describe("ForecastDetailContent (spec 168)", () => {
     expect(screen.getByText("No forecast available")).toBeTruthy();
   });
 
-  it("does not scroll horizontally, which is the reason it is a list", () => {
+  it("does not scroll horizontally, which is the reason the columns shrink", () => {
     const { container } = render(<ForecastDetailContent equipment={equipmentWith(fiveDays())} />);
     expect(container.querySelector(".overflow-x-auto")).toBeNull();
   });

@@ -20,14 +20,27 @@ Two consequences, both observed on the reference installation:
 
 **In:**
 
-- The tile gains a five-day strip at its foot: day initial, max temperature,
-  and a colour bar carrying that day's confidence.
+- The tile qualifies the one day it shows, with the same pill as the panel and
+  the equipment page, centred at the foot of the card (option A2). It carries
+  no strip of the other days.
 - The tile becomes clickable on desktop and mobile, opening the existing detail
   sheet.
-- The sheet gains a `weather_forecast` branch: one row per day, vertical, no
-  horizontal scrolling, with the confidence pill on the right.
+- The sheet gains a `weather_forecast` branch (option C2): the card anatomy of
+  the equipment page, narrowed so the five days fit across a 390px sheet with
+  no horizontal scrolling. Day, condition, maximum, minimum, wind, and the
+  confidence as the equipment page's pill, wrapped to two lines where the
+  column is too narrow for one.
+- Rain is not repeated in the sheet: a 68px column has room for one metric, the
+  tile already carries rain for tomorrow, and wind is the one that changes what
+  you do with a shutter or an awning.
 - The source line ("médiane de N modèles") moves into the sheet, where there is
   room for it.
+
+Two options were drawn and rejected during review with the maintainer: A3, a
+five-day strip on the tile, and B2, one vertical row per day in the sheet. A3
+duplicated on the tile what the sheet now shows properly; B2 could not hold a
+day, its metrics and its verdict on one 390px line without the row wrapping
+ragged.
 
 **Out:**
 
@@ -41,27 +54,28 @@ Two consequences, both observed on the reference installation:
 
 ## Acceptance criteria
 
-- [x] The tile renders a strip of up to five days below the J+1 summary.
-- [x] Each strip column carries the day's confidence as a bar colour, using the
-      same three semantic colours as the pill (success / warning / error).
-- [x] A day whose confidence is unknown renders the bar in the neutral border
-      colour, not in a confidence colour.
+- [x] The tile names tomorrow's confidence in the pill used everywhere else,
+      in the matching semantic colour (success / warning / error).
+- [x] The tile shows nothing at all when tomorrow has no published confidence.
 - [x] Clicking the tile opens the detail sheet, on desktop and on mobile.
-- [x] The sheet lists every available day as a row: name, condition icon,
-      max/min, rain, wind, confidence pill.
-- [x] A day with no confidence renders its row without a pill, not with an
-      empty or grey one.
+- [x] The sheet renders every available day as a column that fits without a
+      horizontal scroll at 390px: name, condition icon, max, min, wind.
+- [x] Each column carries the equipment page's confidence pill; a day with no
+      confidence gets no pill at all, not an empty or grey one.
+- [x] The pill's slot is reserved whether or not there is a pill, so the five
+      columns end on one line whatever each day published.
 - [x] The sheet shows the source line when the plugin publishes the model used.
-- [x] Nothing changes for a household whose plugin predates 2.0: no strip
-      colours beyond neutral, no pills, and the tile still opens the sheet.
+- [x] Nothing changes for a household whose plugin predates 2.0: no pill on the
+      tile nor in the sheet, and the tile still opens the sheet.
 
 ## Edge cases
 
-| Case                                   | Expected                                                                                                              |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| No forecast bindings at all            | Tile renders nothing (unchanged), so no click target                                                                  |
-| Only J+1 bound                         | No strip at all: a single column would repeat the headline the tile already shows full size. The sheet shows one row. |
-| `confidence` absent (plugin < 2.0)     | Neutral bar, no pill, everything else renders                                                                         |
-| `tempMax` null on a day                | Column shows an em dash instead of a number                                                                           |
-| Days bound out of order (j3 before j1) | Ordered by `dayIndex`, as `parseForecastDays` already guarantees                                                      |
-| More than five days published          | Strip caps at five; the sheet lists all of them                                                                       |
+| Case                                   | Expected                                                                                      |
+| -------------------------------------- | --------------------------------------------------------------------------------------------- |
+| No forecast bindings at all            | Tile renders nothing (unchanged), so no click target                                          |
+| Only J+1 bound                         | Tile unchanged; the sheet shows one column                                                    |
+| `confidence` absent (plugin < 2.0)     | No pill on the tile nor in the sheet, everything else renders                                 |
+| `tempMax` null on a day                | Column shows a dash instead of a number                                                       |
+| `tempMax` published as NaN             | Rejected by the parser (`Number.isFinite`), so the column shows the dash, not the literal NaN |
+| Days bound out of order (j3 before j1) | Ordered by `dayIndex`, as `parseForecastDays` already guarantees                              |
+| More than five days published          | Every published day gets a column; they narrow together                                       |

@@ -1,9 +1,10 @@
 /**
- * Spec 168 — the five-day strip on the dashboard tile.
+ * Spec 168 — tomorrow's confidence on the dashboard tile (option A2).
  *
  * The tile showed tomorrow and nothing else, so the confidence the plugin has
- * published since 2.0 was invisible where the forecast is actually read, and
- * nothing suggested there was more behind the card.
+ * published since 2.0 was invisible where the forecast is actually read. The
+ * tile qualifies the day it shows; the other four days live in the panel
+ * behind the click.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -59,37 +60,46 @@ const FIVE: Array<[number | null, string | null]> = [
   [30, "medium"],
 ];
 
-/** The strip's bars, in order, by their colour class. */
-function bars(container: HTMLElement): string[] {
-  return [...container.querySelectorAll("span.rounded-full")]
-    .map((el) => [...el.classList].find((c) => c.startsWith("bg-")) ?? "")
-    .filter(Boolean);
-}
+/** The confidence pill, by its semantic colour class. */
+const pillOf = (c: HTMLElement) =>
+  [...c.querySelectorAll("span")]
+    .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
+    .map((s) => [...s.classList].find((k) => /^text-(success|warning|error)$/.test(k)) ?? "");
 
-describe("WeatherForecastWidget — five-day strip (spec 168)", () => {
-  it("shows one column per day with its maximum", () => {
+describe("WeatherForecastWidget — tomorrow's confidence (spec 168)", () => {
+  it("names tomorrow's confidence at the foot of the card", () => {
     render(<WeatherForecastWidget label="Météo" equipment={forecast(FIVE)} />);
-    // 26 appears on the J+1 summary and twice in the strip.
-    expect(screen.getAllByText("26").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("30").length).toBe(1);
+    // Tomorrow is medium here; the mark says so in words, not in colour alone.
+    expect(screen.getByText("fairly reliable")).toBeTruthy();
   });
 
-  it("colours each bar by that day's confidence, not by a fixed colour", () => {
+  it("colours the pill by tomorrow's confidence", () => {
     const { container } = render(
-      <WeatherForecastWidget label="Météo" equipment={forecast(FIVE)} />,
+      <WeatherForecastWidget label="Météo" equipment={forecast([[26, "low"]])} />,
     );
-    expect(bars(container)).toEqual([
-      "bg-warning",
-      "bg-warning",
-      "bg-error",
-      "bg-success",
-      "bg-warning",
-    ]);
+    expect(pillOf(container)).toEqual(["text-error"]);
   });
 
-  it("falls back to neutral when the plugin publishes no confidence", () => {
-    // A household on a plugin older than 2.0. An absent verdict must not
-    // borrow a confidence colour and read as a good one.
+  it("qualifies tomorrow, not some other day", () => {
+    // J+1 high, the rest low: the tile must not average or borrow.
+    const { container } = render(
+      <WeatherForecastWidget
+        label="Météo"
+        equipment={forecast([
+          [26, "high"],
+          [27, "low"],
+          [28, "low"],
+        ])}
+      />,
+    );
+    expect(pillOf(container)).toEqual(["text-success"]);
+    expect(screen.getByText("reliable")).toBeTruthy();
+  });
+
+  it("shows nothing at all when the plugin publishes no confidence", () => {
+    // A household on a plugin older than 2.0. A grey dot and "not qualified"
+    // would spend a line of a 212px card saying nothing, and an uncoloured
+    // dot must never read as a good verdict.
     const { container } = render(
       <WeatherForecastWidget
         label="Météo"
@@ -99,39 +109,16 @@ describe("WeatherForecastWidget — five-day strip (spec 168)", () => {
         ])}
       />,
     );
-    expect(bars(container)).toEqual(["bg-border", "bg-border"]);
+    expect(pillOf(container)).toEqual([]);
+    expect(container.textContent).not.toMatch(/reliable/);
   });
 
-  it("renders no strip when only tomorrow is bound", () => {
+  it("carries no five-day strip: the days are in the panel behind the click", () => {
     const { container } = render(
-      <WeatherForecastWidget label="Météo" equipment={forecast([[26, "medium"]])} />,
+      <WeatherForecastWidget label="Météo" equipment={forecast(FIVE)} />,
     );
-    // One day is the summary, not a strip: a single column would be noise.
-    expect(bars(container)).toEqual([]);
-  });
-
-  it("caps the strip at five even when the plugin publishes more", () => {
-    const seven: Array<[number | null, string | null]> = Array.from({ length: 7 }, () => [
-      20,
-      "medium",
-    ]);
-    const { container } = render(
-      <WeatherForecastWidget label="Météo" equipment={forecast(seven)} />,
-    );
-    expect(bars(container)).toHaveLength(5);
-  });
-
-  it("shows a dash rather than a number when a day has no maximum", () => {
-    const { container } = render(
-      <WeatherForecastWidget
-        label="Météo"
-        equipment={forecast([
-          [26, "medium"],
-          [null, "medium"],
-        ])}
-      />,
-    );
-    expect(container.textContent).toContain("—");
+    expect(container.querySelector("[class*='h-[3px]']")).toBeNull();
+    expect(container.querySelector("[class*='h-[2px]']")).toBeNull();
   });
 
   it("is clickable when a detail handler is given", () => {
