@@ -4,7 +4,7 @@ import type { MfaService } from "../../auth/mfa-service.js";
 import type { Logger } from "../../core/logger.js";
 import type { AuditLogger } from "../../core/audit-logger.js";
 import type { UserRole } from "../../shared/types.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { buildActor } from "../audit-context.js";
 import { nonEmptyString } from "../schemas.js";
 
@@ -51,7 +51,7 @@ export function registerUserRoutes(app: FastifyInstance, deps: UsersDeps): void 
 
   // All user management routes require admin role
   app.addHook("onRequest", async (request, reply) => {
-    if (request.url.startsWith("/api/v1/users")) {
+    if (pathIsUnder(request, "/api/v1/users")) {
       requireAdmin(request, reply);
     }
   });

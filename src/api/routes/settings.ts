@@ -4,7 +4,7 @@ import type { EventBus } from "../../core/event-bus.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import { AuditLogger } from "../../core/audit-logger.js";
 import type { UserManager } from "../../auth/user-manager.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIs, requireAdmin } from "../../auth/auth-middleware.js";
 import { buildActor } from "../audit-context.js";
 
 interface SettingsDeps {
@@ -33,7 +33,7 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsDeps)
   // exact path (not a prefix) so it never reaches foreign routes that borrow the
   // namespace, e.g. GET/PUT /api/v1/settings/energy/tariff which self-guard.
   app.addHook("onRequest", async (request, reply) => {
-    if (request.url.split("?")[0] === "/api/v1/settings") requireAdmin(request, reply);
+    if (pathIs(request, "/api/v1/settings")) requireAdmin(request, reply);
   });
 
   // GET /api/v1/settings — Get all settings (admin only)

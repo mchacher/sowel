@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Logger } from "../../core/logger.js";
 import type { LogRingBuffer } from "../../core/log-buffer.js";
 import type { LogLevel } from "../../shared/types.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 
 const VALID_LEVELS: LogLevel[] = ["debug", "info", "warn", "error", "fatal", "silent"];
 
@@ -29,8 +29,7 @@ export function registerLogRoutes(app: FastifyInstance, deps: LogsDeps): void {
   // subtree (exact path or a `/`-separated child) so it can't over-match a
   // future sibling route that merely shares the "logs" prefix.
   app.addHook("onRequest", async (request, reply) => {
-    const path = request.url.split("?")[0];
-    if (path === "/api/v1/logs" || path.startsWith("/api/v1/logs/")) {
+    if (pathIsUnder(request, "/api/v1/logs")) {
       requireAdmin(request, reply);
     }
   });

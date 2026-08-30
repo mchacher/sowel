@@ -164,3 +164,40 @@ export function requireAdmin(request: FastifyRequest, reply: FastifyReply): void
     reply.code(403).send({ error: "Admin access required" });
   }
 }
+
+/**
+ * The request path a route hook must compare against: query string removed and
+ * percent-decoding applied ONCE, which is exactly what the router does.
+ *
+ * `request.url` is the raw request target. find-my-way decodes it before
+ * matching, so `/api/v1/%62ackup` reaches the `/api/v1/backup` handler while a
+ * hook comparing the raw string sees a path it does not recognise and lets the
+ * request through ungated. Every admin gate bound to a URL prefix was written
+ * against `request.url` and was bypassable that way.
+ *
+ * One decode, not a loop: the router decodes once too, so `/api/v1/%2562ackup`
+ * decodes to `/api/v1/%62ackup` here and 404s at the router. Decoding until
+ * stable would make this function see a path the router never will.
+ *
+ * A malformed sequence (`%zz`) throws; the raw path is then the honest answer,
+ * and the router will not match it either.
+ */
+export function decodedPath(request: FastifyRequest): string {
+  const raw = request.url.split("?")[0];
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/** True when the decoded path is exactly `path`. */
+export function pathIs(request: FastifyRequest, path: string): boolean {
+  return decodedPath(request) === path;
+}
+
+/** True when the decoded path is `base` or sits under `base/`. */
+export function pathIsUnder(request: FastifyRequest, base: string): boolean {
+  const path = decodedPath(request);
+  return path === base || path.startsWith(base + "/");
+}
