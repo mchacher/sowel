@@ -155,6 +155,9 @@ export class RecipeManager {
         ...(definition.actions && definition.actions.length > 0
           ? { actions: definition.actions }
           : {}),
+        // Spec 169 — carried verbatim, and only when declared: its absence is
+        // what tells the Dashboard this recipe is not pinnable.
+        ...(definition.tile ? { tile: definition.tile } : {}),
         ...(definition.i18n && Object.keys(definition.i18n).length > 0
           ? { i18n: definition.i18n }
           : {}),

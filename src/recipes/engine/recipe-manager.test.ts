@@ -211,6 +211,48 @@ describe("RecipeManager", () => {
   });
 
   // ============================================================
+  // Spec 169 — the tile a recipe declares
+  // ============================================================
+
+  it("carries a declared tile into RecipeInfo", () => {
+    manager.registerExternal({
+      id: "tile-def",
+      name: "Tile",
+      description: "declares a tile",
+      slots: [],
+      actions: [
+        { id: "set_mode", type: "cycle", stateKey: "mode", options: [{ value: "a", label: "A" }] },
+      ],
+      tile: { icon: "Truck", countdownKey: "until", actions: ["set_mode"] },
+      validate: () => {},
+      createInstance: () => ({ stop: () => {} }),
+    } satisfies RecipeDefinition);
+
+    expect(manager.getRecipeById("tile-def")?.tile).toEqual({
+      icon: "Truck",
+      countdownKey: "until",
+      actions: ["set_mode"],
+    });
+  });
+
+  it("leaves the key out entirely when no tile is declared", () => {
+    // Absence is the signal the Dashboard reads to know a recipe is not
+    // pinnable, so it has to be a missing key, not an explicit undefined.
+    manager.registerExternal({
+      id: "no-tile-def",
+      name: "No tile",
+      description: "declares none",
+      slots: [],
+      validate: () => {},
+      createInstance: () => ({ stop: () => {} }),
+    } satisfies RecipeDefinition);
+
+    const info = manager.getRecipeById("no-tile-def");
+    expect(info).not.toBeNull();
+    expect("tile" in info!).toBe(false);
+  });
+
+  // ============================================================
   // Spec 138 — read-only getTariff helper
   // ============================================================
 

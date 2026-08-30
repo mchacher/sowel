@@ -4,6 +4,7 @@ import { LayoutDashboard, Plus, Pencil, Check } from "lucide-react";
 import { useDashboard } from "../store/useDashboard";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
+import { useRecipes } from "../store/useRecipes";
 import { useAuth } from "../store/useAuth";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { WidgetGrid } from "../components/dashboard/WidgetGrid";
@@ -13,7 +14,10 @@ import { equipmentZoneQualifiers, flattenZonesWithPath, zoneChainMap } from "../
 import { MOBILE_FAB_BOTTOM } from "../lib/mobile-fab";
 
 export function DashboardPage() {
-  useWsSubscription(["equipments", "zones"]);
+  // Spec 169 — "recipes" joins the subscription so a pinned tile's countdown
+  // and status follow the instance live, the way equipment widgets follow
+  // their bindings.
+  useWsSubscription(["equipments", "zones", "recipes"]);
   const { t } = useTranslation();
 
   const widgets = useDashboard((s) => s.widgets);
@@ -26,6 +30,8 @@ export function DashboardPage() {
   const executeOrder = useEquipments((s) => s.executeOrder);
   const tree = useZones((s) => s.tree);
   const fetchZones = useZones((s) => s.fetchZones);
+  const fetchRecipes = useRecipes((s) => s.fetchRecipes);
+  const fetchInstances = useRecipes((s) => s.fetchInstances);
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
 
@@ -36,7 +42,9 @@ export function DashboardPage() {
     fetchWidgets();
     fetchEquipments();
     fetchZones();
-  }, [fetchWidgets, fetchEquipments, fetchZones]);
+    fetchRecipes();
+    fetchInstances();
+  }, [fetchWidgets, fetchEquipments, fetchZones, fetchRecipes, fetchInstances]);
 
   // Build a flat zone map for fast lookup
   const zoneMap = useMemo(() => {
@@ -89,6 +97,10 @@ export function DashboardPage() {
     await createWidget({ type: "zone", zoneId, family });
   }, [createWidget]);
 
+  const handleAddRecipe = useCallback(async (recipeInstanceId: string) => {
+    await createWidget({ type: "recipe", recipeInstanceId });
+  }, [createWidget]);
+
   const handleDelete = useCallback(async (id: string) => {
     await deleteWidget(id);
   }, [deleteWidget]);
@@ -125,6 +137,7 @@ export function DashboardPage() {
             zones={tree}
             onAddEquipment={handleAddEquipment}
             onAddZone={handleAddZone}
+            onAddRecipe={handleAddRecipe}
             onClose={() => setShowAddModal(false)}
           />
         )}
@@ -223,6 +236,7 @@ export function DashboardPage() {
           zones={tree}
           onAddEquipment={handleAddEquipment}
           onAddZone={handleAddZone}
+          onAddRecipe={handleAddRecipe}
           onClose={() => setShowAddModal(false)}
         />
       )}

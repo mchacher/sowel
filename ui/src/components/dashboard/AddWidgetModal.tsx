@@ -1,14 +1,18 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Box, Map as MapIcon } from "lucide-react";
+import { X, Box, Map as MapIcon, ChefHat } from "lucide-react";
 import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
 import { flattenZonesWithPath } from "../../lib/zone-path";
+import { useRecipes } from "../../store/useRecipes";
+import { recipeName } from "../../lib/recipe-i18n";
 
 interface AddWidgetModalProps {
   equipments: EquipmentWithDetails[];
   zones: ZoneWithChildren[];
   onAddEquipment: (equipmentId: string) => void;
   onAddZone: (zoneId: string, family: WidgetFamily) => void;
+  /** Spec 169 — pin a recipe instance whose recipe declares a tile. */
+  onAddRecipe: (recipeInstanceId: string) => void;
   onClose: () => void;
 }
 
@@ -19,16 +23,40 @@ export function AddWidgetModal({
   zones,
   onAddEquipment,
   onAddZone,
+  onAddRecipe,
   onClose,
 }: AddWidgetModalProps) {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<"equipment" | "zone">("equipment");
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith("fr") ? "fr" : "en";
+  const [tab, setTab] = useState<"equipment" | "zone" | "recipe">("equipment");
   const [selectedZoneId, setSelectedZoneId] = useState<string>("");
   const [selectedFamily, setSelectedFamily] = useState<WidgetFamily>("lights");
   const [eqZoneId, setEqZoneId] = useState<string>("");
 
   // Flatten zones for zone picker, labelled with their disambiguating path (spec 139)
   const flatZones = useMemo(() => flattenZonesWithPath(zones), [zones]);
+
+  // Spec 169 — only instances whose recipe declares a tile are offered. A
+  // recipe that never asked for a Dashboard surface must not appear here, or
+  // the picker becomes a list of every automation in the house.
+  const instances = useRecipes((s) => s.instances);
+  const recipes = useRecipes((s) => s.recipes);
+  const zoneLabels = useMemo(() => new Map(flatZones.map((z) => [z.id, z.label])), [flatZones]);
+  const pinnable = useMemo(
+    () =>
+      instances.flatMap((instance) => {
+        const recipe = recipes.find((r) => r.id === instance.recipeId);
+        if (!recipe?.tile) return [];
+        return [
+          {
+            id: instance.id,
+            name: recipeName(recipe, lang),
+            zone: zoneLabels.get(String(instance.params.zone ?? "")) ?? "",
+          },
+        ];
+      }),
+    [instances, recipes, zoneLabels, lang],
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -64,6 +92,17 @@ export function AddWidgetModal({
           >
             <MapIcon size={14} strokeWidth={1.5} />
             {t("dashboard.tabZone")}
+          </button>
+          <button
+            onClick={() => setTab("recipe")}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer ${
+              tab === "recipe"
+                ? "text-primary border-b-2 border-primary"
+                : "text-text-secondary hover:text-text"
+            }`}
+          >
+            <ChefHat size={14} strokeWidth={1.5} />
+            {t("dashboard.tabRecipe")}
           </button>
         </div>
 
@@ -170,6 +209,29 @@ export function AddWidgetModal({
               >
                 {t("dashboard.addZoneWidget")}
               </button>
+            </div>
+          )}
+
+          {tab === "recipe" && (
+            <div className="space-y-0.5">
+              {pinnable.map((row) => (
+                <button
+                  key={row.id}
+                  onClick={() => {
+                    onAddRecipe(row.id);
+                    onClose();
+                  }}
+                  className="w-full text-left px-3 py-2 text-[13px] text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
+                >
+                  {row.name}
+                  {row.zone && <span className="ml-2 text-[11px] text-text-tertiary">{row.zone}</span>}
+                </button>
+              ))}
+              {pinnable.length === 0 && (
+                <p className="text-[13px] text-text-tertiary text-center py-4">
+                  {t("dashboard.noRecipeTilesAvailable")}
+                </p>
+              )}
             </div>
           )}
         </div>
