@@ -25,7 +25,7 @@ export function ForecastConfidenceMark({
 
   return (
     <span
-      className={`self-center shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight ${
+      className={`self-center shrink-0 rounded-full border px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[13px] font-semibold leading-tight ${
         CONFIDENCE_STYLES[confidence]
       } ${className}`}
     >
