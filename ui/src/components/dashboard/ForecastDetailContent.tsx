@@ -64,10 +64,12 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
     : "text-text-tertiary";
 
   return (
-    // Wraps on a narrow phone: at 390px the day name, the temperatures, the
-    // metrics and the pill do not fit on one line, and an ml-auto pill with no
-    // wrap lands on top of the wind value.
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 border-b border-border-light last:border-b-0">
+    // At 390px the five parts of a row do not fit on one line. What wraps is
+    // rain and wind, not the pill: the pill qualifies the day, so it belongs
+    // beside the day name and the temperature it is a verdict on. The second
+    // line is indented to the width of the day column so the metrics sit under
+    // the temperatures rather than under the name.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-2.5 border-b border-border-light last:border-b-0">
       <span className="w-[76px] shrink-0 text-[13px] font-semibold text-text truncate">
         {dayName}
       </span>
@@ -85,7 +87,7 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
         )}
       </span>
 
-      <span className="flex items-center gap-3 min-w-0 shrink">
+      <span className="order-last basis-full pl-[88px] sm:order-none sm:basis-auto sm:pl-0 flex items-center gap-3 min-w-0">
         {day.rainProb !== null && (
           <span className="flex items-center gap-1 text-[12px] text-text-secondary font-mono tabular-nums">
             <Droplets size={12} strokeWidth={1.5} className="text-primary shrink-0" />
