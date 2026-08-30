@@ -2,7 +2,7 @@
 
 > Sober refinement for a home automation engine.
 
-The Sowel design system codifies the visual language that emerged from the `ui-redesign-B-polished.html` iteration. It is opinionated, narrow, and shippable — it covers exactly what Sowel needs today, no more.
+The Sowel design system codifies the visual language that emerged from the `specs/094-ui-redesign/mockups/ui-redesign-B-polished.html` iteration. It is opinionated, narrow, and shippable — it covers exactly what Sowel needs today, no more.
 
 ---
 
@@ -32,7 +32,7 @@ These rules echo the [Anthropic frontend-design skill](https://github.com/anthro
 | [accessibility.md](accessibility.md) | WCAG contrast measurements, touch-target rules, focus indicators, ARIA conventions                                                     |
 | [migration.md](migration.md)         | How to migrate the current production codebase from ad-hoc Tailwind classes to the tokens-driven system                                |
 
-The reference implementation lives in `ui-redesign-B-polished.html` (root of the repo). When in doubt about _how a component renders_, open that file and search for the BEM class.
+The reference implementation lives in `specs/094-ui-redesign/mockups/ui-redesign-B-polished.html`. When in doubt about _how a component renders_, open that file and search for the BEM class.
 
 ---
 

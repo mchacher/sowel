@@ -30,7 +30,7 @@ We **replace the current palette** with the design system palette inside the exi
 Why in-place (vs. cohabitation):
 
 - A 4th theme option would expose half-finished work to all users.
-- The new palette has been validated visually in `ui-redesign-B-polished.html` against every component.
+- The new palette has been validated visually in `specs/094-ui-redesign/mockups/ui-redesign-B-polished.html` against every component.
 - Rollback is a single git revert of one CSS file — granular per-user rollback isn't worth the maintenance debt of running two palettes.
 - If we _do_ need a kill switch during rollout, we wrap the `@theme` rewrite in a backend feature flag served at app bootstrap.
 

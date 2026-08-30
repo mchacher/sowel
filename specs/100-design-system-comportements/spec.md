@@ -89,5 +89,5 @@ Replace the single-column wrapper in [HomePage.tsx](../../ui/src/pages/HomePage.
 
 - [design-system/components/panel.md](../../design-system/components/panel.md)
 - [design-system/migration.md](../../design-system/migration.md) Phase 6
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) lines 557-558 (CSS), 2588-2932 (HTML) — visual reference
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) lines 557-558 (CSS), 2588-2932 (HTML) — visual reference
 - [ui/src/pages/HomePage.tsx](../../ui/src/pages/HomePage.tsx) lines 176-205 — current layout

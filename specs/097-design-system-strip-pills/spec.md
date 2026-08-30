@@ -87,4 +87,4 @@ Refactor `ZoneAggregationPills.tsx` to:
 - [design-system/components/pill.md](../../design-system/components/pill.md)
 - [design-system/migration.md](../../design-system/migration.md) Phase 3
 - [ui/src/components/home/ZoneAggregationPills.tsx](../../ui/src/components/home/ZoneAggregationPills.tsx) — current implementation
-- [ui-redesign-B-polished.html](../../ui-redesign-B-polished.html) lines 2521-2565 — visual reference
+- [ui-redesign-B-polished.html](../094-ui-redesign/mockups/ui-redesign-B-polished.html) lines 2521-2565 — visual reference
