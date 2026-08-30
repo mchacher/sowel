@@ -1,9 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { nonEmptyString } from "../schemas.js";
 import type { Logger } from "../../core/logger.js";
 import type { PackageManager } from "../../packages/package-manager.js";
 import { PersonalPluginConfirmationRequiredError } from "../../packages/registry-types.js";
-import { PersonalSourceManager } from "../../packages/personal-sources.js";
+import { PersonalSourceManager, REPO_FORMAT_SOURCE } from "../../packages/personal-sources.js";
 import type { PluginLoader } from "../../plugins/plugin-loader.js";
 import type { RecipeLoader } from "../../recipes/recipe-loader.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
@@ -42,6 +41,18 @@ const repoBodySchema = {
   properties: { repo: { type: "string" } },
 } as const;
 
+// `repo` carries the `owner/repo` shape here as well as on the source routes.
+// The first draft left it off, reasoning that install looks the value up in the
+// store and that `isValidRepo` should be the only definition of the shape. That
+// was wrong on the point that matters: `repo` is interpolated into
+// `https://api.github.com/repos/${repo}/releases/latest` and joined onto the
+// plugin directory with `resolve()`, so its shape is a security boundary and
+// not a convenience, and the store lookup is a barrier no reader and no scanner
+// can follow. The pattern is the same source string `isValidRepo` compiles, so
+// there is still one definition. Every legitimate caller already satisfies it:
+// the UI installs from the registry, and a personal source is validated when it
+// is added.
+//
 // `expectedSha256` is deliberately not `pattern`-checked here: the hash is
 // compared against the real tarball downstream, and a wrong-shaped one fails
 // there with a message about the hash rather than about the request.
@@ -61,7 +72,7 @@ const installBodySchema = {
   type: "object",
   required: ["repo"],
   properties: {
-    repo: nonEmptyString,
+    repo: { type: "string", pattern: REPO_FORMAT_SOURCE },
     confirmed: confirmedField,
     expectedSha256: sha256Field,
   },

@@ -287,12 +287,21 @@ describe("POST /api/v1/plugins/install", () => {
     }
   });
 
-  it("does NOT require owner/repo shape here", async () => {
-    // install looks the repo up in the store; the shape check belongs to the
-    // personal-source route that has to build a GitHub URL from it.
+  it("requires the owner/repo shape (tightening, #597)", async () => {
+    // The first draft did not, on the reasoning that install looks the value
+    // up in the store. That reasoning was wrong on the point that matters:
+    // `repo` is interpolated into `api.github.com/repos/${repo}/...` and joined
+    // onto the plugin directory with resolve(), so its shape is a security
+    // boundary. CodeQL flags the flow, and it is right to.
     app = await buildApp();
-    const res = await app.inject({ method: "POST", url: INSTALL, payload: { repo: "anything" } });
-    expect(res.statusCode).toBeLessThan(400);
+    for (const repo of ["anything", "../../etc/passwd", "a/b/c", "evil.com/x/../y"]) {
+      const res = await app.inject({ method: "POST", url: INSTALL, payload: { repo } });
+      expect(res.statusCode).toBe(400);
+      expect(calls).toEqual([]);
+    }
+    // The shape every legitimate caller already sends still works.
+    const ok = await app.inject({ method: "POST", url: INSTALL, payload: { repo: "me/plug" } });
+    expect(ok.statusCode).toBeLessThan(400);
   });
 
   for (const [name, payload] of [

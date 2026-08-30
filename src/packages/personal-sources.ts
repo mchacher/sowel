@@ -2,8 +2,16 @@ import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { PluginSource } from "../shared/types.js";
 
-/** "owner/repo" — GitHub login + repository name. */
-const REPO_FORMAT = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
+/**
+ * "owner/repo" — GitHub login + repository name.
+ *
+ * Exported as a source string so the route schemas can carry the same shape
+ * without restating it. A `repo` reaches `resolve()` on the plugin directory
+ * and is interpolated into a `api.github.com/repos/${repo}` URL, so the shape
+ * is a security boundary, not a convenience.
+ */
+export const REPO_FORMAT_SOURCE = "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$";
+const REPO_FORMAT = new RegExp(REPO_FORMAT_SOURCE);
 
 const RELEASE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour, same policy as the registry cache
 
