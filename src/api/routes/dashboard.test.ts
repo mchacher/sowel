@@ -179,6 +179,19 @@ describe("dashboard widget routes", () => {
       expect((res.json() as Record<string, unknown>).nonsense).toBeUndefined();
     });
 
+    it("403s a non-admin whose path is percent-encoded", async () => {
+      // The gate matches the DECODED path, because the router decodes before
+      // matching: comparing request.url raw is what let /api/v1/%62ackup past
+      // the backup gate.
+      app = await buildApp({ role: "standard" });
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/dashboard/%77idgets",
+        payload: { type: "equipment", equipmentId: "e1" },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
     it("403s a non-admin, and does so BEFORE looking at the body", async () => {
       // The precedence is the point: a non-admin sending nonsense must still
       // learn it is not allowed, not that its nonsense was malformed.

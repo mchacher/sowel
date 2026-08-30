@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import { toISOUtc } from "../../core/database.js";
 import type { DashboardWidget, WidgetConfig, WidgetFamily } from "../../shared/types.js";
-import { requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 
 interface DashboardDeps {
@@ -131,8 +131,9 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
     // THIS route, whose GET is deliberately open to everyone, not a template:
     // a future admin-only GET under this prefix would need naming here.
     if (request.method === "GET" || request.method === "HEAD") return;
-    const path = request.url.split("?")[0];
-    if (path === "/api/v1/dashboard/widgets" || path.startsWith("/api/v1/dashboard/widgets/")) {
+    // pathIsUnder decodes the path once, the way the router does. Comparing
+    // request.url raw is what let /api/v1/%62ackup past the backup gate.
+    if (pathIsUnder(request, "/api/v1/dashboard/widgets")) {
       requireAdmin(request, reply);
     }
   });
