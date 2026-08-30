@@ -785,10 +785,23 @@ function rowToLineProtocol(row: Record<string, unknown>): string | null {
   return `${escapeTag(measurement)}${tagSet} ${escapeTag(field)}=${fieldValue} ${tsNs}`;
 }
 
-function escapeTag(s: string): string {
-  return s.replace(/,/g, "\\,").replace(/ /g, "\\ ").replace(/=/g, "\\=");
+/**
+ * Escape a measurement name, tag key or tag value for InfluxDB line protocol.
+ *
+ * The backslash goes FIRST, and its absence was a real defect rather than a
+ * scanner nit. Backslash is line protocol's own escape character, so a value
+ * ending in one, `Prise garage\` say, was written verbatim and the parser read
+ * the following separator as escaped: the tag swallowed the comma and the rest
+ * of the line was misread. `escapeFieldString` below already had the order
+ * right; this one simply never handled it.
+ *
+ * Order matters for the same reason it does there: escaping the backslash after
+ * the other characters would double-escape the ones just inserted.
+ */
+export function escapeTag(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/ /g, "\\ ").replace(/=/g, "\\=");
 }
 
-function escapeFieldString(s: string): string {
+export function escapeFieldString(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
 import {
   ALLOWED_RESTORE_EXTENSIONS,
+  escapeFieldString,
+  escapeTag,
   BACKUP_TABLES,
   BackupManager,
   BackupSizeCapExceededError,
@@ -706,5 +708,46 @@ describe("dataFileExtension (#829)", () => {
       // about, and without it the assertion above passes under extname() too.
       expect(dataFileExtension(ext).toLowerCase()).toBe(ext);
     }
+  });
+});
+
+/**
+ * Line-protocol escaping for the InfluxDB half of a backup.
+ *
+ * Tag values carry equipment and device names, which are whatever the household
+ * typed, so this is user data reaching a format with its own escape character.
+ */
+describe("escapeTag", () => {
+  it("escapes the characters line protocol reserves in a tag", () => {
+    expect(escapeTag("a,b")).toBe("a\\,b");
+    expect(escapeTag("a b")).toBe("a\\ b");
+    expect(escapeTag("a=b")).toBe("a\\=b");
+  });
+
+  it("escapes the backslash, which is the escape character itself", () => {
+    // The defect: a name ending in a backslash was written verbatim, so the
+    // parser read the separator that followed as escaped, the tag swallowed the
+    // comma, and the rest of the line was misread. Reachable from any equipment
+    // or device name.
+    expect(escapeTag("Prise garage\\")).toBe("Prise\\ garage\\\\");
+    expect(escapeTag("a\\b")).toBe("a\\\\b");
+  });
+
+  it("escapes the backslash FIRST, so the ones it inserts are not escaped again", () => {
+    // Doing it last would turn the `\,` produced for a comma into `\\,`, which
+    // reads as a literal backslash followed by a separator.
+    expect(escapeTag("a,b\\c")).toBe("a\\,b\\\\c");
+  });
+
+  it("leaves an ordinary name alone", () => {
+    expect(escapeTag("Chauffe-eau")).toBe("Chauffe-eau");
+  });
+});
+
+describe("escapeFieldString", () => {
+  it("already had the order right, and keeps it", () => {
+    expect(escapeFieldString('a"b')).toBe('a\\"b');
+    expect(escapeFieldString("a\\b")).toBe("a\\\\b");
+    expect(escapeFieldString('a\\"b')).toBe('a\\\\\\"b');
   });
 });
