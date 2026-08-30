@@ -536,10 +536,9 @@ describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", ()
   async function build(fixture: FixtureEq[]) {
     const a = Fastify({ logger: false, ajv: validationAjvOptions });
     installValidationErrorHandler(a);
-    registerEquipmentRoutes(a, {
-      equipmentManager: makeManager(fixture),
-      logger,
-    } as unknown as Parameters<typeof registerEquipmentRoutes>[1]);
+    // Only the manager is cast, matching the harness above: a new required
+    // field on the deps object should break the build here too.
+    registerEquipmentRoutes(a, { equipmentManager: makeManager(fixture), logger });
     await a.ready();
     return a;
   }
@@ -571,6 +570,23 @@ describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", ()
       },
     ]);
     expect(v["Piscine"]).toBe(true);
+    expect(v["Chauffe-eau"]).toBe(false);
+  });
+
+  it("does not call an offline equipment's last reading current", async () => {
+    // The feed keeps offline submeters on purpose, so the display can render
+    // an "offline since" row. Their last reading is not a live measurement
+    // either, however recent: judging on age alone made this feed disagree
+    // with the web breakdown about one appliance at one instant.
+    const v = await verdicts([
+      {
+        id: "1",
+        name: "Chauffe-eau",
+        type: "water_heater",
+        status: "offline",
+        dataBindings: powerAt(560, ago(30_000)),
+      },
+    ]);
     expect(v["Chauffe-eau"]).toBe(false);
   });
 

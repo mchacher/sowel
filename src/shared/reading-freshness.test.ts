@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  classifyPowerReading,
   freshnessBudgetFor,
   isReadingCurrent,
   parseReadingTime,
@@ -72,5 +73,55 @@ describe("isReadingCurrent", () => {
     // stale. Guessing "old" here would blank a value on first boot.
     expect(isReadingCurrent(null, "energy_meter", NOW)).toBe(true);
     expect(isReadingCurrent("nonsense", "energy_meter", NOW)).toBe(true);
+  });
+});
+
+describe("classifyPowerReading", () => {
+  const base = { equipmentType: "water_heater", now: NOW };
+
+  it("calls a fresh numeric reading current", () => {
+    expect(
+      classifyPowerReading({ ...base, status: "online", value: 560, lastUpdated: ago(30_000) }),
+    ).toBe("current");
+  });
+
+  it("calls an aged one stale", () => {
+    expect(
+      classifyPowerReading({ ...base, status: "online", value: 0, lastUpdated: ago(944_000) }),
+    ).toBe("stale");
+  });
+
+  it("reports offline BEFORE looking at the age", () => {
+    // The whole point of sharing this: the first draft of #832 judged the API
+    // feed on age alone, so an offline water heater with a 30-second-old
+    // 560 W reading shipped as "current" while the web breakdown, judging the
+    // same equipment, said "offline". One appliance, one instant, two answers.
+    expect(
+      classifyPowerReading({ ...base, status: "offline", value: 560, lastUpdated: ago(30_000) }),
+    ).toBe("offline");
+    // And it stays offline for an aged reading too: offline is the more
+    // specific fact, and "outdated" would send the reader after a reporting
+    // interval instead of a dead radio.
+    expect(
+      classifyPowerReading({ ...base, status: "offline", value: 560, lastUpdated: ago(944_000) }),
+    ).toBe("offline");
+  });
+
+  it("calls a degraded equipment by its reading, not its status", () => {
+    // Degraded is about the equipment as a whole; this particular reading is
+    // current, so it counts.
+    expect(
+      classifyPowerReading({ ...base, status: "degraded", value: 800, lastUpdated: ago(30_000) }),
+    ).toBe("current");
+  });
+
+  it("reports missing when there is no numeric reading to judge", () => {
+    expect(
+      classifyPowerReading({ ...base, status: "online", value: undefined, lastUpdated: null }),
+    ).toBe("missing");
+    // A boolean `power` is a STATE, not a measurement (SmartThings on/off).
+    expect(
+      classifyPowerReading({ ...base, status: "online", value: true, lastUpdated: ago(1_000) }),
+    ).toBe("missing");
   });
 });

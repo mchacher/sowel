@@ -148,13 +148,15 @@ Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
 Chaque entrée porte un champ supplémentaire, sur ce rôle uniquement :
 
-| Champ                 | Signification                                                                                                                                                                                                  |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `powerReadingCurrent` | `true` quand la mesure `power` peut être affichée comme une mesure en direct, `false` quand elle est plus ancienne que son budget de fraîcheur, `null` quand il n'y a pas de mesure `power` numérique à juger. |
+| Champ                 | Signification                                                                                                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `powerReadingCurrent` | `true` quand la mesure `power` peut être affichée comme une mesure en direct, `false` quand elle ne le peut pas (mesure plus ancienne que son budget de fraîcheur, ou équipement hors-ligne), `null` quand il n'y a pas de mesure `power` numérique à juger. |
 
 Un client doit le consulter avant de dessiner un segment. Une mesure hors budget est un reliquat, pas une mesure, et l'erreur est silencieuse : un `0 W` périmé ressemble exactement à un appareil éteint. Le budget est de deux minutes pour un compteur déclaré, dont le moteur attend déjà des remontées continues, et de dix minutes sinon, car plusieurs intégrations interrogent leur source toutes les cinq minutes et un appareil en bon état ne doit pas clignoter (issues #744 et #832).
 
-La règle vit dans `src/shared/reading-freshness.ts` et l'UI web importe la même fonction, pour que les deux surfaces ne puissent pas diverger.
+Les équipements hors-ligne restent dans la liste volontairement, pour qu'un client puisse afficher une ligne « hors-ligne depuis », et ils répondent `false` : leur dernière mesure n'est pas une mesure en direct, si récente soit-elle.
+
+Le verdict vient de `classifyPowerReading` dans `src/shared/reading-freshness.ts`, et la décomposition Live de l'UI web appelle la même fonction : les deux surfaces ne peuvent pas répondre différemment à propos d'un même appareil.
 
 ## Zones
 

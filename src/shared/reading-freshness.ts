@@ -94,3 +94,35 @@ export function isReadingCurrent(
   if (at === null) return true;
   return now - at <= freshnessBudgetFor(equipmentType);
 }
+
+/** Why a power reading may or may not be drawn as a live measurement. */
+export type ReadingVerdict = "current" | "offline" | "stale" | "missing";
+
+/**
+ * The one classification both surfaces ask for (#832).
+ *
+ * Order matters and is not arbitrary. `offline` outranks `stale` because it is
+ * the more specific fact: an equipment whose device dropped off the network
+ * has no live reading whatever the age of the last one, and saying "outdated"
+ * there would send the reader looking at a reporting interval instead of at a
+ * dead radio. Age is only asked once the equipment is nominally present.
+ *
+ * Splitting this decision between the surfaces is what the first draft of #832
+ * did, and it immediately reproduced the defect it was fixing: the web
+ * breakdown reported `offline` while the submeter feed said the very same
+ * reading was current, for one appliance, at one instant.
+ */
+export function classifyPowerReading(opts: {
+  status: string;
+  /** The `power` binding's value, or undefined when there is no such binding. */
+  value: unknown;
+  lastUpdated: string | null | undefined;
+  equipmentType: string;
+  now?: number;
+}): ReadingVerdict {
+  if (opts.status === "offline") return "offline";
+  if (typeof opts.value !== "number") return "missing";
+  return isReadingCurrent(opts.lastUpdated, opts.equipmentType, opts.now ?? Date.now())
+    ? "current"
+    : "stale";
+}

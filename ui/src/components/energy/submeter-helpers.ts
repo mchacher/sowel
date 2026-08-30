@@ -8,27 +8,12 @@ import type { EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor } from "./submeterPalette";
 import { isSubmeterEquipment } from "../../lib/metering";
 import {
-  freshnessBudgetFor,
-  isReadingCurrent,
-  parseReadingTime,
-  SUBMETER_FRESHNESS_MS,
-  SUBMETER_FRESHNESS_SLOW_MS,
+  classifyPowerReading,
+  type ReadingVerdict,
 } from "../../../../src/shared/reading-freshness";
 
-// The freshness rule is the backend's own, imported rather than restated
-// (issue #832). It is asked on three surfaces now, and a rule restated per
-// surface is how the breakdown and the arbitration card came to describe one
-// appliance two contradictory ways in the first place (#744).
-export {
-  freshnessBudgetFor,
-  isReadingCurrent,
-  parseReadingTime,
-  SUBMETER_FRESHNESS_MS,
-  SUBMETER_FRESHNESS_SLOW_MS,
-};
-
 /** Why a submeter contributes no number to the breakdown. */
-export type SubmeterUnknown = "offline" | "stale" | "missing";
+export type SubmeterUnknown = Exclude<ReadingVerdict, "current">;
 
 export interface SubmeterRow {
   id: string;
@@ -55,22 +40,21 @@ export interface SubmeterReading {
 /**
  * Read the `power` alias from a submeter equipment.
  *
- * A reading past its freshness budget is NOT returned as a number (issue
- * #744). Before this rule, the only thing that could drop a reading was
- * `status === "offline"`, so an equipment considered online contributed its
- * last known power at full weight however old it was. Measured on production:
- * a water heater drawing 560 W was displayed as 0 W because its clamp had last
+ * The verdict comes from `classifyPowerReading` in shared/, which the
+ * `?role=submeter` API feed calls too (#832). Splitting that decision between
+ * the surfaces is how this defect keeps coming back: #744 was the breakdown
+ * and the arbitration card describing one appliance two ways, and the first
+ * draft of #832 immediately reproduced it, with the feed calling an offline
+ * equipment's last reading current while this function called it offline.
+ *
+ * What the reading itself means, once classified: a value past its freshness
+ * budget is NOT returned as a number. Before that rule, the only thing that
+ * could drop a reading was `status === "offline"`, so an equipment considered
+ * online contributed its last known power at full weight however old it was. A
+ * water heater drawing 560 W was displayed as 0 W because its clamp had last
  * reported sixteen minutes earlier, and a wood stove was contributing a value
  * 124 days old. The failure is quiet, since a stale `0 W` reads as "this
  * appliance is off", which is a perfectly plausible thing for it to be.
- *
- * The binding's own `stale` flag cannot stand in for this. The backend applies
- * the electrical window only to METERING_EQUIPMENT_TYPES, on purpose, so a
- * `thermostat` or `water_heater` carrying a power channel reports
- * `stale: false` however old the value is. That exemption is right for
- * equipment status, where flagging a quiet appliance as degraded would be
- * wrong; it just leaves the display with no answer to "is this number
- * current", which is what freshnessBudgetFor supplies.
  *
  * Negative values are returned as their absolute value (clamp wired backwards,
  * same convention as the spec 091 backend integration).
@@ -79,15 +63,24 @@ export function readSubmeterReading(
   eq: EquipmentWithDetails,
   now: number = Date.now(),
 ): SubmeterReading {
-  if (eq.status === "offline") return { power: null, unknown: "offline", lastUpdated: null };
   const binding = eq.dataBindings.find((b) => b.alias === "power");
-  if (!binding || typeof binding.value !== "number") {
-    return { power: null, unknown: "missing", lastUpdated: null };
+  const verdict = classifyPowerReading({
+    status: eq.status,
+    value: binding?.value,
+    lastUpdated: binding?.lastUpdated,
+    equipmentType: eq.type,
+    now,
+  });
+  if (verdict === "current") {
+    return { power: Math.abs(binding!.value as number), unknown: null, lastUpdated: binding!.lastUpdated };
   }
-  if (!isReadingCurrent(binding.lastUpdated, eq.type, now)) {
-    return { power: null, unknown: "stale", lastUpdated: binding.lastUpdated };
-  }
-  return { power: Math.abs(binding.value), unknown: null, lastUpdated: binding.lastUpdated };
+  return {
+    power: null,
+    unknown: verdict,
+    // Only a stale row has an age worth showing; an offline one shows its own
+    // offlineSince, and a missing one has nothing to date.
+    lastUpdated: verdict === "stale" ? (binding?.lastUpdated ?? null) : null,
+  };
 }
 
 /**

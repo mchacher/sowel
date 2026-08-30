@@ -9,6 +9,7 @@
 import { AlertTriangle, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentStatus, EquipmentStatusReason } from "../../types";
+import { formatRelative } from "../../lib/format-relative";
 
 type Size = "sm" | "md";
 
@@ -28,20 +29,6 @@ const SIZE_CLASSES: Record<Size, string> = {
 
 const ICON_SIZE: Record<Size, number> = { sm: 11, md: 13 };
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return "";
-  const normalized = iso.includes("T") ? iso : iso.replace(" ", "T").replace("Z", "") + "Z";
-  const ms = Date.parse(normalized);
-  if (!Number.isFinite(ms)) return "";
-  const seconds = Math.floor((Date.now() - ms) / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `${days} j`;
-}
 
 function buildTooltip(
   status: EquipmentStatus,

@@ -3,7 +3,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
 import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
 import type { EnergyLoadProfile, EquipmentType, SolarProfile } from "../../shared/types.js";
-import { isReadingCurrent } from "../../shared/reading-freshness.js";
+import { classifyPowerReading } from "../../shared/reading-freshness.js";
 import type { Logger } from "../../core/logger.js";
 
 interface EquipmentsDeps {
@@ -169,10 +169,20 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
             // existing client keeps the payload it parses today, and one that
             // reads the flag can stop drawing a leftover as a live segment.
             const binding = eq.dataBindings.find((b) => b.alias === "power");
-            const powerReadingCurrent =
-              binding && typeof binding.value === "number"
-                ? isReadingCurrent(binding.lastUpdated, eq.type, now)
-                : null;
+            const verdict = classifyPowerReading({
+              status: eq.status,
+              value: binding?.value,
+              lastUpdated: binding?.lastUpdated,
+              equipmentType: eq.type,
+              now,
+            });
+            // An offline equipment is kept in the feed on purpose, so the
+            // display can render an "offline since" row. Its last reading is
+            // not a live measurement either, and answering `true` there was
+            // the same defect through a different door: the web breakdown
+            // said "offline" while this feed called the reading current, for
+            // one appliance, at one instant.
+            const powerReadingCurrent = verdict === "missing" ? null : verdict === "current";
             return { ...eq, powerReadingCurrent };
           });
       }
