@@ -587,9 +587,17 @@ Needs a seeded local instance and the fixture pipeline
 ### Done 2026-08-30, and what stopped the rest
 
 Refreshed from a fresh production backup through `build-fixtures.py`, shot on the shadow at
-1920x1080 in both languages: `dashboard-overview-{en,fr}.png` and `dashboard-edit-{en,fr}.png`.
-They were four months old and now show the v1.64.0 forecast tile with its confidence pill. The ten
-orphan images are deleted.
+1920x1080 in both languages: `dashboard-overview`, `dashboard-edit`, `getting-started-dashboard`,
+`getting-started-zones`, `modes`, `calendar`, `equipments` and `arbiter-settings`, sixteen images
+in all. They were four months old; the dashboard ones now show the v1.64.0 forecast tile with its
+confidence pill. The ten orphan images are deleted.
+
+`arbiter-settings-en.png` was worse than stale: it listed `Pompe Piscine`, `Chauffe-eau`, `PAC` and
+`PAC Piscine` in the **English** documentation. A translation map that stops at the fixture cannot
+catch that, because the image had been shot before the map covered those names and nothing re-reads
+a published PNG. Both arbiter images also changed shape, from a 720 px element crop to a 1920 px
+viewport shot scrolled to the card, which is what the screenshot convention has asked for since it
+was written.
 
 **The rest is blocked by something the plan above did not account for: an inert instance cannot
 photograph a live one.** The shadow runs no integration, by design (spec 124). So every surface
@@ -600,6 +608,11 @@ that renders runtime state photographs the setup rather than the product:
   `power` freshness window is two minutes, so there is no "shoot it quickly" workaround.
 - **Plugins** shows all fourteen integrations as disconnected.
 - **Devices** would show every device offline.
+- **Home** paints a red "Disconnected" badge on every equipment card, and its activity feed replays
+  mode names as they were recorded, so the English fixture shows `Mode Lumière nuit deactivated`.
+  Renaming the modes table does not reach the history, which is the same class of problem as the
+  published PNG above: anonymization and translation act on the fixture, not on what the fixture
+  has already written down.
 
 Those pages need an instance that is actually receiving data, and it cannot be production, because
 that is the rule this whole fixture pipeline exists to keep. Nothing here is unblocked by trying
