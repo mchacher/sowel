@@ -1197,3 +1197,51 @@ describe("plugins/registry.json — recipe category guard (spec 137)", () => {
     expect(uncategorized, "recipe registry entries must declare a valid category").toEqual([]);
   });
 });
+
+/**
+ * `getPackageDir` is the single place a package id becomes a path, and the
+ * result is handed to rmSync({ recursive: true }), rename() and cpSync(), so an
+ * id that escapes the packages root would not merely read the wrong file.
+ */
+describe("getPackageDir — the package-id boundary", () => {
+  let dir: string;
+  let cwd: string;
+  let db: ReturnType<typeof createTestDb>;
+  let manager: PackageManager;
+
+  beforeEach(() => {
+    cwd = process.cwd();
+    dir = mkdtempSync(resolve(tmpdir(), "sowel-pkgdir-"));
+    mkdirSync(resolve(dir, "plugins"), { recursive: true });
+    process.chdir(dir);
+    db = createTestDb();
+    manager = new PackageManager(db, logger);
+  });
+
+  afterEach(() => {
+    db.close();
+    process.chdir(cwd);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("accepts the shapes the official registry actually uses", () => {
+    // Underscores are not decoration here: panasonic_cc, legrand_energy and
+    // netatmo_weather are all real ids, and a dash-only rule would have broken
+    // every one of them.
+    for (const id of ["zigbee2mqtt", "weather-forecast", "panasonic_cc", "legrand_energy", "a1"]) {
+      expect(manager.getPackageDir(id)).toBe(resolve(process.cwd(), "plugins", id));
+    }
+  });
+
+  it("refuses an id that would escape the packages root", () => {
+    for (const id of ["..", "../etc", "../../etc/passwd", "/etc/passwd", ".", "a/b"]) {
+      expect(() => manager.getPackageDir(id)).toThrow(/Invalid package id/);
+    }
+  });
+
+  it("refuses an empty or oddly-shaped id rather than guessing", () => {
+    for (const id of ["", " ", "-leading", "_leading", "Upper", "with space"]) {
+      expect(() => manager.getPackageDir(id)).toThrow(/Invalid package id/);
+    }
+  });
+});

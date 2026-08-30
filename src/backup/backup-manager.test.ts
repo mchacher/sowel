@@ -216,6 +216,29 @@ describe("BackupManager", () => {
       await expect(manager.restoreFromFile("..\\windows")).rejects.toThrow(/Invalid filename/);
     });
 
+    it("rejects the shapes the old blacklist let through", async () => {
+      // "." and ".." carry no separator, so a check spelled as "contains / or
+      // \\ or .." missed the first one entirely and the name resolved to the
+      // backups directory itself.
+      // "  " is deliberately absent: a file named two spaces is odd but it
+      // cannot escape the directory, and refusing it would be a rule about
+      // taste rather than about safety.
+      for (const name of [".", "", ".."]) {
+        await expect(manager.restoreFromFile(name)).rejects.toThrow(/Invalid filename/);
+      }
+    });
+
+    it("refuses a path rather than quietly reading its last segment", async () => {
+      // Taking the basename would have turned this into a request for a real
+      // file inside data/backups. Answering a question nobody asked is worse
+      // than refusing.
+      mkdirSync(resolve(tmpDir, "backups"), { recursive: true });
+      writeFileSync(resolve(tmpDir, "backups", "real.zip"), "x");
+      await expect(manager.restoreFromFile("../backups/real.zip")).rejects.toThrow(
+        /Invalid filename/,
+      );
+    });
+
     it("rejects when file does not exist", async () => {
       mkdirSync(resolve(tmpDir, "backups"));
       await expect(manager.restoreFromFile("missing.zip")).rejects.toThrow(/not found/);

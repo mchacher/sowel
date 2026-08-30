@@ -103,6 +103,14 @@ function semverSatisfiesGte(current: string, required: string): boolean {
 }
 
 /**
+ * What a package id may contain. Matches the ids the official registry
+ * actually uses: lowercase letters, digits, dashes and underscores, starting
+ * with an alphanumeric. Anything else cannot name a directory under the
+ * packages root, which is the only thing an id is ever used for.
+ */
+const PACKAGE_ID_FORMAT = /^[a-z0-9][a-z0-9_-]*$/;
+
+/**
  * Generic package distribution manager.
  * Handles download, install, update, uninstall, registry, and DB persistence.
  * No domain-specific logic (no createPlugin, no integrationRegistry).
@@ -170,9 +178,31 @@ export class PackageManager {
     }
   }
 
-  /** Resolve absolute path to a package directory */
+  /**
+   * Resolve the absolute path to a package directory.
+   *
+   * The single place a package id becomes a path, and therefore the single
+   * place it is checked. A package id reaches here from a manifest inside a
+   * downloaded tarball and from route parameters, and the result is handed to
+   * `rmSync({ recursive: true })`, `rename()` and `cpSync()`, so an id of
+   * `../../etc` would not merely read the wrong file.
+   *
+   * Two checks rather than one, because they fail differently. The format is
+   * what a package id actually is (the registry's own ids are lowercase,
+   * digits, dashes and underscores), and it rejects a traversal before any
+   * path is built. The containment check then proves the result, which is what
+   * makes the guarantee independent of the regex being exactly right.
+   */
   getPackageDir(packageId: string): string {
-    return resolve(this.pluginsDir, packageId);
+    if (!PACKAGE_ID_FORMAT.test(packageId)) {
+      throw new Error(`Invalid package id "${packageId}"`);
+    }
+    const dir = resolve(this.pluginsDir, packageId);
+    const root = resolve(this.pluginsDir);
+    if (!dir.startsWith(root + sep)) {
+      throw new Error(`Invalid package id "${packageId}"`);
+    }
+    return dir;
   }
 
   /** Get all installed packages (raw DB data, no runtime enrichment) */
@@ -372,7 +402,7 @@ export class PackageManager {
       }
 
       // Move to final directory
-      const pkgDir = resolve(this.pluginsDir, manifest.id);
+      const pkgDir = this.getPackageDir(manifest.id);
       if (existsSync(pkgDir)) {
         rmSync(pkgDir, { recursive: true });
       }
@@ -469,7 +499,7 @@ export class PackageManager {
         throw new Error(`Package "${manifest.id}" is already installed`);
       }
 
-      const pkgDir = resolve(this.pluginsDir, manifest.id);
+      const pkgDir = this.getPackageDir(manifest.id);
       if (existsSync(pkgDir)) {
         rmSync(pkgDir, { recursive: true });
       }
@@ -552,7 +582,7 @@ export class PackageManager {
 
       const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifest;
 
-      const pkgDir = resolve(this.pluginsDir, manifest.id);
+      const pkgDir = this.getPackageDir(manifest.id);
       if (existsSync(pkgDir)) {
         rmSync(pkgDir, { recursive: true });
       }
@@ -618,7 +648,7 @@ export class PackageManager {
       this.validateManifest(newManifest);
 
       // Replace files
-      const pkgDir = resolve(this.pluginsDir, packageId);
+      const pkgDir = this.getPackageDir(packageId);
       if (existsSync(pkgDir)) {
         rmSync(pkgDir, { recursive: true });
       }
@@ -707,7 +737,7 @@ export class PackageManager {
         );
       }
 
-      const pkgDir = resolve(this.pluginsDir, row.id);
+      const pkgDir = this.getPackageDir(row.id);
       if (existsSync(pkgDir)) {
         rmSync(pkgDir, { recursive: true });
       }
@@ -782,7 +812,7 @@ export class PackageManager {
       throw new Error(`Package "${packageId}" is not installed`);
     }
 
-    const pkgDir = resolve(this.pluginsDir, packageId);
+    const pkgDir = this.getPackageDir(packageId);
     if (existsSync(pkgDir)) {
       rmSync(pkgDir, { recursive: true });
     }
