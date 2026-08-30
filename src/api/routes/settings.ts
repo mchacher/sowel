@@ -48,8 +48,18 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsDeps)
     async (request) => {
       const entries = request.body;
 
-      // Capture old values BEFORE the write for the audit meta
-      const oldValues: Record<string, string | undefined> = {};
+      // Capture old values BEFORE the write for the audit meta.
+      //
+      // A null-prototype map, not `{}`: the keys are whatever the request body
+      // carries, and assigning to `__proto__` on a plain object is swallowed by
+      // the setter rather than stored. It cannot pollute here, because the
+      // value is always a string or undefined and the setter ignores those, but
+      // the audit entry for a setting named `__proto__` would vanish without a
+      // trace, which is the one thing an audit log must not do.
+      const oldValues: Record<string, string | undefined> = Object.create(null) as Record<
+        string,
+        string | undefined
+      >;
       for (const k of Object.keys(entries)) oldValues[k] = settingsManager.get(k);
 
       settingsManager.setMany(entries);

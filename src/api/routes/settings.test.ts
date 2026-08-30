@@ -17,7 +17,11 @@ interface BuildOpts {
   role?: UserRole;
 }
 
+/** Audit entries the route emitted, so a test can prove one was not lost. */
+let audited: unknown[] = [];
+
 async function buildApp(opts: BuildOpts = {}) {
+  audited = [];
   const app = Fastify({ logger: false, ajv: validationAjvOptions });
   installValidationErrorHandler(app);
 
@@ -38,7 +42,7 @@ async function buildApp(opts: BuildOpts = {}) {
       setMany: (entries: Record<string, string>) => Object.assign(store, entries),
     } as never,
     eventBus: { emit: () => {} } as never,
-    auditLogger: { log: () => {} } as never,
+    auditLogger: { log: (e: unknown) => audited.push(e) } as never,
     userManager: { getById: () => ({ username: "admin" }) } as never,
     logger,
   });
@@ -123,5 +127,43 @@ describe("settings routes (schema validation, #482)", () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/settings/energy/tariff" });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true });
+  });
+});
+
+describe("a __proto__ key never reaches the handler", () => {
+  it("is refused by the body parser, before any route code runs", async () => {
+    // What actually protects this route, and it is the framework rather than
+    // anything here: Fastify parses with secure-json-parse and its default
+    // protoAction is `error`, so the request is rejected outright.
+    //
+    // Pinned because the handler's audit capture writes body keys into a map,
+    // and CodeQL flags that shape. It is unreachable while this holds, and if a
+    // future Fastify or a custom parser ever changed it, this test is where the
+    // assumption is written down.
+    const app = await buildApp({ authed: true });
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/v1/settings",
+      headers: { "content-type": "application/json" },
+      body: '{"__proto__":"x","home.latitude":"45.0"}',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(audited).toEqual([]);
+    await app.close();
+  });
+
+  it("lets an ordinary inherited name through and audits it", async () => {
+    // `constructor` is not special to the parser and is an ordinary own-property
+    // write, so nothing is lost.
+    const app = await buildApp({ authed: true });
+    const res = await app.inject({
+      method: "PUT",
+      url: "/api/v1/settings",
+      headers: { "content-type": "application/json" },
+      body: '{"constructor":"x"}',
+    });
+    expect(res.statusCode).toBe(200);
+    expect((audited as { targetId: string }[]).map((e) => e.targetId)).toContain("constructor");
+    await app.close();
   });
 });

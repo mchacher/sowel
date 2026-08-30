@@ -1,0 +1,28 @@
+name: "Sowel CodeQL config"
+
+# Why this file exists.
+#
+# The August 2026 audit left 72 open alerts, and a third of them were not about
+# Sowel's code at all: CodeQL was analysing checked-in build output and the
+# minified vendor bundles inside it. They cost a real review each time, and
+# because the pull-request check attributes an alert to any PR that touches its
+# file, they also failed unrelated pull requests.
+#
+# Excluding a path means giving up scanning it, so each entry says what it is
+# and why the loss is acceptable.
+paths-ignore:
+  # Build output, checked in so a deploy can serve it. Everything under here is
+  # generated from ui/src, which IS scanned, plus minified third-party code and
+  # a generated Workbox service worker. Scanning it reports the vendors' code
+  # back to us, in a form nobody can act on.
+  - "ui-dist"
+  - "ui/dev-dist"
+
+  # Operator tools, run by hand on an admin's own machine against their own
+  # instance. They are not reachable from the network and never run inside the
+  # server. Their alerts are all one pattern, "downloads over HTTP and writes
+  # to a file", which is the entire purpose of a backfill script.
+  #
+  # This is the softest entry here. If one of these ever becomes something the
+  # engine invokes, it belongs back in scope.
+  - "scripts"
