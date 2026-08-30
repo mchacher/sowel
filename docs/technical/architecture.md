@@ -460,19 +460,23 @@ Backups capture the full system state as a single ZIP archive and restore it ato
 
 A backup ZIP contains:
 
-| Entry                     | Content                                                                                                                                       |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sowel-backup.json`       | SQLite export as JSON, structured per table (version 2 format)                                                                                |
-| `influx-raw.lp`           | Raw InfluxDB data as line protocol (last 7 days)                                                                                              |
-| `influx-hourly.lp`        | Downsampled hourly data (last 90 days)                                                                                                        |
-| `influx-daily.lp`         | Downsampled daily data (last 5 years)                                                                                                         |
-| `influx-energy-hourly.lp` | Energy hourly sums (last 2 years)                                                                                                             |
-| `influx-energy-daily.lp`  | Energy daily sums (last 10 years)                                                                                                             |
-| `data/*`                  | All non-DB files from `data/` (token secrets, etc.), dynamically scanned, excluding `.db`, `.pid`, `.log` files and the `.instance-id` marker |
+| Entry                     | Content                                                                                                                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sowel-backup.json`       | SQLite export as JSON, structured per table (version 2 format)                                                                                                                                        |
+| `influx-raw.lp`           | Raw InfluxDB data as line protocol (last 7 days)                                                                                                                                                      |
+| `influx-hourly.lp`        | Downsampled hourly data (last 90 days)                                                                                                                                                                |
+| `influx-daily.lp`         | Downsampled daily data (last 5 years)                                                                                                                                                                 |
+| `influx-energy-hourly.lp` | Energy hourly sums (last 2 years)                                                                                                                                                                     |
+| `influx-energy-daily.lp`  | Energy daily sums (last 10 years)                                                                                                                                                                     |
+| `data/*`                  | All non-DB files from `data/` (token secrets, etc.), dynamically scanned against the restore whitelist, excluding `.db`, `.pid`, `.log` files and the `.instance-id` / `.shadow-target` local markers |
 
 The SQLite JSON export covers a curated list of tables (`BACKUP_TABLES` constant in `backup-manager.ts`) in dependency order (parents first for restore).
 
 The `.instance-id` marker is excluded on purpose, in both directions: it describes the deployment currently running, and an archive that carried it would hand a restoring instance the identity of the machine the data came from, disarming the #401 restored-data guardrail. See the "Restoring a backup from another deployment" section of [deployment.md](deployment.md).
+
+On restore, `data/` entries face an extension whitelist (spec 089 C2): anything that is not a known data or image extension is refused, so an archive cannot smuggle a script or a native module into the data directory. A leading-dot filename counts as its own extension, which is how `.jwt-secret` and `.influx-token` are named in that whitelist and how any other dotfile is refused. A name with no extension at all is refused too (issue #829).
+
+The export scan applies the same whitelist, so an archive can never contain an entry its own restore would drop. That property is what the spec 089 risk note rests on, and without it a file could be archived and then silently vanish on restore. Anything left out is named in the export log, and a restore reports `filesSkipped` alongside `filesRestored` so a partial restore is visible rather than quiet.
 
 ### Local backups (data/backups/)
 

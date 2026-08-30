@@ -7,7 +7,7 @@ import {
   statSync,
   unlinkSync,
 } from "node:fs";
-import { resolve, dirname, extname, sep } from "node:path";
+import { resolve, dirname, basename, sep } from "node:path";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
@@ -25,10 +25,36 @@ export interface BackupManagerDeps {
   maxRestoreBytes?: number;
 }
 
+/**
+ * The extension of a data file, as BOTH the export scan and the restore
+ * whitelist must agree it is (#829).
+ *
+ * A leading-dot basename is its own extension: `.jwt-secret` is not "a file
+ * named .jwt-secret with no extension", it is the secret file, and
+ * `ALLOWED_RESTORE_EXTENSIONS` has always been written that way. `extname()`
+ * disagrees and returns "" for that shape, which is what left a dotfile-sized
+ * hole in the spec 089 C2 whitelist: the restore's `if (ext && ...)` guard
+ * short-circuited on the empty string and let any `data/.<name>` entry
+ * through, at any depth. The `.jwt-secret` and `.influx-token` entries in the
+ * whitelist were dead code; what actually let those files land was the hole.
+ *
+ * Derived from the BASENAME, so a nested `plugins/x/.whatever` is judged the
+ * same way a top-level `.whatever` is. Case is preserved; the restore
+ * lowercases at its call site, as it always did, while the export's exclusion
+ * list is case-sensitive, as it always was.
+ */
+export function dataFileExtension(name: string): string {
+  const base = basename(name);
+  const dot = base.lastIndexOf(".");
+  return dot < 0 ? "" : base.slice(dot);
+}
+
 // ── Spec 089 C2: backup restore hardening ─────────────────────────────
 // Extensions allowed in `data/` entries of a restore archive. Anything
-// else (executables, native modules, scripts) is rejected.
-const ALLOWED_RESTORE_EXTENSIONS = new Set([
+// else (executables, native modules, scripts) is rejected. Every entry here
+// must be producible by `dataFileExtension`, which a test asserts: an entry
+// that cannot match is not a permission, it is a comment that reads like one.
+export const ALLOWED_RESTORE_EXTENSIONS = new Set([
   ".json",
   ".png",
   ".jpg",
@@ -130,6 +156,11 @@ const DATA_FILES_EXCLUDE = new Set([
   "sowel.db-shm",
   "sowel.pid",
   INSTANCE_MARKER_FILE,
+  // Same reason as the marker above: `scripts/shadow-deploy.sh` writes which
+  // host this shadow points at. It describes THIS deployment, so carrying it
+  // into an archive would tell a restoring instance to target the machine the
+  // data came from.
+  ".shadow-target",
 ]);
 const DATA_FILES_EXCLUDE_EXT = new Set([".db", ".pid", ".log"]);
 
@@ -168,6 +199,13 @@ export interface RestoreResult {
   restoredAt: string;
   influxPointsRestored: number;
   filesRestored: number;
+  /**
+   * Data-file entries the restore refused: an unlisted extension, a symlink, a
+   * path escaping the data directory. Counted rather than left to a log line
+   * so a caller can say "3 entries skipped" instead of a silent partial
+   * restore (#829 review).
+   */
+  filesSkipped: number;
   restartRequired: true;
 }
 
@@ -267,7 +305,15 @@ export class BackupManager {
     }
 
     // 4. Append data files (tokens, JWT secret — dynamically scanned)
-    const dataFiles = scanDataFiles(this.dataDir);
+    const { files: dataFiles, skipped } = scanDataFiles(this.dataDir);
+    if (skipped.length > 0) {
+      // Named, not counted: a file left out of a backup is the kind of thing
+      // an operator wants to see before they need it.
+      this.logger.info(
+        { skipped },
+        "Backup export: data files left out, extension not in the restore whitelist",
+      );
+    }
     for (const filename of dataFiles) {
       const filePath = resolve(this.dataDir, filename);
       if (existsSync(filePath)) {
@@ -501,6 +547,7 @@ export class BackupManager {
     //    Spec 089 C2: hardened against path traversal, symlink injection,
     //    arbitrary extensions, and zip bombs.
     let filesRestored = 0;
+    let filesSkipped = 0;
     let restoreBytes = 0;
     const dataDirAbs = resolve(this.dataDir);
     for (const entry of zip.getEntries()) {
@@ -509,6 +556,7 @@ export class BackupManager {
 
       // Refuse symlink entries outright.
       if (isSymlinkEntry(entry)) {
+        filesSkipped++;
         this.logger.warn(
           { entry: entry.entryName },
           "Backup restore: symlink entry refused (spec 089 C2)",
@@ -535,6 +583,7 @@ export class BackupManager {
       // Defeats `data/../../etc/passwd` and absolute-name games.
       const filePath = resolve(this.dataDir, filename);
       if (filePath !== dataDirAbs && !filePath.startsWith(dataDirAbs + sep)) {
+        filesSkipped++;
         this.logger.warn(
           { entry: entry.entryName, resolved: filePath },
           "Backup restore: path traversal refused (spec 089 C2)",
@@ -543,8 +592,16 @@ export class BackupManager {
       }
 
       // Extension whitelist: reject .sh, .so, .node, etc.
-      const ext = extname(filename).toLowerCase();
-      if (ext && !ALLOWED_RESTORE_EXTENSIONS.has(ext)) {
+      //
+      // The `ext &&` short-circuit is gone with the dotfile hole it belonged
+      // to (#829): a name with no dot at all skipped the whitelist by the same
+      // mechanism a dotfile did, so `data/plain` landed while `data/plain.sh`
+      // was refused. Now that the export is held to this same list, nothing
+      // Sowel produces can be extensionless, so refusing it costs nothing and
+      // makes the whitelist mean what it says.
+      const ext = dataFileExtension(filename).toLowerCase();
+      if (!ALLOWED_RESTORE_EXTENSIONS.has(ext)) {
+        filesSkipped++;
         this.logger.warn(
           { entry: entry.entryName, ext },
           "Backup restore: extension not allowed (spec 089 C2)",
@@ -579,7 +636,7 @@ export class BackupManager {
     }
 
     this.logger.info(
-      { exportedAt: payload.exportedAt, influxPointsRestored, filesRestored },
+      { exportedAt: payload.exportedAt, influxPointsRestored, filesRestored, filesSkipped },
       "Backup restore completed — restart server to reload",
     );
 
@@ -588,6 +645,7 @@ export class BackupManager {
       restoredAt: new Date().toISOString(),
       influxPointsRestored,
       filesRestored,
+      filesSkipped,
       restartRequired: true,
     };
   }
@@ -655,17 +713,28 @@ export class BackupManager {
 // ============================================================
 
 /** Scan data/ directory for files to include in backup (tokens, secrets, etc.) */
-function scanDataFiles(dataDir: string): string[] {
-  if (!existsSync(dataDir)) return [];
+function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } {
+  if (!existsSync(dataDir)) return { files: [], skipped: [] };
   const files: string[] = [];
+  const skipped: string[] = [];
   for (const entry of readdirSync(dataDir, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (DATA_FILES_EXCLUDE.has(entry.name)) continue;
-    const ext = entry.name.includes(".") ? entry.name.slice(entry.name.lastIndexOf(".")) : "";
+    const ext = dataFileExtension(entry.name);
     if (DATA_FILES_EXCLUDE_EXT.has(ext)) continue;
+    // The export is held to the SAME whitelist the restore applies, so an
+    // archive cannot contain an entry its own restore would refuse. Spec 089
+    // was accepted on the note that "no legitimate backup should be rejected",
+    // and without this the scan happily archives, say, `data/.shadow-target`
+    // or a stray `sowel.db.bak.1777715864`, which the restore then drops with
+    // nothing but a log line (#829 review).
+    if (!ALLOWED_RESTORE_EXTENSIONS.has(ext.toLowerCase())) {
+      skipped.push(entry.name);
+      continue;
+    }
     files.push(entry.name);
   }
-  return files;
+  return { files, skipped };
 }
 
 /**
