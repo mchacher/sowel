@@ -7,12 +7,15 @@ import {
   CONDITION_ICONS,
   CONDITION_COLORS,
 } from "../equipments/weatherForecastUtils";
+import { ForecastStrip } from "./ForecastStrip";
 import { WidgetCard } from "./WidgetCard";
 
 interface WeatherForecastWidgetProps {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
+  /** Opens the detail sheet. Absent in edit mode, where the card is dragged. */
+  onOpenDetail?: () => void;
 }
 
 const CONDITION_LABELS_FR: Record<string, string> = {
@@ -35,7 +38,12 @@ const CONDITION_LABELS_EN: Record<string, string> = {
   stormy: "Stormy",
 };
 
-export function WeatherForecastWidget({ label, sublabel, equipment }: WeatherForecastWidgetProps) {
+export function WeatherForecastWidget({
+  label,
+  sublabel,
+  equipment,
+  onOpenDetail,
+}: WeatherForecastWidgetProps) {
   const { i18n } = useTranslation();
   const days = parseForecastDays(equipment.dataBindings);
   const tomorrow = days[0]; // J+1
@@ -55,7 +63,12 @@ export function WeatherForecastWidget({ label, sublabel, equipment }: WeatherFor
     : "";
 
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
+    <WidgetCard
+      label={label}
+      sublabel={sublabel}
+      onClick={onOpenDetail}
+      className={onOpenDetail ? "cursor-pointer transition-colors hover:bg-primary-light/30" : ""}
+    >
       {/* Zone 2: Content — vertical on mobile, horizontal on desktop */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 flex-1 min-h-0">
         {/* Icon — 36px mobile, 72px desktop (wrapped in div for proper hide/show) */}
@@ -105,6 +118,8 @@ export function WeatherForecastWidget({ label, sublabel, equipment }: WeatherFor
           </div>
         </div>
       </div>
+
+      <ForecastStrip days={days} />
     </WidgetCard>
   );
 }

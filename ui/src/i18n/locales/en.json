@@ -1129,6 +1129,7 @@
   "energy.live.status.self": "Self-sufficient",
   "energy.live.status.export": "Solar surplus",
   "energy.live.diagram.title": "Live flows",
+  "dashboard.forecast.empty": "No forecast available",
   "energy.live.breakdown.title": "Consumption breakdown",
   "energy.live.breakdown.other": "Other",
   "energy.live.breakdown.offline": "offline",

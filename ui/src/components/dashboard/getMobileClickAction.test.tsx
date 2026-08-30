@@ -177,4 +177,34 @@ describe("getMobileClickAction", () => {
       expect(onExecuteOrder).toHaveBeenCalledWith("wh-1", "state", "ON");
     });
   });
+
+  // Spec 168 — the forecast tile now has somewhere to go: the strip shows five
+  // days at a glance, the sheet shows each of them with its confidence.
+  describe("weather forecast (spec 168)", () => {
+    const forecast = () =>
+      makeSwitch({
+        id: "wf-1",
+        type: "weather_forecast",
+        orderBindings: [] as EquipmentWithDetails["orderBindings"],
+      });
+
+    it("opens the detail sheet", () => {
+      const onOpenDetail = vi.fn();
+      const action = getMobileClickAction(widget, forecast(), t, vi.fn(), onOpenDetail);
+      expect(action).toBe(onOpenDetail);
+    });
+
+    it("stays inert when no sheet handler is wired", () => {
+      // The tile must not advertise a tap that leads nowhere.
+      expect(getMobileClickAction(widget, forecast(), t, vi.fn())).toBeUndefined();
+    });
+
+    it("leaves sensor and weather on the same path", () => {
+      const onOpenDetail = vi.fn();
+      for (const type of ["sensor", "weather"] as const) {
+        const eq = makeSwitch({ type, orderBindings: [] as EquipmentWithDetails["orderBindings"] });
+        expect(getMobileClickAction(widget, eq, t, vi.fn(), onOpenDetail)).toBe(onOpenDetail);
+      }
+    });
+  });
 });

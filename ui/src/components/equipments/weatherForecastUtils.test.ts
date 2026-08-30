@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { DataBindingWithValue } from "../../types";
-import { modelLabel, parseForecastDays, parseModelUsed } from "./weatherForecastUtils";
+import {
+  modelLabel,
+  parseForecastDays,
+  parseModelUsed,
+  CONFIDENCE_STYLES,
+  CONFIDENCE_BAR,
+  CONFIDENCE_BAR_UNKNOWN,
+  type ForecastConfidence,
+} from "./weatherForecastUtils";
 
 function binding(
   alias: string,
@@ -138,5 +146,28 @@ describe("modelLabel", () => {
 
   it("returns an unknown id unchanged rather than guessing", () => {
     expect(modelLabel("some_new_model")).toBe("some_new_model");
+  });
+});
+
+// Spec 168 — the tile, the sheet and the equipment page render the same three
+// bands, so the bands live here and nowhere else.
+describe("confidence colour maps", () => {
+  const levels: ForecastConfidence[] = ["high", "medium", "low"];
+
+  it("gives every level a pill style and a bar colour", () => {
+    for (const level of levels) {
+      expect(CONFIDENCE_STYLES[level]).toBeTruthy();
+      expect(CONFIDENCE_BAR[level]).toBeTruthy();
+    }
+  });
+
+  it("keeps the three bands distinguishable from each other", () => {
+    // A traffic light where two lamps share a colour is not a traffic light.
+    expect(new Set(levels.map((l) => CONFIDENCE_BAR[l])).size).toBe(3);
+    expect(new Set(levels.map((l) => CONFIDENCE_STYLES[l])).size).toBe(3);
+  });
+
+  it("keeps the unknown bar out of the three, so no verdict never reads as one", () => {
+    expect(levels.map((l) => CONFIDENCE_BAR[l])).not.toContain(CONFIDENCE_BAR_UNKNOWN);
   });
 });

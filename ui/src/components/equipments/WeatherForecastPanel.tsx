@@ -8,21 +8,9 @@ import {
   modelLabel,
   CONDITION_ICONS,
   CONDITION_COLORS,
+  CONFIDENCE_STYLES,
   type ForecastDay,
-  type ForecastConfidence,
 } from "./weatherForecastUtils";
-
-/**
- * Traffic-light coding of the confidence level. Green reads "act on it", red
- * "do not build on this day". The amber middle is a deliberate call by the
- * maintainer: the accent is otherwise reserved for "a light is on right now",
- * so the same hue carries two meanings across the app.
- */
-const CONFIDENCE_STYLES: Record<ForecastConfidence, string> = {
-  high: "border-success text-success bg-success/10",
-  medium: "border-warning text-warning bg-warning/10",
-  low: "border-error text-error bg-error/10",
-};
 
 interface WeatherForecastPanelProps {
   bindings: DataBindingWithValue[];
