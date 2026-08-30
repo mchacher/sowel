@@ -1128,6 +1128,7 @@
   "energy.live.status.mixed_grid_lead": "Solar-assisted",
   "energy.live.status.self": "Self-sufficient",
   "energy.live.status.export": "Solar surplus",
+  "energy.live.diagram.title": "Live flows",
   "energy.live.breakdown.title": "Consumption breakdown",
   "energy.live.breakdown.other": "Other",
   "energy.live.breakdown.offline": "offline",

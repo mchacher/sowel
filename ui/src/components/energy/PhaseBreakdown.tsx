@@ -12,6 +12,8 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentWithDetails } from "../../types";
 import { extractPhases, formatPhasePower } from "./phase-helpers";
+import { Columns3 } from "lucide-react";
+import { SectionHeader } from "./SectionHeader";
 
 const PHASE_COLORS = ["#4F7BE8", "#6BCB77", "#F2A93B", "#E8677D"];
 
@@ -29,9 +31,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6 mt-4">
-      <h2 className="text-[14px] font-semibold text-text mb-4">
-        {t("energy.live.phases.title")}
-      </h2>
+      <SectionHeader icon={Columns3} title={t("energy.live.phases.title")} />
       <div className="flex flex-col gap-3 max-w-[600px]">
         {phases.map((p, i) => {
           const f = formatPhasePower(p.power);

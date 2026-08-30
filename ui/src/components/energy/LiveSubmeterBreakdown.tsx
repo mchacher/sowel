@@ -19,12 +19,10 @@ import {
   type SubmeterRow,
 } from "./submeter-helpers";
 import { isSubmeterEquipment } from "../../lib/metering";
-import {
-  equipmentLabelMap,
-  flattenZonesWithPath,
-  zoneChainMap,
-} from "../../lib/zone-path";
+import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../../lib/zone-path";
 import { formatRelative } from "../../lib/format-relative";
+import { ChartPie } from "lucide-react";
+import { SectionHeader } from "./SectionHeader";
 
 const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
 const OTHER_COLOR = "#A1A1AA"; // var(--n-300), neutral grey
@@ -64,7 +62,6 @@ function formatPower(value: number): { num: string; unit: "W" | "kW" } {
   return { num: (shown / 1000).toFixed(1), unit: "kW" };
 }
 
-
 export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const { t } = useTranslation();
   const equipments = useEquipments((s) => s.equipments);
@@ -92,24 +89,17 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   // (no residual segment, consistent with spec 091 acceptance criterion).
   const total = hasMainMeter ? Math.max(0, house ?? 0) : submeterSum;
   const other = hasMainMeter ? computeOther(total, rows) : 0;
-  const overshoot =
-    hasMainMeter && submeterSum > total * (1 + OVERSHOOT_RATIO);
+  const overshoot = hasMainMeter && submeterSum > total * (1 + OVERSHOOT_RATIO);
   const hasStale = rows.some((r) => r.unknown === "stale");
 
   const isIdle = total < IDLE_THRESHOLD_W;
-  const segments = isIdle
-    ? []
-    : buildSegments(rows, other, total);
+  const segments = isIdle ? [] : buildSegments(rows, other, total);
 
   const t_total = formatPower(total);
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6 mt-4">
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-[14px] font-semibold text-text">
-          {t("energy.live.breakdown.title")}
-        </h2>
-      </div>
+      <SectionHeader icon={ChartPie} title={t("energy.live.breakdown.title")} />
 
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 max-w-[600px]">
         <Donut
@@ -130,9 +120,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
                 className="w-[10px] h-[10px] rounded-[2px] border border-border"
                 style={{ background: OTHER_COLOR }}
               />
-              <span className="text-text-secondary">
-                {t("energy.live.breakdown.other")}
-              </span>
+              <span className="text-text-secondary">{t("energy.live.breakdown.other")}</span>
               <span className="font-mono font-medium text-text-secondary min-w-[64px] text-right">
                 {formatPower(other).num} {formatPower(other).unit}
               </span>
@@ -170,11 +158,7 @@ interface DonutSegment {
   fraction: number;
 }
 
-function buildSegments(
-  rows: SubmeterRow[],
-  other: number,
-  total: number,
-): DonutSegment[] {
+function buildSegments(rows: SubmeterRow[], other: number, total: number): DonutSegment[] {
   if (total <= 0) return [];
   // The parts are held to one circle. Before #744 the fractions were drawn
   // unclamped, so a part larger than the whole produced arcs that wrapped over
@@ -252,9 +236,7 @@ function Donut({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
         {idle ? (
-          <span className="text-[13px] font-semibold text-text-tertiary px-3">
-            {totalLabel}
-          </span>
+          <span className="text-[13px] font-semibold text-text-tertiary px-3">{totalLabel}</span>
         ) : (
           <>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
@@ -266,9 +248,7 @@ function Donut({
             >
               <span>{totalLabel}</span>
               {totalUnit && (
-                <span className="text-[12px] text-text-tertiary font-semibold">
-                  {totalUnit}
-                </span>
+                <span className="text-[12px] text-text-tertiary font-semibold">{totalUnit}</span>
               )}
             </span>
           </>
@@ -298,10 +278,7 @@ function LegendRow({
         isOffline || isStale ? "opacity-60" : ""
       }`}
     >
-      <span
-        className="w-[10px] h-[10px] rounded-[2px]"
-        style={{ background: row.color }}
-      />
+      <span className="w-[10px] h-[10px] rounded-[2px]" style={{ background: row.color }} />
       <div className="flex flex-col min-w-0">
         <span className="font-medium text-text truncate">{row.name}</span>
         {isOffline && (

@@ -15,7 +15,8 @@
 
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Clock, WifiOff } from "lucide-react";
+import { Clock, Waypoints, WifiOff } from "lucide-react";
+import { SectionHeader } from "./SectionHeader";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { GridPylonIcon } from "../icons/GridPylonIcon";
 import { useEquipments } from "../../store/useEquipments";
@@ -30,10 +31,10 @@ import { formatRelative } from "../../lib/format-relative";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
 // Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
-const HP_COLOR = "var(--color-energy-hp)";       // House consumption (vivid blue, focal)
-const GRID_COLOR = "var(--color-energy-grid)";   // Grid import (slate blue)
+const HP_COLOR = "var(--color-energy-hp)"; // House consumption (vivid blue, focal)
+const GRID_COLOR = "var(--color-energy-grid)"; // Grid import (slate blue)
 const GRID_OFF_COLOR = "var(--color-text-tertiary)"; // Grid passive (neutral, on export)
-const AUTO_COLOR = "var(--color-solar-auto)";    // Solar / autoconso (green)
+const AUTO_COLOR = "var(--color-solar-auto)"; // Solar / autoconso (green)
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -61,9 +62,7 @@ function detectLiveStaleness(
   contributors: EquipmentWithDetails[],
 ): { mode: "stale" | "offline"; oldestSince: string | null } | null {
   if (contributors.length === 0) return null;
-  const anyDegraded = contributors.some(
-    (e) => e.status === "degraded" || e.status === "offline",
-  );
+  const anyDegraded = contributors.some((e) => e.status === "degraded" || e.status === "offline");
   if (!anyDegraded) return null;
   const allOffline = contributors.every((e) => e.status === "offline");
   const sinces = contributors
@@ -72,7 +71,6 @@ function detectLiveStaleness(
   const oldestSince = sinces.length > 0 ? sinces.reduce((a, b) => (a < b ? a : b)) : null;
   return { mode: allOffline ? "offline" : "stale", oldestSince };
 }
-
 
 /** Format a power value:
  *  - |value| < 1000 W → integer W rounded to the nearest 5 (smooth display)
@@ -143,9 +141,7 @@ export function LiveEnergyPage() {
           )}
           <span className="font-medium">
             {t(
-              staleness.mode === "offline"
-                ? "energy.live.metersOffline"
-                : "energy.live.dataStale",
+              staleness.mode === "offline" ? "energy.live.metersOffline" : "energy.live.dataStale",
               { when: formatRelative(staleness.oldestSince) },
             )}
           </span>
@@ -207,12 +203,7 @@ function LiveDiagram({
   //   balanced (|grid| < 5W) + production         → "Autonome"
   //   importing + solar producing & solar ≥ grid  → "Appoint réseau"   (solar is the main)
   //   importing + solar producing & solar <  grid → "Appoint solaire"  (grid is the main)
-  type Status =
-    | "grid_only"
-    | "self"
-    | "mixed_solar_lead"
-    | "mixed_grid_lead"
-    | "export";
+  type Status = "grid_only" | "self" | "mixed_solar_lead" | "mixed_grid_lead" | "export";
   let status: Status;
   if (solar < 5) status = "grid_only";
   else if (grid < -5) status = "export";
@@ -247,6 +238,7 @@ function LiveDiagram({
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
+      <SectionHeader icon={Waypoints} title={t("energy.live.diagram.title")} />
       <FlowDiagram
         tag={{ text: t(`energy.live.status.${status}`), color: statusColor }}
         links={[
@@ -280,7 +272,15 @@ function LiveDiagram({
             value: houseValue.num,
             unit: houseValue.unit,
             icon: (
-              <svg className="w-11 h-11 sm:w-14 sm:h-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                className="w-11 h-11 sm:w-14 sm:h-14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M12 3 L20 11 Q21 12 20 13 L20 19 Q20 20 19 20 L5 20 Q4 20 4 19 L4 13 Q3 12 4 11 Z" />
                 {/* Lightning bolt inside the house body — flash-1-svgrepo-com.svg
                  * scaled and centered. vector-effect keeps the stroke crisp despite
