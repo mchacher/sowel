@@ -88,8 +88,8 @@ export function getMobileClickAction(
   }
 
   // Sensor / weather → open detail sheet to see all data.
-  // Spec 168 adds the forecast: the tile shows tomorrow and a five-day strip,
-  // the sheet shows every day with its confidence.
+  // Spec 168 adds the forecast: the tile qualifies tomorrow, the sheet shows
+  // the five days as columns, each with its confidence.
   if (type === "sensor" || type === "weather" || type === "weather_forecast") {
     return onOpenDetail;
   }

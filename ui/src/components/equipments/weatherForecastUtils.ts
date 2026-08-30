@@ -52,20 +52,6 @@ export const CONFIDENCE_STYLES: Record<ForecastConfidence, string> = {
   low: "border-error text-error bg-error/10",
 };
 
-/**
- * The same three bands as a solid bar, for the tile's five-day strip where
- * there is no room for a word. A day the plugin cannot qualify falls back to
- * the neutral border colour rather than borrowing a confidence colour, so an
- * absent verdict never reads as a good one.
- */
-export const CONFIDENCE_BAR: Record<ForecastConfidence, string> = {
-  high: "bg-success",
-  medium: "bg-warning",
-  low: "bg-error",
-};
-
-export const CONFIDENCE_BAR_UNKNOWN = "bg-border";
-
 const CONFIDENCE_VALUES: readonly string[] = ["high", "medium", "low"];
 
 export interface ForecastDay {

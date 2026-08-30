@@ -178,8 +178,8 @@ describe("getMobileClickAction", () => {
     });
   });
 
-  // Spec 168 — the forecast tile now has somewhere to go: the strip shows five
-  // days at a glance, the sheet shows each of them with its confidence.
+  // Spec 168 — the forecast tile now has somewhere to go: the tile qualifies
+  // tomorrow, the sheet shows the five days with their confidence.
   describe("weather forecast (spec 168)", () => {
     const forecast = () =>
       makeSwitch({

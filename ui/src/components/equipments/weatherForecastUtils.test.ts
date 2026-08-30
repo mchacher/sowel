@@ -5,8 +5,6 @@ import {
   parseForecastDays,
   parseModelUsed,
   CONFIDENCE_STYLES,
-  CONFIDENCE_BAR,
-  CONFIDENCE_BAR_UNKNOWN,
   type ForecastConfidence,
 } from "./weatherForecastUtils";
 
@@ -151,23 +149,17 @@ describe("modelLabel", () => {
 
 // Spec 168 — the tile, the sheet and the equipment page render the same three
 // bands, so the bands live here and nowhere else.
-describe("confidence colour maps", () => {
+describe("confidence colour map", () => {
   const levels: ForecastConfidence[] = ["high", "medium", "low"];
 
-  it("gives every level a pill style and a bar colour", () => {
+  it("gives every level a pill style", () => {
     for (const level of levels) {
       expect(CONFIDENCE_STYLES[level]).toBeTruthy();
-      expect(CONFIDENCE_BAR[level]).toBeTruthy();
     }
   });
 
   it("keeps the three bands distinguishable from each other", () => {
     // A traffic light where two lamps share a colour is not a traffic light.
-    expect(new Set(levels.map((l) => CONFIDENCE_BAR[l])).size).toBe(3);
     expect(new Set(levels.map((l) => CONFIDENCE_STYLES[l])).size).toBe(3);
-  });
-
-  it("keeps the unknown bar out of the three, so no verdict never reads as one", () => {
-    expect(levels.map((l) => CONFIDENCE_BAR[l])).not.toContain(CONFIDENCE_BAR_UNKNOWN);
   });
 });
