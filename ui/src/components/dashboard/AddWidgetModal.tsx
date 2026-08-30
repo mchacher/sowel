@@ -93,17 +93,23 @@ export function AddWidgetModal({
             <MapIcon size={14} strokeWidth={1.5} />
             {t("dashboard.tabZone")}
           </button>
-          <button
-            onClick={() => setTab("recipe")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer ${
-              tab === "recipe"
-                ? "text-primary border-b-2 border-primary"
-                : "text-text-secondary hover:text-text"
-            }`}
-          >
-            <ChefHat size={14} strokeWidth={1.5} />
-            {t("dashboard.tabRecipe")}
-          </button>
+          {/* Spec 169 — the tab appears only once something can go in it. No
+              recipe in the registry declares a tile yet, so an always-visible
+              third tab would open on "nothing available" for every user, which
+              is a poor way for a feature to introduce itself. */}
+          {pinnable.length > 0 && (
+            <button
+              onClick={() => setTab("recipe")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer ${
+                tab === "recipe"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-text-secondary hover:text-text"
+              }`}
+            >
+              <ChefHat size={14} strokeWidth={1.5} />
+              {t("dashboard.tabRecipe")}
+            </button>
+          )}
         </div>
 
         {/* Content */}

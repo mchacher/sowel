@@ -152,3 +152,28 @@ The handler adds the two checks a schema cannot express, both `400` like their s
 | Controls  | `tile.actions` ∩ `recipe.actions`, rendered as `ModeCyclePill` | list empty, or instance disabled |
 
 A widget whose recipe is missing or no longer declares `tile` renders the unavailable state: icon, title, and one localized line. No control, no crash.
+
+## 7. Accepted divergence from spec 149
+
+`WidgetGrid` dispatches to `RecipeTile` from an early return, before the mobile
+click and detail-sheet wiring. A recipe tile therefore does not open a detail
+sheet on tap, where every other widget does.
+
+This is a decision, not an oversight. The tile carries its own controls, so
+nothing on it is unreachable, and a `RecipeDetailSheet` would have duplicated
+what the tile already shows inside `WidgetDetailSheet.tsx` — the 1532-line file
+spec 149 exists to dismantle. Widening `WidgetPresentation` to accept a recipe
+instance mid-migration was the alternative, and buys a wider diff in a moving
+file for no user-visible gain.
+
+The convergence belongs at the end of spec 149 (#325): once the resolver owns
+every widget descriptor, a recipe instance produces one too and this early
+return goes away. Tracked in **#855**.
+
+## 8. Picker visibility
+
+The Recipe tab in `AddWidgetModal` renders only when at least one instance is
+pinnable. No registry recipe declares `tile` yet, so an unconditional tab would
+open on "no recipe offers a dashboard tile" for every user on day one. The
+empty-state line is kept for the race where the last pinnable instance
+disappears over WebSocket while the tab is open.
