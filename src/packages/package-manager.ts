@@ -1015,7 +1015,12 @@ export class PackageManager {
     repo: string,
     tmpDir: string,
   ): Promise<{ tarballPath: string; sha256: string; version: string }> {
-    const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
+    // Built through the one checked constructor rather than interpolated here:
+    // `repo` reaches the path of an authenticated outbound request, and a value
+    // carrying a traversal or an `@` points it at another host. The install
+    // route validates the shape too, but a schema is not a barrier anything
+    // downstream can see, and this method is also reached from the store.
+    const apiUrl = PersonalSourceManager.latestReleaseUrl(repo);
     const releaseRes = await fetch(apiUrl, {
       headers: { Accept: "application/vnd.github+json" },
     });

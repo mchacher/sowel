@@ -60,6 +60,23 @@ export class PersonalSourceManager {
     return REPO_FORMAT.test(repo);
   }
 
+  /**
+   * The GitHub API URL for a repository's latest release.
+   *
+   * The one place a repo reference becomes a URL, and therefore the one place
+   * it is checked. `repo` is interpolated into the path of an authenticated
+   * outbound request, so a value like `../../orgs/x` or one carrying a `@`
+   * points the request somewhere else entirely. Callers hold a repo they
+   * believe is valid; this makes that belief a check rather than an assumption,
+   * on the request itself where it matters.
+   */
+  static latestReleaseUrl(repo: string): string {
+    if (!REPO_FORMAT.test(repo)) {
+      throw new Error(`Invalid repository format "${repo}" (expected owner/repo)`);
+    }
+    return `https://api.github.com/repos/${repo}/releases/latest`;
+  }
+
   /** All sources, enriched with the cached latest release version (no network). */
   list(): PluginSource[] {
     const rows = this.stmts.getAll.all() as SourceRow[];
@@ -145,7 +162,7 @@ export class PersonalSourceManager {
    */
   async fetchLatestRelease(repo: string): Promise<PersonalRelease | undefined> {
     try {
-      const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+      const res = await fetch(PersonalSourceManager.latestReleaseUrl(repo), {
         headers: { Accept: "application/vnd.github+json" },
         signal: AbortSignal.timeout(10_000),
       });

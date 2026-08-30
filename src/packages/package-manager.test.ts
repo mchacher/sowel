@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { PackageManager } from "./package-manager.js";
+import { PersonalSourceManager } from "./personal-sources.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import {
   ChecksumMismatchError,
@@ -1242,6 +1243,46 @@ describe("getPackageDir — the package-id boundary", () => {
   it("refuses an empty or oddly-shaped id rather than guessing", () => {
     for (const id of ["", " ", "-leading", "_leading", "Upper", "with space"]) {
       expect(() => manager.getPackageDir(id)).toThrow(/Invalid package id/);
+    }
+  });
+});
+
+/**
+ * `repo` reaches the path of an authenticated outbound request to GitHub, so
+ * its shape decides where that request goes.
+ */
+describe("latestReleaseUrl — the repo-to-URL boundary", () => {
+  it("builds the release URL for a well-formed reference", () => {
+    expect(PersonalSourceManager.latestReleaseUrl("mchacher/sowel-plugin-x")).toBe(
+      "https://api.github.com/repos/mchacher/sowel-plugin-x/releases/latest",
+    );
+  });
+
+  it("refuses a reference that would point the request elsewhere", () => {
+    for (const repo of [
+      "../../orgs/evil",
+      "evil.com/x",
+      "a/b/../../../etc",
+      "user@evil.com/x",
+      "a/b?x=1",
+      "a/b#frag",
+      "//evil.com/x",
+      "",
+    ]) {
+      expect(() => PersonalSourceManager.latestReleaseUrl(repo)).toThrow(/Invalid repository/);
+    }
+  });
+
+  it("agrees with isValidRepo, so there is one definition of the shape", () => {
+    for (const repo of ["a/b", "mchacher/sowel", "../x", "no-slash", "a/b/c"]) {
+      const valid = PersonalSourceManager.isValidRepo(repo);
+      let built = true;
+      try {
+        PersonalSourceManager.latestReleaseUrl(repo);
+      } catch {
+        built = false;
+      }
+      expect(built).toBe(valid);
     }
   });
 });
