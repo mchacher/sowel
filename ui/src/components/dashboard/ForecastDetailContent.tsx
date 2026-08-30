@@ -64,7 +64,10 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
     : "text-text-tertiary";
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-border-light last:border-b-0">
+    // Wraps on a narrow phone: at 390px the day name, the temperatures, the
+    // metrics and the pill do not fit on one line, and an ml-auto pill with no
+    // wrap lands on top of the wind value.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 border-b border-border-light last:border-b-0">
       <span className="w-[76px] shrink-0 text-[13px] font-semibold text-text truncate">
         {dayName}
       </span>
@@ -82,7 +85,7 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
         )}
       </span>
 
-      <span className="flex items-center gap-3 min-w-0">
+      <span className="flex items-center gap-3 min-w-0 shrink">
         {day.rainProb !== null && (
           <span className="flex items-center gap-1 text-[12px] text-text-secondary font-mono tabular-nums">
             <Droplets size={12} strokeWidth={1.5} className="text-primary shrink-0" />
@@ -92,7 +95,7 @@ function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
         {day.windGusts !== null && (
           <span className="flex items-center gap-1 text-[12px] text-text-secondary font-mono tabular-nums">
             <Wind size={12} strokeWidth={1.5} className="text-text-tertiary shrink-0" />
-            {Math.round(day.windGusts)}
+            {Math.round(day.windGusts)} km/h
           </span>
         )}
       </span>
