@@ -142,6 +142,22 @@ Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
 ---
 
+### Le rôle submeter (`?role=submeter`)
+
+`GET /api/v1/equipments?role=submeter` renvoie les sous-compteurs de consommation, ordonnés pinces d'abord, puis relais mesurants, puis autres charges mesurées, chaque groupe par nom : un client à capacité fixe qui tronque la liste garde ainsi les compteurs qui comptent. `?type=energy_meter` est honoré comme le même rôle, pour les firmwares plus anciens de l'afficheur d'énergie.
+
+Chaque entrée porte un champ supplémentaire, sur ce rôle uniquement :
+
+| Champ                 | Signification                                                                                                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `powerReadingCurrent` | `true` quand la mesure `power` peut être affichée comme une mesure en direct, `false` quand elle ne le peut pas (mesure plus ancienne que son budget de fraîcheur, ou équipement hors-ligne), `null` quand il n'y a pas de mesure `power` numérique à juger. |
+
+Un client doit le consulter avant de dessiner un segment. Une mesure hors budget est un reliquat, pas une mesure, et l'erreur est silencieuse : un `0 W` périmé ressemble exactement à un appareil éteint. Le budget est de deux minutes pour un compteur déclaré, dont le moteur attend déjà des remontées continues, et de dix minutes sinon, car plusieurs intégrations interrogent leur source toutes les cinq minutes et un appareil en bon état ne doit pas clignoter (issues #744 et #832).
+
+Les équipements hors-ligne restent dans la liste volontairement, pour qu'un client puisse afficher une ligne « hors-ligne depuis », et ils répondent `false` : leur dernière mesure n'est pas une mesure en direct, si récente soit-elle.
+
+Le verdict vient de `classifyPowerReading` dans `src/shared/reading-freshness.ts`, et la décomposition Live de l'UI web appelle la même fonction : les deux surfaces ne peuvent pas répondre différemment à propos d'un même appareil.
+
 ## Zones
 
 | Method   | Path                                 | Description                                                                                        |

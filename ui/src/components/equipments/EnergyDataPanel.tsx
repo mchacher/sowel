@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Zap, Clock, Calendar, CalendarDays, CalendarRange } from "lucide-react";
 import type { ComputedDataEntry, EquipmentStatus, EquipmentStatusReason } from "../../types";
 import { EquipmentStatusBadge } from "./EquipmentStatusBadge";
+import { formatRelative } from "../../lib/format-relative";
 
 interface EnergyDataPanelProps {
   computedData: ComputedDataEntry[];
@@ -29,19 +30,6 @@ function formatEnergy(wh: number): { value: string; unit: string } {
   return { value: String(Math.round(wh)), unit: "Wh" };
 }
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return "";
-  const normalized = iso.includes("T") ? iso : iso.replace(" ", "T").replace("Z", "") + "Z";
-  const ms = Date.parse(normalized);
-  if (!Number.isFinite(ms)) return "";
-  const seconds = Math.floor((Date.now() - ms) / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h`;
-  return `${Math.floor(hours / 24)} j`;
-}
 
 export function EnergyDataPanel({ computedData, status, statusReason,
   isProduction,

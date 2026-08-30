@@ -9,12 +9,17 @@ import {
   buildSubmeterRows,
   computeOther,
   displayedPower,
-  parseReadingTime,
   readSubmeterReading,
   sharePercent,
+} from "./submeter-helpers";
+// Imported from shared/ rather than re-exported through the helper: one name,
+// one module, so a signature change here cannot masquerade as compatible
+// (#832 review).
+import {
+  parseReadingTime,
   SUBMETER_FRESHNESS_MS,
   SUBMETER_FRESHNESS_SLOW_MS,
-} from "./submeter-helpers";
+} from "../../../../src/shared/reading-freshness";
 
 /**
  * Fixed clock. Every reading's age is stated by the test rather than inherited

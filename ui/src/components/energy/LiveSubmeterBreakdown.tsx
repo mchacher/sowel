@@ -24,6 +24,7 @@ import {
   flattenZonesWithPath,
   zoneChainMap,
 } from "../../lib/zone-path";
+import { formatRelative } from "../../lib/format-relative";
 
 const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
 const OTHER_COLOR = "#A1A1AA"; // var(--n-300), neutral grey
@@ -63,21 +64,6 @@ function formatPower(value: number): { num: string; unit: "W" | "kW" } {
   return { num: (shown / 1000).toFixed(1), unit: "kW" };
 }
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return "";
-  const normalized = iso.includes("T")
-    ? iso
-    : iso.replace(" ", "T").replace("Z", "") + "Z";
-  const ms = Date.parse(normalized);
-  if (!Number.isFinite(ms)) return "";
-  const seconds = Math.floor((Date.now() - ms) / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h`;
-  return `${Math.floor(hours / 24)} j`;
-}
 
 export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const { t } = useTranslation();

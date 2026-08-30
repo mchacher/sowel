@@ -26,6 +26,7 @@ import { PhaseBreakdown } from "./PhaseBreakdown";
 import { useWsSubscription } from "../../hooks/useWsSubscription";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 import { FlowDiagram } from "../flow/FlowDiagram";
+import { formatRelative } from "../../lib/format-relative";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
 // Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
@@ -72,19 +73,6 @@ function detectLiveStaleness(
   return { mode: allOffline ? "offline" : "stale", oldestSince };
 }
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return "";
-  const normalized = iso.includes("T") ? iso : iso.replace(" ", "T").replace("Z", "") + "Z";
-  const ms = Date.parse(normalized);
-  if (!Number.isFinite(ms)) return "";
-  const seconds = Math.floor((Date.now() - ms) / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h`;
-  return `${Math.floor(hours / 24)} j`;
-}
 
 /** Format a power value:
  *  - |value| < 1000 W → integer W rounded to the nearest 5 (smooth display)

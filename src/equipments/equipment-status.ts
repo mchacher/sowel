@@ -21,19 +21,16 @@ import type {
   EquipmentStatus,
   EquipmentStatusReason,
 } from "../shared/types.js";
+import { parseReadingTime } from "../shared/reading-freshness.js";
 
 /**
  * Parse a SQLite-style ISO timestamp ("YYYY-MM-DD HH:MM:SSZ" or strict ISO 8601)
  * to epoch milliseconds. Returns null for null inputs or unparseable values.
  */
 function parseTimestamp(iso: string | null): number | null {
-  if (!iso) return null;
-  // SQLite datetime('now') returns "YYYY-MM-DD HH:MM:SS" without timezone — treat as UTC.
-  const normalized = iso.includes("T")
-    ? iso.replace("Z", "+00:00")
-    : iso.replace(" ", "T").replace("Z", "") + "Z";
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? ms : null;
+  // One parser, shared with the display surfaces that ask the same question
+  // of the same timestamps (#832).
+  return parseReadingTime(iso);
 }
 
 /**
