@@ -37,7 +37,7 @@ import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments
 import { TempExtremes } from "../TempExtremes";
 import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging } from "lucide-react";
 import { gateNeedsConfirm } from "./gate-confirm";
-import { ForecastStrip } from "./ForecastStrip";
+import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
   formatRuntime,
@@ -399,11 +399,14 @@ function useMobileState(
         lines.push(`💧${Math.round(tomorrow.rainProb)}%`);
       }
       return {
-        // Smaller than the other tiles' 96: this is the only card carrying a
-        // footer, and at 96 the icon crowded the title above it.
-        icon: <ConditionIcon size={72} strokeWidth={1.2} className={conditionColor} />,
+        icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
         stateLines: lines,
-        footer: <ForecastStrip days={days} />,
+        footer: (
+          <ForecastConfidenceMark
+            confidence={tomorrow.confidence}
+            className="text-[10px] max-w-full"
+          />
+        ),
       };
     }
     return {

@@ -63,8 +63,9 @@ const widget: DashboardWidget = {
   createdAt: "2026-01-01T00:00:00Z",
 } as DashboardWidget;
 
-const bars = (c: HTMLElement) =>
-  [...c.querySelectorAll("span")].filter((s) => s.className.includes("h-[3px]"));
+/** The confidence dot the tile shows for tomorrow. */
+const dots = (c: HTMLElement) =>
+  [...c.querySelectorAll("span")].filter((s) => s.className.includes("w-1.5"));
 
 describe("forecast tile wiring (spec 168)", () => {
   it("desktop: EquipmentWidget hands the tile its detail handler, and the click reaches it", () => {
@@ -83,7 +84,7 @@ describe("forecast tile wiring (spec 168)", () => {
     expect(onOpenDetail).toHaveBeenCalledTimes(1);
   });
 
-  it("desktop: the tile carries the five-day strip", () => {
+  it("desktop: the tile qualifies tomorrow", () => {
     const { container } = render(
       <EquipmentWidget
         widget={widget}
@@ -92,7 +93,8 @@ describe("forecast tile wiring (spec 168)", () => {
         onOpenDetail={vi.fn()}
       />,
     );
-    expect(bars(container)).toHaveLength(5);
+    expect(dots(container)).toHaveLength(1);
+    expect(container.textContent).toContain("reliable");
   });
 
   it("desktop: no handler, no click affordance", () => {
@@ -103,10 +105,10 @@ describe("forecast tile wiring (spec 168)", () => {
     expect(container.querySelector(".cursor-pointer")).toBeNull();
   });
 
-  it("mobile: the phone tile carries the same strip", () => {
+  it("mobile: the phone tile qualifies tomorrow too", () => {
     // The phone card is a different component with its own forecast branch;
-    // the strip has to be wired there too or half the feature is missing on
-    // the surface this dashboard is mostly read on.
+    // the mark has to be wired there too or the feature is missing on the
+    // surface this dashboard is mostly read on.
     const { container } = render(
       <MobileWidgetCard
         widget={widget}
@@ -115,7 +117,8 @@ describe("forecast tile wiring (spec 168)", () => {
         editMode={false}
       />,
     );
-    expect(bars(container)).toHaveLength(5);
+    expect(dots(container)).toHaveLength(1);
+    expect(container.textContent).toContain("reliable");
   });
 
   it("mobile: tapping the card fires the handler that opens the panel", () => {
@@ -132,41 +135,25 @@ describe("forecast tile wiring (spec 168)", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("names the confidence in words, so the strip is not colour alone", () => {
-    const { container } = render(
-      <EquipmentWidget
-        widget={widget}
-        equipment={forecastEquipment()}
-        onExecuteOrder={vi.fn()}
-        onOpenDetail={vi.fn()}
-      />,
-    );
-    expect(bars(container).map((b) => b.getAttribute("aria-label"))).toEqual([
-      "reliable",
-      "fairly reliable",
-      "unreliable",
-      "fairly reliable",
-      "reliable",
-    ]);
-  });
+  it("neither tile shows a verdict the plugin did not publish", () => {
+    // Plugin older than 2.0: five days, no confidence anywhere.
+    const bare = forecastEquipment();
+    bare.dataBindings = bare.dataBindings.filter((b) => !b.alias.endsWith("_confidence"));
 
-  it("shows a readable day name, not one letter shared by two days", () => {
-    // `narrow` prints M for both Tuesday and Wednesday in French, and T for
-    // both Tuesday and Thursday in English.
-    const { container } = render(
+    const desktop = render(
       <EquipmentWidget
         widget={widget}
-        equipment={forecastEquipment()}
+        equipment={bare}
         onExecuteOrder={vi.fn()}
         onOpenDetail={vi.fn()}
       />,
     );
-    const names = [...container.querySelectorAll("span")]
-      .filter((s) => s.className.includes("text-[9px]"))
-      .map((s) => s.textContent ?? "");
-    expect(names).toHaveLength(5);
-    expect(new Set(names).size).toBe(5);
-    for (const n of names) expect(n.length).toBeGreaterThan(1);
+    expect(dots(desktop.container)).toHaveLength(0);
+
+    const mobile = render(
+      <MobileWidgetCard widget={widget} equipment={bare} onClick={vi.fn()} editMode={false} />,
+    );
+    expect(dots(mobile.container)).toHaveLength(0);
   });
 
   it("the sheet has a forecast branch: without it the type falls through to null", () => {

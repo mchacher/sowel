@@ -7,7 +7,7 @@ import {
   CONDITION_ICONS,
   CONDITION_COLORS,
 } from "../equipments/weatherForecastUtils";
-import { ForecastStrip } from "./ForecastStrip";
+import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { WidgetCard } from "./WidgetCard";
 
 interface WeatherForecastWidgetProps {
@@ -94,8 +94,11 @@ export function WeatherForecastWidget({
             )}
           </div>
 
-          {/* Condition label + day */}
-          <span className="text-[10px] sm:text-[12px] text-text-secondary leading-tight">{conditionLabel}</span>
+          {/* Condition, and how much the sources agree on tomorrow */}
+          <span className="flex items-center gap-1.5 text-[10px] sm:text-[12px] text-text-secondary leading-tight">
+            <span className="truncate">{conditionLabel}</span>
+            <ForecastConfidenceMark confidence={tomorrow.confidence} />
+          </span>
 
           {/* Rain + Wind */}
           <div className="flex items-center gap-2 sm:gap-3">
@@ -119,7 +122,6 @@ export function WeatherForecastWidget({
         </div>
       </div>
 
-      <ForecastStrip days={days} />
     </WidgetCard>
   );
 }
