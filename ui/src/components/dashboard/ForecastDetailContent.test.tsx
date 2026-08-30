@@ -65,11 +65,14 @@ function fiveDays(withConfidence = true): DataBindingWithValue[] {
 /** One column per published day. */
 const columns = (c: HTMLElement) => [...c.querySelectorAll("div.flex-1")];
 
-/** The confidence rules, in day order, by their colour class. */
-const rules = (c: HTMLElement) =>
+/** The confidence pills, in day order, by their semantic colour class. */
+const pills = (c: HTMLElement) =>
   [...c.querySelectorAll("span")]
-    .filter((s) => s.className.includes("h-[3px]"))
-    .map((s) => [...s.classList].find((k) => k.startsWith("bg-")) ?? "");
+    .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
+    .map(
+      (s) =>
+        [...s.classList].find((k) => /^text-(success|warning|error)$/.test(k)) ?? "",
+    );
 
 describe("ForecastDetailContent (spec 168)", () => {
   it("renders one column per day, in day order", () => {
@@ -80,15 +83,10 @@ describe("ForecastDetailContent (spec 168)", () => {
     expect(text.indexOf("26")).toBeLessThan(text.indexOf("30"));
   });
 
-  it("gives every column a confidence rule, coloured by that day", () => {
+  it("gives every qualified column the pill of the equipment page", () => {
     const { container } = render(<ForecastDetailContent equipment={equipmentWith(fiveDays())} />);
-    expect(rules(container)).toEqual([
-      "bg-warning",
-      "bg-warning",
-      "bg-warning",
-      "bg-warning",
-      "bg-warning",
-    ]);
+    expect(pills(container)).toEqual(Array(5).fill("text-warning"));
+    expect(screen.getAllByText("fairly reliable")).toHaveLength(5);
   });
 
   it("shows the wind and not the rain", () => {
@@ -105,17 +103,32 @@ describe("ForecastDetailContent (spec 168)", () => {
     expect(screen.getAllByText("fairly reliable")).toHaveLength(5);
   });
 
-  it("gives a day with no confidence the neutral rule and no word", () => {
+  it("gives a day with no confidence no pill at all", () => {
     // A plugin older than 2.0. A grey badge would read as a verdict, and
     // "we do not know" is not one.
     const { container } = render(
       <ForecastDetailContent equipment={equipmentWith(fiveDays(false))} />,
     );
-    expect(rules(container)).toEqual(Array(5).fill("bg-border"));
+    expect(pills(container)).toEqual([]);
     expect(screen.queryByText("fairly reliable")).toBeNull();
     expect(screen.queryByText("reliable")).toBeNull();
     // The day itself is still there.
     expect(screen.getAllByText("30").length).toBe(1);
+  });
+
+  it("reserves the pill slot so the five columns end on one line", () => {
+    // Three days qualified, two not: without a reserved slot the two bare
+    // columns end higher than the others.
+    const bindings = fiveDays();
+    const bare = bindings.filter(
+      (b) => !["j4_confidence", "j5_confidence"].includes(b.alias),
+    );
+    const { container } = render(<ForecastDetailContent equipment={equipmentWith(bare)} />);
+    const feet = [...container.querySelectorAll("span")].filter((s) =>
+      s.className.includes("min-h-["),
+    );
+    expect(feet).toHaveLength(5);
+    expect(pills(container)).toHaveLength(3);
   });
 
   it("shows the source line when the plugin publishes the model used", () => {

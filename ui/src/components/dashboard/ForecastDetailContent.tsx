@@ -8,8 +8,7 @@ import {
   modelLabel,
   CONDITION_ICONS,
   CONDITION_COLORS,
-  CONFIDENCE_BAR,
-  CONFIDENCE_BAR_UNKNOWN,
+  CONFIDENCE_STYLES,
   type ForecastDay,
 } from "../equipments/weatherForecastUtils";
 
@@ -117,41 +116,26 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
         </span>
       )}
 
-      {/* The same vocabulary as the tile's dot: colour here, colour and word
-          where there is room for one. A day the plugin cannot qualify keeps
-          the neutral rule and gets no word, so an absent verdict never reads
-          as a good one. `mt-auto` keeps the rules on one line across the five
-          columns whatever else each day published. */}
-      {/* The same vocabulary as the tile's dot: colour here, colour and word
-          where there is room for one. A day the plugin cannot qualify keeps
-          the neutral rule and gets no word, so an absent verdict never reads
-          as a good one. The word's line is reserved whether or not there is a
-          word, so the five rules land on the same baseline. */}
-      <span
-        className="mt-auto w-full pt-2 flex flex-col items-center gap-1"
-        title={
-          day.tempMaxSpread !== null && day.tempMaxSpread > 0
-            ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
-            : undefined
-        }
-      >
-        <span
-          className={`block w-full h-[3px] rounded-full ${
-            day.confidence ? CONFIDENCE_BAR[day.confidence] : CONFIDENCE_BAR_UNKNOWN
-          }`}
-          aria-label={confidenceLabel}
-        />
-        <span
-          className={`hidden sm:block h-[13px] text-[10px] font-semibold leading-[13px] ${
-            day.confidence === "high"
-              ? "text-success"
-              : day.confidence === "medium"
-                ? "text-warning"
-                : "text-error"
-          }`}
-        >
-          {confidenceLabel ?? ""}
-        </span>
+      {/* The pill of the equipment page, at the foot of the column and behind
+          the same rule, so the two surfaces say a day's confidence the same
+          way. It wraps to two lines on a 68px column rather than shrinking
+          below a readable size; the slot is reserved whether or not there is
+          a pill, so the five columns end on one line. */}
+      <span className="mt-auto w-full border-t border-border-light pt-2 flex justify-center items-start min-h-[30px] sm:min-h-[24px]">
+        {day.confidence && (
+          <span
+            className={`rounded-full border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-center leading-[1.25] ${
+              CONFIDENCE_STYLES[day.confidence]
+            }`}
+            title={
+              day.tempMaxSpread !== null && day.tempMaxSpread > 0
+                ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
+                : undefined
+            }
+          >
+            {confidenceLabel}
+          </span>
+        )}
       </span>
     </div>
   );
