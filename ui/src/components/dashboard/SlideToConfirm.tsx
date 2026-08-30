@@ -3,12 +3,24 @@ import { ChevronsRight, Check } from "lucide-react";
 
 const KNOB = 50; // px
 const PAD = 4; // px inset around the knob
+/** Space the knob occupies at either end, label areas have to clear it. */
+const KNOB_SPAN = KNOB + PAD * 2; // px
 
 /**
  * Spec 146 — slide-to-confirm control (issue #320). A deliberate horizontal
  * drag of the knob to the end fires `onConfirm`; releasing before the end snaps
  * back and does nothing, so a stray touch cannot actuate. Pointer events unify
  * mouse and touch; `setPointerCapture` keeps the drag tracking off-element.
+ *
+ * The track is capped rather than filling its parent (#858). Full width, on a
+ * 393 px phone, meant a 295 px sweep starting in the bottom-left corner — the
+ * point farthest from the thumb of the hand holding the phone, on a control
+ * whose entire purpose is to be used one-handed in front of a gate. Capped at
+ * 260 px and centred, the knob starts at x=72 instead of x=20 and the sweep is
+ * 202 px, tuned by hand on a phone rather than picked from a round number.
+ *
+ * `maxOffset()` reads the rendered width, so the threshold, the progress fill
+ * and the knob all follow the cap without knowing about it.
  */
 export function SlideToConfirm({
   label,
@@ -29,7 +41,7 @@ export function SlideToConfirm({
 
   const maxOffset = () => {
     const w = trackRef.current?.clientWidth ?? 0;
-    return Math.max(0, w - KNOB - PAD * 2);
+    return Math.max(0, w - KNOB_SPAN);
   };
 
   const finish = () => {
@@ -71,7 +83,7 @@ export function SlideToConfirm({
   return (
     <div
       ref={trackRef}
-      className={`relative h-[58px] rounded-[12px] border overflow-hidden select-none touch-none ${
+      className={`relative mx-auto w-full max-w-[260px] h-[58px] rounded-[12px] border overflow-hidden select-none touch-none ${
         done ? "border-success/40" : "border-border"
       } bg-border-light`}
     >
@@ -80,11 +92,14 @@ export function SlideToConfirm({
         className={`absolute inset-y-0 left-0 rounded-[12px] ${done ? "bg-success/20" : "bg-warning/15"}`}
         style={{ width: `${KNOB + x}px`, transition }}
       />
-      {/* label */}
+      {/* Label, in whichever half the knob is not occupying: to its right at
+          rest, to its left once the slide is done. On a capped track a label
+          centred across the whole width would start under the knob. */}
       <div
-        className={`absolute inset-0 flex items-center justify-center gap-2 text-[13px] font-medium pointer-events-none ${
+        className={`absolute inset-y-0 flex items-center justify-center gap-2 px-2 text-[13px] font-medium whitespace-nowrap pointer-events-none ${
           done ? "text-success" : "text-text-secondary"
         }`}
+        style={done ? { left: 0, right: `${KNOB_SPAN}px` } : { left: `${KNOB_SPAN}px`, right: 0 }}
       >
         {done ? confirmedLabel : label}
         {!done && <ChevronsRight size={16} strokeWidth={2} className="text-warning" />}
