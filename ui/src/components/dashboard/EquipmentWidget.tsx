@@ -73,7 +73,9 @@ interface EquipmentWidgetProps {
   /** Zone qualifier (spec 139), set only when a homonym shares the dashboard. */
   equipmentZone?: string;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
-  /** Click handler that opens the desktop detail drawer. Currently consumed only by the weather widget. */
+  /** Opens the detail sheet. WidgetGrid passes it on desktop and mobile alike,
+   *  in every mode but edit. Consumed by the weather station and, since spec
+   *  168, the forecast. */
   onOpenDetail?: () => void;
   /** Dashboard in edit mode — tiles are drag/rename targets then, so the tap-to-toggle is off. */
   editMode?: boolean;
@@ -206,7 +208,15 @@ export function EquipmentWidget({
         iconKey={widget.icon}
       />
     );
-  if (isWeatherForecast) return <WeatherForecastWidget label={label} sublabel={sublabel} equipment={equipment} />;
+  if (isWeatherForecast)
+    return (
+      <WeatherForecastWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        onOpenDetail={onOpenDetail}
+      />
+    );
   if (equipment.type === "weather")
     return <WeatherStationWidget label={label} sublabel={sublabel} equipment={equipment} onOpenDetail={onOpenDetail} />;
   if (isAppliance) return <ApplianceEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;

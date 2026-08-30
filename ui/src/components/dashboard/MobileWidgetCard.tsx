@@ -37,6 +37,7 @@ import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments
 import { TempExtremes } from "../TempExtremes";
 import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging } from "lucide-react";
 import { gateNeedsConfirm } from "./gate-confirm";
+import { ForecastStrip } from "./ForecastStrip";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
   formatRuntime,
@@ -67,7 +68,7 @@ export function MobileWidgetCard({
   // Two half-width columns on a phone: joining the zone to the title would cut
   // it off exactly where it starts to disambiguate. Own line, quieter.
   const zone = widget.label ? undefined : equipmentZone;
-  const { icon, stateLines } = useMobileState(widget, equipment, t);
+  const { icon, stateLines, footer } = useMobileState(widget, equipment, t);
   // Spec 146 — a guarded gate shows a tiny shield so it reads as protected.
   const guarded = !editMode && gateNeedsConfirm(equipment);
 
@@ -112,6 +113,10 @@ export function MobileWidgetCard({
           {stateLines.join(" · ")}
         </span>
       )}
+
+      {/* Spec 168 — the forecast tile carries its five-day strip on the phone
+          too, which is the surface this dashboard is mostly read on. */}
+      {footer}
     </button>
   );
 }
@@ -120,7 +125,7 @@ function useMobileState(
   widget: DashboardWidget,
   equipment: EquipmentWithDetails,
   t: TFunction,
-): { icon: React.ReactNode; stateLines: string[] } {
+): { icon: React.ReactNode; stateLines: string[]; footer?: React.ReactNode } {
   const {
     isLight,
     isShutter,
@@ -396,6 +401,7 @@ function useMobileState(
       return {
         icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
         stateLines: lines,
+        footer: <ForecastStrip days={days} />,
       };
     }
     return {

@@ -22,6 +22,10 @@ Affiche un équipement unique avec son état courant et ses contrôles rapides.
 
 Les équipements on/off (lumières, interrupteurs, prises, chauffe-eau, vannes, radiateurs, pompes de piscine, lecteurs multimédia, portails à action unique) changent d'état quand vous cliquez **n'importe où sur la tuile**, et pas seulement sur le bouton sous l'icône. Les tuiles à plusieurs contrôles -- volets, thermostats, volets de piscine, VMC -- gardent leurs boutons. En mode édition la tuile n'agit plus, pour que vous puissiez la déplacer et la renommer sans risque.
 
+La tuile **prévisions météo** affiche demain en détail, et sous lui une bande des cinq prochains jours : le nom abrégé du jour, sa température maximale, et une petite barre colorée indiquant la fiabilité de ce jour (vert fiable, ambre assez fiable, rouge peu fiable). Survoler une colonne affiche la fiabilité en toutes lettres. Cliquez ou touchez la tuile, sur ordinateur comme sur téléphone, pour ouvrir un panneau qui liste les cinq jours, un par ligne, chacun avec ses températures, sa probabilité de pluie, son vent et sa fiabilité, ainsi que le modèle d'où vient la prévision.
+
+La fiabilité est publiée par le plugin météo à partir de la version 2.0. Avec un plugin plus ancien, les barres restent grises et aucune fiabilité n'est affichée : un jour inconnu ne doit jamais ressembler à un jour fiable.
+
 ### Widget de zone
 
 Affiche les données agrégées d'une zone entière. Vous choisissez quelle **famille** de données afficher :

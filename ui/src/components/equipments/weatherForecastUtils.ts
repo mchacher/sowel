@@ -35,6 +35,37 @@ export const CONDITION_COLORS: Record<string, string> = {
 /** Forecast confidence published by the plugin from spec 159 onwards. */
 export type ForecastConfidence = "high" | "medium" | "low";
 
+/**
+ * How a confidence looks, once.
+ *
+ * Traffic-light coding: green reads "act on it", red "do not build on this
+ * day". The amber middle is a deliberate call by the maintainer, even though
+ * the accent is otherwise reserved for "a light is on right now", so the same
+ * hue carries two meanings across the app. Lifted out of WeatherForecastPanel by spec 168:
+ * the dashboard tile and the detail sheet render the same three bands, and
+ * three copies of "what a fairly reliable day looks like" is the shape of drift this
+ * codebase keeps having to undo.
+ */
+export const CONFIDENCE_STYLES: Record<ForecastConfidence, string> = {
+  high: "border-success text-success bg-success/10",
+  medium: "border-warning text-warning bg-warning/10",
+  low: "border-error text-error bg-error/10",
+};
+
+/**
+ * The same three bands as a solid bar, for the tile's five-day strip where
+ * there is no room for a word. A day the plugin cannot qualify falls back to
+ * the neutral border colour rather than borrowing a confidence colour, so an
+ * absent verdict never reads as a good one.
+ */
+export const CONFIDENCE_BAR: Record<ForecastConfidence, string> = {
+  high: "bg-success",
+  medium: "bg-warning",
+  low: "bg-error",
+};
+
+export const CONFIDENCE_BAR_UNKNOWN = "bg-border";
+
 const CONFIDENCE_VALUES: readonly string[] = ["high", "medium", "low"];
 
 export interface ForecastDay {
@@ -78,22 +109,22 @@ export function parseForecastDays(bindings: DataBindingWithValue[]): ForecastDay
 
     if (metric === "condition" && typeof b.value === "string") {
       day.condition = b.value;
-    } else if (metric === "temp_max_spread" && typeof b.value === "number") {
-      day.tempMaxSpread = b.value;
+    } else if (metric === "temp_max_spread" && Number.isFinite(b.value)) {
+      day.tempMaxSpread = b.value as number;
     } else if (
       metric === "confidence" &&
       typeof b.value === "string" &&
       CONFIDENCE_VALUES.includes(b.value)
     ) {
       day.confidence = b.value as ForecastConfidence;
-    } else if (metric === "temp_min" && typeof b.value === "number") {
-      day.tempMin = b.value;
-    } else if (metric === "temp_max" && typeof b.value === "number") {
-      day.tempMax = b.value;
-    } else if (metric === "rain_prob" && typeof b.value === "number") {
-      day.rainProb = b.value;
-    } else if (metric === "wind_gusts" && typeof b.value === "number") {
-      day.windGusts = b.value;
+    } else if (metric === "temp_min" && Number.isFinite(b.value)) {
+      day.tempMin = b.value as number;
+    } else if (metric === "temp_max" && Number.isFinite(b.value)) {
+      day.tempMax = b.value as number;
+    } else if (metric === "rain_prob" && Number.isFinite(b.value)) {
+      day.rainProb = b.value as number;
+    } else if (metric === "wind_gusts" && Number.isFinite(b.value)) {
+      day.windGusts = b.value as number;
     }
   }
 

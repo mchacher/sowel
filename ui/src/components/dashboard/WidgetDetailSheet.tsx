@@ -53,6 +53,7 @@ import {
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
+import { ForecastDetailContent } from "./ForecastDetailContent";
 
 // ============================================================
 // Equipment detail sheets
@@ -83,6 +84,19 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
         icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
       >
         <LightDetailContent equipment={equipment} onExecuteOrder={execOrder} />
+      </BottomSheet>
+    );
+  }
+
+  // Spec 168 — the forecast reads, it does not actuate, so the sheet is a list
+  // rather than a control surface. Before this the type reached no branch at
+  // all and the sheet returned null, which is why the tile was not clickable.
+  if (equipment.type === "weather_forecast") {
+    return (
+      <BottomSheet open onClose={onClose} title={label}
+        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+      >
+        <ForecastDetailContent equipment={equipment} />
       </BottomSheet>
     );
   }
