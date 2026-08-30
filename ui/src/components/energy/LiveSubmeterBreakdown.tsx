@@ -7,7 +7,7 @@
  * parent page subscribes to.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -23,6 +23,7 @@ import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../../lib
 import { formatRelative } from "../../lib/format-relative";
 import { ChartPie } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 
 const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
 const OTHER_COLOR = "#A1A1AA"; // var(--n-300), neutral grey
@@ -34,16 +35,6 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const IDLE_THRESHOLD_W = 5;
 /** Show the overshoot footnote only when Σ exceeds house by > 5%. */
 const OVERSHOOT_RATIO = 0.05;
-/**
- * How often the card re-checks reading ages against the wall clock (#744).
- *
- * Without it a row only ages out when some unrelated equipment event happens
- * to re-render the page. In a home whose only sources poll every 300 s the
- * recompute would land at the poll, with the reading 0 s old, so the rule
- * would silently never apply; in a home with a 1 Hz main meter it would apply
- * continuously. Same code, opposite behaviour, decided by unrelated hardware.
- */
-const STALENESS_TICK_MS = 30_000;
 
 interface Props {
   /** House consumption in W (grid + solar). Null when both are unknown. */
@@ -67,14 +58,10 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const equipments = useEquipments((s) => s.equipments);
   const zoneTree = useZones((s) => s.tree);
 
+  const clock = useStalenessClock();
+
   // Homonym submeters get a `name — zone` label (spec 139); the qualifier
   // only appears when two submeters actually share a name.
-  const [clock, setClock] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setClock(Date.now()), STALENESS_TICK_MS);
-    return () => clearInterval(id);
-  }, []);
-
   const rows = useMemo(() => {
     const labels = equipmentLabelMap(
       equipments.filter((eq) => isSubmeterEquipment(eq)),

@@ -99,6 +99,16 @@ Le diagramme montre trois cases (Réseau, Consommation, Production) avec des fl�
 
 Les cases sont masquées quand l'équipement correspondant n'est pas configuré : sans compteur de production, seules Réseau et Consommation sont affichées.
 
+Un bandeau apparaît au-dessus du diagramme quand un des compteurs cesse de rapporter, et il nomme la
+source concernée : « Production : mesure figée depuis 3 min » signifie que le chiffre de production
+juste en dessous a trois minutes, pendant que celui du réseau reste vivant. Un compteur dont
+l'appareil a quitté le réseau affiche « plus de connexion depuis » à la place. Seules les mesures de
+puissance dessinées par le diagramme sont surveillées : un compteur simplement en retard sur une
+tension ou un index d'énergie ne déclenche rien ici.
+
+Les compteurs qui publient à la variation se taisent dès que leur mesure est stable : un bandeau bref
+sur un plateau est normal. C'est un bandeau qui s'installe qui mérite une enquête.
+
 ### Vue Consommation
 
 Choisissez une période (Jour, Sem, Mois, Année) et naviguez avec les flèches. Le graphique affiche une barre par seau temporel de la période sélectionnée.

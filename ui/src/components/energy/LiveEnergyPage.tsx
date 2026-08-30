@@ -28,6 +28,8 @@ import { useWsSubscription } from "../../hooks/useWsSubscription";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 import { FlowDiagram } from "../flow/FlowDiagram";
 import { formatRelative } from "../../lib/format-relative";
+import { detectLiveStaleness } from "./live-staleness";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
 // Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
@@ -50,26 +52,6 @@ function sumPower(equipments: EquipmentWithDetails[]): number | null {
     }
   }
   return any ? total : null;
-}
-
-/**
- * Spec 116: detect whether the live diagram is showing trustworthy data.
- * Returns null when everything is online — caller renders nothing.
- * Returns { mode: "stale" | "offline", oldestSince } when the upstream
- * meters are degraded or fully offline.
- */
-function detectLiveStaleness(
-  contributors: EquipmentWithDetails[],
-): { mode: "stale" | "offline"; oldestSince: string | null } | null {
-  if (contributors.length === 0) return null;
-  const anyDegraded = contributors.some((e) => e.status === "degraded" || e.status === "offline");
-  if (!anyDegraded) return null;
-  const allOffline = contributors.every((e) => e.status === "offline");
-  const sinces = contributors
-    .map((e) => e.statusReason?.offlineSince ?? null)
-    .filter((s): s is string => s !== null);
-  const oldestSince = sinces.length > 0 ? sinces.reduce((a, b) => (a < b ? a : b)) : null;
-  return { mode: allOffline ? "offline" : "stale", oldestSince };
 }
 
 /** Format a power value:
@@ -113,9 +95,12 @@ export function LiveEnergyPage() {
   const gridPower = sumPower(gridEqs);
   const solarPower = sumPower(solarEqs);
   const hasSources = gridEqs.length > 0 || solarEqs.length > 0;
+  // A meter that goes silent sends no event, so nothing would re-render this
+  // page at the moment its reading ages out — hence a clock of our own.
+  const clock = useStalenessClock();
   const staleness = useMemo(
-    () => detectLiveStaleness([...gridEqs, ...solarEqs]),
-    [gridEqs, solarEqs],
+    () => detectLiveStaleness(gridEqs, solarEqs, clock),
+    [gridEqs, solarEqs, clock],
   );
 
   return (
@@ -141,8 +126,17 @@ export function LiveEnergyPage() {
           )}
           <span className="font-medium">
             {t(
-              staleness.mode === "offline" ? "energy.live.metersOffline" : "energy.live.dataStale",
-              { when: formatRelative(staleness.oldestSince) },
+              staleness.mode === "offline"
+                ? "energy.live.sourcesOffline"
+                : "energy.live.sourcesStale",
+              {
+                sources: staleness.sources
+                  .map((s) =>
+                    t(s === "grid" ? "energy.live.label.grid" : "energy.live.label.production"),
+                  )
+                  .join(", "),
+                when: formatRelative(staleness.since),
+              },
             )}
           </span>
         </div>
