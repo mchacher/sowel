@@ -20,8 +20,9 @@ Two consequences, both observed on the reference installation:
 
 **In:**
 
-- The tile qualifies the one day it shows: a coloured dot and the word, on the
-  condition line (option A2). It carries no strip of the other days.
+- The tile qualifies the one day it shows, with the same pill as the panel and
+  the equipment page, centred at the foot of the card (option A2). It carries
+  no strip of the other days.
 - The tile becomes clickable on desktop and mobile, opening the existing detail
   sheet.
 - The sheet gains a `weather_forecast` branch (option C2): the card anatomy of
@@ -53,10 +54,9 @@ ragged.
 
 ## Acceptance criteria
 
-- [x] The tile names tomorrow's confidence, with a dot in the matching semantic
-      colour (success / warning / error) and the word beside it.
-- [x] The tile shows nothing at all when tomorrow has no published confidence:
-      no dot, no word.
+- [x] The tile names tomorrow's confidence in the pill used everywhere else,
+      in the matching semantic colour (success / warning / error).
+- [x] The tile shows nothing at all when tomorrow has no published confidence.
 - [x] Clicking the tile opens the detail sheet, on desktop and on mobile.
 - [x] The sheet renders every available day as a column that fits without a
       horizontal scroll at 390px: name, condition icon, max, min, wind.
@@ -65,8 +65,8 @@ ragged.
 - [x] The pill's slot is reserved whether or not there is a pill, so the five
       columns end on one line whatever each day published.
 - [x] The sheet shows the source line when the plugin publishes the model used.
-- [x] Nothing changes for a household whose plugin predates 2.0: no dot on the
-      tile, neutral rules in the sheet, and the tile still opens the sheet.
+- [x] Nothing changes for a household whose plugin predates 2.0: no pill on the
+      tile nor in the sheet, and the tile still opens the sheet.
 
 ## Edge cases
 
@@ -74,7 +74,7 @@ ragged.
 | -------------------------------------- | --------------------------------------------------------------------------------------------- |
 | No forecast bindings at all            | Tile renders nothing (unchanged), so no click target                                          |
 | Only J+1 bound                         | Tile unchanged; the sheet shows one column                                                    |
-| `confidence` absent (plugin < 2.0)     | No dot on the tile, no pill in the sheet, everything else renders                             |
+| `confidence` absent (plugin < 2.0)     | No pill on the tile nor in the sheet, everything else renders                                 |
 | `tempMax` null on a day                | Column shows a dash instead of a number                                                       |
 | `tempMax` published as NaN             | Rejected by the parser (`Number.isFinite`), so the column shows the dash, not the literal NaN |
 | Days bound out of order (j3 before j1) | Ordered by `dayIndex`, as `parseForecastDays` already guarantees                              |
