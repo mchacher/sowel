@@ -374,13 +374,34 @@ export class BackupManager {
   }
 
   async restoreFromFile(filename: string): Promise<RestoreResult> {
-    // Reject path traversal
-    if (filename.includes("/") || filename.includes("\\") || filename.includes("..")) {
+    // The filename names a file in data/backups and nothing else. This used to
+    // be a blacklist of "/", "\\" and "..", which is the wrong shape for the
+    // job: it has to anticipate every spelling of an escape, and it accepted a
+    // bare "." or an absolute Windows path. Taking the basename removes any
+    // directory component whatever it looked like, and resolving then proving
+    // containment is what makes the guarantee independent of that reasoning.
+    const backupsDir = resolve(this.dataDir, LOCAL_BACKUPS_SUBDIR);
+    // A bare filename in data/backups, and nothing else.
+    //
+    // This was a blacklist of "/", "\\" and "..", which is the wrong shape for
+    // the job: it has to anticipate every spelling of an escape. Stating what a
+    // name may be instead covers the same cases and a few the blacklist missed,
+    // "." among them. The backslash is refused even though it is not a
+    // separator on the platforms Sowel ships on, because a name carrying one is
+    // a caller that thinks it is writing a path.
+    //
+    // Refusing rather than sanitising is deliberate: taking the basename would
+    // turn "../../etc/passwd" into a request for "passwd" inside the backups
+    // directory, answering a question nobody asked.
+    if (!/^[^/\\]+$/.test(filename) || filename === "." || filename === "..") {
       throw new Error("Invalid filename");
     }
-
-    const backupsDir = resolve(this.dataDir, LOCAL_BACKUPS_SUBDIR);
     const fullPath = resolve(backupsDir, filename);
+    // And prove it, so the guarantee does not rest on the check above being
+    // exactly right.
+    if (basename(fullPath) !== filename || !fullPath.startsWith(resolve(backupsDir) + sep)) {
+      throw new Error("Invalid filename");
+    }
     if (!existsSync(fullPath)) {
       throw new Error(`Backup file not found: ${filename}`);
     }
