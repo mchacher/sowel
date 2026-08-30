@@ -85,6 +85,17 @@ ZONE_TRANSLATE = {
     "Champ": "Field",
 }
 
+MODE_TRANSLATE = {
+    "Lumière jour": "Daytime Lighting",
+    "Lumière soir": "Evening Lighting",
+    "Lumière nuit": "Night Lighting",
+}
+
+# Names that may legitimately stay as they are in the EN fixture: acronyms,
+# model codes, product names. Everything else carrying a French accent is a
+# map that has not caught up.
+EN_ALLOWED_NON_ENGLISH: set = set()
+
 EQUIPMENT_TRANSLATE = {
     # lights
     "Lumière": "Light",
@@ -310,6 +321,9 @@ def translate_to_en(backup: dict) -> dict:
     for e in t["equipments"]:
         if e["name"] in EQUIPMENT_TRANSLATE:
             e["name"] = EQUIPMENT_TRANSLATE[e["name"]]
+    for m in t.get("modes", []):
+        if m["name"] in MODE_TRANSLATE:
+            m["name"] = MODE_TRANSLATE[m["name"]]
     for s in t["settings"]:
         if s["key"] == "home.name":
             s["value"] = HOME_NAME_EN
@@ -342,6 +356,39 @@ def assert_no_personal_data(backup: dict, label: str) -> None:
             "\nAdd the offending name to ZONE_RENAME_FR / EQUIPMENT_RENAME_FR /\n"
             "DEVICE_RENAME_FR and rebuild. Never publish a screenshot taken from\n"
             "a fixture this check refused.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+def assert_english(backup: dict) -> None:
+    """Refuse to write an EN fixture that still shows French to the reader.
+
+    The translation maps are as static as the anonymization ones, and the
+    names they miss are the ones a reader sees first: a mode called `Lumière
+    soir` heading the Modes page, a `Congélateur` in the consumption
+    breakdown. An accent is not a complete test — `Store` is a French awning
+    that reads as an English word, and only reading the list catches that —
+    but it is the half a script can do.
+    """
+    t = backup["tables"]
+    offenders = []
+    for table in ("zones", "equipments", "modes"):
+        for row in t.get(table, []):
+            name = row.get("name") or ""
+            if name in EN_ALLOWED_NON_ENGLISH:
+                continue
+            if any(c in name for c in "àâäçéèêëîïôöùûüÿœæÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸŒÆ"):
+                offenders.append(f"{table}: {name}")
+    if offenders:
+        print("\n❌ showroom-en: French names left in the English fixture", file=sys.stderr)
+        for o in sorted(set(offenders)):
+            print(f"    {o}", file=sys.stderr)
+        print(
+            "\nAdd them to ZONE_TRANSLATE / EQUIPMENT_TRANSLATE / MODE_TRANSLATE,\n"
+            "or to EN_ALLOWED_NON_ENGLISH if the name is deliberately kept.\n"
+            "Then read the printed name lists: an unaccented French word such as\n"
+            "`Store` passes this check and still has to be translated by hand.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -385,6 +432,7 @@ def main() -> None:
     # EN fixture (apply translate on top of FR)
     en = translate_to_en(json.loads(json.dumps(fr)))
     assert_no_personal_data(en, "showroom-en")
+    assert_english(en)
     en_path = out_dir / "showroom-en.zip"
     build_zip(en, src_zip, en_path)
     print(f"WROTE {en_path}")
@@ -394,6 +442,10 @@ def main() -> None:
     _summary(fr)
     print("\n--- EN fixture summary ---")
     _summary(en)
+    print("\n--- EN names, read these: an unaccented French word passes every check ---")
+    for table in ("zones", "equipments", "modes"):
+        names = sorted({r["name"] for r in en["tables"].get(table, [])})
+        print(f"  {table}: {names}")
 
 
 def _summary(backup: dict) -> None:
