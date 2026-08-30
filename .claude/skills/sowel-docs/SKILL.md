@@ -84,7 +84,23 @@ python3 scripts/doc/build-fixtures.py /tmp/prod-backup.zip
 # Outputs /tmp/showroom-fr.zip and /tmp/showroom-en.zip with rename + translate maps applied
 ```
 
-The script uses `ZONE_RENAME_FR`, `EQUIPMENT_RENAME_FR`, and the FR→EN `ZONE_TRANSLATE` / `EQUIPMENT_TRANSLATE` maps in `scripts/doc/build-fixtures.py`. If a new name appears that needs anonymization or translation, add it to the maps in the script first.
+The script uses `ZONE_RENAME_FR`, `EQUIPMENT_RENAME_FR`, `DEVICE_RENAME_FR`, and the FR→EN `ZONE_TRANSLATE` / `EQUIPMENT_TRANSLATE` maps in `scripts/doc/build-fixtures.py`. If a new name appears that needs anonymization or translation, add it to the maps in the script first.
+
+The maps are static and the installation is not, so the script **refuses to write a fixture** in which any token from `PERSONAL_TOKENS` survives. Do not work around a refusal: add the name to the right map and rebuild. Two things this caught that a zone-and-equipment pass does not:
+
+- **Devices carry names too.** `remote_marc` and `remote_elodie` were rendered on the Devices page and in every binding list while the zone and equipment listings looked clean.
+- **A French name can read as English.** An awning called `Store` sat in the EN fixture through every earlier pass. After a rebuild, list the EN fixture's zone and equipment names and read them, rather than trusting the maps to be complete.
+
+**An inert instance cannot photograph a live one.** The shadow runs no integration (spec 124), so Energy > Live, Plugins and Devices render red banners, "no connection for N min" and offline rows: they photograph the setup, not the product. The `power` freshness window is two minutes, so there is no shooting it quickly either. Restrict a shadow shoot to structural surfaces (dashboard, edit mode, zones, modes, settings); the runtime-state pages need an instance that is actually receiving data.
+
+**Hide the shadow banner before shooting.** It is deliberately non-dismissable, so it lands in every screenshot:
+
+```js
+await page.addStyleTag({
+  content: '.bg-amber-500[role="status"][aria-live="polite"]{display:none!important}',
+});
+// then assert it is gone rather than trusting the injection
+```
 
 **2. Deploy fixture to demo + shoot (per language)**
 
