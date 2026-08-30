@@ -13,6 +13,18 @@ import {
 } from "../equipments/weatherForecastUtils";
 
 /**
+ * The sheet is laid out for five columns and no more: the paddings, the type
+ * sizes and the pill's reserved slot are all tuned for five across a 390px
+ * phone. A plugin is free to publish further out, so the count is clamped here
+ * rather than trusted from the feed — at seven days each column falls to about
+ * 46px and the confidence pill wraps out of the slot held for it.
+ *
+ * The deleted `ForecastStrip` carried the same bound as `STRIP_DAYS` and took
+ * it with it; this is that invariant, kept next to the layout that needs it.
+ */
+const SHEET_DAYS = 5;
+
+/**
  * The forecast behind the dashboard tile (spec 168, option C2).
  *
  * The same card anatomy as the equipment page, narrowed so the five days fit
@@ -42,7 +54,7 @@ export function ForecastDetailContent({ equipment }: { equipment: EquipmentWithD
   return (
     <div>
       <div className="flex items-stretch gap-1.5 sm:gap-3">
-        {days.map((day) => (
+        {days.slice(0, SHEET_DAYS).map((day) => (
           <ForecastDayColumn key={day.dayIndex} day={day} locale={locale} />
         ))}
       </div>

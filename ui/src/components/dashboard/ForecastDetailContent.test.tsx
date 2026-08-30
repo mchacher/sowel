@@ -62,6 +62,25 @@ function fiveDays(withConfidence = true): DataBindingWithValue[] {
   return out;
 }
 
+/**
+ * A plugin publishing further out than the sheet is laid out for. `j(\d+)` has
+ * no upper bound in the parser, so nothing but the sheet stops a seven day feed
+ * from squeezing every column.
+ */
+function sevenDays(): DataBindingWithValue[] {
+  const out = fiveDays();
+  for (const n of [6, 7]) {
+    out.push(binding(`j${n}_condition`, "cloudy"));
+    out.push(binding(`j${n}_temp_max`, 31));
+    out.push(binding(`j${n}_temp_min`, 19));
+    out.push(binding(`j${n}_rain_prob`, 0));
+    out.push(binding(`j${n}_wind_gusts`, 25));
+    out.push(binding(`j${n}_confidence`, "low"));
+    out.push(binding(`j${n}_temp_max_spread`, 5.4));
+  }
+  return out;
+}
+
 /** One column per published day. */
 const columns = (c: HTMLElement) => [...c.querySelectorAll("div.flex-1")];
 
@@ -145,6 +164,24 @@ describe("ForecastDetailContent (spec 168)", () => {
   it("says so rather than rendering an empty list when nothing is bound", () => {
     render(<ForecastDetailContent equipment={equipmentWith([])} />);
     expect(screen.getByText("No forecast available")).toBeTruthy();
+  });
+
+  it("keeps five columns when the plugin publishes seven days", () => {
+    // The paddings, the type sizes and the pill slot are tuned for five across
+    // a 390px phone. At seven each column falls to about 46px and the pill
+    // wraps out of the slot held for it, so the sheet clamps rather than trust
+    // the feed. `ForecastStrip` held this bound before it was deleted.
+    const { container } = render(<ForecastDetailContent equipment={equipmentWith(sevenDays())} />);
+    expect(columns(container)).toHaveLength(5);
+    expect(pills(container)).toHaveLength(5);
+  });
+
+  it("clamps from the near end, so the days kept are the ones nearest today", () => {
+    // Day 6 and 7 are the ones to lose: a forecast is least sure furthest out.
+    const { container } = render(<ForecastDetailContent equipment={equipmentWith(sevenDays())} />);
+    // The j6/j7 maximum (31) never renders; the j5 one (30) does.
+    expect(container.textContent).toContain("30");
+    expect(container.textContent).not.toContain("31");
   });
 
   it("does not scroll horizontally, which is the reason the columns shrink", () => {

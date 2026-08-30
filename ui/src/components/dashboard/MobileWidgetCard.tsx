@@ -114,8 +114,8 @@ export function MobileWidgetCard({
         </span>
       )}
 
-      {/* Spec 168 — the forecast tile carries its five-day strip on the phone
-          too, which is the surface this dashboard is mostly read on. */}
+      {/* Spec 168 — the forecast tile qualifies tomorrow on the phone too,
+          which is the surface this dashboard is mostly read on. */}
       {footer}
     </button>
   );
