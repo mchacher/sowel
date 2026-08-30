@@ -1390,6 +1390,33 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
     }
   });
 
+  it("400s an infinite price that used to be silently stored as null", async () => {
+    // JSON.stringify(Infinity) is "null", so an overflowing literal was
+    // accepted and written as `"hp": null` into energy.tariff, poisoning every
+    // cost computation until someone happened to re-save the form. ajv's
+    // `number` is finite. Sent as raw JSON because the literal cannot be
+    // written in TypeScript source without losing precision.
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      headers: { "content-type": "application/json" },
+      body: '{"schedules":[],"prices":{"hp":1e999,"hc":0.2}}',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toHaveLength(0);
+  });
+
+  it("400s a null slot entry that used to crash the handler", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [{ days: [1], slots: [null] }], prices: { hp: 1, hc: 1 } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
   it("400s a null schedule entry that used to crash the handler", async () => {
     // `schedule.days` on null threw, so this answered 500.
     app = await buildApp({});

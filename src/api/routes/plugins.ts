@@ -45,20 +45,33 @@ const repoBodySchema = {
 // `expectedSha256` is deliberately not `pattern`-checked here: the hash is
 // compared against the real tarball downstream, and a wrong-shaped one fails
 // there with a message about the hash rather than about the request.
+//
+// Both optional fields accept `null` as well as their own type, because the
+// hand-rolled version did: it destructured them and handed them on, and `null`
+// reached the loader as "absent". A client that always emits
+// `"expectedSha256": null` when it has no pinned hash is idiomatic, and
+// refusing it would be a behaviour change nobody asked for. What is refused,
+// deliberately, is a value of the WRONG type: `confirmed: "true"` used to
+// install as though confirmed because the loader only read it for truthiness,
+// which is a client bug that silently defeated the spec 089 confirmation step.
+const confirmedField = { type: ["boolean", "null"] } as const;
+const sha256Field = { type: ["string", "null"] } as const;
+
 const installBodySchema = {
   type: "object",
   required: ["repo"],
   properties: {
     repo: nonEmptyString,
-    confirmed: { type: "boolean" },
-    expectedSha256: { type: "string" },
+    confirmed: confirmedField,
+    expectedSha256: sha256Field,
   },
 } as const;
 
-// `["object", "null"]`: a bare update with no body is the normal call.
+// `["object", "null"]`: a bare update with no body is the normal call, and
+// Fastify hands the handler `null` for one.
 const updateBodySchema = {
   type: ["object", "null"],
-  properties: { confirmed: { type: "boolean" }, expectedSha256: { type: "string" } },
+  properties: { confirmed: confirmedField, expectedSha256: sha256Field },
 } as const;
 
 /**

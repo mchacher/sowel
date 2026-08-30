@@ -412,7 +412,9 @@ Admin-only routes for third-party plugin management.
 | `POST` | `/api/v1/plugins/:id/enable`     | Enable a plugin (loads and starts it).                                             |
 | `POST` | `/api/v1/plugins/:id/disable`    | Disable a plugin (stops and unloads it).                                           |
 
-The plugin bodies are schema-validated (issue #597). `repo` must be a string on all three routes; the `owner/repo` shape is only required when **adding a personal source**, which has to build a GitHub URL from it, while removal needs a non-empty key and install looks the value up in the store. `repo` is trimmed before it is checked, so a paste with a trailing newline still works. A non-string `repo` now answers 400 where it used to crash the handler with a 500.
+The plugin bodies are schema-validated (issue #597). `repo` must be a string on all three routes; the `owner/repo` shape is only required when **adding a personal source**, which has to build a GitHub URL from it, while removal needs a non-empty key and install looks the value up in the store. On the two `sources` routes `repo` is trimmed before it is checked, so a paste with a trailing newline still works, and a non-string `repo` there now answers 400 where it used to crash the handler with a 500 (install already answered 400).
+
+`confirmed` and `expectedSha256`, on install and update, accept their own type or `null`, `null` meaning absent as it always did. A value of the wrong type is now refused: `"confirmed": "true"` used to install as though confirmed, because the flag was only read for truthiness, which silently defeated the confirmation step. A body that is not an object is refused on update, where it used to be destructured into nothing and update anyway.
 
 Every write here is admin-only, enforced before validation so a non-admin sending a malformed body still learns it is not allowed. `GET /api/v1/plugins/:id/oauth/callback` is the exception and carries no session at all: the OAuth provider redirects to it.
 

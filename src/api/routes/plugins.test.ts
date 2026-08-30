@@ -23,6 +23,8 @@ const logger = createLogger("silent").logger;
 
 interface BuildOpts {
   role?: UserRole | null;
+  /** Repos known as personal sources, which routes install through PackageManager. */
+  personalSources?: string[];
   addSource?: (repo: string) => Promise<unknown>;
   removeSource?: (repo: string) => void;
 }
@@ -53,10 +55,10 @@ async function buildApp(opts: BuildOpts = {}): Promise<FastifyInstance> {
     getStore: () => [],
     getById: () => undefined,
     getCurrentVersion: () => "1.63.0",
-    sources: new Map(),
+    sources: new Map((opts.personalSources ?? []).map((r) => [r, {}])),
     listPersonalSources: () => [],
-    installFromGitHub: async (repo: string) => {
-      calls.push(["installFromGitHub", repo]);
+    installFromGitHub: async (repo: string, o?: unknown) => {
+      calls.push(["installFromGitHub", repo, o]);
       return { id: "x", version: "1.0.0", type: "integration" };
     },
   };
@@ -65,12 +67,12 @@ async function buildApp(opts: BuildOpts = {}): Promise<FastifyInstance> {
     packageManager,
     pluginLoader: {
       loadNewlyInstalled: async () => {},
-      install: async (repo: string) => {
-        calls.push(["pluginLoader.install", repo]);
+      install: async (repo: string, o?: unknown) => {
+        calls.push(["pluginLoader.install", repo, o]);
         return { id: "x", version: "1.0.0" };
       },
-      update: async (id: string) => {
-        calls.push(["pluginLoader.update", id]);
+      update: async (id: string, o?: unknown) => {
+        calls.push(["pluginLoader.update", id, o]);
         return { id, version: "1.0.1" };
       },
     },
@@ -79,8 +81,8 @@ async function buildApp(opts: BuildOpts = {}): Promise<FastifyInstance> {
       install: async (repo: string) => {
         calls.push(["recipeLoader.install", repo]);
       },
-      update: async (id: string) => {
-        calls.push(["recipeLoader.update", id]);
+      update: async (id: string, o?: unknown) => {
+        calls.push(["recipeLoader.update", id, o]);
       },
     },
     integrationRegistry: { getById: () => undefined },
@@ -220,7 +222,14 @@ describe("POST /api/v1/plugins/install", () => {
     expect(res.statusCode).toBeLessThan(400);
   });
 
-  it("accepts the confirmation fields", async () => {
+  it("hands `confirmed` to the loader on the registry path", async () => {
+    // Asserting the status alone let the whole spec 089 / spec 136
+    // confirmation plumbing be torn out with the suite still green (#597
+    // review). What the loader RECEIVES is the contract.
+    //
+    // Note the registry path forwards `confirmed` only: the TOFU hash belongs
+    // to the personal-source path below, and pinning that here would have
+    // asserted something the route never does.
     app = await buildApp();
     const res = await app.inject({
       method: "POST",
@@ -228,6 +237,54 @@ describe("POST /api/v1/plugins/install", () => {
       payload: { repo: "me/plug", confirmed: true, expectedSha256: "a".repeat(64) },
     });
     expect(res.statusCode).toBeLessThan(400);
+    expect(calls).toContainEqual(["pluginLoader.install", "me/plug", { confirmed: true }]);
+  });
+
+  it("hands both confirmation fields through on the personal-source path", async () => {
+    // Spec 136 TOFU: the approved hash must reach PackageManager, or the
+    // re-downloaded tarball is never checked against what the admin approved.
+    app = await buildApp({ personalSources: ["me/plug"] });
+    const sha = "a".repeat(64);
+    const res = await app.inject({
+      method: "POST",
+      url: INSTALL,
+      payload: { repo: "me/plug", confirmed: true, expectedSha256: sha },
+    });
+    expect(res.statusCode).toBeLessThan(400);
+    expect(calls).toContainEqual([
+      "installFromGitHub",
+      "me/plug",
+      { confirmed: true, expectedSha256: sha },
+    ]);
+  });
+
+  it("still accepts an explicit null for either optional field", async () => {
+    // The hand-rolled version handed both straight on, so `null` reached the
+    // loader as "absent". A client that always emits a null hash when it has
+    // none is idiomatic and must keep working.
+    app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: INSTALL,
+      payload: { repo: "me/plug", confirmed: null, expectedSha256: null },
+    });
+    expect(res.statusCode).toBeLessThan(400);
+  });
+
+  it("400s a wrongly typed confirmation field (tightening, #597)", async () => {
+    // `confirmed: "true"` used to install as though confirmed, because the
+    // loader only reads it for truthiness. A client bug that silently defeated
+    // the spec 089 confirmation step.
+    app = await buildApp();
+    for (const payload of [
+      { repo: "me/plug", confirmed: "true" },
+      { repo: "me/plug", confirmed: 1 },
+      { repo: "me/plug", expectedSha256: 42 },
+    ]) {
+      const res = await app.inject({ method: "POST", url: INSTALL, payload });
+      expect(res.statusCode).toBe(400);
+      expect(calls).toEqual([]);
+    }
   });
 
   it("does NOT require owner/repo shape here", async () => {
@@ -267,7 +324,7 @@ describe("POST /api/v1/plugins/:id/update", () => {
     expect(res.statusCode).toBeLessThan(400);
   });
 
-  it("accepts an empty body and the confirmation fields", async () => {
+  it("accepts an empty body, and hands the confirmation fields to the loader", async () => {
     app = await buildApp();
     expect(
       (await app.inject({ method: "POST", url: UPDATE, payload: {} })).statusCode,
@@ -278,6 +335,49 @@ describe("POST /api/v1/plugins/:id/update", () => {
       payload: { confirmed: true, expectedSha256: "b".repeat(64) },
     });
     expect(res.statusCode).toBeLessThan(400);
+    expect(calls).toContainEqual([
+      "pluginLoader.update",
+      "pluginid",
+      { confirmed: true, expectedSha256: "b".repeat(64) },
+    ]);
+  });
+
+  it("still accepts an explicit null for either optional field", async () => {
+    app = await buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: UPDATE,
+      payload: { confirmed: null, expectedSha256: null },
+    });
+    expect(res.statusCode).toBeLessThan(400);
+  });
+
+  it("400s a body that is not an object (tightening, #597)", async () => {
+    // `request.body ?? {}` destructured a string or an array into undefined
+    // fields and updated anyway, so a client sending nonsense got a 200 and
+    // an unconfirmed update.
+    app = await buildApp();
+    // Sent as raw JSON with an explicit content type: `inject`'s `payload`
+    // shortcut would send a bare string as text/plain, which Fastify refuses
+    // with 415 before validation ever runs.
+    for (const body of ["[]", '[{"confirmed":true}]', '"str"', "5", "true"]) {
+      const res = await app.inject({
+        method: "POST",
+        url: UPDATE,
+        headers: { "content-type": "application/json" },
+        body,
+      });
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  it("400s a wrongly typed confirmation field (tightening, #597)", async () => {
+    app = await buildApp();
+    for (const payload of [{ confirmed: "true" }, { confirmed: 1 }, { expectedSha256: 42 }]) {
+      const res = await app.inject({ method: "POST", url: UPDATE, payload });
+      expect(res.statusCode).toBe(400);
+      expect(calls).toEqual([]);
+    }
   });
 
   it("403s a non-admin", async () => {
