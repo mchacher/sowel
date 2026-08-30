@@ -284,6 +284,10 @@ Deux entrées auparavant acceptées répondent désormais 400. Les deux étaient
 | `GET`  | `/api/v1/settings/energy/tariff` | Récupère la configuration tarifaire (grilles HP/HC et prix).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `PUT`  | `/api/v1/settings/energy/tariff` | Met à jour la configuration tarifaire. Body : `{ schedules, prices }`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
+`PUT /api/v1/settings/energy/tariff` est validé par schéma (issue #597). `schedules[].days` sont des entiers de 0 à 6, `schedules[].slots[]` exigent un `start` et un `end` non vides plus un `tariff` valant `hp` ou `hc`, et `prices.hp` / `prices.hc` sont des nombres. Un body malformé répond `400 { "error": "..." }` ; les champs inconnus sont ignorés. Deux entrées auparavant acceptées sont désormais refusées, toutes deux absurdes en silence plutôt que fonctionnelles : un jour de semaine fractionnaire, que `getDay()` ne peut jamais valoir, et une borne de créneau non textuelle comme `5` ou `true`.
+
+Le `PUT` n'a pas besoin de sa propre vérification admin : il est absent de la liste blanche des écritures standard, donc la barrière de rôle globale, fail-closed, refuse un non-admin en amont. Le `GET` à côté en porte une, parce que cette barrière ne couvre que les méthodes mutantes.
+
 ---
 
 ## History
@@ -332,6 +336,10 @@ Routes admin uniquement pour la gestion des plugins tiers.
 | `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                    |
 | `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                               |
 | `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                           |
+
+Les bodies des routes plugins sont validés par schéma (issue #597). `repo` doit être une chaîne sur les trois routes ; la forme `owner/repo` n'est exigée que pour **ajouter une source personnelle**, qui doit en construire une URL GitHub, alors que la suppression n'a besoin que d'une clé non vide et que l'installation cherche la valeur dans le store. `repo` est trimé avant vérification, donc un copier-coller avec un retour à la ligne final fonctionne toujours. Un `repo` non textuel répond désormais 400 là où il faisait planter le handler en 500.
+
+Toutes les écritures ici sont réservées aux admins, appliqué avant la validation pour qu'un non-admin envoyant un body malformé apprenne d'abord qu'il n'y a pas droit. `GET /api/v1/plugins/:id/oauth/callback` fait exception et ne porte aucune session : c'est le fournisseur OAuth qui y redirige.
 
 !!! note "Poignées de confirmation (409)"
 `install` et `update` répondent `409` quand une confirmation explicite est requise :

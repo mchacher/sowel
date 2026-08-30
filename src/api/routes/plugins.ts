@@ -1,4 +1,5 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { nonEmptyString } from "../schemas.js";
 import type { Logger } from "../../core/logger.js";
 import type { PackageManager } from "../../packages/package-manager.js";
 import { PersonalPluginConfirmationRequiredError } from "../../packages/registry-types.js";
@@ -19,6 +20,62 @@ interface PluginsDeps {
   userManager: UserManager;
   logger: Logger;
 }
+
+// ── Body schemas (#597, #482 Lot C) ───────────────────────────────────
+//
+// The last of the three routes deferred by #482. What made it awkward is not
+// the shapes, which are trivial, but that `repo` is `.trim()`ed before it is
+// checked. Trimming is coercion no schema performs, so it stays in the
+// handler: dropping it would turn a paste with a trailing newline from working
+// into a 400. The schema settles the TYPE, which is what the handler could not
+// do safely, since `(request.body?.repo ?? "").trim()` throws on a number and
+// answered 500 for a malformed body.
+//
+// The `owner/repo` shape check also stays in the handler rather than becoming
+// a `pattern`, so `PersonalSourceManager.isValidRepo` remains the single
+// definition of what a repo reference is. Note the two routes differ on
+// purpose: adding a personal source must build a GitHub URL from the value and
+// checks the shape, removing one only needs a non-empty key.
+const repoBodySchema = {
+  type: "object",
+  required: ["repo"],
+  properties: { repo: { type: "string" } },
+} as const;
+
+// `expectedSha256` is deliberately not `pattern`-checked here: the hash is
+// compared against the real tarball downstream, and a wrong-shaped one fails
+// there with a message about the hash rather than about the request.
+const installBodySchema = {
+  type: "object",
+  required: ["repo"],
+  properties: {
+    repo: nonEmptyString,
+    confirmed: { type: "boolean" },
+    expectedSha256: { type: "string" },
+  },
+} as const;
+
+// `["object", "null"]`: a bare update with no body is the normal call.
+const updateBodySchema = {
+  type: ["object", "null"],
+  properties: { confirmed: { type: "boolean" }, expectedSha256: { type: "string" } },
+} as const;
+
+/**
+ * Admin gate as a route-level preValidation hook, so 403 still precedes the
+ * schema 400.
+ *
+ * Per route rather than a URL-prefix hook on purpose: this file also serves
+ * `GET /:id/oauth/callback`, which the OAuth provider redirects to and which
+ * therefore carries no session. A prefix hook would have to carve that path
+ * out, and a gate with an exemption is a gate you have to re-audit every time
+ * a route is added.
+ */
+const adminOnly = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  if (!request.auth || request.auth.role !== "admin") {
+    await reply.code(403).send({ error: "Admin access required" });
+  }
+};
 
 export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): void {
   const {
@@ -119,69 +176,69 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
 
   // POST /api/v1/plugins/sources — add a personal source (spec 136)
   // Body: { repo: string } ("owner/repo", public GitHub repo)
-  app.post<{ Body: { repo: string } }>("/api/v1/plugins/sources", async (request, reply) => {
-    if (!request.auth || request.auth.role !== "admin") {
-      return reply.code(403).send({ error: "Admin access required" });
-    }
+  app.post<{ Body: { repo: string } }>(
+    "/api/v1/plugins/sources",
+    { schema: { body: repoBodySchema }, preValidation: adminOnly },
+    async (request, reply) => {
+      const repo = request.body.repo.trim();
+      if (!repo || !PersonalSourceManager.isValidRepo(repo)) {
+        return reply.code(400).send({ error: "Invalid 'repo' field (expected owner/repo)" });
+      }
 
-    const repo = (request.body?.repo ?? "").trim();
-    if (!repo || !PersonalSourceManager.isValidRepo(repo)) {
-      return reply.code(400).send({ error: "Invalid 'repo' field (expected owner/repo)" });
-    }
-
-    try {
-      const source = await packageManager.addPersonalSource(repo);
-      logger.info({ repo }, "Personal source added via API");
-      auditLogger.log({
-        ...buildActor(request, userManager),
-        action: "plugin.source.add",
-        targetType: "plugin",
-        targetId: repo,
-        ip: request.ip,
-        meta: { repo, latestVersion: source.latestVersion ?? null },
-      });
-      return reply.code(201).send(source);
-    } catch (err) {
-      logger.warn({ err, repo }, "Failed to add personal source");
-      return reply.code(400).send({
-        error: err instanceof Error ? err.message : "Failed to add personal source",
-      });
-    }
-  });
+      try {
+        const source = await packageManager.addPersonalSource(repo);
+        logger.info({ repo }, "Personal source added via API");
+        auditLogger.log({
+          ...buildActor(request, userManager),
+          action: "plugin.source.add",
+          targetType: "plugin",
+          targetId: repo,
+          ip: request.ip,
+          meta: { repo, latestVersion: source.latestVersion ?? null },
+        });
+        return reply.code(201).send(source);
+      } catch (err) {
+        logger.warn({ err, repo }, "Failed to add personal source");
+        return reply.code(400).send({
+          error: err instanceof Error ? err.message : "Failed to add personal source",
+        });
+      }
+    },
+  );
 
   // POST /api/v1/plugins/sources/remove — remove a personal source (spec 136)
   // Body: { repo: string }. POST rather than DELETE because the repo id
   // contains a slash and DELETE bodies are unreliable through proxies.
   // Installed packages from the source are left untouched.
-  app.post<{ Body: { repo: string } }>("/api/v1/plugins/sources/remove", async (request, reply) => {
-    if (!request.auth || request.auth.role !== "admin") {
-      return reply.code(403).send({ error: "Admin access required" });
-    }
+  app.post<{ Body: { repo: string } }>(
+    "/api/v1/plugins/sources/remove",
+    { schema: { body: repoBodySchema }, preValidation: adminOnly },
+    async (request, reply) => {
+      const repo = request.body.repo.trim();
+      if (!repo) {
+        return reply.code(400).send({ error: "Missing 'repo' field" });
+      }
 
-    const repo = (request.body?.repo ?? "").trim();
-    if (!repo) {
-      return reply.code(400).send({ error: "Missing 'repo' field" });
-    }
-
-    try {
-      packageManager.removePersonalSource(repo);
-      logger.info({ repo }, "Personal source removed via API");
-      auditLogger.log({
-        ...buildActor(request, userManager),
-        action: "plugin.source.remove",
-        targetType: "plugin",
-        targetId: repo,
-        ip: request.ip,
-        meta: { repo },
-      });
-      return { success: true };
-    } catch (err) {
-      logger.warn({ err, repo }, "Failed to remove personal source");
-      return reply.code(400).send({
-        error: err instanceof Error ? err.message : "Failed to remove personal source",
-      });
-    }
-  });
+      try {
+        packageManager.removePersonalSource(repo);
+        logger.info({ repo }, "Personal source removed via API");
+        auditLogger.log({
+          ...buildActor(request, userManager),
+          action: "plugin.source.remove",
+          targetType: "plugin",
+          targetId: repo,
+          ip: request.ip,
+          meta: { repo },
+        });
+        return { success: true };
+      } catch (err) {
+        logger.warn({ err, repo }, "Failed to remove personal source");
+        return reply.code(400).send({
+          error: err instanceof Error ? err.message : "Failed to remove personal source",
+        });
+      }
+    },
+  );
 
   // POST /api/v1/plugins/install — install from GitHub
   // Body: { repo: string, confirmed?: boolean, expectedSha256?: string }
@@ -191,15 +248,9 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
   // for the TOFU confirmation step of personal sources (spec 136).
   app.post<{ Body: { repo: string; confirmed?: boolean; expectedSha256?: string } }>(
     "/api/v1/plugins/install",
+    { schema: { body: installBodySchema }, preValidation: adminOnly },
     async (request, reply) => {
-      if (!request.auth || request.auth.role !== "admin") {
-        return reply.code(403).send({ error: "Admin access required" });
-      }
-
-      const { repo, confirmed, expectedSha256 } = request.body ?? {};
-      if (!repo || typeof repo !== "string") {
-        return reply.code(400).send({ error: "Missing 'repo' field (e.g. owner/repo)" });
-      }
+      const { repo, confirmed, expectedSha256 } = request.body;
 
       try {
         // Peek at the registry to determine package type + compatibility
@@ -348,11 +399,8 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
   // TOFU re-confirmation for personal packages (spec 136).
   app.post<{ Params: { id: string }; Body?: { confirmed?: boolean; expectedSha256?: string } }>(
     "/api/v1/plugins/:id/update",
+    { schema: { body: updateBodySchema }, preValidation: adminOnly },
     async (request, reply) => {
-      if (!request.auth || request.auth.role !== "admin") {
-        return reply.code(403).send({ error: "Admin access required" });
-      }
-
       const { confirmed, expectedSha256 } = request.body ?? {};
       const opts = { confirmed, expectedSha256 };
 
