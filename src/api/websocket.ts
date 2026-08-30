@@ -172,6 +172,65 @@ export function resolveSubscribedTopics(requested: string[], role: UserRole): Se
   return result;
 }
 
+/**
+ * Free-form message fields on events that route to the shared `system` topic,
+ * which every authenticated client subscribes to by default.
+ *
+ * These carry operator-facing strings assembled at the call site, not values a
+ * schema constrains, so nothing structural stops a future one interpolating a
+ * connection string, a token, or a path. No secret flows there today; the
+ * point is that keeping it that way currently depends on every author
+ * remembering, and a reviewer noticing (security audit S01, issue #651).
+ *
+ * Redacting rather than withholding the whole event is deliberate. The UI
+ * reads only the TYPE of the update events, to raise and clear its overlay, so
+ * a non-admin watching an update in progress still sees the overlay; what it
+ * stops receiving is a string it never rendered.
+ *
+ * `system.alarm.raised` / `.resolved` are deliberately NOT here, and the
+ * omission is the interesting one. Their `message` is the closest thing in the
+ * codebase to what this guards against: `equipment-manager.ts` interpolates a
+ * raw driver error into it, and `ALLOWED_EMIT_TYPES` lets any third-party
+ * plugin emit the type. But that string is *rendered*: `alarm-message.ts`
+ * keeps it as the fallback text for alarms the UI has no i18n key for, so
+ * redacting it would blank the header issue banner for every non-admin. Nor
+ * would it close anything on its own, since `activity-buffer.ts` mirrors the
+ * same prose into `activity.added`, on a topic every role may subscribe to.
+ * The fix there is the migration `alarm-message.ts` already started: move
+ * alarms to `messageKey` / `messageParams` so the driver error stops being the
+ * payload. Until then, treat alarm text as visible to every authenticated
+ * client.
+ *
+ * TOP-LEVEL SCALAR FIELDS ONLY. `redactForRole` shallow-copies, so a nested
+ * field (`activity.added.item.message.params`, the obvious next candidate)
+ * would be mutated in place and stripped from every other client's copy too.
+ * Adding one means deep-copying first.
+ */
+const FREE_FORM_SYSTEM_FIELDS = new Map<EngineEvent["type"], readonly string[]>([
+  ["system.error", ["error"]],
+  ["system.update.progress", ["message"]],
+  ["system.update.error", ["error"]],
+]);
+
+/** Placeholder substituted for a free-form string sent to a non-admin client. */
+export const REDACTED_FOR_ROLE = "[redacted]";
+
+/**
+ * Strip free-form strings from an event bound for a non-admin client.
+ * Returns the event untouched for admins and for every type not listed above,
+ * so this costs one map lookup on the hot path.
+ */
+export function redactForRole(event: EngineEvent, role: UserRole): EngineEvent {
+  if (role === "admin") return event;
+  const fields = FREE_FORM_SYSTEM_FIELDS.get(event.type);
+  if (!fields) return event;
+  const copy: Record<string, unknown> = { ...event };
+  for (const field of fields) {
+    if (field in copy) copy[field] = REDACTED_FOR_ROLE;
+  }
+  return copy as EngineEvent;
+}
+
 /** True when a client with the given role and subscriptions should receive the event. */
 export function canReceiveEvent(
   event: EngineEvent,
@@ -252,13 +311,24 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
 
     for (const [, state] of clients) {
       if (canReceiveEvent(event, state)) {
-        state.pending.push(event);
+        state.pending.push(redactForRole(event, state.role));
       }
     }
   });
 
   /** Subscribe a client to log streaming via ring buffer */
   function subscribeToLogs(state: ClientState): void {
+    // Second gate. Reaching here already requires `logs` in state.topics, which
+    // resolveSubscribedTopics only grants to an admin, so this is unreachable
+    // today. It is here because every other privileged delivery has two
+    // independent checks (the subscription AND canReceiveEvent) while this one
+    // had a single line standing between a non-admin and the full server log,
+    // secrets included. Deleting the role check in resolveSubscribedTopics is a
+    // one-line edit; it should not be enough on its own.
+    if (state.role !== "admin") {
+      logger.warn({ role: state.role }, "Refused log stream for a non-admin client");
+      return;
+    }
     // Unsubscribe previous if any
     if (state.logUnsubscribe) {
       state.logUnsubscribe();

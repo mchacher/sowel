@@ -588,6 +588,16 @@ Events are batched every 200ms and sent as a JSON array. High-frequency data eve
 
 The `equipment.status.changed` event (spec 116) is emitted by the EquipmentStatusTracker on every transition between `online` / `degraded` / `offline`. Deduplicated per equipment ID per batch.
 
+### Role filtering (security audit S01)
+
+Two things about a client's role are enforced at delivery, not merely at subscription time.
+
+**Admin-only streams.** The `mqtt-publishers` and `logs` topics are silently dropped from a non-admin's subscription request, and `notification-publisher.*` events are never delivered to a non-admin even though they route to the shared `system` topic, because they carry the publisher's channel configuration (a Telegram bot token, for instance).
+
+**Free-form strings.** `system.error`, `system.update.error` and `system.update.progress` carry operator-facing prose assembled at the call site rather than values a schema constrains. Their message field is replaced with `"[redacted]"` for non-admin clients. The event itself is still delivered, and its structured fields (`step`, for instance) survive, so a non-admin client watching an update in progress still sees the overlay: what it stops receiving is a string the UI never rendered. No secret flows there today; the redaction exists so that keeping it that way does not depend on every future author remembering (issue #651).
+
+**What is deliberately not redacted.** `system.alarm.raised` and `.resolved` carry free-form text too, and it is the most exposed of the lot: `equipment-manager.ts` interpolates a raw driver error into it, and any third-party plugin may emit the type. But that string is _rendered_: it is the fallback text for alarms the UI has no i18n key for, so redacting it would blank the header issue banner for every non-admin client, and it would close nothing, because `activity-buffer.ts` mirrors the same prose into `activity.added` on a topic every role may subscribe to. Treat alarm text as visible to every authenticated client. The real fix is the migration to `messageKey` / `messageParams`, so the driver error stops being the payload.
+
 ### Activity Stream
 
 When subscribed to the `activity` topic, the server pushes new items as they are produced. Each push is a single event (not batched), shape identical to the items returned by `GET /api/v1/activity`:

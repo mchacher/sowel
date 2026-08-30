@@ -480,6 +480,16 @@ Les événements sont batchés toutes les 200 ms et envoyés sous forme de table
 ]
 ```
 
+### Filtrage par rôle (audit de sécurité S01)
+
+Deux choses liées au rôle d'un client sont appliquées à la livraison, et pas seulement au moment de l'abonnement.
+
+**Flux réservés aux admins.** Les topics `mqtt-publishers` et `logs` sont silencieusement retirés de la demande d'abonnement d'un non-admin, et les événements `notification-publisher.*` ne lui sont jamais livrés bien qu'ils soient routés vers le topic partagé `system`, parce qu'ils transportent la configuration du canal du publisher (un token de bot Telegram, par exemple).
+
+**Chaînes libres.** `system.error`, `system.update.error` et `system.update.progress` transportent du texte destiné à l'opérateur, assemblé au point d'appel plutôt que contraint par un schéma. Leur champ message est masqué et remplacé par `"[redacted]"` pour les clients non-admin. L'événement lui-même est toujours livré et ses champs structurés (`step`, par exemple) sont conservés : un client non-admin qui assiste à une mise à jour voit toujours l'overlay, ce qu'il cesse de recevoir est une chaîne que l'UI n'affichait pas. Aucun secret n'y circule aujourd'hui ; ce masquage existe pour que cela ne dépende plus de la vigilance de chaque auteur futur (issue #651).
+
+**Ce qui n'est délibérément pas masqué.** `system.alarm.raised` et `.resolved` transportent eux aussi du texte libre, et c'est le plus exposé du lot : `equipment-manager.ts` y interpole une erreur de driver brute, et n'importe quel plugin tiers peut émettre ce type. Mais cette chaîne est _affichée_ : elle sert de texte de repli pour les alarmes dont l'UI n'a pas de clé i18n, donc la masquer viderait le bandeau d'incidents pour tout client non-admin, et ne fermerait rien puisque `activity-buffer.ts` recopie le même texte dans `activity.added`, sur un topic ouvert à tous les rôles. Considérez le texte d'alarme comme visible par tout client authentifié. Le vrai correctif est la migration vers `messageKey` / `messageParams`, pour que l'erreur de driver cesse d'être la charge utile.
+
 ### Flux d'activité
 
 Quand on est abonné au topic `activity`, le serveur pousse chaque nouvel item au fil de l'eau. Chaque envoi est un événement unitaire (non batché), avec le même format que les items retournés par `GET /api/v1/activity` :

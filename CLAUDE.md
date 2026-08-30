@@ -258,7 +258,7 @@ The Proxy does NOT protect against direct `require("better-sqlite3")`, `process.
 - Passwords: bcrypt cost 12. JWT HS256 via `jsonwebtoken`.
 - Access token TTL 15 min, refresh token TTL 30 days
 - API tokens: `swl_` prefix, SHA-256 hash stored, `crypto.randomBytes(32)`
-- Roles: `admin` > `user` > `viewer`
+- Roles: `admin` > `standard` (`UserRole` in `src/shared/types.ts`)
 
 ### Frontend
 

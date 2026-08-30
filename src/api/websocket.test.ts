@@ -5,6 +5,8 @@ import {
   isAdminOnlyEvent,
   resolveSubscribedTopics,
   canReceiveEvent,
+  redactForRole,
+  REDACTED_FOR_ROLE,
 } from "./websocket.js";
 import type { EngineEvent } from "../shared/types.js";
 
@@ -202,5 +204,60 @@ describe("websocket role authorization (S01)", () => {
         }),
       ).toBe(true);
     });
+  });
+});
+
+// Issue #651 — free-form strings on the shared `system` topic.
+describe("redactForRole", () => {
+  const withError = (type: string, error: string): EngineEvent =>
+    ({ type, error }) as unknown as EngineEvent;
+
+  it("leaves every event untouched for an admin", () => {
+    const event = withError("system.update.error", "pull failed: s3cr3t");
+    expect(redactForRole(event, "admin")).toBe(event); // same reference, no copy
+  });
+
+  it("strips the free-form field for a non-admin", () => {
+    const event = withError("system.error", "connect ECONNREFUSED user:p4ss@host");
+    for (const role of ["standard"] as const) {
+      const out = redactForRole(event, role) as { error: string };
+      expect(out.error).toBe(REDACTED_FOR_ROLE);
+    }
+  });
+
+  it("keeps the structured fields beside it", () => {
+    const event = {
+      type: "system.update.progress",
+      step: "pull",
+      message: "pulling from registry.example/private",
+    } as unknown as EngineEvent;
+    const out = redactForRole(event, "standard") as { step: string; message: string; type: string };
+    // `step` is a fixed vocabulary the UI switches on; only `message` is prose.
+    expect(out.step).toBe("pull");
+    expect(out.type).toBe("system.update.progress");
+    expect(out.message).toBe(REDACTED_FOR_ROLE);
+  });
+
+  it("does not mutate the event other clients are still holding", () => {
+    // One emit fans out to every client, so redacting in place would strip the
+    // string from the admin's copy too, depending on iteration order.
+    const event = withError("system.update.error", "boom: s3cr3t");
+    redactForRole(event, "standard");
+    expect((event as unknown as { error: string }).error).toBe("boom: s3cr3t");
+  });
+
+  it("passes through an event with no free-form field, by reference", () => {
+    const event = ev("device.status_changed");
+    expect(redactForRole(event, "standard")).toBe(event);
+  });
+
+  it("leaves system.update.available alone: versions and a URL, no prose", () => {
+    const event = {
+      type: "system.update.available",
+      current: "1.62.0",
+      latest: "1.63.0",
+      releaseUrl: "https://github.com/mchacher/sowel/releases/tag/v1.63.0",
+    } as unknown as EngineEvent;
+    expect(redactForRole(event, "standard")).toBe(event);
   });
 });
