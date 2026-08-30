@@ -1128,6 +1128,7 @@
   "energy.live.status.mixed_grid_lead": "Appoint solaire",
   "energy.live.status.self": "Autonome",
   "energy.live.status.export": "Excédent solaire",
+  "energy.live.diagram.title": "Flux en direct",
   "energy.live.breakdown.title": "Décomposition consommation",
   "energy.live.breakdown.other": "Autre",
   "energy.live.breakdown.offline": "hors-ligne",

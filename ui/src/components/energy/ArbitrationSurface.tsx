@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { ArbiterLoadInfo, ArbiterLoadState } from "../../types";
 import { useTranslation } from "react-i18next";
 import { Scale, Moon } from "lucide-react";
+import { SectionHeader } from "./SectionHeader";
 import { ArbiterTimeline } from "./ArbiterTimeline";
 import { surplusStickerColor, loadStateColor, displayState } from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
@@ -154,35 +155,35 @@ export function ArbitrationSurface() {
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
-      <div className="flex items-start gap-2 mb-4">
-        <Scale size={18} strokeWidth={1.5} className="text-text-secondary mt-0.5" />
-        <div>
-          <h2 className="text-[15px] font-semibold text-text">{t("arbiter.surfaceTitle")}</h2>
-          <p className="text-[12px] text-text-secondary">{t("arbiter.surfaceHint")}</p>
-        </div>
-        <span
-          className="ml-auto flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
-          style={{
-            color: stickerColor,
-            background: `color-mix(in srgb, ${stickerColor} 12%, transparent)`,
-          }}
-          title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
-        >
-          {dormant ? (
-            <>
-              <Moon size={11} strokeWidth={2} />
-              {t("arbiter.state.dormant")}
-            </>
-          ) : (
-            <>
-              {t(`arbiter.state.${state.state}`)}
-              {available !== null && (
-                <span className="font-mono">{(available / 1000).toFixed(1)} kW</span>
-              )}
-            </>
-          )}
-        </span>
-      </div>
+      <SectionHeader
+        icon={Scale}
+        title={t("arbiter.surfaceTitle")}
+        hint={t("arbiter.surfaceHint")}
+        aside={
+          <span
+            className="ml-auto flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+            style={{
+              color: stickerColor,
+              background: `color-mix(in srgb, ${stickerColor} 12%, transparent)`,
+            }}
+            title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
+          >
+            {dormant ? (
+              <>
+                <Moon size={11} strokeWidth={2} />
+                {t("arbiter.state.dormant")}
+              </>
+            ) : (
+              <>
+                {t(`arbiter.state.${state.state}`)}
+                {available !== null && (
+                  <span className="font-mono">{(available / 1000).toFixed(1)} kW</span>
+                )}
+              </>
+            )}
+          </span>
+        }
+      />
       {state.state === "degraded" && (
         <p className="text-[12px] text-warning mb-2">{t("arbiter.degradedReason")}</p>
       )}
