@@ -122,8 +122,13 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
           the neutral rule and gets no word, so an absent verdict never reads
           as a good one. `mt-auto` keeps the rules on one line across the five
           columns whatever else each day published. */}
+      {/* The same vocabulary as the tile's dot: colour here, colour and word
+          where there is room for one. A day the plugin cannot qualify keeps
+          the neutral rule and gets no word, so an absent verdict never reads
+          as a good one. The word's line is reserved whether or not there is a
+          word, so the five rules land on the same baseline. */}
       <span
-        className="mt-auto pt-2 w-full block"
+        className="mt-auto w-full pt-2 flex flex-col items-center gap-1"
         title={
           day.tempMaxSpread !== null && day.tempMaxSpread > 0
             ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
@@ -136,11 +141,8 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
           }`}
           aria-label={confidenceLabel}
         />
-      </span>
-
-      {confidenceLabel && (
         <span
-          className={`hidden sm:block text-[10px] font-semibold ${
+          className={`hidden sm:block h-[13px] text-[10px] font-semibold leading-[13px] ${
             day.confidence === "high"
               ? "text-success"
               : day.confidence === "medium"
@@ -148,9 +150,9 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
                 : "text-error"
           }`}
         >
-          {confidenceLabel}
+          {confidenceLabel ?? ""}
         </span>
-      )}
+      </span>
     </div>
   );
 }
