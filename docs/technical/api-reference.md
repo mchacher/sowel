@@ -306,6 +306,13 @@ No separate auth scheme — these routes sit behind the same JWT/API-token middl
 | `DELETE` | `/api/v1/dashboard/widgets/:id`   | Delete widget (admin). Returns 204.                                                     |
 | `PUT`    | `/api/v1/dashboard/widgets/order` | Reorder widgets (admin). Body: `{ order: string[] }`.                                   |
 
+Widget bodies are schema-validated (issue #597). `type` is `"equipment"` or `"zone"`, and it decides what else is required: `equipmentId` for the first, `zoneId` plus `family` (one of `lights`, `shutters`, `heating`, `sensors`) for the second. A malformed body answers `400 { "error": "..." }`.
+
+Two things worth knowing because they are not what a reader would guess:
+
+- A referenced equipment or zone that does not exist answers **400**, not 404. That is the status this route has always returned, and the schema conversion did not renumber it.
+- Unknown fields in the body are ignored rather than rejected.
+
 ---
 
 ## Charts

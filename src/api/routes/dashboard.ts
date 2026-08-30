@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import { toISOUtc } from "../../core/database.js";
 import type { DashboardWidget, WidgetConfig, WidgetFamily } from "../../shared/types.js";
+import { requireAdmin } from "../../auth/auth-middleware.js";
+import { nonEmptyString } from "../schemas.js";
 
 interface DashboardDeps {
   db: Database.Database;
@@ -42,10 +44,77 @@ function rowToWidget(row: WidgetRow): DashboardWidget {
   return widget;
 }
 
-const VALID_FAMILIES = new Set(["lights", "shutters", "heating", "sensors"]);
+const VALID_FAMILIES = ["lights", "shutters", "heating", "sensors"] as const;
+
+// ── Body schemas (#597, #482 Lot C) ─────────────────────────────────────
+//
+// Deferred from #482 because the create body is conditional: `equipmentId` is
+// required iff `type === "equipment"`, `zoneId` and `family` iff
+// `type === "zone"`. `if`/`then` expresses that. What a schema cannot express
+// is the existence lookup, so "Equipment not found" stays in the handler, and
+// keeps its original 400 rather than becoming a 404: #482 converts shape
+// checks, it does not renumber answers a client may already depend on.
+//
+// `additionalProperties` is left at its default so unknown fields are ignored
+// exactly as they were.
+const widgetCreateSchema = {
+  type: "object",
+  required: ["type"],
+  properties: {
+    type: { enum: ["equipment", "zone"] },
+    equipmentId: nonEmptyString,
+    zoneId: nonEmptyString,
+    family: { enum: [...VALID_FAMILIES] },
+    label: { type: "string" },
+    icon: { type: "string" },
+  },
+  allOf: [
+    {
+      if: { properties: { type: { const: "equipment" } }, required: ["type"] },
+      then: { required: ["equipmentId"] },
+    },
+    {
+      if: { properties: { type: { const: "zone" } }, required: ["type"] },
+      then: { required: ["zoneId", "family"] },
+    },
+  ],
+} as const;
+
+// Every field is optional and nullable: `undefined` means "leave alone" and
+// `null` means "clear", a distinction the handler reads and the schema keeps.
+// `config` is an opaque object the route only stringifies.
+const widgetPatchSchema = {
+  type: "object",
+  properties: {
+    label: { type: ["string", "null"] },
+    icon: { type: ["string", "null"] },
+    config: { type: ["object", "null"] },
+  },
+} as const;
+
+// TIGHTENING, deliberate: `items` was previously unconstrained, so
+// `{ order: [1, 2] }` reached the UPDATE and silently matched no row. An
+// element that is not a widget id was never meaningful here.
+const widgetOrderSchema = {
+  type: "object",
+  required: ["order"],
+  properties: { order: { type: "array", items: nonEmptyString } },
+} as const;
 
 export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDeps): void {
   const { db } = deps;
+
+  // Every write is admin-only; GET is not. The hook runs before body-schema
+  // validation, so 403 still precedes 400 for a non-admin sending a malformed
+  // body. Bounded to the widget paths and to non-GET methods so it can neither
+  // over-match a sibling route nor lock out the read.
+  app.addHook("onRequest", async (request, reply) => {
+    if (request.method === "GET") return;
+    const path = request.url.split("?")[0];
+    if (path === "/api/v1/dashboard/widgets" || path.startsWith("/api/v1/dashboard/widgets/")) {
+      requireAdmin(request, reply);
+    }
+  });
 
   // GET /api/v1/dashboard/widgets — List all widgets ordered by displayOrder
   app.get("/api/v1/dashboard/widgets", async () => {
@@ -65,123 +134,113 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
       label?: string;
       icon?: string;
     };
-  }>("/api/v1/dashboard/widgets", async (request, reply) => {
-    if (!request.auth || request.auth.role !== "admin") {
-      return reply.code(403).send({ error: "Admin access required" });
-    }
+  }>(
+    "/api/v1/dashboard/widgets",
+    { schema: { body: widgetCreateSchema } },
+    async (request, reply) => {
+      const { type, equipmentId, zoneId, family, label, icon } = request.body;
 
-    const { type, equipmentId, zoneId, family, label, icon } = request.body ?? {};
-
-    if (type !== "equipment" && type !== "zone") {
-      return reply.code(400).send({ error: "type must be 'equipment' or 'zone'" });
-    }
-
-    if (type === "equipment") {
-      if (!equipmentId) {
-        return reply.code(400).send({ error: "equipmentId is required for equipment widgets" });
+      // The schema has settled the shape by here; what is left is existence,
+      // which it cannot express. Both keep their original 400.
+      if (type === "equipment") {
+        const eq = db.prepare("SELECT id FROM equipments WHERE id = ?").get(equipmentId);
+        if (!eq) {
+          return reply.code(400).send({ error: "Equipment not found" });
+        }
       }
-      // Verify equipment exists
-      const eq = db.prepare("SELECT id FROM equipments WHERE id = ?").get(equipmentId);
-      if (!eq) {
-        return reply.code(400).send({ error: "Equipment not found" });
-      }
-    }
 
-    if (type === "zone") {
-      if (!zoneId) {
-        return reply.code(400).send({ error: "zoneId is required for zone widgets" });
+      if (type === "zone") {
+        const z = db.prepare("SELECT id FROM zones WHERE id = ?").get(zoneId);
+        if (!z) {
+          return reply.code(400).send({ error: "Zone not found" });
+        }
       }
-      if (!family || !VALID_FAMILIES.has(family)) {
-        return reply
-          .code(400)
-          .send({ error: "family must be one of: lights, shutters, heating, sensors" });
-      }
-      // Verify zone exists
-      const z = db.prepare("SELECT id FROM zones WHERE id = ?").get(zoneId);
-      if (!z) {
-        return reply.code(400).send({ error: "Zone not found" });
-      }
-    }
 
-    // Get next display_order
-    const maxRow = db
-      .prepare("SELECT COALESCE(MAX(display_order), -1) AS max_order FROM dashboard_widgets")
-      .get() as { max_order: number };
-    const nextOrder = maxRow.max_order + 1;
+      // Get next display_order
+      const maxRow = db
+        .prepare("SELECT COALESCE(MAX(display_order), -1) AS max_order FROM dashboard_widgets")
+        .get() as { max_order: number };
+      const nextOrder = maxRow.max_order + 1;
 
-    const id = crypto.randomUUID();
-    db.prepare(
-      `INSERT INTO dashboard_widgets (id, type, label, icon, equipment_id, zone_id, family, display_order)
+      const id = crypto.randomUUID();
+      db.prepare(
+        `INSERT INTO dashboard_widgets (id, type, label, icon, equipment_id, zone_id, family, display_order)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      id,
-      type,
-      label ?? null,
-      icon ?? null,
-      type === "equipment" ? equipmentId! : null,
-      type === "zone" ? zoneId! : null,
-      type === "zone" ? family! : null,
-      nextOrder,
-    );
+      ).run(
+        id,
+        type,
+        label ?? null,
+        icon ?? null,
+        type === "equipment" ? equipmentId! : null,
+        type === "zone" ? zoneId! : null,
+        type === "zone" ? family! : null,
+        nextOrder,
+      );
 
-    const row = db.prepare("SELECT * FROM dashboard_widgets WHERE id = ?").get(id) as WidgetRow;
-    return reply.code(201).send(rowToWidget(row));
-  });
+      const row = db.prepare("SELECT * FROM dashboard_widgets WHERE id = ?").get(id) as WidgetRow;
+      return reply.code(201).send(rowToWidget(row));
+    },
+  );
 
   // PATCH /api/v1/dashboard/widgets/:id — Update label, icon (admin only)
   app.patch<{
     Params: { id: string };
     Body: { label?: string | null; icon?: string | null; config?: WidgetConfig | null };
-  }>("/api/v1/dashboard/widgets/:id", async (request, reply) => {
-    if (!request.auth || request.auth.role !== "admin") {
-      return reply.code(403).send({ error: "Admin access required" });
-    }
+  }>(
+    "/api/v1/dashboard/widgets/:id",
+    {
+      schema: { body: widgetPatchSchema },
+      // preValidation runs before body validation, so a PATCH against a widget
+      // that does not exist still answers 404 rather than complaining about the
+      // shape of a body nobody will read.
+      preValidation: async (request, reply) => {
+        const params = request.params as { id: string };
+        const row = db.prepare("SELECT id FROM dashboard_widgets WHERE id = ?").get(params.id);
+        if (!row) {
+          return reply.code(404).send({ error: "Widget not found" });
+        }
+      },
+    },
+    async (request, reply) => {
+      const existing = db
+        .prepare("SELECT * FROM dashboard_widgets WHERE id = ?")
+        .get(request.params.id) as WidgetRow;
 
-    const existing = db
-      .prepare("SELECT * FROM dashboard_widgets WHERE id = ?")
-      .get(request.params.id) as WidgetRow | undefined;
-    if (!existing) {
-      return reply.code(404).send({ error: "Widget not found" });
-    }
+      const { label, icon, config } = request.body ?? {};
+      const updates: string[] = [];
+      const values: unknown[] = [];
 
-    const { label, icon, config } = request.body ?? {};
-    const updates: string[] = [];
-    const values: unknown[] = [];
+      if (label !== undefined) {
+        updates.push("label = ?");
+        values.push(label);
+      }
+      if (icon !== undefined) {
+        updates.push("icon = ?");
+        values.push(icon);
+      }
+      if (config !== undefined) {
+        updates.push("config = ?");
+        values.push(config ? JSON.stringify(config) : null);
+      }
 
-    if (label !== undefined) {
-      updates.push("label = ?");
-      values.push(label);
-    }
-    if (icon !== undefined) {
-      updates.push("icon = ?");
-      values.push(icon);
-    }
-    if (config !== undefined) {
-      updates.push("config = ?");
-      values.push(config ? JSON.stringify(config) : null);
-    }
+      if (updates.length === 0) {
+        return reply.send(rowToWidget(existing));
+      }
 
-    if (updates.length === 0) {
-      return rowToWidget(existing);
-    }
+      values.push(request.params.id);
+      db.prepare(`UPDATE dashboard_widgets SET ${updates.join(", ")} WHERE id = ?`).run(...values);
 
-    values.push(request.params.id);
-    db.prepare(`UPDATE dashboard_widgets SET ${updates.join(", ")} WHERE id = ?`).run(...values);
-
-    const row = db
-      .prepare("SELECT * FROM dashboard_widgets WHERE id = ?")
-      .get(request.params.id) as WidgetRow;
-    return rowToWidget(row);
-  });
+      const row = db
+        .prepare("SELECT * FROM dashboard_widgets WHERE id = ?")
+        .get(request.params.id) as WidgetRow;
+      return reply.send(rowToWidget(row));
+    },
+  );
 
   // DELETE /api/v1/dashboard/widgets/:id — Delete a widget (admin only)
   app.delete<{ Params: { id: string } }>(
     "/api/v1/dashboard/widgets/:id",
     async (request, reply) => {
-      if (!request.auth || request.auth.role !== "admin") {
-        return reply.code(403).send({ error: "Admin access required" });
-      }
-
       const result = db
         .prepare("DELETE FROM dashboard_widgets WHERE id = ?")
         .run(request.params.id);
@@ -195,24 +254,21 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
   // PUT /api/v1/dashboard/widgets/order — Reorder widgets (admin only)
   app.put<{
     Body: { order: string[] };
-  }>("/api/v1/dashboard/widgets/order", async (request, reply) => {
-    if (!request.auth || request.auth.role !== "admin") {
-      return reply.code(403).send({ error: "Admin access required" });
-    }
+  }>(
+    "/api/v1/dashboard/widgets/order",
+    { schema: { body: widgetOrderSchema } },
+    async (request) => {
+      const { order } = request.body;
 
-    const { order } = request.body ?? {};
-    if (!Array.isArray(order)) {
-      return reply.code(400).send({ error: "order must be an array of widget IDs" });
-    }
+      const updateStmt = db.prepare("UPDATE dashboard_widgets SET display_order = ? WHERE id = ?");
+      const reorder = db.transaction(() => {
+        for (let i = 0; i < order.length; i++) {
+          updateStmt.run(i, order[i]);
+        }
+      });
+      reorder();
 
-    const updateStmt = db.prepare("UPDATE dashboard_widgets SET display_order = ? WHERE id = ?");
-    const reorder = db.transaction(() => {
-      for (let i = 0; i < order.length; i++) {
-        updateStmt.run(i, order[i]);
-      }
-    });
-    reorder();
-
-    return { ok: true };
-  });
+      return { ok: true };
+    },
+  );
 }
