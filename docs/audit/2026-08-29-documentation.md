@@ -35,7 +35,9 @@ Two corrections to this document's own findings, worth knowing before trusting t
 1. **PR 7 second half — the user guide.** Nothing in the tree mentions shutter/gate **invert direction** (specs 154/155), which is the answer to "my awning goes the wrong way"; `user/equipments.md:57` still states the fixed convention as unchangeable. UPS (156) and VMC (153) absent from a catalogue that bills itself as closed. Gate action confirmation (146), order delivery confirmation (141), low battery (143), RBAC roles (131) all zero-hit on the user side. Plus the `user/index.md` card grid missing three pages and the duplicate `Calendar scheduling` heading in `user/modes.md`.
 2. **PR 6 second half — the API and data-model reference.** Six 404 routes, the eight missing event union members, the enum and column drift, the undocumented route surface (`/system/*`, `/audit`, backup, arbiter timeline, the four PV endpoints, OAuth), and `recipe-development.md` (`dispatchOrder`, the `override readonly` syntax error, `RecipeActionDef`).
 3. **EN/FR sections that are missing rather than stale.** The French API reference has no arbiter section and no Energy claims endpoints; the French recipe guide has no capacity-claim chapter; the French architecture page lacks the arbiter and four auth subsections and is behaviourally stale on spec 105 auth; the French plugin guide lacks spec 116 and spec 089. Each was deferred with a `Docs-Parity` trailer rather than half-done.
-4. **Screenshots.** Unchanged from the section at the end of this file. Deferred to a session with the fixture pipeline.
+4. **Screenshots.** Partly done on 2026-08-30, see the section at the end of this file for
+   what was refreshed and for the constraint that decides the rest: an inert instance
+   cannot photograph a live one.
 
 ---
 
@@ -578,7 +580,43 @@ Needs a seeded local instance and the fixture pipeline
   v1.62.0 list rebuild, so this is a gap rather than a stale image.
 - **Ten orphan images** on disk from 2026-03-23, referenced by nothing:
   `manual-equipments-{diagram,full,hero,ui-preview}.png`, `manual-sidebar.png`,
-  `sidebar-{admin-expanded,autocollapse,current,maison-expanded,modes-expanded}.png`.
+  `sidebar-{admin-expanded,autocollapse,current,maison-expanded,modes-expanded}.png`. **Deleted 2026-08-30.**
+
+---
+
+### Done 2026-08-30, and what stopped the rest
+
+Refreshed from a fresh production backup through `build-fixtures.py`, shot on the shadow at
+1920x1080 in both languages: `dashboard-overview-{en,fr}.png` and `dashboard-edit-{en,fr}.png`.
+They were four months old and now show the v1.64.0 forecast tile with its confidence pill. The ten
+orphan images are deleted.
+
+**The rest is blocked by something the plan above did not account for: an inert instance cannot
+photograph a live one.** The shadow runs no integration, by design (spec 124). So every surface
+that renders runtime state photographs the setup rather than the product:
+
+- **Energy > Live** shows two red banners ("no connection for 6 min", the spec 116 wording) and
+  every submeter row as offline, because no meter has reported since the backup was taken. The
+  `power` freshness window is two minutes, so there is no "shoot it quickly" workaround.
+- **Plugins** shows all fourteen integrations as disconnected.
+- **Devices** would show every device offline.
+
+Those pages need an instance that is actually receiving data, and it cannot be production, because
+that is the rule this whole fixture pipeline exists to keep. Nothing here is unblocked by trying
+harder on the shadow; it needs either a seeded instance with a simulated integration publishing
+into it, or hand-composed fixtures with fresh timestamps. That is a piece of work, not a session.
+
+Two traps found while doing it, both now handled in the tooling:
+
+- The **spec 124 shadow banner is deliberately non-dismissable**, so it lands in every screenshot
+  taken on a shadow. It has to be hidden with an injected stylesheet before the shot, and the
+  shooter should assert it is gone rather than trust the injection.
+- **The rename maps had drifted.** Two lora2mqtt devices, `remote_marc` and `remote_elodie`,
+  carried household first names into both fixtures: the maps covered zones and equipments, and
+  devices are rendered on the Devices page and in every binding list. The EN fixture also still
+  carried seven French names, including an awning called `Store`, which reads as an English word
+  and is how it survived every earlier pass. `build-fixtures.py` now renames devices too and
+  **refuses to write a fixture** in which any personal token survives.
 
 ---
 

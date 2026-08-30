@@ -11,6 +11,7 @@ Pipeline:
     -> showroom-en.zip
 """
 import json
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -27,7 +28,29 @@ EQUIPMENT_RENAME_FR = {
     "Remote Marc": "Télécommande 1",
     "Remote Elodie": "Télécommande 2",
 }
-EQUIPMENT_DELETE_FR = {"Lave-linge"}
+EQUIPMENT_DELETE_FR = {"Lave-linge", "GateTest"}
+
+# Devices keep the name the integration published, which on a home network is
+# whatever the household typed into Zigbee2MQTT or lora2mqtt. The Devices page
+# and every binding list render it, so renaming equipments alone is not enough.
+DEVICE_RENAME_FR = {
+    "remote_marc": "remote_01",
+    "remote_elodie": "remote_02",
+}
+
+# Any of these surviving into a fixture is a leak onto docs.sowel.org, so the
+# build refuses to write rather than warn. Matched on word boundaries: the
+# recipe description "marche/arrêt" must not trip the check for "marc".
+PERSONAL_TOKENS = (
+    "marc",
+    "elodie",
+    "élodie",
+    "victor",
+    "lucile",
+    "elise",
+    "élise",
+    "chachereau",
+)
 
 NEUTRAL_HOME_NAME_FR = "Ma Maison"
 NEUTRAL_LAT = "48.8566"
@@ -59,6 +82,7 @@ ZONE_TRANSLATE = {
     "Chambre Enfant 3": "Kids Room 3",
     "Salle de Bain": "Bathroom",
     "Escalier": "Stairs",
+    "Champ": "Field",
 }
 
 EQUIPMENT_TRANSLATE = {
@@ -121,6 +145,16 @@ EQUIPMENT_TRANSLATE = {
     "Bouton Table de Nuit": "Bedside Button",
     "Télécommande 1": "Remote 1",
     "Télécommande 2": "Remote 2",
+    # appliances and utility
+    "Chauffe-eau": "Water Heater",
+    "Congélateur": "Freezer",
+    "Réfrigérateur": "Fridge",
+    "Onduleur": "UPS",
+    "Routeur Wifi Garage": "Garage Wi-Fi Router",
+    # `Store` is the French for an awning, and reads as an English word, which
+    # is how it survived every earlier pass through this map.
+    "Store": "Awning",
+    "Piscine": "Pool",
     # other
     "TV": "TV",
     "Vanne Pelouse": "Lawn Valve",
@@ -172,6 +206,12 @@ def anonymize(backup: dict) -> dict:
     for z in t["zones"]:
         if z["name"] in ZONE_RENAME_FR:
             z["name"] = ZONE_RENAME_FR[z["name"]]
+
+    # 1b) Devices: the name the integration published
+    for d in t.get("devices", []):
+        for field in ("name", "source_device_id"):
+            if d.get(field) in DEVICE_RENAME_FR:
+                d[field] = DEVICE_RENAME_FR[d[field]]
 
     # 2) Equipments: delete some, rename others
     deleted_eq_ids = {e["id"] for e in t["equipments"] if e["name"] in EQUIPMENT_DELETE_FR}
@@ -276,6 +316,37 @@ def translate_to_en(backup: dict) -> dict:
     return backup
 
 
+def assert_no_personal_data(backup: dict, label: str) -> None:
+    """Refuse to write a fixture that still carries a household name.
+
+    The rename maps above are static and the installation is not: an
+    equipment or a device named after someone after this file was last
+    edited would sail straight through and onto docs.sowel.org. Two device
+    names did exactly that (`remote_marc`, `remote_elodie`), invisible in
+    the zone and equipment listings the maps cover, and rendered on the
+    Devices page and in every binding list.
+    """
+    blob = json.dumps(backup, ensure_ascii=False)
+    found = []
+    for token in PERSONAL_TOKENS:
+        # A token flanked by letters is part of a longer word (marche/arrêt),
+        # not a name.
+        pattern = rf"(?<![^\W\d_]){re.escape(token)}(?![^\W\d_])"
+        for m in re.finditer(pattern, blob, re.IGNORECASE):
+            found.append(blob[max(0, m.start() - 60) : m.end() + 60])
+    if found:
+        print(f"\n❌ {label}: personal data survived anonymization", file=sys.stderr)
+        for context in sorted(set(found))[:20]:
+            print(f"    …{context}…", file=sys.stderr)
+        print(
+            "\nAdd the offending name to ZONE_RENAME_FR / EQUIPMENT_RENAME_FR /\n"
+            "DEVICE_RENAME_FR and rebuild. Never publish a screenshot taken from\n"
+            "a fixture this check refused.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def build_zip(backup: dict, source_zip: Path, out_path: Path) -> None:
     """Repack the source ZIP with the filtered JSON, dropping credentials/influx."""
     json_blob = json.dumps(backup, ensure_ascii=False, indent=2).encode("utf-8")
@@ -306,12 +377,14 @@ def main() -> None:
 
     # FR fixture
     fr = anonymize(json.loads(json.dumps(backup)))
+    assert_no_personal_data(fr, "showroom-fr")
     fr_path = out_dir / "showroom-fr.zip"
     build_zip(fr, src_zip, fr_path)
     print(f"WROTE {fr_path}")
 
     # EN fixture (apply translate on top of FR)
     en = translate_to_en(json.loads(json.dumps(fr)))
+    assert_no_personal_data(en, "showroom-en")
     en_path = out_dir / "showroom-en.zip"
     build_zip(en, src_zip, en_path)
     print(f"WROTE {en_path}")
