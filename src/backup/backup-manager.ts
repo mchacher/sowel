@@ -7,7 +7,7 @@ import {
   statSync,
   unlinkSync,
 } from "node:fs";
-import { resolve, dirname, extname, sep } from "node:path";
+import { resolve, dirname, basename, sep } from "node:path";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
@@ -25,10 +25,36 @@ export interface BackupManagerDeps {
   maxRestoreBytes?: number;
 }
 
+/**
+ * The extension of a data file, as BOTH the export scan and the restore
+ * whitelist must agree it is (#829).
+ *
+ * A leading-dot basename is its own extension: `.jwt-secret` is not "a file
+ * named .jwt-secret with no extension", it is the secret file, and
+ * `ALLOWED_RESTORE_EXTENSIONS` has always been written that way. `extname()`
+ * disagrees and returns "" for that shape, which is what left a dotfile-sized
+ * hole in the spec 089 C2 whitelist: the restore's `if (ext && ...)` guard
+ * short-circuited on the empty string and let any `data/.<name>` entry
+ * through, at any depth. The `.jwt-secret` and `.influx-token` entries in the
+ * whitelist were dead code; what actually let those files land was the hole.
+ *
+ * Derived from the BASENAME, so a nested `plugins/x/.whatever` is judged the
+ * same way a top-level `.whatever` is. Case is preserved; the restore
+ * lowercases at its call site, as it always did, while the export's exclusion
+ * list is case-sensitive, as it always was.
+ */
+export function dataFileExtension(name: string): string {
+  const base = basename(name);
+  const dot = base.lastIndexOf(".");
+  return dot < 0 ? "" : base.slice(dot);
+}
+
 // ── Spec 089 C2: backup restore hardening ─────────────────────────────
 // Extensions allowed in `data/` entries of a restore archive. Anything
-// else (executables, native modules, scripts) is rejected.
-const ALLOWED_RESTORE_EXTENSIONS = new Set([
+// else (executables, native modules, scripts) is rejected. Every entry here
+// must be producible by `dataFileExtension`, which a test asserts: an entry
+// that cannot match is not a permission, it is a comment that reads like one.
+export const ALLOWED_RESTORE_EXTENSIONS = new Set([
   ".json",
   ".png",
   ".jpg",
@@ -543,7 +569,7 @@ export class BackupManager {
       }
 
       // Extension whitelist: reject .sh, .so, .node, etc.
-      const ext = extname(filename).toLowerCase();
+      const ext = dataFileExtension(filename).toLowerCase();
       if (ext && !ALLOWED_RESTORE_EXTENSIONS.has(ext)) {
         this.logger.warn(
           { entry: entry.entryName, ext },
@@ -661,8 +687,7 @@ function scanDataFiles(dataDir: string): string[] {
   for (const entry of readdirSync(dataDir, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     if (DATA_FILES_EXCLUDE.has(entry.name)) continue;
-    const ext = entry.name.includes(".") ? entry.name.slice(entry.name.lastIndexOf(".")) : "";
-    if (DATA_FILES_EXCLUDE_EXT.has(ext)) continue;
+    if (DATA_FILES_EXCLUDE_EXT.has(dataFileExtension(entry.name))) continue;
     files.push(entry.name);
   }
   return files;

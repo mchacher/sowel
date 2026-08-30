@@ -369,6 +369,8 @@ L'export JSON SQLite couvre une liste sélectionnée de tables (constante `BACKU
 
 Le marqueur `.instance-id` est exclu volontairement, dans les deux sens : il décrit le déploiement en cours d'exécution, et une archive qui l'embarquerait donnerait à l'instance qui restaure l'identité de la machine d'où viennent les données, désarmant le garde-fou de restauration de l'issue #401. Voir la section « Restaurer un backup d'un autre déploiement » de [deployment.fr.md](deployment.fr.md).
 
+À la restauration, les entrées `data/` passent par une liste blanche d'extensions (spec 089 C2) : tout ce qui n'est pas une extension de données ou d'image connue est refusé, pour qu'une archive ne puisse pas glisser un script ou un module natif dans le répertoire de données. Un nom de fichier commençant par un point compte comme sa propre extension, c'est ainsi que `.jwt-secret` et `.influx-token` figurent dans cette liste et que tout autre fichier caché est refusé (issue #829).
+
 ### Backups locaux (data/backups/)
 
 Distinct de l'export manuel, `BackupManager.exportToFile()` écrit les backups dans `data/backups/sowel-backup-<name>.zip` sur le volume persistant. Utilisé par :

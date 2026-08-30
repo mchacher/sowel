@@ -4,7 +4,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
-import { BACKUP_TABLES, BackupManager, BackupSizeCapExceededError } from "./backup-manager.js";
+import {
+  ALLOWED_RESTORE_EXTENSIONS,
+  BACKUP_TABLES,
+  BackupManager,
+  BackupSizeCapExceededError,
+  dataFileExtension,
+} from "./backup-manager.js";
 import { createLogger } from "../core/logger.js";
 import {
   INSTANCE_ID_SETTING,
@@ -400,6 +406,72 @@ describe("BackupManager", () => {
     });
   });
 
+  // ── #829 — the dotfile-shaped hole in the spec 089 C2 whitelist ──
+  //
+  // The export derived an extension with slice(lastIndexOf(".")) and the
+  // restore with extname(), which returns "" for a leading-dot basename. The
+  // restore's `if (ext && ...)` guard then short-circuited and let any
+  // `data/.<name>` entry through, at any depth. The `.jwt-secret` and
+  // `.influx-token` entries in the whitelist could never match and were dead:
+  // what actually let those files land was the hole itself.
+  describe("restoreFromBuffer — dotfile entries face the whitelist (#829)", () => {
+    function buildZipWith(entries: { name: string; data: Buffer }[]): Buffer {
+      const zip = new AdmZip();
+      const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, [] as unknown[]]));
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+      );
+      for (const e of entries) zip.addFile(e.name, e.data);
+      return zip.toBuffer();
+    }
+
+    it("refuses an unexpected top-level dotfile", async () => {
+      await manager.restoreFromBuffer(
+        buildZipWith([{ name: "data/.whatever", data: Buffer.from("x") }]),
+      );
+      expect(existsSync(resolve(tmpDir, ".whatever"))).toBe(false);
+    });
+
+    it("refuses one nested under a subdirectory", async () => {
+      // The old extname() path returned "" whatever the depth, so nesting was
+      // not even an evasion: it was the same hole.
+      await manager.restoreFromBuffer(
+        buildZipWith([{ name: "data/plugins/x/.whatever", data: Buffer.from("x") }]),
+      );
+      expect(existsSync(resolve(tmpDir, "plugins", "x", ".whatever"))).toBe(false);
+    });
+
+    it("still restores the two dotfiles the whitelist names", async () => {
+      // The other half. These are real: config.ts reads data/.jwt-secret and
+      // data/.influx-token, so a restore that dropped them would lose the JWT
+      // signing secret and log every session out.
+      await manager.restoreFromBuffer(
+        buildZipWith([
+          { name: "data/.jwt-secret", data: Buffer.from("s3cr3t") },
+          { name: "data/.influx-token", data: Buffer.from("t0k3n") },
+        ]),
+      );
+      expect(readFileSync(resolve(tmpDir, ".jwt-secret"), "utf-8")).toBe("s3cr3t");
+      expect(readFileSync(resolve(tmpDir, ".influx-token"), "utf-8")).toBe("t0k3n");
+    });
+
+    it("still refuses a banned extension on a nested entry", async () => {
+      // Deriving from the basename must not have loosened the ordinary case.
+      await manager.restoreFromBuffer(
+        buildZipWith([{ name: "data/plugins/x/evil.so", data: Buffer.from("x") }]),
+      );
+      expect(existsSync(resolve(tmpDir, "plugins", "x", "evil.so"))).toBe(false);
+    });
+
+    it("still restores a nested entry with an allowed extension", async () => {
+      await manager.restoreFromBuffer(
+        buildZipWith([{ name: "data/plugins/x/config.json", data: Buffer.from("{}") }]),
+      );
+      expect(existsSync(resolve(tmpDir, "plugins", "x", "config.json"))).toBe(true);
+    });
+  });
+
   // ── #790 — the restore must not hand this deployment a foreign identity ──
   //
   // The #401 guardrail compares the instance id carried in the settings table
@@ -535,5 +607,40 @@ describe("BACKUP_TABLES covers everything a restore would cascade away", () => {
 
   it("has no duplicates", () => {
     expect(new Set(BACKUP_TABLES).size).toBe(BACKUP_TABLES.length);
+  });
+});
+
+describe("dataFileExtension (#829)", () => {
+  it("treats a leading-dot basename as its own extension", () => {
+    expect(dataFileExtension(".jwt-secret")).toBe(".jwt-secret");
+    expect(dataFileExtension(".influx-token")).toBe(".influx-token");
+    expect(dataFileExtension(".instance-id")).toBe(".instance-id");
+  });
+
+  it("judges a nested file by its basename", () => {
+    expect(dataFileExtension("plugins/x/.whatever")).toBe(".whatever");
+    expect(dataFileExtension("plugins/x/config.json")).toBe(".json");
+  });
+
+  it("behaves ordinarily otherwise", () => {
+    expect(dataFileExtension("config.json")).toBe(".json");
+    expect(dataFileExtension("archive.tar.gz")).toBe(".gz");
+    expect(dataFileExtension("noextension")).toBe("");
+  });
+
+  it("preserves case, which the two call sites handle differently", () => {
+    // The restore lowercases at its call site, as it always did; the export's
+    // exclusion list is case-sensitive, as it always was. Folding case here
+    // would silently change which files are left out of a backup.
+    expect(dataFileExtension("FOO.LOG")).toBe(".LOG");
+  });
+
+  it("leaves no unreachable entry in the restore whitelist", () => {
+    // An extension the derivation cannot produce is not a permission, it is a
+    // comment that reads like one. `.jwt-secret` and `.influx-token` were
+    // exactly that until this fix.
+    for (const ext of ALLOWED_RESTORE_EXTENSIONS) {
+      expect(dataFileExtension("file" + ext).toLowerCase()).toBe(ext);
+    }
   });
 });

@@ -474,6 +474,8 @@ The SQLite JSON export covers a curated list of tables (`BACKUP_TABLES` constant
 
 The `.instance-id` marker is excluded on purpose, in both directions: it describes the deployment currently running, and an archive that carried it would hand a restoring instance the identity of the machine the data came from, disarming the #401 restored-data guardrail. See the "Restoring a backup from another deployment" section of [deployment.md](deployment.md).
 
+On restore, `data/` entries face an extension whitelist (spec 089 C2): anything that is not a known data or image extension is refused, so an archive cannot smuggle a script or a native module into the data directory. A leading-dot filename counts as its own extension, which is how `.jwt-secret` and `.influx-token` are named in that whitelist and how any other dotfile is refused (issue #829).
+
 ### Local backups (data/backups/)
 
 Separate from manual export, `BackupManager.exportToFile()` writes backups to `data/backups/sowel-backup-<name>.zip` on the persistent volume. Used by:
