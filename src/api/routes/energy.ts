@@ -25,6 +25,7 @@ import type {
 } from "../../shared/types.js";
 
 import { requireAdmin } from "../../auth/auth-middleware.js";
+import { nonEmptyString } from "../schemas.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
 import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
 import { isActiveSolarProfile } from "../../energy/pv/solar-profile.js";
@@ -44,6 +45,54 @@ interface EnergyDeps {
   pvForecaster: PvForecaster | null; // spec 160 — null in some tests
   logger: Logger;
 }
+
+// ── Tariff body schema (#597, #482 Lot C) ──────────────────────────────
+//
+// Deferred from #482 as "nested and verbose", which it is; it is also entirely
+// structural, so the handler is left with nothing to check. Admin gating needs
+// no hook here: this PUT is absent from STANDARD_WRITE_ALLOWLIST, so the global
+// fail-closed role gate refuses a non-admin in an onRequest hook, long before
+// validation. The GET beside it carries its own check because that gate covers
+// only mutating methods (#381).
+//
+// Two deliberate tightenings against the hand-rolled version, each pinned by a
+// test. `days` is `integer`, where `typeof day === "number"` accepted 2.5, a
+// value `getDay()` can never equal. `start`/`end` are non-empty strings, where
+// `!slot.start` accepted any truthy value including `5` and `true`. Neither was
+// a working input; both were silent nonsense.
+const tariffBodySchema = {
+  type: "object",
+  required: ["schedules", "prices"],
+  properties: {
+    schedules: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["days", "slots"],
+        properties: {
+          days: { type: "array", items: { type: "integer", minimum: 0, maximum: 6 } },
+          slots: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["start", "end", "tariff"],
+              properties: {
+                start: nonEmptyString,
+                end: nonEmptyString,
+                tariff: { enum: ["hp", "hc"] },
+              },
+            },
+          },
+        },
+      },
+    },
+    prices: {
+      type: "object",
+      required: ["hp", "hc"],
+      properties: { hp: { type: "number" }, hc: { type: "number" } },
+    },
+  },
+} as const;
 
 export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): void {
   const {
@@ -604,44 +653,15 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // ============================================================
   // PUT /api/v1/settings/energy/tariff
   // ============================================================
-  app.put<{ Body: TariffConfig }>("/api/v1/settings/energy/tariff", async (request, reply) => {
-    const config = request.body;
-
-    // Validate structure
-    if (!config || !Array.isArray(config.schedules) || !config.prices) {
-      return reply
-        .status(400)
-        .send({ error: "Invalid tariff config: missing schedules or prices" });
-    }
-
-    // Validate prices
-    if (typeof config.prices.hp !== "number" || typeof config.prices.hc !== "number") {
-      return reply.status(400).send({ error: "Invalid prices: hp and hc must be numbers" });
-    }
-
-    // Validate schedules
-    for (const schedule of config.schedules) {
-      if (!Array.isArray(schedule.days) || !Array.isArray(schedule.slots)) {
-        return reply.status(400).send({ error: "Invalid schedule: missing days or slots" });
-      }
-      for (const day of schedule.days) {
-        if (typeof day !== "number" || day < 0 || day > 6) {
-          return reply.status(400).send({ error: "Invalid day: must be 0-6" });
-        }
-      }
-      for (const slot of schedule.slots) {
-        if (!slot.start || !slot.end || !["hp", "hc"].includes(slot.tariff)) {
-          return reply
-            .status(400)
-            .send({ error: "Invalid slot: must have start, end, and tariff (hp/hc)" });
-        }
-      }
-    }
-
-    settingsManager.set("energy.tariff", JSON.stringify(config));
-    logger.info("Tariff configuration updated");
-    return { ok: true };
-  });
+  app.put<{ Body: TariffConfig }>(
+    "/api/v1/settings/energy/tariff",
+    { schema: { body: tariffBodySchema } },
+    async (request) => {
+      settingsManager.set("energy.tariff", JSON.stringify(request.body));
+      logger.info("Tariff configuration updated");
+      return { ok: true };
+    },
+  );
 
   // ============================================================
   // GET /api/v1/energy/pv-forecast/:equipmentId — spec 160.

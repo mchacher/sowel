@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerEnergyRoutes } from "./energy.js";
+import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import type {
   TariffConfig,
   ArbiterDailyHomeMetrics,
@@ -120,9 +121,18 @@ async function buildApp(opts: BuildOpts = {}) {
 
   // tariffClassifier returns the injected config (spec 123 — used for cost wiring).
   const tariffClassifier = { getConfig: () => opts.tariff ?? null } as never;
-  const settingsManager = {} as never;
+  // The tariff PUT writes through this; capture what it was handed so a test
+  // can assert an accepted body actually reached the store.
+  const settingsWrites: Array<[string, string]> = [];
+  const settingsManager = {
+    set: (key: string, value: string) => {
+      settingsWrites.push([key, value]);
+    },
+  } as never;
 
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, ajv: validationAjvOptions });
+  installValidationErrorHandler(app);
+  (app as unknown as { settingsWrites: typeof settingsWrites }).settingsWrites = settingsWrites;
 
   // Stub auth: pre-decorate request.auth based on the test scenario (#381).
   const authRole = opts.authRole === undefined ? "admin" : opts.authRole;
@@ -1247,4 +1257,199 @@ describe("Spec 165 review — /api/v1/energy/arbiter fallback", () => {
       expect(body[key]).toHaveLength(0);
     }
   });
+});
+
+// ── PUT /api/v1/settings/energy/tariff — #597, #482 Lot C ──
+//
+// Characterization first: every expectation below was produced by running
+// against the hand-rolled nested validation, BEFORE the schema replaced it.
+// The route had no test of its own, and "zero behavioural regression" is only
+// worth something if the behaviour was written down first.
+//
+// Admin gating is NOT a route concern here and is deliberately not asserted:
+// this PUT is absent from STANDARD_WRITE_ALLOWLIST, so the global fail-closed
+// role gate refuses a non-admin in an onRequest hook, before any of this runs.
+// The GET beside it needs its own check and has one, because that gate covers
+// only mutating methods.
+describe("PUT /api/v1/settings/energy/tariff", () => {
+  let app: Awaited<ReturnType<typeof buildApp>>;
+  const URL = "/api/v1/settings/energy/tariff";
+
+  const VALID = {
+    schedules: [{ days: [1, 2, 3, 4, 5], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] }],
+    prices: { hp: 0.27, hc: 0.2 },
+  };
+
+  afterEach(async () => {
+    if (app) await app.close();
+  });
+
+  const writes = () =>
+    (app as unknown as { settingsWrites: Array<[string, string]> }).settingsWrites;
+
+  it("accepts a well-formed config and stores it", async () => {
+    app = await buildApp({});
+    const res = await app.inject({ method: "PUT", url: URL, payload: VALID });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    expect(writes()).toHaveLength(1);
+    expect(writes()[0][0]).toBe("energy.tariff");
+    expect(JSON.parse(writes()[0][1])).toEqual(VALID);
+  });
+
+  it("accepts an empty schedule list", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [], prices: { hp: 0, hc: 0 } },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("accepts every weekday index, and both tariff bands", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: {
+        schedules: [
+          { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "00:00", end: "24:00", tariff: "hp" }] },
+        ],
+        prices: { hp: 0.27, hc: 0.2 },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  const rejects: [string, unknown][] = [
+    ["no body", undefined],
+    ["missing schedules", { prices: { hp: 1, hc: 1 } }],
+    ["schedules not an array", { schedules: {}, prices: { hp: 1, hc: 1 } }],
+    ["missing prices", { schedules: [] }],
+    ["prices null", { schedules: [], prices: null }],
+    ["hp not a number", { schedules: [], prices: { hp: "0.27", hc: 0.2 } }],
+    ["hc missing", { schedules: [], prices: { hp: 0.27 } }],
+    ["schedule without days", { schedules: [{ slots: [] }], prices: { hp: 1, hc: 1 } }],
+    ["schedule without slots", { schedules: [{ days: [1] }], prices: { hp: 1, hc: 1 } }],
+    ["day below range", { schedules: [{ days: [-1], slots: [] }], prices: { hp: 1, hc: 1 } }],
+    ["day above range", { schedules: [{ days: [7], slots: [] }], prices: { hp: 1, hc: 1 } }],
+    ["day not a number", { schedules: [{ days: ["1"], slots: [] }], prices: { hp: 1, hc: 1 } }],
+    [
+      "slot without start",
+      {
+        schedules: [{ days: [1], slots: [{ end: "06:00", tariff: "hc" }] }],
+        prices: { hp: 1, hc: 1 },
+      },
+    ],
+    [
+      "slot without end",
+      {
+        schedules: [{ days: [1], slots: [{ start: "22:00", tariff: "hc" }] }],
+        prices: { hp: 1, hc: 1 },
+      },
+    ],
+    [
+      "slot with an unknown band",
+      {
+        schedules: [{ days: [1], slots: [{ start: "22:00", end: "06:00", tariff: "hx" }] }],
+        prices: { hp: 1, hc: 1 },
+      },
+    ],
+  ];
+
+  // Declared changes, found by running the same 51 bodies through the old
+  // validation and the new schema and diffing the verdicts. Nothing else
+  // flipped.
+  it("400s a fractional weekday (tightening, #597)", async () => {
+    // `typeof day === "number"` accepted 2.5, a value getDay() can never
+    // equal, so the schedule silently matched no day at all.
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [{ days: [2.5], slots: [] }], prices: { hp: 1, hc: 1 } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("400s a non-string slot bound (tightening, #597)", async () => {
+    // `!slot.start` accepted any truthy value, so `5`, `true`, `{}` and `[]`
+    // all reached the classifier as a time of day.
+    app = await buildApp({});
+    for (const start of [5, true, {}, []]) {
+      const res = await app.inject({
+        method: "PUT",
+        url: URL,
+        payload: {
+          schedules: [{ days: [1], slots: [{ start, end: "06:00", tariff: "hc" }] }],
+          prices: { hp: 1, hc: 1 },
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  it("400s an infinite price that used to be silently stored as null", async () => {
+    // JSON.stringify(Infinity) is "null", so an overflowing literal was
+    // accepted and written as `"hp": null` into energy.tariff, poisoning every
+    // cost computation until someone happened to re-save the form. ajv's
+    // `number` is finite. Sent as raw JSON because the literal cannot be
+    // written in TypeScript source without losing precision.
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      headers: { "content-type": "application/json" },
+      body: '{"schedules":[],"prices":{"hp":1e999,"hc":0.2}}',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toHaveLength(0);
+  });
+
+  it("400s a null slot entry that used to crash the handler", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [{ days: [1], slots: [null] }], prices: { hp: 1, hc: 1 } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("400s a null schedule entry that used to crash the handler", async () => {
+    // `schedule.days` on null threw, so this answered 500.
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [null], prices: { hp: 1, hc: 1 } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("still ignores unknown fields, as it always did", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [], prices: { hp: 1, hc: 1, extra: 9 }, extra: "ignored" },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  for (const [name, payload] of rejects) {
+    it(`400s on ${name}`, async () => {
+      app = await buildApp({});
+      const res = await app.inject({ method: "PUT", url: URL, payload: payload as never });
+      expect(res.statusCode).toBe(400);
+      const body = res.json() as Record<string, unknown>;
+      // The `{ error }` shape #482 exists to preserve, not Fastify's own
+      // `{ statusCode, code, error, message }` envelope.
+      expect(typeof body.error).toBe("string");
+      expect(body.statusCode).toBeUndefined();
+      expect(body.code).toBeUndefined();
+      expect(writes()).toHaveLength(0);
+    });
+  }
 });

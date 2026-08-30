@@ -359,6 +359,10 @@ Two inputs that used to be accepted now answer 400. Both were silent failures ra
 | `POST` | `/api/v1/energy/arbiter/resume/:equipmentId` | Spec 140 — lift a manual-override suspension immediately ("resume control now", FR-6). Admin only. 404 when the equipment has no active suspension.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `GET`  | `/api/v1/energy/arbiter/metrics`             | Spec 158 — daily arbiter metrics over `?from=YYYY-MM-DD&to=YYYY-MM-DD` (inclusive, defaults to the last 30 days, span clamped to the 400-day retention rather than rejected). Returns `{ from, to, home[], loads[], estimates[] }`. Per load and per local day: `grants`, `revokes`, `shortCycles` (grants revoked inside `minOnS + releaseHoldS`), `grantedS`, `pendingS`, `unmanagedS`, `suspendedS`. Per day at home level: `exportWh`, `importWh`, `waitingExportWh` (export while a load was claiming it — the arbiter's own miss), `idleClaimableExportWh` (export while a _deferrable_ load was idle — a scheduling opportunity, not a failure), `samples` (coverage — a day well below 288 is a day the instance was down). `estimates` names the fields that are derived rather than measured. Empty payload with a 200 when the arbiter never ran. Any authenticated user. |
 
+`PUT /api/v1/settings/energy/tariff` is schema-validated (issue #597). `schedules[].days` are integers 0 to 6, `schedules[].slots[]` need a non-empty `start` and `end` plus a `tariff` of `hp` or `hc`, and `prices.hp` / `prices.hc` are numbers. A malformed body answers `400 { "error": "..." }`; unknown fields are ignored. Two inputs that used to be accepted are now refused, both of them silent nonsense rather than working features: a fractional weekday, which `getDay()` can never equal, and a non-string slot bound such as `5` or `true`.
+
+The `PUT` needs no admin check of its own because it is absent from the standard write allowlist, so the global fail-closed role gate refuses a non-admin first. The `GET` beside it carries one, because that gate covers only mutating methods.
+
 ---
 
 ## History
@@ -407,6 +411,12 @@ Admin-only routes for third-party plugin management.
 | `POST` | `/api/v1/plugins/:id/uninstall`  | Uninstall a plugin.                                                                |
 | `POST` | `/api/v1/plugins/:id/enable`     | Enable a plugin (loads and starts it).                                             |
 | `POST` | `/api/v1/plugins/:id/disable`    | Disable a plugin (stops and unloads it).                                           |
+
+The plugin bodies are schema-validated (issue #597). `repo` must carry the `owner/repo` shape when **adding a personal source** and when **installing**: it is interpolated into a `api.github.com/repos/<repo>` URL and joined onto the plugin directory, so its shape is a security boundary. Removal only needs a non-empty key, since it is a lookup against what is already stored. On the two `sources` routes `repo` is trimmed before it is checked, so a paste with a trailing newline still works, and a non-string `repo` there now answers 400 where it used to crash the handler with a 500 (install already answered 400).
+
+`confirmed` and `expectedSha256`, on install and update, accept their own type or `null`, `null` meaning absent as it always did. A value of the wrong type is now refused: `"confirmed": "true"` used to install as though confirmed, because the flag was only read for truthiness, which silently defeated the confirmation step. A body that is not an object is refused on update, where it used to be destructured into nothing and update anyway.
+
+Every write here is admin-only, enforced before validation so a non-admin sending a malformed body still learns it is not allowed. `GET /api/v1/plugins/:id/oauth/callback` is the exception and carries no session at all: the OAuth provider redirects to it.
 
 !!! note "Confirmation handshakes (409)"
 `install` and `update` answer `409` when an explicit confirmation is required:

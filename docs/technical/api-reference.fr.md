@@ -284,6 +284,10 @@ Deux entrées auparavant acceptées répondent désormais 400. Les deux étaient
 | `GET`  | `/api/v1/settings/energy/tariff` | Récupère la configuration tarifaire (grilles HP/HC et prix).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `PUT`  | `/api/v1/settings/energy/tariff` | Met à jour la configuration tarifaire. Body : `{ schedules, prices }`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
+`PUT /api/v1/settings/energy/tariff` est validé par schéma (issue #597). `schedules[].days` sont des entiers de 0 à 6, `schedules[].slots[]` exigent un `start` et un `end` non vides plus un `tariff` valant `hp` ou `hc`, et `prices.hp` / `prices.hc` sont des nombres. Un body malformé répond `400 { "error": "..." }` ; les champs inconnus sont ignorés. Deux entrées auparavant acceptées sont désormais refusées, toutes deux absurdes en silence plutôt que fonctionnelles : un jour de semaine fractionnaire, que `getDay()` ne peut jamais valoir, et une borne de créneau non textuelle comme `5` ou `true`.
+
+Le `PUT` n'a pas besoin de sa propre vérification admin : il est absent de la liste blanche des écritures standard, donc la barrière de rôle globale, fail-closed, refuse un non-admin en amont. Le `GET` à côté en porte une, parce que cette barrière ne couvre que les méthodes mutantes.
+
 ---
 
 ## History
@@ -332,6 +336,12 @@ Routes admin uniquement pour la gestion des plugins tiers.
 | `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                    |
 | `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                               |
 | `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                           |
+
+Les bodies des routes plugins sont validés par schéma (issue #597). `repo` doit porter la forme `owner/repo` pour **ajouter une source personnelle** comme pour **installer** : la valeur est interpolée dans une URL `api.github.com/repos/<repo>` et jointe au répertoire des plugins, donc sa forme est une frontière de sécurité. La suppression n'a besoin que d'une clé non vide, puisqu'il s'agit d'une recherche dans ce qui est déjà stocké. Sur les deux routes `sources`, `repo` est trimé avant vérification, donc un copier-coller avec un retour à la ligne final fonctionne toujours, et un `repo` non textuel y répond désormais 400 là où il faisait planter le handler en 500 (l'installation répondait déjà 400).
+
+`confirmed` et `expectedSha256`, sur l'installation et la mise à jour, acceptent leur propre type ou `null`, `null` valant absent comme auparavant. Une valeur du mauvais type est désormais refusée : `"confirmed": "true"` installait comme si l'admin avait confirmé, parce que le drapeau n'était lu que pour sa véracité, ce qui neutralisait silencieusement l'étape de confirmation. Un body qui n'est pas un objet est refusé sur la mise à jour, là où il était déstructuré en rien et la mise à jour effectuée quand même.
+
+Toutes les écritures ici sont réservées aux admins, et la vérification s'applique avant la validation pour qu'un non-admin envoyant un body malformé apprenne d'abord qu'il n'y a pas droit. `GET /api/v1/plugins/:id/oauth/callback` fait exception et ne porte aucune session : c'est le fournisseur OAuth qui y redirige.
 
 !!! note "Poignées de confirmation (409)"
 `install` et `update` répondent `409` quand une confirmation explicite est requise :
