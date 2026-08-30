@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Cloud, Droplets, Wind } from "lucide-react";
+import { Cloud, Wind } from "lucide-react";
 import { dateLocale } from "../../lib/locale";
 import type { EquipmentWithDetails } from "../../types";
 import {
@@ -8,17 +8,22 @@ import {
   modelLabel,
   CONDITION_ICONS,
   CONDITION_COLORS,
-  CONFIDENCE_STYLES,
+  CONFIDENCE_BAR,
+  CONFIDENCE_BAR_UNKNOWN,
   type ForecastDay,
 } from "../equipments/weatherForecastUtils";
 
 /**
- * The forecast behind the dashboard tile (spec 168).
+ * The forecast behind the dashboard tile (spec 168, option C2).
  *
- * A vertical row per day, not the horizontal cards of the equipment page. The
- * sheet is a fixed-width surface on both viewports, so a horizontal scroller
- * inside it hides the last days behind a gesture nothing announces; stacking
- * puts all five on screen and lets the confidence read down a column.
+ * The same card anatomy as the equipment page, narrowed so the five days fit
+ * across a 390px sheet without a sideways scroll. The equipment page can
+ * afford the scroll; a sheet cannot, because the days you scroll past are
+ * exactly the ones the forecast is least sure about.
+ *
+ * Rain is dropped here on purpose: the tile already carries it for tomorrow,
+ * and at 68px a column has room for one metric, not two. Wind is the one that
+ * changes what you do with a shutter or an awning.
  */
 export function ForecastDetailContent({ equipment }: { equipment: EquipmentWithDetails }) {
   const { t, i18n } = useTranslation();
@@ -37,9 +42,9 @@ export function ForecastDetailContent({ equipment }: { equipment: EquipmentWithD
 
   return (
     <div>
-      <div className="flex flex-col">
+      <div className="flex items-stretch gap-1.5 sm:gap-3">
         {days.map((day) => (
-          <ForecastRow key={day.dayIndex} day={day} locale={locale} />
+          <ForecastDayColumn key={day.dayIndex} day={day} locale={locale} />
         ))}
       </div>
       {modelUsed && (
@@ -51,74 +56,96 @@ export function ForecastDetailContent({ equipment }: { equipment: EquipmentWithD
   );
 }
 
-function ForecastRow({ day, locale }: { day: ForecastDay; locale: string }) {
+function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }) {
   const { t } = useTranslation();
   const date = new Date();
   date.setDate(date.getDate() + day.dayIndex);
-  const name = date.toLocaleDateString(locale, { weekday: "long" });
-  const dayName = name.charAt(0).toUpperCase() + name.slice(1);
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const longName = capitalize(date.toLocaleDateString(locale, { weekday: "long" }));
+  const shortName = date.toLocaleDateString(locale, { weekday: "short" }).replace(/\.$/, "");
 
   const ConditionIcon = day.condition ? (CONDITION_ICONS[day.condition] ?? Cloud) : Cloud;
   const conditionColor = day.condition
     ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
     : "text-text-tertiary";
+  const confidenceLabel = day.confidence
+    ? t(`equipments.forecast.confidence.${day.confidence}`)
+    : undefined;
 
   return (
-    // A row is a grid on a phone and a single line above 640px. The five parts
-    // do not fit on one line at 390px, and letting them wrap freely left every
-    // row ragged: the pill landed wherever the previous element ended. The
-    // grid pins three columns instead, so day names line up on the left,
-    // temperatures and pills line up on the right, and rain and wind sit
-    // indented under the day they belong to.
-    <div
-      className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1 py-2.5 border-b border-border-light last:border-b-0 sm:flex sm:gap-x-3"
-    >
-      <span className={`${conditionColor} shrink-0 sm:order-2`}>
-        <ConditionIcon size={22} strokeWidth={1.5} />
+    <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5 rounded-[10px] border border-border bg-surface px-1 py-2.5 sm:px-3 sm:py-4">
+      <span className="text-[11px] sm:text-[13px] font-semibold text-text truncate max-w-full">
+        <span className="sm:hidden">{shortName}</span>
+        <span className="hidden sm:inline">{longName}</span>
       </span>
 
-      <span className="min-w-0 truncate text-[13px] font-semibold text-text sm:order-1 sm:w-[76px] sm:shrink-0">
-        {dayName}
-      </span>
-
-      <span className="justify-self-end flex items-baseline gap-1 font-mono tabular-nums shrink-0 sm:order-3 sm:justify-self-auto">
-        <span className="text-[16px] font-bold text-text">
-          {day.tempMax !== null ? `${Math.round(day.tempMax)}°` : "—"}
+      <span className={`${conditionColor} my-0.5`}>
+        <span className="block sm:hidden">
+          <ConditionIcon size={24} strokeWidth={1.5} />
         </span>
-        {day.tempMin !== null && (
-          <span className="text-[13px] text-text-tertiary">/ {Math.round(day.tempMin)}°</span>
-        )}
+        <span className="hidden sm:block">
+          <ConditionIcon size={32} strokeWidth={1.5} />
+        </span>
       </span>
 
-      <span className="col-start-2 flex items-center gap-3 min-w-0 sm:order-4 sm:col-start-auto">
-        {day.rainProb !== null && (
-          <span className="flex items-center gap-1 text-[12px] text-text-secondary font-mono tabular-nums">
-            <Droplets size={12} strokeWidth={1.5} className="text-primary shrink-0" />
-            {Math.round(day.rainProb)}%
-          </span>
-        )}
-        {day.windGusts !== null && (
-          <span className="flex items-center gap-1 text-[12px] text-text-secondary font-mono tabular-nums">
-            <Wind size={12} strokeWidth={1.5} className="text-text-tertiary shrink-0" />
-            {Math.round(day.windGusts)} km/h
-          </span>
-        )}
+      <span className="flex items-baseline gap-0.5">
+        <span className="text-[17px] sm:text-[22px] font-bold font-mono text-text tabular-nums leading-none">
+          {day.tempMax !== null ? Math.round(day.tempMax) : "—"}
+        </span>
+        <span className="text-[11px] sm:text-[13px] text-text-tertiary">°C</span>
       </span>
 
-      {/* No pill at all when the plugin cannot qualify the day. An empty or
-          grey badge would read as a verdict, and "we do not know" is not one. */}
-      {day.confidence && (
+      {day.tempMin !== null && (
+        <span className="flex items-baseline gap-0.5">
+          <span className="text-[12px] sm:text-[15px] font-medium font-mono text-text-secondary tabular-nums leading-none">
+            {Math.round(day.tempMin)}
+          </span>
+          <span className="text-[10px] sm:text-[11px] text-text-tertiary">°C</span>
+        </span>
+      )}
+
+      {day.windGusts !== null && (
+        <span className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[12px] text-text-secondary font-mono tabular-nums">
+          <Wind size={11} strokeWidth={1.5} className="text-text-tertiary shrink-0 sm:hidden" />
+          <Wind
+            size={13}
+            strokeWidth={1.5}
+            className="text-text-tertiary shrink-0 hidden sm:block"
+          />
+          {Math.round(day.windGusts)}
+          <span className="hidden sm:inline"> km/h</span>
+        </span>
+      )}
+
+      {/* The same vocabulary as the tile's dot: colour here, colour and word
+          where there is room for one. A day the plugin cannot qualify keeps
+          the neutral rule and gets no word, so an absent verdict never reads
+          as a good one. `mt-auto` keeps the rules on one line across the five
+          columns whatever else each day published. */}
+      <span
+        className={`mt-auto pt-2 w-full h-[3px] box-content rounded-full ${
+          day.confidence ? CONFIDENCE_BAR[day.confidence] : CONFIDENCE_BAR_UNKNOWN
+        }`}
+        style={{ backgroundClip: "content-box" }}
+        aria-label={confidenceLabel}
+        title={
+          day.tempMaxSpread !== null && day.tempMaxSpread > 0
+            ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
+            : undefined
+        }
+      />
+
+      {confidenceLabel && (
         <span
-          className={`justify-self-end shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold sm:order-5 sm:ml-auto ${
-            CONFIDENCE_STYLES[day.confidence]
+          className={`hidden sm:block text-[10px] font-semibold ${
+            day.confidence === "high"
+              ? "text-success"
+              : day.confidence === "medium"
+                ? "text-warning"
+                : "text-error"
           }`}
-          title={
-            day.tempMaxSpread !== null && day.tempMaxSpread > 0
-              ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
-              : undefined
-          }
         >
-          {t(`equipments.forecast.confidence.${day.confidence}`)}
+          {confidenceLabel}
         </span>
       )}
     </div>
