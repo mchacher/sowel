@@ -123,17 +123,20 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
           as a good one. `mt-auto` keeps the rules on one line across the five
           columns whatever else each day published. */}
       <span
-        className={`mt-auto pt-2 w-full h-[3px] box-content rounded-full ${
-          day.confidence ? CONFIDENCE_BAR[day.confidence] : CONFIDENCE_BAR_UNKNOWN
-        }`}
-        style={{ backgroundClip: "content-box" }}
-        aria-label={confidenceLabel}
+        className="mt-auto pt-2 w-full block"
         title={
           day.tempMaxSpread !== null && day.tempMaxSpread > 0
             ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
             : undefined
         }
-      />
+      >
+        <span
+          className={`block w-full h-[3px] rounded-full ${
+            day.confidence ? CONFIDENCE_BAR[day.confidence] : CONFIDENCE_BAR_UNKNOWN
+          }`}
+          aria-label={confidenceLabel}
+        />
+      </span>
 
       {confidenceLabel && (
         <span
