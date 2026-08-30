@@ -312,6 +312,9 @@ Two things worth knowing because they are not what a reader would guess:
 
 - A referenced equipment or zone that does not exist answers **400**, not 404. That is the status this route has always returned, and the schema conversion did not renumber it.
 - Unknown fields in the body are ignored rather than rejected.
+- `label` and `icon` accept a string or `null`; `config` is any object, and `null` clears it. A `PATCH` with no body at all is a no-op that returns the widget unchanged.
+
+Two inputs that used to be accepted now answer 400. Both were silent failures rather than working features: a non-string `label` was stored verbatim, and `PUT /order` accepted any array, so `{ "order": [1, 2] }` matched no row and answered `{ "ok": true }` having reordered nothing.
 
 ---
 

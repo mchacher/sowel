@@ -57,6 +57,11 @@ const VALID_FAMILIES = ["lights", "shutters", "heating", "sensors"] as const;
 //
 // `additionalProperties` is left at its default so unknown fields are ignored
 // exactly as they were.
+//
+// NOTE for the OpenAPI track (#481): @fastify/swagger emits 3.0.3 here, which
+// defines neither `if`/`then` nor `type: [..., "null"]` (3.0 wants
+// `nullable: true`). A codegen consumer will drop or choke on this requestBody
+// until the document moves to 3.1.
 const widgetCreateSchema = {
   type: "object",
   required: ["type"],
@@ -65,8 +70,12 @@ const widgetCreateSchema = {
     equipmentId: nonEmptyString,
     zoneId: nonEmptyString,
     family: { enum: [...VALID_FAMILIES] },
-    label: { type: "string" },
-    icon: { type: "string" },
+    // Nullable on purpose. The old code type-checked neither, and stored
+    // `label ?? null`, so an explicit null was accepted and meant "no label".
+    // Rejecting it here would be an undeclared behaviour change on a field the
+    // conversion is not about.
+    label: { type: ["string", "null"] },
+    icon: { type: ["string", "null"] },
   },
   allOf: [
     {
@@ -84,7 +93,11 @@ const widgetCreateSchema = {
 // `null` means "clear", a distinction the handler reads and the schema keeps.
 // `config` is an opaque object the route only stringifies.
 const widgetPatchSchema = {
-  type: "object",
+  // `["object", "null"]`, not `"object"`: a PATCH with no body at all used to
+  // answer 200 with the widget unchanged, and a client polling a widget's
+  // current state with a bare `curl -X PATCH` would otherwise start getting a
+  // 400 about a body it never sent.
+  type: ["object", "null"],
   properties: {
     label: { type: ["string", "null"] },
     icon: { type: ["string", "null"] },
@@ -109,7 +122,15 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
   // body. Bounded to the widget paths and to non-GET methods so it can neither
   // over-match a sibling route nor lock out the read.
   app.addHook("onRequest", async (request, reply) => {
-    if (request.method === "GET") return;
+    // HEAD as well as GET: Fastify auto-exposes a HEAD route for every GET, so
+    // gating it would break a cheap liveness probe for a standard user that
+    // could read the list a moment earlier.
+    //
+    // Exempting a METHOD makes this guard fail-open where the global one
+    // (isMutationDeniedForStandard) is fail-closed. It is a decision about
+    // THIS route, whose GET is deliberately open to everyone, not a template:
+    // a future admin-only GET under this prefix would need naming here.
+    if (request.method === "GET" || request.method === "HEAD") return;
     const path = request.url.split("?")[0];
     if (path === "/api/v1/dashboard/widgets" || path.startsWith("/api/v1/dashboard/widgets/")) {
       requireAdmin(request, reply);
@@ -202,9 +223,18 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
       },
     },
     async (request, reply) => {
+      // Re-read rather than trust the hook's row: an event-loop turn separates
+      // them, every DB call here is synchronous, and a concurrent DELETE in
+      // that window would otherwise crash on an undefined row. Two admin tabs,
+      // one deleting while the other renames, is all it takes. The hook is
+      // still what gives 404 its precedence over the schema 400; this is the
+      // race guard.
       const existing = db
         .prepare("SELECT * FROM dashboard_widgets WHERE id = ?")
-        .get(request.params.id) as WidgetRow;
+        .get(request.params.id) as WidgetRow | undefined;
+      if (!existing) {
+        return reply.code(404).send({ error: "Widget not found" });
+      }
 
       const { label, icon, config } = request.body ?? {};
       const updates: string[] = [];
@@ -232,7 +262,10 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
 
       const row = db
         .prepare("SELECT * FROM dashboard_widgets WHERE id = ?")
-        .get(request.params.id) as WidgetRow;
+        .get(request.params.id) as WidgetRow | undefined;
+      if (!row) {
+        return reply.code(404).send({ error: "Widget not found" });
+      }
       return reply.send(rowToWidget(row));
     },
   );

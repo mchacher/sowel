@@ -45,6 +45,20 @@ async function buildApp(opts: { authed?: boolean; role?: UserRole } = {}) {
 
 const WIDGETS = "/api/v1/dashboard/widgets";
 
+/**
+ * The 400 contract #482 exists to preserve: `{ error: <reason> }` and nothing
+ * else. Asserting only `typeof error === "string"` would also accept Fastify's
+ * default envelope `{ statusCode, code, error: "Bad Request", message }`,
+ * which is a different body a client would have to parse differently.
+ */
+function expectAppErrorShape(body: unknown): void {
+  const b = body as Record<string, unknown>;
+  expect(typeof b.error).toBe("string");
+  expect(b.statusCode).toBeUndefined();
+  expect(b.code).toBeUndefined();
+  expect(b.message).toBeUndefined();
+}
+
 describe("dashboard widget routes", () => {
   let app: Awaited<ReturnType<typeof buildApp>> | null = null;
 
@@ -121,9 +135,36 @@ describe("dashboard widget routes", () => {
         app = await buildApp();
         const res = await app.inject({ method: "POST", url: WIDGETS, payload: payload as never });
         expect(res.statusCode).toBe(400);
-        expect(typeof (res.json() as { error: unknown }).error).toBe("string");
+        expectAppErrorShape(res.json());
       });
     }
+
+    it("still accepts a null label or icon, as it always did", async () => {
+      // The old code never type-checked these and stored `label ?? null`, so an
+      // explicit null meant "no label". Rejecting it would have been an
+      // undeclared behaviour change on a field this conversion is not about.
+      app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "equipment", equipmentId: "e1", label: null, icon: null },
+      });
+      expect(res.statusCode).toBe(201);
+      expect((res.json() as { label?: string }).label).toBeUndefined();
+    });
+
+    it("still ignores a family sent on an equipment widget", async () => {
+      // `if`/`then` only ADDS requirements; it never forbids the other branch's
+      // fields, and the handler stores null for them. Same as before.
+      app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "equipment", equipmentId: "e1", family: "lights" },
+      });
+      expect(res.statusCode).toBe(201);
+      expect((res.json() as { family?: string }).family).toBeUndefined();
+    });
 
     it("still ignores unknown fields, as it always did", async () => {
       // additionalProperties is left at its default on purpose: rejecting them
@@ -207,6 +248,34 @@ describe("dashboard widget routes", () => {
       expect(res.statusCode).toBe(404);
     });
 
+    it("returns the widget unchanged when no body is sent at all", async () => {
+      // Distinct from the `{}` case above, and the one a schema most easily
+      // breaks: a script polling a widget's state with a bare `curl -X PATCH`
+      // would otherwise get a 400 about a body it never sent.
+      app = await buildApp();
+      const id = await createWidget();
+      const res = await app.inject({ method: "PATCH", url: `${WIDGETS}/${id}` });
+      expect(res.statusCode).toBe(200);
+      expect((res.json() as { id: string }).id).toBe(id);
+    });
+
+    it("still accepts any object as config, and still clears it on null", async () => {
+      app = await buildApp();
+      const id = await createWidget();
+      await app.inject({
+        method: "PATCH",
+        url: `${WIDGETS}/${id}`,
+        payload: { config: { anything: [1, 2] } },
+      });
+      const cleared = await app.inject({
+        method: "PATCH",
+        url: `${WIDGETS}/${id}`,
+        payload: { config: null },
+      });
+      expect(cleared.statusCode).toBe(200);
+      expect((cleared.json() as { config?: unknown }).config).toBeUndefined();
+    });
+
     it("404s an unknown id BEFORE validating the body", async () => {
       // Existence has to outrank shape, or a client chasing a 400 spends its
       // time fixing a body for a widget that is not there.
@@ -240,7 +309,7 @@ describe("dashboard widget routes", () => {
         payload: { label: 42 },
       });
       expect(res.statusCode).toBe(400);
-      expect(typeof (res.json() as { error: unknown }).error).toBe("string");
+      expectAppErrorShape(res.json());
     });
   });
 
@@ -299,7 +368,7 @@ describe("dashboard widget routes", () => {
       for (const payload of [{}, { order: "a,b" }, { order: 3 }]) {
         const res = await app.inject({ method: "PUT", url: `${WIDGETS}/order`, payload });
         expect(res.statusCode).toBe(400);
-        expect(typeof (res.json() as { error: unknown }).error).toBe("string");
+        expectAppErrorShape(res.json());
       }
     });
 
@@ -330,6 +399,33 @@ describe("dashboard widget routes", () => {
       const res = await app.inject({ method: "GET", url: WIDGETS });
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual([]);
+    });
+
+    it("answers HEAD to a non-admin too", async () => {
+      // Fastify auto-exposes HEAD for every GET. A hook that exempts only GET
+      // turns a cheap liveness probe into a 403 for a user who can read the
+      // list a moment earlier.
+      app = await buildApp({ role: "standard" });
+      const res = await app.inject({ method: "HEAD", url: WIDGETS });
+      expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe("no auth context at all", () => {
+    it("403s a write when the request carries no identity", async () => {
+      // requireAdmin has two halves; only the wrong-role half was exercised.
+      app = await buildApp({ authed: false });
+      const res = await app.inject({
+        method: "POST",
+        url: WIDGETS,
+        payload: { type: "equipment", equipmentId: "e1" },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("still serves the read", async () => {
+      app = await buildApp({ authed: false });
+      expect((await app.inject({ method: "GET", url: WIDGETS })).statusCode).toBe(200);
     });
   });
 });

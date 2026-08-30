@@ -240,6 +240,9 @@ Deux points qui ne vont pas de soi :
 
 - Un équipement ou une zone référencés qui n'existent pas répondent **400**, pas 404. C'est le statut que cette route a toujours renvoyé, et la conversion ne l'a pas renuméroté.
 - Les champs inconnus dans le body sont ignorés, pas rejetés.
+- `label` et `icon` acceptent une chaîne ou `null` ; `config` est un objet quelconque, et `null` l'efface. Un `PATCH` sans body du tout est un no-op qui renvoie le widget inchangé.
+
+Deux entrées auparavant acceptées répondent désormais 400. Les deux étaient des échecs silencieux plutôt que des fonctionnalités : un `label` non textuel était stocké tel quel, et `PUT /order` acceptait n'importe quel tableau, si bien que `{ "order": [1, 2] }` ne correspondait à aucune ligne et répondait `{ "ok": true }` sans rien avoir réordonné.
 
 ---
 
