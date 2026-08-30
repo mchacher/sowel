@@ -18,8 +18,12 @@ export const STALENESS_TICK_MS = 30_000;
 
 /**
  * A wall clock that advances on its own, for surfaces that compare reading
- * timestamps against "now". One tick rate, shared, so two cards on the same
- * page cannot disagree about how old the same reading is.
+ * timestamps against "now".
+ *
+ * Each call site owns its interval, so two cards tick up to 30 s apart; what
+ * is shared is the rate, and with it the rule for how late a surface may be to
+ * notice. They watch disjoint equipment, so no two of them describe the same
+ * reading at once.
  */
 export function useStalenessClock(): number {
   const [clock, setClock] = useState(() => Date.now());

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  DataBindingWithValue,
-  EquipmentStatus,
-  EquipmentWithDetails,
-} from "../../types";
+import type { DataBindingWithValue, EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { detectLiveStaleness } from "./live-staleness";
 import { SUBMETER_FRESHNESS_MS } from "../../../../src/shared/reading-freshness";
 
@@ -78,14 +74,14 @@ const detect = (grid: EquipmentWithDetails[], solar: EquipmentWithDetails[]) =>
   detectLiveStaleness(grid, solar, NOW);
 
 describe("detectLiveStaleness", () => {
-  it("returns null when there is no meter at all", () => {
-    expect(detect([], [])).toBeNull();
+  it("returns no entry when there is no meter at all", () => {
+    expect(detect([], [])).toEqual([]);
   });
 
-  it("returns null when both readings are current", () => {
+  it("returns no entry when both readings are current", () => {
     const grid = makeMeter("grid", "main_energy_meter");
     const solar = makeMeter("solar", "energy_production_meter");
-    expect(detect([grid], [solar])).toBeNull();
+    expect(detect([grid], [solar])).toEqual([]);
   });
 
   it("names the production meter when only its reading is frozen (#854)", () => {
@@ -95,11 +91,9 @@ describe("detectLiveStaleness", () => {
       readingAgeMs: FROZEN_MS,
       staleBindings: ["power"],
     });
-    expect(detect([grid], [solar])).toEqual({
-      mode: "stale",
-      sources: ["solar"],
-      since: ago(FROZEN_MS),
-    });
+    expect(detect([grid], [solar])).toEqual([
+      { source: "solar", mode: "stale", since: ago(FROZEN_MS) },
+    ]);
   });
 
   it("names the grid meter when only its reading is frozen", () => {
@@ -109,14 +103,12 @@ describe("detectLiveStaleness", () => {
       staleBindings: ["power"],
     });
     const solar = makeMeter("solar", "energy_production_meter");
-    expect(detect([grid], [solar])).toEqual({
-      mode: "stale",
-      sources: ["grid"],
-      since: ago(FROZEN_MS),
-    });
+    expect(detect([grid], [solar])).toEqual([
+      { source: "grid", mode: "stale", since: ago(FROZEN_MS) },
+    ]);
   });
 
-  it("lists both sources, grid first, and dates the banner from the oldest reading", () => {
+  it("dates each source from its own reading, grid first", () => {
     const grid = makeMeter("grid", "main_energy_meter", {
       status: "degraded",
       readingAgeMs: FROZEN_MS * 3,
@@ -127,11 +119,10 @@ describe("detectLiveStaleness", () => {
       readingAgeMs: FROZEN_MS,
       staleBindings: ["power"],
     });
-    expect(detect([grid], [solar])).toEqual({
-      mode: "stale",
-      sources: ["grid", "solar"],
-      since: ago(FROZEN_MS * 3),
-    });
+    expect(detect([grid], [solar])).toEqual([
+      { source: "grid", mode: "stale", since: ago(FROZEN_MS * 3) },
+      { source: "solar", mode: "stale", since: ago(FROZEN_MS) },
+    ]);
   });
 
   it("does not flag a meter degraded only by a binding this page never draws", () => {
@@ -152,82 +143,94 @@ describe("detectLiveStaleness", () => {
       ],
     });
     const grid = makeMeter("grid", "main_energy_meter");
-    expect(detect([grid], [solar])).toBeNull();
+    expect(detect([grid], [solar])).toEqual([]);
   });
 
-  it("reports offline, with its own wording, when every flagged meter is disconnected", () => {
-    const offlineSince = ago(20 * 60_000);
-    const grid = makeMeter("grid", "main_energy_meter", { status: "offline", offlineSince });
-    const solar = makeMeter("solar", "energy_production_meter", { status: "offline", offlineSince });
-    expect(detect([grid], [solar])).toEqual({
-      mode: "offline",
-      sources: ["grid", "solar"],
-      since: offlineSince,
-    });
-  });
-
-  it("prefers the offline meter's disconnection time over its last reading", () => {
+  it("reports a disconnected meter as offline, dated from the disconnection", () => {
     const offlineSince = ago(20 * 60_000);
     const grid = makeMeter("grid", "main_energy_meter", {
       status: "offline",
       offlineSince,
       readingAgeMs: FRESH_MS,
     });
-    expect(detect([grid], [])).toEqual({
-      mode: "offline",
-      sources: ["grid"],
-      since: offlineSince,
-    });
+    expect(detect([grid], [])).toEqual([{ source: "grid", mode: "offline", since: offlineSince }]);
   });
 
-  it("falls back to the stale wording when one meter is offline and another only late", () => {
-    const grid = makeMeter("grid", "main_energy_meter", {
-      status: "offline",
-      offlineSince: ago(20 * 60_000),
-    });
+  it("keeps an offline meter and a merely late one apart, each with its own age", () => {
+    // Folded into one sentence, the grid's 20 minutes would be lent to a
+    // production figure that is 3 minutes old (review of the first draft).
+    const offlineSince = ago(20 * 60_000);
+    const grid = makeMeter("grid", "main_energy_meter", { status: "offline", offlineSince });
     const solar = makeMeter("solar", "energy_production_meter", {
       status: "degraded",
       readingAgeMs: FROZEN_MS,
       staleBindings: ["power"],
     });
-    const result = detect([grid], [solar]);
-    expect(result?.mode).toBe("stale");
-    expect(result?.sources).toEqual(["grid", "solar"]);
+    expect(detect([grid], [solar])).toEqual([
+      { source: "grid", mode: "offline", since: offlineSince },
+      { source: "solar", mode: "stale", since: ago(FROZEN_MS) },
+    ]);
   });
 
-  it("ignores a meter that has no power binding to freeze", () => {
+  it("ignores a meter that has no power binding to freeze, offline or not", () => {
     const grid = makeMeter("grid", "main_energy_meter", { noPower: true, status: "degraded" });
-    expect(detect([grid], [])).toBeNull();
+    const dead = makeMeter("dead", "main_energy_meter", { noPower: true, status: "offline" });
+    expect(detect([grid, dead], [])).toEqual([]);
   });
 
-  it("flags the source when any of several meters on that side is frozen", () => {
+  it("keeps the worst meter when several feed one side: offline over late", () => {
+    const offlineSince = ago(9 * 60_000);
+    const late = makeMeter("grid-a", "main_energy_meter", {
+      status: "degraded",
+      readingAgeMs: FROZEN_MS,
+      staleBindings: ["power"],
+    });
+    const dead = makeMeter("grid-b", "main_energy_meter", { status: "offline", offlineSince });
+    expect(detect([late, dead], [])).toEqual([
+      { source: "grid", mode: "offline", since: offlineSince },
+    ]);
+  });
+
+  it("keeps the oldest reading when several meters on one side are late", () => {
+    const recent = makeMeter("grid-a", "main_energy_meter", {
+      status: "degraded",
+      readingAgeMs: FROZEN_MS,
+      staleBindings: ["power"],
+    });
+    const older = makeMeter("grid-b", "main_energy_meter", {
+      status: "degraded",
+      readingAgeMs: FROZEN_MS * 4,
+      staleBindings: ["power"],
+    });
+    expect(detect([recent, older], [])).toEqual([
+      { source: "grid", mode: "stale", since: ago(FROZEN_MS * 4) },
+    ]);
+  });
+
+  it("flags the source when one of several meters on that side is frozen", () => {
     const a = makeMeter("grid-a", "main_energy_meter");
     const b = makeMeter("grid-b", "main_energy_meter", {
       status: "degraded",
       readingAgeMs: FROZEN_MS,
       staleBindings: ["power"],
     });
-    expect(detect([a, b], [])).toEqual({
-      mode: "stale",
-      sources: ["grid"],
-      since: ago(FROZEN_MS),
-    });
+    expect(detect([a, b], [])).toEqual([{ source: "grid", mode: "stale", since: ago(FROZEN_MS) }]);
   });
 
   it("compares SQLite-flavoured timestamps by instant, not by string order", () => {
     // The API emits both `2026-08-30T15:49:01Z` and the SQLite-flavoured
     // `2026-08-30 15:49:01Z`. A lexicographic `<` sorts the space before the
-    // `T` whatever the instants are, so here it would pick the NEWER reading.
-    const grid = makeMeter("grid", "main_energy_meter", {
+    // `T` whatever the instants are, so here it would keep the NEWER reading.
+    const older = makeMeter("grid-a", "main_energy_meter", {
       status: "degraded",
-      readingAgeMs: 20 * 60_000, // ISO, 14:57, the genuinely older one
+      readingAgeMs: 20 * 60_000, // ISO, 14:57
       staleBindings: ["power"],
     });
-    const solar = makeMeter("solar", "energy_production_meter", {
+    const newer = makeMeter("grid-b", "main_energy_meter", {
       status: "degraded",
       staleBindings: ["power"],
     });
-    solar.dataBindings[0].lastUpdated = "2026-08-30 15:14:00Z"; // 3 min old
-    expect(detect([grid], [solar])?.since).toBe(ago(20 * 60_000));
+    newer.dataBindings[0].lastUpdated = "2026-08-30 15:14:00Z"; // 3 min old
+    expect(detect([older, newer], [])[0].since).toBe(ago(20 * 60_000));
   });
 });

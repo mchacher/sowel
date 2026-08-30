@@ -28,6 +28,8 @@ function meter(
     ageMs?: number;
     status?: EquipmentWithDetails["status"];
     offlineSince?: string;
+    /** Force `lastUpdated`, including to null: a meter that never reported. */
+    lastUpdated?: string | null;
     extra?: Partial<DataBindingWithValue>[];
   } = {},
 ): EquipmentWithDetails {
@@ -48,7 +50,7 @@ function meter(
         category: "power",
         type: "number",
         value: power,
-        lastUpdated: ago(opts.ageMs ?? 20_000),
+        lastUpdated: opts.lastUpdated !== undefined ? opts.lastUpdated : ago(opts.ageMs ?? 20_000),
         stale: false,
       },
       ...(opts.extra ?? []).map((b, i) => ({
@@ -66,7 +68,8 @@ function seed(equipments: EquipmentWithDetails[]): void {
   useEquipments.setState({ equipments, fetchEquipments: async () => {} } as never);
 }
 
-const banner = () => screen.queryByRole("status");
+const banners = () => screen.queryAllByRole("status");
+const bannerText = () => banners().map((b) => b.textContent ?? "");
 
 describe("Live energy staleness banner (#854)", () => {
   beforeEach(() => {
@@ -84,10 +87,7 @@ describe("Live energy staleness banner (#854)", () => {
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    const text = banner()?.textContent ?? "";
-    expect(text).toMatch(/Production/);
-    expect(text).toMatch(/frozen for 3 min/);
-    expect(text).not.toMatch(/Grid/);
+    expect(bannerText()).toEqual(["Production: reading frozen for 3 min"]);
   });
 
   it("names the grid meter when it is the frozen one", () => {
@@ -97,10 +97,7 @@ describe("Live energy staleness banner (#854)", () => {
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    const text = banner()?.textContent ?? "";
-    expect(text).toMatch(/Grid/);
-    expect(text).toMatch(/frozen for 5 min/);
-    expect(text).not.toMatch(/Production/);
+    expect(bannerText()).toEqual(["Grid: reading frozen for 5 min"]);
   });
 
   it("says nothing when both readings are current", () => {
@@ -110,7 +107,7 @@ describe("Live energy staleness banner (#854)", () => {
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    expect(banner()).toBeNull();
+    expect(banners()).toEqual([]);
   });
 
   it("stays quiet for a meter degraded only by a reading this page never draws", () => {
@@ -132,7 +129,7 @@ describe("Live energy staleness banner (#854)", () => {
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    expect(banner()).toBeNull();
+    expect(banners()).toEqual([]);
   });
 
   it("keeps its own wording for a disconnected meter", () => {
@@ -144,9 +141,37 @@ describe("Live energy staleness banner (#854)", () => {
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    const text = banner()?.textContent ?? "";
-    expect(text).toMatch(/Grid/);
-    expect(text).toMatch(/no connection for 20 min/);
+    expect(bannerText()).toEqual(["Grid: no connection for 20 min"]);
+  });
+
+  it("gives a disconnected meter and a late one one line each, with their own ages", () => {
+    // Folded into a single sentence, the grid's 20 minutes was lent to a
+    // production figure 3 minutes old (review of the first draft).
+    seed([
+      meter("Grid", "main_energy_meter", 0, {
+        status: "offline",
+        offlineSince: ago(20 * 60_000),
+      }),
+      meter("Solar", "energy_production_meter", 3000, { ageMs: 3 * 60_000 }),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+
+    expect(bannerText()).toEqual([
+      "Grid: no connection for 20 min",
+      "Production: reading frozen for 3 min",
+    ]);
+  });
+
+  it("drops the duration rather than printing a blank one", () => {
+    // An offline meter Sowel has never had a reading from: there is no
+    // instant to count from, and "no connection for " is not a sentence.
+    seed([
+      meter("Grid", "main_energy_meter", 0, { status: "offline", lastUpdated: null }),
+      meter("Solar", "energy_production_meter", 3000),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+
+    expect(bannerText()).toEqual(["Grid: no connection"]);
   });
 
   it("ages a reading out on its own clock, with no event to re-render on", () => {
@@ -157,14 +182,15 @@ describe("Live energy staleness banner (#854)", () => {
       meter("Solar", "energy_production_meter", 3000),
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    expect(banner()).toBeNull();
+    expect(banners()).toEqual([]);
 
     act(() => {
       vi.advanceTimersByTime(4 * 60_000);
     });
 
-    const text = banner()?.textContent ?? "";
-    expect(text).toMatch(/Grid, Production/);
-    expect(text).toMatch(/frozen for 4 min/);
+    expect(bannerText()).toEqual([
+      "Grid: reading frozen for 4 min",
+      "Production: reading frozen for 4 min",
+    ]);
   });
 });

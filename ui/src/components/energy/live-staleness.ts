@@ -15,9 +15,14 @@
  *
  * So the question is asked of the readings the diagram actually draws, through
  * `classifyPowerReading` — the classifier the backend feed and the submeter
- * breakdown already share (#832) — and the answer carries which source is
- * affected, because "something here is frozen" is not a thing a reader can act
+ * breakdown already share (#832) — and the answer is one entry per affected
+ * source, because "something here is frozen" is not a thing a reader can act
  * on.
+ *
+ * One entry per source rather than one verdict for the page: a grid meter off
+ * the network for 20 minutes beside a production reading 3 minutes old is two
+ * different sentences, and folding them into one lends the older age to the
+ * fresher figure (review of the first draft).
  */
 
 import { classifyPowerReading, parseReadingTime } from "../../../../src/shared/reading-freshness";
@@ -26,67 +31,77 @@ import type { EquipmentWithDetails } from "../../types";
 /** Which side of the diagram a flagged reading belongs to. */
 export type LiveSource = "grid" | "solar";
 
-export interface LiveStaleness {
-  /** `offline` only when every flagged meter is disconnected. */
-  mode: "stale" | "offline";
-  /** Affected sources, in diagram order (grid first). Never empty. */
-  sources: LiveSource[];
-  /** Oldest offending timestamp across the flagged meters, for "for {when}". */
-  since: string | null;
-}
-
-interface Flag {
+export interface LiveStalenessEntry {
   source: LiveSource;
-  offline: boolean;
+  /** `offline` when the meter's device dropped, `stale` when it is merely late. */
+  mode: "stale" | "offline";
+  /**
+   * Timestamp this entry dates from. Null only for a meter offline since we
+   * never knew when — the caller then drops the duration from the sentence.
+   */
   since: string | null;
 }
 
 /**
- * Flag one meter, or return null when its reading may be presented as current.
+ * Judge one meter, or return null when its reading may be presented as current.
  *
- * A `missing` verdict is not a flag: an equipment with no `power` binding
- * never contributed a figure to the diagram in the first place (`sumPower`
- * skips it), so there is nothing frozen to warn about.
+ * An equipment with no `power` binding is never judged at all: it contributes
+ * no figure to the diagram in the first place (`sumPower` skips it), so there
+ * is nothing frozen to warn about. Asking `classifyPowerReading` would answer
+ * `offline` for it whenever its device is down, which is true, useless here,
+ * and dated from nothing (review of the first draft).
  */
-function flagMeter(eq: EquipmentWithDetails, source: LiveSource, now: number): Flag | null {
+function judgeMeter(
+  eq: EquipmentWithDetails,
+  source: LiveSource,
+  now: number,
+): LiveStalenessEntry | null {
   const binding = eq.dataBindings.find((b) => b.alias === "power");
+  if (!binding) return null;
   const verdict = classifyPowerReading({
     status: eq.status,
-    value: binding?.value,
-    lastUpdated: binding?.lastUpdated,
+    value: binding.value,
+    lastUpdated: binding.lastUpdated,
     equipmentType: eq.type,
     now,
   });
   if (verdict === "offline") {
     // A disconnected meter dates from when its device dropped, which is older
     // than its last reading and is what the reader wants to hear about.
-    return { source, offline: true, since: eq.statusReason?.offlineSince ?? binding?.lastUpdated ?? null };
+    return {
+      source,
+      mode: "offline",
+      since: eq.statusReason?.offlineSince ?? binding.lastUpdated ?? null,
+    };
   }
   if (verdict === "stale") {
-    return { source, offline: false, since: binding?.lastUpdated ?? null };
+    // `stale` is only ever returned for a timestamp that parsed, so this one
+    // is never null.
+    return { source, mode: "stale", since: binding.lastUpdated };
   }
   return null;
 }
 
-/** The oldest of a set of timestamps, parsed rather than compared as strings:
- *  the API emits both `2026-08-30T15:49:01Z` and the SQLite-flavoured
- *  `2026-08-30 15:49:01Z`, and a lexicographic `<` sorts the space before the
- *  `T` regardless of the instants they carry. */
-function oldest(values: (string | null)[]): string | null {
-  let best: string | null = null;
-  let bestMs = Number.POSITIVE_INFINITY;
-  for (const value of values) {
-    const ms = parseReadingTime(value);
-    if (ms === null || ms >= bestMs) continue;
-    best = value;
-    bestMs = ms;
-  }
-  return best;
+/**
+ * The entry to keep when several meters feed one side of the diagram.
+ *
+ * Offline outranks stale, the same precedence `classifyPowerReading` applies
+ * within one meter: a dead radio is the more specific fact, and describing it
+ * as a late reading sends the reader looking at a reporting interval instead.
+ * Within one mode, the oldest wins.
+ */
+function worse(a: LiveStalenessEntry, b: LiveStalenessEntry): LiveStalenessEntry {
+  if (a.mode !== b.mode) return a.mode === "offline" ? a : b;
+  const aMs = parseReadingTime(a.since);
+  const bMs = parseReadingTime(b.since);
+  if (aMs === null) return b;
+  if (bMs === null) return a;
+  return aMs <= bMs ? a : b;
 }
 
 /**
- * Returns null when every reading the diagram draws is current — the caller
- * renders no banner.
+ * One entry per affected source, in diagram order (grid first). Empty when
+ * every reading the diagram draws is current — the caller renders no banner.
  *
  * @param gridEqs  Equipments of type `main_energy_meter` feeding the grid tile.
  * @param solarEqs Equipments of type `energy_production_meter` feeding the
@@ -97,25 +112,18 @@ export function detectLiveStaleness(
   gridEqs: EquipmentWithDetails[],
   solarEqs: EquipmentWithDetails[],
   now: number = Date.now(),
-): LiveStaleness | null {
-  const flags: Flag[] = [];
-  for (const eq of gridEqs) {
-    const flag = flagMeter(eq, "grid", now);
-    if (flag) flags.push(flag);
+): LiveStalenessEntry[] {
+  const entries: LiveStalenessEntry[] = [];
+  for (const [source, equipments] of [
+    ["grid", gridEqs],
+    ["solar", solarEqs],
+  ] as const) {
+    let worst: LiveStalenessEntry | null = null;
+    for (const eq of equipments) {
+      const entry = judgeMeter(eq, source, now);
+      if (entry) worst = worst === null ? entry : worse(worst, entry);
+    }
+    if (worst) entries.push(worst);
   }
-  for (const eq of solarEqs) {
-    const flag = flagMeter(eq, "solar", now);
-    if (flag) flags.push(flag);
-  }
-  if (flags.length === 0) return null;
-
-  // Offline wording is kept for the case where nothing is merely late: a
-  // disconnected meter and a frozen one side by side is a page whose readings
-  // are all frozen, and the softer sentence is the true one for both.
-  const mode = flags.every((f) => f.offline) ? "offline" : "stale";
-  const sources: LiveSource[] = [];
-  for (const source of ["grid", "solar"] as const) {
-    if (flags.some((f) => f.source === source)) sources.push(source);
-  }
-  return { mode, sources, since: oldest(flags.map((f) => f.since)) };
+  return entries;
 }
