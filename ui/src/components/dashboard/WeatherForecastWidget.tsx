@@ -70,7 +70,7 @@ export function WeatherForecastWidget({
       {/* Zone 2: Content — vertical on mobile, horizontal on desktop. The
           confidence rides with it rather than being pushed to the very bottom
           of a 240px card, where it read as detached from the day it qualifies. */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 sm:gap-3">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 sm:gap-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4">
           {/* Icon — 36px mobile, 72px desktop (wrapped in div for proper hide/show) */}
           <div className={`${conditionColor} flex-shrink-0`}>
