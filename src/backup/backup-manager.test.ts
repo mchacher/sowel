@@ -470,6 +470,67 @@ describe("BackupManager", () => {
       );
       expect(existsSync(resolve(tmpDir, "plugins", "x", "config.json"))).toBe(true);
     });
+
+    it("refuses an entry with no extension at all", async () => {
+      // Same short-circuit, same hole: `data/plain` used to land while
+      // `data/plain.sh` was refused. The whitelist now means what it says.
+      const res = await manager.restoreFromBuffer(
+        buildZipWith([{ name: "data/plain", data: Buffer.from("x") }]),
+      );
+      expect(existsSync(resolve(tmpDir, "plain"))).toBe(false);
+      expect(res.filesSkipped).toBe(1);
+    });
+
+    it("counts every refusal so a partial restore is not silent", async () => {
+      const res = await manager.restoreFromBuffer(
+        buildZipWith([
+          { name: "data/.env", data: Buffer.from("x") },
+          { name: "data/evil.so", data: Buffer.from("x") },
+          { name: "data/keep.json", data: Buffer.from("{}") },
+        ]),
+      );
+      expect(res.filesRestored).toBe(1);
+      expect(res.filesSkipped).toBe(2);
+    });
+  });
+
+  // ── #829 review — the export must not archive what the restore refuses ──
+  //
+  // Spec 089 was accepted on the note that "no legitimate backup should be
+  // rejected: we control the export format". Tightening the restore without
+  // tightening the export made that false, and silently: Sowel's own
+  // shadow-deploy script writes data/.shadow-target, which used to round-trip.
+  describe("exportToFile — the export is held to the restore's whitelist", () => {
+    it("leaves out a file the restore would refuse, and says which", async () => {
+      writeFileSync(resolve(tmpDir, "keep.json"), "{}");
+      writeFileSync(resolve(tmpDir, ".shadow-target"), "prod");
+      writeFileSync(resolve(tmpDir, "sowel.db.bak.1777715864"), "stale");
+
+      const result = await manager.exportToFile("scan.zip");
+      const names = new AdmZip(result.path).getEntries().map((e) => e.entryName);
+
+      expect(names).toContain("data/keep.json");
+      expect(names).not.toContain("data/.shadow-target");
+      expect(names).not.toContain("data/sowel.db.bak.1777715864");
+    });
+
+    it("round-trips everything it did archive", async () => {
+      // The property that matters: whatever comes out of an export goes back
+      // in. Before this, an archive could contain entries its own restore
+      // dropped with nothing but a log line.
+      writeFileSync(resolve(tmpDir, ".jwt-secret"), "s3cr3t");
+      writeFileSync(resolve(tmpDir, "tokens.json"), "{}");
+      const result = await manager.exportToFile("roundtrip.zip");
+      const archive = new AdmZip(result.path);
+
+      const res = await manager.restoreFromBuffer(archive.toBuffer());
+
+      expect(res.filesSkipped).toBe(0);
+      const archived = archive
+        .getEntries()
+        .filter((e) => e.entryName.startsWith("data/") && !e.isDirectory).length;
+      expect(res.filesRestored).toBe(archived);
+    });
   });
 
   // ── #790 — the restore must not hand this deployment a foreign identity ──
@@ -641,6 +702,9 @@ describe("dataFileExtension (#829)", () => {
     // exactly that until this fix.
     for (const ext of ALLOWED_RESTORE_EXTENSIONS) {
       expect(dataFileExtension("file" + ext).toLowerCase()).toBe(ext);
+      // Bare, with no prefix: this is the leading-dot shape the whole bug is
+      // about, and without it the assertion above passes under extname() too.
+      expect(dataFileExtension(ext).toLowerCase()).toBe(ext);
     }
   });
 });

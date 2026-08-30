@@ -77,6 +77,8 @@ export async function restoreLocalBackup(filename: string): Promise<{
   restoredAt: string;
   influxPointsRestored: number;
   filesRestored: number;
+  /** Entries the restore refused: unlisted extension, symlink, path escape. */
+  filesSkipped: number;
   restartRequired: boolean;
 }> {
   return fetchJSON(`${API_BASE}/backup/restore-local`, {

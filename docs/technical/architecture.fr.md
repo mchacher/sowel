@@ -355,21 +355,23 @@ Les backups capturent l'état complet du système dans une seule archive ZIP et 
 
 Un ZIP de backup contient :
 
-| Entrée                    | Contenu                                                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sowel-backup.json`       | Export SQLite en JSON, structuré par table (format version 2)                                                                                    |
-| `influx-raw.lp`           | Données InfluxDB brutes en line protocol (7 derniers jours)                                                                                      |
-| `influx-hourly.lp`        | Données horaires downsamplées (90 derniers jours)                                                                                                |
-| `influx-daily.lp`         | Données journalières downsamplées (5 dernières années)                                                                                           |
-| `influx-energy-hourly.lp` | Sommes énergétiques horaires (2 dernières années)                                                                                                |
-| `influx-energy-daily.lp`  | Sommes énergétiques journalières (10 dernières années)                                                                                           |
-| `data/*`                  | Tous les fichiers non DB de `data/` (secrets de tokens, etc.), scannés dynamiquement, hors `.db`, `.pid`, `.log` et hors marqueur `.instance-id` |
+| Entrée                    | Contenu                                                                                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sowel-backup.json`       | Export SQLite en JSON, structuré par table (format version 2)                                                                                                                                                             |
+| `influx-raw.lp`           | Données InfluxDB brutes en line protocol (7 derniers jours)                                                                                                                                                               |
+| `influx-hourly.lp`        | Données horaires downsamplées (90 derniers jours)                                                                                                                                                                         |
+| `influx-daily.lp`         | Données journalières downsamplées (5 dernières années)                                                                                                                                                                    |
+| `influx-energy-hourly.lp` | Sommes énergétiques horaires (2 dernières années)                                                                                                                                                                         |
+| `influx-energy-daily.lp`  | Sommes énergétiques journalières (10 dernières années)                                                                                                                                                                    |
+| `data/*`                  | Tous les fichiers non DB de `data/` (secrets de tokens, etc.), scannés dynamiquement au regard de la liste blanche de restauration, hors `.db`, `.pid`, `.log` et hors marqueurs locaux `.instance-id` / `.shadow-target` |
 
 L'export JSON SQLite couvre une liste sélectionnée de tables (constante `BACKUP_TABLES` dans `backup-manager.ts`) dans l'ordre des dépendances (parents d'abord pour la restauration).
 
 Le marqueur `.instance-id` est exclu volontairement, dans les deux sens : il décrit le déploiement en cours d'exécution, et une archive qui l'embarquerait donnerait à l'instance qui restaure l'identité de la machine d'où viennent les données, désarmant le garde-fou de restauration de l'issue #401. Voir la section « Restaurer un backup d'un autre déploiement » de [deployment.fr.md](deployment.fr.md).
 
-À la restauration, les entrées `data/` passent par une liste blanche d'extensions (spec 089 C2) : tout ce qui n'est pas une extension de données ou d'image connue est refusé, pour qu'une archive ne puisse pas glisser un script ou un module natif dans le répertoire de données. Un nom de fichier commençant par un point compte comme sa propre extension, c'est ainsi que `.jwt-secret` et `.influx-token` figurent dans cette liste et que tout autre fichier caché est refusé (issue #829).
+À la restauration, les entrées `data/` passent par une liste blanche d'extensions (spec 089 C2) : tout ce qui n'est pas une extension de données ou d'image connue est refusé, pour qu'une archive ne puisse pas glisser un script ou un module natif dans le répertoire de données. Un nom de fichier commençant par un point compte comme sa propre extension, c'est ainsi que `.jwt-secret` et `.influx-token` figurent dans cette liste et que tout autre fichier caché est refusé. Un nom sans aucune extension est refusé également (issue #829).
+
+Le scan d'export applique la même liste blanche, si bien qu'une archive ne peut jamais contenir une entrée que sa propre restauration écarterait. C'est cette propriété que suppose la note de risque de la spec 089 ; sans elle, un fichier pouvait être archivé puis disparaître silencieusement à la restauration. Ce qui est laissé de côté est nommé dans le log d'export, et une restauration renvoie `filesSkipped` à côté de `filesRestored`, pour qu'une restauration partielle soit visible plutôt que muette.
 
 ### Backups locaux (data/backups/)
 
