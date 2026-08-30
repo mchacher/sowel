@@ -2221,7 +2221,7 @@ describe("resolved load roster (spec 165)", () => {
       profiles: { lamp: { class: "deferrable", nominalPowerW: 100, minOnS: 0, minOffS: 0 } },
     });
     h.equipments.set("lamp", {
-      ...(h.equipments.get("lamp") as never),
+      ...(h.equipments.get("lamp") as unknown as Record<string, unknown>),
       energyProfile: { class: "deferrable", nominalPowerW: 100, minOnS: 0, minOffS: 0 },
     } as never);
     h.claim("lampI", { equipmentId: "lamp" });

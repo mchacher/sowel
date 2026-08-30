@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerSettingsRoutes } from "./settings.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
+import type { UserRole } from "../../shared/types.js";
 
 // Characterization tests for the #482 schema-validation conversion of the
 // settings routes: admin gating moved to an onRequest hook (403 before the body
@@ -13,7 +14,7 @@ const logger = createLogger("silent").logger;
 
 interface BuildOpts {
   authed?: boolean;
-  role?: "admin" | "user" | "viewer";
+  role?: UserRole;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -59,7 +60,7 @@ describe("settings routes (schema validation, #482)", () => {
   });
 
   it("403s a non-admin on GET /settings (admin gate)", async () => {
-    app = await buildApp({ authed: true, role: "user" });
+    app = await buildApp({ authed: true, role: "standard" });
     const res = await app.inject({ method: "GET", url: "/api/v1/settings" });
     expect(res.statusCode).toBe(403);
   });
@@ -72,7 +73,7 @@ describe("settings routes (schema validation, #482)", () => {
   });
 
   it("403s a non-admin BEFORE body validation on PUT (precedence preserved)", async () => {
-    app = await buildApp({ authed: true, role: "user" });
+    app = await buildApp({ authed: true, role: "standard" });
     // Malformed body (number value) from a non-admin must 403, not 400.
     const res = await app.inject({
       method: "PUT",
@@ -118,7 +119,7 @@ describe("settings routes (schema validation, #482)", () => {
   it("does NOT admin-gate a foreign route sharing the /settings prefix", async () => {
     // The hook matches the exact settings path, so /api/v1/settings/energy/tariff
     // (owned by energy.ts, which self-guards) is reachable by a non-admin here.
-    app = await buildApp({ authed: true, role: "user" });
+    app = await buildApp({ authed: true, role: "standard" });
     const res = await app.inject({ method: "GET", url: "/api/v1/settings/energy/tariff" });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true });

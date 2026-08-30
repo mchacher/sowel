@@ -111,7 +111,7 @@ describe("computeBindingCandidates", () => {
   });
 
   it("shutter with neither key-name nor category match → no candidates (unchanged behavior)", () => {
-    const orders = [order("foo", "number", { category: "generic" })];
+    const orders = [order("foo", "number", { category: "toggle_mute" })];
     const result = computeBindingCandidates("shutter", [], orders);
     expect(result).toHaveLength(0);
   });
@@ -251,7 +251,7 @@ describe("computeBindingCandidates", () => {
   });
 
   it("light_onoff ignores a non-power boolean toggle (config switch)", () => {
-    const orders = [order("child_lock", "boolean", { category: "toggle_lock" })];
+    const orders = [order("child_lock", "boolean", { category: "toggle_mute" })];
     const result = computeBindingCandidates("light_onoff", [], orders);
     expect(result).toHaveLength(0);
   });
@@ -289,7 +289,7 @@ describe("computeBindingCandidates", () => {
   });
 
   it("water_heater ignores a device with no on/off channel", () => {
-    const orders = [order("child_lock", "boolean", { category: "toggle_lock" })];
+    const orders = [order("child_lock", "boolean", { category: "toggle_mute" })];
     const result = computeBindingCandidates("water_heater", [], orders);
     expect(result).toHaveLength(0);
   });

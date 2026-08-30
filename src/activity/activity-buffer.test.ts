@@ -7,16 +7,15 @@ import type { ActivityItem, Equipment } from "../shared/types.js";
 
 const logger = createLogger("silent").logger;
 
-function mkEquipment(id: string, name: string, zoneId: string | null): Equipment {
+function mkEquipment(id: string, name: string, zoneId: string): Equipment {
   return {
     id,
     name,
     type: "light_onoff",
     zoneId,
     enabled: true,
-    icon: null,
-    pinned: false,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -34,19 +33,19 @@ function buildHarness() {
   const equipmentManager = {
     getById: (id: string) => equipments.get(id) ?? null,
     getDataBindingsWithValues: (id: string) => bindings.get(id) ?? [],
-  } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[1];
+  } as unknown as ConstructorParameters<typeof ActivityBuffer>[1];
 
   const recipeManager = {
     getInstanceMeta: (id: string) => instances.get(id) ?? null,
-  } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[2];
+  } as unknown as ConstructorParameters<typeof ActivityBuffer>[2];
 
   const zoneManager = {
     getDescendantIds: (zoneId: string) => [zoneId, ...(descendants.get(zoneId) ?? [])],
-  } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[3];
+  } as unknown as ConstructorParameters<typeof ActivityBuffer>[3];
 
   const sunlightManager = {
     getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight }),
-  } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[4];
+  } as unknown as ConstructorParameters<typeof ActivityBuffer>[4];
 
   const buffer = new ActivityBuffer(
     bus,
@@ -589,17 +588,17 @@ describe("ActivityBuffer persistence", () => {
     const noop = {
       getById: () => null,
       getDataBindingsWithValues: () => [],
-    } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[1];
+    };
     const zoneManager = {
       getDescendantIds: (z: string) => [z],
-    } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[3];
+    } as unknown as ConstructorParameters<typeof ActivityBuffer>[3];
     const sunlightManager = {
       getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: false }),
-    } as unknown as Parameters<typeof ActivityBuffer.prototype.constructor>[4];
+    } as unknown as ConstructorParameters<typeof ActivityBuffer>[4];
     const buffer = new ActivityBuffer(
       bus,
-      noop,
-      noop,
+      noop as unknown as ConstructorParameters<typeof ActivityBuffer>[1],
+      noop as unknown as ConstructorParameters<typeof ActivityBuffer>[2],
       zoneManager,
       sunlightManager,
       logger,

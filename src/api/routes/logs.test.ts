@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerLogRoutes } from "./logs.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
+import type { UserRole } from "../../shared/types.js";
 
 // Characterization tests for the #482 schema-validation conversion of the log
 // routes: admin gating moved to an onRequest hook (403 before the 400), and the
@@ -13,7 +14,7 @@ const logger = createLogger("silent").logger;
 
 interface BuildOpts {
   authed?: boolean;
-  role?: "admin" | "user" | "viewer";
+  role?: UserRole;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -47,7 +48,7 @@ describe("log routes (schema validation, #482)", () => {
   });
 
   it("403s a non-admin on GET /logs (admin gate)", async () => {
-    app = await buildApp({ authed: true, role: "user" });
+    app = await buildApp({ authed: true, role: "standard" });
     const res = await app.inject({ method: "GET", url: "/api/v1/logs" });
     expect(res.statusCode).toBe(403);
   });
@@ -60,7 +61,7 @@ describe("log routes (schema validation, #482)", () => {
   });
 
   it("403s a non-admin BEFORE body validation on PUT /logs/level (precedence preserved)", async () => {
-    app = await buildApp({ authed: true, role: "user" });
+    app = await buildApp({ authed: true, role: "standard" });
     const res = await app.inject({
       method: "PUT",
       url: "/api/v1/logs/level",

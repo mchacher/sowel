@@ -66,8 +66,8 @@ describe("MqttPublishService — disabled mappings are skipped", () => {
     const broker = brokerManager.create({
       name: "B",
       url: "mqtt://x",
-      username: null,
-      password: null,
+      username: undefined,
+      password: undefined,
     });
     brokerId = broker.id;
     const pub = publisherManager.create({
@@ -115,12 +115,14 @@ describe("MqttPublishService — disabled mappings are skipped", () => {
       equipmentId: "eq-A",
       alias: "temperature",
       value: 22,
+      previous: undefined,
     });
     eventBus.emit({
       type: "equipment.data.changed",
       equipmentId: "eq-B",
       alias: "temperature",
       value: 99,
+      previous: undefined,
     });
 
     const calls = fakeClient.publish.mock.calls;
@@ -228,8 +230,8 @@ describe("MqttPublishService — clientId uniqueness and reconnect log throttlin
     const broker = brokerManager.create({
       name: "B",
       url: "mqtt://x",
-      username: null,
-      password: null,
+      username: undefined,
+      password: undefined,
     });
     brokerId = broker.id;
   });

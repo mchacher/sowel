@@ -20,7 +20,7 @@ const currentUser = {
   id: "u1",
   username: "bob",
   displayName: "Bob",
-  role: "user" as const,
+  role: "standard" as const,
   enabled: true,
   passwordHash: "hash",
 };
@@ -31,7 +31,7 @@ async function buildApp(opts: BuildOpts = {}) {
 
   if (opts.authed) {
     app.addHook("onRequest", async (request) => {
-      request.auth = { userId: "u1", role: "user" };
+      request.auth = { userId: "u1", role: "standard" };
     });
   }
 

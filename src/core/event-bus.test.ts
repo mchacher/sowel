@@ -29,17 +29,21 @@ describe("EventBus", () => {
   });
 
   it("onType filters by event type", () => {
+    // The types here used to be `system.mqtt.connected` / `.disconnected`,
+    // which no longer exist in EngineEvent and could never be emitted, so the
+    // filter was being exercised against something the engine cannot produce.
+    // Invisible while test files were excluded from the typecheck (#834).
     const bus = new EventBus(logger);
     const received: EngineEvent[] = [];
 
-    bus.onType("system.mqtt.connected", (event) => received.push(event));
+    bus.onType("system.integration.connected", (event) => received.push(event));
 
     bus.emit({ type: "system.started" });
-    bus.emit({ type: "system.mqtt.connected" });
-    bus.emit({ type: "system.mqtt.disconnected" });
+    bus.emit({ type: "system.integration.connected", integrationId: "z2m" });
+    bus.emit({ type: "system.integration.disconnected", integrationId: "z2m" });
 
     expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("system.mqtt.connected");
+    expect(received[0].type).toBe("system.integration.connected");
   });
 
   it("catches handler errors without crashing", () => {

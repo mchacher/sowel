@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerBackupRoutes } from "./backup.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
+import type { UserRole } from "../../shared/types.js";
 
 // Characterization tests for the #482 schema-validation conversion of the backup
 // routes: admin gating moved to an onRequest hook (403 before the 400), and the
@@ -13,7 +14,7 @@ const logger = createLogger("silent").logger;
 
 interface BuildOpts {
   authed?: boolean;
-  role?: "admin" | "user" | "viewer";
+  role?: UserRole;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -52,7 +53,7 @@ describe("backup routes (schema validation, #482)", () => {
   });
 
   it("403s a non-admin on GET /backup/local (admin gate)", async () => {
-    const built = await buildApp({ authed: true, role: "user" });
+    const built = await buildApp({ authed: true, role: "standard" });
     app = built.app;
     const res = await app.inject({ method: "GET", url: "/api/v1/backup/local" });
     expect(res.statusCode).toBe(403);
@@ -67,7 +68,7 @@ describe("backup routes (schema validation, #482)", () => {
   });
 
   it("403s a non-admin BEFORE body validation on restore-local (precedence)", async () => {
-    const built = await buildApp({ authed: true, role: "user" });
+    const built = await buildApp({ authed: true, role: "standard" });
     app = built.app;
     const res = await app.inject({
       method: "POST",

@@ -18,11 +18,14 @@ function makeLogger() {
 }
 
 describe("createShutdownController", () => {
-  let exit: ReturnType<typeof vi.fn>;
+  // Typed with the real signature rather than a bare `vi.fn`: an untyped mock
+  // is not assignable to `exit?: (code: number) => void`, which is invisible
+  // while test files are excluded from the typecheck (#834).
+  let exit: ReturnType<typeof vi.fn<(code: number) => void>>;
   let logger: ReturnType<typeof makeLogger>;
 
   beforeEach(() => {
-    exit = vi.fn();
+    exit = vi.fn<(code: number) => void>();
     logger = makeLogger();
     vi.useFakeTimers();
   });
@@ -183,11 +186,11 @@ describe("createShutdownController", () => {
 });
 
 describe("createShutdownController — install()", () => {
-  let exit: ReturnType<typeof vi.fn>;
+  let exit: ReturnType<typeof vi.fn<(code: number) => void>>;
   let before: { int: number; term: number };
 
   beforeEach(() => {
-    exit = vi.fn();
+    exit = vi.fn<(code: number) => void>();
     before = {
       int: process.listenerCount("SIGINT"),
       term: process.listenerCount("SIGTERM"),

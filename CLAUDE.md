@@ -116,8 +116,9 @@ npx vitest run               # All backend tests
 npx vitest run <file>        # Single test file
 
 # Type checks and lint
-npx tsc --noEmit             # Backend
-cd ui && npx tsc -b --noEmit # UI
+npx tsc --noEmit             # Backend (src only — tests are excluded)
+npm run typecheck:tests      # Backend INCLUDING test files (#834, gated in CI)
+cd ui && npx tsc -b --noEmit # UI (its tests are already covered)
 npx eslint src/ --ext .ts
 cd ui && npx eslint .
 
