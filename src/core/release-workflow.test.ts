@@ -218,3 +218,39 @@ describe("release.yml: least privilege on the release token (#638)", () => {
     expect(job).not.toContain("contents: write");
   });
 });
+
+describe("release.yml: supply chain", () => {
+  it("pins every third-party action to a commit", () => {
+    // A moving tag is a promise the publisher can rewrite. Pinning gives up
+    // automatic patch updates, which is why dependabot's github-actions
+    // ecosystem is configured: it proposes the new commit and the diff shows
+    // what moved.
+    const thirdParty = [...workflow.matchAll(/uses: ((?!actions\/)[\w.-]+\/[\w.-]+)@(\S+)/g)];
+    expect(thirdParty.length).toBeGreaterThan(0);
+    for (const [, action, ref] of thirdParty) {
+      expect(ref, `${action} is not pinned to a commit`).toMatch(/^[0-9a-f]{40}$/);
+    }
+  });
+
+  it("keeps the human-readable tag beside each pin", () => {
+    // A bare 40-character hash tells a reader nothing about which version they
+    // are on, and a reviewer cannot tell an upgrade from a downgrade.
+    for (const line of workflow.split("\n")) {
+      if (/uses: (?!actions\/)[\w.-]+\/[\w.-]+@[0-9a-f]{40}/.test(line)) {
+        expect(line, `no version comment: ${line.trim()}`).toMatch(/#\s*v?\d/);
+      }
+    }
+  });
+
+  it("gives every job an explicit permissions block", () => {
+    // Without one a job inherits the repository default, which is often write.
+    const jobs = [...workflow.matchAll(/\n {2}([a-z0-9-]+):\n/g)].map((m) => m[1]);
+    expect(jobs.length).toBeGreaterThan(5);
+    for (const job of jobs) {
+      const start = workflow.indexOf(`\n  ${job}:\n`);
+      const next = workflow.indexOf("\n  ", workflow.indexOf("steps:", start));
+      const block = workflow.slice(start, next === -1 ? undefined : next);
+      expect(block, `job ${job} has no permissions block`).toMatch(/\n {4}permissions:/);
+    }
+  });
+});
