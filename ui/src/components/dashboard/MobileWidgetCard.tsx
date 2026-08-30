@@ -401,12 +401,7 @@ function useMobileState(
       return {
         icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
         stateLines: lines,
-        footer: (
-          <ForecastConfidenceMark
-            confidence={tomorrow.confidence}
-            className="text-[10px] max-w-full"
-          />
-        ),
+        footer: <ForecastConfidenceMark confidence={tomorrow.confidence} className="mt-0.5" />,
       };
     }
     return {

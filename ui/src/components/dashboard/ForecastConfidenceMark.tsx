@@ -1,15 +1,17 @@
 import { useTranslation } from "react-i18next";
-import { CONFIDENCE_BAR, type ForecastConfidence } from "../equipments/weatherForecastUtils";
+import { CONFIDENCE_STYLES, type ForecastConfidence } from "../equipments/weatherForecastUtils";
 
 /**
  * Tomorrow's confidence on the tile (spec 168, option A2).
  *
- * A coloured dot and the word, on the condition line. The dot alone would be
- * colour-only encoding of the one thing the tile is meant to qualify, and the
- * word alone would read as another weather term next to "Nuageux".
+ * The same pill as the equipment page and the detail panel, centred at the
+ * foot of the card. A dot alone would encode the one thing the tile is meant
+ * to qualify in colour only, and a different shape on each surface would make
+ * the reader learn the same fact twice.
  *
- * Nothing at all when the plugin cannot qualify the day: a grey dot with
- * "non qualifié" beside it spends a line of a 212px card saying nothing.
+ * Nothing at all when the plugin cannot qualify the day: a grey badge reading
+ * "not qualified" spends the foot of a 212px card saying nothing, and is one
+ * more thing to mistake for a verdict.
  */
 export function ForecastConfidenceMark({
   confidence,
@@ -20,12 +22,14 @@ export function ForecastConfidenceMark({
 }) {
   const { t } = useTranslation();
   if (!confidence) return null;
-  const label = t(`equipments.forecast.confidence.${confidence}`);
 
   return (
-    <span className={`flex items-center gap-1 leading-tight ${className}`}>
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${CONFIDENCE_BAR[confidence]}`} />
-      <span className="text-text-secondary truncate">{label}</span>
+    <span
+      className={`self-center shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight ${
+        CONFIDENCE_STYLES[confidence]
+      } ${className}`}
+    >
+      {t(`equipments.forecast.confidence.${confidence}`)}
     </span>
   );
 }

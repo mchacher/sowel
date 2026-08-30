@@ -94,10 +94,9 @@ export function WeatherForecastWidget({
             )}
           </div>
 
-          {/* Condition, and how much the sources agree on tomorrow */}
-          <span className="flex items-center gap-1.5 text-[10px] sm:text-[12px] text-text-secondary leading-tight">
-            <span className="truncate">{conditionLabel}</span>
-            <ForecastConfidenceMark confidence={tomorrow.confidence} />
+          {/* Condition label */}
+          <span className="text-[10px] sm:text-[12px] text-text-secondary leading-tight truncate">
+            {conditionLabel}
           </span>
 
           {/* Rain + Wind */}
@@ -122,6 +121,8 @@ export function WeatherForecastWidget({
         </div>
       </div>
 
+      {/* How much the sources agree on tomorrow, at the foot of the card. */}
+      <ForecastConfidenceMark confidence={tomorrow.confidence} className="mt-1" />
     </WidgetCard>
   );
 }

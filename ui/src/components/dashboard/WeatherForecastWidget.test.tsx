@@ -60,25 +60,24 @@ const FIVE: Array<[number | null, string | null]> = [
   [30, "medium"],
 ];
 
-/** The confidence dot, by its colour class. */
-function dots(container: HTMLElement): string[] {
-  return [...container.querySelectorAll("span.rounded-full")]
-    .map((el) => [...el.classList].find((c) => c.startsWith("bg-")) ?? "")
-    .filter(Boolean);
-}
+/** The confidence pill, by its semantic colour class. */
+const pillOf = (c: HTMLElement) =>
+  [...c.querySelectorAll("span")]
+    .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
+    .map((s) => [...s.classList].find((k) => /^text-(success|warning|error)$/.test(k)) ?? "");
 
 describe("WeatherForecastWidget — tomorrow's confidence (spec 168)", () => {
-  it("names tomorrow's confidence next to the condition", () => {
+  it("names tomorrow's confidence at the foot of the card", () => {
     render(<WeatherForecastWidget label="Météo" equipment={forecast(FIVE)} />);
     // Tomorrow is medium here; the mark says so in words, not in colour alone.
     expect(screen.getByText("fairly reliable")).toBeTruthy();
   });
 
-  it("colours the dot by tomorrow's confidence", () => {
+  it("colours the pill by tomorrow's confidence", () => {
     const { container } = render(
       <WeatherForecastWidget label="Météo" equipment={forecast([[26, "low"]])} />,
     );
-    expect(dots(container)).toEqual(["bg-error"]);
+    expect(pillOf(container)).toEqual(["text-error"]);
   });
 
   it("qualifies tomorrow, not some other day", () => {
@@ -93,7 +92,7 @@ describe("WeatherForecastWidget — tomorrow's confidence (spec 168)", () => {
         ])}
       />,
     );
-    expect(dots(container)).toEqual(["bg-success"]);
+    expect(pillOf(container)).toEqual(["text-success"]);
     expect(screen.getByText("reliable")).toBeTruthy();
   });
 
@@ -110,7 +109,7 @@ describe("WeatherForecastWidget — tomorrow's confidence (spec 168)", () => {
         ])}
       />,
     );
-    expect(dots(container)).toEqual([]);
+    expect(pillOf(container)).toEqual([]);
     expect(container.textContent).not.toMatch(/reliable/);
   });
 

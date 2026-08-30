@@ -63,9 +63,11 @@ const widget: DashboardWidget = {
   createdAt: "2026-01-01T00:00:00Z",
 } as DashboardWidget;
 
-/** The confidence dot the tile shows for tomorrow. */
-const dots = (c: HTMLElement) =>
-  [...c.querySelectorAll("span")].filter((s) => s.className.includes("w-1.5"));
+/** The confidence pill the tile shows for tomorrow. */
+const pills = (c: HTMLElement) =>
+  [...c.querySelectorAll("span")].filter(
+    (s) => s.className.includes("rounded-full") && s.className.includes("border"),
+  );
 
 describe("forecast tile wiring (spec 168)", () => {
   it("desktop: EquipmentWidget hands the tile its detail handler, and the click reaches it", () => {
@@ -93,7 +95,7 @@ describe("forecast tile wiring (spec 168)", () => {
         onOpenDetail={vi.fn()}
       />,
     );
-    expect(dots(container)).toHaveLength(1);
+    expect(pills(container)).toHaveLength(1);
     expect(container.textContent).toContain("reliable");
   });
 
@@ -117,7 +119,7 @@ describe("forecast tile wiring (spec 168)", () => {
         editMode={false}
       />,
     );
-    expect(dots(container)).toHaveLength(1);
+    expect(pills(container)).toHaveLength(1);
     expect(container.textContent).toContain("reliable");
   });
 
@@ -148,12 +150,12 @@ describe("forecast tile wiring (spec 168)", () => {
         onOpenDetail={vi.fn()}
       />,
     );
-    expect(dots(desktop.container)).toHaveLength(0);
+    expect(pills(desktop.container)).toHaveLength(0);
 
     const mobile = render(
       <MobileWidgetCard widget={widget} equipment={bare} onClick={vi.fn()} editMode={false} />,
     );
-    expect(dots(mobile.container)).toHaveLength(0);
+    expect(pills(mobile.container)).toHaveLength(0);
   });
 
   it("the sheet has a forecast branch: without it the type falls through to null", () => {
