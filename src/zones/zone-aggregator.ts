@@ -13,7 +13,11 @@ import type {
 } from "../shared/types.js";
 import { ROOT_ZONE_ID } from "../shared/constants.js";
 import { isSubmeterEquipment } from "../equipments/metering.js";
-import { classifyPowerReading } from "../shared/reading-freshness.js";
+import {
+  LIVE_POWER_ALIASES,
+  classifyPowerReading,
+  powerBudgetFor,
+} from "../shared/reading-freshness.js";
 
 // ============================================================
 // Internal accumulator for aggregation (tracks sums + counts)
@@ -156,7 +160,13 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     waterValvesOpen: acc.waterValvesOpen,
     waterValvesTotal: acc.waterValvesTotal,
     waterFlowTotal: acc.waterFlowHasData ? Math.round(acc.waterFlowSum * 100) / 100 : null,
-    powerTotal: acc.powerHasData ? Math.round(acc.powerSum * 10) / 10 : null,
+    // Whole watts, not tenths. The pill prints an integer below the kilowatt
+    // and one decimal of a kilowatt above it, so a tenth of a watt is never
+    // displayed — it only guarantees that sub-watt jitter on an idle plug
+    // flips `aggregatedDataEqual` and emits `zone.data.changed` up the whole
+    // ancestor chain. Rounding here also means the number the API and MQTT
+    // publish is the number the pill shows.
+    powerTotal: acc.powerHasData ? Math.round(acc.powerSum) : null,
     sunrise: null,
     sunset: null,
     isDaylight: null,
@@ -245,6 +255,25 @@ function isContactOpen(value: unknown): boolean {
 // Zone Aggregator
 // ============================================================
 
+/**
+ * Wallclock cadence for re-judging the freshness of a zone's power readings.
+ *
+ * `powerTotal` drops a reading past its budget (spec 170), but the aggregator
+ * only recomputes when an equipment reports, and a clamp that went quiet
+ * reports nothing by definition. Without a clock the sum keeps a reading that
+ * has since aged out for as long as the zone stays quiet, which in the case
+ * spec 170 is written for — a guest house whose zone holds two meters and
+ * nothing else — is forever.
+ *
+ * `equipment.status.changed` is not enough on its own: `equipment-status.ts`
+ * applies the electrical window only to METERING_EQUIPMENT_TYPES, so a metering
+ * plug stays `online` however old its watts are and never emits a transition.
+ *
+ * One minute matches EquipmentStatusTracker's own tick, and only zones that
+ * actually contribute power are recomputed.
+ */
+const POWER_FRESHNESS_TICK_MS = 60_000;
+
 export class ZoneAggregator {
   private logger: Logger;
   private eventBus: EventBus;
@@ -252,6 +281,7 @@ export class ZoneAggregator {
   private equipmentManager: EquipmentManager;
   private sunlightManager: SunlightManager | null = null;
   private unsubscribe: (() => void) | null = null;
+  private freshnessTimer: ReturnType<typeof setInterval> | null = null;
 
   // Cache: per-zone accumulators and public data
   private directCache = new Map<string, Accumulator>();
@@ -270,6 +300,31 @@ export class ZoneAggregator {
     this.logger = logger.child({ module: "zone-aggregator" });
 
     this.setupEventListeners();
+    this.startFreshnessTimer();
+  }
+
+  /**
+   * Re-judge the freshness of the zones that carry power readings, on a
+   * wallclock tick (see POWER_FRESHNESS_TICK_MS).
+   *
+   * Only zones whose own equipments landed in the power sum are walked: the
+   * cached flag is the trigger AND the stop condition, since a zone whose last
+   * reading ages out recomputes once, clears the flag, and goes quiet again.
+   */
+  private startFreshnessTimer(): void {
+    this.freshnessTimer = setInterval(() => {
+      try {
+        const zoneIds = [...this.directCache.entries()]
+          .filter(([, acc]) => acc.powerHasData)
+          .map(([zoneId]) => zoneId);
+        for (const zoneId of zoneIds) {
+          this.recomputeZoneChain(zoneId, "power freshness tick");
+        }
+      } catch (err) {
+        this.logger.error({ err }, "Error in zone aggregator freshness tick");
+      }
+    }, POWER_FRESHNESS_TICK_MS);
+    if (typeof this.freshnessTimer.unref === "function") this.freshnessTimer.unref();
   }
 
   setSunlightManager(sunlightManager: SunlightManager): void {
@@ -279,6 +334,10 @@ export class ZoneAggregator {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    if (this.freshnessTimer) {
+      clearInterval(this.freshnessTimer);
+      this.freshnessTimer = null;
+    }
   }
 
   // ============================================================
@@ -575,9 +634,18 @@ export class ZoneAggregator {
   ): void {
     if (!isSubmeterEquipment(equipmentType, bindings)) return;
 
-    const powerBinding = bindings.find((b) => b.alias === "power");
-    // A non-numeric `power` is a state, not a measurement (a thermostat's own
-    // on/off switch); `isSubmeterEquipment` makes the same distinction.
+    // `power` first, `demand_5min` as the fallback, the same order the
+    // equipment tiles use (`pickLivePowerW`). A Legrand NLPC has no `power`
+    // channel at all: looking up `power` alone does not read a stale value, it
+    // reads nothing, and the meter drops out of the total while its own card
+    // still prints live watts.
+    let powerBinding: DataBindingWithValue | undefined;
+    for (const alias of LIVE_POWER_ALIASES) {
+      // A non-numeric reading is a state, not a measurement (a thermostat's own
+      // on/off switch); `isSubmeterEquipment` makes the same distinction.
+      powerBinding = bindings.find((b) => b.alias === alias && typeof b.value === "number");
+      if (powerBinding) break;
+    }
     if (!powerBinding || typeof powerBinding.value !== "number") return;
 
     const verdict = classifyPowerReading({
@@ -585,6 +653,10 @@ export class ZoneAggregator {
       value: powerBinding.value,
       lastUpdated: powerBinding.lastUpdated,
       equipmentType,
+      // A `demand_5min` reading is averaged over five minutes and cannot be
+      // fresher than that; under the meter window it would read outdated for
+      // most of every cycle (#839).
+      budgetMs: powerBudgetFor(equipmentType, powerBinding.alias),
     });
     if (verdict !== "current") return;
 

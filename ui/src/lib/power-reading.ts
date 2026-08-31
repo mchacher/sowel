@@ -1,6 +1,6 @@
 import {
   classifyPowerReading,
-  SUBMETER_FRESHNESS_SLOW_MS,
+  powerBudgetFor,
   type ReadingVerdict,
 } from "../../../src/shared/reading-freshness";
 import type { DataBindingWithValue, EquipmentWithDetails } from "../types";
@@ -48,33 +48,16 @@ export interface PowerReading {
  * The freshness budget a reading answers to, when its own cadence outranks the
  * window its equipment type implies.
  *
- * `METERING_EQUIPMENT_TYPES` earns the tight two-minute window because the
- * engine expects a declared meter to report continuously. Two sources in that
- * set do not, and applying it to them would call a perfectly healthy device
- * outdated for most of every reporting cycle — the exact oscillation the
- * shared module documents and avoids for slow pollers:
- *
- * - `demand_5min`: a Legrand NLPC reports a power already averaged over five
- *   minutes, so the reading cannot be fresher than five minutes by
- *   construction.
- * - `solar_panel`: the one solar integration in the registry (apsystems)
- *   delivers on a Tasmota `tele/<root>/SENSOR` topic, whose default
- *   `TelePeriod` is 300 s. Under the meter window a panel in full sun would
- *   blank for roughly three minutes out of every five.
- *
- * The ten-minute slow budget is twice the slowest of those cadences, so
- * neither oscillates, and it still catches the failure this issue is about
- * (#744 measured a reading 124 days old).
- *
- * Returning undefined means "no override": the type's own budget applies.
+ * The rule itself is `powerBudgetFor` in shared/: the zone power total asks the
+ * same question of the same bindings (spec 170), and a budget restated per
+ * surface is how one meter ends up live on its card and outdated in a total.
+ * This wrapper only adapts the shapes the tiles hold.
  */
 function budgetFor(
   equipment: EquipmentWithDetails,
   binding: DataBindingWithValue | undefined,
-): number | undefined {
-  if (binding?.alias === "demand_5min") return SUBMETER_FRESHNESS_SLOW_MS;
-  if (equipment.type === "solar_panel") return SUBMETER_FRESHNESS_SLOW_MS;
-  return undefined;
+): number {
+  return powerBudgetFor(equipment.type, binding?.alias);
 }
 
 /**

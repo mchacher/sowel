@@ -57,11 +57,53 @@ export const SUBMETER_FRESHNESS_MS = STREAMING_TIMEOUT_MS.power ?? DEFAULT_STREA
  */
 export const SUBMETER_FRESHNESS_SLOW_MS = 10 * 60 * 1000;
 
+/**
+ * The aliases that can carry a live power reading, in the order a surface
+ * should prefer them.
+ *
+ * `demand_5min` is not a second-class `power`: a Legrand NLPC meter has no
+ * `power` channel at all, so a surface that looks up `power` alone does not
+ * read a stale value, it reads nothing and silently omits the meter. That is
+ * why `pickLivePowerW` falls back on it, and why anything summing meters must
+ * do the same or under-report a supported meter shape (#866 review).
+ */
+export const LIVE_POWER_ALIASES = ["power", "demand_5min"] as const;
+
 /** The freshness budget that applies to an equipment of this type. */
 export function freshnessBudgetFor(equipmentType: string): number {
   return METERING_EQUIPMENT_TYPES.has(equipmentType)
     ? SUBMETER_FRESHNESS_MS
     : SUBMETER_FRESHNESS_SLOW_MS;
+}
+
+/**
+ * The freshness budget for one power reading, when the binding's own cadence
+ * outranks the window its equipment type implies (#839).
+ *
+ * `METERING_EQUIPMENT_TYPES` earns the tight two-minute window because the
+ * engine expects a declared meter to report continuously. Two sources in that
+ * set do not, and applying it to them calls a healthy device outdated for most
+ * of every reporting cycle:
+ *
+ * - `demand_5min`: a Legrand NLPC reports a power already averaged over five
+ *   minutes, so the reading cannot be fresher than five minutes by
+ *   construction.
+ * - `solar_panel`: the one solar integration in the registry (apsystems)
+ *   delivers on a Tasmota `tele/<root>/SENSOR` topic, whose default
+ *   `TelePeriod` is 300 s.
+ *
+ * The ten-minute slow budget is twice the slowest of those cadences, so neither
+ * oscillates, and it still catches what #744 is about (a reading 124 days old).
+ *
+ * This lives here rather than on one surface because both the equipment tiles
+ * (#839) and the zone power total (spec 170) have to ask it, and a rule
+ * restated per surface is how two surfaces came to describe one appliance two
+ * contradictory ways in the first place.
+ */
+export function powerBudgetFor(equipmentType: string, bindingAlias?: string | null): number {
+  if (bindingAlias === "demand_5min") return SUBMETER_FRESHNESS_SLOW_MS;
+  if (equipmentType === "solar_panel") return SUBMETER_FRESHNESS_SLOW_MS;
+  return freshnessBudgetFor(equipmentType);
 }
 
 /**

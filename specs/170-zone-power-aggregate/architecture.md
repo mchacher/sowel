@@ -38,14 +38,42 @@ ZoneAggregator.aggregateZone(zoneId)
 
 `accumulateEquipmentPower` runs at the equipment level, not inside `accumulateBindings`, because the decision needs the equipment's **type** and **status**, not just a binding — `isSubmeterEquipment` keys off the type, and `classifyPowerReading` needs the status. That is the same reason the `display` counters and `water_valve` sit at that level.
 
+## Review follow-up (#866 review, merged as a second pass)
+
+Three points found on review of the first implementation, and what was done about them:
+
+**The `power` alias is not the only live power channel.** A Legrand NLPC meter has no `power`
+binding at all: its live channel is `demand_5min`, which is why `pickLivePowerW` on the equipment
+tiles falls back to it. Looking up `power` alone therefore did not read a stale value, it read
+nothing, and the meter dropped out of the total while its own card kept printing live watts. The
+accumulator now walks `LIVE_POWER_ALIASES` (`power`, then `demand_5min`) and passes the matching
+budget through `powerBudgetFor`, the same rule the tiles ask (#839) — hoisted into
+`shared/reading-freshness.ts` so there is still one implementation, not two.
+
+**The freshness rule had no clock.** `powerTotal` drops a reading past its budget, but the
+aggregator only recomputes when an equipment reports, and a clamp that went quiet reports nothing.
+`equipment.status.changed` does not close the gap either: `equipment-status.ts` applies the
+electrical window only to `METERING_EQUIPMENT_TYPES`, so a metering plug stays `online` however
+old its watts are. In the case this spec is written for — a guest house whose zone holds two
+meters and nothing else — the total would have stayed frozen indefinitely. A 60 s wallclock tick
+now recomputes the chains of the zones that actually carry power readings; the cached
+`powerHasData` flag is both the trigger and the stop condition.
+
+**Rounding.** Tenths of a watt are never displayed (whole watts below the kilowatt, one decimal of
+a kilowatt above), and they guarantee that sub-watt jitter on an idle plug flips
+`aggregatedDataEqual` and emits `zone.data.changed` up the whole ancestor chain. The sum is now
+rounded to whole watts, which also means the number the API and MQTT publish is the number the
+pill shows.
+
 ## The two shared rules it reuses
 
 Neither is restated:
 
-| Question                      | Answered by                                             | Lives in                          |
-| ----------------------------- | ------------------------------------------------------- | --------------------------------- |
-| Is this equipment a load?     | `isSubmeterEquipment(type, bindings)` (#523, blocklist) | `src/equipments/metering.ts`      |
-| Is this reading a live value? | `classifyPowerReading({...}) === "current"` (#832)      | `src/shared/reading-freshness.ts` |
+| Question                        | Answered by                                             | Lives in                          |
+| ------------------------------- | ------------------------------------------------------- | --------------------------------- |
+| Is this equipment a load?       | `isSubmeterEquipment(type, bindings)` (#523, blocklist) | `src/equipments/metering.ts`      |
+| Is this reading a live value?   | `classifyPowerReading({...}) === "current"` (#832)      | `src/shared/reading-freshness.ts` |
+| Which budget does it answer to? | `powerBudgetFor(type, alias)` (#839)                    | `src/shared/reading-freshness.ts` |
 
 `classifyPowerReading` already returns `offline` for an offline equipment, so the call is correct even though the early-out means it never sees one.
 
