@@ -67,7 +67,7 @@ This is one of Sowel's most powerful features. Every zone automatically computes
 | **Open windows**             | Count of open window contacts           | 2 windows open                       |
 | **Water leak**               | OR across all water leak sensors        | Alert if any sensor detects water    |
 | **Smoke**                    | OR across all smoke sensors             | Alert if any sensor detects smoke    |
-| **Power**                    | Sum of the zone's consumption submeters | 47.6 W (a flat's feed + its hob)     |
+| **Power**                    | Sum of the zone's consumption submeters | 48 W (a flat's feed + its hob)       |
 
 ### Recursive aggregation
 
@@ -93,16 +93,16 @@ Below the header, equipments are grouped by type (Lights, Shutters, Sensors) wit
 
 ### Power aggregation
 
-The power pill answers "how much is this part of the house drawing right now". It sums the equipments a zone holds that measure a **load** — a dedicated `energy_meter`, a metering plug, any equipment reporting watts — across the zone and all its descendants. This is what lets one zone total two circuits fed from different boards, which no single meter can do.
+The power pill answers "how much is this part of the house drawing right now". It sums the equipments a zone holds that measure a **load** (a dedicated `energy_meter`, a metering plug, any equipment reporting watts) across the zone and all its descendants. This is what lets one zone total two circuits fed from different boards, which no single meter can do.
 
 Three rules are worth knowing:
 
 - **The grid meter and production meters never count.** A zone holding your main meter or your solar meter does not add them in, so a total never mixes what the house draws with what it imports or produces.
-- **No meter means no pill, not "0 W".** A zone that measures nothing shows nothing. A zone whose meters all read zero shows `0 W` — that is a measurement, and the difference matters.
-- **A reading that stopped arriving is dropped, not counted as zero.** A clamp that went quiet says nothing about whether its load is running, so it leaves the sum rather than pulling it down.
+- **No meter means no pill, not "0 W".** A zone that measures nothing shows nothing. A zone whose meters all read zero shows `0 W`, which is a measurement, and the difference matters.
+- **A reading that stopped arriving is dropped, not counted as zero.** A clamp that went quiet says nothing about whether its load is running, so it leaves the sum rather than pulling it down. Sowel re-checks this every minute, so a meter that dies clears itself from the total even in a quiet zone.
 
 !!! warning "A feed meter and its own submeters double-count"
-If a zone holds both a meter on a circuit and a meter on a load fed by that circuit, the load is counted twice — once inside the feed, once on its own. Sowel has no meter hierarchy, so keep the two in different zones, or read the total knowing what it overlaps. The same overlap already affects the "Other" residual on the Energy page.
+If a zone holds both a meter on a circuit and a meter on a load fed by that circuit, the load is counted twice: once inside the feed, once on its own. Sowel has no meter hierarchy, so keep the two in different zones, or read the total knowing what it overlaps. The same overlap already affects the "Other" residual on the Energy page.
 
 ## Activity feed
 

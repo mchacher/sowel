@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { ZoneManager } from "./zone-manager.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
@@ -83,6 +83,7 @@ describe("ZoneAggregator", () => {
   });
 
   afterEach(() => {
+    aggregator.destroy();
     db.close();
   });
 
@@ -1106,13 +1107,16 @@ describe("ZoneAggregator", () => {
         type?: EquipmentType;
         dataType?: string;
         category?: string;
+        /** The binding alias, for a meter whose live channel is not `power`. */
+        alias?: string;
       },
     ) {
+      const alias = opts.alias ?? "power";
       const dev = seedDevice(db, {
         name: opts.name,
         dataKeys: [
           {
-            key: "power",
+            key: alias,
             type: opts.dataType ?? "number",
             category: opts.category ?? "power",
             value: opts.watts ?? undefined,
@@ -1124,7 +1128,7 @@ describe("ZoneAggregator", () => {
         type: opts.type ?? "energy_meter",
         zoneId,
       });
-      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "power");
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], alias);
       return { dev, eq };
     }
 
@@ -1134,7 +1138,7 @@ describe("ZoneAggregator", () => {
 
       aggregator.computeAll();
 
-      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(39.4);
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(39);
     });
 
     it("rolls up submeters from descendant zones", () => {
@@ -1145,8 +1149,8 @@ describe("ZoneAggregator", () => {
 
       aggregator.computeAll();
 
-      expect(aggregator.getByZoneId(parent.id)?.powerTotal).toBe(47.6);
-      expect(aggregator.getByZoneId(child.id)?.powerTotal).toBe(8.2);
+      expect(aggregator.getByZoneId(parent.id)?.powerTotal).toBe(48);
+      expect(aggregator.getByZoneId(child.id)?.powerTotal).toBe(8);
     });
 
     it("reports null — not zero — for a zone with no metered equipment", () => {
@@ -1196,7 +1200,7 @@ describe("ZoneAggregator", () => {
 
       aggregator.computeAll();
 
-      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(62.5);
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(63);
     });
 
     it("drops a stale reading instead of counting it as 0 W", () => {
@@ -1223,7 +1227,7 @@ describe("ZoneAggregator", () => {
       aggregator.computeAll();
 
       const data = aggregator.getByZoneId(zone.id);
-      expect(data?.powerTotal).toBe(39.4);
+      expect(data?.powerTotal).toBe(39);
       expect(data?.unavailableEquipmentsByCategory).toEqual({ power: 1 });
     });
 
@@ -1270,7 +1274,7 @@ describe("ZoneAggregator", () => {
       expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(-150);
     });
 
-    it("rounds the sum to one decimal", () => {
+    it("rounds the sum to whole watts", () => {
       const zone = zoneManager.create({ name: "Gite" });
       seedMeter(zone.id, { name: "A", watts: "39.4" });
       seedMeter(zone.id, { name: "B", watts: "8.2" });
@@ -1278,7 +1282,7 @@ describe("ZoneAggregator", () => {
 
       aggregator.computeAll();
 
-      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(47.6);
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(48);
     });
 
     it("emits zone.data.changed when only the power total moved", () => {
@@ -1286,7 +1290,7 @@ describe("ZoneAggregator", () => {
       const { dev, eq } = seedMeter(zone.id, { name: "Feed", watts: "39.4" });
 
       aggregator.computeAll();
-      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(39.4);
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(39);
 
       db.prepare("UPDATE device_data SET value = ? WHERE id = ?").run("2400", dev.dataIds[0]);
       events.length = 0;
@@ -1301,6 +1305,78 @@ describe("ZoneAggregator", () => {
 
       expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(2400);
       expect(events.filter((e) => e.type === "zone.data.changed").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("counts a meter whose only live channel is demand_5min", () => {
+      const zone = zoneManager.create({ name: "Gite" });
+      const { dev } = seedMeter(zone.id, { name: "NLPC", watts: "850", alias: "demand_5min" });
+      // Six minutes old: past the two-minute meter window, inside the budget a
+      // five-minute average answers to (#839). Under the meter window this
+      // healthy meter would drop out of the total for most of every cycle.
+      db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
+        new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+        dev.dataIds[0],
+      );
+
+      aggregator.computeAll();
+
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(850);
+    });
+
+    it("still drops a demand_5min reading past the slow budget", () => {
+      const zone = zoneManager.create({ name: "Gite" });
+      const { dev } = seedMeter(zone.id, { name: "NLPC", watts: "850", alias: "demand_5min" });
+      db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
+        new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        dev.dataIds[0],
+      );
+
+      aggregator.computeAll();
+
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBeNull();
+    });
+
+    it("prefers `power` over `demand_5min` when an equipment carries both", () => {
+      const zone = zoneManager.create({ name: "Gite" });
+      const dev = seedDevice(db, {
+        name: "Meter",
+        dataKeys: [
+          { key: "power", type: "number", category: "power", value: "120" },
+          { key: "demand_5min", type: "number", category: "power", value: "300" },
+        ],
+      });
+      const eq = equipmentManager.create({ name: "Meter", type: "energy_meter", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "power");
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[1], "demand_5min");
+
+      aggregator.computeAll();
+
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(120);
+    });
+
+    it("drops a reading that ages out with no event, on its own tick", () => {
+      vi.useFakeTimers();
+      const ticking = new ZoneAggregator(zoneManager, equipmentManager, eventBus, logger);
+      try {
+        const zone = zoneManager.create({ name: "Gite" });
+        const { dev } = seedMeter(zone.id, { name: "Feed", watts: "39.4" });
+        ticking.computeAll();
+        expect(ticking.getByZoneId(zone.id)?.powerTotal).toBe(39);
+
+        // The clamp goes quiet. Nothing reports, so nothing recomputes the zone
+        // except the wallclock tick: without it the pill keeps printing 39 W
+        // for as long as the zone stays quiet.
+        db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
+          new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          dev.dataIds[0],
+        );
+        vi.advanceTimersByTime(60_000);
+
+        expect(ticking.getByZoneId(zone.id)?.powerTotal).toBeNull();
+      } finally {
+        ticking.destroy();
+        vi.useRealTimers();
+      }
     });
   });
 });
