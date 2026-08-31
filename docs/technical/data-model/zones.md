@@ -72,6 +72,11 @@ interface ZoneAggregatedData {
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null; // SUM of current water flow (when supported)
+  // Spec 170 — SUM of `power` over the zone subtree's consumption submeters
+  // (isSubmeterEquipment: everything metered except the grid total and the
+  // production meters). Readings past their freshness budget are dropped, not
+  // counted as 0 W. `null` = nothing current to sum, distinct from a measured 0.
+  powerTotal: number | null;
   sunrise: string | null; // From SunlightManager (computed from home location)
   sunset: string | null;
   isDaylight: boolean | null;
