@@ -53,7 +53,7 @@ Ce qu'affiche une tuile de recette est choisi par la recette elle-même, parmi t
 
 Quand une tuile ne porte qu'**un seul** bouton, inutile de le viser : un clic n'importe où sur la tuile fait la même chose. Une tuile qui en porte deux les garde comme seul point d'entrée — elle ne peut pas deviner lequel des deux vous vouliez. En mode édition, un clic ne déclenche rien.
 
-Une recette qui actionne du physique — un portail, une porte — demande confirmation avant d'agir : sur téléphone, une tape sur la tuile ouvre un panneau « glisser pour confirmer » qui annonce ce qu'elle s'apprête à faire, pour qu'une tape dans la poche n'ouvre jamais le portail. Sur ordinateur le clic agit tout de suite, et le petit bouton agit toujours tout de suite, quelle que soit la recette.
+Une recette qui actionne du physique — un portail, une porte — demande confirmation avant d'agir : sur téléphone, une tape sur la tuile ouvre un panneau « glisser pour confirmer » qui annonce ce qu'elle s'apprête à faire, pour qu'une tape dans la poche n'ouvre jamais le portail. Sur ordinateur le clic agit tout de suite, et le petit bouton agit toujours tout de suite, quelle que soit la recette. Les recettes qui vous laissent le choix en font un de leurs réglages, avec les autres paramètres de l'automatisation — le même choix qu'un équipement portail propose sous **Confirmation avant action**.
 
 Une tuile dont l'instance est désactivée s'affiche grisée et garde sa place : une tuile silencieuse n'est jamais un mystère. Si une recette cesse de proposer une tuile après une mise à jour, le widget le dit au lieu de disparaître — supprimez-le vous-même si vous n'en voulez plus.
 

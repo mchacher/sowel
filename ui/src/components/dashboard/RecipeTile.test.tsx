@@ -36,6 +36,7 @@ function seed(options: {
   enabled?: boolean;
   recipe?: boolean;
   actions?: RecipeInfo["actions"];
+  params?: Record<string, unknown>;
 } = {}) {
   const recipe: RecipeInfo = {
     id: "delivery-gate",
@@ -48,7 +49,7 @@ function seed(options: {
   const instance: RecipeInstance = {
     id: "ri1",
     recipeId: "delivery-gate",
-    params: {},
+    params: options.params ?? {},
     enabled: options.enabled ?? true,
     createdAt: "2026-08-30T10:00:00Z",
     state: options.state ?? {},
@@ -353,6 +354,35 @@ describe("RecipeTile — the whole card acts (spec 171)", () => {
       fireEvent.click(screen.getByText("Cancel"));
 
       expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("skips the sheet when the user turned the confirmation off", () => {
+      seed({
+        tile: { ...CONFIRM_TILE, confirmParam: "confirmFromDashboard" },
+        params: { confirmFromDashboard: false },
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      // The instance overrules the package: no sheet, straight to the action.
+      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+    });
+
+    it("asks when the user turned it on, on a recipe that defaults to off", () => {
+      seed({
+        tile: { icon: "Truck", actions: ["set_mode"], confirmParam: "confirmFromDashboard" },
+        params: { confirmFromDashboard: true },
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
       expect(sendAction).not.toHaveBeenCalled();
     });
 

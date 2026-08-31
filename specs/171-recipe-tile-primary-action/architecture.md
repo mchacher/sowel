@@ -12,6 +12,8 @@ export interface RecipeTileDef {
   actions?: string[];
   /** Firing this tile moves something physical → confirm on mobile. */
   confirm?: boolean;
+  /** Id of a boolean slot letting the user overrule that, per instance. */
+  confirmParam?: string;
 }
 ```
 
@@ -60,6 +62,21 @@ ui/src/components/dashboard/ConfirmActionSheet.tsx
 
 `WidgetGrid` swaps its import to `GateConfirmSheet` and is otherwise untouched: same props, same behaviour, same 500 ms confirmed-state delay before dismissal.
 
+### 4. `tileNeedsConfirm` — who decides
+
+```
+ui/src/components/dashboard/recipe-tile-confirm.ts
+  export function tileNeedsConfirm(tile, params): boolean
+```
+
+The instance parameter first (`true` / `"true"` → ask, `false` / `"false"` → do not), the package's
+`confirm` when the user never answered. Absent, `null` and `""` are all "never answered": an instance
+created before the recipe grew the slot must not lose its guard to an upgrade.
+
+It reads `instance.params`, not instance state, because this is a _setting_, not a state — the same
+place `resolveCycle` already reads `cocoonTemp` from. Pure and React-free, like `gateNeedsConfirm`
+(spec 146) sitting next to it.
+
 ## RecipeTile
 
 ```
@@ -67,7 +84,7 @@ actions = declared controls (unchanged)
 cycle   = actions.length === 1 ? resolveCycle(instance, actions[0]) : null
 fire()  = sendAction(instance.id, action.id, { mode: cycle.next.value }), guarded by `sending`
 primary = !cycle || editMode          → undefined      (FR-3, FR-4, FR-5)
-          tile.confirm && isMobile    → open the sheet (FR-6)
+          isMobile && needs confirm   → open the sheet (FR-6, FR-7)
           otherwise                   → fire
 ```
 
@@ -91,11 +108,12 @@ The sheet's subtitle is built, not translated: the tile title and the instance's
 
 | File                                                 | Change                                      |
 | ---------------------------------------------------- | ------------------------------------------- |
-| `src/shared/types.ts`                                | `RecipeTileDef.confirm`                     |
+| `src/shared/types.ts`                                | `RecipeTileDef.confirm` + `confirmParam`    |
 | `ui/src/types.ts`                                    | idem                                        |
 | `ui/src/components/recipes/recipe-cycle.ts`          | new — `resolveCycle` + `cycleOptionLabel`   |
 | `ui/src/components/recipes/recipe-form-fields.tsx`   | the pill consumes them                      |
 | `ui/src/components/dashboard/card-primary-action.ts` | new — the nested-control guard              |
+| `ui/src/components/dashboard/recipe-tile-confirm.ts` | new — declaration vs. the user's own answer |
 | `ui/src/components/dashboard/WidgetCard.tsx`         | uses the extracted guard                    |
 | `ui/src/components/dashboard/ConfirmActionSheet.tsx` | presentational + `GateConfirmSheet` wrapper |
 | `ui/src/components/dashboard/WidgetGrid.tsx`         | imports `GateConfirmSheet`                  |

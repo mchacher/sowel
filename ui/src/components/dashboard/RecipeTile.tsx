@@ -20,6 +20,7 @@ import {
 import { WidgetCard } from "./WidgetCard";
 import { ConfirmActionSheet } from "./ConfirmActionSheet";
 import { useCardPrimaryAction } from "./card-primary-action";
+import { tileNeedsConfirm } from "./recipe-tile-confirm";
 import { CountdownTimer, ModeCyclePill } from "../recipes/recipe-form-fields";
 import { cycleOptionLabel, resolveCycle } from "../recipes/recipe-cycle";
 import { recipeName } from "../../lib/recipe-i18n";
@@ -67,7 +68,8 @@ const TILE_ICONS: Record<string, LucideIcon> = {
  * Spec 171 — when the tile renders exactly one control, the whole card fires
  * it, like every other widget on this Dashboard. A recipe that moves something
  * physical says so with `tile.confirm`, and the mobile card then asks for a
- * slide before it acts.
+ * slide before it acts — unless the user turned that off on the instance
+ * (`tile.confirmParam`, resolved by `tileNeedsConfirm`).
  */
 export function RecipeTile({
   widget,
@@ -178,7 +180,7 @@ export function RecipeTile({
   const primary =
     !cycle || editMode
       ? undefined
-      : tile.confirm && isMobile
+      : isMobile && tileNeedsConfirm(tile, instance.params)
         ? () => setConfirming(true)
         : fire;
 

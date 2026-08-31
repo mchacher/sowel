@@ -27,7 +27,8 @@ Make a tap anywhere on a single-control recipe tile fire that control, and let a
 
 - A card-wide primary action on desktop and mobile, firing the tile's single cycle control.
 - `RecipeTileDef.confirm?: boolean` — the recipe declares that its tile action moves something physical.
-- On the **mobile** Dashboard, a `confirm` tile opens the slide-to-confirm sheet from spec 146 instead of actuating on the tap.
+- `RecipeTileDef.confirmParam?: string` — the id of a boolean slot letting the **user** decide, instance by instance, exactly as a gate equipment carries its own `requireConfirmation` toggle.
+- On the **mobile** Dashboard, a confirming tile opens the slide-to-confirm sheet from spec 146 instead of actuating on the tap.
 - Suppressing the card action in edit mode, as the equipment widgets already do.
 
 ## Out of scope
@@ -51,7 +52,11 @@ Make a tap anywhere on a single-control recipe tile fire that control, and let a
 
 6. **FR-6 — `confirm` declares a physical action.** A recipe may return `tile.confirm: true`. On mobile, the card action then opens a slide-to-confirm sheet naming the position it is about to switch to; completing the slide fires the cycle, cancelling fires nothing. On desktop the card fires directly.
 
-7. **FR-7 — An older core ignores it.** `confirm` is one more optional field on a declaration older cores already ignore in full. A recipe declaring it runs unchanged on 1.64.x, where the tile keeps its pill-only behaviour.
+7. **FR-7 — The user has the last word.** A recipe may name a boolean slot in `tile.confirmParam`. When the instance carries a value for it, that value decides — `true` asks even if the package declared nothing, `false` skips even if the package declared `confirm`. `confirm` remains the default for an instance that has never been given one, so an instance created before the recipe grew the slot keeps its guard.
+
+   The confirmation is a property of _this installation_, not of the package: a gate on a busy street and a gate in a private courtyard do not want the same answer, and spec 146 already gave that choice to whoever owns the equipment.
+
+8. **FR-8 — An older core ignores both.** They are two more optional fields on a declaration older cores already ignore in full. A recipe declaring them runs unchanged on 1.64.x, where the tile keeps its pill-only behaviour.
 
 ## Acceptance criteria
 
@@ -61,6 +66,8 @@ Make a tap anywhere on a single-control recipe tile fire that control, and let a
 - [x] In edit mode, tapping the body sends nothing on either surface.
 - [x] With `tile.confirm`, a mobile tap opens the confirm sheet; completing the slide sends the action, dismissing sends nothing.
 - [x] With `tile.confirm`, a desktop click sends the action directly.
+- [x] With `tile.confirmParam` answered `false`, a mobile tap acts without a sheet; answered `true` on a recipe declaring no `confirm`, it asks.
+- [x] With `tile.confirmParam` unanswered, the package's `confirm` still decides.
 - [x] The pill fires immediately on both surfaces, `confirm` or not.
 
 ## Edge cases
@@ -71,4 +78,6 @@ Make a tap anywhere on a single-control recipe tile fire that control, and let a
 | `tile.confirm` on a tile with no control            | Nothing to confirm, nothing to fire. No sheet.                                                         |
 | Slide completed after the instance went disabled    | The sheet closes and the store call is skipped — the tile re-renders greyed from the WebSocket event.  |
 | Drag released off a control, click landing on card  | Ignored: the pointerdown bookkeeping in `WidgetCard` already covers it, and the mobile shell now too.  |
-| Recipe declares `confirm` on a core older than 1.65 | Field ignored, tile unchanged (FR-7).                                                                  |
+| Instance predates the slot the recipe now names     | No value in `params` is not a "no": the package's `confirm` decides (FR-7).                            |
+| Param carries `"true"` / `"false"` as strings       | Read as booleans. A boolean slot stores a real boolean, but a hand-written param may not.              |
+| Recipe declares `confirm` on a core older than 1.65 | Both fields ignored, tile unchanged (FR-8).                                                            |

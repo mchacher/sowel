@@ -224,6 +224,7 @@ export function createRecipe(): RecipeDefinition {
       countdownKey: "timerExpiresAt", // default; omit to use it
       actions: ["set_mode"],      // which of your actions get a control
       confirm: true,              // this tile moves something physical (spec 171)
+      confirmParam: "confirmFromDashboard", // ...unless the user says otherwise
     },
   };
 }
@@ -258,7 +259,24 @@ When a tile renders **exactly one** control, a click anywhere on the card fires 
 
 `confirm: true` says that firing this tile **moves something physical** — a gate, a door, a pump. On the mobile Dashboard the card then opens a slide-to-confirm sheet naming the position it is about to switch to, instead of actuating on a tap; on desktop it fires directly, a mouse click being deliberate enough. The pill is never guarded: a 10 px target is already an aim, and this is the same call spec 146 made for gate equipment.
 
-Declare `confirm` on a tile whose action opens something, and leave it out for a tile that only picks a comfort mode. A core older than 1.65 ignores the field, as it ignores every part of a `tile` it does not know.
+`confirmParam` names one of your **`boolean` slots**, and hands that choice to the user — the recipe's equivalent of the confirmation toggle a gate equipment carries. Whatever the instance answers wins; `confirm` is only the default for an instance that was never asked, so adding the slot to an existing recipe never silently drops the guard on the instances already running.
+
+```typescript
+// A slot the user can untick, and a tile that reads it.
+slots: [
+  {
+    id: "confirmFromDashboard",
+    name: "Confirm before acting from the Dashboard",
+    description: "On a phone, ask for a slide before the tile opens the gate.",
+    type: "boolean",
+    required: false,
+    defaultValue: true,
+  },
+],
+tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmParam: "confirmFromDashboard" },
+```
+
+Declare `confirm` on a tile whose action opens something, and leave both out for a tile that only picks a comfort mode. A core older than 1.65 ignores the two fields, as it ignores every part of a `tile` it does not know.
 
 ### Rules worth knowing
 

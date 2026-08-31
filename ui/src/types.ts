@@ -905,6 +905,13 @@ export interface RecipeTileDef {
    * tile's own control is unaffected: a 10 px pill is already a deliberate aim.
    */
   confirm?: boolean;
+  /**
+   * Id of a `boolean` slot letting the user decide, instance by instance,
+   * whether that confirmation is asked — the recipe's answer to the toggle a
+   * gate equipment carries. Its value wins over `confirm`, which stays the
+   * default for an instance that has never been given one.
+   */
+  confirmParam?: string;
 }
 
 export interface RecipeInfo {

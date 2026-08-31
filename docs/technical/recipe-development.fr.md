@@ -219,6 +219,7 @@ export function createRecipe(): RecipeDefinition {
       countdownKey: "timerExpiresAt", // valeur par défaut, à omettre
       actions: ["set_mode"],      // celles de vos actions qui deviennent des boutons
       confirm: true,              // cette tuile actionne du physique (spec 171)
+      confirmParam: "confirmFromDashboard", // ...sauf si l'utilisateur en décide autrement
     },
   };
 }
@@ -253,7 +254,24 @@ Quand une tuile n'affiche **qu'un seul** bouton, un clic n'importe où sur la ca
 
 `confirm: true` déclare que déclencher cette tuile **actionne quelque chose de physique** — un portail, une porte, une pompe. Sur mobile, la carte ouvre alors un panneau « glisser pour confirmer » qui nomme la position vers laquelle elle s'apprête à basculer, au lieu d'agir sur une simple tape ; sur ordinateur elle agit directement, un clic à la souris étant assez délibéré. La pastille, elle, n'est jamais protégée : une cible de 10 px est déjà une visée, et c'est le choix qu'avait fait la spec 146 pour les équipements de type portail.
 
-Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez-le de côté pour une tuile qui choisit un mode de confort. Un cœur antérieur à 1.65 ignore le champ, comme il ignore toute partie d'un `tile` qu'il ne connaît pas.
+`confirmParam` désigne l'un de vos **slots `boolean`** et confie ce choix à l'utilisateur — l'équivalent, pour une recette, de la case « confirmation avant action » que porte un équipement de type portail. Ce que répond l'instance l'emporte ; `confirm` n'est que la valeur par défaut pour une instance à qui on n'a jamais posé la question, si bien qu'ajouter le slot à une recette existante ne retire jamais la protection en silence aux instances déjà en service.
+
+```typescript
+// Un slot que l'utilisateur peut décocher, et une tuile qui le lit.
+slots: [
+  {
+    id: "confirmFromDashboard",
+    name: "Confirmation avant d'agir depuis le tableau de bord",
+    description: "Sur téléphone, demande un glissement avant que la tuile n'ouvre le portail.",
+    type: "boolean",
+    required: false,
+    defaultValue: true,
+  },
+],
+tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmParam: "confirmFromDashboard" },
+```
+
+Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez les deux de côté pour une tuile qui choisit un mode de confort. Un cœur antérieur à 1.65 ignore les deux champs, comme il ignore toute partie d'un `tile` qu'il ne connaît pas.
 
 ### Règles à connaître
 
