@@ -10,6 +10,7 @@ import {
   SquareStack,
   Droplet,
   Flame,
+  Zap,
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -17,6 +18,15 @@ import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
 
 type PillVariant = "default" | "active" | "calm" | "alert";
+
+/**
+ * Spec 170 — watts below the kilowatt, kilowatts above, so a house drawing four
+ * figures does not print six characters of noise in a pill. Unit symbols are not
+ * translated, like the `m³/h` suffix on the water-valve pill.
+ */
+function formatWatts(watts: number): string {
+  return Math.abs(watts) >= 1000 ? `${(watts / 1000).toFixed(1)} kW` : `${Math.round(watts)} W`;
+}
 
 interface ZoneAggregationPillsProps {
   data: ZoneAggregatedData;
@@ -154,6 +164,20 @@ export function ZoneAggregationPills({
       icon: <WaterValveIcon size={14} strokeWidth={1.5} />,
       label: `${data.waterValvesOpen}/${data.waterValvesTotal}${flowSuffix}`,
       variant: someOpen ? "active" : "default",
+      iconTint: "text-text-tertiary",
+      valueTint: "text-text-tertiary",
+    });
+  }
+
+  // Spec 170 — the zone's live draw, summed from its submeters. Rendered only
+  // when the zone actually measures something: `null` means no meter here, and
+  // a pill reading "0 W" there would be a measurement the zone never made.
+  if (data.powerTotal !== null) {
+    counterPills.push({
+      key: "power",
+      icon: <Zap size={14} strokeWidth={1.5} />,
+      label: formatWatts(data.powerTotal),
+      variant: data.powerTotal > 0 ? "active" : "default",
       iconTint: "text-text-tertiary",
       valueTint: "text-text-tertiary",
     });

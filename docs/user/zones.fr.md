@@ -67,6 +67,7 @@ C'est l'une des fonctionnalités les plus puissantes de Sowel. Chaque zone calcu
 | **Fenêtres ouvertes**           | Nombre de contacts de fenêtre ouverts            | 2 fenêtres ouvertes                        |
 | **Fuite d'eau**                 | OU sur tous les capteurs de fuite                | Alerte si un capteur détecte de l'eau      |
 | **Fumée**                       | OU sur tous les capteurs de fumée                | Alerte si un capteur détecte de la fumée   |
+| **Puissance**                   | Somme des sous-compteurs de consommation         | 47,6 W (arrivée d'un gîte + sa plaque)     |
 
 ### Agrégation récursive
 
@@ -86,8 +87,22 @@ Dans la vue **Accueil**, chaque zone affiche un **bandeau d'état** avec les don
 - Pastille de comptage **Lumières** (par ex. "2/5")
 - Pastille de comptage **Volets** (par ex. "1/3")
 - Pastilles **Alerte** pour portes/fenêtres ouvertes, fuites d'eau, fumée
+- Pastille **Puissance** (par ex. « 47 W », ou « 2.4 kW » au-dessus du kilowatt) dès que la zone possède au moins un compteur
 
 Sous le bandeau, les équipements sont regroupés par type (Lumières, Volets, Capteurs) avec des contrôles intégrés.
+
+### Agrégation de puissance
+
+La pastille de puissance répond à « combien tire cette partie de la maison en ce moment ». Elle somme les équipements de la zone qui mesurent une **charge** — un `energy_meter` dédié, une prise avec mesure, tout équipement qui remonte des watts — sur la zone et toutes ses descendantes. C'est ce qui permet à une seule zone de totaliser deux circuits alimentés depuis des tableaux différents, ce qu'aucun compteur seul ne sait faire.
+
+Trois règles méritent d'être connues :
+
+- **Le compteur principal et les compteurs de production ne comptent jamais.** Une zone qui contient votre compteur réseau ou votre compteur solaire ne les additionne pas : un total ne mélange donc pas ce que la maison consomme avec ce qu'elle soutire ou produit.
+- **Pas de compteur, pas de pastille — et non « 0 W ».** Une zone qui ne mesure rien n'affiche rien. Une zone dont tous les compteurs lisent zéro affiche `0 W` : c'est une mesure, et la différence compte.
+- **Une mesure qui n'arrive plus est écartée, pas comptée comme zéro.** Une pince devenue muette ne dit rien sur le fait que sa charge tourne ou non : elle sort de la somme plutôt que de la tirer vers le bas.
+
+!!! warning "Un compteur d'arrivée et ses propres sous-compteurs se comptent deux fois"
+Si une zone contient à la fois un compteur sur un circuit et un compteur sur une charge alimentée par ce circuit, la charge est comptée deux fois — une fois dans l'arrivée, une fois pour elle-même. Sowel n'a pas de hiérarchie de compteurs : gardez les deux dans des zones différentes, ou lisez le total en sachant ce qu'il recouvre. Le même recouvrement affecte déjà le résidu « Autre » de la page Énergie.
 
 ## Fil d'activité
 

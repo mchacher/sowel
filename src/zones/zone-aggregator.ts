@@ -5,12 +5,15 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { SunlightManager } from "./sunlight-manager.js";
 import type {
   DataCategory,
+  EquipmentStatus,
   EquipmentType,
   ZoneAggregatedData,
   DataBindingWithValue,
   Zone,
 } from "../shared/types.js";
 import { ROOT_ZONE_ID } from "../shared/constants.js";
+import { isSubmeterEquipment } from "../equipments/metering.js";
+import { classifyPowerReading } from "../shared/reading-freshness.js";
 
 // ============================================================
 // Internal accumulator for aggregation (tracks sums + counts)
@@ -39,6 +42,10 @@ interface Accumulator {
   waterValvesTotal: number;
   waterFlowSum: number;
   waterFlowHasData: boolean;
+  /** Spec 170 — running sum of the live `power` of this zone's submeters. */
+  powerSum: number;
+  /** Spec 170 — whether any submeter landed in `powerSum`, so 0 W stays distinct from "no meter". */
+  powerHasData: boolean;
   /** Spec 120 — displays online (EquipmentStatus === "online") vs total. */
   displaysOnline: number;
   displaysTotal: number;
@@ -70,6 +77,8 @@ function emptyAccumulator(): Accumulator {
     waterValvesTotal: 0,
     waterFlowSum: 0,
     waterFlowHasData: false,
+    powerSum: 0,
+    powerHasData: false,
     displaysOnline: 0,
     displaysTotal: 0,
     unavailableByCategory: {},
@@ -111,6 +120,8 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     waterValvesTotal: a.waterValvesTotal + b.waterValvesTotal,
     waterFlowSum: a.waterFlowSum + b.waterFlowSum,
     waterFlowHasData: a.waterFlowHasData || b.waterFlowHasData,
+    powerSum: a.powerSum + b.powerSum,
+    powerHasData: a.powerHasData || b.powerHasData,
     displaysOnline: a.displaysOnline + b.displaysOnline,
     displaysTotal: a.displaysTotal + b.displaysTotal,
     unavailableByCategory: mergeUnavailable(a.unavailableByCategory, b.unavailableByCategory),
@@ -145,6 +156,7 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     waterValvesOpen: acc.waterValvesOpen,
     waterValvesTotal: acc.waterValvesTotal,
     waterFlowTotal: acc.waterFlowHasData ? Math.round(acc.waterFlowSum * 100) / 100 : null,
+    powerTotal: acc.powerHasData ? Math.round(acc.powerSum * 10) / 10 : null,
     sunrise: null,
     sunset: null,
     isDaylight: null,
@@ -176,6 +188,7 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.waterValvesOpen === b.waterValvesOpen &&
     a.waterValvesTotal === b.waterValvesTotal &&
     a.waterFlowTotal === b.waterFlowTotal &&
+    a.powerTotal === b.powerTotal &&
     a.sunrise === b.sunrise &&
     a.sunset === b.sunset &&
     a.isDaylight === b.isDaylight &&
@@ -518,6 +531,7 @@ export class ZoneAggregator {
       }
 
       const bindings = withDetails.dataBindings;
+      this.accumulateEquipmentPower(acc, equipment.type, withDetails.status, bindings);
       if (equipment.type === "water_valve") {
         this.accumulateWaterValve(acc, bindings);
       } else {
@@ -526,6 +540,61 @@ export class ZoneAggregator {
     }
 
     return acc;
+  }
+
+  /**
+   * Spec 170 — add one equipment's live draw to the zone's power sum.
+   *
+   * Runs at the equipment level rather than inside `accumulateBindings` because
+   * the decision needs the equipment's TYPE and STATUS, not just a binding.
+   *
+   * Neither of the two rules below is restated here — both are the engine's
+   * single implementation, so this surface can never drift from the by-usage
+   * breakdown the way #744 saw two surfaces describe one appliance two
+   * contradictory ways:
+   *
+   *  - `isSubmeterEquipment` (#523) decides what counts as a load. It excludes
+   *    the grid total and the production meters, so the root zone sums the
+   *    house's loads instead of the house total plus its own parts.
+   *  - `classifyPowerReading` (#832) decides whether the reading is a live
+   *    measurement. A stale one is DROPPED, never counted as 0 W — a clamp that
+   *    stopped reporting says nothing about whether its load is running.
+   *
+   * Note this is deliberately stricter than the rest of the aggregation for a
+   * `degraded` equipment. Elsewhere a degraded equipment still contributes its
+   * last known value, which is right for a temperature — a room does not cool
+   * because a sensor went quiet. It is wrong for a load: the whole point of
+   * #744 is that a stale `0 W` reads as "this appliance is off", and a water
+   * heater drawing 560 W displayed as 0 W is the bug that spec exists for.
+   */
+  private accumulateEquipmentPower(
+    acc: Accumulator,
+    equipmentType: EquipmentType,
+    status: EquipmentStatus,
+    bindings: DataBindingWithValue[],
+  ): void {
+    if (!isSubmeterEquipment(equipmentType, bindings)) return;
+
+    const powerBinding = bindings.find((b) => b.alias === "power");
+    // A non-numeric `power` is a state, not a measurement (a thermostat's own
+    // on/off switch); `isSubmeterEquipment` makes the same distinction.
+    if (!powerBinding || typeof powerBinding.value !== "number") return;
+
+    const verdict = classifyPowerReading({
+      status,
+      value: powerBinding.value,
+      lastUpdated: powerBinding.lastUpdated,
+      equipmentType,
+    });
+    if (verdict !== "current") return;
+
+    // Summed as reported: no absolute value, no clamp at zero. A clamp mounted
+    // backwards reports negative watts, and a negative total is a wiring fault
+    // the user needs to see. (`PowerSubmeterIntegrator` integrates |P| for
+    // energy per spec 091 — that protects a cumulative counter, a different
+    // question.)
+    acc.powerSum += powerBinding.value;
+    acc.powerHasData = true;
   }
 
   /**

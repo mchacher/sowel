@@ -252,6 +252,13 @@ export interface ZoneAggregatedData {
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null;
+  /**
+   * Spec 170 — live sum, in watts, of the consumption submeters in this zone
+   * and its descendants. `null` when nothing current was found to sum, which is
+   * NOT the same as a measured 0 W: a zone with no meters has not measured
+   * anything, and a stale reading is dropped rather than counted as zero.
+   */
+  powerTotal: number | null;
   sunrise: string | null;
   sunset: string | null;
   isDaylight: boolean | null;
