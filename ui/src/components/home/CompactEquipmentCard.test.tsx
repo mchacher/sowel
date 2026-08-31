@@ -112,7 +112,7 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
   it("withholds an aged solar headline rather than reading it as zero", () => {
     renderCard(
       makeEquipment("solar_panel", [], {
-        dataBindings: [powerBinding({ value: 1240, lastUpdated: agoIso(600) })],
+        dataBindings: [powerBinding({ value: 1240, lastUpdated: agoIso(1800) })],
       }),
     );
 
@@ -147,5 +147,18 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
     );
 
     expect(screen.getByText("1.2")).toBeTruthy();
+  });
+
+  it("keeps a solar reading inside the inverter's own reporting cadence", () => {
+    // apsystems arrives on a Tasmota SENSOR topic whose default TelePeriod is
+    // 300 s. Under a declared meter's two-minute window a panel in full sun
+    // would blank for three minutes out of every five.
+    renderCard(
+      makeEquipment("solar_panel", [], {
+        dataBindings: [powerBinding({ value: 1240, lastUpdated: agoIso(290) })],
+      }),
+    );
+
+    expect(screen.getByText("1.24 kW")).toBeTruthy();
   });
 });

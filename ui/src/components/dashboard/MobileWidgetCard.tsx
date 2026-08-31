@@ -455,7 +455,7 @@ function useMobileState(
       // Say why the tile is blank, or it reads as night rather than as an
       // inverter that stopped reporting (#839).
       stateLines: outdatedSince
-        ? [...lines, `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(outdatedSince) })}`]
+        ? [...lines, `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(outdatedSince, t) })}`]
         : lines,
     };
   }
@@ -613,7 +613,7 @@ function useMobileState(
     } else if (demandReading.verdict === "stale") {
       // The cumulative figure above is still valid; only the instantaneous
       // power is unknown, and it says so rather than going missing (#839).
-      lines.push(`— ${formatRelative(demandReading.since)}`);
+      lines.push(`— ${formatRelative(demandReading.since, t)}`);
     }
     return { icon: <EnergyMeterIcon />, stateLines: lines };
   }

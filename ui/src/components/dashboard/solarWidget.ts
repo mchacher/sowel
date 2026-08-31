@@ -34,17 +34,29 @@ export function solarWidgetState(
     return typeof b?.value === "number" ? b.value : null;
   };
 
-  const reading = resolvePowerReading(
-    equipment,
-    equipment.dataBindings.find((x) => x.category === "power"),
-    now,
-  );
+  const powerBinding = equipment.dataBindings.find((x) => x.category === "power");
+  const reading = resolvePowerReading(equipment, powerBinding, now);
+  const lastKnownW = typeof powerBinding?.value === "number" ? powerBinding.value : null;
+
+  // Standby is asked BEFORE staleness, on the last value rather than on the
+  // fresh one. An inverter that has stopped producing has also stopped having
+  // anything to say, so at night a panel is silent by design and "outdated"
+  // would be the wrong word for eight hours a night. The two cases separate on
+  // what the panel was last seen doing: a last reading of zero is a panel that
+  // wound down, a positive one that then went quiet is the failure #744 is
+  // about. (A panel whose very last frame before sunset was positive reads
+  // outdated overnight; the supported integration keeps reporting 0 W through
+  // the night, so that edge needs a source that stops mid-production.)
+  if (lastKnownW === null || lastKnownW <= 0 || equipment.status === "offline") {
+    return { producing: false, lines: [t("solar.standby")], outdatedSince: null };
+  }
+
   if (reading.verdict === "stale") {
     return { producing: false, lines: ["—"], outdatedSince: reading.since };
   }
 
   const powerW = reading.watts;
-  if (powerW === null || powerW <= 0 || equipment.status === "offline") {
+  if (powerW === null) {
     return { producing: false, lines: [t("solar.standby")], outdatedSince: null };
   }
 

@@ -45,22 +45,36 @@ export interface PowerReading {
 }
 
 /**
- * The freshness budget a binding answers to, when its own nature outranks its
- * equipment's type.
+ * The freshness budget a reading answers to, when its own cadence outranks the
+ * window its equipment type implies.
  *
- * `demand_5min` is the one case. A Legrand NLPC meter reports a power already
- * averaged over five minutes, so the reading cannot be fresher than five
- * minutes by construction. Metering equipments otherwise inherit the tight
- * two-minute window, which would call a perfectly healthy meter outdated for
- * most of every reporting cycle — the exact oscillation the shared module
- * documents and avoids for slow pollers. The ten-minute slow budget is twice
- * the quantity's own window and still catches the failure this issue is about
+ * `METERING_EQUIPMENT_TYPES` earns the tight two-minute window because the
+ * engine expects a declared meter to report continuously. Two sources in that
+ * set do not, and applying it to them would call a perfectly healthy device
+ * outdated for most of every reporting cycle — the exact oscillation the
+ * shared module documents and avoids for slow pollers:
+ *
+ * - `demand_5min`: a Legrand NLPC reports a power already averaged over five
+ *   minutes, so the reading cannot be fresher than five minutes by
+ *   construction.
+ * - `solar_panel`: the one solar integration in the registry (apsystems)
+ *   delivers on a Tasmota `tele/<root>/SENSOR` topic, whose default
+ *   `TelePeriod` is 300 s. Under the meter window a panel in full sun would
+ *   blank for roughly three minutes out of every five.
+ *
+ * The ten-minute slow budget is twice the slowest of those cadences, so
+ * neither oscillates, and it still catches the failure this issue is about
  * (#744 measured a reading 124 days old).
  *
  * Returning undefined means "no override": the type's own budget applies.
  */
-function budgetFor(binding: DataBindingWithValue | undefined): number | undefined {
-  return binding?.alias === "demand_5min" ? SUBMETER_FRESHNESS_SLOW_MS : undefined;
+function budgetFor(
+  equipment: EquipmentWithDetails,
+  binding: DataBindingWithValue | undefined,
+): number | undefined {
+  if (binding?.alias === "demand_5min") return SUBMETER_FRESHNESS_SLOW_MS;
+  if (equipment.type === "solar_panel") return SUBMETER_FRESHNESS_SLOW_MS;
+  return undefined;
 }
 
 /**
@@ -84,7 +98,7 @@ export function resolvePowerReading(
     lastUpdated: binding?.lastUpdated,
     equipmentType: equipment.type,
     now,
-    budgetMs: budgetFor(binding),
+    budgetMs: budgetFor(equipment, binding),
   });
   return {
     watts: verdict === "current" && typeof binding?.value === "number" ? binding.value : null,

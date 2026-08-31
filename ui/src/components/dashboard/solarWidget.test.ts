@@ -120,4 +120,33 @@ describe("solarWidgetState", () => {
     expect(state.lines).toEqual(["Standby"]);
     expect(state.outdatedSince).toBeNull();
   });
+
+  it("says standby, not outdated, for a panel that went quiet after winding down", () => {
+    // An inverter that has stopped producing has also stopped having anything
+    // to say. Calling eight hours of night "outdated" would be the wrong word.
+    const state = solarWidgetState(panel([binding("power", 0, ago(8 * 3600))]), t, NOW);
+
+    expect(state.lines).toEqual(["Standby"]);
+    expect(state.outdatedSince).toBeNull();
+  });
+
+  it("keeps a reading inside the inverter's own reporting cadence", () => {
+    // apsystems publishes on a Tasmota SENSOR topic, default TelePeriod 300 s.
+    // The two-minute meter window would blank a producing panel most of the time.
+    const state = solarWidgetState(
+      panel([binding("power", 1240, ago(290)), binding("current", 5.4, ago(290))]),
+      t,
+      NOW,
+    );
+
+    expect(state.producing).toBe(true);
+    expect(state.lines).toEqual(["1.24 kW", "5.4 A"]);
+  });
+
+  it("still blanks a panel that fell silent mid-production", () => {
+    const state = solarWidgetState(panel([binding("power", 1240, ago(1800))]), t, NOW);
+
+    expect(state.lines).toEqual(["—"]);
+    expect(state.outdatedSince).toBe(ago(1800));
+  });
 });

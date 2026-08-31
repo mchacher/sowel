@@ -125,21 +125,19 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
   // Solar panel: show the produced DC power (W/kW) as the headline value.
   // #839 — judged for freshness, so a silent inverter stops reading as 0 W.
-  const solarReading = resolvePowerReading(
+  const powerReading = resolvePowerReading(
     equipment,
     equipment.dataBindings.find((b) => b.category === "power"),
   );
-  const solarPowerW = isSolar ? solarReading.watts : null;
+  const solarPowerW = isSolar ? powerReading.watts : null;
 
   // Metering switch (spec 129): a smart plug that reports power shows it live
   // next to the on/off toggle. A bare relay has no power binding → null.
-  const switchReading = resolvePowerReading(
-    equipment,
-    equipment.dataBindings.find((b) => b.category === "power"),
-  );
-  const switchPowerW = isSwitch || isWaterHeater ? switchReading.watts : null;
+  // Same binding, same verdict as the solar headline above: one scan serves
+  // both, they only differ in which type renders it.
+  const switchPowerW = isSwitch || isWaterHeater ? powerReading.watts : null;
   const switchPowerStale =
-    (isSwitch || isWaterHeater) && switchReading.verdict === "stale" ? switchReading.since : null;
+    (isSwitch || isWaterHeater) && powerReading.verdict === "stale" ? powerReading.since : null;
   // Water heater (spec 135): optional water temperature next to the toggle.
   const waterHeaterTempC = isWaterHeater
     ? (() => {
@@ -249,9 +247,9 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 ? `${(solarPowerW / 1000).toFixed(2)} kW`
                 : `${Math.round(solarPowerW)} W`}
           </span>
-          {solarReading.verdict === "stale" && (
+          {powerReading.verdict === "stale" && (
             <span className="text-[11px] text-text-tertiary">
-              {formatRelative(solarReading.since)}
+              {formatRelative(powerReading.since, t)}
             </span>
           )}
         </span>
@@ -302,7 +300,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 —
               </span>
               <span className="text-[11px] text-text-tertiary">
-                {formatRelative(switchPowerStale)}
+                {formatRelative(switchPowerStale, t)}
               </span>
             </span>
           )}
@@ -498,6 +496,7 @@ function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
 }
 
 function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
   const computed = equipment.computedData ?? [];
   const energyDay = computed.find((c) => c.alias === "energy_day");
   // Live instantaneous power (issue #376): generic power binding first,
@@ -527,7 +526,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
         <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono">
           —
           <span className="text-[11px] font-normal ml-1">
-            {formatRelative(liveReading.since)}
+            {formatRelative(liveReading.since, t)}
           </span>
         </span>
       )}

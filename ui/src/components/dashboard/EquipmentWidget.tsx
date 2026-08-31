@@ -495,7 +495,7 @@ function WaterHeaterEquipmentWidget({
             <>
               <span className="font-mono text-[12px] text-text-tertiary tabular-nums">—</span>
               <span className="text-[10px] text-text-tertiary leading-tight">
-                {t("reading.ago", { age: formatRelative(powerReading.since) })}
+                {t("reading.ago", { age: formatRelative(powerReading.since, t) })}
               </span>
             </>
           )}
@@ -1297,7 +1297,7 @@ function EnergyMeterEquipmentWidget({
               —
             </span>
             <span className="text-[10px] text-text-tertiary">
-              {formatRelative(demandReading.since)}
+              {formatRelative(demandReading.since, t)}
             </span>
           </div>
         )}
@@ -1359,7 +1359,7 @@ function SolarPanelEquipmentWidget({
               that stopped reporting (#839). */}
           {outdatedSince && (
             <span className="text-[11px] text-text-tertiary mt-1">
-              {t("reading.outdated")} · {t("reading.ago", { age: formatRelative(outdatedSince) })}
+              {t("reading.outdated")} · {t("reading.ago", { age: formatRelative(outdatedSince, t) })}
             </span>
           )}
         </div>

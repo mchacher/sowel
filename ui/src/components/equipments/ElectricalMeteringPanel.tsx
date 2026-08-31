@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Activity, Gauge, Percent, PlugZap, Zap } from "lucide-react";
-import type { EquipmentWithDetails } from "../../types";
+import type { DataBindingWithValue, EquipmentWithDetails } from "../../types";
 import {
   pickLivePowerBinding,
   pickVoltageV,
@@ -37,45 +37,68 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
   const bindings = equipment.dataBindings;
   // #839 — the panel takes the equipment rather than bare bindings because the
   // freshness budget is a property of the equipment's type, not of the value.
-  const liveReading = resolvePowerReading(equipment, pickLivePowerBinding(bindings));
+  const powerBinding = pickLivePowerBinding(bindings);
+  const liveReading = resolvePowerReading(equipment, powerBinding);
   const liveW = liveReading.watts;
+  const outdated = liveReading.verdict === "stale";
+  const power = liveW !== null ? formatWatts(liveW) : null;
+
+  // Freshness is a property of the reading GROUP, not of the wattage alone.
+  // These four measures come off one meter through one radio, so the silence
+  // that aged the power aged the volts and amps beside it. Dashing the power
+  // while drawing `231.0 V / 5.40 A / 0.98` at full strength would present
+  // three figures as live on the strength of a reading just refused — the
+  // same argument solarWidget.ts makes for its own line. Scoped to the power
+  // binding's own device, so a meter fed by two devices only blanks the half
+  // that actually went quiet.
+  const agedWith = (b: DataBindingWithValue | undefined): boolean =>
+    outdated && !!powerBinding && !!b && b.deviceId === powerBinding.deviceId;
+
+  const byCategory = (category: string) => bindings.find((b) => b.category === category);
+  const pfBinding = bindings.find((b) => b.alias === "power_factor" || b.alias === "pf");
+
+  const voltageAged = agedWith(byCategory("voltage"));
+  const currentAged = agedWith(byCategory("current"));
+  const pfAged = agedWith(pfBinding);
+
   const voltageV = pickVoltageV(bindings);
   const currentA = pickCurrentA(bindings);
   const powerFactor = pickPowerFactor(bindings);
-  const power = liveW !== null ? formatWatts(liveW) : null;
-  const powerOutdated = liveReading.verdict === "stale";
 
   const measures: LiveMeasure[] = [
     {
       key: "power",
       labelKey: "category.power",
       icon: <Zap size={16} strokeWidth={1.5} />,
-      value: powerOutdated ? "—" : (power?.value ?? null),
-      unit: powerOutdated ? "" : (power?.unit ?? "W"),
-      sublabel: powerOutdated
-        ? `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(liveReading.since) })}`
+      value: outdated ? "—" : (power?.value ?? null),
+      unit: outdated ? "" : (power?.unit ?? "W"),
+      sublabel: outdated
+        ? `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(liveReading.since, t) })}`
         : null,
     },
     {
       key: "voltage",
       labelKey: "category.voltage",
       icon: <PlugZap size={16} strokeWidth={1.5} />,
-      value: voltageV !== null ? voltageV.toFixed(1) : null,
-      unit: "V",
+      value: voltageAged ? "—" : voltageV !== null ? voltageV.toFixed(1) : null,
+      unit: voltageAged ? "" : "V",
+      sublabel: voltageAged ? t("reading.outdated") : null,
     },
     {
       key: "current",
       labelKey: "category.current",
       icon: <Activity size={16} strokeWidth={1.5} />,
-      value: currentA !== null ? currentA.toFixed(2) : null,
-      unit: "A",
+      value: currentAged ? "—" : currentA !== null ? currentA.toFixed(2) : null,
+      unit: currentAged ? "" : "A",
+      sublabel: currentAged ? t("reading.outdated") : null,
     },
     {
       key: "powerFactor",
       labelKey: "energy.powerFactor",
       icon: <Percent size={16} strokeWidth={1.5} />,
-      value: powerFactor !== null ? powerFactor.toFixed(2) : null,
+      value: pfAged ? "—" : powerFactor !== null ? powerFactor.toFixed(2) : null,
       unit: "",
+      sublabel: pfAged ? t("reading.outdated") : null,
     },
   ];
 
