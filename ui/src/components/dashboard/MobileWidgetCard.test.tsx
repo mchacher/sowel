@@ -8,7 +8,16 @@ import type { DashboardWidget, EquipmentWithDetails } from "../../types";
 // because useMobileState had no isEnergyMeter branch. It now shows today's
 // consumption and the current power.
 
-function makeEnergyMeter(): EquipmentWithDetails {
+function agoIso(seconds: number): string {
+  return new Date(Date.now() - seconds * 1000).toISOString();
+}
+
+// The binding timestamp has to be a live one since #839: the card withholds a
+// power reading past its freshness budget, and this fixture's original
+// hard-coded "2026-01-01" would age out of any budget. The #323 assertion is
+// unchanged — a meter renders its power on mobile — it just needs a reading
+// the card has reason to believe.
+function makeEnergyMeter(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDetails {
   return {
     id: "em-1",
     name: "Main meter",
@@ -30,13 +39,14 @@ function makeEnergyMeter(): EquipmentWithDetails {
         type: "number",
         category: "power",
         value: 800,
-        lastUpdated: "2026-01-01T00:00:00Z",
-        lastChanged: "2026-01-01T00:00:00Z",
+        lastUpdated: agoIso(30),
+        lastChanged: agoIso(30),
         stale: false,
       },
     ] as EquipmentWithDetails["dataBindings"],
     orderBindings: [],
     computedData: [{ alias: "energy_day", value: 1500, lastUpdated: "2026-01-01T00:00:00Z" }],
+    ...over,
   };
 }
 
@@ -198,3 +208,28 @@ function stateDataBinding(over: Record<string, unknown>) {
     ...over,
   };
 }
+
+
+describe("MobileWidgetCard — stale power readings (#839)", () => {
+  it("withholds an aged meter power while keeping today's consumption", () => {
+    const eq = makeEnergyMeter();
+    eq.dataBindings[0].lastUpdated = agoIso(3600);
+
+    render(<MobileWidgetCard widget={widget} equipment={eq} />);
+
+    expect(screen.queryByText(/800 W/)).toBeNull();
+    expect(screen.getByText(/1\.5 kWh/)).toBeTruthy();
+    expect(screen.getByText(/1 h/)).toBeTruthy();
+  });
+
+  it("keeps a demand_5min reading inside its own five-minute nature", () => {
+    // 290 s would be past a metering type's two-minute window, but the
+    // quantity is a five-minute average and cannot be fresher than that.
+    const eq = makeEnergyMeter();
+    eq.dataBindings[0].lastUpdated = agoIso(290);
+
+    render(<MobileWidgetCard widget={widget} equipment={eq} />);
+
+    expect(screen.getByText(/800 W/)).toBeTruthy();
+  });
+});

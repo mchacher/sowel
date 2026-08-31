@@ -37,6 +37,8 @@ import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
+import { resolvePowerReading } from "../../lib/power-reading";
+import { formatRelative } from "../../lib/format-relative";
 import { createElement, type ReactNode } from "react";
 import {
   LightBulbIcon,
@@ -435,8 +437,13 @@ function WaterHeaterEquipmentWidget({
   // the zone room average) and optional power draw (metering relay).
   const waterTemp = equipment.dataBindings.find((db) => db.alias === "water_temperature");
   const tempValue = typeof waterTemp?.value === "number" ? waterTemp.value : null;
-  const powerBinding = equipment.dataBindings.find((db) => db.category === "power");
-  const powerValue = typeof powerBinding?.value === "number" ? powerBinding.value : null;
+  // #839 — a water heater is not a metering type, so its `stale` flag never
+  // ages a power channel out. The reading is judged here instead.
+  const powerReading = resolvePowerReading(
+    equipment,
+    equipment.dataBindings.find((db) => db.category === "power"),
+  );
+  const powerValue = powerReading.watts;
 
   const handleToggle = async () => {
     if (executing || !toggleBinding) return;
@@ -483,6 +490,14 @@ function WaterHeaterEquipmentWidget({
               {Math.round(powerValue)}
               <span className="text-[10px] text-text-tertiary font-normal ml-0.5">W</span>
             </span>
+          )}
+          {powerReading.verdict === "stale" && (
+            <>
+              <span className="font-mono text-[12px] text-text-tertiary tabular-nums">—</span>
+              <span className="text-[10px] text-text-tertiary leading-tight">
+                {t("reading.ago", { age: formatRelative(powerReading.since, t) })}
+              </span>
+            </>
           )}
         </div>
       </div>
@@ -1223,8 +1238,11 @@ function EnergyMeterEquipmentWidget({
   const energyMonth = computed.find((c) => c.alias === "energy_month");
 
   // Also check dataBindings for demand_5min (current power)
-  const demandBinding = equipment.dataBindings.find((b) => b.alias === "demand_5min");
-  const demandW = typeof demandBinding?.value === "number" ? demandBinding.value : null;
+  const demandReading = resolvePowerReading(
+    equipment,
+    equipment.dataBindings.find((b) => b.alias === "demand_5min"),
+  );
+  const demandW = demandReading.watts;
 
   const isProduction = equipment.type === "energy_production_meter";
   const primaryColor = isProduction ? "text-success" : "text-text";
@@ -1272,6 +1290,17 @@ function EnergyMeterEquipmentWidget({
             <span className="text-[10px] text-text-tertiary">{demandW >= 1000 ? "kW" : "W"}</span>
           </div>
         )}
+        {/* The age takes the unit's place, so the row keeps its height (#839). */}
+        {demandReading.verdict === "stale" && (
+          <div className="flex flex-col items-center">
+            <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono leading-none">
+              —
+            </span>
+            <span className="text-[10px] text-text-tertiary">
+              {formatRelative(demandReading.since, t)}
+            </span>
+          </div>
+        )}
         {energyHour?.value != null && (
           <div className="flex flex-col items-center">
             <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
@@ -1311,7 +1340,7 @@ function SolarPanelEquipmentWidget({
   // Centered layout matching the mobile card: PV logo on top, then power ·
   // current · voltage right under it (no click-through). "Veille" when the panel
   // is not producing (night/offline) rather than a fake live 0.
-  const { producing, lines } = solarWidgetState(equipment, t);
+  const { producing, lines, outdatedSince } = solarWidgetState(equipment, t);
 
   return (
     <WidgetCard label={label} sublabel={sublabel}>
@@ -1320,11 +1349,20 @@ function SolarPanelEquipmentWidget({
           strokeWidth={1.5}
           className={`${producing ? "text-primary" : "text-text-tertiary opacity-50"} w-[84px] h-[84px] sm:w-[104px] sm:h-[104px]`}
         />
-        <span
-          className={`text-[16px] font-semibold tabular-nums font-mono ${producing ? "text-text" : "text-text-tertiary"}`}
-        >
-          {lines.join("  ·  ")}
-        </span>
+        <div className="flex flex-col items-center">
+          <span
+            className={`text-[16px] font-semibold tabular-nums font-mono ${producing ? "text-text" : "text-text-tertiary"}`}
+          >
+            {lines.join("  ·  ")}
+          </span>
+          {/* Without this the blank tile reads as night, not as an inverter
+              that stopped reporting (#839). */}
+          {outdatedSince && (
+            <span className="text-[11px] text-text-tertiary mt-1">
+              {t("reading.outdated")} · {t("reading.ago", { age: formatRelative(outdatedSince, t) })}
+            </span>
+          )}
+        </div>
       </div>
     </WidgetCard>
   );
