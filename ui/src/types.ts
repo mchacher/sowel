@@ -898,6 +898,13 @@ export interface RecipeTileDef {
   countdownKey?: string;
   /** Ids from this recipe's `actions` exposed as controls on the tile. */
   actions?: string[];
+  /**
+   * Set when firing this tile moves something physical — a gate, a door, a
+   * pump. The Dashboard card then asks for a slide-to-confirm on mobile before
+   * it acts (spec 171), the same guard spec 146 gives a gate equipment. The
+   * tile's own control is unaffected: a 10 px pill is already a deliberate aim.
+   */
+  confirm?: boolean;
 }
 
 export interface RecipeInfo {

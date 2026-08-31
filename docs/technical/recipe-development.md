@@ -223,6 +223,7 @@ export function createRecipe(): RecipeDefinition {
       summaryKey: "summary",      // default; omit to use it
       countdownKey: "timerExpiresAt", // default; omit to use it
       actions: ["set_mode"],      // which of your actions get a control
+      confirm: true,              // this tile moves something physical (spec 171)
     },
   };
 }
@@ -250,6 +251,14 @@ ctx.state.set("mode", "short"); // the stateKey your cycle action reads
 ```
 
 Publish the resting value of a cycle action's `stateKey` from the start of `createInstance`, not only when something happens: the control does not render while its state key is absent, so a tile whose recipe is idle would show no button at all.
+
+### A click on the tile fires its control (spec 171)
+
+When a tile renders **exactly one** control, a click anywhere on the card fires it — the same cycle, the same next value as the pill, which stays where it is for anyone who prefers to aim. Two controls and the card stays inert: it would have to guess which one you meant. So does a tile with no control at all, a disabled instance, and a Dashboard in edit mode.
+
+`confirm: true` says that firing this tile **moves something physical** — a gate, a door, a pump. On the mobile Dashboard the card then opens a slide-to-confirm sheet naming the position it is about to switch to, instead of actuating on a tap; on desktop it fires directly, a mouse click being deliberate enough. The pill is never guarded: a 10 px target is already an aim, and this is the same call spec 146 made for gate equipment.
+
+Declare `confirm` on a tile whose action opens something, and leave it out for a tile that only picks a comfort mode. A core older than 1.65 ignores the field, as it ignores every part of a `tile` it does not know.
 
 ### Rules worth knowing
 

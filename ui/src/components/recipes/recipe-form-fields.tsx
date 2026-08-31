@@ -6,6 +6,7 @@ import { recipeSlotName, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
 import { equipmentCandidates } from "../../lib/recipe-slots";
 import { equipmentLabelMap, type ZoneOption } from "../../lib/zone-path";
 import { durationToMinutes } from "./recipe-slot-helpers";
+import { cycleOptionLabel, resolveCycle } from "./recipe-cycle";
 
 /**
  * `<option>` list of an equipment dropdown (spec 139). Integrations name every
@@ -108,35 +109,17 @@ export function ModeCyclePill({
   const { t } = useTranslation();
   const [sending, setSending] = useState(false);
 
-  const currentValue = instance.state?.[action.stateKey] as string | undefined;
-  if (!currentValue || !instance.enabled) return null;
+  const cycle = resolveCycle(instance, action);
+  if (!cycle) return null;
 
-  // Filter options: hide cocoon/night if their temp is not configured
-  const availableOptions = action.options.filter((opt) => {
-    if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
-    if (opt.value === "night" && !instance.params.nightTemp) return false;
-    return true;
-  });
-  if (availableOptions.length < 2) return null;
-
-  const currentIndex = availableOptions.findIndex((o) => o.value === currentValue);
-  const nextIndex = (currentIndex + 1) % availableOptions.length;
-  const nextOption = availableOptions[nextIndex];
-  const currentOption = availableOptions[currentIndex >= 0 ? currentIndex : 0];
-
-  const colors = MODE_PILL_COLORS[currentValue] ?? DEFAULT_PILL;
-
-  // Resolve label with i18n
-  const i18nPack = lang && recipe.i18n?.[lang];
-  const displayLabel = i18nPack
-    ? t(`recipes.actions.${action.id}.${currentValue}`, { defaultValue: currentOption.label })
-    : currentOption.label;
+  const colors = MODE_PILL_COLORS[cycle.value] ?? DEFAULT_PILL;
+  const displayLabel = cycleOptionLabel(recipe, action, cycle.current, lang, t);
 
   const handleClick = async () => {
     if (sending) return;
     setSending(true);
     try {
-      await sendAction(instance.id, action.id, { mode: nextOption.value });
+      await sendAction(instance.id, action.id, { mode: cycle.next.value });
     } catch {
       // ignore — state refreshed via WebSocket
     } finally {
@@ -150,7 +133,7 @@ export function ModeCyclePill({
       disabled={sending}
       className="inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-[10px] leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
       style={{ backgroundColor: colors.bg, color: colors.text }}
-      title={t("recipes.actions.cycleTo", { mode: nextOption.label, defaultValue: `Click to switch to ${nextOption.label}` })}
+      title={t("recipes.actions.cycleTo", { mode: cycle.next.label, defaultValue: `Click to switch to ${cycle.next.label}` })}
     >
       {displayLabel}
     </button>

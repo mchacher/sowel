@@ -218,6 +218,7 @@ export function createRecipe(): RecipeDefinition {
       summaryKey: "summary",      // valeur par défaut, à omettre
       countdownKey: "timerExpiresAt", // valeur par défaut, à omettre
       actions: ["set_mode"],      // celles de vos actions qui deviennent des boutons
+      confirm: true,              // cette tuile actionne du physique (spec 171)
     },
   };
 }
@@ -245,6 +246,14 @@ ctx.state.set("mode", "short"); // la stateKey que lit votre action de type cycl
 ```
 
 Publiez la valeur de repos de la `stateKey` d'une action `cycle` dès le début de `createInstance`, et pas seulement quand il se passe quelque chose : le bouton ne s'affiche pas tant que sa clé d'état est absente, donc une tuile dont la recette est au repos n'aurait aucun bouton du tout.
+
+### Un clic sur la tuile déclenche son bouton (spec 171)
+
+Quand une tuile n'affiche **qu'un seul** bouton, un clic n'importe où sur la carte le déclenche — même cycle, même valeur suivante que la pastille, qui reste en place pour qui préfère viser. Avec deux boutons la carte reste inerte : elle devrait deviner lequel vous vouliez. Idem pour une tuile sans aucun bouton, une instance désactivée, et un tableau de bord en mode édition.
+
+`confirm: true` déclare que déclencher cette tuile **actionne quelque chose de physique** — un portail, une porte, une pompe. Sur mobile, la carte ouvre alors un panneau « glisser pour confirmer » qui nomme la position vers laquelle elle s'apprête à basculer, au lieu d'agir sur une simple tape ; sur ordinateur elle agit directement, un clic à la souris étant assez délibéré. La pastille, elle, n'est jamais protégée : une cible de 10 px est déjà une visée, et c'est le choix qu'avait fait la spec 146 pour les équipements de type portail.
+
+Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez-le de côté pour une tuile qui choisit un mode de confort. Un cœur antérieur à 1.65 ignore le champ, comme il ignore toute partie d'un `tile` qu'il ne connaît pas.
 
 ### Règles à connaître
 
