@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { BottomSheet } from "../dashboard/BottomSheet";
-import { getPlugins, triggerSystemUpdate, updatePlugin } from "../../api";
+import {
+  getPlugins,
+  triggerSystemUpdate,
+  updatePlugin,
+  PersonalPluginConfirmationRequiredError,
+} from "../../api";
+import {
+  PersonalBadge,
+  PersonalConfirmModal,
+  type PersonalConfirmInfo,
+} from "../plugins/PersonalConfirm";
 import { useWebSocket } from "../../store/useWebSocket";
 import { refreshPluginUpdateCount } from "./usePluginUpdates";
 import type { PluginInfo, PluginManifest, PackageType } from "../../types";
@@ -42,6 +52,10 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
   const [plugins, setPlugins] = useState<PluginInfo[] | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Spec 172 — a personal-source package answers the update with a 409 asking
+  // the user to re-pin its fingerprint. The id travels with the identity: the
+  // retry targets a package id, the dialog shows a repository.
+  const [pending, setPending] = useState<{ id: string; info: PersonalConfirmInfo } | null>(null);
   // Tracks whether the sheet is currently open, so async handlers (whose
   // 1.5 s wait can outlive the close) can bail out before applying stale
   // state writes. Synced from `open` via the effect below.
@@ -53,6 +67,7 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
     let cancelled = false;
     setError(null);
     setUpdatingId(null);
+    setPending(null);
     setPlugins(null);
     getPlugins()
       .then((all) => {
@@ -69,6 +84,9 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
   }, [open]);
 
   const outdated = plugins ?? [];
+  // A row awaiting its fingerprint confirmation holds the panel too: nothing is
+  // in flight, but one dialog at a time is the whole point of it.
+  const busyId = updatingId ?? pending?.id ?? null;
   const showCore = !!coreUpdate;
   const totalCount = outdated.length + (showCore ? 1 : 0);
 
@@ -87,11 +105,15 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
     }
   }
 
-  async function handlePluginUpdate(id: string) {
+  async function handlePluginUpdate(
+    id: string,
+    opts: { confirmed?: boolean; expectedSha256?: string } = {},
+  ) {
     setError(null);
     setUpdatingId(id);
     try {
-      await updatePlugin(id);
+      await updatePlugin(id, opts);
+      setPending(null);
       // Plugin restart takes a moment — let the backend settle before refreshing the badge.
       await new Promise((r) => setTimeout(r, 1500));
       // Refresh the pill counter regardless of whether the sheet is still open —
@@ -101,6 +123,15 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
       setPlugins((prev) => (prev ?? []).filter((p) => p.manifest.id !== id));
     } catch (err) {
       if (!openRef.current) return;
+      // Spec 172 — not a failure: the server is asking the user to re-pin the
+      // fingerprint of a personal package (spec 136). Ask, then retry.
+      if (err instanceof PersonalPluginConfirmationRequiredError) {
+        setPending({
+          id,
+          info: { repo: err.repo, owner: err.owner, version: err.version, sha256: err.sha256 },
+        });
+        return;
+      }
       setError(err instanceof Error ? err.message : t("updates.error.generic"));
     } finally {
       if (openRef.current) setUpdatingId(null);
@@ -123,7 +154,7 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
           {t("updates.sheet.empty")}
         </div>
       ) : (
-        <ul className="flex flex-col gap-2" aria-busy={updatingId !== null}>
+        <ul className="flex flex-col gap-2" aria-busy={busyId !== null}>
           {showCore && coreUpdate && (
             <UpdateRow
               title="Sowel"
@@ -132,7 +163,7 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
               to={coreUpdate.latest}
               changelogHref={changelogUrl("core", undefined, coreUpdate.latest)}
               loading={updatingId === CORE_ROW_ID}
-              disabled={updatingId !== null && updatingId !== CORE_ROW_ID}
+              disabled={busyId !== null && busyId !== CORE_ROW_ID}
               onUpdate={handleCoreUpdate}
             />
           )}
@@ -146,8 +177,9 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
                 from={p.manifest.version}
                 to={to}
                 changelogHref={changelogUrl(getManifestType(p.manifest), p.manifest.repo, to)}
+                personal={p.source === "personal"}
                 loading={updatingId === p.manifest.id}
-                disabled={updatingId !== null && updatingId !== p.manifest.id}
+                disabled={busyId !== null && busyId !== p.manifest.id}
                 onUpdate={() => handlePluginUpdate(p.manifest.id)}
               />
             );
@@ -159,6 +191,23 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
           {error}
         </div>
       )}
+      {pending && (
+        <PersonalConfirmModal
+          info={pending.info}
+          mode="update"
+          busy={updatingId === pending.id}
+          onCancel={() => {
+            setPending(null);
+            setUpdatingId(null);
+          }}
+          onConfirm={() =>
+            void handlePluginUpdate(pending.id, {
+              confirmed: true,
+              expectedSha256: pending.info.sha256,
+            })
+          }
+        />
+      )}
     </BottomSheet>
   );
 }
@@ -169,6 +218,8 @@ interface UpdateRowProps {
   from: string;
   to: string;
   changelogHref: string | null;
+  /** From a personal source (spec 136): the update will ask for a fingerprint. */
+  personal?: boolean;
   loading: boolean;
   disabled: boolean;
   onUpdate: () => void;
@@ -180,6 +231,7 @@ function UpdateRow({
   from,
   to,
   changelogHref,
+  personal,
   loading,
   disabled,
   onUpdate,
@@ -203,6 +255,9 @@ function UpdateRow({
               {badge}
             </span>
           )}
+          {/* Spec 172 — the confirmation this row is about to ask for is not a
+              surprise if the row says where the package comes from. */}
+          {personal && <PersonalBadge />}
         </div>
         <div className="text-[11px] text-text-secondary font-mono mt-0.5">
           {t("updates.sheet.versions", { from, to })}
