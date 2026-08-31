@@ -89,10 +89,11 @@ export function isReadingCurrent(
   lastUpdated: string | null | undefined,
   equipmentType: string,
   now: number = Date.now(),
+  budgetMs: number = freshnessBudgetFor(equipmentType),
 ): boolean {
   const at = parseReadingTime(lastUpdated);
   if (at === null) return true;
-  return now - at <= freshnessBudgetFor(equipmentType);
+  return now - at <= budgetMs;
 }
 
 /** Why a power reading may or may not be drawn as a live measurement. */
@@ -119,10 +120,23 @@ export function classifyPowerReading(opts: {
   lastUpdated: string | null | undefined;
   equipmentType: string;
   now?: number;
+  /**
+   * Budget override, for a binding whose own nature outranks its equipment's
+   * type. The only current case is `demand_5min`: a Legrand NLPC meter reports
+   * a power already averaged over five minutes, so it cannot be fresher than
+   * five minutes and the two-minute meter window would call a healthy meter
+   * outdated most of the time (#839). Defaults to `freshnessBudgetFor(type)`.
+   */
+  budgetMs?: number;
 }): ReadingVerdict {
   if (opts.status === "offline") return "offline";
   if (typeof opts.value !== "number") return "missing";
-  return isReadingCurrent(opts.lastUpdated, opts.equipmentType, opts.now ?? Date.now())
+  return isReadingCurrent(
+    opts.lastUpdated,
+    opts.equipmentType,
+    opts.now ?? Date.now(),
+    opts.budgetMs ?? freshnessBudgetFor(opts.equipmentType),
+  )
     ? "current"
     : "stale";
 }

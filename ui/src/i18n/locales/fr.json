@@ -1138,6 +1138,8 @@
   "energy.live.breakdown.other": "Autre",
   "energy.live.breakdown.offline": "hors-ligne",
   "energy.live.breakdown.stale": "mesure ancienne",
+  "reading.outdated": "mesure ancienne",
+  "reading.ago": "il y a {{age}}",
   "energy.live.breakdown.staleNote": "Une charge sans mesure récente n'est pas comptée : sa consommation se retrouve dans Autre.",
   "energy.live.breakdown.houseIdle": "Maison à l'arrêt",
   "energy.live.breakdown.overshoot": "Σ sous-compteurs ≥ total maison",

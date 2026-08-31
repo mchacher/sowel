@@ -536,7 +536,7 @@ export function EquipmentDetailPage() {
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
         isSubmeterEquipment(equipment)) && (
-        <ElectricalMeteringPanel bindings={equipment.dataBindings} />
+        <ElectricalMeteringPanel equipment={equipment} />
       )}
 
       {/* Energy management — flexible-load declaration (spec 140), admin only */}

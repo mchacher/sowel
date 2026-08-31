@@ -1,16 +1,18 @@
 import { useTranslation } from "react-i18next";
 import { Activity, Gauge, Percent, PlugZap, Zap } from "lucide-react";
-import type { DataBindingWithValue } from "../../types";
+import type { EquipmentWithDetails } from "../../types";
 import {
-  pickLivePowerW,
+  pickLivePowerBinding,
   pickVoltageV,
   pickCurrentA,
   pickPowerFactor,
   formatWatts,
 } from "../../lib/energy-meter-display";
+import { resolvePowerReading } from "../../lib/power-reading";
+import { formatRelative } from "../../lib/format-relative";
 
 interface ElectricalMeteringPanelProps {
-  bindings: DataBindingWithValue[];
+  equipment: EquipmentWithDetails;
 }
 
 interface LiveMeasure {
@@ -19,6 +21,8 @@ interface LiveMeasure {
   icon: React.ReactNode;
   value: string | null;
   unit: string;
+  /** Why the value is a dash, when it is one (#839). */
+  sublabel?: string | null;
 }
 
 /**
@@ -27,22 +31,30 @@ interface LiveMeasure {
  * data is bound; the panel disappears entirely when nothing is bound.
  * Values update live through the WS store like the rest of the page.
  */
-export function ElectricalMeteringPanel({ bindings }: ElectricalMeteringPanelProps) {
+export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelProps) {
   const { t } = useTranslation();
 
-  const liveW = pickLivePowerW(bindings);
+  const bindings = equipment.dataBindings;
+  // #839 — the panel takes the equipment rather than bare bindings because the
+  // freshness budget is a property of the equipment's type, not of the value.
+  const liveReading = resolvePowerReading(equipment, pickLivePowerBinding(bindings));
+  const liveW = liveReading.watts;
   const voltageV = pickVoltageV(bindings);
   const currentA = pickCurrentA(bindings);
   const powerFactor = pickPowerFactor(bindings);
   const power = liveW !== null ? formatWatts(liveW) : null;
+  const powerOutdated = liveReading.verdict === "stale";
 
   const measures: LiveMeasure[] = [
     {
       key: "power",
       labelKey: "category.power",
       icon: <Zap size={16} strokeWidth={1.5} />,
-      value: power?.value ?? null,
-      unit: power?.unit ?? "W",
+      value: powerOutdated ? "—" : (power?.value ?? null),
+      unit: powerOutdated ? "" : (power?.unit ?? "W"),
+      sublabel: powerOutdated
+        ? `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(liveReading.since) })}`
+        : null,
     },
     {
       key: "voltage",
@@ -91,11 +103,18 @@ export function ElectricalMeteringPanel({ bindings }: ElectricalMeteringPanelPro
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-medium text-text-tertiary">{t(m.labelKey)}</div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[20px] font-semibold text-text font-mono leading-none">
+                  <span
+                    className={`text-[20px] font-semibold font-mono leading-none ${
+                      m.sublabel ? "text-text-tertiary" : "text-text"
+                    }`}
+                  >
                     {m.value}
                   </span>
                   {m.unit && <span className="text-[12px] text-text-tertiary">{m.unit}</span>}
                 </div>
+                {m.sublabel && (
+                  <div className="text-[11px] text-text-tertiary truncate">{m.sublabel}</div>
+                )}
               </div>
             </div>
           );

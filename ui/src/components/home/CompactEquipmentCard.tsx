@@ -26,7 +26,9 @@ import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
-import { pickLivePowerW, formatWatts } from "../../lib/energy-meter-display";
+import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
+import { resolvePowerReading } from "../../lib/power-reading";
+import { formatRelative } from "../../lib/format-relative";
 import type { DataBindingWithValue } from "../../types";
 
 interface CompactEquipmentCardProps {
@@ -122,22 +124,22 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
     isCamera && equipment.dataBindings.some((b) => b.category === "camera_snapshot_url");
 
   // Solar panel: show the produced DC power (W/kW) as the headline value.
-  const solarPowerW = isSolar
-    ? (() => {
-        const p = equipment.dataBindings.find((b) => b.category === "power");
-        return typeof p?.value === "number" ? p.value : null;
-      })()
-    : null;
+  // #839 — judged for freshness, so a silent inverter stops reading as 0 W.
+  const solarReading = resolvePowerReading(
+    equipment,
+    equipment.dataBindings.find((b) => b.category === "power"),
+  );
+  const solarPowerW = isSolar ? solarReading.watts : null;
 
   // Metering switch (spec 129): a smart plug that reports power shows it live
   // next to the on/off toggle. A bare relay has no power binding → null.
-  const switchPowerW =
-    isSwitch || isWaterHeater
-      ? (() => {
-          const p = equipment.dataBindings.find((b) => b.category === "power");
-          return typeof p?.value === "number" ? p.value : null;
-        })()
-      : null;
+  const switchReading = resolvePowerReading(
+    equipment,
+    equipment.dataBindings.find((b) => b.category === "power"),
+  );
+  const switchPowerW = isSwitch || isWaterHeater ? switchReading.watts : null;
+  const switchPowerStale =
+    (isSwitch || isWaterHeater) && switchReading.verdict === "stale" ? switchReading.since : null;
   // Water heater (spec 135): optional water temperature next to the toggle.
   const waterHeaterTempC = isWaterHeater
     ? (() => {
@@ -235,12 +237,23 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
       {/* Solar panel — produced power (green) */}
       {isSolar && (
-        <span className="text-[13px] font-semibold text-success tabular-nums flex-shrink-0 font-mono">
-          {solarPowerW === null
-            ? "—"
-            : solarPowerW >= 1000
-              ? `${(solarPowerW / 1000).toFixed(2)} kW`
-              : `${Math.round(solarPowerW)} W`}
+        <span className="flex items-baseline gap-1 flex-shrink-0">
+          <span
+            className={`text-[13px] font-semibold tabular-nums font-mono ${
+              solarPowerW === null ? "text-text-tertiary" : "text-success"
+            }`}
+          >
+            {solarPowerW === null
+              ? "—"
+              : solarPowerW >= 1000
+                ? `${(solarPowerW / 1000).toFixed(2)} kW`
+                : `${Math.round(solarPowerW)} W`}
+          </span>
+          {solarReading.verdict === "stale" && (
+            <span className="text-[11px] text-text-tertiary">
+              {formatRelative(solarReading.since)}
+            </span>
+          )}
         </span>
       )}
 
@@ -279,6 +292,18 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               {switchPowerW >= 1000
                 ? `${(switchPowerW / 1000).toFixed(2)} kW`
                 : `${Math.round(switchPowerW)} W`}
+            </span>
+          )}
+          {/* The 52 px row has the width for the age inline, so no sub-label
+              is needed to say the number is gone on purpose (#839). */}
+          {switchPowerStale && (
+            <span className="flex items-baseline gap-1">
+              <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono">
+                —
+              </span>
+              <span className="text-[11px] text-text-tertiary">
+                {formatRelative(switchPowerStale)}
+              </span>
             </span>
           )}
           {waterHeaterDayWh !== null && (
@@ -477,7 +502,11 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
   const energyDay = computed.find((c) => c.alias === "energy_day");
   // Live instantaneous power (issue #376): generic power binding first,
   // Legrand NLPC demand_5min as fallback. Updated live via the WS store.
-  const liveW = pickLivePowerW(equipment.dataBindings);
+  const liveReading = resolvePowerReading(
+    equipment,
+    pickLivePowerBinding(equipment.dataBindings),
+  );
+  const liveW = liveReading.watts;
 
   const dayWh = typeof energyDay?.value === "number" ? energyDay.value : null;
   const isProduction = equipment.type === "energy_production_meter";
@@ -491,6 +520,14 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
           {formatWatts(liveW).value}
           <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
             {formatWatts(liveW).unit}
+          </span>
+        </span>
+      )}
+      {liveReading.verdict === "stale" && (
+        <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono">
+          —
+          <span className="text-[11px] font-normal ml-1">
+            {formatRelative(liveReading.since)}
           </span>
         </span>
       )}

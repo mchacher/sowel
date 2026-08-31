@@ -1,15 +1,26 @@
 import type { DataBindingWithValue } from "../types";
 
 /**
- * Pick the live instantaneous power of an energy meter (issue #376).
+ * The binding behind an energy meter's live instantaneous power (issue #376).
  * The generic `power`-category binding wins; Legrand NLPC meters expose only
  * a `demand_5min` alias (W averaged over 5 minutes) which is used as fallback.
+ *
+ * Exposed alongside `pickLivePowerW` because a caller judging the reading's
+ * freshness needs the binding's `lastUpdated`, not just its value (#839).
  */
+export function pickLivePowerBinding(
+  bindings: DataBindingWithValue[],
+): DataBindingWithValue | undefined {
+  return (
+    bindings.find((b) => b.category === "power" && typeof b.value === "number") ??
+    bindings.find((b) => b.alias === "demand_5min" && typeof b.value === "number")
+  );
+}
+
+/** Value of the binding `pickLivePowerBinding` selects, or null when none is bound. */
 export function pickLivePowerW(bindings: DataBindingWithValue[]): number | null {
-  const power = bindings.find((b) => b.category === "power" && typeof b.value === "number");
-  if (power) return power.value as number;
-  const demand = bindings.find((b) => b.alias === "demand_5min" && typeof b.value === "number");
-  return demand ? (demand.value as number) : null;
+  const b = pickLivePowerBinding(bindings);
+  return b ? (b.value as number) : null;
 }
 
 /** First numeric voltage binding (V), or null when not bound. */

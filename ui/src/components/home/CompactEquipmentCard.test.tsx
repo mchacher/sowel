@@ -58,3 +58,94 @@ describe("CompactEquipmentCard — submetered day energy (#605)", () => {
     expect(screen.queryByText(/aujourd'hui/i)).toBeNull();
   });
 });
+
+
+// ============================================================
+// Issue #839 — the home row must not print an aged wattage either.
+// ============================================================
+
+function agoIso(seconds: number): string {
+  return new Date(Date.now() - seconds * 1000).toISOString();
+}
+
+function powerBinding(over: Record<string, unknown> = {}) {
+  return {
+    id: "db-p",
+    equipmentId: "eq-1",
+    deviceDataId: "dd-p",
+    alias: "power",
+    deviceId: "dev-1",
+    deviceName: "Clamp",
+    key: "power",
+    type: "number",
+    category: "power",
+    value: 560,
+    unit: "W",
+    lastUpdated: agoIso(5),
+    lastChanged: agoIso(5),
+    stale: false,
+    ...over,
+  } as EquipmentWithDetails["dataBindings"][number];
+}
+
+describe("CompactEquipmentCard — stale power readings (#839)", () => {
+  it("prints a fresh metering plug draw", () => {
+    renderCard(
+      makeEquipment("switch", [], { dataBindings: [powerBinding()] }),
+    );
+
+    expect(screen.getByText("560 W")).toBeTruthy();
+  });
+
+  it("withholds an aged plug draw and shows its age instead", () => {
+    renderCard(
+      makeEquipment("switch", [], {
+        dataBindings: [powerBinding({ value: 0, lastUpdated: agoIso(944) })],
+      }),
+    );
+
+    expect(screen.queryByText("0 W")).toBeNull();
+    expect(screen.getByText("\u2014")).toBeTruthy();
+    expect(screen.getByText(/15 min/)).toBeTruthy();
+  });
+
+  it("withholds an aged solar headline rather than reading it as zero", () => {
+    renderCard(
+      makeEquipment("solar_panel", [], {
+        dataBindings: [powerBinding({ value: 1240, lastUpdated: agoIso(600) })],
+      }),
+    );
+
+    expect(screen.queryByText(/1.24 kW/)).toBeNull();
+    expect(screen.getByText("\u2014")).toBeTruthy();
+  });
+
+  it("withholds an aged meter reading while keeping the day total", () => {
+    // The cumulative figure is a different binding with its own life: it must
+    // survive the instantaneous power being withheld.
+    renderCard(
+      makeEquipment("energy_meter", [dayEnergy(1230)], {
+        dataBindings: [
+          powerBinding({ alias: "demand_5min", value: 1240, lastUpdated: agoIso(3600) }),
+        ],
+      }),
+    );
+
+    expect(screen.queryByText("1.2")).toBeNull();
+    expect(screen.getByText("1.23")).toBeTruthy();
+    expect(screen.getByText("kWh")).toBeTruthy();
+    expect(screen.getByText(/1 h/)).toBeTruthy();
+  });
+
+  it("keeps a demand_5min reading inside its own five-minute nature", () => {
+    renderCard(
+      makeEquipment("energy_meter", [dayEnergy(1230)], {
+        dataBindings: [
+          powerBinding({ alias: "demand_5min", value: 1240, lastUpdated: agoIso(290) }),
+        ],
+      }),
+    );
+
+    expect(screen.getByText("1.2")).toBeTruthy();
+  });
+});

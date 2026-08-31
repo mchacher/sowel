@@ -28,6 +28,8 @@ import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentat
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
+import { resolvePowerReading } from "../../lib/power-reading";
+import { formatRelative } from "../../lib/format-relative";
 import {
   parseForecastDays,
   CONDITION_ICONS,
@@ -441,7 +443,7 @@ function useMobileState(
   }
 
   if (equipment.type === "solar_panel") {
-    const { producing, lines } = solarWidgetState(equipment, t);
+    const { producing, lines, outdatedSince } = solarWidgetState(equipment, t);
     return {
       icon: (
         <SolarPanelIcon
@@ -450,7 +452,11 @@ function useMobileState(
           className={producing ? "text-primary" : "text-text-tertiary opacity-50"}
         />
       ),
-      stateLines: lines,
+      // Say why the tile is blank, or it reads as night rather than as an
+      // inverter that stopped reporting (#839).
+      stateLines: outdatedSince
+        ? [...lines, `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(outdatedSince) })}`]
+        : lines,
     };
   }
 
@@ -588,8 +594,11 @@ function useMobileState(
   if (isEnergyMeter) {
     const computed = equipment.computedData ?? [];
     const energyDay = computed.find((c) => c.alias === "energy_day");
-    const demandBinding = equipment.dataBindings.find((b) => b.alias === "demand_5min");
-    const demandW = typeof demandBinding?.value === "number" ? demandBinding.value : null;
+    const demandReading = resolvePowerReading(
+      equipment,
+      equipment.dataBindings.find((b) => b.alias === "demand_5min"),
+    );
+    const demandW = demandReading.watts;
     const fmtWh = (wh: unknown): string =>
       typeof wh !== "number"
         ? "—"
@@ -601,6 +610,10 @@ function useMobileState(
       lines.push(
         demandW >= 1000 ? `${(demandW / 1000).toFixed(1)} kW` : `${Math.round(demandW)} W`,
       );
+    } else if (demandReading.verdict === "stale") {
+      // The cumulative figure above is still valid; only the instantaneous
+      // power is unknown, and it says so rather than going missing (#839).
+      lines.push(`— ${formatRelative(demandReading.since)}`);
     }
     return { icon: <EnergyMeterIcon />, stateLines: lines };
   }

@@ -469,3 +469,143 @@ describe("EquipmentWidget", () => {
     expect(onExecuteOrder).toHaveBeenCalledWith("l-1", "state", "OFF");
   });
 });
+
+
+// ============================================================
+// Issue #839 — a stale wattage must not be drawn as a live measurement.
+// ============================================================
+
+function agoIso(seconds: number): string {
+  return new Date(Date.now() - seconds * 1000).toISOString();
+}
+
+function powerBinding(over: Record<string, unknown> = {}) {
+  return {
+    id: "db-p",
+    equipmentId: "eq-1",
+    deviceDataId: "dd-p",
+    alias: "power",
+    deviceId: "dev-1",
+    deviceName: "Clamp",
+    key: "power",
+    type: "number",
+    category: "power",
+    value: 560,
+    unit: "W",
+    lastUpdated: agoIso(5),
+    lastChanged: agoIso(5),
+    stale: false,
+    ...over,
+  };
+}
+
+function waterHeater(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDetails {
+  return makeEquipment({
+    name: "Chauffe-eau",
+    type: "water_heater",
+    dataBindings: [
+      {
+        id: "db-1",
+        equipmentId: "eq-1",
+        deviceDataId: "dd-1",
+        alias: "state",
+        deviceId: "dev-1",
+        deviceName: "Relay",
+        key: "state",
+        type: "boolean",
+        category: "light_state",
+        value: true,
+        lastUpdated: agoIso(5),
+        lastChanged: agoIso(5),
+        stale: false,
+      },
+      powerBinding(),
+    ] as EquipmentWithDetails["dataBindings"],
+    ...over,
+  });
+}
+
+describe("EquipmentWidget — stale power readings (#839)", () => {
+  it("prints a fresh water heater draw", () => {
+    render(
+      <EquipmentWidget
+        widget={makeWidget()}
+        equipment={waterHeater()}
+        onExecuteOrder={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("560")).toBeTruthy();
+  });
+
+  it("withholds the water heater draw once past budget, and says how old it is", () => {
+    // The #744 production sample: `0 W` displayed while the appliance drew
+    // 560 W, because the clamp had gone quiet 944 s earlier. The engine's
+    // `stale` flag is false here on purpose — a water_heater is not a
+    // metering type — which is exactly why the tile has to judge for itself.
+    const eq = waterHeater();
+    eq.dataBindings[1] = powerBinding({
+      value: 0,
+      lastUpdated: agoIso(944),
+      stale: false,
+    }) as EquipmentWithDetails["dataBindings"][number];
+
+    render(
+      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
+    );
+
+    expect(screen.queryByText("0")).toBeNull();
+    expect(screen.getByText("\u2014")).toBeTruthy();
+    expect(screen.getByText(/15 min/)).toBeTruthy();
+    // The tile keeps saying the heater is on: only the measurement is unknown.
+    expect(screen.getByText("ON")).toBeTruthy();
+  });
+
+  it("keeps a 270 s reading from a slow-polling integration", () => {
+    const eq = waterHeater();
+    eq.dataBindings[1] = powerBinding({
+      lastUpdated: agoIso(270),
+    }) as EquipmentWithDetails["dataBindings"][number];
+
+    render(
+      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
+    );
+
+    expect(screen.getByText("560")).toBeTruthy();
+  });
+
+  it("blanks a stale solar tile and says why, so it does not read as night", () => {
+    const eq = makeEquipment({
+      name: "Panneaux",
+      type: "solar_panel",
+      dataBindings: [
+        powerBinding({ value: 1240, lastUpdated: agoIso(940) }),
+      ] as EquipmentWithDetails["dataBindings"],
+    });
+
+    render(
+      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
+    );
+
+    expect(screen.queryByText(/1.24 kW/)).toBeNull();
+    expect(screen.queryByText("Standby")).toBeNull();
+    expect(screen.getByText(/reading outdated/)).toBeTruthy();
+  });
+
+  it("still shows standby for a panel that is simply not producing", () => {
+    const eq = makeEquipment({
+      name: "Panneaux",
+      type: "solar_panel",
+      dataBindings: [
+        powerBinding({ value: 0, lastUpdated: agoIso(5) }),
+      ] as EquipmentWithDetails["dataBindings"],
+    });
+
+    render(
+      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
+    );
+
+    expect(screen.getByText("Standby")).toBeTruthy();
+    expect(screen.queryByText(/reading outdated/)).toBeNull();
+  });
+});
