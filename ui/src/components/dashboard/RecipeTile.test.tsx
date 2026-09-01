@@ -10,7 +10,13 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vite
 import { act, fireEvent, render, screen } from "../../test-utils";
 import { RecipeTile } from "./RecipeTile";
 import { useRecipes } from "../../store/useRecipes";
-import type { DashboardWidget, RecipeInfo, RecipeInstance } from "../../types";
+import { useEquipments } from "../../store/useEquipments";
+import type {
+  DashboardWidget,
+  EquipmentWithDetails,
+  RecipeInfo,
+  RecipeInstance,
+} from "../../types";
 
 const WIDGET: DashboardWidget = {
   id: "w1",
@@ -37,6 +43,7 @@ function seed(options: {
   recipe?: boolean;
   actions?: RecipeInfo["actions"];
   params?: Record<string, unknown>;
+  equipments?: EquipmentWithDetails[];
 } = {}) {
   const recipe: RecipeInfo = {
     id: "delivery-gate",
@@ -58,6 +65,22 @@ function seed(options: {
     instances: [instance],
     recipes: options.recipe === false ? [] : [recipe],
   });
+  useEquipments.setState({ equipments: options.equipments ?? [] });
+}
+
+/** Just enough equipment for the confirm derivation — it reads two fields. */
+function gate(requireConfirmation: boolean): EquipmentWithDetails {
+  return {
+    id: "eq-gate",
+    name: "Portail",
+    type: "gate",
+    zoneId: "z1",
+    enabled: true,
+    requireConfirmation,
+    dataBindings: [],
+    orderBindings: [],
+    status: "online",
+  } as unknown as EquipmentWithDetails;
 }
 
 const FULL_TILE = { icon: "Truck", actions: ["set_mode"] };
@@ -67,6 +90,7 @@ describe("RecipeTile", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-30T14:00:00Z"));
     useRecipes.setState({ instances: [], recipes: [] });
+    useEquipments.setState({ equipments: [] });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -376,6 +400,58 @@ describe("RecipeTile — the whole card acts (spec 171)", () => {
       seed({
         tile: { icon: "Truck", actions: ["set_mode"], confirmParam: "confirmFromDashboard" },
         params: { confirmFromDashboard: true },
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("asks because the GATE says so, on a recipe that declared nothing", () => {
+      // Marc's review on #868: the answer is given once, on the equipment, and
+      // every surface that actuates it asks the same question.
+      seed({
+        tile: { icon: "Truck", actions: ["set_mode"], confirmFrom: "gate" },
+        params: { gate: "eq-gate" },
+        equipments: [gate(true)],
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("does not ask when the gate's owner turned confirmation off", () => {
+      // Even though the package declares confirm AND the instance answered yes:
+      // two surfaces that disagree about one gate is the defect being fixed.
+      seed({
+        tile: { ...CONFIRM_TILE, confirmParam: "confirmFromDashboard", confirmFrom: "gate" },
+        params: { gate: "eq-gate", confirmFromDashboard: true },
+        equipments: [gate(false)],
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+    });
+
+    it("keeps the declared guard when the equipment cannot be resolved", () => {
+      // An equipment deleted under the instance, or a store not loaded yet, is
+      // not an answer of "no" — losing the guard silently would be the worst
+      // possible reading of an absent value.
+      seed({
+        tile: { ...CONFIRM_TILE, confirmFrom: "gate" },
+        params: { gate: "eq-gone" },
+        equipments: [gate(false)],
         state: { mode: "idle" },
       });
       render(<RecipeTile widget={WIDGET} isMobile />);

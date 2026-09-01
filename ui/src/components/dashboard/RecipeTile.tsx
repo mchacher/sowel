@@ -25,6 +25,7 @@ import { CountdownTimer, ModeCyclePill } from "../recipes/recipe-form-fields";
 import { cycleOptionLabel, resolveCycle } from "../recipes/recipe-cycle";
 import { recipeName } from "../../lib/recipe-i18n";
 import { useRecipes } from "../../store/useRecipes";
+import { useEquipments } from "../../store/useEquipments";
 import type { DashboardWidget } from "../../types";
 
 /**
@@ -67,9 +68,12 @@ const TILE_ICONS: Record<string, LucideIcon> = {
  *
  * Spec 171 — when the tile renders exactly one control, the whole card fires
  * it, like every other widget on this Dashboard. A recipe that moves something
- * physical says so with `tile.confirm`, and the mobile card then asks for a
- * slide before it acts — unless the user turned that off on the instance
- * (`tile.confirmParam`, resolved by `tileNeedsConfirm`).
+ * physical is guarded on mobile: the card asks for a slide before it acts. Who
+ * decides that is resolved by `tileNeedsConfirm` — the equipment named by
+ * `tile.confirmFrom` first, so the answer is given once and every surface that
+ * actuates that gate asks the same question, then the instance's own parameter
+ * and the package's declaration for the recipes where no equipment can be
+ * derived.
  */
 export function RecipeTile({
   widget,
@@ -89,6 +93,9 @@ export function RecipeTile({
   const instances = useRecipes((s) => s.instances);
   const recipes = useRecipes((s) => s.recipes);
   const sendAction = useRecipes((s) => s.sendAction);
+  // Spec 171 — the guard is the EQUIPMENT's, when the recipe named the slot
+  // that reaches it. The tile has to be able to look that equipment up.
+  const equipments = useEquipments((s) => s.equipments);
 
   // Above the early return: hooks cannot hide behind a condition.
   const [sending, setSending] = useState(false);
@@ -180,7 +187,8 @@ export function RecipeTile({
   const primary =
     !cycle || editMode
       ? undefined
-      : isMobile && tileNeedsConfirm(tile, instance.params)
+      : isMobile &&
+          tileNeedsConfirm(tile, instance.params, (id) => equipments.find((e) => e.id === id))
         ? () => setConfirming(true)
         : fire;
 

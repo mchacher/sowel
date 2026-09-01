@@ -605,6 +605,19 @@ export interface RecipeTileDef {
    * default for an instance that has never been given one.
    */
   confirmParam?: string;
+  /**
+   * Id of the `equipment` slot the tile's single control actuates. When it
+   * resolves, that equipment's own "Confirmation before action" (spec 146)
+   * decides whether the card asks, and `confirm` / `confirmParam` are not
+   * consulted: the answer is given once, on the equipment, and every surface
+   * that actuates it asks the same question.
+   *
+   * Only the recipe can know whether such a derivation is meaningful — an
+   * action touching several equipments, or none directly, or doing more than
+   * the equipment's own order, cannot derive anything — so this is a
+   * declaration, never something the core infers.
+   */
+  confirmFrom?: string;
 }
 
 export interface RecipeInfo {
