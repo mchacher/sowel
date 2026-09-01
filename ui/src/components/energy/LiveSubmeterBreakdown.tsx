@@ -268,6 +268,13 @@ function LegendRow({
       <span className="w-[10px] h-[10px] rounded-[2px]" style={{ background: row.color }} />
       <div className="flex flex-col min-w-0">
         <span className="font-medium text-text truncate">{row.name}</span>
+        {/* Spec 173 — this row is smaller than the meter's own card on purpose:
+            say why here, rather than leave the reader to find the difference. */}
+        {row.netOfChildren && (
+          <span className="text-[11px] text-text-tertiary">
+            {t("energy.byUsage.netOfChildren")}
+          </span>
+        )}
         {isOffline && (
           <span className="text-[11px] text-text-tertiary">
             {t("energy.live.breakdown.offline")}

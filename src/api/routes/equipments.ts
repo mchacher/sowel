@@ -1,13 +1,27 @@
 import type { FastifyInstance } from "fastify";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
+import type { TimedActionManager } from "../../equipments/timed-action-manager.js";
+import {
+  MAX_DURATION_MS,
+  MIN_DURATION_MS,
+  TimedActionError,
+} from "../../equipments/timed-action-manager.js";
 import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
-import type { EnergyLoadProfile, EquipmentType, SolarProfile } from "../../shared/types.js";
+import { isTimedCommandEligible } from "../../shared/timed-command.js";
+import type {
+  EnergyLoadProfile,
+  EquipmentType,
+  SolarProfile,
+  TimedCommand,
+} from "../../shared/types.js";
 import { classifyPowerReading } from "../../shared/reading-freshness.js";
 import type { Logger } from "../../core/logger.js";
 
 interface EquipmentsDeps {
   equipmentManager: EquipmentManager;
+  /** Spec 174. Absent in the test harnesses that do not wire it. */
+  timedActionManager?: TimedActionManager;
   logger: Logger;
 }
 
@@ -32,6 +46,8 @@ const createEquipmentBodySchema = {
 };
 
 import { validateSolarProfile } from "../../energy/pv/solar-profile.js";
+import { NON_SUBMETER_TYPES } from "../../equipments/metering.js";
+import { wouldCycle } from "../../energy/metering-nesting.js";
 
 const updateEquipmentBodySchema = {
   type: "object",
@@ -51,6 +67,21 @@ const updateEquipmentBodySchema = {
     },
     requireConfirmation: { type: "boolean" },
     invertDirection: { type: "boolean" },
+    // Spec 173 — id of the meter that already counts this equipment, or null.
+    meteringParentId: { type: ["string", "null"], minLength: 1 },
+    // Spec 174 phase 2 — the timed command this equipment offers, or null to
+    // clear it. `value` and `revertValue` are deliberately unconstrained: an
+    // order carries a boolean, an enum string, a number or nothing at all
+    // depending on its binding, and the handler checks the alias and the
+    // duration against the equipment itself.
+    timedCommand: {
+      type: ["object", "null"],
+      required: ["alias", "durationMs"],
+      properties: {
+        alias: { type: "string", minLength: 1 },
+        durationMs: { type: "number" },
+      },
+    },
     // Spec 160 — declared array geometry. The bounds are the same ones
     // `validateSolarProfile` enforces, repeated here so a malformed body is
     // refused at the edge rather than silently dropped when read back.
@@ -88,6 +119,26 @@ const updateEquipmentBodySchema = {
 // unlike name, NO maxLength — the old check never capped its length. The handler
 // keeps `alias.trim()` normalization.
 const nonBlankAlias = { type: "string", pattern: "\\S" };
+// Spec 174 — arm a timed action. `value` and `revertValue` are deliberately
+// unconstrained: an order carries a boolean, an enum string or a number
+// depending on its binding, and the resolution against that binding happens in
+// executeOrder, which is the one place that knows the shape.
+// An explicit body carries the three values; an EMPTY body arms what the
+// equipment's own configuration says (FR-13), so a tile does not restate values
+// it does not own. `required` would forbid the empty form, hence
+// `dependentRequired`: naming an alias is what makes the rest mandatory.
+const armTimedActionBodySchema = {
+  type: "object",
+  properties: {
+    alias: { type: "string", minLength: 1 },
+    durationMs: { type: "number", minimum: MIN_DURATION_MS, maximum: MAX_DURATION_MS },
+  },
+  // `dependencies`, not `dependentRequired`: Fastify's Ajv runs draft-07 in
+  // strict mode and refuses the 2019-09 keyword outright, at BOOT — the whole
+  // server fails to start, not just this route.
+  dependencies: { alias: ["revertValue", "durationMs"] },
+};
+
 const addDataBindingBodySchema = {
   type: "object",
   required: ["deviceDataId", "alias"],
@@ -100,7 +151,7 @@ const addOrderBindingBodySchema = {
 };
 
 export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDeps): void {
-  const { equipmentManager } = deps;
+  const { equipmentManager, timedActionManager } = deps;
 
   // GET /api/v1/equipments — List all equipments with bindings and current data.
   // Optional ?type=<EquipmentType> narrows the response to a single type.
@@ -256,6 +307,8 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       requireConfirmation?: boolean;
       invertDirection?: boolean;
       solarProfile?: SolarProfile | null;
+      meteringParentId?: string | null;
+      timedCommand?: TimedCommand | null;
     };
   }>(
     "/api/v1/equipments/:id",
@@ -292,6 +345,68 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         }
       }
 
+      // Spec 173 — a meter declared inside another one. Refused here rather than
+      // at the database, which would only see a foreign key: the three ways to
+      // get this wrong (yourself, a loop, the house total) each deserve to be
+      // named, and the check is on the resulting graph, not on the pair.
+      if (body.meteringParentId) {
+        const parent = equipmentManager.getById(body.meteringParentId);
+        if (!parent) {
+          return reply.status(404).send({ error: "Metering parent not found" });
+        }
+        if (body.meteringParentId === request.params.id) {
+          return reply.status(400).send({
+            error: "MeteringParentSelf",
+            message: "An equipment cannot be metered by itself",
+          });
+        }
+        // The same rule enrolment uses, not just the blocklist: a lamp or a
+        // bare relay is not a house total, but it is not a meter either, and
+        // accepting it would persist a declaration that does nothing at all in
+        // the breakdown. The picker already refuses it; the API has to agree.
+        const parentDetails = equipmentManager.getByIdWithDetails(body.meteringParentId);
+        if (
+          !parentDetails ||
+          !isSubmeterEquipment(parentDetails.type, parentDetails.dataBindings)
+        ) {
+          return reply.status(400).send({
+            error: "MeteringParentNotSubmeter",
+            message: NON_SUBMETER_TYPES.has(parent.type)
+              ? `${parent.name} is a house total or a production meter, not a submeter`
+              : `${parent.name} does not measure consumption, so nothing can be counted inside it`,
+          });
+        }
+        if (wouldCycle(equipmentManager.getAll(), request.params.id, body.meteringParentId)) {
+          return reply.status(400).send({
+            error: "MeteringParentCycle",
+            message: "That declaration would make a meter contain itself",
+          });
+        }
+      }
+
+      // Spec 174 phase 2 — a timed command is validated where it is WRITTEN, not
+      // where it is fired: a configuration naming an order the equipment does not
+      // carry would otherwise sit there until somebody pressed the control.
+      if (body.timedCommand) {
+        const details = equipmentManager.getByIdWithDetails(request.params.id);
+        if (!details) {
+          return reply.status(404).send({ error: "Equipment not found" });
+        }
+        const { alias, durationMs } = body.timedCommand;
+        if (durationMs < MIN_DURATION_MS || durationMs > MAX_DURATION_MS) {
+          return reply.status(400).send({
+            error: "TimedCommandInvalid",
+            message: `Duration must be between ${MIN_DURATION_MS / 1000}s and ${MAX_DURATION_MS / 3_600_000}h`,
+          });
+        }
+        if (!isTimedCommandEligible(details, alias)) {
+          return reply.status(400).send({
+            error: "TimedCommandNotEligible",
+            message: `${details.name} needs the order "${alias}" and a state reading tied to it`,
+          });
+        }
+      }
+
       try {
         const equipment = equipmentManager.update(request.params.id, {
           name: body.name?.trim(),
@@ -304,6 +419,8 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
+          meteringParentId: body.meteringParentId,
+          timedCommand: body.timedCommand,
         });
         if (!equipment) {
           return reply.code(404).send({ error: "Equipment not found" });
@@ -348,6 +465,87 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       return handleEquipmentError(reply, err);
     }
   });
+
+  // ============================================================
+  // Timed action routes (spec 174)
+  // ============================================================
+
+  // POST /api/v1/equipments/:id/timed-action — act now, revert at the deadline.
+  //
+  // Arming an equipment that already carries the same action moves the deadline
+  // and sends nothing (rule 3): the caller does not have to know which of the
+  // two it is doing, and a user pressing "open" on an open gate gets the time
+  // they asked for rather than a second manoeuvre.
+  app.post<{
+    Params: { id: string };
+    Body?: { alias?: string; value?: unknown; revertValue?: unknown; durationMs?: number };
+  }>(
+    "/api/v1/equipments/:id/timed-action",
+    { schema: { body: armTimedActionBodySchema } },
+    async (request, reply) => {
+      if (!timedActionManager) {
+        return reply.code(503).send({ error: "Timed actions are not available" });
+      }
+      const userId = request.auth?.userId ?? "anonymous";
+      // FR-13 — nothing named means "arm what this equipment is configured for".
+      if (request.body?.alias === undefined) {
+        try {
+          return await timedActionManager.armConfigured(request.params.id, {
+            kind: "manual",
+            userId,
+          });
+        } catch (err) {
+          if (err instanceof TimedActionError) {
+            return reply.code(err.statusCode).send({ error: err.message });
+          }
+          return handleEquipmentError(reply, err);
+        }
+      }
+      // `dependentRequired` on the schema means an alias brings the other two
+      // with it, so the narrowing here is a type formality, not a second check.
+      const { alias, value, revertValue, durationMs = 0 } = request.body;
+      try {
+        const armed = await timedActionManager.arm(
+          request.params.id,
+          { alias, value, revertValue, durationMs },
+          { kind: "manual", userId },
+        );
+        return armed;
+      } catch (err) {
+        if (err instanceof TimedActionError) {
+          return reply.code(err.statusCode).send({ error: err.message });
+        }
+        return handleEquipmentError(reply, err);
+      }
+    },
+  );
+
+  // DELETE /api/v1/equipments/:id/timed-action — end the window early.
+  //
+  // ?revert=true sends the revert now ("I changed my mind"); the default drops
+  // the deadline and sends nothing, which is what a caller who already put the
+  // equipment back by hand wants.
+  app.delete<{ Params: { id: string }; Querystring: { revert?: string } }>(
+    "/api/v1/equipments/:id/timed-action",
+    async (request, reply) => {
+      if (!timedActionManager) {
+        return reply.code(503).send({ error: "Timed actions are not available" });
+      }
+      const wantsRevert = request.query.revert === "true";
+      try {
+        const had = wantsRevert
+          ? await timedActionManager.revertNow(request.params.id, "cancelled from the UI")
+          : timedActionManager.disarm(request.params.id, "cancelled from the UI");
+        if (!had) return reply.code(404).send({ error: "No timed action on this equipment" });
+        return { success: true };
+      } catch (err) {
+        if (err instanceof TimedActionError) {
+          return reply.code(err.statusCode).send({ error: err.message });
+        }
+        return handleEquipmentError(reply, err);
+      }
+    },
+  );
 
   // ============================================================
   // DataBinding routes

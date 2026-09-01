@@ -16,6 +16,7 @@ import { EquipmentStatusTracker } from "./equipments/equipment-status-tracker.js
 import { OrderConfirmationTracker } from "./equipments/order-confirmation-tracker.js";
 import { BatteryMonitor } from "./devices/battery-monitor.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
+import { TimedActionManager } from "./equipments/timed-action-manager.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
 import { VmcSpeedTracker } from "./equipments/vmc-controller.js";
 import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-tracker.js";
@@ -332,6 +333,14 @@ async function main() {
   );
   await runUnlessShadow("orderConfirmationTracker.init()", () => orderConfirmationTracker.init());
 
+  // 10c-bis. Timed actions (spec 174) — the engine's own "act now, revert after
+  // N minutes". Created here so every equipment query carries the deadline that
+  // stands on it; STARTED in section 17, because starting it rehydrates the
+  // deadlines the previous run left behind and can dispatch a revert on the
+  // spot, which a shadow instance must never do.
+  const timedActionManager = new TimedActionManager(db, eventBus, equipmentManager, logger);
+  equipmentManager.registerTimedActionProvider((eqId) => timedActionManager.getFor(eqId));
+
   // 10d. Low battery monitor (spec 143) — raises a system alarm when a
   // battery-powered device drops under the threshold, reminding weekly until
   // the cell is replaced. Not started in shadow mode: a shadow instance must
@@ -563,6 +572,7 @@ async function main() {
   );
 
   const server = await createServer({
+    timedActionManager,
     pvForecaster,
     db,
     deviceManager,
@@ -650,6 +660,13 @@ async function main() {
   // 17. Recipe instances are NOT restored here. They start at the very end of
   // boot, once the integrations they drive can actually carry an order — see
   // "21. Restore recipe instances" below (issue #702).
+
+  // 17a-bis. Timed actions (spec 174). Rehydrates the deadlines the previous
+  // run owed: one still ahead is re-scheduled on its remainder, one that passed
+  // during the outage is honoured now — that outage is the case the feature
+  // exists for. A revert dispatched here lands before the integrations connect
+  // on a cold boot; spec 141 replays it when they do (issue #702).
+  await runUnlessShadow("timedActionManager.start()", () => timedActionManager.start());
 
   // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
   poolRuntimeTracker.start();
@@ -797,6 +814,11 @@ async function main() {
       orderConfirmationTracker.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping order confirmation tracker");
+    }
+    try {
+      timedActionManager.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping timed action manager");
     }
     // #792 — must run before `db.close()`. destroy() does two things that both
     // matter here: it clears the 200ms debounce and the 60s tick, and it

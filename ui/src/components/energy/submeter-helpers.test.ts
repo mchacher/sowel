@@ -61,6 +61,8 @@ function makeEquipment(
     readingAgeMs?: number;
     /** Force `lastUpdated` outright, including to null or to something unparseable. */
     lastUpdated?: string | null;
+    /** Spec 173 — the meter that already counts this one. */
+    meteringParentId?: string | null;
   } = {},
 ): EquipmentWithDetails {
   const bindings: DataBindingWithValue[] = [];
@@ -80,6 +82,7 @@ function makeEquipment(
     id,
     name,
     zoneId: "z",
+    meteringParentId: opts.meteringParentId ?? null,
     type: opts.type ?? "energy_meter",
     enabled: true,
     createdAt: "2026-05-01 00:00:00Z",
@@ -455,5 +458,55 @@ describe("computeOther", () => {
       makeEquipment("b", "Pool", { power: null, status: "offline" }),
     ]);
     expect(computeOther(2000, rows)).toBe(800);
+  });
+});
+
+describe("nested submeters (spec 173)", () => {
+  it("renders a parent net of the child declared inside it", () => {
+    const rows = buildRows([
+      makeEquipment("gite", "Gite", { power: 500 }),
+      makeEquipment("ce", "Chauffe-eau", { power: 209, meteringParentId: "gite" }),
+    ]);
+
+    const gite = rows.find((r) => r.id === "gite");
+    expect(gite?.power).toBe(291);
+    expect(gite?.netOfChildren).toBe(true);
+    // The child itself is untouched, and the two together stop being counted twice.
+    const ce = rows.find((r) => r.id === "ce");
+    expect(ce?.power).toBe(209);
+    expect(ce?.netOfChildren).toBeUndefined();
+    expect(computeOther(1000, rows)).toBe(500);
+  });
+
+  it("subtracts direct children only, so a chain adds back up", () => {
+    const rows = buildRows([
+      makeEquipment("a", "Tableau", { power: 1000 }),
+      makeEquipment("b", "Gite", { power: 600, meteringParentId: "a" }),
+      makeEquipment("c", "Chauffe-eau", { power: 200, meteringParentId: "b" }),
+    ]);
+
+    expect(rows.find((r) => r.id === "a")?.power).toBe(400);
+    expect(rows.find((r) => r.id === "b")?.power).toBe(400);
+    expect(rows.find((r) => r.id === "c")?.power).toBe(200);
+    // 400 + 400 + 200 = 1000, the parent's own reading.
+    expect(computeOther(1500, rows)).toBe(500);
+  });
+
+  it("clamps at zero when a child reads more than its parent", () => {
+    const rows = buildRows([
+      makeEquipment("p", "Parent", { power: 100 }),
+      makeEquipment("c", "Child", { power: 180, meteringParentId: "p" }),
+    ]);
+    expect(rows.find((r) => r.id === "p")?.power).toBe(0);
+  });
+
+  it("subtracts nothing for a child with no live reading", () => {
+    const rows = buildRows([
+      makeEquipment("p", "Parent", { power: 500 }),
+      makeEquipment("c", "Child", { power: null, status: "offline", meteringParentId: "p" }),
+    ]);
+    const parent = rows.find((r) => r.id === "p");
+    expect(parent?.power).toBe(500);
+    expect(parent?.netOfChildren).toBeUndefined();
   });
 });

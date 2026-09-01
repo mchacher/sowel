@@ -93,15 +93,16 @@ endpoint not in the allowlist is admin-only.
 
 **Standard write allowlist** (the only mutations a `standard` may perform):
 
-| Method        | Path                                                                                                      | Purpose               |
-| ------------- | --------------------------------------------------------------------------------------------------------- | --------------------- |
-| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment  |
-| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command          |
-| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account           |
-| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens        |
-| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)    |
-| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Own push subscription |
-| POST          | `/api/v1/auth/logout`                                                                                     | End own session       |
+| Method        | Path                                                                                                      | Purpose                 |
+| ------------- | --------------------------------------------------------------------------------------------------------- | ----------------------- |
+| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment    |
+| POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Timed action (spec 174) |
+| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command            |
+| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account             |
+| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens          |
+| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)      |
+| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Own push subscription   |
+| POST          | `/api/v1/auth/logout`                                                                                     | End own session         |
 
 An API token inherits its creator's role, so a standard-scoped token is subject to
 the same gate (no privilege escalation).
@@ -160,6 +161,49 @@ All user management routes require admin role.
 | `PUT`    | `/api/v1/equipments/:id`               | Update equipment. Body: `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                                                               |
 | `DELETE` | `/api/v1/equipments/:id`               | Delete equipment. Returns 204.                                                                                                                                                                                                                    |
 | `POST`   | `/api/v1/equipments/:id/orders/:alias` | Execute an equipment order. Body: `{ value }`.                                                                                                                                                                                                    |
+
+### Timed actions (spec 174)
+
+"Act now, revert after N minutes", held by the engine rather than by a recipe. The action is dispatched immediately through the ordinary order path; what the engine keeps is the **revert it owes**, and the instant it is owed at. It survives a restart, and a deadline that passed while the engine was down is honoured on the way back up.
+
+| Method   | Path                                  | Description                                                                                                                      |
+| -------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/v1/equipments/:id/timed-action` | Act now, revert at the deadline. Body: `{ alias, value, revertValue, durationMs }`. Returns the armed action.                    |
+| `DELETE` | `/api/v1/equipments/:id/timed-action` | End the window early. `?revert=true` sends the revert now; without it the deadline is simply dropped. 404 when nothing is armed. |
+
+```json
+POST /api/v1/equipments/eq-gate/timed-action
+{ "alias": "command", "value": "OPEN", "revertValue": "CLOSE", "durationMs": 900000 }
+
+200 OK
+{
+  "alias": "command",
+  "value": "OPEN",
+  "revertValue": "CLOSE",
+  "expiresAt": "2026-09-01T14:32:00.000Z",
+  "armedAt": "2026-09-01T14:17:00.000Z",
+  "armedBy": "u-1"
+}
+```
+
+Rules worth knowing before calling it:
+
+- **One per equipment.** Arming the _same_ action again moves the deadline and dispatches nothing — "open again", from somebody looking at an open gate, means "give me more time". A different alias or value replaces the window and is dispatched.
+- **A hand-revert ends it.** The mirror binding reporting the revert value disarms the window and sends nothing at the deadline.
+- **A revert that could not be sent alarms and stops.** It is never replayed: the engine cannot know whether sending it again would put the equipment back or act on it a second time.
+- `durationMs` is between 10 s and 24 h. An action and its revert **may carry the same value**: a sliding gate on a sequential impulse is opened and closed by one command.
+- **Not every equipment can be armed.** It must carry the order and a state reading tied to it (the order's own alias, or a reading in `light_state`, `gate_state`, `cover_state`, `lock_state`, `appliance_state`). Without one, a revert done by hand could never end the window, so the call is refused with `400 TimedCommandNotEligible`.
+- **An empty body arms the equipment's own configuration** (`timedCommand`), so a surface does not have to restate three values it does not own: `POST /equipments/:id/timed-action` with `{}`. `409` when nothing is configured.
+- `GET /equipments` and `GET /equipments/:id` carry `timedAction` while a window is running, with `expiresAt` as an ISO-8601 instant, and `timedCommand` when one is configured.
+
+`PUT /api/v1/equipments/:id` accepts `timedCommand` and validates it against the equipment's own bindings, so a configuration naming an order it does not carry is refused where it is written rather than where it is fired:
+
+```json
+PUT /api/v1/equipments/eq-gate
+{ "timedCommand": { "alias": "command", "value": null, "revertValue": null, "durationMs": 900000 } }
+```
+
+`null` clears it. An absent key leaves it untouched.
 
 ### Equipment status (spec 116)
 

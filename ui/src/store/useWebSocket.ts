@@ -328,6 +328,15 @@ function handleEvent(event: EngineEvent): void {
         event.value
       );
       break;
+    // Spec 174 — the window opening, closing or failing changes what every
+    // surface must draw, and it is not an equipment.updated: the row is not
+    // touched, only the deadline it carries.
+    case "equipment.timed_action.armed":
+    case "equipment.timed_action.reverted":
+    case "equipment.timed_action.disarmed":
+    case "equipment.timed_action.failed":
+      useEquipments.getState().handleEquipmentUpdated();
+      break;
     case "equipment.status.changed":
       useEquipments.getState().handleEquipmentStatusChanged(
         event.equipmentId,

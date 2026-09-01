@@ -89,9 +89,18 @@ export function DashboardPage() {
     return equipmentZoneQualifiers([...shown.values()], zoneChainMap(zoneOptions));
   }, [widgets, equipmentMap, zoneOptions]);
 
-  const handleAddEquipment = useCallback(async (equipmentId: string) => {
-    await createWidget({ type: "equipment", equipmentId });
-  }, [createWidget]);
+  const handleAddEquipment = useCallback(
+    async (equipmentId: string, timed?: boolean) => {
+      // Spec 174 phase 2 — the timed variant is one flag on the widget's own
+      // config, so the same equipment can carry both tiles.
+      await createWidget({
+        type: "equipment",
+        equipmentId,
+        ...(timed ? { config: { timed: true } } : {}),
+      });
+    },
+    [createWidget],
+  );
 
   const handleAddZone = useCallback(async (zoneId: string, family: WidgetFamily) => {
     await createWidget({ type: "zone", zoneId, family });

@@ -53,6 +53,13 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   // Usage: actuate an equipment / run a zone command
   { method: "POST", re: /^\/api\/v1\/equipments\/[^/]+\/orders\/[^/]+$/ },
   { method: "POST", re: /^\/api\/v1\/zones\/[^/]+\/orders\/[^/]+$/ },
+  // Spec 174 — a timed command is an ordinary actuation with a deadline on it,
+  // and the surfaces that offer it (the Home row, the Dashboard tile) render
+  // for every user. What a standard user may already do outright, they may do
+  // for fifteen minutes. Configuring WHICH command stays admin-only: that is a
+  // PUT on the equipment.
+  { method: "POST", re: /^\/api\/v1\/equipments\/[^/]+\/timed-action$/ },
+  { method: "DELETE", re: /^\/api\/v1\/equipments\/[^/]+\/timed-action$/ },
   // Personal: own account, preferences, password, own API tokens
   { method: "PUT", re: /^\/api\/v1\/me$/ },
   { method: "PUT", re: /^\/api\/v1\/me\/preferences$/ },

@@ -8,6 +8,8 @@ import type {
   DataBinding,
   OrderBinding,
   SolarProfile,
+  TimedAction,
+  TimedCommand,
 } from "../types";
 import { fetchJSON, API_BASE, getAccessToken } from "./client";
 
@@ -53,6 +55,10 @@ export async function updateEquipment(
     invertDirection?: boolean;
     /** Spec 160 — declared array geometry; null clears it. */
     solarProfile?: SolarProfile | null;
+    /** Spec 173 — the meter that already counts this one; null clears it. */
+    meteringParentId?: string | null;
+    /** Spec 174 phase 2 — the timed command this equipment offers; null clears it. */
+    timedCommand?: TimedCommand | null;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {
@@ -171,4 +177,34 @@ export async function removeOrderBinding(equipmentId: string, bindingId: string)
   return fetchJSON<void>(`${API_BASE}/equipments/${equipmentId}/order-bindings/${bindingId}`, {
     method: "DELETE",
   });
+}
+
+// ============================================================
+// Timed command (spec 174)
+// ============================================================
+
+/**
+ * Arm the equipment's configured timed command: act now, revert at the deadline.
+ *
+ * The body is empty on purpose — the three values live on the equipment, and a
+ * tile restating them is how two surfaces come to arm two different things.
+ * Pressing again while a window is open extends it and dispatches nothing.
+ */
+export async function armTimedCommand(equipmentId: string): Promise<TimedAction> {
+  return fetchJSON<TimedAction>(`${API_BASE}/equipments/${equipmentId}/timed-action`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+/**
+ * End the window. `revert: true` sends the revert now, which is what somebody
+ * looking at an open gate means by "close it"; the default drops the deadline
+ * and sends nothing, for a caller who already reverted by hand.
+ */
+export async function cancelTimedCommand(equipmentId: string, revert = true): Promise<void> {
+  return fetchJSON<void>(
+    `${API_BASE}/equipments/${equipmentId}/timed-action?revert=${revert ? "true" : "false"}`,
+    { method: "DELETE" },
+  );
 }

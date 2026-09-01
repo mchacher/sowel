@@ -86,6 +86,11 @@ const widgetCreateSchema = {
     // conversion is not about.
     label: { type: ["string", "null"] },
     icon: { type: ["string", "null"] },
+    // Spec 174 phase 2 — `{ timed: true }` pins the timed variant of an
+    // equipment tile. Carried at CREATE, not only at PATCH: the picker knows
+    // which of the two the user chose, and a second call to set it would leave
+    // a window where the tile actuates outright.
+    config: { type: ["object", "null"] },
   },
   allOf: [
     {
@@ -172,12 +177,14 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
       family?: WidgetFamily;
       label?: string;
       icon?: string;
+      config?: WidgetConfig | null;
     };
   }>(
     "/api/v1/dashboard/widgets",
     { schema: { body: widgetCreateSchema } },
     async (request, reply) => {
-      const { type, equipmentId, zoneId, recipeInstanceId, family, label, icon } = request.body;
+      const { type, equipmentId, zoneId, recipeInstanceId, family, label, icon, config } =
+        request.body;
 
       // The schema has settled the shape by here; what is left is existence,
       // which it cannot express. Both keep their original 400.
@@ -219,13 +226,14 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: DashboardDep
 
       const id = crypto.randomUUID();
       db.prepare(
-        `INSERT INTO dashboard_widgets (id, type, label, icon, equipment_id, zone_id, recipe_instance_id, family, display_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO dashboard_widgets (id, type, label, icon, config, equipment_id, zone_id, recipe_instance_id, family, display_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         id,
         type,
         label ?? null,
         icon ?? null,
+        config ? JSON.stringify(config) : null,
         type === "equipment" ? equipmentId! : null,
         type === "zone" ? zoneId! : null,
         type === "recipe" ? recipeInstanceId! : null,
