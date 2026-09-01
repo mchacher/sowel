@@ -82,6 +82,8 @@ interface ServerDeps {
   zoneManager: ZoneManager;
   zoneAggregator: ZoneAggregator;
   equipmentManager: EquipmentManager;
+  /** Spec 174 — absent in shadow-mode-only harnesses. */
+  timedActionManager?: import("../equipments/timed-action-manager.js").TimedActionManager;
   recipeManager: RecipeManager;
   modeManager: ModeManager;
   calendarManager: CalendarManager;
@@ -140,6 +142,7 @@ export async function createServer(deps: ServerDeps) {
     zoneManager,
     zoneAggregator,
     equipmentManager,
+    timedActionManager,
     recipeManager,
     modeManager,
     calendarManager,
@@ -325,7 +328,7 @@ export async function createServer(deps: ServerDeps) {
   registerUserRoutes(app, { userManager, mfaService, auditLogger, logger });
   registerDeviceRoutes(app, { deviceManager, batteryMonitor, logger });
   registerZoneRoutes(app, { zoneManager, zoneAggregator, equipmentManager, logger });
-  registerEquipmentRoutes(app, { equipmentManager, logger });
+  registerEquipmentRoutes(app, { equipmentManager, timedActionManager, logger });
   registerCameraRoutes(app, { equipmentManager, logger });
   registerRecipeRoutes(app, { recipeManager, logger });
   registerModeRoutes(app, { modeManager, buttonActionManager, auditLogger, userManager, logger });

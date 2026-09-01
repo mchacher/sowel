@@ -379,6 +379,32 @@ export interface Equipment {
    *  wired the opposite way with no bridge-side invert. Command-only: the
    *  reported position stays raw. Ignored for non-shutter-family types. */
   invertDirection?: boolean;
+  /**
+   * Spec 174 phase 2 — the timed command this equipment offers, absent when it
+   * offers none (the default). This is CONFIGURATION; the window actually
+   * running is `EquipmentWithDetails.timedAction`. Two fields because a surface
+   * asks two questions: draw the control at all, and is it counting down.
+   */
+  timedCommand?: TimedCommand | null;
+}
+
+/**
+ * Spec 174 phase 2 — what a timed control on this equipment arms.
+ *
+ * `value` and `revertValue` may be equal, and either may be `null`: a sliding
+ * gate on a sequential impulse is opened and closed by one command carrying no
+ * value. The first draft refused equality outright and so excluded the hardware
+ * the feature exists for (FR-9b).
+ */
+export interface TimedCommand {
+  /** Order alias armed by the control. */
+  alias: string;
+  /** Value dispatched now. */
+  value: unknown;
+  /** Value dispatched at the deadline. */
+  revertValue: unknown;
+  /** Window length in ms, within the manager's bounds. */
+  durationMs: number;
 }
 
 /**
@@ -499,6 +525,26 @@ export interface ComputedDataEntry {
   lastUpdated: string | null;
 }
 
+/**
+ * A revert the engine owes an equipment, and when (spec 174).
+ *
+ * The action itself is already gone — dispatched through the ordinary order
+ * path. What is described here is the deadline: the value that will be sent,
+ * and the instant it is due. Absent when nothing is armed.
+ */
+export interface TimedAction {
+  /** Order alias carrying both the action and its revert. */
+  alias: string;
+  /** The value that was dispatched when the window opened. */
+  value: unknown;
+  /** The value that will be dispatched at the deadline. */
+  revertValue: unknown;
+  /** ISO-8601 instant. A UI ticks it down. */
+  expiresAt: string;
+  armedAt: string;
+  armedBy?: string;
+}
+
 export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
@@ -508,6 +554,8 @@ export interface EquipmentWithDetails extends Equipment {
   status: EquipmentStatus;
   /** Populated only when status !== "online". */
   statusReason?: EquipmentStatusReason;
+  /** Spec 174 — the revert this equipment owes, when a window is running. */
+  timedAction?: TimedAction;
 }
 
 // ============================================================
@@ -1400,6 +1448,43 @@ export type EngineEvent =
       reason: "timeout" | "device_offline" | "integration_disconnected";
       source?: OrderSource;
     }
+  // Spec 174 — a timed action: act now, revert at the deadline.
+  | {
+      type: "equipment.timed_action.armed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      value: unknown;
+      revertValue: unknown;
+      /** Epoch ms — the instant the revert is due. */
+      expiresAt: number;
+      /** True when this moved an existing deadline instead of acting again. */
+      extended: boolean;
+      source?: OrderSource;
+    }
+  | {
+      type: "equipment.timed_action.reverted";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      revertValue: unknown;
+      reason: string;
+    }
+  | {
+      type: "equipment.timed_action.disarmed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      reason: string;
+    }
+  | {
+      type: "equipment.timed_action.failed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      revertValue: unknown;
+      error: string;
+    }
   | {
       type: "equipment.status.changed";
       equipmentId: string;
@@ -1809,6 +1894,12 @@ export type WidgetFamily =
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */
   visibleBindings?: string[];
+  /**
+   * Spec 174 phase 2 — this tile arms the equipment's timed command instead of
+   * actuating it outright. Set on a SECOND widget for the same equipment, so
+   * the ordinary tile keeps its behaviour beside it.
+   */
+  timed?: boolean;
 }
 
 export interface DashboardWidget {

@@ -1,0 +1,16 @@
+-- Spec 174 phase 2 — the configuration of a timed command.
+--
+-- Phase 1 (031) gave the engine the deadline it owes an equipment. What it
+-- could not say is WHICH command a surface should offer, with which revert and
+-- for how long: every caller had to carry those three values itself, so the
+-- feature was reachable from the API and from nowhere else.
+--
+-- One nullable JSON column, the shape energy_profile (016) and solar_profile
+-- already use: absent means "no timed command on this equipment", which is the
+-- default and needs no backfill.
+--
+-- { alias, value, revertValue, durationMs }. `value` and `revertValue` may be
+-- EQUAL — a sliding gate on a sequential impulse is opened and closed by the
+-- same command — and either may be null, for a command that carries no value at
+-- all. The JSON envelope keeps that distinguishable from the string "null".
+ALTER TABLE equipments ADD COLUMN timed_command TEXT;

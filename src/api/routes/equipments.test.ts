@@ -734,3 +734,144 @@ describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", ()
     expect((eq.dataBindings as { value: number }[])[0].value).toBe(1233);
   });
 });
+
+// ============================================================
+// Spec 174 phase 2 — the timed command
+// ============================================================
+
+describe("timed command (spec 174 phase 2)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let saved: Record<string, unknown> | null;
+  let armedWith: { id: string; explicit: boolean } | null;
+
+  // A sliding gate: one impulse order, and the contact that makes it eligible.
+  const gate = {
+    id: "gate",
+    name: "Portail",
+    type: "gate",
+    orderBindings: [{ id: "o1", alias: "command", type: "string" }],
+    dataBindings: [{ id: "d1", alias: "state", category: "gate_state", type: "string" }],
+    timedCommand: null as unknown,
+  };
+
+  beforeEach(async () => {
+    saved = null;
+    armedWith = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: (id: string) => (id === gate.id ? gate : null),
+        getByIdWithDetails: (id: string) => (id === gate.id ? gate : null),
+        getAll: () => [gate],
+        update: (_id: string, input: Record<string, unknown>) => {
+          saved = input;
+          return { id: _id, ...input };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      timedActionManager: {
+        armConfigured: async (id: string) => {
+          armedWith = { id, explicit: false };
+          if (!gate.timedCommand) {
+            const { TimedActionError } = await import("../../equipments/timed-action-manager.js");
+            throw new TimedActionError("No timed command configured on this equipment", 409);
+          }
+          return { alias: "command", value: null, revertValue: null, expiresAt: "x", armedAt: "y" };
+        },
+        arm: async (id: string) => {
+          armedWith = { id, explicit: true };
+          return { alias: "command", value: null, revertValue: null, expiresAt: "x", armedAt: "y" };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["timedActionManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    gate.timedCommand = null;
+    await app.close();
+  });
+
+  const put = (payload: unknown) =>
+    app.inject({ method: "PUT", url: "/api/v1/equipments/gate", payload });
+  const arm = (payload?: unknown) =>
+    app.inject({ method: "POST", url: "/api/v1/equipments/gate/timed-action", payload });
+
+  it("stores a configuration whose action and revert are the same command", async () => {
+    // FR-9b: an impulse. The first draft refused this outright.
+    const res = await put({
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(saved?.timedCommand).toEqual({
+      alias: "command",
+      value: null,
+      revertValue: null,
+      durationMs: 900_000,
+    });
+  });
+
+  it("refuses a configuration naming an order the equipment does not carry", async () => {
+    const res = await put({
+      timedCommand: { alias: "open", value: null, revertValue: null, durationMs: 900_000 },
+    });
+
+    // Refused where it is WRITTEN, not where it would be fired.
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("TimedCommandNotEligible");
+    expect(saved).toBeNull();
+  });
+
+  it("refuses a window outside the bounds", async () => {
+    const res = await put({
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 500 },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("TimedCommandInvalid");
+  });
+
+  it("clears the configuration on null", async () => {
+    const res = await put({ timedCommand: null });
+
+    expect(res.statusCode).toBe(200);
+    expect(saved).toHaveProperty("timedCommand", null);
+  });
+
+  it("arms the stored configuration from an empty body", async () => {
+    // FR-13 — this is the call BOTH new surfaces make; a schema requiring
+    // `alias` here would 400 every press without any test noticing.
+    gate.timedCommand = { alias: "command", value: null, revertValue: null, durationMs: 900_000 };
+
+    const res = await arm({});
+
+    expect(res.statusCode).toBe(200);
+    expect(armedWith).toEqual({ id: "gate", explicit: false });
+  });
+
+  it("answers 409 when nothing is configured to arm", async () => {
+    const res = await arm({});
+
+    expect(res.statusCode).toBe(409);
+    // Told apart from "cannot be armed": one is a configuration a user can go
+    // and write, the other is an equipment that will never do it.
+    expect(res.json().error).toMatch(/No timed command/);
+  });
+
+  it("still takes an explicit body, and still validates it", async () => {
+    const ok = await arm({
+      alias: "command",
+      value: null,
+      revertValue: null,
+      durationMs: 900_000,
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(armedWith).toEqual({ id: "gate", explicit: true });
+
+    // Naming an alias brings the other two with it.
+    const bad = await arm({ alias: "command" });
+    expect(bad.statusCode).toBe(400);
+  });
+});

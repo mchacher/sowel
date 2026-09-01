@@ -38,6 +38,9 @@ import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMete
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
+import { TimedCommandControl } from "../components/equipments/TimedCommandControl";
+import { hasTimedCommandCandidate } from "../../../src/shared/timed-command";
 import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
@@ -425,9 +428,28 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
+      {/* Timed command — the ACTION, next to the ordinary controls above and
+          available to every user (spec 174 phase 2). Its own card, labelled, so
+          "actuate" and "actuate for fifteen minutes" are two named buttons
+          rather than two icons to guess between. The admin panel further down
+          configures it; this one fires it. */}
+      {equipment.timedCommand && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.timed.title")}</h3>
+          <TimedCommandControl equipment={equipment} labelled />
+        </div>
+      )}
+
       {/* Gate — confirmation before action (spec 146), admin only */}
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      )}
+
+      {/* Timed command — act now, revert after N (spec 174 phase 2), admin only.
+          Offered only where a hand-revert could end the window early: the
+          equipment must carry the order AND a state reading tied to it. */}
+      {isAdmin && hasTimedCommandCandidate(equipment) && (
+        <TimedCommandPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Shutter-family / gate — invert command direction (spec 154, extended
