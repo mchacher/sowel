@@ -191,8 +191,19 @@ Rules worth knowing before calling it:
 - **One per equipment.** Arming the _same_ action again moves the deadline and dispatches nothing — "open again", from somebody looking at an open gate, means "give me more time". A different alias or value replaces the window and is dispatched.
 - **A hand-revert ends it.** The mirror binding reporting the revert value disarms the window and sends nothing at the deadline.
 - **A revert that could not be sent alarms and stops.** It is never replayed: the engine cannot know whether sending it again would put the equipment back or act on it a second time.
-- `durationMs` is between 10 s and 24 h; an action whose value equals its revert value is refused (400).
-- `GET /equipments` and `GET /equipments/:id` carry `timedAction` while a window is running, with `expiresAt` as an ISO-8601 instant.
+- `durationMs` is between 10 s and 24 h. An action and its revert **may carry the same value**: a sliding gate on a sequential impulse is opened and closed by one command.
+- **Not every equipment can be armed.** It must carry the order and a state reading tied to it (the order's own alias, or a reading in `light_state`, `gate_state`, `cover_state`, `lock_state`, `appliance_state`). Without one, a revert done by hand could never end the window, so the call is refused with `400 TimedCommandNotEligible`.
+- **An empty body arms the equipment's own configuration** (`timedCommand`), so a surface does not have to restate three values it does not own: `POST /equipments/:id/timed-action` with `{}`. `409` when nothing is configured.
+- `GET /equipments` and `GET /equipments/:id` carry `timedAction` while a window is running, with `expiresAt` as an ISO-8601 instant, and `timedCommand` when one is configured.
+
+`PUT /api/v1/equipments/:id` accepts `timedCommand` and validates it against the equipment's own bindings, so a configuration naming an order it does not carry is refused where it is written rather than where it is fired:
+
+```json
+PUT /api/v1/equipments/eq-gate
+{ "timedCommand": { "alias": "command", "value": null, "revertValue": null, "durationMs": 900000 } }
+```
+
+`null` clears it. An absent key leaves it untouched.
 
 ### Equipment status (spec 116)
 

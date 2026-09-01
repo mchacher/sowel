@@ -296,6 +296,24 @@ Chaque valeur de donnée est historisée vers InfluxDB par défaut, selon sa cat
 - **Forcer ON** : toujours historiser cette valeur
 - **Forcer OFF** : ne jamais historiser cette valeur
 
+### Commande temporisée
+
+Un équipement peut agir maintenant et revenir en arrière au bout d'un délai : ouvrir le portail pour un quart d'heure, allumer la lumière extérieure une demi-heure, arroser vingt minutes. C'est le moteur qui tient l'échéance, donc un redémarrage ou une coupure ne la perd pas, et une échéance dépassée pendant l'arrêt est honorée au retour.
+
+Activez-la depuis la page équipement, sous **Commande temporisée**. Elle est désactivée par défaut. Vous choisissez la commande, celle qui la défait, et la durée. Sur un portail coulissant piloté par une impulsion unique, les deux commandes sont la même et le panneau le dit.
+
+Le panneau n'apparaît que sur un équipement qui remonte un état pour cette commande. Sans cet état, un retour fait à la main passerait inaperçu et l'échéance agirait sur un équipement qui a bougé depuis, ce qui sur un portail à impulsion revient à rouvrir ce que vous venez de fermer.
+
+Une fois activée, la commande apparaît à deux endroits :
+
+- Sur la vue **Accueil**, à côté de l'équipement sur sa ligne, avec le temps restant pendant le créneau.
+- Sur le **Dashboard**, sous forme de tuile que vous épinglez à côté de la tuile ordinaire, pour que « ouvrir » et « ouvrir quinze minutes » restent deux boutons distincts.
+
+Appuyer de nouveau sur la tuile pendant le créneau prolonge le délai au lieu d'agir deux fois. Annuler envoie tout de suite la commande de fermeture.
+
+!!! warning "Un contact qui ne certifie qu'un seul sens"
+Le contact d'un portail prouve en général qu'il est fermé et ne fait que suggérer qu'il est ouvert. Si vous fermez le portail à la main sans que le contact le voie, le créneau continue de courir et rouvrira le portail à l'échéance. Terminez le créneau depuis Sowel plutôt qu'à la main quand cela compte.
+
 ### Désactiver un équipement
 
 Un équipement désactivé :

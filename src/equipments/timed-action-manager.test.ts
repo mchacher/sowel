@@ -45,6 +45,9 @@ function buildHarness() {
 
   const equipmentManager = {
     getById: (id: string) => realEquipments.getById(id),
+    // FR-11 asks the real bindings: eligibility is the guard that replaced the
+    // identical-value refusal, so it has to see the gate's contact.
+    getByIdWithDetails: (id: string) => realEquipments.getByIdWithDetails(id),
     executeOrder: async (equipmentId: string, alias: string, value: unknown, source?: never) => {
       dispatches.push({ equipmentId, alias, value, source });
       if (throws) throw throws;
@@ -55,6 +58,30 @@ function buildHarness() {
   const zone = zoneManager.create({ name: "Entrée" });
   const gate = realEquipments.create({ name: "Portail", type: "gate", zoneId: zone.id });
 
+  // A sliding gate as it really is: ONE impulse order carrying no value, and a
+  // reed contact reading `gate_state`. That contact is what makes the equipment
+  // eligible (FR-11) and what a hand-revert would speak through (FR-4).
+  const deviceId = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
+     VALUES (?, 'z2m/portail', 'portail', 'Portail', 'zigbee2mqtt', 'online', 'zigbee2mqtt', 'portail')`,
+  ).run(deviceId);
+  const stateDataId = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO device_data (id, device_id, key, type, category, value)
+     VALUES (?, ?, 'state', 'string', 'gate_state', 'closed')`,
+  ).run(stateDataId, deviceId);
+  const commandOrderId = crypto.randomUUID();
+  db.prepare(
+    `INSERT INTO device_orders (id, device_id, key, type) VALUES (?, ?, 'command', 'string')`,
+  ).run(commandOrderId, deviceId);
+  realEquipments.addDataBinding(gate.id, stateDataId, "state");
+  realEquipments.addOrderBinding(gate.id, commandOrderId, "command");
+
+  // The counter-example FR-11 exists for: it takes the order and reads nothing.
+  const blindRelay = realEquipments.create({ name: "Relais", type: "switch", zoneId: zone.id });
+  realEquipments.addOrderBinding(blindRelay.id, commandOrderId, "command");
+
   const manager = new TimedActionManager(db, eventBus, equipmentManager, logger);
 
   return {
@@ -64,6 +91,8 @@ function buildHarness() {
     dispatches,
     events,
     gateId: gate.id,
+    blindRelayId: blindRelay.id,
+    stateDataId,
     realEquipments,
     rows: () => db.prepare("SELECT * FROM timed_actions").all() as { equipment_id: string }[],
     failDispatch: (error: string) => {
@@ -120,7 +149,7 @@ describe("TimedActionManager", () => {
       expect(h.manager.getFor(h.gateId)).toBeNull();
     });
 
-    it("refuses an unknown equipment, an out-of-range window, and a no-op revert", async () => {
+    it("refuses an unknown equipment and an out-of-range window", async () => {
       await expect(h.manager.arm("nope", ARM)).rejects.toThrow(TimedActionError);
       await expect(h.manager.arm(h.gateId, { ...ARM, durationMs: 500 })).rejects.toThrow(
         /Duration must be/,
@@ -128,11 +157,45 @@ describe("TimedActionManager", () => {
       await expect(h.manager.arm(h.gateId, { ...ARM, durationMs: 48 * 3_600_000 })).rejects.toThrow(
         /Duration must be/,
       );
-      // Same value both ways: the deadline would send what is already there.
-      await expect(h.manager.arm(h.gateId, { ...ARM, revertValue: "OPEN" })).rejects.toThrow(
-        /cannot be the same value/,
-      );
       expect(h.dispatches).toHaveLength(0);
+    });
+
+    // FR-9b + FR-11 — what replaced the identical-value refusal.
+    it("arms an impulse, whose action and revert are the same command", async () => {
+      const impulse = { alias: "command", value: null, revertValue: null, durationMs: 900_000 };
+      const armed = await h.manager.arm(h.gateId, impulse);
+
+      expect(armed.expiresAt).toBeTruthy();
+      expect(h.dispatches).toEqual([
+        { equipmentId: h.gateId, alias: "command", value: null, source: undefined },
+      ]);
+      expect(h.rows()).toHaveLength(1);
+    });
+
+    it("refuses an equipment with no state reading tied to the order", async () => {
+      // A blind relay: it takes the command and reports nothing back. Nothing
+      // could tell the engine the user reverted by hand (FR-4), so the deadline
+      // would act on an equipment that has moved since — on a sequential
+      // impulse, by re-opening what was just closed.
+      const blind = h.blindRelayId;
+
+      await expect(h.manager.arm(blind, ARM)).rejects.toThrow(/state reading/);
+      expect(h.dispatches).toHaveLength(0);
+      expect(h.rows()).toHaveLength(0);
+    });
+
+    // FR-13 — a surface arms what the equipment's own configuration says.
+    it("arms from the stored configuration, and says when there is none", async () => {
+      await expect(h.manager.armConfigured(h.gateId)).rejects.toThrow(/No timed command/);
+
+      h.realEquipments.update(h.gateId, {
+        timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+      });
+      const armed = await h.manager.armConfigured(h.gateId);
+
+      expect(armed.alias).toBe("command");
+      expect(h.dispatches).toHaveLength(1);
+      expect(h.manager.getFor(h.gateId)?.expiresAt).toBe(armed.expiresAt);
     });
 
     it("rule 3 — re-arming the same action moves the deadline and sends nothing", async () => {

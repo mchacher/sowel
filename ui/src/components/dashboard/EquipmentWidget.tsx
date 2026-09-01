@@ -57,6 +57,7 @@ import {
 } from "./WidgetIcons";
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
+import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { PresentationWidget } from "./presentation/PresentationWidget";
@@ -112,6 +113,21 @@ export function EquipmentWidget({
   const label = widget.label || equipment.name;
   const sublabel = widget.label ? undefined : equipmentZone;
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
+
+  // Spec 174 phase 2 — a tile pinned as `timed` arms the equipment's timed
+  // command instead of actuating it. Checked before everything else: it is a
+  // property of THIS tile, not of the equipment's type, and the same equipment
+  // carries an ordinary tile beside it.
+  if (widget.config?.timed && equipment.timedCommand) {
+    return (
+      <TimedEquipmentWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        editMode={editMode}
+      />
+    );
+  }
 
   // Spec 149 — migrated types render their presentation descriptor through the
   // shared shell; a null descriptor falls through to the legacy per-type path.

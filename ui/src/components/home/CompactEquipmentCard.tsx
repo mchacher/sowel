@@ -18,6 +18,7 @@ import { findMainOnOffOrder } from "../equipments/bindingUtils";
 import { ShutterControl } from "../equipments/ShutterControl";
 import { ThermostatCard } from "../equipments/ThermostatCard";
 import { GateControl } from "../equipments/GateControl";
+import { TimedCommandControl } from "../equipments/TimedCommandControl";
 import { HeaterControl } from "../equipments/HeaterControl";
 import { WaterValveControl } from "../equipments/WaterValveControl";
 import { VmcControl } from "../equipments/VmcControl";
@@ -361,6 +362,10 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           compact
         />
       )}
+
+      {/* Timed command (spec 174 phase 2) — renders nothing unless the equipment
+          was configured for one, so every other row keeps its shape. */}
+      <TimedCommandControl equipment={equipment} />
 
       {/* Heater controls */}
       {isHeater && equipment.enabled && (

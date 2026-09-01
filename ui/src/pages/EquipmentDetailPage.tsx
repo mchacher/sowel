@@ -38,6 +38,8 @@ import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMete
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
+import { hasTimedCommandCandidate } from "../../../src/shared/timed-command";
 import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
@@ -428,6 +430,13 @@ export function EquipmentDetailPage() {
       {/* Gate — confirmation before action (spec 146), admin only */}
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      )}
+
+      {/* Timed command — act now, revert after N (spec 174 phase 2), admin only.
+          Offered only where a hand-revert could end the window early: the
+          equipment must carry the order AND a state reading tied to it. */}
+      {isAdmin && hasTimedCommandCandidate(equipment) && (
+        <TimedCommandPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Shutter-family / gate — invert command direction (spec 154, extended

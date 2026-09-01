@@ -162,3 +162,46 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
     expect(screen.getByText("1.24 kW")).toBeTruthy();
   });
 });
+
+// ============================================================
+// Spec 174 phase 2 — the timed control on the row
+// ============================================================
+
+describe("CompactEquipmentCard — timed command (spec 174)", () => {
+  const timedGate = (over: Partial<EquipmentWithDetails> = {}) =>
+    makeEquipment("gate", [], {
+      name: "Portail",
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+      ...over,
+    });
+
+  it("adds nothing to a row whose equipment has no timed command", () => {
+    renderCard(makeEquipment("gate", [], { name: "Portail" }));
+    expect(screen.queryByTitle(/Lancer|Run for/i)).toBeNull();
+  });
+
+  it("offers the command when one is configured", () => {
+    renderCard(timedGate());
+    expect(screen.getByTitle(/Lancer|Run for/i)).toBeTruthy();
+  });
+
+  it("shows the countdown and offers to end it while a window is open", () => {
+    renderCard(
+      timedGate({
+        timedAction: {
+          alias: "command",
+          value: null,
+          revertValue: null,
+          armedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+          expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        },
+      }),
+    );
+
+    expect(screen.getByText("10:00")).toBeTruthy();
+    // Pressing again on a dense row means "close it", not "keep it open longer":
+    // the extend gesture lives on the tile.
+    expect(screen.getByTitle(/Arrêter|End it/i)).toBeTruthy();
+    expect(screen.queryByTitle(/Lancer|Run for/i)).toBeNull();
+  });
+});

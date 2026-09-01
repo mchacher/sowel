@@ -21,6 +21,7 @@ import type {
   OrderCategory,
   OrderSource,
   SolarProfile,
+  TimedCommand,
   TimedAction,
 } from "../shared/types.js";
 import {
@@ -109,6 +110,8 @@ interface UpdateEquipmentInput {
   invertDirection?: boolean;
   /** Spec 173 — the meter that already counts this equipment. `null` clears it. */
   meteringParentId?: string | null;
+  /** Spec 174 phase 2 — the timed command this equipment offers. `null` clears it. */
+  timedCommand?: TimedCommand | null;
 }
 
 // ============================================================
@@ -231,7 +234,7 @@ export class EquipmentManager {
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
          invert_direction = @invertDirection, solar_profile = @solarProfile,
-         metering_parent_id = @meteringParentId,
+         metering_parent_id = @meteringParentId, timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -542,6 +545,14 @@ export class EquipmentManager {
             ? null
             : JSON.stringify(input.energyProfile)
           : existing.energy_profile,
+      // Spec 174 — `null` clears it, an absent key keeps what is stored, the same
+      // three-way read every JSON column here uses.
+      timedCommand:
+        input.timedCommand !== undefined
+          ? input.timedCommand === null
+            ? null
+            : JSON.stringify(input.timedCommand)
+          : existing.timed_command,
       solarProfile:
         input.solarProfile !== undefined
           ? input.solarProfile === null || input.solarProfile.planes.length === 0
@@ -1620,6 +1631,7 @@ interface EquipmentRow {
   require_confirmation: number;
   invert_direction: number;
   metering_parent_id: string | null;
+  timed_command: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1710,6 +1722,27 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
  *  A corrupt or invalid row reads as no profile rather than crashing a read
  *  path, and rather than reaching the model: a profile that would be refused at
  *  the API must not slip in through a hand-edited database either. */
+/**
+ * Parse the timed_command JSON column (spec 174 phase 2).
+ *
+ * A row written by an older core, or by hand, can hold anything; a malformed
+ * value reads as "no timed command" rather than throwing on every equipment
+ * read. The shape is checked, not just the parse: a configuration missing its
+ * alias or its duration would offer a control that cannot be armed.
+ */
+function parseTimedCommand(json: string | null): TimedCommand | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed = JSON.parse(json) as TimedCommand;
+    if (typeof parsed?.alias !== "string" || typeof parsed?.durationMs !== "number") {
+      return undefined;
+    }
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
 function parseSolarProfile(json: string | null): SolarProfile | undefined {
   if (!json) return undefined;
   try {
@@ -1763,6 +1796,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
     meteringParentId: row.metering_parent_id ?? null,
+    timedCommand: parseTimedCommand(row.timed_command),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

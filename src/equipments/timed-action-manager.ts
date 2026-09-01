@@ -4,6 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { OrderSource, TimedAction } from "../shared/types.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import { valuesMatch } from "./order-confirmation-tracker.js";
+import { isTimedCommandEligible } from "../shared/timed-command.js";
 
 // ============================================================
 // Spec 174 — a timed action on an actuable equipment
@@ -205,6 +206,34 @@ export class TimedActionManager {
    * and sends nothing. Anything else — a different alias, a different value —
    * is a new intent and is dispatched.
    */
+  /**
+   * FR-13 — what the equipment's own configuration arms.
+   *
+   * A surface holding an equipment does not have to restate the three values
+   * its configuration already carries; a caller that knows better still passes
+   * them explicitly to `arm`.
+   */
+  async armConfigured(equipmentId: string, source?: OrderSource): Promise<TimedAction> {
+    const equipment = this.equipmentManager.getById(equipmentId);
+    if (!equipment) throw new TimedActionError("Equipment not found", 404);
+    const configured = equipment.timedCommand;
+    if (!configured) {
+      // Told apart from "cannot be armed" on purpose: one is a configuration a
+      // user can go and write, the other is an equipment that will never do it.
+      throw new TimedActionError("No timed command configured on this equipment", 409);
+    }
+    return this.arm(
+      equipmentId,
+      {
+        alias: configured.alias,
+        value: configured.value,
+        revertValue: configured.revertValue,
+        durationMs: configured.durationMs,
+      },
+      source,
+    );
+  }
+
   async arm(
     equipmentId: string,
     input: ArmTimedActionInput,
@@ -217,10 +246,20 @@ export class TimedActionManager {
         `Duration must be between ${MIN_DURATION_MS / 1000}s and ${MAX_DURATION_MS / 3_600_000}h`,
       );
     }
-    if (valuesMatch(input.value, input.revertValue)) {
-      // Same value both ways: the deadline would send what is already there and
-      // the window would be invisible. A misconfiguration, not a use case.
-      throw new TimedActionError("The action and its revert cannot be the same value");
+    // FR-9b. The first draft refused an action and a revert carrying the same
+    // value, reasoning that the deadline would send what is already there. True
+    // of a dedicated ON/OFF pair, false of the hardware this feature exists for:
+    // a sliding gate on a sequential impulse is opened and closed by the SAME
+    // command, carrying no value at all. The refusal excluded the primary use
+    // case, so what stands in its place is FR-11 — the equipment must carry the
+    // order, and a state reading tied to it. Without that reading nothing can
+    // tell the engine the user already reverted by hand (FR-4), so the deadline
+    // would run to its end and act on an equipment that has moved since.
+    const details = this.equipmentManager.getByIdWithDetails(equipmentId);
+    if (!details || !isTimedCommandEligible(details, input.alias)) {
+      throw new TimedActionError(
+        `${equipment.name} cannot carry a timed "${input.alias}": it needs that order and a state reading tied to it`,
+      );
     }
 
     const existing = this.stmts.getOne.get(equipmentId) as TimedActionRow | undefined;

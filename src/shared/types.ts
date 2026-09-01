@@ -379,6 +379,32 @@ export interface Equipment {
    *  wired the opposite way with no bridge-side invert. Command-only: the
    *  reported position stays raw. Ignored for non-shutter-family types. */
   invertDirection?: boolean;
+  /**
+   * Spec 174 phase 2 — the timed command this equipment offers, absent when it
+   * offers none (the default). This is CONFIGURATION; the window actually
+   * running is `EquipmentWithDetails.timedAction`. Two fields because a surface
+   * asks two questions: draw the control at all, and is it counting down.
+   */
+  timedCommand?: TimedCommand | null;
+}
+
+/**
+ * Spec 174 phase 2 — what a timed control on this equipment arms.
+ *
+ * `value` and `revertValue` may be equal, and either may be `null`: a sliding
+ * gate on a sequential impulse is opened and closed by one command carrying no
+ * value. The first draft refused equality outright and so excluded the hardware
+ * the feature exists for (FR-9b).
+ */
+export interface TimedCommand {
+  /** Order alias armed by the control. */
+  alias: string;
+  /** Value dispatched now. */
+  value: unknown;
+  /** Value dispatched at the deadline. */
+  revertValue: unknown;
+  /** Window length in ms, within the manager's bounds. */
+  durationMs: number;
 }
 
 /**
@@ -1868,6 +1894,12 @@ export type WidgetFamily =
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */
   visibleBindings?: string[];
+  /**
+   * Spec 174 phase 2 — this tile arms the equipment's timed command instead of
+   * actuating it outright. Set on a SECOND widget for the same equipment, so
+   * the ordinary tile keeps its behaviour beside it.
+   */
+  timed?: boolean;
 }
 
 export interface DashboardWidget {

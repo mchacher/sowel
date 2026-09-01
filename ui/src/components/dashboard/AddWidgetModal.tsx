@@ -9,7 +9,7 @@ import { recipeName } from "../../lib/recipe-i18n";
 interface AddWidgetModalProps {
   equipments: EquipmentWithDetails[];
   zones: ZoneWithChildren[];
-  onAddEquipment: (equipmentId: string) => void;
+  onAddEquipment: (equipmentId: string, timed?: boolean) => void;
   onAddZone: (zoneId: string, family: WidgetFamily) => void;
   /** Spec 169 — pin a recipe instance whose recipe declares a tile. */
   onAddRecipe: (recipeInstanceId: string) => void;
@@ -143,17 +143,38 @@ export function AddWidgetModal({
                   {equipments
                     .filter((eq) => eq.zoneId === eqZoneId && eq.type !== "display")
                     .map((eq) => (
-                      <button
-                        key={eq.id}
-                        onClick={() => {
-                          onAddEquipment(eq.id);
-                          onClose();
-                        }}
-                        className="w-full text-left px-3 py-2 text-[13px] text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
-                      >
-                        {eq.name}
-                        <span className="ml-2 text-[11px] text-text-tertiary">{eq.type}</span>
-                      </button>
+                      <div key={eq.id} className="space-y-0.5">
+                        <button
+                          onClick={() => {
+                            onAddEquipment(eq.id);
+                            onClose();
+                          }}
+                          className="w-full text-left px-3 py-2 text-[13px] text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
+                        >
+                          {eq.name}
+                          <span className="ml-2 text-[11px] text-text-tertiary">{eq.type}</span>
+                        </button>
+                        {/* Spec 174 phase 2 — a second entry, not a replacement:
+                            the ordinary tile and the timed one answer different
+                            questions and both can be pinned. Offered only once
+                            the equipment page has configured a timed command. */}
+                        {eq.timedCommand && (
+                          <button
+                            onClick={() => {
+                              onAddEquipment(eq.id, true);
+                              onClose();
+                            }}
+                            className="w-full text-left px-3 py-2 pl-6 text-[13px] text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
+                          >
+                            {eq.name}
+                            <span className="ml-2 text-[11px] text-primary">
+                              {t("dashboard.timed.pick", {
+                                count: Math.round(eq.timedCommand.durationMs / 60_000),
+                              })}
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     ))}
                   {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.type !== "display").length === 0 && (
                     <p className="text-[13px] text-text-tertiary text-center py-4">{t("dashboard.noEquipmentsAvailable")}</p>
