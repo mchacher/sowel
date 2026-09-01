@@ -2,7 +2,7 @@
 
 **Issue**: [#874](https://github.com/mchacher/sowel/issues/874)
 **Status**: proposed
-**Scope**: core (schema, manager, API) — no UI in this phase, see "Out of scope"
+**Scope**: phase 1, the engine and the API. Phase 2 (below) adds the configuration on the equipment page and the two surfaces it is used from
 
 ## Problem
 
@@ -44,7 +44,7 @@ What is deliberately _not_ added is the ability to reason about hardware that li
 
 **FR-9 — Bounds.** `durationMs` is between 10 s and 24 h. Below that this is just an order; above it, "temporary" stops meaning anything for an opening.
 
-**FR-9b — An action and its revert may be the same command (phase 2).** The first draft refused them, reasoning that a deadline sending what is already there makes an invisible window. That is true of a dedicated `ON`/`OFF` pair and false of the hardware this feature exists for: a sliding gate on a sequential impulse is opened and closed by the *same* command, carrying no value at all. The refusal excluded the primary use case, so it is replaced by FR-11.
+**FR-9b — An action and its revert may be the same command (phase 2).** The first draft refused them, reasoning that a deadline sending what is already there makes an invisible window. That is true of a dedicated `ON`/`OFF` pair and false of the hardware this feature exists for: a sliding gate on a sequential impulse is opened and closed by the _same_ command, carrying no value at all. The refusal excluded the primary use case, so it is replaced by FR-11.
 
 **FR-10 — Inert in shadow mode.** The manager is created but not started: starting it rehydrates deadlines and can dispatch a revert on the spot, which a shadow instance must never do.
 
@@ -82,9 +82,11 @@ the same equipment, beside the ordinary one. The compact card carries the same c
 the remaining time through **one** shared component; a second copy of that countdown is exactly what
 phase 1 refused to write, and the reason it is acceptable now is that there is only one.
 
-**FR-15 — The gestures.** Pressing the timed control while the window is open extends it (FR-5,
-nothing dispatched). Cancelling ends the window: from the tile and the card it sends the revert now
-(`?revert=true`), which is what somebody looking at an open gate means by "close it".
+**FR-15 — The gestures.** On the tile, pressing again while the window is open extends it (FR-5,
+nothing dispatched), and a second control cancels. A dense row has space for one control, so there
+it becomes the cancel while a window is running: somebody glancing at an open gate on the Home list
+means "close it", and the deliberate "give me more time" belongs on the tile. Cancelling sends the
+revert now (`?revert=true`) rather than dropping the deadline silently.
 
 ## Acceptance criteria
 

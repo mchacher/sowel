@@ -57,6 +57,25 @@ describe("TimedCommandPanel", () => {
     });
   });
 
+  it("gives a boolean order true then false, never null both ways", async () => {
+    // null both ways looks right and is wrong: `resolveOrderValue` maps an
+    // empty value on a boolean binding to `true`, so the deadline would turn
+    // the light on again and the window would never end.
+    const light = gate({
+      type: "light_onoff",
+      name: "Terrasse",
+      dataBindings: [{ id: "d1", alias: "state", category: "light_state" }],
+      orderBindings: [{ id: "o1", alias: "state", type: "boolean" }],
+    } as never);
+    render(<TimedCommandPanel equipment={light} onUpdated={() => {}} />);
+
+    await userEvent.click(screen.getByRole("checkbox"));
+
+    expect(api.updateEquipment).toHaveBeenCalledWith("g1", {
+      timedCommand: { alias: "state", value: true, revertValue: false, durationMs: 900_000 },
+    });
+  });
+
   it("changes the duration on an equipment already configured", async () => {
     const configured = gate({
       timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },

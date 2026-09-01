@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TimerReset, Loader2 } from "lucide-react";
 import { updateEquipment } from "../../api";
 import { TimedCountdown } from "./TimedCountdown";
+import { isTimedCommandEligible } from "../../../../src/shared/timed-command";
 import type { EquipmentWithDetails } from "../../types";
 
 /**
@@ -43,12 +44,35 @@ export function TimedCommandPanel({
   const configured = equipment.timedCommand ?? null;
   const enabled = configured !== null;
 
-  // An order is a candidate when it can be armed; the equipment page only
-  // mounts this panel when at least one can.
-  const orders = equipment.orderBindings;
+  // Only orders that can actually be armed are offered: the API refuses the
+  // others with a 400, and an option that always fails is worse than no option.
+  const orders = equipment.orderBindings.filter((o) =>
+    isTimedCommandEligible(equipment, o.alias),
+  );
   const alias = configured?.alias ?? orders[0]?.alias ?? "";
-  const enumValues = orders.find((o) => o.alias === alias)?.enumValues ?? [];
+  const order = orders.find((o) => o.alias === alias);
   const durationMs = configured?.durationMs ?? 15 * 60_000;
+
+  // The pair of values an order takes, and it is not one shape but three.
+  //
+  //  - an enum order picks its first two words (OPEN then CLOSE);
+  //  - a BOOLEAN order is true then false. Sending `null` both ways would look
+  //    right and be wrong: `resolveOrderValue` maps an empty value on a boolean
+  //    binding to `true`, so the deadline would turn the light on again and the
+  //    window would never end;
+  //  - an order with neither carries no value at all — a gate's sequential
+  //    impulse — and there the two really are the same command (FR-9b).
+  const defaultsFor = (o?: { type?: string; enumValues?: string[] }) => {
+    const vocab = o?.enumValues ?? [];
+    if (vocab.length > 0) return { value: vocab[0], revertValue: vocab[1] ?? vocab[0] };
+    if (o?.type === "boolean") return { value: true, revertValue: false };
+    return { value: null, revertValue: null };
+  };
+  const choices = order?.enumValues?.length
+    ? order.enumValues
+    : order?.type === "boolean"
+      ? ["true", "false"]
+      : [];
 
   const save = async (next: typeof configured) => {
     setSaving(true);
@@ -64,18 +88,7 @@ export function TimedCommandPanel({
   };
 
   const toggle = (on: boolean) =>
-    void save(
-      on
-        ? {
-            alias,
-            // An order with no vocabulary carries no value: a sliding gate's
-            // sequential impulse is one command that opens, then closes.
-            value: enumValues[0] ?? null,
-            revertValue: enumValues[1] ?? enumValues[0] ?? null,
-            durationMs,
-          }
-        : null,
-    );
+    void save(on ? { alias, ...defaultsFor(order), durationMs } : null);
 
   const patch = (field: "alias" | "value" | "revertValue" | "durationMs", raw: string) => {
     if (!configured) return;
@@ -83,9 +96,11 @@ export function TimedCommandPanel({
     if (field === "durationMs") next.durationMs = Number(raw);
     else if (field === "alias") {
       next.alias = raw;
-      const vocab = orders.find((o) => o.alias === raw)?.enumValues ?? [];
-      next.value = vocab[0] ?? null;
-      next.revertValue = vocab[1] ?? vocab[0] ?? null;
+      Object.assign(next, defaultsFor(orders.find((o) => o.alias === raw)));
+    } else if (order?.type === "boolean") {
+      // The select carries strings; the wire wants the boolean the binding
+      // declared, or `resolveOrderValue` would read "false" as a truthy string.
+      next[field] = raw === "true";
     } else next[field] = raw === "" ? null : raw;
     void save(next);
   };
@@ -135,15 +150,15 @@ export function TimedCommandPanel({
           <select
             className={selectClass}
             value={String(configured?.revertValue ?? "")}
-            disabled={!enabled || saving || enumValues.length === 0}
+            disabled={!enabled || saving || choices.length === 0}
             onChange={(e) => patch("revertValue", e.target.value)}
           >
             {/* An impulse has no vocabulary: the revert IS the same command, and
                 saying so is clearer than an empty control. */}
-            {enumValues.length === 0 ? (
+            {choices.length === 0 ? (
               <option value="">{t("equipments.timed.sameCommand")}</option>
             ) : (
-              enumValues.map((v) => (
+              choices.map((v) => (
                 <option key={v} value={v}>
                   {v}
                 </option>

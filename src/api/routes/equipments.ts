@@ -123,13 +123,20 @@ const nonBlankAlias = { type: "string", pattern: "\\S" };
 // unconstrained: an order carries a boolean, an enum string or a number
 // depending on its binding, and the resolution against that binding happens in
 // executeOrder, which is the one place that knows the shape.
+// An explicit body carries the three values; an EMPTY body arms what the
+// equipment's own configuration says (FR-13), so a tile does not restate values
+// it does not own. `required` would forbid the empty form, hence
+// `dependentRequired`: naming an alias is what makes the rest mandatory.
 const armTimedActionBodySchema = {
   type: "object",
-  required: ["alias", "revertValue", "durationMs"],
   properties: {
     alias: { type: "string", minLength: 1 },
     durationMs: { type: "number", minimum: MIN_DURATION_MS, maximum: MAX_DURATION_MS },
   },
+  // `dependencies`, not `dependentRequired`: Fastify's Ajv runs draft-07 in
+  // strict mode and refuses the 2019-09 keyword outright, at BOOT — the whole
+  // server fails to start, not just this route.
+  dependencies: { alias: ["revertValue", "durationMs"] },
 };
 
 const addDataBindingBodySchema = {
@@ -471,7 +478,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
   // they asked for rather than a second manoeuvre.
   app.post<{
     Params: { id: string };
-    Body: { alias: string; value?: unknown; revertValue: unknown; durationMs: number };
+    Body?: { alias?: string; value?: unknown; revertValue?: unknown; durationMs?: number };
   }>(
     "/api/v1/equipments/:id/timed-action",
     { schema: { body: armTimedActionBodySchema } },
@@ -479,8 +486,24 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       if (!timedActionManager) {
         return reply.code(503).send({ error: "Timed actions are not available" });
       }
-      const { alias, value, revertValue, durationMs } = request.body;
       const userId = request.auth?.userId ?? "anonymous";
+      // FR-13 — nothing named means "arm what this equipment is configured for".
+      if (request.body?.alias === undefined) {
+        try {
+          return await timedActionManager.armConfigured(request.params.id, {
+            kind: "manual",
+            userId,
+          });
+        } catch (err) {
+          if (err instanceof TimedActionError) {
+            return reply.code(err.statusCode).send({ error: err.message });
+          }
+          return handleEquipmentError(reply, err);
+        }
+      }
+      // `dependentRequired` on the schema means an alias brings the other two
+      // with it, so the narrowing here is a type formality, not a second check.
+      const { alias, value, revertValue, durationMs = 0 } = request.body;
       try {
         const armed = await timedActionManager.arm(
           request.params.id,

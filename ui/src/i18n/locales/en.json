@@ -1553,5 +1553,6 @@
   "dashboard.timed.cancel": "End it now",
   "dashboard.timed.failed": "Command not sent",
   "dashboard.timed.pick_one": "timed · {{count}} min",
-  "dashboard.timed.pick_other": "timed · {{count}} min"
+  "dashboard.timed.pick_other": "timed · {{count}} min",
+  "dashboard.timed.unavailable": "No timed command"
 }

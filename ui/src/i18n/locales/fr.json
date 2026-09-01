@@ -1553,5 +1553,6 @@
   "dashboard.timed.cancel": "Arrêter maintenant",
   "dashboard.timed.failed": "Commande non envoyée",
   "dashboard.timed.pick_one": "temporisé · {{count}} min",
-  "dashboard.timed.pick_other": "temporisé · {{count}} min"
+  "dashboard.timed.pick_other": "temporisé · {{count}} min",
+  "dashboard.timed.unavailable": "Commande non configurée"
 }

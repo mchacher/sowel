@@ -25,6 +25,7 @@ import { ZoneWidget } from "./ZoneWidget";
 import { IconPicker } from "./IconPicker";
 import { BindingsPicker } from "./BindingsPicker";
 import { MobileWidgetCard } from "./MobileWidgetCard";
+import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { RecipeTile } from "./RecipeTile";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
@@ -448,6 +449,21 @@ function WidgetRenderer({
     const equipment = equipmentMap.get(widget.equipmentId);
     if (!equipment) return null;
     const equipmentZone = equipmentZones.get(widget.equipmentId);
+
+    // Spec 174 phase 2 — a timed tile renders the same on both widths. The
+    // mobile card would otherwise fall through to the ordinary click action and
+    // actuate WITHOUT a deadline, which is worse than not offering the tile:
+    // the gate would open and stay open.
+    if (widget.config?.timed) {
+      return (
+        <TimedEquipmentWidget
+          label={widget.label || equipment.name}
+          sublabel={widget.label ? undefined : equipmentZone}
+          equipment={equipment}
+          editMode={editMode}
+        />
+      );
+    }
 
     // On mobile: ALL equipment widgets use compact MobileWidgetCard
     if (isMobile) {

@@ -98,6 +98,24 @@ describe("TimedEquipmentWidget", () => {
     );
   });
 
+  it("goes inert when the configuration was cleared under it", async () => {
+    // An admin unticks "Timed command" while the tile stays pinned. It must
+    // not fall through to actuating outright: the next press would open the
+    // gate with no deadline at all.
+    render(<TimedEquipmentWidget label="Portail" equipment={gate({ timedCommand: null })} />);
+
+    expect(screen.getByText(/Commande non configurée|No timed command/)).toBeTruthy();
+    await userEvent.click(screen.getByTitle(/Lancer|Run for/i));
+    expect(api.armTimedCommand).not.toHaveBeenCalled();
+  });
+
+  it("goes inert on a disabled equipment", async () => {
+    render(<TimedEquipmentWidget label="Portail" equipment={gate({ enabled: false })} />);
+
+    await userEvent.click(screen.getByTitle(/Lancer|Run for/i));
+    expect(api.armTimedCommand).not.toHaveBeenCalled();
+  });
+
   it("is inert in edit mode, where the tile is a drag target", async () => {
     render(<TimedEquipmentWidget label="Portail" equipment={gate()} editMode />);
 

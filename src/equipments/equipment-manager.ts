@@ -1717,11 +1717,6 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
   }
 }
 
-/** Parse the solar_profile JSON column (spec 160).
- *
- *  A corrupt or invalid row reads as no profile rather than crashing a read
- *  path, and rather than reaching the model: a profile that would be refused at
- *  the API must not slip in through a hand-edited database either. */
 /**
  * Parse the timed_command JSON column (spec 174 phase 2).
  *
@@ -1743,6 +1738,11 @@ function parseTimedCommand(json: string | null): TimedCommand | undefined {
   }
 }
 
+/** Parse the solar_profile JSON column (spec 160).
+ *
+ *  A corrupt or invalid row reads as no profile rather than crashing a read
+ *  path, and rather than reaching the model: a profile that would be refused at
+ *  the API must not slip in through a hand-edited database either. */
 function parseSolarProfile(json: string | null): SolarProfile | undefined {
   if (!json) return undefined;
   try {

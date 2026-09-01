@@ -37,9 +37,15 @@ export function TimedCountdown({ action, size = 18, now }: TimedCountdownProps) 
 
   useEffect(() => {
     if (now !== undefined) return; // frozen by the caller (tests)
-    const id = setInterval(() => setTick(Date.now()), 1000);
+    const id = setInterval(() => {
+      const at = Date.now();
+      setTick(at);
+      // Nothing left to count: stop rather than tick on until the engine's
+      // event unmounts us, which never comes if the socket is down.
+      if (remainingMs(action.expiresAt, at) <= 0) clearInterval(id);
+    }, 1000);
     return () => clearInterval(id);
-  }, [now]);
+  }, [now, action.expiresAt]);
 
   const at = now ?? tick;
   const left = remainingMs(action.expiresAt, at);

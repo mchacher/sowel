@@ -118,7 +118,10 @@ export function EquipmentWidget({
   // command instead of actuating it. Checked before everything else: it is a
   // property of THIS tile, not of the equipment's type, and the same equipment
   // carries an ordinary tile beside it.
-  if (widget.config?.timed && equipment.timedCommand) {
+  // Note the guard is the TILE's flag alone: an admin clearing `timedCommand`
+  // must not turn a pinned timed tile into one that actuates outright. The tile
+  // renders inert and says so instead (the widget handles the missing config).
+  if (widget.config?.timed) {
     return (
       <TimedEquipmentWidget
         label={label}

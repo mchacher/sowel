@@ -37,9 +37,13 @@ export function TimedEquipmentWidget({
   const configured = equipment.timedCommand;
   const running = equipment.timedAction;
   const minutes = configured ? Math.round(configured.durationMs / 60_000) : 0;
+  // Nothing to arm: the equipment page cleared the configuration under a tile
+  // that is still pinned, or the equipment was disabled. The tile says so and
+  // does nothing — pressing it must never fall back to actuating outright.
+  const inert = !configured || !equipment.enabled;
 
   const run = async (action: () => Promise<unknown>) => {
-    if (busy || editMode) return;
+    if (busy || editMode || inert) return;
     setBusy(true);
     setError(false);
     try {
@@ -67,7 +71,7 @@ export function TimedEquipmentWidget({
       sublabel={
         sublabel ?? (configured ? t("dashboard.timed.sublabel", { count: minutes }) : undefined)
       }
-      onClick={!running && !editMode ? arm : undefined}
+      onClick={!running && !editMode && !inert ? arm : undefined}
     >
       <div className="flex-1 flex items-center justify-center">
         {busy ? (
@@ -84,7 +88,11 @@ export function TimedEquipmentWidget({
           </span>
         ) : (
           <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary">
-            {error ? t("dashboard.timed.failed") : t("dashboard.timed.idle", { count: minutes })}
+            {inert
+              ? t("dashboard.timed.unavailable")
+              : error
+                ? t("dashboard.timed.failed")
+                : t("dashboard.timed.idle", { count: minutes })}
           </span>
         )}
       </div>
@@ -92,7 +100,7 @@ export function TimedEquipmentWidget({
       <div className="flex justify-center gap-3 mt-auto pt-1">
         <button
           onClick={arm}
-          disabled={busy || editMode}
+          disabled={busy || editMode || inert}
           title={running ? t("dashboard.timed.extend") : t("dashboard.timed.arm", { count: minutes })}
           className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
             running ? "!border-active/40 !text-active !bg-active/5" : ""
