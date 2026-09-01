@@ -1305,48 +1305,77 @@ export function AirCompressorIcon({ on }: { on: boolean }) {
 // ============================================================
 // 3D printer icon — open cartesian frame (Ender/Prusa shape): uprights and
 // top beam, X gantry carrying the hotend, bed on the base, and the part being
-// printed with its layer lines. `printing` turns it amber and threads the
-// filament from the spool down to the head.
+// printed with its layer lines.
+//
+// Four states rather than the usual on/off, because a printer has four the
+// user cares about: `off` at rest, `on` powered and idle, `printing` (amber,
+// glowing, filament threading from the spool to the head) and `error` (red,
+// with a badge). Hence a `state` prop where every other icon takes a boolean —
+// no boolean carries four values, and folding "printing" into "on" would lose
+// the one state a workshop plug is watched for.
 // ============================================================
 
-export function Printer3DIcon({ printing }: { printing: boolean }) {
+export type Printer3DState = "off" | "on" | "printing" | "error";
+
+export function Printer3DIcon({ state = "off" }: { state?: Printer3DState }) {
+  const printing = state === "printing";
+  const error = state === "error";
+  const running = printing || state === "on";
+  const tone = error ? "text-error" : running ? "text-active" : "text-primary";
+
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={printing ? "text-active" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={tone} data-state={state}>
       {printing && <ellipse cx="28" cy="28" rx="25" ry="25" fill="currentColor" opacity="0.07" />}
 
-      {/* Filament spool */}
-      <circle cx="38" cy="5.5" r="4.5" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" />
-      <circle cx="38" cy="5.5" r="1.4" fill="currentColor" fillOpacity="0.45" />
-      {printing && (
-        <path d="M34 7q-6 6 -4 18" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" fill="none" strokeLinecap="round" />
+      {/* The frame is drawn 3 units low so the spool does not touch the top
+          edge: the icon then sits optically centred beside its siblings. */}
+      <g transform="translate(0 3)">
+        {/* Filament spool */}
+        <circle cx="38" cy="5.5" r="4.5" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" />
+        <circle cx="38" cy="5.5" r="1.4" fill="currentColor" fillOpacity="0.45" />
+        {printing && (
+          <path d="M34 7q-6 6 -4 18" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" fill="none" strokeLinecap="round" data-part="filament" />
+        )}
+
+        {/* Frame — uprights + top beam */}
+        <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.55">
+          <path d="M13 42V10" />
+          <path d="M43 42V10" />
+          <path d="M13 10h30" />
+        </g>
+
+        {/* Base */}
+        <rect x="6" y="42" width="44" height="6" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.45" />
+
+        {/* X gantry */}
+        <rect x="9" y="21" width="38" height="4" rx="1.6" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+
+        {/* Hotend + nozzle. The nozzle fills in once the machine is powered:
+            that, and not the colour alone, is what separates `on` from `off`
+            for anyone who cannot tell the two tones apart. */}
+        <rect x="24" y="25" width="8" height="4.5" rx="1" fill="currentColor" fillOpacity={running ? 0.3 : 0.14} stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.5" />
+        <path d="M26.6 29.5h2.8l-1 3h-.8z" fill="currentColor" fillOpacity={running ? 0.9 : 0.55} />
+
+        {/* Part being printed, layer by layer */}
+        <path d="M23 38.5v-5.5h10v5.5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" />
+        <g stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.35">
+          <path d="M23 35h10" />
+          <path d="M23 36.8h10" />
+        </g>
+
+        {/* Bed */}
+        <rect x="15" y="38.5" width="26" height="3.5" rx="1.2" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+      </g>
+
+      {/* Fault badge — the state a workshop plug is watched for, so it reads
+          as a shape and not only as a colour. */}
+      {error && (
+        <g data-part="error-badge">
+          <circle cx="49" cy="33" r="5.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M49 30v3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="49" cy="36" r="0.95" fill="currentColor" />
+        </g>
       )}
-
-      {/* Frame — uprights + top beam */}
-      <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.55">
-        <path d="M13 42V10" />
-        <path d="M43 42V10" />
-        <path d="M13 10h30" />
-      </g>
-
-      {/* Base */}
-      <rect x="6" y="42" width="44" height="6" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.45" />
-
-      {/* X gantry */}
-      <rect x="9" y="21" width="38" height="4" rx="1.6" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
-
-      {/* Hotend + nozzle */}
-      <rect x="24" y="25" width="8" height="4.5" rx="1" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.5" />
-      <path d="M26.6 29.5h2.8l-1 3h-.8z" fill="currentColor" fillOpacity="0.55" />
-
-      {/* Part being printed, layer by layer */}
-      <path d="M23 38.5v-5.5h10v5.5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" />
-      <g stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.35">
-        <path d="M23 35h10" />
-        <path d="M23 36.8h10" />
-      </g>
-
-      {/* Bed */}
-      <rect x="15" y="38.5" width="26" height="3.5" rx="1.2" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
     </svg>
   );
 }

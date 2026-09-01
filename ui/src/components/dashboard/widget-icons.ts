@@ -216,7 +216,7 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
   printer_3d: {
     label: "Imprimante 3D",
     component: Printer3DIcon as ComponentType<Record<string, unknown>>,
-    previewProps: { printing: false },
+    previewProps: { state: "off" },
     types: ["switch"],
   },
   motion_sensor: {
