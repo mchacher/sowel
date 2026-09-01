@@ -74,6 +74,8 @@ import {
   PoolPumpIcon,
   PoolCoverIcon,
   WaterValveWidgetIcon,
+  AirCompressorIcon,
+  Printer3DIcon,
 } from "./WidgetIcons";
 
 // ============================================================
@@ -203,6 +205,18 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
     label: "Prise",
     component: PlugWidgetIcon as ComponentType<Record<string, unknown>>,
     previewProps: { on: true },
+    types: ["switch"],
+  },
+  air_compressor: {
+    label: "Compresseur d'air",
+    component: AirCompressorIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { on: false },
+    types: ["switch"],
+  },
+  printer_3d: {
+    label: "Imprimante 3D",
+    component: Printer3DIcon as ComponentType<Record<string, unknown>>,
+    previewProps: { state: "off" },
     types: ["switch"],
   },
   motion_sensor: {

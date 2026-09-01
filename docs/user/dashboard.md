@@ -74,6 +74,8 @@ In edit mode, drag and drop widgets to rearrange them. The order is saved automa
 
 Each widget can have a custom label and icon that override the default equipment or zone name. This is useful when you want shorter names on the dashboard.
 
+The icon picker offers the drawn icons that match the equipment type first, then every other one under **Other icons** — so a plug driving an air compressor or a 3D printer can wear that machine rather than a socket.
+
 ### Sensor widget configuration
 
 For sensor equipment widgets, you can choose which data bindings to display. By default, all bindings are shown. If a sensor reports temperature, humidity, and pressure but you only care about temperature, you can hide the others.

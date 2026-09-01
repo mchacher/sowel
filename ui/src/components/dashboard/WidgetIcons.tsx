@@ -1243,3 +1243,139 @@ export function ContactSensorIcon({ open }: { open: boolean }) {
     </svg>
   );
 }
+
+// ============================================================
+// Air compressor icon — horizontal tank, finned motor + compression head,
+// pressure gauge (the same dial as the pool pump). `on` (running) turns the
+// icon amber and puffs air out of the outlet.
+// ============================================================
+
+export function AirCompressorIcon({ on }: { on: boolean }) {
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+      {on && <ellipse cx="28" cy="31" rx="25" ry="22" fill="currentColor" opacity="0.07" />}
+
+      {/* Motor housing with cooling fins */}
+      <rect x="7" y="17" width="16" height="13" rx="2.5" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.55" />
+      <g stroke="currentColor" strokeWidth="1" strokeOpacity="0.32" strokeLinecap="round">
+        <path d="M11 20v7" />
+        <path d="M15 20v7" />
+        <path d="M19 20v7" />
+      </g>
+
+      {/* Finned compression head, with its transfer tube down to the tank */}
+      <rect x="25" y="15" width="9" height="12" rx="1.5" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.55" />
+      <g stroke="currentColor" strokeWidth="0.9" strokeOpacity="0.3" strokeLinecap="round">
+        <path d="M25.8 18.5h7.4" />
+        <path d="M25.8 21.5h7.4" />
+        <path d="M25.8 24.5h7.4" />
+      </g>
+      <path d="M29.5 27v3" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.5" strokeLinecap="round" />
+
+      {/* Pressure gauge */}
+      <circle cx="42" cy="21" r="5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.05" />
+      <line x1="42" y1="21" x2="44.6" y2="18.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <circle cx="42" cy="21" r="0.9" fill="currentColor" />
+      <path d="M42 26v4" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" strokeLinecap="round" />
+
+      {/* Horizontal tank + welded end cap */}
+      <rect x="5" y="30" width="40" height="16" rx="8" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.55" />
+      <path d="M37 30a8 8 0 010 16" stroke="currentColor" strokeWidth="1" strokeOpacity="0.3" fill="none" />
+
+      {/* Feet */}
+      <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.5">
+        <path d="M13 46v3" />
+        <path d="M10 49h6" />
+        <path d="M37 46v3" />
+        <path d="M34 49h6" />
+      </g>
+
+      {/* Outlet — air only when running */}
+      <path d="M45 39h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeOpacity="0.5" />
+      {on && (
+        <g stroke="currentColor" strokeLinecap="round" fill="none">
+          <path d="M50 36q3 3 0 6" strokeWidth="1.3" strokeOpacity="0.55" />
+          <path d="M52.5 33.5q4.5 5.5 0 11" strokeWidth="1.1" strokeOpacity="0.3" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
+// ============================================================
+// 3D printer icon — open cartesian frame (Ender/Prusa shape): uprights and
+// top beam, X gantry carrying the hotend, bed on the base, and the part being
+// printed with its layer lines.
+//
+// Four states rather than the usual on/off, because a printer has four the
+// user cares about: `off` at rest, `on` powered and idle, `printing` (amber,
+// glowing, filament threading from the spool to the head) and `error` (red,
+// with a badge). Hence a `state` prop where every other icon takes a boolean —
+// no boolean carries four values, and folding "printing" into "on" would lose
+// the one state a workshop plug is watched for.
+// ============================================================
+
+export type Printer3DState = "off" | "on" | "printing" | "error";
+
+export function Printer3DIcon({ state = "off" }: { state?: Printer3DState }) {
+  const printing = state === "printing";
+  const error = state === "error";
+  const running = printing || state === "on";
+  const tone = error ? "text-error" : running ? "text-active" : "text-primary";
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={tone} data-state={state}>
+      {printing && <ellipse cx="28" cy="28" rx="25" ry="25" fill="currentColor" opacity="0.07" />}
+
+      {/* The frame is drawn 3 units low so the spool does not touch the top
+          edge: the icon then sits optically centred beside its siblings. */}
+      <g transform="translate(0 3)">
+        {/* Filament spool */}
+        <circle cx="38" cy="5.5" r="4.5" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" />
+        <circle cx="38" cy="5.5" r="1.4" fill="currentColor" fillOpacity="0.45" />
+        {printing && (
+          <path d="M34 7q-6 6 -4 18" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" fill="none" strokeLinecap="round" data-part="filament" />
+        )}
+
+        {/* Frame — uprights + top beam */}
+        <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.55">
+          <path d="M13 42V10" />
+          <path d="M43 42V10" />
+          <path d="M13 10h30" />
+        </g>
+
+        {/* Base */}
+        <rect x="6" y="42" width="44" height="6" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.45" />
+
+        {/* X gantry */}
+        <rect x="9" y="21" width="38" height="4" rx="1.6" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+
+        {/* Hotend + nozzle. The nozzle fills in once the machine is powered:
+            that, and not the colour alone, is what separates `on` from `off`
+            for anyone who cannot tell the two tones apart. */}
+        <rect x="24" y="25" width="8" height="4.5" rx="1" fill="currentColor" fillOpacity={running ? 0.3 : 0.14} stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.5" />
+        <path d="M26.6 29.5h2.8l-1 3h-.8z" fill="currentColor" fillOpacity={running ? 0.9 : 0.55} />
+
+        {/* Part being printed, layer by layer */}
+        <path d="M23 38.5v-5.5h10v5.5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" />
+        <g stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.35">
+          <path d="M23 35h10" />
+          <path d="M23 36.8h10" />
+        </g>
+
+        {/* Bed */}
+        <rect x="15" y="38.5" width="26" height="3.5" rx="1.2" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+      </g>
+
+      {/* Fault badge — the state a workshop plug is watched for, so it reads
+          as a shape and not only as a colour. */}
+      {error && (
+        <g data-part="error-badge">
+          <circle cx="49" cy="33" r="5.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M49 30v3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="49" cy="36" r="0.95" fill="currentColor" />
+        </g>
+      )}
+    </svg>
+  );
+}
