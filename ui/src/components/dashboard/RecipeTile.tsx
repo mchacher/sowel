@@ -93,10 +93,6 @@ export function RecipeTile({
   const instances = useRecipes((s) => s.instances);
   const recipes = useRecipes((s) => s.recipes);
   const sendAction = useRecipes((s) => s.sendAction);
-  // Spec 171 — the guard is the EQUIPMENT's, when the recipe named the slot
-  // that reaches it. The tile has to be able to look that equipment up.
-  const equipments = useEquipments((s) => s.equipments);
-
   // Above the early return: hooks cannot hide behind a condition.
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -184,13 +180,23 @@ export function RecipeTile({
 
   // Edit mode never actuates, the way the mobile equipment cards already
   // behave: a Dashboard being rearranged is not a Dashboard being used.
+  // Spec 171 — the guard is the EQUIPMENT's, when the recipe named the slot that
+  // reaches it, so the tile has to look that equipment up. It reads the store on
+  // the tap rather than subscribing: a tile has no other use for the equipments,
+  // and the array is rebuilt on every device reading, which would re-render every
+  // recipe tile on the Dashboard for an answer only a click ever needs.
   const primary =
     !cycle || editMode
       ? undefined
-      : isMobile &&
-          tileNeedsConfirm(tile, instance.params, (id) => equipments.find((e) => e.id === id))
-        ? () => setConfirming(true)
-        : fire;
+      : () => {
+          const guarded =
+            isMobile &&
+            tileNeedsConfirm(tile, instance.params, (id) =>
+              useEquipments.getState().equipments.find((e) => e.id === id),
+            );
+          if (guarded) setConfirming(true);
+          else fire();
+        };
 
   const confirmSheet =
     confirming && only && cycle ? (

@@ -290,7 +290,7 @@ slots: [{ id: "gate", name: "Gate", type: "equipment", required: true, /* ... */
 tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmFrom: "gate" },
 ```
 
-Declare `confirm` on a tile whose action opens something, and leave all three out for a tile that only picks a comfort mode. A core older than 1.65 ignores the fields, as it ignores every part of a `tile` it does not know.
+Declare `confirm` on a tile whose action opens something, and leave all three out for a tile that only picks a comfort mode. A core older than 1.66 ignores the fields, as it ignores every part of a `tile` it does not know.
 
 ### Rules worth knowing
 

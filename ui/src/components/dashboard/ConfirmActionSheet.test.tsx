@@ -93,6 +93,31 @@ describe("ConfirmActionSheet", () => {
     expect(screen.getByRole("button", { name: "Slide to open" })).toBeTruthy();
   });
 
+  // Issue #858 tuned these on a real phone: the slide sits in the thumb's arc
+  // because the stack is padded and the cancel is a real button rather than a
+  // text link. The spec 171 extraction reverted both while every wording test
+  // stayed green, so the dimensions are pinned here too.
+  it("keeps the #858 spacing: a padded stack and a real cancel button", () => {
+    render(
+      <ConfirmActionSheet
+        title="Switch to “Livreur”?"
+        slideLabel="Slide to confirm"
+        confirmedLabel="Sent"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // The sheet is portaled to the body, so it is not under the container.
+    const stack = document.body.querySelector(".flex.flex-col.gap-6");
+    expect(stack).toBeTruthy();
+    expect(stack?.className).toContain("pb-8");
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel.className).toContain("w-[150px]");
+    expect(cancel.className).toContain("border");
+  });
+
   it("falls back to the unknown state when the gate has no state binding", () => {
     render(
       <GateConfirmSheet

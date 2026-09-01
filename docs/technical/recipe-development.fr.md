@@ -286,7 +286,7 @@ slots: [{ id: "gate", name: "Portail", type: "equipment", required: true, /* ...
 tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmFrom: "gate" },
 ```
 
-Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez les trois de côté pour une tuile qui choisit un mode de confort. Un cœur antérieur à 1.65 ignore ces champs, comme il ignore toute partie d'un `tile` qu'il ne connaît pas.
+Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez les trois de côté pour une tuile qui choisit un mode de confort. Un cœur antérieur à 1.66 ignore ces champs, comme il ignore toute partie d'un `tile` qu'il ne connaît pas.
 
 ### Règles à connaître
 

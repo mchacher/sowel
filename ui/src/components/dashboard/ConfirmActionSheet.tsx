@@ -42,7 +42,15 @@ export function ConfirmActionSheet({
 
   return (
     <BottomSheet open onClose={onClose} title={title}>
-      <div className="flex flex-col gap-5 pt-1">
+      {/* The slide has to sit in the thumb's arc, not on the phone's chin, and
+          the height above the bottom edge is bought with content rather than
+          with empty space: cancel is a real button instead of a text link, and
+          the stack breathes. Growing the sheet or floating it were both tried
+          and both read as a hole in the layout (#858). Cancel is deliberately
+          narrower and lighter than the slide: primary action, secondary exit.
+          These are dimensions, not decoration — the extraction of spec 171 lost
+          them once, which is why a test now pins them. */}
+      <div className="flex flex-col gap-6 pt-2 pb-8">
         {subtitle && (
           <p className="text-[12px] text-text-tertiary text-center -mt-1">{subtitle}</p>
         )}
@@ -53,7 +61,7 @@ export function ConfirmActionSheet({
         />
         <button
           onClick={onClose}
-          className="w-full text-center text-[13px] text-text-tertiary hover:text-text-secondary py-1.5 cursor-pointer"
+          className="w-[150px] mx-auto mt-4 text-center text-[13px] text-text-secondary border border-border rounded-[9px] py-2 hover:bg-border-light cursor-pointer"
         >
           {t("common.cancel")}
         </button>

@@ -98,4 +98,4 @@ Make a tap anywhere on a single-control recipe tile fire that control, and let a
 | Equipment says confirm, package declares nothing    | It asks. The equipment decides alone (FR-8).                                                           |
 | Equipment says no, package says `confirm: true`     | It acts. Deliberate — that disagreement is the defect FR-8 removes.                                    |
 | `confirmFrom` naming a non-equipment slot           | Its value is not an equipment id, nothing resolves, FR-9 applies.                                      |
-| Recipe declares `confirm` on a core older than 1.65 | All three fields ignored, tile unchanged (FR-10).                                                      |
+| Recipe declares `confirm` on a core older than 1.66 | All three fields ignored, tile unchanged (FR-10).                                                      |
