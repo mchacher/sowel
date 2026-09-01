@@ -341,6 +341,12 @@ Energy data flows through 3 InfluxDB buckets: `sowel` (raw, 7d) → `sowel-energ
 - Day boundaries use local midnight (assumes correct TZ — see spec 061)
 - HP/HC tariff classifier in `src/energy/tariff-classifier.ts` uses `getHours()` which is TZ-sensitive
 
+## Answering the user
+
+Keep answers short and ordered. One or two lines for the what, then one short bullet per finding,
+problem or decision. No preamble, no restating the question, no narrating the work in progress.
+Long prose belongs in the spec, the PR body or the release notes, never in the terminal.
+
 ## When in doubt
 
 1. **Read `docs/specs-index.md` first** to see if there's already a spec for what you're about to do
