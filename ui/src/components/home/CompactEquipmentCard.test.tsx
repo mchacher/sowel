@@ -185,6 +185,16 @@ describe("CompactEquipmentCard — timed command (spec 174)", () => {
     expect(screen.getByTitle(/Lancer|Run for/i)).toBeTruthy();
   });
 
+  it("keeps the row on one line, controls and all", () => {
+    // The row is a three-column grid: a second right-hand child wrapped onto a
+    // line of its own, which is what the timed control did beside a gate's own
+    // control. Everything on the right shares one cell now.
+    const { container } = renderCard(timedGate());
+    const row = container.querySelector('[class*="grid-cols-[32px"]');
+    expect(row).toBeTruthy();
+    expect(row!.children).toHaveLength(3);
+  });
+
   it("shows the countdown and offers to end it while a window is open", () => {
     renderCard(
       timedGate({

@@ -112,7 +112,7 @@ export function TimedCommandPanel({
     <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <TimerReset size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[14px] font-semibold text-text">{t("equipments.timed.title")}</h3>
+        <h3 className="text-[14px] font-semibold text-text">{t("equipments.timed.configTitle")}</h3>
         <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
           <input
             type="checkbox"

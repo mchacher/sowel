@@ -211,237 +211,243 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         )}
       </div>
 
-      {/* Slots 3-5: per-type content. Grid auto columns collapse when unused. */}
+      {/* Slots 3-5: per-type content, in ONE grid cell.
+          The row is a three-column grid, so a second right-hand child wrapped
+          onto a line of its own — which is exactly what the timed control did
+          when it landed beside a gate's or a light's own control. Everything
+          that belongs on the right now shares this cell and lines up in it. */}
+      <div className="flex items-center gap-3 justify-self-end min-w-0">
 
-      {/* Sensor / Button values — wrapped in a single grid cell to keep the row layout intact */}
-      {isSensor && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <SensorValues
-            sensorBindings={
-              equipment.type === "weather"
-                ? buildWeatherCompactBindings(equipment, sensorBindings)
-                : sensorBindings
-            }
-            batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
-            batteryAlert={equipment.type === "weather" ? null : batteryAlert}
-          />
-        </div>
-      )}
+        {/* Sensor / Button values — wrapped in a single grid cell to keep the row layout intact */}
+        {isSensor && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <SensorValues
+              sensorBindings={
+                equipment.type === "weather"
+                  ? buildWeatherCompactBindings(equipment, sensorBindings)
+                  : sensorBindings
+              }
+              batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
+              batteryAlert={equipment.type === "weather" ? null : batteryAlert}
+            />
+          </div>
+        )}
 
-      {/* Weather forecast compact */}
-      {isWeatherForecast && <CompactForecast equipment={equipment} />}
+        {/* Weather forecast compact */}
+        {isWeatherForecast && <CompactForecast equipment={equipment} />}
 
-      {/* Energy meter values */}
-      {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
+        {/* Energy meter values */}
+        {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
 
-      {/* Solar panel — produced power (green) */}
-      {isSolar && (
-        <span className="flex items-baseline gap-1 flex-shrink-0">
-          <span
-            className={`text-[13px] font-semibold tabular-nums font-mono ${
-              solarPowerW === null ? "text-text-tertiary" : "text-success"
-            }`}
-          >
-            {solarPowerW === null
-              ? "—"
-              : solarPowerW >= 1000
-                ? `${(solarPowerW / 1000).toFixed(2)} kW`
-                : `${Math.round(solarPowerW)} W`}
-          </span>
-          {powerReading.verdict === "stale" && (
-            <span className="text-[11px] text-text-tertiary">
-              {formatRelative(powerReading.since, t)}
+        {/* Solar panel — produced power (green) */}
+        {isSolar && (
+          <span className="flex items-baseline gap-1 flex-shrink-0">
+            <span
+              className={`text-[13px] font-semibold tabular-nums font-mono ${
+                solarPowerW === null ? "text-text-tertiary" : "text-success"
+              }`}
+            >
+              {solarPowerW === null
+                ? "—"
+                : solarPowerW >= 1000
+                  ? `${(solarPowerW / 1000).toFixed(2)} kW`
+                  : `${Math.round(solarPowerW)} W`}
             </span>
-          )}
-        </span>
-      )}
-
-      {/* UPS compact (spec 156) — the state, then how much runway is left.
-       * Those two answer the only question a glance at a zone asks of a UPS. */}
-      {isUps && <CompactUps equipment={equipment} />}
-
-      {/* Camera compact — snapshot thumbnail, blob-fetched (an <img src>
-       * can't carry the Authorization header the media-proxy route needs). */}
-      {isCamera && hasCameraSnapshot && <CompactCameraThumbnail equipmentId={equipment.id} />}
-
-      {/* Media player compact */}
-      {isMediaPlayer && <CompactMediaPlayer equipment={equipment} />}
-
-      {/* Appliance compact */}
-      {isAppliance && <CompactAppliance equipment={equipment} />}
-
-      {/* Primary value for other equipments */}
-      {primaryBinding && !isKnownType && (
-        <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
-          {formatValue(primaryBinding.value, primaryBinding.unit)}
-        </span>
-      )}
-
-      {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
-       * Metering plug (spec 129): show live power (amber) next to the toggle. */}
-      {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {waterHeaterTempC !== null && (
-            <span className="text-[13px] font-semibold text-text-secondary tabular-nums font-mono">
-              {waterHeaterTempC.toFixed(1)}°C
-            </span>
-          )}
-          {switchPowerW !== null && (
-            <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
-              {switchPowerW >= 1000
-                ? `${(switchPowerW / 1000).toFixed(2)} kW`
-                : `${Math.round(switchPowerW)} W`}
-            </span>
-          )}
-          {/* The 52 px row has the width for the age inline, so no sub-label
-              is needed to say the number is gone on purpose (#839). */}
-          {switchPowerStale && (
-            <span className="flex items-baseline gap-1">
-              <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono">
-                —
-              </span>
+            {powerReading.verdict === "stale" && (
               <span className="text-[11px] text-text-tertiary">
-                {formatRelative(switchPowerStale, t)}
+                {formatRelative(powerReading.since, t)}
               </span>
-            </span>
-          )}
-          {waterHeaterDayWh !== null && (
-            <span className="text-[13px] text-accent tabular-nums font-mono font-semibold">
-              {waterHeaterDayWh >= 1000
-                ? (waterHeaterDayWh / 1000).toFixed(2)
-                : Math.round(waterHeaterDayWh)}
-              <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
-                {waterHeaterDayWh >= 1000 ? "kWh" : "Wh"}
+            )}
+          </span>
+        )}
+
+        {/* UPS compact (spec 156) — the state, then how much runway is left.
+         * Those two answer the only question a glance at a zone asks of a UPS. */}
+        {isUps && <CompactUps equipment={equipment} />}
+
+        {/* Camera compact — snapshot thumbnail, blob-fetched (an <img src>
+         * can't carry the Authorization header the media-proxy route needs). */}
+        {isCamera && hasCameraSnapshot && <CompactCameraThumbnail equipmentId={equipment.id} />}
+
+        {/* Media player compact */}
+        {isMediaPlayer && <CompactMediaPlayer equipment={equipment} />}
+
+        {/* Appliance compact */}
+        {isAppliance && <CompactAppliance equipment={equipment} />}
+
+        {/* Primary value for other equipments */}
+        {primaryBinding && !isKnownType && (
+          <span className="text-[13px] text-text-secondary tabular-nums flex-shrink-0">
+            {formatValue(primaryBinding.value, primaryBinding.unit)}
+          </span>
+        )}
+
+        {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
+         * Metering plug (spec 129): show live power (amber) next to the toggle. */}
+        {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {waterHeaterTempC !== null && (
+              <span className="text-[13px] font-semibold text-text-secondary tabular-nums font-mono">
+                {waterHeaterTempC.toFixed(1)}°C
               </span>
-            </span>
-          )}
-          {/* Main on/off — hidden when only a solar channel is bound (e.g. a
-              water heater on permanent mains, spec 152), so no dead toggle.
-              Uses the same resolver as LightControl so the gate never hides a
-              toggle the control would still render. */}
-          {!!findMainOnOffOrder(equipment.orderBindings) && (
-            <LightControl
+            )}
+            {switchPowerW !== null && (
+              <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
+                {switchPowerW >= 1000
+                  ? `${(switchPowerW / 1000).toFixed(2)} kW`
+                  : `${Math.round(switchPowerW)} W`}
+              </span>
+            )}
+            {/* The 52 px row has the width for the age inline, so no sub-label
+                is needed to say the number is gone on purpose (#839). */}
+            {switchPowerStale && (
+              <span className="flex items-baseline gap-1">
+                <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono">
+                  —
+                </span>
+                <span className="text-[11px] text-text-tertiary">
+                  {formatRelative(switchPowerStale, t)}
+                </span>
+              </span>
+            )}
+            {waterHeaterDayWh !== null && (
+              <span className="text-[13px] text-accent tabular-nums font-mono font-semibold">
+                {waterHeaterDayWh >= 1000
+                  ? (waterHeaterDayWh / 1000).toFixed(2)
+                  : Math.round(waterHeaterDayWh)}
+                <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
+                  {waterHeaterDayWh >= 1000 ? "kWh" : "Wh"}
+                </span>
+              </span>
+            )}
+            {/* Main on/off — hidden when only a solar channel is bound (e.g. a
+                water heater on permanent mains, spec 152), so no dead toggle.
+                Uses the same resolver as LightControl so the gate never hides a
+                toggle the control would still render. */}
+            {!!findMainOnOffOrder(equipment.orderBindings) && (
+              <LightControl
+                equipment={equipment}
+                onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+                compact
+              />
+            )}
+            {/* Spec 152 — dedicated solar on/off (same toggle, sun glyph). Renders
+                nothing when no solar command is bound. */}
+            <SolarControl
               equipment={equipment}
               onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
               compact
             />
-          )}
-          {/* Spec 152 — dedicated solar on/off (same toggle, sun glyph). Renders
-              nothing when no solar command is bound. */}
-          <SolarControl
+          </div>
+        )}
+
+        {/* Shutter / Awning controls (shared compact control with awning vocabulary swap) */}
+        {isShutterFamily && equipment.enabled && (
+          <ShutterControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
             compact
           />
-        </div>
-      )}
+        )}
 
-      {/* Shutter / Awning controls (shared compact control with awning vocabulary swap) */}
-      {isShutterFamily && equipment.enabled && (
-        <ShutterControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* Thermostat controls */}
+        {isThermostat && equipment.enabled && (
+          <ThermostatCard
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Thermostat controls */}
-      {isThermostat && equipment.enabled && (
-        <ThermostatCard
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* Gate controls */}
+        {isGate && equipment.enabled && (
+          <GateControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Gate controls */}
-      {isGate && equipment.enabled && (
-        <GateControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* Heater controls */}
+        {isHeater && equipment.enabled && (
+          <HeaterControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Timed command (spec 174 phase 2) — renders nothing unless the equipment
-          was configured for one, so every other row keeps its shape. */}
-      <TimedCommandControl equipment={equipment} />
+        {/* Water valve controls */}
+        {isWaterValve && equipment.enabled && (
+          <WaterValveControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Heater controls */}
-      {isHeater && equipment.enabled && (
-        <HeaterControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* VMC: OFF/V1/V2 speed selector (spec 153) */}
+        {isVmc && equipment.enabled && (
+          <VmcControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Water valve controls */}
-      {isWaterValve && equipment.enabled && (
-        <WaterValveControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* Pool pump: runtime badge + ON/OFF toggle (reuse LightControl compact).
+         * Wrapped in a single flex cell so the two children share the row's
+         * auto-sized grid column (otherwise the toggle wraps to a second line). */}
+        {isPoolPump && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <PoolPumpRuntime equipment={equipment} />
+            {equipment.enabled && (
+              <LightControl
+                equipment={equipment}
+                onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+                compact
+              />
+            )}
+          </div>
+        )}
 
-      {/* VMC: OFF/V1/V2 speed selector (spec 153) */}
-      {isVmc && equipment.enabled && (
-        <VmcControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* Pool cover: OPEN/STOP/CLOSE buttons + position slider (reuse ShutterControl compact) */}
+        {isPoolCover && equipment.enabled && (
+          <ShutterControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Pool pump: runtime badge + ON/OFF toggle (reuse LightControl compact).
-       * Wrapped in a single flex cell so the two children share the row's
-       * auto-sized grid column (otherwise the toggle wraps to a second line). */}
-      {isPoolPump && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <PoolPumpRuntime equipment={equipment} />
-          {equipment.enabled && (
-            <LightControl
-              equipment={equipment}
-              onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-              compact
-            />
-          )}
-        </div>
-      )}
+        {/* Pool heat pump: water temp + mode badge + setpoint controls */}
+        {isPoolHeatPump && (
+          <PoolHeatPumpControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+            compact
+          />
+        )}
 
-      {/* Pool cover: OPEN/STOP/CLOSE buttons + position slider (reuse ShutterControl compact) */}
-      {isPoolCover && equipment.enabled && (
-        <ShutterControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
+        {/* Boolean state badge for generic equipments */}
+        {!isKnownType && stateBinding && (
+          <span
+            className={`
+              text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
+              ${isOn
+                ? "bg-success/10 text-success"
+                : "bg-border-light text-text-tertiary"
+              }
+            `}
+          >
+            {isOn ? t("common.on") : t("common.off")}
+          </span>
+        )}
 
-      {/* Pool heat pump: water temp + mode badge + setpoint controls */}
-      {isPoolHeatPump && (
-        <PoolHeatPumpControl
-          equipment={equipment}
-          onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          compact
-        />
-      )}
-
-      {/* Boolean state badge for generic equipments */}
-      {!isKnownType && stateBinding && (
-        <span
-          className={`
-            text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${isOn
-              ? "bg-success/10 text-success"
-              : "bg-border-light text-text-tertiary"
-            }
-          `}
-        >
-          {isOn ? t("common.on") : t("common.off")}
-        </span>
-      )}
+        {/* Timed command (spec 174 phase 2) — renders nothing unless the
+            equipment was configured for one, so every other row is unchanged. */}
+        <TimedCommandControl equipment={equipment} />
+      </div>
     </div>
   );
 }

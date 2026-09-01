@@ -39,6 +39,7 @@ import { MeteringParentPanel } from "../components/equipments/MeteringParentPane
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
 import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
+import { TimedCommandControl } from "../components/equipments/TimedCommandControl";
 import { hasTimedCommandCandidate } from "../../../src/shared/timed-command";
 import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
@@ -424,6 +425,18 @@ export function EquipmentDetailPage() {
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
+        </div>
+      )}
+
+      {/* Timed command — the ACTION, next to the ordinary controls above and
+          available to every user (spec 174 phase 2). Its own card, labelled, so
+          "actuate" and "actuate for fifteen minutes" are two named buttons
+          rather than two icons to guess between. The admin panel further down
+          configures it; this one fires it. */}
+      {equipment.timedCommand && equipment.enabled && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.timed.title")}</h3>
+          <TimedCommandControl equipment={equipment} labelled />
         </div>
       )}
 

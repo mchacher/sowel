@@ -1554,5 +1554,6 @@
   "dashboard.timed.failed": "Command not sent",
   "dashboard.timed.pick_one": "timed · {{count}} min",
   "dashboard.timed.pick_other": "timed · {{count}} min",
-  "dashboard.timed.unavailable": "No timed command"
+  "dashboard.timed.unavailable": "No timed command",
+  "equipments.timed.configTitle": "Timed command settings"
 }
