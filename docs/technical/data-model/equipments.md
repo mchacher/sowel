@@ -77,8 +77,36 @@ interface EquipmentWithDetails extends Equipment {
   orderBindings: OrderBindingWithDetails[];
   /** Provider-supplied virtual data (e.g. energy aggregator cumuls). */
   computedData?: ComputedDataEntry[];
+  /** Spec 174 -- the revert this equipment owes, while a window is running. */
+  timedAction?: TimedAction;
 }
 ```
+
+### 3b Timed action (spec 174)
+
+An equipment can carry **one revert the engine owes it, and when**. The action itself is an ordinary order, already dispatched; what is described here is the deadline.
+
+```typescript
+interface TimedAction {
+  alias: string; // order alias carrying both the action and its revert
+  value: unknown; // what was dispatched when the window opened
+  revertValue: unknown; // what will be dispatched at the deadline
+  expiresAt: string; // ISO-8601 -- a UI ticks it down
+  armedAt: string;
+  armedBy?: string;
+}
+```
+
+Held by `TimedActionManager` (`src/equipments/timed-action-manager.ts`) in the `timed_actions` table, one row per equipment, cascading on delete. The row -- not a `setTimeout` -- is what carries the obligation across a restart: on boot a deadline still ahead is re-scheduled on its remainder, and one that passed while the engine was down is fired on the way up.
+
+Four rules govern its end, and they are the reason this lives in the engine rather than in each recipe that needs it:
+
+1. A **hand-revert disarms** it: the mirror binding reporting the revert value means the user already did it, and firing later would undo their own hand.
+2. A **second arm of the same action replaces** the deadline and dispatches nothing.
+3. A **failed revert alarms and stops** -- never a blind replay, because a dedicated `CLOSE` is a no-op while a sequential impulse re-opens what it just closed.
+4. **Deleting the equipment** takes the deadline with it.
+
+The manager reaches `executeOrder` for both halves, so inversion (spec 154), value resolution (spec 150) and delivery confirmation (spec 141) all apply unchanged. It is registered through `registerTimedActionProvider` -- one provider, not a list: an equipment has at most one deadline standing.
 
 ### 4 SQLite Schema
 
@@ -92,8 +120,21 @@ CREATE TABLE equipments (
   description TEXT,
   enabled INTEGER DEFAULT 1,
   energy_profile TEXT,            -- Spec 140: EnergyLoadProfile JSON, NULL = not claimable
+  metering_parent_id TEXT REFERENCES equipments(id) ON DELETE SET NULL,
+                                  -- Spec 173: this meter's consumption is already counted by that one
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Spec 174: the revert the engine owes an equipment, and when.
+CREATE TABLE timed_actions (
+  equipment_id  TEXT PRIMARY KEY REFERENCES equipments(id) ON DELETE CASCADE,
+  alias         TEXT NOT NULL,
+  action_value  TEXT NOT NULL,  -- JSON: false and "false" must stay distinguishable
+  revert_value  TEXT NOT NULL,  -- JSON: NULL is a legitimate value (a gate impulse)
+  expires_at    INTEGER NOT NULL,
+  armed_at      INTEGER NOT NULL,
+  armed_by      TEXT
 );
 ```
 

@@ -76,6 +76,7 @@ When you click **Install** on a personal plugin, Sowel downloads the release, co
 
 - Confirming installs exactly the content matching that fingerprint and **pins** it. If the file ever changes behind the same version, Sowel refuses it.
 - Every later **update** shows the same dialog again with the new version and new fingerprint, because the content changed since you last approved it. Nothing updates behind your back.
+- The dialog appears **wherever you start the update**: the plugin's row, its detail panel, or the updates panel in the top bar. A personal package is marked with its **Personal** badge there too, so the extra step is no surprise.
 
 !!! warning "You are trusting the repository owner"
 Nobody reviews the code of a personal plugin. It runs with the same privileges as Sowel itself. Only add repositories you own or fully trust -- the fingerprint guarantees _what_ you install never changes silently, not that the code is safe.

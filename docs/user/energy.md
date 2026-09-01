@@ -138,6 +138,18 @@ When at least one submeter is configured, a **Total / By usage** toggle appears 
 
 Submeters use a deterministic color palette so the same circuit keeps the same color across days and views. The "Other" stack is clamped at zero, so a submeter that briefly overshoots the main meter (due to sampling skew) cannot make it negative.
 
+##### When one meter is fed from another
+
+Switchboards nest: a gîte measured by one clamp, and its water heater — fed from that same board — by a second one. Both are submeters, so without help the heater's kilowatt-hours would be counted twice, once in each stack, and the "Other" residual would lose exactly as much.
+
+Say so on the inner meter: open its equipment page and pick, under **Already counted by**, the meter it is fed from. The breakdown then shows the outer meter **net of the inner one** — the gîte minus its water heater — while the inner one keeps its whole measurement, and the two stacks stop overlapping. Its legend says "net of its submeters" so the slice can be told apart from the meter's own card, which keeps showing what its clamp measures.
+
+Chains work: with a main board feeding a gîte feeding a water heater, each level is shown net of the one directly inside it, and the three still add up to the board.
+
+The same subtraction applies to the live breakdown on this page, so the donut and the daily stacks tell one story rather than two.
+
+Two things worth knowing: deleting the outer meter clears the declaration on the ones inside it, which starts counting them twice again, so re-declare their new parent if the wiring still nests; and the equipment cards always keep showing what each clamp measures, since a card contradicting its own sensor would be worse than the overlap it fixes.
+
 Totals widgets (peak / off-peak, autoconsumption) stay unchanged when you toggle modes.
 
 #### Longer periods

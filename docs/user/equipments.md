@@ -213,6 +213,24 @@ Each data value is historized to InfluxDB by default based on its category (temp
 | **Force ON**  | Always historize this value |
 | **Force OFF** | Never historize this value  |
 
+### Timed command
+
+An equipment can be told to act now and undo it after a delay: open the gate for a quarter of an hour, run the outside light for half an hour, water for twenty minutes. The engine holds the deadline, so a restart or a power cut does not lose it, and a deadline that passed while Sowel was down is honoured when it comes back.
+
+Enable it from the equipment page, under **Timed command**. It is off by default. You choose the command, the command that undoes it, and the duration. On a sliding gate driven by a single impulse, the two commands are the same one and the panel says so.
+
+The panel appears only on an equipment that reports a state for that command. Without one, ending the window by hand would go unnoticed and the deadline would act on an equipment that has moved since, which on an impulse gate means re-opening what you just closed.
+
+Once enabled, the command shows up in two places:
+
+- On the **Home** view, next to the equipment on its row, with the remaining time while a window is open.
+- On the **Dashboard**, as a tile you pin beside the ordinary one, so "open" and "open for fifteen minutes" stay two different buttons.
+
+Pressing the tile again while the window is open gives it more time rather than acting twice. Cancelling sends the closing command straight away.
+
+!!! warning "A contact that only certifies one direction"
+A gate's contact usually proves it is closed and only suggests it is open. If you close the gate by hand without the contact seeing it, the window keeps running and will re-open the gate at the deadline. End the window from Sowel rather than by hand when that matters.
+
 ### Disabling an equipment
 
 A disabled equipment behaves as if it weren't there for the engine, while staying visible in the admin UI:

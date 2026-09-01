@@ -76,6 +76,7 @@ Quand vous cliquez sur **Installer** pour un plugin personnel, Sowel télécharg
 
 - Confirmer installe exactement le contenu correspondant à cette empreinte et l'**épingle**. Si le fichier change un jour derrière la même version, Sowel le refuse.
 - Chaque **mise à jour** ultérieure réaffiche la même boîte avec la nouvelle version et la nouvelle empreinte, parce que le contenu a changé depuis votre dernière validation. Rien ne se met à jour dans votre dos.
+- La boîte s'affiche **là où vous lancez la mise à jour** : la ligne du plugin, son panneau de détail, ou le panneau de mises à jour de la barre du haut. Le badge **Perso** y figure aussi, pour que l'étape supplémentaire ne soit pas une surprise.
 
 !!! warning "Vous faites confiance au propriétaire du dépôt"
 Personne ne relit le code d'un plugin personnel. Il s'exécute avec les mêmes privilèges que Sowel lui-même. N'ajoutez que des dépôts que vous possédez ou en qui vous avez pleinement confiance -- l'empreinte garantit que _ce que_ vous installez ne change jamais silencieusement, pas que le code est sûr.

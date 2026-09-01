@@ -353,10 +353,17 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard
    *  (gate equipments only in v1). */
   requireConfirmation?: boolean;
+  /** Spec 173 — id of the meter that already counts this equipment's
+   *  consumption. The by-usage breakdown renders that parent net of its direct
+   *  children. `null`/absent = counted nowhere else. */
+  meteringParentId?: string | null;
   /** Spec 154 — invert shutter-family command direction (shutter_move
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
   invertDirection?: boolean;
+  /** Spec 174 phase 2 — the timed command this equipment offers, absent when it
+   *  offers none. Configuration; the window running is `timedAction`. */
+  timedCommand?: TimedCommand | null;
   /** Spec 160 — declared array geometry. */
   solarProfile?: SolarProfile;
 }
@@ -594,6 +601,26 @@ export interface ComputedDataEntry {
   lastUpdated: string | null;
 }
 
+/** Spec 174 phase 2 — what a timed control arms. `value` may equal `revertValue`
+ *  (an impulse gate is opened and closed by one command) and either may be null. */
+export interface TimedCommand {
+  alias: string;
+  value: unknown;
+  revertValue: unknown;
+  durationMs: number;
+}
+
+/** Spec 174 — the window currently running on an equipment. */
+export interface TimedAction {
+  alias: string;
+  value: unknown;
+  revertValue: unknown;
+  /** ISO-8601 instant the revert is owed at. */
+  expiresAt: string;
+  armedAt: string;
+  armedBy?: string;
+}
+
 export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
@@ -602,6 +629,8 @@ export interface EquipmentWithDetails extends Equipment {
   status: EquipmentStatus;
   /** Populated only when status !== "online". */
   statusReason?: EquipmentStatusReason;
+  /** Spec 174 — present only while a timed window is running. */
+  timedAction?: TimedAction;
 }
 
 // ============================================================
@@ -742,6 +771,42 @@ export type EngineEvent =
       equipmentName: string;
       oldStatus: EquipmentStatus;
       newStatus: EquipmentStatus;
+    }
+  /* Spec 174 — a timed window opening, ending, or failing to end. The equipment
+     row itself is untouched, so these are not `equipment.updated`. */
+  | {
+      type: "equipment.timed_action.armed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      value: unknown;
+      revertValue: unknown;
+      expiresAt: number;
+      extended: boolean;
+      source?: OrderSource;
+    }
+  | {
+      type: "equipment.timed_action.reverted";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      revertValue: unknown;
+      reason: string;
+    }
+  | {
+      type: "equipment.timed_action.disarmed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      reason: string;
+    }
+  | {
+      type: "equipment.timed_action.failed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      revertValue: unknown;
+      error: string;
     }
   | {
       type: "equipment.order.executed";
@@ -1361,6 +1426,9 @@ export type WidgetFamily =
 export interface WidgetConfig {
   /** Sensor widget: list of binding aliases to display (undefined = show all) */
   visibleBindings?: string[];
+  /** Spec 174 phase 2 — this tile arms the equipment's timed command. Set on a
+   *  second widget for the same equipment, beside the ordinary one. */
+  timed?: boolean;
 }
 
 export interface DashboardWidget {
@@ -1434,6 +1502,8 @@ export interface SubmeterSeries {
   color: string;
   points: EnergyByUsagePoint[];
   cost: number; // € (spec 123)
+  /** Spec 173 — shown net of the meters declared inside this one. */
+  netOfChildren?: boolean;
 }
 
 export interface EnergyByUsageResponse {

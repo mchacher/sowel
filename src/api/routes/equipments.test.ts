@@ -517,6 +517,114 @@ describe("PUT /api/v1/equipments/:id — solar profile (spec 160)", () => {
   });
 });
 
+describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let received: Record<string, unknown> | null;
+
+  // gite ⊃ ce, and a house total that must never be anyone's parent.
+  const graph = [
+    { id: "gite", name: "ConsommationGite", type: "energy_meter", meteringParentId: null },
+    { id: "ce", name: "ConsommationChauffeEau", type: "energy_meter", meteringParentId: "gite" },
+    { id: "edf", name: "EDF", type: "main_energy_meter", meteringParentId: null },
+    { id: "plaque", name: "ConsommationPlaqueGite", type: "energy_meter", meteringParentId: null },
+    { id: "lampe", name: "Lampe", type: "light_onoff", meteringParentId: null },
+  ];
+
+  beforeEach(async () => {
+    received = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: (id: string) => graph.find((e) => e.id === id) ?? null,
+        // Eligibility asks the enrolment rule, which needs the bindings.
+        getByIdWithDetails: (id: string) => {
+          const eq = graph.find((e) => e.id === id);
+          if (!eq) return null;
+          return {
+            ...eq,
+            dataBindings:
+              eq.type === "light_onoff"
+                ? [{ alias: "state", category: "light_state", type: "boolean" }]
+                : [{ alias: "power", category: "power", type: "number" }],
+          };
+        },
+        getAll: () => graph,
+        update: (_id: string, input: Record<string, unknown>) => {
+          received = input;
+          return { id: _id, meteringParentId: input.meteringParentId };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const put = (id: string, payload: unknown) =>
+    app.inject({ method: "PUT", url: `/api/v1/equipments/${id}`, payload });
+
+  it("forwards an honest declaration", async () => {
+    const res = await put("plaque", { meteringParentId: "gite" });
+    expect(res.statusCode).toBe(200);
+    expect(received?.meteringParentId).toBe("gite");
+  });
+
+  it("forwards an explicit null, so a declaration can be withdrawn", async () => {
+    const res = await put("ce", { meteringParentId: null });
+    expect(res.statusCode).toBe(200);
+    expect(received).toHaveProperty("meteringParentId", null);
+  });
+
+  it("leaves it untouched when the body does not mention it", async () => {
+    const res = await put("ce", { name: "CE" });
+    expect(res.statusCode).toBe(200);
+    // undefined ≠ null: the manager keeps the stored value on undefined.
+    expect(received?.meteringParentId).toBeUndefined();
+  });
+
+  it("answers 404 for a parent that does not exist", async () => {
+    const res = await put("plaque", { meteringParentId: "ghost" });
+    expect(res.statusCode).toBe(404);
+    expect(received).toBeNull();
+  });
+
+  it("refuses an equipment metered by itself", async () => {
+    const res = await put("gite", { meteringParentId: "gite" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentSelf");
+    expect(received).toBeNull();
+  });
+
+  it("refuses a loop the pair alone does not reveal", async () => {
+    // ce is already inside gite; putting gite inside ce closes the loop.
+    const res = await put("gite", { meteringParentId: "ce" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentCycle");
+    expect(received).toBeNull();
+  });
+
+  it("refuses the house total as a parent", async () => {
+    // Everything is inside the house total already; subtracting from it would
+    // wreck the residual it defines.
+    const res = await put("gite", { meteringParentId: "edf" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentNotSubmeter");
+    expect(received).toBeNull();
+  });
+
+  it("refuses a parent that measures no consumption at all", async () => {
+    // Not a house total, so the blocklist lets it through; it is not a meter
+    // either, and the declaration would sit there doing nothing (#873 review).
+    const res = await put("plaque", { meteringParentId: "lampe" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentNotSubmeter");
+  });
+});
+
 // ── #832 — the feed must not serve a leftover as a current measurement ──
 //
 // The energy display is this feed's consumer and cannot work a reading's age
@@ -624,5 +732,146 @@ describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", ()
     expect(eq.name).toBe("Piscine");
     expect(eq.type).toBe("energy_meter");
     expect((eq.dataBindings as { value: number }[])[0].value).toBe(1233);
+  });
+});
+
+// ============================================================
+// Spec 174 phase 2 — the timed command
+// ============================================================
+
+describe("timed command (spec 174 phase 2)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let saved: Record<string, unknown> | null;
+  let armedWith: { id: string; explicit: boolean } | null;
+
+  // A sliding gate: one impulse order, and the contact that makes it eligible.
+  const gate = {
+    id: "gate",
+    name: "Portail",
+    type: "gate",
+    orderBindings: [{ id: "o1", alias: "command", type: "string" }],
+    dataBindings: [{ id: "d1", alias: "state", category: "gate_state", type: "string" }],
+    timedCommand: null as unknown,
+  };
+
+  beforeEach(async () => {
+    saved = null;
+    armedWith = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: (id: string) => (id === gate.id ? gate : null),
+        getByIdWithDetails: (id: string) => (id === gate.id ? gate : null),
+        getAll: () => [gate],
+        update: (_id: string, input: Record<string, unknown>) => {
+          saved = input;
+          return { id: _id, ...input };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      timedActionManager: {
+        armConfigured: async (id: string) => {
+          armedWith = { id, explicit: false };
+          if (!gate.timedCommand) {
+            const { TimedActionError } = await import("../../equipments/timed-action-manager.js");
+            throw new TimedActionError("No timed command configured on this equipment", 409);
+          }
+          return { alias: "command", value: null, revertValue: null, expiresAt: "x", armedAt: "y" };
+        },
+        arm: async (id: string) => {
+          armedWith = { id, explicit: true };
+          return { alias: "command", value: null, revertValue: null, expiresAt: "x", armedAt: "y" };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["timedActionManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    gate.timedCommand = null;
+    await app.close();
+  });
+
+  const put = (payload: unknown) =>
+    app.inject({ method: "PUT", url: "/api/v1/equipments/gate", payload });
+  const arm = (payload?: unknown) =>
+    app.inject({ method: "POST", url: "/api/v1/equipments/gate/timed-action", payload });
+
+  it("stores a configuration whose action and revert are the same command", async () => {
+    // FR-9b: an impulse. The first draft refused this outright.
+    const res = await put({
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(saved?.timedCommand).toEqual({
+      alias: "command",
+      value: null,
+      revertValue: null,
+      durationMs: 900_000,
+    });
+  });
+
+  it("refuses a configuration naming an order the equipment does not carry", async () => {
+    const res = await put({
+      timedCommand: { alias: "open", value: null, revertValue: null, durationMs: 900_000 },
+    });
+
+    // Refused where it is WRITTEN, not where it would be fired.
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("TimedCommandNotEligible");
+    expect(saved).toBeNull();
+  });
+
+  it("refuses a window outside the bounds", async () => {
+    const res = await put({
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 500 },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("TimedCommandInvalid");
+  });
+
+  it("clears the configuration on null", async () => {
+    const res = await put({ timedCommand: null });
+
+    expect(res.statusCode).toBe(200);
+    expect(saved).toHaveProperty("timedCommand", null);
+  });
+
+  it("arms the stored configuration from an empty body", async () => {
+    // FR-13 — this is the call BOTH new surfaces make; a schema requiring
+    // `alias` here would 400 every press without any test noticing.
+    gate.timedCommand = { alias: "command", value: null, revertValue: null, durationMs: 900_000 };
+
+    const res = await arm({});
+
+    expect(res.statusCode).toBe(200);
+    expect(armedWith).toEqual({ id: "gate", explicit: false });
+  });
+
+  it("answers 409 when nothing is configured to arm", async () => {
+    const res = await arm({});
+
+    expect(res.statusCode).toBe(409);
+    // Told apart from "cannot be armed": one is a configuration a user can go
+    // and write, the other is an equipment that will never do it.
+    expect(res.json().error).toMatch(/No timed command/);
+  });
+
+  it("still takes an explicit body, and still validates it", async () => {
+    const ok = await arm({
+      alias: "command",
+      value: null,
+      revertValue: null,
+      durationMs: 900_000,
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(armedWith).toEqual({ id: "gate", explicit: true });
+
+    // Naming an alias brings the other two with it.
+    const bad = await arm({ alias: "command" });
+    expect(bad.statusCode).toBe(400);
   });
 });

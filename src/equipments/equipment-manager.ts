@@ -21,6 +21,8 @@ import type {
   OrderCategory,
   OrderSource,
   SolarProfile,
+  TimedCommand,
+  TimedAction,
 } from "../shared/types.js";
 import {
   computeBindingCandidates,
@@ -40,6 +42,9 @@ import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
 export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
+
+/** Spec 174 — supplies the revert an equipment owes, when a window is running. */
+export type TimedActionProvider = (equipmentId: string) => TimedAction | null;
 
 // ============================================================
 // Valid EquipmentType values
@@ -103,6 +108,10 @@ interface UpdateEquipmentInput {
   requireConfirmation?: boolean;
   /** Spec 154 — invert shutter-family command direction. */
   invertDirection?: boolean;
+  /** Spec 173 — the meter that already counts this equipment. `null` clears it. */
+  meteringParentId?: string | null;
+  /** Spec 174 phase 2 — the timed command this equipment offers. `null` clears it. */
+  timedCommand?: TimedCommand | null;
 }
 
 // ============================================================
@@ -120,6 +129,7 @@ export class EquipmentManager {
 
   /** Registered computed data providers (e.g. EnergyAggregator). */
   private computedDataProviders: ComputedDataProvider[] = [];
+  private timedActionProvider: TimedActionProvider | null = null;
 
   /** Gate equipments with a pending command — state is "unknown" until next sensor update */
   private pendingToggles = new Set<string>();
@@ -168,6 +178,25 @@ export class EquipmentManager {
     this.computedDataProviders.push(provider);
   }
 
+  /**
+   * Register the source of timed actions (spec 174). One provider, not a list:
+   * an equipment has at most one deadline standing, and two answers would be
+   * a bug rather than an aggregation.
+   */
+  registerTimedActionProvider(provider: TimedActionProvider): void {
+    this.timedActionProvider = provider;
+  }
+
+  private getTimedAction(equipmentId: string): TimedAction | null {
+    if (!this.timedActionProvider) return null;
+    try {
+      return this.timedActionProvider(equipmentId);
+    } catch {
+      // A provider must not break equipment queries.
+      return null;
+    }
+  }
+
   /** Collect computed data from all registered providers for a given equipment. */
   private getComputedData(equipmentId: string): ComputedDataEntry[] {
     const entries: ComputedDataEntry[] = [];
@@ -205,6 +234,7 @@ export class EquipmentManager {
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
          invert_direction = @invertDirection, solar_profile = @solarProfile,
+         metering_parent_id = @meteringParentId, timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -440,6 +470,7 @@ export class EquipmentManager {
     const dataBindings = this.getDataBindingsWithValues(id);
     const orderBindings = this.getOrderBindingsWithDetails(id);
     const computedData = this.getComputedData(id);
+    const timedAction = this.getTimedAction(id);
 
     // Spec 116: derive equipment status from bindings + backing devices.
     const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
@@ -457,6 +488,7 @@ export class EquipmentManager {
       status,
       ...(reason !== null ? { statusReason: reason } : {}),
       ...(computedData.length > 0 ? { computedData } : {}),
+      ...(timedAction !== null ? { timedAction } : {}),
     };
   }
 
@@ -466,6 +498,7 @@ export class EquipmentManager {
       const dataBindings = this.getDataBindingsWithValues(eq.id);
       const orderBindings = this.getOrderBindingsWithDetails(eq.id);
       const computedData = this.getComputedData(eq.id);
+      const timedAction = this.getTimedAction(eq.id);
       const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
       const { status, reason } = deriveEquipmentStatus(
         dataBindings,
@@ -480,6 +513,7 @@ export class EquipmentManager {
         status,
         ...(reason !== null ? { statusReason: reason } : {}),
         ...(computedData.length > 0 ? { computedData } : {}),
+        ...(timedAction !== null ? { timedAction } : {}),
       };
     });
   }
@@ -511,6 +545,14 @@ export class EquipmentManager {
             ? null
             : JSON.stringify(input.energyProfile)
           : existing.energy_profile,
+      // Spec 174 — `null` clears it, an absent key keeps what is stored, the same
+      // three-way read every JSON column here uses.
+      timedCommand:
+        input.timedCommand !== undefined
+          ? input.timedCommand === null
+            ? null
+            : JSON.stringify(input.timedCommand)
+          : existing.timed_command,
       solarProfile:
         input.solarProfile !== undefined
           ? input.solarProfile === null || input.solarProfile.planes.length === 0
@@ -529,6 +571,10 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.invert_direction,
+      // Spec 173 — `null` is a value here ("counted nowhere else"), so only an
+      // absent key falls back to what is stored.
+      meteringParentId:
+        input.meteringParentId !== undefined ? input.meteringParentId : existing.metering_parent_id,
     });
 
     const equipment = this.getById(id)!;
@@ -1584,6 +1630,8 @@ interface EquipmentRow {
   solar_profile: string | null;
   require_confirmation: number;
   invert_direction: number;
+  metering_parent_id: string | null;
+  timed_command: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1669,6 +1717,27 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
   }
 }
 
+/**
+ * Parse the timed_command JSON column (spec 174 phase 2).
+ *
+ * A row written by an older core, or by hand, can hold anything; a malformed
+ * value reads as "no timed command" rather than throwing on every equipment
+ * read. The shape is checked, not just the parse: a configuration missing its
+ * alias or its duration would offer a control that cannot be armed.
+ */
+function parseTimedCommand(json: string | null): TimedCommand | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed = JSON.parse(json) as TimedCommand;
+    if (typeof parsed?.alias !== "string" || typeof parsed?.durationMs !== "number") {
+      return undefined;
+    }
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Parse the solar_profile JSON column (spec 160).
  *
  *  A corrupt or invalid row reads as no profile rather than crashing a read
@@ -1726,6 +1795,8 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     solarProfile: parseSolarProfile(row.solar_profile),
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
+    meteringParentId: row.metering_parent_id ?? null,
+    timedCommand: parseTimedCommand(row.timed_command),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

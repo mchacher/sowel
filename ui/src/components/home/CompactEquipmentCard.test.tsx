@@ -162,3 +162,56 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
     expect(screen.getByText("1.24 kW")).toBeTruthy();
   });
 });
+
+// ============================================================
+// Spec 174 phase 2 — the timed control on the row
+// ============================================================
+
+describe("CompactEquipmentCard — timed command (spec 174)", () => {
+  const timedGate = (over: Partial<EquipmentWithDetails> = {}) =>
+    makeEquipment("gate", [], {
+      name: "Portail",
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+      ...over,
+    });
+
+  it("adds nothing to a row whose equipment has no timed command", () => {
+    renderCard(makeEquipment("gate", [], { name: "Portail" }));
+    expect(screen.queryByTitle(/Lancer|Run for/i)).toBeNull();
+  });
+
+  it("offers the command when one is configured", () => {
+    renderCard(timedGate());
+    expect(screen.getByTitle(/Lancer|Run for/i)).toBeTruthy();
+  });
+
+  it("keeps the row on one line, controls and all", () => {
+    // The row is a three-column grid: a second right-hand child wrapped onto a
+    // line of its own, which is what the timed control did beside a gate's own
+    // control. Everything on the right shares one cell now.
+    const { container } = renderCard(timedGate());
+    const row = container.querySelector('[class*="grid-cols-[32px"]');
+    expect(row).toBeTruthy();
+    expect(row!.children).toHaveLength(3);
+  });
+
+  it("shows the countdown and offers to end it while a window is open", () => {
+    renderCard(
+      timedGate({
+        timedAction: {
+          alias: "command",
+          value: null,
+          revertValue: null,
+          armedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+          expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        },
+      }),
+    );
+
+    expect(screen.getByText("10:00")).toBeTruthy();
+    // Pressing again on a dense row means "close it", not "keep it open longer":
+    // the extend gesture lives on the tile.
+    expect(screen.getByTitle(/Arrêter|End it/i)).toBeTruthy();
+    expect(screen.queryByTitle(/Lancer|Run for/i)).toBeNull();
+  });
+});
