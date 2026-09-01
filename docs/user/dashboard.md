@@ -51,6 +51,12 @@ What a recipe tile shows is chosen by the recipe itself, out of three things:
 - a **countdown** — when it will act on its own, ticking down each second;
 - one or more **buttons** cycling through the recipe's modes, which you can press straight from the Dashboard.
 
+When a tile carries **one** button, you do not have to aim at it: a click anywhere on the tile does the same thing. A tile carrying two buttons keeps them as the only way in — the tile itself cannot know which of the two you meant. Nothing happens on a click while the Dashboard is in edit mode.
+
+A recipe that opens something physical — a gate, a door — asks before it acts: on a phone, tapping the tile opens a slide-to-confirm panel naming what it is about to do, so a pocket tap never opens the gate. On a computer the click acts straight away, and the small button always does, whatever the recipe.
+
+You answer that question **once, on the equipment**. A recipe whose tile opens your gate reads that gate's own **Confirmation before action** setting: turn it on there and every way of opening the gate asks first, turn it off and none of them does. No recipe can quietly disagree with what you decided about your own gate. Only a recipe that acts on several equipments at once — or on none in particular — falls back to a setting of its own, next to the rest of the automation's parameters.
+
 A tile whose recipe instance is disabled is greyed out and keeps its place, so a quiet tile is never a mystery. If a recipe stops offering a tile after an update, the widget says so instead of vanishing — remove it yourself if you no longer want it.
 
 ## Adding widgets

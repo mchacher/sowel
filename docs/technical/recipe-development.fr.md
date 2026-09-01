@@ -218,6 +218,9 @@ export function createRecipe(): RecipeDefinition {
       summaryKey: "summary",      // valeur par défaut, à omettre
       countdownKey: "timerExpiresAt", // valeur par défaut, à omettre
       actions: ["set_mode"],      // celles de vos actions qui deviennent des boutons
+      confirm: true,              // cette tuile actionne du physique (spec 171)
+      confirmParam: "confirmFromDashboard", // ...sauf si l'utilisateur en décide autrement
+      confirmFrom: "gate",        // ...ou sauf si l'équipement lui-même a une réponse
     },
   };
 }
@@ -245,6 +248,45 @@ ctx.state.set("mode", "short"); // la stateKey que lit votre action de type cycl
 ```
 
 Publiez la valeur de repos de la `stateKey` d'une action `cycle` dès le début de `createInstance`, et pas seulement quand il se passe quelque chose : le bouton ne s'affiche pas tant que sa clé d'état est absente, donc une tuile dont la recette est au repos n'aurait aucun bouton du tout.
+
+### Un clic sur la tuile déclenche son bouton (spec 171)
+
+Quand une tuile n'affiche **qu'un seul** bouton, un clic n'importe où sur la carte le déclenche — même cycle, même valeur suivante que la pastille, qui reste en place pour qui préfère viser. Avec deux boutons la carte reste inerte : elle devrait deviner lequel vous vouliez. Idem pour une tuile sans aucun bouton, une instance désactivée, et un tableau de bord en mode édition.
+
+`confirm: true` déclare que déclencher cette tuile **actionne quelque chose de physique** — un portail, une porte, une pompe. Sur mobile, la carte ouvre alors un panneau « glisser pour confirmer » qui nomme la position vers laquelle elle s'apprête à basculer, au lieu d'agir sur une simple tape ; sur ordinateur elle agit directement, un clic à la souris étant assez délibéré. La pastille, elle, n'est jamais protégée : une cible de 10 px est déjà une visée, et c'est le choix qu'avait fait la spec 146 pour les équipements de type portail.
+
+`confirmParam` désigne l'un de vos **slots `boolean`** et confie ce choix à l'utilisateur — l'équivalent, pour une recette, de la case « confirmation avant action » que porte un équipement de type portail. Ce que répond l'instance l'emporte ; `confirm` n'est que la valeur par défaut pour une instance à qui on n'a jamais posé la question, si bien qu'ajouter le slot à une recette existante ne retire jamais la protection en silence aux instances déjà en service.
+
+**`confirmFrom` est celui vers lequel se tourner en premier.** Il désigne l'un de vos **slots `equipment`** — celui que le bouton unique de la tuile actionne. Quand ce slot se résout, **c'est la « Confirmation avant action » (spec 146) de cet équipement qui décide, et `confirm` comme `confirmParam` ne sont pas consultés du tout.**
+
+Ce n'est pas un détail de priorité, c'est tout l'intérêt : sans lui, un même portail physique se voit poser la question à trois endroits, et deux d'entre eux peuvent se contredire. Quelqu'un active la protection sur son équipement Portail et obtient quand même une tuile de recette qui agit sur une tape. Avec `confirmFrom`, la réponse est donnée **une fois, sur l'équipement**, et toutes les surfaces qui l'actionnent posent la même question.
+
+Seule votre recette sait si une telle dérivation a un sens — une action qui touche plusieurs équipements, aucun directement, ou qui fait plus que l'ordre de l'équipement, ne peut rien dériver — c'est pourquoi il s'agit d'une déclaration et non de quelque chose que le cœur devine. Si vous ne désignez aucun slot, ou si le slot ne se résout pas (l'utilisateur l'a laissé vide, l'équipement a été supprimé), `confirmParam` puis `confirm` décident comme avant. Un slot qui ne se résout pas n'est **jamais** lu comme « ne pas demander ».
+
+```typescript
+// Un slot que l'utilisateur peut décocher, et une tuile qui le lit.
+slots: [
+  {
+    id: "confirmFromDashboard",
+    name: "Confirmation avant d'agir depuis le tableau de bord",
+    description: "Sur téléphone, demande un glissement avant que la tuile n'ouvre le portail.",
+    type: "boolean",
+    required: false,
+    defaultValue: true,
+  },
+],
+tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmParam: "confirmFromDashboard" },
+```
+
+```typescript
+// Mieux, quand le bouton de la tuile actionne un équipement que votre recette
+// prend déjà en slot : l'utilisateur répond une fois, sur le portail, pour
+// toutes les surfaces.
+slots: [{ id: "gate", name: "Portail", type: "equipment", required: true, /* ... */ }],
+tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmFrom: "gate" },
+```
+
+Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez les trois de côté pour une tuile qui choisit un mode de confort. Un cœur antérieur à 1.66 ignore ces champs, comme il ignore toute partie d'un `tile` qu'il ne connaît pas.
 
 ### Règles à connaître
 

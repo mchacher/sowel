@@ -963,6 +963,33 @@ export interface RecipeTileDef {
   countdownKey?: string;
   /** Ids from this recipe's `actions` exposed as controls on the tile. */
   actions?: string[];
+  /**
+   * Set when firing this tile moves something physical — a gate, a door, a
+   * pump. The Dashboard card then asks for a slide-to-confirm on mobile before
+   * it acts (spec 171), the same guard spec 146 gives a gate equipment. The
+   * tile's own control is unaffected: a 10 px pill is already a deliberate aim.
+   */
+  confirm?: boolean;
+  /**
+   * Id of a `boolean` slot letting the user decide, instance by instance,
+   * whether that confirmation is asked — the recipe's answer to the toggle a
+   * gate equipment carries. Its value wins over `confirm`, which stays the
+   * default for an instance that has never been given one.
+   */
+  confirmParam?: string;
+  /**
+   * Id of the `equipment` slot the tile's single control actuates. When it
+   * resolves, that equipment's own "Confirmation before action" (spec 146)
+   * decides whether the card asks, and `confirm` / `confirmParam` are not
+   * consulted: the answer is given once, on the equipment, and every surface
+   * that actuates it asks the same question.
+   *
+   * Only the recipe can know whether such a derivation is meaningful — an
+   * action touching several equipments, or none directly, or doing more than
+   * the equipment's own order, cannot derive anything — so this is a
+   * declaration, never something the core infers.
+   */
+  confirmFrom?: string;
 }
 
 export interface RecipeInfo {

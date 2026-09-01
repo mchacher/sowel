@@ -6,11 +6,17 @@
  * declaration plus an instance state to pixels.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { act, fireEvent, render, screen } from "../../test-utils";
 import { RecipeTile } from "./RecipeTile";
 import { useRecipes } from "../../store/useRecipes";
-import type { DashboardWidget, RecipeInfo, RecipeInstance } from "../../types";
+import { useEquipments } from "../../store/useEquipments";
+import type {
+  DashboardWidget,
+  EquipmentWithDetails,
+  RecipeInfo,
+  RecipeInstance,
+} from "../../types";
 
 const WIDGET: DashboardWidget = {
   id: "w1",
@@ -35,19 +41,22 @@ function seed(options: {
   state?: Record<string, unknown>;
   enabled?: boolean;
   recipe?: boolean;
+  actions?: RecipeInfo["actions"];
+  params?: Record<string, unknown>;
+  equipments?: EquipmentWithDetails[];
 } = {}) {
   const recipe: RecipeInfo = {
     id: "delivery-gate",
     name: "Delivery Gate",
     description: "",
     slots: [],
-    actions: [ACTION],
+    actions: options.actions ?? [ACTION],
     ...(options.tile ? { tile: options.tile } : {}),
   };
   const instance: RecipeInstance = {
     id: "ri1",
     recipeId: "delivery-gate",
-    params: {},
+    params: options.params ?? {},
     enabled: options.enabled ?? true,
     createdAt: "2026-08-30T10:00:00Z",
     state: options.state ?? {},
@@ -56,6 +65,22 @@ function seed(options: {
     instances: [instance],
     recipes: options.recipe === false ? [] : [recipe],
   });
+  useEquipments.setState({ equipments: options.equipments ?? [] });
+}
+
+/** Just enough equipment for the confirm derivation — it reads two fields. */
+function gate(requireConfirmation: boolean): EquipmentWithDetails {
+  return {
+    id: "eq-gate",
+    name: "Portail",
+    type: "gate",
+    zoneId: "z1",
+    enabled: true,
+    requireConfirmation,
+    dataBindings: [],
+    orderBindings: [],
+    status: "online",
+  } as unknown as EquipmentWithDetails;
 }
 
 const FULL_TILE = { icon: "Truck", actions: ["set_mode"] };
@@ -65,6 +90,7 @@ describe("RecipeTile", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-30T14:00:00Z"));
     useRecipes.setState({ instances: [], recipes: [] });
+    useEquipments.setState({ equipments: [] });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -196,5 +222,254 @@ describe("RecipeTile", () => {
 
     expect(screen.getByText("Portail livreur")).toBeTruthy();
     expect(screen.queryByText("Delivery Gate")).toBeNull();
+  });
+});
+
+/**
+ * Spec 171 — the card acts, not just the pill.
+ *
+ * The tile is a 240 px square whose own summary line says a click opens the
+ * gate; until this spec the only thing that did was a 10 px pill. These pin
+ * both halves of the rule: the card fires the single control it shows, and it
+ * fires nothing whenever there is no single control to speak for.
+ */
+describe("RecipeTile — the whole card acts (spec 171)", () => {
+  const SECOND_ACTION = {
+    id: "set_speed",
+    type: "cycle" as const,
+    stateKey: "speed",
+    options: [
+      { value: "low", label: "Lent" },
+      { value: "high", label: "Rapide" },
+    ],
+  };
+
+  /** The title span: inside the card, outside every control. */
+  const cardBody = () => screen.getByText("Delivery Gate");
+
+  let sendAction: Mock<
+    (instanceId: string, action: string, payload?: Record<string, unknown>) => Promise<void>
+  >;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-30T14:00:00Z"));
+    sendAction = vi.fn(async () => {});
+    useRecipes.setState({ instances: [], recipes: [], sendAction });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("fires the tile's single control when the card is clicked", () => {
+    seed({ tile: FULL_TILE, state: { mode: "idle" } });
+    render(<RecipeTile widget={WIDGET} />);
+
+    fireEvent.click(cardBody());
+
+    expect(sendAction).toHaveBeenCalledTimes(1);
+    expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+  });
+
+  it("fires once, not twice, when the pill itself is clicked", () => {
+    seed({ tile: FULL_TILE, state: { mode: "idle" } });
+    render(<RecipeTile widget={WIDGET} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Repos/ }));
+
+    // The card is the pill's ancestor: without the nested-control guard this
+    // click would send the action twice.
+    expect(sendAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays inert when the tile shows two controls", () => {
+    seed({
+      tile: { actions: ["set_mode", "set_speed"] },
+      actions: [ACTION, SECOND_ACTION],
+      state: { mode: "idle", speed: "low" },
+    });
+    render(<RecipeTile widget={WIDGET} />);
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+
+    fireEvent.click(cardBody());
+
+    // Which of the two would it have fired?
+    expect(sendAction).not.toHaveBeenCalled();
+  });
+
+  it("stays inert when the state carries no position to cycle", () => {
+    seed({ tile: FULL_TILE, state: { summary: "Rien à faire" } });
+    render(<RecipeTile widget={WIDGET} />);
+
+    fireEvent.click(cardBody());
+
+    expect(sendAction).not.toHaveBeenCalled();
+  });
+
+  it("stays inert on a disabled instance", () => {
+    seed({ tile: FULL_TILE, enabled: false, state: { mode: "idle" } });
+    render(<RecipeTile widget={WIDGET} />);
+
+    fireEvent.click(cardBody());
+
+    expect(sendAction).not.toHaveBeenCalled();
+  });
+
+  it("stays inert in edit mode, on both surfaces", () => {
+    seed({ tile: FULL_TILE, state: { mode: "idle" } });
+    const { rerender } = render(<RecipeTile widget={WIDGET} editMode />);
+    fireEvent.click(cardBody());
+
+    rerender(<RecipeTile widget={WIDGET} editMode isMobile />);
+    fireEvent.click(cardBody());
+
+    // A Dashboard being rearranged is not a Dashboard being used.
+    expect(sendAction).not.toHaveBeenCalled();
+  });
+
+  it("drops a second click while the first action is still in flight", () => {
+    sendAction.mockImplementation(() => new Promise<void>(() => {}));
+    seed({ tile: FULL_TILE, state: { mode: "idle" } });
+    render(<RecipeTile widget={WIDGET} />);
+
+    fireEvent.click(cardBody());
+    fireEvent.click(cardBody());
+
+    expect(sendAction).toHaveBeenCalledTimes(1);
+  });
+
+  describe("with tile.confirm", () => {
+    const CONFIRM_TILE = { icon: "Truck", actions: ["set_mode"], confirm: true };
+    let widthSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      // jsdom lays nothing out; the slide track needs a width to have a travel.
+      widthSpy = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(260);
+    });
+    afterEach(() => widthSpy.mockRestore());
+
+    /** Drag the knob the full travel of a 260 px track. */
+    function slide() {
+      const knob = screen.getByRole("button", { name: "Slide to confirm" });
+      fireEvent.pointerDown(knob, { pointerId: 1, clientX: 0 });
+      fireEvent.pointerMove(knob, { pointerId: 1, clientX: 260 - 58 });
+    }
+
+    it("asks before it acts, on mobile", () => {
+      seed({ tile: CONFIRM_TILE, state: { mode: "idle", summary: "Prêt" } });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      // The sheet names the position the tap is about to switch to.
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
+      expect(screen.getByText("Delivery Gate · Prêt")).toBeTruthy();
+      expect(sendAction).not.toHaveBeenCalled();
+
+      slide();
+      expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+    });
+
+    it("sends nothing when the sheet is dismissed", () => {
+      seed({ tile: CONFIRM_TILE, state: { mode: "idle" } });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+      fireEvent.click(screen.getByText("Cancel"));
+
+      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("skips the sheet when the user turned the confirmation off", () => {
+      seed({
+        tile: { ...CONFIRM_TILE, confirmParam: "confirmFromDashboard" },
+        params: { confirmFromDashboard: false },
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      // The instance overrules the package: no sheet, straight to the action.
+      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+    });
+
+    it("asks when the user turned it on, on a recipe that defaults to off", () => {
+      seed({
+        tile: { icon: "Truck", actions: ["set_mode"], confirmParam: "confirmFromDashboard" },
+        params: { confirmFromDashboard: true },
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("asks because the GATE says so, on a recipe that declared nothing", () => {
+      // Marc's review on #868: the answer is given once, on the equipment, and
+      // every surface that actuates it asks the same question.
+      seed({
+        tile: { icon: "Truck", actions: ["set_mode"], confirmFrom: "gate" },
+        params: { gate: "eq-gate" },
+        equipments: [gate(true)],
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("does not ask when the gate's owner turned confirmation off", () => {
+      // Even though the package declares confirm AND the instance answered yes:
+      // two surfaces that disagree about one gate is the defect being fixed.
+      seed({
+        tile: { ...CONFIRM_TILE, confirmParam: "confirmFromDashboard", confirmFrom: "gate" },
+        params: { gate: "eq-gate", confirmFromDashboard: true },
+        equipments: [gate(false)],
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+    });
+
+    it("keeps the declared guard when the equipment cannot be resolved", () => {
+      // An equipment deleted under the instance, or a store not loaded yet, is
+      // not an answer of "no" — losing the guard silently would be the worst
+      // possible reading of an absent value.
+      seed({
+        tile: { ...CONFIRM_TILE, confirmFrom: "gate" },
+        params: { gate: "eq-gone" },
+        equipments: [gate(false)],
+        state: { mode: "idle" },
+      });
+      render(<RecipeTile widget={WIDGET} isMobile />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.getByText("Switch to “Livreur”?")).toBeTruthy();
+      expect(sendAction).not.toHaveBeenCalled();
+    });
+
+    it("acts directly on desktop — a mouse click is deliberate", () => {
+      seed({ tile: CONFIRM_TILE, state: { mode: "idle" } });
+      render(<RecipeTile widget={WIDGET} />);
+
+      fireEvent.click(cardBody());
+
+      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+    });
   });
 });

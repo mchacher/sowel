@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChefHat,
@@ -17,9 +18,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { WidgetCard } from "./WidgetCard";
+import { ConfirmActionSheet } from "./ConfirmActionSheet";
+import { useCardPrimaryAction } from "./card-primary-action";
+import { tileNeedsConfirm } from "./recipe-tile-confirm";
 import { CountdownTimer, ModeCyclePill } from "../recipes/recipe-form-fields";
+import { cycleOptionLabel, resolveCycle } from "../recipes/recipe-cycle";
 import { recipeName } from "../../lib/recipe-i18n";
 import { useRecipes } from "../../store/useRecipes";
+import { useEquipments } from "../../store/useEquipments";
 import type { DashboardWidget } from "../../types";
 
 /**
@@ -59,6 +65,15 @@ const TILE_ICONS: Record<string, LucideIcon> = {
  * The mobile branch is a plain `div`, not the `button` that `MobileWidgetCard`
  * uses: this tile carries its own controls, and nesting a button inside a
  * button is invalid HTML that breaks keyboard navigation.
+ *
+ * Spec 171 — when the tile renders exactly one control, the whole card fires
+ * it, like every other widget on this Dashboard. A recipe that moves something
+ * physical is guarded on mobile: the card asks for a slide before it acts. Who
+ * decides that is resolved by `tileNeedsConfirm` — the equipment named by
+ * `tile.confirmFrom` first, so the answer is given once and every surface that
+ * actuates that gate asks the same question, then the instance's own parameter
+ * and the package's declaration for the recipes where no equipment can be
+ * derived.
  */
 export function RecipeTile({
   widget,
@@ -78,6 +93,9 @@ export function RecipeTile({
   const instances = useRecipes((s) => s.instances);
   const recipes = useRecipes((s) => s.recipes);
   const sendAction = useRecipes((s) => s.sendAction);
+  // Above the early return: hooks cannot hide behind a condition.
+  const [sending, setSending] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const instance = instances.find((i) => i.id === widget.recipeInstanceId);
   const recipe = instance ? recipes.find((r) => r.id === instance.recipeId) : undefined;
@@ -143,6 +161,57 @@ export function RecipeTile({
   const countdown =
     typeof expiresAt === "string" && instance.enabled ? <CountdownTimer expiresAt={expiresAt} /> : null;
 
+  // Spec 171 — one control, one card action. `resolveCycle` is the very call
+  // the pill makes, so the card can never offer a press the pill would refuse;
+  // two controls and the card would have to guess which one, none and there is
+  // nothing to fire.
+  const only = actions.length === 1 ? actions[0] : undefined;
+  const cycle = only ? resolveCycle(instance, only) : null;
+
+  const fire = () => {
+    if (!only || !cycle || sending) return;
+    setSending(true);
+    void sendAction(instance.id, only.id, { mode: cycle.next.value })
+      .catch(() => {
+        // ignore — the state comes back over the WebSocket either way
+      })
+      .finally(() => setSending(false));
+  };
+
+  // Edit mode never actuates, the way the mobile equipment cards already
+  // behave: a Dashboard being rearranged is not a Dashboard being used.
+  // Spec 171 — the guard is the EQUIPMENT's, when the recipe named the slot that
+  // reaches it, so the tile has to look that equipment up. It reads the store on
+  // the tap rather than subscribing: a tile has no other use for the equipments,
+  // and the array is rebuilt on every device reading, which would re-render every
+  // recipe tile on the Dashboard for an answer only a click ever needs.
+  const primary =
+    !cycle || editMode
+      ? undefined
+      : () => {
+          const guarded =
+            isMobile &&
+            tileNeedsConfirm(tile, instance.params, (id) =>
+              useEquipments.getState().equipments.find((e) => e.id === id),
+            );
+          if (guarded) setConfirming(true);
+          else fire();
+        };
+
+  const confirmSheet =
+    confirming && only && cycle ? (
+      <ConfirmActionSheet
+        title={t("dashboard.recipeTile.confirmTitle", {
+          mode: cycleOptionLabel(recipe, only, cycle.next, lang, t),
+        })}
+        subtitle={[title, typeof summary === "string" ? summary : ""].filter(Boolean).join(" · ")}
+        slideLabel={t("dashboard.recipeTile.slideToConfirm")}
+        confirmedLabel={t("dashboard.recipeTile.confirmed")}
+        onConfirm={fire}
+        onClose={() => setConfirming(false)}
+      />
+    ) : null;
+
   const controls =
     actions.length > 0 ? (
       <div className="flex items-center justify-center gap-1 flex-wrap">
@@ -160,20 +229,26 @@ export function RecipeTile({
     ) : null;
 
   if (isMobile) {
+    // The sheet is a sibling of the shell, not a child: a portal still bubbles
+    // its clicks through the REACT tree, so a tap on the backdrop inside the
+    // card would come straight back out as a tap on the card.
     return (
-      <MobileShell title={title} editMode={editMode} className={dim}>
-        <div className="flex-1 flex items-center justify-center min-h-0 gap-1.5">
-          {icon}
-          {countdown}
-        </div>
-        {summaryLine}
-        {controls}
-      </MobileShell>
+      <>
+        <MobileShell title={title} editMode={editMode} className={dim} onClick={primary}>
+          <div className="flex-1 flex items-center justify-center min-h-0 gap-1.5">
+            {icon}
+            {countdown}
+          </div>
+          {summaryLine}
+          {controls}
+        </MobileShell>
+        {confirmSheet}
+      </>
     );
   }
 
   return (
-    <WidgetCard label={title} className={dim}>
+    <WidgetCard label={title} className={dim} onClick={primary}>
       <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
         {icon}
         {countdown}
@@ -189,16 +264,22 @@ function MobileShell({
   title,
   editMode,
   className = "",
+  onClick,
   children,
 }: {
   title: string;
   editMode?: boolean;
   className?: string;
+  onClick?: () => void;
   children: React.ReactNode;
 }) {
+  const cardAction = useCardPrimaryAction(onClick);
   return (
     <div
-      className={`relative bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full gap-1 ${className}`}
+      className={`relative bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full gap-1 ${
+        onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
+      } ${className}`}
+      {...cardAction}
     >
       <span
         className={`text-[12px] font-semibold text-text truncate w-full text-center ${

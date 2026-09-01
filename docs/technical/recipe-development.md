@@ -223,6 +223,9 @@ export function createRecipe(): RecipeDefinition {
       summaryKey: "summary",      // default; omit to use it
       countdownKey: "timerExpiresAt", // default; omit to use it
       actions: ["set_mode"],      // which of your actions get a control
+      confirm: true,              // this tile moves something physical (spec 171)
+      confirmParam: "confirmFromDashboard", // ...unless the user says otherwise
+      confirmFrom: "gate",        // ...or unless the equipment itself has an answer
     },
   };
 }
@@ -250,6 +253,44 @@ ctx.state.set("mode", "short"); // the stateKey your cycle action reads
 ```
 
 Publish the resting value of a cycle action's `stateKey` from the start of `createInstance`, not only when something happens: the control does not render while its state key is absent, so a tile whose recipe is idle would show no button at all.
+
+### A click on the tile fires its control (spec 171)
+
+When a tile renders **exactly one** control, a click anywhere on the card fires it — the same cycle, the same next value as the pill, which stays where it is for anyone who prefers to aim. Two controls and the card stays inert: it would have to guess which one you meant. So does a tile with no control at all, a disabled instance, and a Dashboard in edit mode.
+
+`confirm: true` says that firing this tile **moves something physical** — a gate, a door, a pump. On the mobile Dashboard the card then opens a slide-to-confirm sheet naming the position it is about to switch to, instead of actuating on a tap; on desktop it fires directly, a mouse click being deliberate enough. The pill is never guarded: a 10 px target is already an aim, and this is the same call spec 146 made for gate equipment.
+
+`confirmParam` names one of your **`boolean` slots**, and hands that choice to the user — the recipe's equivalent of the confirmation toggle a gate equipment carries. Whatever the instance answers wins; `confirm` is only the default for an instance that was never asked, so adding the slot to an existing recipe never silently drops the guard on the instances already running.
+
+**`confirmFrom` is the one to reach for first.** It names one of your **`equipment` slots** — the equipment the tile's single control actuates. When that slot resolves, **that equipment's own "Confirmation before action" (spec 146) decides, and `confirm` and `confirmParam` are not consulted at all.**
+
+That is not a precedence detail, it is the point: without it, the same physical gate is asked about in three places, and two of them can disagree. Somebody turns the guard on for their Portail equipment and still gets a recipe tile that fires on a tap. With `confirmFrom`, the answer is given **once, on the equipment**, and every surface that actuates it asks the same question.
+
+Only your recipe knows whether such a derivation is meaningful — an action touching several equipments, or none directly, or doing more than an equipment's own order cannot derive anything — which is why this is a declaration and not something the core infers. When you name no slot, or the slot does not resolve (the user left it empty, the equipment was deleted), `confirmParam` and then `confirm` decide as before. An unresolvable slot is **never** read as "do not ask".
+
+```typescript
+// A slot the user can untick, and a tile that reads it.
+slots: [
+  {
+    id: "confirmFromDashboard",
+    name: "Confirm before acting from the Dashboard",
+    description: "On a phone, ask for a slide before the tile opens the gate.",
+    type: "boolean",
+    required: false,
+    defaultValue: true,
+  },
+],
+tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmParam: "confirmFromDashboard" },
+```
+
+```typescript
+// Better, when the tile's control actuates one equipment your recipe already
+// takes as a slot: the user answers once, on the gate, for every surface.
+slots: [{ id: "gate", name: "Gate", type: "equipment", required: true, /* ... */ }],
+tile: { icon: "Truck", actions: ["set_mode"], confirm: true, confirmFrom: "gate" },
+```
+
+Declare `confirm` on a tile whose action opens something, and leave all three out for a tile that only picks a comfort mode. A core older than 1.66 ignores the fields, as it ignores every part of a `tile` it does not know.
 
 ### Rules worth knowing
 

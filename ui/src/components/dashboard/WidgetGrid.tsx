@@ -30,7 +30,7 @@ import { RecipeTile } from "./RecipeTile";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
-import { ConfirmActionSheet } from "./ConfirmActionSheet";
+import { GateConfirmSheet } from "./ConfirmActionSheet";
 import { getMobileClickAction } from "./mobile-click-action";
 import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -143,7 +143,7 @@ export function WidgetGrid({
 
         {/* Spec 146 — slide-to-confirm before actuating a guarded gate (mobile). */}
         {confirmEquipment && (
-          <ConfirmActionSheet
+          <GateConfirmSheet
             equipment={confirmEquipment}
             zoneName={equipmentZones.get(confirmEquipment.id)}
             onConfirm={() => {
