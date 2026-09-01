@@ -23,6 +23,8 @@ export interface SubmeterRow {
   /** Set when `power` is null: what is missing, so the row can say so. */
   unknown: SubmeterUnknown | null;
   status: EquipmentStatus;
+  /** Spec 173 — power shown net of the submeters declared inside this one. */
+  netOfChildren?: boolean;
   /** ISO timestamp from spec 116 statusReason, if available. */
   offlineSince: string | null;
   /** ISO timestamp of the reading that aged out, when `unknown === "stale"`. */
@@ -127,6 +129,27 @@ export function buildSubmeterRows(
     })
     // Never bound, so nothing to say about it (#560).
     .filter((row) => row.unknown !== "missing");
+
+  // Spec 173 — a submeter fed from another one is already inside its parent's
+  // reading, so without this the pair is counted twice here and the residual is
+  // short by the child's watts, exactly as it was on the by-usage breakdown.
+  // Only DIRECT children are subtracted, which is what makes a chain add back
+  // up. A child with no live reading subtracts nothing: "we do not know" must
+  // not be spent as a number.
+  const rawPower = new Map(rows.map((r) => [r.id, r.power] as const));
+  for (const row of rows) {
+    if (row.power === null) continue;
+    let subtracted = 0;
+    for (const eq of byId) {
+      if (eq.meteringParentId !== row.id) continue;
+      subtracted += rawPower.get(eq.id) ?? 0;
+    }
+    if (subtracted <= 0) continue;
+    // Clamped at 0: two clamps sample at different instants and a child can
+    // read more than its parent, the same trade-off `subtractChildren` makes.
+    row.power = Math.max(0, row.power - subtracted);
+    row.netOfChildren = true;
+  }
 
   rows.sort((a, b) => {
     const aNull = a.power === null;

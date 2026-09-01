@@ -107,6 +107,8 @@ interface UpdateEquipmentInput {
   requireConfirmation?: boolean;
   /** Spec 154 — invert shutter-family command direction. */
   invertDirection?: boolean;
+  /** Spec 173 — the meter that already counts this equipment. `null` clears it. */
+  meteringParentId?: string | null;
 }
 
 // ============================================================
@@ -229,6 +231,7 @@ export class EquipmentManager {
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
          invert_direction = @invertDirection, solar_profile = @solarProfile,
+         metering_parent_id = @meteringParentId,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -557,6 +560,10 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.invert_direction,
+      // Spec 173 — `null` is a value here ("counted nowhere else"), so only an
+      // absent key falls back to what is stored.
+      meteringParentId:
+        input.meteringParentId !== undefined ? input.meteringParentId : existing.metering_parent_id,
     });
 
     const equipment = this.getById(id)!;
@@ -1612,6 +1619,7 @@ interface EquipmentRow {
   solar_profile: string | null;
   require_confirmation: number;
   invert_direction: number;
+  metering_parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1754,6 +1762,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     solarProfile: parseSolarProfile(row.solar_profile),
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
+    meteringParentId: row.metering_parent_id ?? null,
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

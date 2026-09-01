@@ -366,6 +366,11 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
    *  `true` only when an admin enabled it. Gate equipments only in v1. */
   requireConfirmation?: boolean;
+  /** Spec 173 — id of the meter that already counts this equipment's
+   *  consumption (a gîte clamp upstream of a water-heater clamp). The by-usage
+   *  breakdown renders the parent net of its direct children, so nested clamps
+   *  stop being counted twice. `null`/absent = counted nowhere else. */
+  meteringParentId?: string | null;
   /** Spec 160 — declared array geometry. Presence enables the PV production
    *  forecast; absence leaves the equipment untouched. */
   solarProfile?: SolarProfile;
@@ -2013,6 +2018,10 @@ export interface SubmeterSeries {
   color: string;
   points: EnergyByUsagePoint[];
   cost: number; // € for the whole series (spec 123)
+  /** Spec 173 — this series is the meter's own measurement MINUS the meters
+   *  declared inside it, so it no longer matches the equipment's card. Set only
+   *  when something was actually subtracted; the UI says so in the legend. */
+  netOfChildren?: boolean;
 }
 
 export interface EnergyByUsageResponse {

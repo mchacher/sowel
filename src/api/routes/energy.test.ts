@@ -45,6 +45,8 @@ interface BuildOpts {
     name: string;
     type: "main_energy_meter" | "energy_meter" | "energy_production_meter";
     enabled?: boolean;
+    /** Spec 173 — "already counted by that meter". */
+    meteringParentId?: string | null;
   }>;
   envTz?: string | undefined;
   /** Spec 160/161 — a stand-in forecaster, for the routes that need one. */
@@ -419,6 +421,119 @@ describe("Spec 119 — /api/v1/energy/by-usage", () => {
     expect(body.resolution).toBe("1mo");
     expect(body.submeters[0].points).toHaveLength(12);
     expect(body.submeters[0].points.every((p: { wh: number }) => p.wh === 0)).toBe(true);
+  });
+});
+
+describe("Spec 173 — /api/v1/energy/by-usage with nested submeters", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  /** A gîte clamp, the water-heater clamp fed from it, and the house total. */
+  const nested = (parent: string | null) => ({
+    equipments: [
+      { id: "gite", name: "ConsommationGite", type: "energy_meter" as const },
+      {
+        id: "ce",
+        name: "ConsommationChauffeEau",
+        type: "energy_meter" as const,
+        meteringParentId: parent,
+      },
+      { id: "edf", name: "EDF", type: "main_energy_meter" as const },
+    ],
+    submeterRowsById: {
+      gite: [{ _time: "2026-05-24T22:00:00Z", _value: 2260, alias: "energy" }],
+      ce: [{ _time: "2026-05-24T22:00:00Z", _value: 2090, alias: "energy" }],
+    },
+    mainConsumptionRows: [{ _time: "2026-05-24T22:00:00Z", _value: 12330, alias: "energy" }],
+  });
+
+  const dayOne = (body: { submeters: { id: string; points: { wh: number }[] }[] }, id: string) =>
+    body.submeters.find((s) => s.id === id)!.points[0].wh;
+
+  it("counts the heater twice while nothing is declared", async () => {
+    // The bug, written down: 2090 Wh in two slices, and a residual short by
+    // exactly that much.
+    app = await buildApp(nested(null));
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    expect(dayOne(body, "gite")).toBe(2260);
+    expect(dayOne(body, "ce")).toBe(2090);
+    expect(body.other.points[0].wh).toBe(12330 - 2260 - 2090);
+  });
+
+  it("renders the parent net of its child once the declaration is made", async () => {
+    app = await buildApp(nested("gite"));
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    expect(dayOne(body, "gite")).toBe(170); // 2260 − 2090
+    expect(dayOne(body, "ce")).toBe(2090); // the child keeps its whole measurement
+    // The residual regains the kilowatt-hours the double count was eating.
+    expect(body.other.points[0].wh).toBe(12330 - 170 - 2090);
+  });
+
+  it("flags only the series that actually lost something", async () => {
+    app = await buildApp(nested("gite"));
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const gite = body.submeters.find((s: { id: string }) => s.id === "gite");
+    const ce = body.submeters.find((s: { id: string }) => s.id === "ce");
+    expect(gite.netOfChildren).toBe(true);
+    // The child is whole; claiming otherwise would send the UI explaining a
+    // subtraction that never happened.
+    expect(ce.netOfChildren).toBeUndefined();
+  });
+
+  it("does not flag a parent whose child reported nothing", async () => {
+    const data = nested("gite");
+    data.submeterRowsById.ce = [];
+    app = await buildApp(data);
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const gite = body.submeters.find((s: { id: string }) => s.id === "gite");
+    // The declaration stands, but nothing was taken off: the figure equals the
+    // card, and a legend saying otherwise sends the reader hunting a difference
+    // that is not on screen.
+    expect(gite.netOfChildren).toBeUndefined();
+  });
+
+  it("carries the subtraction into the period totals", async () => {
+    app = await buildApp(nested("gite"));
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    expect(body.totals.byEquipment.gite).toBe(170);
+    expect(body.totals.byEquipment.ce).toBe(2090);
   });
 });
 

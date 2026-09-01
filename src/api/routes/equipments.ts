@@ -40,6 +40,8 @@ const createEquipmentBodySchema = {
 };
 
 import { validateSolarProfile } from "../../energy/pv/solar-profile.js";
+import { NON_SUBMETER_TYPES } from "../../equipments/metering.js";
+import { wouldCycle } from "../../energy/metering-nesting.js";
 
 const updateEquipmentBodySchema = {
   type: "object",
@@ -59,6 +61,8 @@ const updateEquipmentBodySchema = {
     },
     requireConfirmation: { type: "boolean" },
     invertDirection: { type: "boolean" },
+    // Spec 173 — id of the meter that already counts this equipment, or null.
+    meteringParentId: { type: ["string", "null"], minLength: 1 },
     // Spec 160 — declared array geometry. The bounds are the same ones
     // `validateSolarProfile` enforces, repeated here so a malformed body is
     // refused at the edge rather than silently dropped when read back.
@@ -277,6 +281,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       requireConfirmation?: boolean;
       invertDirection?: boolean;
       solarProfile?: SolarProfile | null;
+      meteringParentId?: string | null;
     };
   }>(
     "/api/v1/equipments/:id",
@@ -313,6 +318,45 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         }
       }
 
+      // Spec 173 — a meter declared inside another one. Refused here rather than
+      // at the database, which would only see a foreign key: the three ways to
+      // get this wrong (yourself, a loop, the house total) each deserve to be
+      // named, and the check is on the resulting graph, not on the pair.
+      if (body.meteringParentId) {
+        const parent = equipmentManager.getById(body.meteringParentId);
+        if (!parent) {
+          return reply.status(404).send({ error: "Metering parent not found" });
+        }
+        if (body.meteringParentId === request.params.id) {
+          return reply.status(400).send({
+            error: "MeteringParentSelf",
+            message: "An equipment cannot be metered by itself",
+          });
+        }
+        // The same rule enrolment uses, not just the blocklist: a lamp or a
+        // bare relay is not a house total, but it is not a meter either, and
+        // accepting it would persist a declaration that does nothing at all in
+        // the breakdown. The picker already refuses it; the API has to agree.
+        const parentDetails = equipmentManager.getByIdWithDetails(body.meteringParentId);
+        if (
+          !parentDetails ||
+          !isSubmeterEquipment(parentDetails.type, parentDetails.dataBindings)
+        ) {
+          return reply.status(400).send({
+            error: "MeteringParentNotSubmeter",
+            message: NON_SUBMETER_TYPES.has(parent.type)
+              ? `${parent.name} is a house total or a production meter, not a submeter`
+              : `${parent.name} does not measure consumption, so nothing can be counted inside it`,
+          });
+        }
+        if (wouldCycle(equipmentManager.getAll(), request.params.id, body.meteringParentId)) {
+          return reply.status(400).send({
+            error: "MeteringParentCycle",
+            message: "That declaration would make a meter contain itself",
+          });
+        }
+      }
+
       try {
         const equipment = equipmentManager.update(request.params.id, {
           name: body.name?.trim(),
@@ -325,6 +369,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
+          meteringParentId: body.meteringParentId,
         });
         if (!equipment) {
           return reply.code(404).send({ error: "Equipment not found" });

@@ -22,3 +22,55 @@ The countdown and the "for how long?" control belong to `WidgetPresentation`, on
 ## Phase 4 — retire the clocks
 
 Once phases 1–2 are in service, `motion-light` and `state-trigger-light` can hold their delay through this primitive instead of their own timers, and `delivery-gate`'s successor keeps only what the hardware forces on it.
+
+---
+
+# Phase 2 — plan
+
+## Steps
+
+1. `types.ts` — `TimedCommand`, `Equipment.timedCommand`, `WidgetConfig.timed`; mirrored in `ui/src/types.ts`.
+2. `migrations/032_timed_command.sql` — one nullable TEXT column.
+3. `src/shared/timed-command.ts` — `TIMED_STATE_CATEGORIES`, `isTimedCommandEligible`.
+4. `timed-action-manager.ts` — drop the identical-value refusal, ask eligibility instead.
+5. `equipment-manager.ts` — persist and read `timed_command`.
+6. API — `PUT /equipments/:id` accepts and validates `timedCommand`; empty-body arm reads it.
+7. UI — `TimedCountdown`, `TimedCommandPanel`, `TimedEquipmentWidget`, compact-card control, widget picker.
+8. i18n EN + FR.
+9. Docs — `docs/user/equipments.md` + `.fr.md`, `docs/technical/api-reference.md` + `.fr.md`.
+
+## Test Plan
+
+### Modules to test
+
+- `src/shared/timed-command.ts` — eligibility
+- `src/equipments/timed-action-manager.ts` — the amended guard, arming from stored config
+- `src/api/routes/equipments.ts` — validation of `timedCommand`, empty-body arm
+- `ui/src/components/equipments/TimedCommandPanel.tsx`
+- `ui/src/components/equipments/TimedCountdown.tsx`
+- `ui/src/components/dashboard/TimedEquipmentWidget.tsx`
+- `ui/src/components/home/CompactEquipmentCard.tsx`
+
+### Scenarios
+
+| Module | Scenario | Expected |
+| --- | --- | --- |
+| timed-command | Gate: `command` order + `gate_state` reading | eligible |
+| timed-command | Light: `state` order + `light_state` reading | eligible |
+| timed-command | Blind relay: order, no state reading | not eligible |
+| timed-command | Reading exists but the order alias does not | not eligible |
+| timed-action-manager | Impulse: action value === revert value === null | armed, no longer refused |
+| timed-action-manager | Equipment with no state reading | `TimedActionError`, nothing persisted |
+| timed-action-manager | Bounds still enforced (9 s, 25 h) | refused |
+| equipments route | `PUT` with a `timedCommand` naming an unknown order | 400, named error |
+| equipments route | `PUT` with `timedCommand: null` | cleared |
+| equipments route | `POST …/timed-action` empty body, configured | arms from the stored values |
+| equipments route | `POST …/timed-action` empty body, not configured | 409 |
+| TimedCommandPanel | Not eligible | panel not rendered by the page |
+| TimedCommandPanel | Enable, fill, save | `updateEquipment` called with the four fields |
+| TimedCommandPanel | Disable | `timedCommand: null` |
+| TimedCountdown | 10 min 42 s left | renders `10:42`, ring at the right fraction |
+| TimedCountdown | Deadline passed while the tab slept | renders `0:00`, no negative time |
+| TimedEquipmentWidget | No window | shows the timed control, no countdown |
+| TimedEquipmentWidget | Window open | countdown, extend calls arm, cancel calls delete with `revert=true` |
+| CompactEquipmentCard | Window open on a gate | countdown badge, cancel control replaces the command |

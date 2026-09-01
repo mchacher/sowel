@@ -42,9 +42,49 @@ What is deliberately _not_ added is the ability to reason about hardware that li
 
 **FR-8 — Visible in the payload.** `EquipmentWithDetails.timedAction` carries `{ alias, value, revertValue, expiresAt, armedAt, armedBy? }` when a window is running, and is absent otherwise. `expiresAt` is an ISO-8601 instant a UI can tick down.
 
-**FR-9 — Bounds.** `durationMs` is between 10 s and 24 h. Below that this is just an order; above it, "temporary" stops meaning anything for an opening. An action whose value equals its revert value is refused: the deadline would send what is already there and the window would be invisible.
+**FR-9 — Bounds.** `durationMs` is between 10 s and 24 h. Below that this is just an order; above it, "temporary" stops meaning anything for an opening.
+
+**FR-9b — An action and its revert may be the same command (phase 2).** The first draft refused them, reasoning that a deadline sending what is already there makes an invisible window. That is true of a dedicated `ON`/`OFF` pair and false of the hardware this feature exists for: a sliding gate on a sequential impulse is opened and closed by the *same* command, carrying no value at all. The refusal excluded the primary use case, so it is replaced by FR-11.
 
 **FR-10 — Inert in shadow mode.** The manager is created but not started: starting it rehydrates deadlines and can dispatch a revert on the spot, which a shadow instance must never do.
+
+## Phase 2 — the feature reaches the user
+
+Phase 1 gave the engine the deadline and left the surfaces for later, on the grounds that five of
+them would each need a countdown. Two of the five carry it (the Dashboard widget and the compact
+card), one shared component renders it for both, and the configuration lives on the equipment page.
+
+**FR-11 — Eligibility, and the guard that replaces FR-9's refusal.** A timed command is offered
+only on an equipment that carries **the order being armed** and **a state reading tied to it** —
+the mirror binding (a reading on the order's own alias), or a reading in an actuator-state category
+(`light_state`, `gate_state`, `cover_state`, `lock_state`, `appliance_state`). An impulse gate
+qualifies through its `gate_state` contact; a blind relay does not, and on a blind relay FR-4 could
+never fire, so the window would run with nobody able to end it early.
+
+Known and accepted: a reed contact only certifies `closed`. A manual close the contact does not see
+leaves the deadline standing, and it will re-open the gate. Written down rather than hidden.
+
+**FR-12 — Configured on the equipment, once.** `Equipment.timedCommand` holds
+`{ alias, value, revertValue, durationMs }`. Absent means off, which is the default, and is the
+same shape `energyProfile` and `solarProfile` already use. The panel on the equipment page has the
+form of "Confirmation before action" (spec 146): a checkbox, then the three fields.
+
+One duration per equipment is the deliberate consequence: no "Gate 15 min" and "Gate 2 h" side by
+side. Putting the duration in each tile's configuration is what would buy that, and it was weighed
+and dropped — the answer belongs with the equipment, like its confirmation guard.
+
+**FR-13 — Armed from the stored configuration.** `POST …/timed-action` with an empty body arms
+what `timedCommand` declares. The explicit body of FR-1 still works: a caller that knows what it
+wants is not forced through the equipment's configuration.
+
+**FR-14 — Two surfaces, one countdown.** A `timed` flag on a widget's config pins a second tile for
+the same equipment, beside the ordinary one. The compact card carries the same command. Both render
+the remaining time through **one** shared component; a second copy of that countdown is exactly what
+phase 1 refused to write, and the reason it is acceptable now is that there is only one.
+
+**FR-15 — The gestures.** Pressing the timed control while the window is open extends it (FR-5,
+nothing dispatched). Cancelling ends the window: from the tile and the card it sends the revert now
+(`?revert=true`), which is what somebody looking at an open gate means by "close it".
 
 ## Acceptance criteria
 
@@ -57,10 +97,16 @@ What is deliberately _not_ added is the ability to reason about hardware that li
 7. A deadline still ahead survives a restart on its remainder; one that passed during the outage fires on the way up.
 8. A revert that throws raises exactly one alarm, dispatches nothing further, and leaves no row.
 9. Deleting the equipment takes its deadline with it; a row orphaned by a restore is dropped at boot without dispatching.
+10. An action and its revert carrying the same value are accepted, so an impulse gate can be armed.
+11. An equipment with no state reading tied to the order is refused, with a named error.
+12. An empty arm body uses the equipment's stored `timedCommand`; a body still overrides it.
+13. The equipment page shows the panel only on an eligible equipment, off by default, and saves the three fields.
+14. A `timed` widget renders the countdown while a window is open, extends on a second press, and cancels with a revert.
+15. The compact card carries the same control and the same countdown component.
 
 ## Out of scope
 
-- **Any UI.** The surfaces that would render a countdown — `WidgetCard`, `MobileWidgetCard`, `WidgetDetailSheet`, `EquipmentCard`, `CompactEquipmentCard` — are exactly what spec 149 ([#325](https://github.com/mchacher/sowel/issues/325)) exists to consolidate. Adding a fifth copy of the same countdown before that lands is how [#744](https://github.com/mchacher/sowel/issues/744) and [#832](https://github.com/mchacher/sowel/issues/832) happened. The payload carries everything a UI needs; the rendering belongs to one presentation path, once there is one.
+- **Three of the five surfaces.** `MobileWidgetCard`, `WidgetDetailSheet` and `EquipmentCard` are left alone. Phase 1 refused any UI because five copies of one countdown is how [#744](https://github.com/mchacher/sowel/issues/744) and [#832](https://github.com/mchacher/sowel/issues/832) happened; phase 2 writes the countdown **once**, in a shared component, and wires the two surfaces the feature is actually used from. Spec 149 ([#325](https://github.com/mchacher/sowel/issues/325)) still owns the consolidation of the rest, and it inherits one component rather than two.
 - **A declared command idempotence.** FR-6 is a safe default standing in for a fact only the integration knows: whether replaying this command repeats it or undoes it. A `replaySafe` on the order binding would let the engine retry the reverts it can retry and refuse the ones it must not. It is the piece that would close FR-6 properly, and it changes the plugin contract, so it is its own spec.
 - **Several actions queued on one equipment**, a timed action on a _reading_ rather than an order, and anything schedule-shaped — that is what recipes are for.
 - **The confirmation guard.** A timed action actuates through the ordinary order path, so whatever guard a surface applies to that path applies unchanged. Spec 146 owns it.

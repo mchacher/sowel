@@ -120,6 +120,8 @@ CREATE TABLE equipments (
   description TEXT,
   enabled INTEGER DEFAULT 1,
   energy_profile TEXT,            -- Spec 140: EnergyLoadProfile JSON, NULL = not claimable
+  metering_parent_id TEXT REFERENCES equipments(id) ON DELETE SET NULL,
+                                  -- Spec 173: this meter's consumption is already counted by that one
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

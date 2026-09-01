@@ -35,6 +35,7 @@ import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
+import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
 import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
@@ -537,6 +538,15 @@ export function EquipmentDetailPage() {
         equipment.type === "energy_production_meter" ||
         isSubmeterEquipment(equipment)) && (
         <ElectricalMeteringPanel equipment={equipment} />
+      )}
+
+      {/* Nested submeters — "already counted by that meter" (spec 173), admin only */}
+      {isAdmin && isSubmeterEquipment(equipment) && (
+        <MeteringParentPanel
+          equipment={equipment}
+          equipments={equipments}
+          onUpdated={() => void fetchEquipments()}
+        />
       )}
 
       {/* Energy management — flexible-load declaration (spec 140), admin only */}
