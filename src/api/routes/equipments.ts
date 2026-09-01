@@ -1,6 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import { EquipmentError } from "../../equipments/equipment-manager.js";
+import type { TimedActionManager } from "../../equipments/timed-action-manager.js";
+import {
+  MAX_DURATION_MS,
+  MIN_DURATION_MS,
+  TimedActionError,
+} from "../../equipments/timed-action-manager.js";
 import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
 import type { EnergyLoadProfile, EquipmentType, SolarProfile } from "../../shared/types.js";
 import { classifyPowerReading } from "../../shared/reading-freshness.js";
@@ -8,6 +14,8 @@ import type { Logger } from "../../core/logger.js";
 
 interface EquipmentsDeps {
   equipmentManager: EquipmentManager;
+  /** Spec 174. Absent in the test harnesses that do not wire it. */
+  timedActionManager?: TimedActionManager;
   logger: Logger;
 }
 
@@ -88,6 +96,19 @@ const updateEquipmentBodySchema = {
 // unlike name, NO maxLength — the old check never capped its length. The handler
 // keeps `alias.trim()` normalization.
 const nonBlankAlias = { type: "string", pattern: "\\S" };
+// Spec 174 — arm a timed action. `value` and `revertValue` are deliberately
+// unconstrained: an order carries a boolean, an enum string or a number
+// depending on its binding, and the resolution against that binding happens in
+// executeOrder, which is the one place that knows the shape.
+const armTimedActionBodySchema = {
+  type: "object",
+  required: ["alias", "revertValue", "durationMs"],
+  properties: {
+    alias: { type: "string", minLength: 1 },
+    durationMs: { type: "number", minimum: MIN_DURATION_MS, maximum: MAX_DURATION_MS },
+  },
+};
+
 const addDataBindingBodySchema = {
   type: "object",
   required: ["deviceDataId", "alias"],
@@ -100,7 +121,7 @@ const addOrderBindingBodySchema = {
 };
 
 export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDeps): void {
-  const { equipmentManager } = deps;
+  const { equipmentManager, timedActionManager } = deps;
 
   // GET /api/v1/equipments — List all equipments with bindings and current data.
   // Optional ?type=<EquipmentType> narrows the response to a single type.
@@ -348,6 +369,71 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       return handleEquipmentError(reply, err);
     }
   });
+
+  // ============================================================
+  // Timed action routes (spec 174)
+  // ============================================================
+
+  // POST /api/v1/equipments/:id/timed-action — act now, revert at the deadline.
+  //
+  // Arming an equipment that already carries the same action moves the deadline
+  // and sends nothing (rule 3): the caller does not have to know which of the
+  // two it is doing, and a user pressing "open" on an open gate gets the time
+  // they asked for rather than a second manoeuvre.
+  app.post<{
+    Params: { id: string };
+    Body: { alias: string; value?: unknown; revertValue: unknown; durationMs: number };
+  }>(
+    "/api/v1/equipments/:id/timed-action",
+    { schema: { body: armTimedActionBodySchema } },
+    async (request, reply) => {
+      if (!timedActionManager) {
+        return reply.code(503).send({ error: "Timed actions are not available" });
+      }
+      const { alias, value, revertValue, durationMs } = request.body;
+      const userId = request.auth?.userId ?? "anonymous";
+      try {
+        const armed = await timedActionManager.arm(
+          request.params.id,
+          { alias, value, revertValue, durationMs },
+          { kind: "manual", userId },
+        );
+        return armed;
+      } catch (err) {
+        if (err instanceof TimedActionError) {
+          return reply.code(err.statusCode).send({ error: err.message });
+        }
+        return handleEquipmentError(reply, err);
+      }
+    },
+  );
+
+  // DELETE /api/v1/equipments/:id/timed-action — end the window early.
+  //
+  // ?revert=true sends the revert now ("I changed my mind"); the default drops
+  // the deadline and sends nothing, which is what a caller who already put the
+  // equipment back by hand wants.
+  app.delete<{ Params: { id: string }; Querystring: { revert?: string } }>(
+    "/api/v1/equipments/:id/timed-action",
+    async (request, reply) => {
+      if (!timedActionManager) {
+        return reply.code(503).send({ error: "Timed actions are not available" });
+      }
+      const wantsRevert = request.query.revert === "true";
+      try {
+        const had = wantsRevert
+          ? await timedActionManager.revertNow(request.params.id, "cancelled from the UI")
+          : timedActionManager.disarm(request.params.id, "cancelled from the UI");
+        if (!had) return reply.code(404).send({ error: "No timed action on this equipment" });
+        return { success: true };
+      } catch (err) {
+        if (err instanceof TimedActionError) {
+          return reply.code(err.statusCode).send({ error: err.message });
+        }
+        return handleEquipmentError(reply, err);
+      }
+    },
+  );
 
   // ============================================================
   // DataBinding routes

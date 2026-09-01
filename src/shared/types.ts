@@ -494,6 +494,26 @@ export interface ComputedDataEntry {
   lastUpdated: string | null;
 }
 
+/**
+ * A revert the engine owes an equipment, and when (spec 174).
+ *
+ * The action itself is already gone — dispatched through the ordinary order
+ * path. What is described here is the deadline: the value that will be sent,
+ * and the instant it is due. Absent when nothing is armed.
+ */
+export interface TimedAction {
+  /** Order alias carrying both the action and its revert. */
+  alias: string;
+  /** The value that was dispatched when the window opened. */
+  value: unknown;
+  /** The value that will be dispatched at the deadline. */
+  revertValue: unknown;
+  /** ISO-8601 instant. A UI ticks it down. */
+  expiresAt: string;
+  armedAt: string;
+  armedBy?: string;
+}
+
 export interface EquipmentWithDetails extends Equipment {
   dataBindings: DataBindingWithValue[];
   orderBindings: OrderBindingWithDetails[];
@@ -503,6 +523,8 @@ export interface EquipmentWithDetails extends Equipment {
   status: EquipmentStatus;
   /** Populated only when status !== "online". */
   statusReason?: EquipmentStatusReason;
+  /** Spec 174 — the revert this equipment owes, when a window is running. */
+  timedAction?: TimedAction;
 }
 
 // ============================================================
@@ -1394,6 +1416,43 @@ export type EngineEvent =
       // wire at all, the integration was unreachable when it was dispatched.
       reason: "timeout" | "device_offline" | "integration_disconnected";
       source?: OrderSource;
+    }
+  // Spec 174 — a timed action: act now, revert at the deadline.
+  | {
+      type: "equipment.timed_action.armed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      value: unknown;
+      revertValue: unknown;
+      /** Epoch ms — the instant the revert is due. */
+      expiresAt: number;
+      /** True when this moved an existing deadline instead of acting again. */
+      extended: boolean;
+      source?: OrderSource;
+    }
+  | {
+      type: "equipment.timed_action.reverted";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      revertValue: unknown;
+      reason: string;
+    }
+  | {
+      type: "equipment.timed_action.disarmed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      reason: string;
+    }
+  | {
+      type: "equipment.timed_action.failed";
+      equipmentId: string;
+      equipmentName: string;
+      orderAlias: string;
+      revertValue: unknown;
+      error: string;
     }
   | {
       type: "equipment.status.changed";

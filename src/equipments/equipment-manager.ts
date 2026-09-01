@@ -21,6 +21,7 @@ import type {
   OrderCategory,
   OrderSource,
   SolarProfile,
+  TimedAction,
 } from "../shared/types.js";
 import {
   computeBindingCandidates,
@@ -40,6 +41,9 @@ import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
 export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
+
+/** Spec 174 — supplies the revert an equipment owes, when a window is running. */
+export type TimedActionProvider = (equipmentId: string) => TimedAction | null;
 
 // ============================================================
 // Valid EquipmentType values
@@ -120,6 +124,7 @@ export class EquipmentManager {
 
   /** Registered computed data providers (e.g. EnergyAggregator). */
   private computedDataProviders: ComputedDataProvider[] = [];
+  private timedActionProvider: TimedActionProvider | null = null;
 
   /** Gate equipments with a pending command — state is "unknown" until next sensor update */
   private pendingToggles = new Set<string>();
@@ -166,6 +171,25 @@ export class EquipmentManager {
   /** Register a provider that supplies computed data entries for equipments. */
   registerComputedDataProvider(provider: ComputedDataProvider): void {
     this.computedDataProviders.push(provider);
+  }
+
+  /**
+   * Register the source of timed actions (spec 174). One provider, not a list:
+   * an equipment has at most one deadline standing, and two answers would be
+   * a bug rather than an aggregation.
+   */
+  registerTimedActionProvider(provider: TimedActionProvider): void {
+    this.timedActionProvider = provider;
+  }
+
+  private getTimedAction(equipmentId: string): TimedAction | null {
+    if (!this.timedActionProvider) return null;
+    try {
+      return this.timedActionProvider(equipmentId);
+    } catch {
+      // A provider must not break equipment queries.
+      return null;
+    }
   }
 
   /** Collect computed data from all registered providers for a given equipment. */
@@ -440,6 +464,7 @@ export class EquipmentManager {
     const dataBindings = this.getDataBindingsWithValues(id);
     const orderBindings = this.getOrderBindingsWithDetails(id);
     const computedData = this.getComputedData(id);
+    const timedAction = this.getTimedAction(id);
 
     // Spec 116: derive equipment status from bindings + backing devices.
     const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
@@ -457,6 +482,7 @@ export class EquipmentManager {
       status,
       ...(reason !== null ? { statusReason: reason } : {}),
       ...(computedData.length > 0 ? { computedData } : {}),
+      ...(timedAction !== null ? { timedAction } : {}),
     };
   }
 
@@ -466,6 +492,7 @@ export class EquipmentManager {
       const dataBindings = this.getDataBindingsWithValues(eq.id);
       const orderBindings = this.getOrderBindingsWithDetails(eq.id);
       const computedData = this.getComputedData(eq.id);
+      const timedAction = this.getTimedAction(eq.id);
       const devicesByBindingId = this.resolveDevicesForBindings(dataBindings);
       const { status, reason } = deriveEquipmentStatus(
         dataBindings,
@@ -480,6 +507,7 @@ export class EquipmentManager {
         status,
         ...(reason !== null ? { statusReason: reason } : {}),
         ...(computedData.length > 0 ? { computedData } : {}),
+        ...(timedAction !== null ? { timedAction } : {}),
       };
     });
   }

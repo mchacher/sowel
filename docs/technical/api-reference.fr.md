@@ -63,6 +63,7 @@ Deux rôles existent : `admin` et `standard`. La plupart des lectures (`GET`) so
 | Method        | Path                                                                                                      | Usage                      |
 | ------------- | --------------------------------------------------------------------------------------------------------- | -------------------------- |
 | POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actionner un équipement    |
+| POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Action minutée (spec 174)  |
 | POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Commande de zone           |
 | PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Son propre compte          |
 | POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Ses propres tokens API     |
@@ -125,6 +126,38 @@ Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 | `PUT`    | `/api/v1/equipments/:id`               | Met à jour un équipement. Body : `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                     |
 | `DELETE` | `/api/v1/equipments/:id`               | Supprime un équipement. Retourne 204.                                                                                                                                                                            |
 | `POST`   | `/api/v1/equipments/:id/orders/:alias` | Exécute un ordre d'équipement. Body : `{ value }`.                                                                                                                                                               |
+
+### Actions minutées (spec 174)
+
+« Agis maintenant, reviens en arrière dans N minutes », tenu par le moteur et non plus par une recette. L'action part immédiatement par le chemin d'ordre habituel ; ce que le moteur conserve, c'est **le retour qu'il doit**, et l'instant où il le doit. Il survit à un redémarrage, et une échéance passée pendant l'arrêt est honorée au retour.
+
+| Méthode  | Chemin                                | Description                                                                                                                                                   |
+| -------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/v1/equipments/:id/timed-action` | Agit maintenant, revient en arrière à l'échéance. Body : `{ alias, value, revertValue, durationMs }`. Retourne l'action armée.                                |
+| `DELETE` | `/api/v1/equipments/:id/timed-action` | Termine le créneau plus tôt. `?revert=true` envoie le retour tout de suite ; sans ce paramètre, l'échéance est simplement abandonnée. 404 si rien n'est armé. |
+
+```json
+POST /api/v1/equipments/eq-gate/timed-action
+{ "alias": "command", "value": "OPEN", "revertValue": "CLOSE", "durationMs": 900000 }
+
+200 OK
+{
+  "alias": "command",
+  "value": "OPEN",
+  "revertValue": "CLOSE",
+  "expiresAt": "2026-09-01T14:32:00.000Z",
+  "armedAt": "2026-09-01T14:17:00.000Z",
+  "armedBy": "u-1"
+}
+```
+
+Les règles à connaître avant d'appeler :
+
+- **Une seule par équipement.** Ré-armer la _même_ action repousse l'échéance et n'envoie rien — « ouvre encore », de la part de quelqu'un qui regarde un portail déjà ouvert, veut dire « laisse-moi plus de temps ». Un alias ou une valeur différents remplacent le créneau et sont envoyés.
+- **Un retour fait à la main termine le créneau.** La mesure miroir qui annonce la valeur de retour désarme, et rien ne part à l'échéance.
+- **Un retour qui n'a pas pu partir lève une alerte et s'arrête.** Il n'est jamais rejoué : le moteur ne peut pas savoir si un second envoi remettrait l'équipement en place ou agirait une deuxième fois.
+- `durationMs` est compris entre 10 s et 24 h ; une action dont la valeur est égale à sa valeur de retour est refusée (400).
+- `GET /equipments` et `GET /equipments/:id` portent `timedAction` pendant le créneau, avec `expiresAt` en ISO-8601.
 
 ### Data Bindings
 
