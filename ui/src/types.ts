@@ -353,6 +353,10 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard
    *  (gate equipments only in v1). */
   requireConfirmation?: boolean;
+  /** Spec 173 — id of the meter that already counts this equipment's
+   *  consumption. The by-usage breakdown renders that parent net of its direct
+   *  children. `null`/absent = counted nowhere else. */
+  meteringParentId?: string | null;
   /** Spec 154 — invert shutter-family command direction (shutter_move
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
@@ -1407,6 +1411,8 @@ export interface SubmeterSeries {
   color: string;
   points: EnergyByUsagePoint[];
   cost: number; // € (spec 123)
+  /** Spec 173 — shown net of the meters declared inside this one. */
+  netOfChildren?: boolean;
 }
 
 export interface EnergyByUsageResponse {

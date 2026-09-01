@@ -10,6 +10,7 @@ import type { ArbiterPublicState } from "../../shared/types.js";
 import { ARBITER_METRICS_RETENTION_DAYS } from "../../energy/arbiter-metrics-store.js";
 import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
 import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../../equipments/metering.js";
+import { childrenByParent, subtractChildren } from "../../energy/metering-nesting.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type {
   EnergyPoint,
@@ -334,20 +335,40 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       const sumPerTime = new Map<string, number>();
 
       const sortedSubmeters = [...submeterEquipments].sort((a, b) => a.id.localeCompare(b.id));
-      for (let i = 0; i < sortedSubmeters.length; i++) {
-        const eq = sortedSubmeters[i];
+
+      // Raw measurement of every submeter first: spec 173 needs a child's series
+      // in hand before its parent's can be rendered.
+      const rawSeries = new Map<string, EnergyByUsagePoint[]>();
+      for (const eq of sortedSubmeters) {
         let rawPoints: EnergyByUsagePoint[] = [];
         for (const b of buckets) {
           rawPoints = await querySubmeterPoints(client, config.org, b, eq.id, from, to, resolution);
           if (rawPoints.length > 0) break;
         }
         const byTime = new Map(rawPoints.map((p) => [p.time, p.wh] as const));
-        // Build the always-N series.
-        const points: EnergyByUsagePoint[] = bucketTimes.map((time) => ({
-          time,
-          wh: byTime.get(time) ?? 0,
-        }));
+        // Build the always-N series (spec 119).
+        rawSeries.set(
+          eq.id,
+          bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
+        );
+      }
+
+      // Spec 173 — a switchboard nests: a gîte clamp, and the water-heater clamp
+      // fed from it. Both enrol as submeters, so without this the heater lands in
+      // two slices and the residual loses it. Each parent is rendered minus its
+      // direct children, which is also what makes a chain add back up.
+      const nesting = childrenByParent(sortedSubmeters);
+      const rendered = subtractChildren(rawSeries, nesting);
+
+      for (let i = 0; i < sortedSubmeters.length; i++) {
+        const eq = sortedSubmeters[i];
+        const points = rendered.get(eq.id) ?? [];
         const total = points.reduce((acc, p) => acc + p.wh, 0);
+        // Flagged on what was actually subtracted, not on the mere presence of a
+        // declaration: a child that reported nothing for the period leaves its
+        // parent identical to its card, and saying "net of its submeters" there
+        // sends the reader looking for a difference that is not on screen.
+        const rawTotal = (rawSeries.get(eq.id) ?? []).reduce((acc, p) => acc + p.wh, 0);
         totalsByEquipment[eq.id] = total;
         for (const p of points) {
           sumPerTime.set(p.time, (sumPerTime.get(p.time) ?? 0) + p.wh);
@@ -358,6 +379,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           color: pickPaletteColor(i),
           points,
           cost: 0, // Spec 123 — filled below once blended rate is known.
+          ...(rawTotal > total ? { netOfChildren: true } : {}),
         });
       }
 
