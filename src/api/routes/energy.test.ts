@@ -505,6 +505,24 @@ describe("Spec 173 — /api/v1/energy/by-usage with nested submeters", () => {
     expect(ce.netOfChildren).toBeUndefined();
   });
 
+  it("does not flag a parent whose child reported nothing", async () => {
+    const data = nested("gite");
+    data.submeterRowsById.ce = [];
+    app = await buildApp(data);
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const gite = body.submeters.find((s: { id: string }) => s.id === "gite");
+    // The declaration stands, but nothing was taken off: the figure equals the
+    // card, and a legend saying otherwise sends the reader hunting a difference
+    // that is not on screen.
+    expect(gite.netOfChildren).toBeUndefined();
+  });
+
   it("carries the subtraction into the period totals", async () => {
     app = await buildApp(nested("gite"));
     const body = (

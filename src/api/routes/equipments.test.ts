@@ -527,6 +527,7 @@ describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
     { id: "ce", name: "ConsommationChauffeEau", type: "energy_meter", meteringParentId: "gite" },
     { id: "edf", name: "EDF", type: "main_energy_meter", meteringParentId: null },
     { id: "plaque", name: "ConsommationPlaqueGite", type: "energy_meter", meteringParentId: null },
+    { id: "lampe", name: "Lampe", type: "light_onoff", meteringParentId: null },
   ];
 
   beforeEach(async () => {
@@ -536,6 +537,18 @@ describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
     registerEquipmentRoutes(app, {
       equipmentManager: {
         getById: (id: string) => graph.find((e) => e.id === id) ?? null,
+        // Eligibility asks the enrolment rule, which needs the bindings.
+        getByIdWithDetails: (id: string) => {
+          const eq = graph.find((e) => e.id === id);
+          if (!eq) return null;
+          return {
+            ...eq,
+            dataBindings:
+              eq.type === "light_onoff"
+                ? [{ alias: "state", category: "light_state", type: "boolean" }]
+                : [{ alias: "power", category: "power", type: "number" }],
+          };
+        },
         getAll: () => graph,
         update: (_id: string, input: Record<string, unknown>) => {
           received = input;
@@ -601,6 +614,14 @@ describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toBe("MeteringParentNotSubmeter");
     expect(received).toBeNull();
+  });
+
+  it("refuses a parent that measures no consumption at all", async () => {
+    // Not a house total, so the blocklist lets it through; it is not a meter
+    // either, and the declaration would sit there doing nothing (#873 review).
+    const res = await put("plaque", { meteringParentId: "lampe" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentNotSubmeter");
   });
 });
 

@@ -62,12 +62,25 @@ describe("MeteringParentPanel", () => {
     expect(shown).not.toContain("EDF");
     expect(shown).not.toContain("Lampe");
     // Always a way out.
-    expect(shown[0]).toBe("Nothing — counted nowhere else");
+    expect(shown[0]).toBe("Nothing, counted nowhere else");
   });
 
   it("shows the current declaration", () => {
     render(<MeteringParentPanel equipment={ce} equipments={ALL} onUpdated={() => {}} />);
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("gite");
+  });
+
+  it("keeps showing a declared parent that stopped being a meter", () => {
+    // The gîte clamp lost its power binding: it is no longer offered as a new
+    // parent, but the declaration on the water heater is still live, and a
+    // select matching no option would quietly read "counted nowhere else".
+    const gone = meter({ id: "gite", name: "ConsommationGite", type: "light_onoff" });
+    render(
+      <MeteringParentPanel equipment={ce} equipments={[gone, ce, plaque]} onUpdated={() => {}} />,
+    );
+
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("gite");
+    expect(options()).toContain("ConsommationGite");
   });
 
   it("saves a chosen parent", async () => {

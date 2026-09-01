@@ -147,6 +147,10 @@ Dites-le sur le compteur intérieur : ouvrez sa page d'équipement et choisissez
 
 Les chaînes fonctionnent : avec un tableau qui alimente un gîte qui alimente un chauffe-eau, chaque niveau est affiché déduction faite de celui qui est directement dedans, et les trois s'additionnent toujours pour redonner le tableau.
 
+La même soustraction s'applique à la répartition en direct de cette page, pour que le donut et les barres du jour racontent la même chose.
+
+Deux choses à savoir : supprimer le compteur extérieur efface la déclaration portée par ceux qui sont à l'intérieur, ce qui les fait de nouveau compter deux fois, donc redéclarez leur nouveau parent si le câblage est toujours imbriqué ; et les cartes d'équipement continuent toujours d'afficher ce que chaque pince mesure, une carte qui contredirait son propre capteur étant pire que le recouvrement qu'elle corrige.
+
 Les totaux (HP / HC, autoconsommation) restent identiques entre les deux modes.
 
 #### Périodes plus longues

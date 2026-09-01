@@ -312,10 +312,20 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
             message: "An equipment cannot be metered by itself",
           });
         }
-        if (NON_SUBMETER_TYPES.has(parent.type)) {
+        // The same rule enrolment uses, not just the blocklist: a lamp or a
+        // bare relay is not a house total, but it is not a meter either, and
+        // accepting it would persist a declaration that does nothing at all in
+        // the breakdown. The picker already refuses it; the API has to agree.
+        const parentDetails = equipmentManager.getByIdWithDetails(body.meteringParentId);
+        if (
+          !parentDetails ||
+          !isSubmeterEquipment(parentDetails.type, parentDetails.dataBindings)
+        ) {
           return reply.status(400).send({
             error: "MeteringParentNotSubmeter",
-            message: `${parent.name} is a house total or a production meter, not a submeter`,
+            message: NON_SUBMETER_TYPES.has(parent.type)
+              ? `${parent.name} is a house total or a production meter, not a submeter`
+              : `${parent.name} does not measure consumption, so nothing can be counted inside it`,
           });
         }
         if (wouldCycle(equipmentManager.getAll(), request.params.id, body.meteringParentId)) {

@@ -364,6 +364,11 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         const eq = sortedSubmeters[i];
         const points = rendered.get(eq.id) ?? [];
         const total = points.reduce((acc, p) => acc + p.wh, 0);
+        // Flagged on what was actually subtracted, not on the mere presence of a
+        // declaration: a child that reported nothing for the period leaves its
+        // parent identical to its card, and saying "net of its submeters" there
+        // sends the reader looking for a difference that is not on screen.
+        const rawTotal = (rawSeries.get(eq.id) ?? []).reduce((acc, p) => acc + p.wh, 0);
         totalsByEquipment[eq.id] = total;
         for (const p of points) {
           sumPerTime.set(p.time, (sumPerTime.get(p.time) ?? 0) + p.wh);
@@ -374,7 +379,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           color: pickPaletteColor(i),
           points,
           cost: 0, // Spec 123 — filled below once blended rate is known.
-          ...((nesting.get(eq.id)?.length ?? 0) > 0 ? { netOfChildren: true } : {}),
+          ...(rawTotal > total ? { netOfChildren: true } : {}),
         });
       }
 

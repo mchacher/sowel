@@ -46,9 +46,17 @@ export function MeteringParentPanel({
       }
     }
     return equipments
-      .filter((eq) => !descendants.has(eq.id) && isSubmeterEquipment(eq))
+      .filter(
+        (eq) =>
+          !descendants.has(eq.id) &&
+          // A parent that later lost its power binding stops being offered, but
+          // it is still the standing declaration: dropping it would leave the
+          // select matching no option and quietly reading "counted nowhere
+          // else" while the declaration is live.
+          (isSubmeterEquipment(eq) || eq.id === equipment.meteringParentId),
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [equipment.id, equipments]);
+  }, [equipment.id, equipment.meteringParentId, equipments]);
 
   const current = equipment.meteringParentId ?? "";
 

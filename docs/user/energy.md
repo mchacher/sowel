@@ -146,6 +146,10 @@ Say so on the inner meter: open its equipment page and pick, under **Already cou
 
 Chains work: with a main board feeding a gîte feeding a water heater, each level is shown net of the one directly inside it, and the three still add up to the board.
 
+The same subtraction applies to the live breakdown on this page, so the donut and the daily stacks tell one story rather than two.
+
+Two things worth knowing: deleting the outer meter clears the declaration on the ones inside it, which starts counting them twice again, so re-declare their new parent if the wiring still nests; and the equipment cards always keep showing what each clamp measures, since a card contradicting its own sensor would be worse than the overlap it fixes.
+
 Totals widgets (peak / off-peak, autoconsumption) stay unchanged when you toggle modes.
 
 #### Longer periods

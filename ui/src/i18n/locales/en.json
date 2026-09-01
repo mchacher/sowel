@@ -216,7 +216,7 @@
   "equipments.controls": "Controls",
   "equipments.configuration": "Configuration",
   "equipments.metering.nesting.title": "Already counted by",
-  "equipments.metering.nesting.none": "Nothing \u2014 counted nowhere else",
+  "equipments.metering.nesting.none": "Nothing, counted nowhere else",
   "equipments.metering.nesting.hint": "Pick the meter this circuit is fed from. The usage breakdown will show that meter net of this one, instead of counting the same kilowatt-hours twice. The card above keeps showing what this clamp measures.",
   "equipments.gateConfirm.title": "Confirmation before action",
   "equipments.gateConfirm.enable": "Enable",
