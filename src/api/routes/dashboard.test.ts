@@ -587,4 +587,43 @@ describe("dashboard widget routes", () => {
       expect((await app.inject({ method: "GET", url: WIDGETS })).json()).toHaveLength(0);
     });
   });
+
+  // ============================================================
+  // Spec 174 phase 2 — the timed variant of an equipment tile
+  // ============================================================
+
+  describe("POST /api/v1/dashboard/widgets — timed variant (spec 174)", () => {
+    it("persists config.timed at creation, not only through a later PATCH", async () => {
+      // Found on a shadow instance: the picker sent `{ timed: true }`, the route
+      // accepted the call and dropped the field, so the pinned tile came back as
+      // an ordinary one and actuated outright.
+      const app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/dashboard/widgets",
+        payload: { type: "equipment", equipmentId: "e1", config: { timed: true } },
+      });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json().config).toEqual({ timed: true });
+
+      const list = await app.inject({ method: "GET", url: "/api/v1/dashboard/widgets" });
+      expect(list.json().find((w: { id: string }) => w.id === res.json().id).config).toEqual({
+        timed: true,
+      });
+      await app.close();
+    });
+
+    it("leaves a widget created without one carrying no config at all", async () => {
+      const app = await buildApp();
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/dashboard/widgets",
+        payload: { type: "equipment", equipmentId: "e1" },
+      });
+
+      expect(res.json().config).toBeUndefined();
+      await app.close();
+    });
+  });
 });
