@@ -139,6 +139,14 @@ Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** 
 
 Les sous-compteurs utilisent une palette de couleurs déterministe afin qu'un même circuit garde la même couleur d'un jour à l'autre. La pile "Autre" est bornée à zéro, donc un sous-compteur qui dépasserait brièvement le compteur principal (à cause d'un décalage d'échantillonnage) ne peut pas la rendre négative.
 
+##### Quand un compteur en alimente un autre
+
+Les tableaux électriques s'emboîtent : un gîte mesuré par une pince, et son chauffe-eau — alimenté depuis ce même tableau — par une seconde. Les deux sont des sous-compteurs, donc sans rien faire les kilowattheures du chauffe-eau seraient comptés deux fois, une par pile, et le résidu "Autre" en perdrait tout autant.
+
+Dites-le sur le compteur intérieur : ouvrez sa page d'équipement et choisissez, sous **Déjà compté par**, le compteur qui l'alimente. La répartition affiche alors le compteur extérieur **déduction faite de l'intérieur** — le gîte moins son chauffe-eau — tandis que l'intérieur garde sa mesure entière, et les deux piles cessent de se recouvrir. Sa légende indique "déduction faite de ses sous-compteurs", pour distinguer la part affichée de la carte du compteur, qui continue elle d'afficher ce que mesure sa pince.
+
+Les chaînes fonctionnent : avec un tableau qui alimente un gîte qui alimente un chauffe-eau, chaque niveau est affiché déduction faite de celui qui est directement dedans, et les trois s'additionnent toujours pour redonner le tableau.
+
 Les totaux (HP / HC, autoconsommation) restent identiques entre les deux modes.
 
 #### Périodes plus longues

@@ -32,6 +32,8 @@ const createEquipmentBodySchema = {
 };
 
 import { validateSolarProfile } from "../../energy/pv/solar-profile.js";
+import { NON_SUBMETER_TYPES } from "../../equipments/metering.js";
+import { wouldCycle } from "../../energy/metering-nesting.js";
 
 const updateEquipmentBodySchema = {
   type: "object",
@@ -51,6 +53,8 @@ const updateEquipmentBodySchema = {
     },
     requireConfirmation: { type: "boolean" },
     invertDirection: { type: "boolean" },
+    // Spec 173 — id of the meter that already counts this equipment, or null.
+    meteringParentId: { type: ["string", "null"], minLength: 1 },
     // Spec 160 — declared array geometry. The bounds are the same ones
     // `validateSolarProfile` enforces, repeated here so a malformed body is
     // refused at the edge rather than silently dropped when read back.
@@ -256,6 +260,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       requireConfirmation?: boolean;
       invertDirection?: boolean;
       solarProfile?: SolarProfile | null;
+      meteringParentId?: string | null;
     };
   }>(
     "/api/v1/equipments/:id",
@@ -292,6 +297,35 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         }
       }
 
+      // Spec 173 — a meter declared inside another one. Refused here rather than
+      // at the database, which would only see a foreign key: the three ways to
+      // get this wrong (yourself, a loop, the house total) each deserve to be
+      // named, and the check is on the resulting graph, not on the pair.
+      if (body.meteringParentId) {
+        const parent = equipmentManager.getById(body.meteringParentId);
+        if (!parent) {
+          return reply.status(404).send({ error: "Metering parent not found" });
+        }
+        if (body.meteringParentId === request.params.id) {
+          return reply.status(400).send({
+            error: "MeteringParentSelf",
+            message: "An equipment cannot be metered by itself",
+          });
+        }
+        if (NON_SUBMETER_TYPES.has(parent.type)) {
+          return reply.status(400).send({
+            error: "MeteringParentNotSubmeter",
+            message: `${parent.name} is a house total or a production meter, not a submeter`,
+          });
+        }
+        if (wouldCycle(equipmentManager.getAll(), request.params.id, body.meteringParentId)) {
+          return reply.status(400).send({
+            error: "MeteringParentCycle",
+            message: "That declaration would make a meter contain itself",
+          });
+        }
+      }
+
       try {
         const equipment = equipmentManager.update(request.params.id, {
           name: body.name?.trim(),
@@ -304,6 +338,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
+          meteringParentId: body.meteringParentId,
         });
         if (!equipment) {
           return reply.code(404).send({ error: "Equipment not found" });

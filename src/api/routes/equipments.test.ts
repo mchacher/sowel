@@ -517,6 +517,93 @@ describe("PUT /api/v1/equipments/:id — solar profile (spec 160)", () => {
   });
 });
 
+describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let received: Record<string, unknown> | null;
+
+  // gite ⊃ ce, and a house total that must never be anyone's parent.
+  const graph = [
+    { id: "gite", name: "ConsommationGite", type: "energy_meter", meteringParentId: null },
+    { id: "ce", name: "ConsommationChauffeEau", type: "energy_meter", meteringParentId: "gite" },
+    { id: "edf", name: "EDF", type: "main_energy_meter", meteringParentId: null },
+    { id: "plaque", name: "ConsommationPlaqueGite", type: "energy_meter", meteringParentId: null },
+  ];
+
+  beforeEach(async () => {
+    received = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: (id: string) => graph.find((e) => e.id === id) ?? null,
+        getAll: () => graph,
+        update: (_id: string, input: Record<string, unknown>) => {
+          received = input;
+          return { id: _id, meteringParentId: input.meteringParentId };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const put = (id: string, payload: unknown) =>
+    app.inject({ method: "PUT", url: `/api/v1/equipments/${id}`, payload });
+
+  it("forwards an honest declaration", async () => {
+    const res = await put("plaque", { meteringParentId: "gite" });
+    expect(res.statusCode).toBe(200);
+    expect(received?.meteringParentId).toBe("gite");
+  });
+
+  it("forwards an explicit null, so a declaration can be withdrawn", async () => {
+    const res = await put("ce", { meteringParentId: null });
+    expect(res.statusCode).toBe(200);
+    expect(received).toHaveProperty("meteringParentId", null);
+  });
+
+  it("leaves it untouched when the body does not mention it", async () => {
+    const res = await put("ce", { name: "CE" });
+    expect(res.statusCode).toBe(200);
+    // undefined ≠ null: the manager keeps the stored value on undefined.
+    expect(received?.meteringParentId).toBeUndefined();
+  });
+
+  it("answers 404 for a parent that does not exist", async () => {
+    const res = await put("plaque", { meteringParentId: "ghost" });
+    expect(res.statusCode).toBe(404);
+    expect(received).toBeNull();
+  });
+
+  it("refuses an equipment metered by itself", async () => {
+    const res = await put("gite", { meteringParentId: "gite" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentSelf");
+    expect(received).toBeNull();
+  });
+
+  it("refuses a loop the pair alone does not reveal", async () => {
+    // ce is already inside gite; putting gite inside ce closes the loop.
+    const res = await put("gite", { meteringParentId: "ce" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentCycle");
+    expect(received).toBeNull();
+  });
+
+  it("refuses the house total as a parent", async () => {
+    // Everything is inside the house total already; subtracting from it would
+    // wreck the residual it defines.
+    const res = await put("gite", { meteringParentId: "edf" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentNotSubmeter");
+    expect(received).toBeNull();
+  });
+});
+
 // ── #832 — the feed must not serve a leftover as a current measurement ──
 //
 // The energy display is this feed's consumer and cannot work a reading's age

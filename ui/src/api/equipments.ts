@@ -53,6 +53,8 @@ export async function updateEquipment(
     invertDirection?: boolean;
     /** Spec 160 — declared array geometry; null clears it. */
     solarProfile?: SolarProfile | null;
+    /** Spec 173 — the meter that already counts this one; null clears it. */
+    meteringParentId?: string | null;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {

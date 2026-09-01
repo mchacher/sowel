@@ -51,6 +51,8 @@ interface Series {
   id: string;
   name: string;
   color: string;
+  /** Spec 173 — slice shown net of the meters declared inside this one. */
+  netOfChildren?: boolean;
 }
 
 interface Datum {
@@ -142,7 +144,12 @@ function buildChart(
 
   const otherKey = OTHER_KEY;
   const series: Series[] = [
-    ...data.submeters.map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    ...data.submeters.map((s) => ({
+      id: s.id,
+      name: s.name,
+      color: s.color,
+      netOfChildren: s.netOfChildren,
+    })),
     { id: otherKey, name: "Other", color: OTHER_COLOR },
   ];
 
@@ -238,7 +245,18 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
                     return (
                       <div key={s.id} className="flex items-center gap-2 text-text-secondary">
                         <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
-                        <span>{s.name}</span>
+                        <span>
+                          {s.name}
+                          {/* Spec 173 — this slice is smaller than the meter's
+                              own card on purpose: say why, here, rather than
+                              leave the reader to find the difference. */}
+                          {s.netOfChildren && (
+                            <span className="text-text-tertiary">
+                              {" "}
+                              · {t("energy.byUsage.netOfChildren")}
+                            </span>
+                          )}
+                        </span>
                         <span className="ml-auto tabular-nums">{formatValue(v)}</span>
                       </div>
                     );
