@@ -143,6 +143,21 @@ describe("classifyPowerReading", () => {
     ).toBe("frozen");
   });
 
+  it("lets an inverter sit on its clipping plateau (#881 review)", () => {
+    // A string inverter capped at its AC limit publishes the same watts for as
+    // long as the sun holds. Half an hour of it is a clear noon, not a fault.
+    expect(
+      classifyPowerReading({
+        ...base,
+        status: "online",
+        value: 3000,
+        lastUpdated: ago(30_000),
+        lastChanged: ago(30 * 60_000),
+      }),
+    ).toBe("current");
+    expect(FROZEN_READING_MS).toBeGreaterThanOrEqual(60 * 60 * 1000);
+  });
+
   it("leaves an unchanging zero alone", () => {
     // A production meter at night holds exactly 0 W for hours, and so does a
     // stuck one. The value cannot tell them apart, so it does not try.

@@ -106,12 +106,14 @@ source et chacune avec son propre âge. Il dit l'une de ces trois choses :
   dix minutes, soit le double de la cadence la plus lente parmi les sources supportées, si bien
   qu'un compteur interrogé toutes les cinq minutes ne déclenche jamais ce bandeau tant qu'il
   fonctionne.
-- **« mesure figée sur la même valeur depuis 20 min »** : les mesures continuent d'arriver, mais la
+- **« mesure figée sur la même valeur depuis 3 h »** : les mesures continuent d'arriver, mais la
   valeur qu'elles portent a cessé de bouger. C'est une source qui parle encore sans mesurer, et
   aucun horodatage ne peut le révéler. Sowel compare la valeur telle qu'elle est stockée, en pleine
   précision, jamais le chiffre arrondi dessiné sur le diagramme : une production affichée à 2,4 kW
-  peut varier de 49 W sans que l'affichage ne bouge. Une mesure exactement nulle est laissée
-  tranquille, un compteur de production la tient réellement pendant des heures la nuit.
+  peut varier de 49 W sans que l'affichage ne bouge. Deux cas sont laissés tranquilles : une mesure
+  exactement nulle, qu'un compteur de production tient réellement toute la nuit, et tout ce qui dure
+  moins d'une heure, pour qu'un onduleur assis sur son plateau d'écrêtage un midi clair ne dise
+  rien.
 - **« plus de connexion depuis 20 min »** : l'appareil du compteur a quitté le réseau.
 
 Seules les mesures de puissance dessinées par le diagramme sont surveillées : un compteur simplement

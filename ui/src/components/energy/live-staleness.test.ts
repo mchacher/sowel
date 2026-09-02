@@ -99,7 +99,7 @@ describe("detectLiveStaleness", () => {
     expect(detect([grid], [solar])).toEqual([]);
   });
 
-  it("names the production meter when only its reading is frozen (#854)", () => {
+  it("names the production meter when only its readings stopped arriving (#854)", () => {
     const grid = makeMeter("grid", "main_energy_meter");
     const solar = makeMeter("solar", "energy_production_meter", {
       status: "degraded",
@@ -111,7 +111,7 @@ describe("detectLiveStaleness", () => {
     ]);
   });
 
-  it("names the grid meter when only its reading is frozen", () => {
+  it("names the grid meter when only its readings stopped arriving", () => {
     const grid = makeMeter("grid", "main_energy_meter", {
       status: "degraded",
       readingAgeMs: LATE_MS,
@@ -222,7 +222,7 @@ describe("detectLiveStaleness", () => {
     ]);
   });
 
-  it("flags the source when one of several meters on that side is frozen", () => {
+  it("flags the source when one of several meters on that side goes quiet", () => {
     const a = makeMeter("grid-a", "main_energy_meter");
     const b = makeMeter("grid-b", "main_energy_meter", {
       status: "degraded",

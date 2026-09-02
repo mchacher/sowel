@@ -97,7 +97,7 @@ describe("Live energy staleness banner (#854)", () => {
     expect(bannerText()).toEqual(["Production: no reading received for 12 min"]);
   });
 
-  it("names the grid meter when it is the frozen one", () => {
+  it("names the grid meter when it is the silent one", () => {
     seed([
       meter("Grid", "main_energy_meter", 500, { ageMs: 15 * 60_000 }),
       meter("Solar", "energy_production_meter", 3000),
@@ -216,15 +216,13 @@ describe("Live energy staleness banner (#854)", () => {
 
   it("says a still-reporting meter is stuck, not late (#881)", () => {
     // Readings arriving twenty seconds ago, carrying watts that have not moved
-    // by a single decimal in twenty minutes. No clock can see this.
+    // by a single decimal in three hours. No clock can see this.
     seed([
       meter("Grid", "main_energy_meter", 500),
-      meter("Solar", "energy_production_meter", 3000, { changedAgeMs: 20 * 60_000 }),
+      meter("Solar", "energy_production_meter", 3000, { changedAgeMs: 3 * 3600_000 }),
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    expect(bannerText()).toEqual([
-      "Production: reading stuck on the same value for 20 min",
-    ]);
+    expect(bannerText()).toEqual(["Production: reading stuck on the same value for 3 h"]);
   });
 });
