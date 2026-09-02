@@ -44,9 +44,12 @@ interface WebSocketState {
   batteryAlerts: BatteryAlert[];
   updateAvailable: UpdateAvailableInfo | null;
   updateInProgress: boolean;
+  /** Why the last self-update stopped, when it stopped without swapping. */
+  updateError: string | null;
   restartRequired: string | null; // reason, e.g. "home_location_changed"
   setUpdateAvailable: (info: UpdateAvailableInfo | null) => void;
   setUpdateInProgress: (inProgress: boolean) => void;
+  setUpdateError: (error: string | null) => void;
   setRestartRequired: (reason: string | null) => void;
   connect: () => void;
   disconnect: () => void;
@@ -390,10 +393,10 @@ function handleEvent(event: EngineEvent): void {
       });
       break;
     case "system.update.progress":
-      useWebSocket.setState({ updateInProgress: true });
+      useWebSocket.setState({ updateInProgress: true, updateError: null });
       break;
     case "system.update.error":
-      useWebSocket.setState({ updateInProgress: false });
+      useWebSocket.setState({ updateInProgress: false, updateError: event.error });
       break;
     case "system.restart_required":
       useWebSocket.setState({ restartRequired: event.reason });
@@ -425,10 +428,12 @@ export const useWebSocket = create<WebSocketState>((set) => ({
   batteryAlerts: [],
   updateAvailable: null,
   updateInProgress: false,
+  updateError: null,
   restartRequired: null,
 
   setUpdateAvailable: (info) => set({ updateAvailable: info }),
   setUpdateInProgress: (inProgress) => set({ updateInProgress: inProgress }),
+  setUpdateError: (error) => set({ updateError: error }),
   setRestartRequired: (reason) => set({ restartRequired: reason }),
 
   connect: () => {

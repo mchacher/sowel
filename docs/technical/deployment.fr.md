@@ -384,22 +384,30 @@ Causes courantes :
 
 ### L'auto-update échoue
 
-Symptômes : clic sur "Update", overlay affiché, mais la page ne recharge jamais. Le conteneur reste sur l'ancienne version.
+Symptômes : vous cliquez sur "Update", l'overlay s'affiche, et la page ne recharge jamais.
 
-Récupération :
+Le moteur surveille le conteneur helper qu'il a lancé. Un helper qui réussit
+recrée Sowel, donc ce processus meurt en premier ; si le helper se termine alors
+que Sowel tourne encore, c'est que le swap n'a pas eu lieu. L'overlay est alors
+remplacé par **Échec de la mise à jour**, citant la dernière sortie du helper —
+le plus souvent un registre injoignable (`dial tcp ...:443: i/o timeout`). Sowel
+continue de servir la version précédente, et le backup pré-update qu'il a pris
+est toujours dans `data/backups/`.
+
+Récupération : corrigez la cause et recliquez sur Update. Il n'y a rien à
+nettoyer, la tentative suivante supprime elle-même le helper resté en place.
 
 ```bash
 cd /opt/sowel
-docker compose up -d  # recreates the current container if helper failed mid-way
-# Or manual upgrade:
-docker compose pull && docker compose up -d
+docker compose up -d                          # recrée le conteneur si le helper est mort en plein swap
+docker compose pull && docker compose up -d   # ou mise à jour à la main
 ```
 
 Investigation :
 
-- Les logs du conteneur helper sont **perdus** si `AutoRemove: true` (défaut actuel, spec 060)
-- Vérifiez les logs propres de sowel juste avant le spawn du helper, `Update helper spawned` est la dernière ligne avant le swap
-- Si sowel n'est jamais revenu, vérifiez `docker ps -a` pour voir si le conteneur est en Exited
+- `docker logs sowel-updater` : le conteneur helper est délibérément conservé après sa sortie (`AutoRemove: false`), précisément pour ça
+- Les logs propres de Sowel : `Update helper spawned` est la dernière ligne avant un swap réussi, et `Helper finished without restarting Sowel` marque l'échec
+- Si Sowel n'est jamais revenu du tout, `docker ps -a` indique si son conteneur est en Exited
 
 ### Base de données corrompue
 

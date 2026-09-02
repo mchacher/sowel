@@ -712,6 +712,8 @@
   "update.overlayTitle": "Mise à jour en cours",
   "update.overlayMessage": "Sowel se met à jour. La page va se recharger automatiquement dans quelques instants.",
   "update.overlayReload": "Recharger maintenant",
+  "update.failedTitle": "Échec de la mise à jour",
+  "update.failedHint": "Sowel tourne toujours sur la version précédente. Rien n'a été modifié.",
   "update.restartRequiredTitle": "Redémarrage requis",
   "update.restartRequiredMessage": "La localisation a changé. Sowel doit redémarrer pour recalculer le fuseau horaire.",
   "update.restartNow": "Redémarrer maintenant",

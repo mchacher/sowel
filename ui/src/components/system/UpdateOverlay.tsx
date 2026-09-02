@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { useWebSocket } from "../../store/useWebSocket";
 import { getSystemVersion } from "../../api";
 
@@ -10,11 +10,48 @@ import { getSystemVersion } from "../../api";
  * Visible when `updateInProgress` is true in the WebSocket store. The actual
  * overlay logic lives in a sub-component so its state is fresh on each open
  * (no need for manual resets).
+ *
+ * A failed update takes the same slot rather than just dropping the overlay:
+ * the spinner vanishing on its own reads exactly like a successful update that
+ * forgot to reload, and the reason (a registry timeout, a compose refusal) is
+ * the one thing the admin cannot guess.
  */
 export function UpdateOverlay() {
   const updateInProgress = useWebSocket((s) => s.updateInProgress);
+  const updateError = useWebSocket((s) => s.updateError);
+  if (updateError) return <FailedOverlay error={updateError} />;
   if (!updateInProgress) return null;
   return <ActiveOverlay />;
+}
+
+function FailedOverlay({ error }: { error: string }) {
+  const { t } = useTranslation();
+  const setUpdateError = useWebSocket((s) => s.setUpdateError);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm">
+      <div className="text-center max-w-md px-6">
+        <AlertTriangle
+          size={56}
+          className="mx-auto mb-6 text-error"
+          strokeWidth={1.5}
+        />
+        <h2 className="text-[20px] font-semibold text-text mb-3">{t("update.failedTitle")}</h2>
+        <p className="text-[13px] font-mono text-text-secondary leading-relaxed break-words text-left bg-surface border border-border rounded-[8px] p-3">
+          {error}
+        </p>
+        <p className="mt-3 text-[13px] text-text-secondary leading-relaxed">
+          {t("update.failedHint")}
+        </p>
+        <button
+          onClick={() => setUpdateError(null)}
+          className="mt-6 px-4 py-2 mx-auto text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+        >
+          {t("common.close")}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function ActiveOverlay() {

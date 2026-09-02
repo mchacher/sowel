@@ -13,6 +13,12 @@ const COMPOSE_LABEL_WORKING_DIR = "com.docker.compose.project.working_dir";
 const COMPOSE_LABEL_PROJECT = "com.docker.compose.project";
 const COMPOSE_LABEL_SERVICE = "com.docker.compose.service";
 const BACKUP_KEEP_COUNT = 3;
+/** How many trailing helper log lines to quote back in a failure message. */
+const HELPER_LOG_TAIL_LINES = 5;
+/** Cap on the quoted tail, so a runaway helper cannot flood the event bus. */
+const HELPER_LOG_TAIL_MAX_CHARS = 400;
+
+type DockerContainer = InstanceType<typeof import("dockerode").Container>;
 
 /** Quote a string for safe interpolation into a shell command. */
 function shellQuote(s: string): string {
@@ -78,6 +84,37 @@ export function buildHelperScript(opts: {
     pruneCmd,
     `echo "[sowel-updater] done — Sowel updated to v${targetVersion}"`,
   ].join("\n");
+}
+
+/**
+ * Turn the raw body of a non-TTY `docker logs` call into plain text.
+ *
+ * The daemon multiplexes stdout and stderr into frames: one stream byte, three
+ * zero bytes, then a big-endian payload length, then the payload. A container
+ * created with a TTY sends unframed bytes instead, and a `tail` request can cut
+ * the first frame in half, so anything that does not look like a header is
+ * handed back verbatim rather than dropped — this runs while reporting a
+ * failure, and losing the reason would defeat the point.
+ */
+export function demuxDockerLogs(buf: Buffer): string {
+  const chunks: string[] = [];
+  let offset = 0;
+
+  while (offset + 8 <= buf.length) {
+    const framed =
+      buf[offset] <= 2 && buf[offset + 1] === 0 && buf[offset + 2] === 0 && buf[offset + 3] === 0;
+    if (!framed) return buf.toString("utf-8");
+
+    const length = buf.readUInt32BE(offset + 4);
+    const start = offset + 8;
+    const end = Math.min(start + length, buf.length);
+    chunks.push(buf.toString("utf-8", start, end));
+    if (end < start + length) break; // truncated frame — keep what arrived
+    offset = end;
+  }
+
+  if (chunks.length === 0) return buf.toString("utf-8");
+  return chunks.join("");
 }
 
 export interface ComposeContext {
@@ -271,8 +308,9 @@ export class UpdateManager {
       this.updating = false;
       throw err;
     }
-    // NOTE: we do NOT reset `this.updating = false` here — the helper will
-    // stop us soon, so leaving the flag set prevents duplicate triggers.
+    // NOTE: `this.updating` stays set on purpose — the helper is about to stop
+    // us, and holding the flag keeps a second trigger out in the meantime. If
+    // the helper dies instead of swapping us, `watchHelper` releases it.
   }
 
   /**
@@ -423,6 +461,75 @@ export class UpdateManager {
 
     await helper.start();
     this.logger.info(args.logContext, args.logMessage);
+    this.watchHelper(helper, args.name);
+  }
+
+  /**
+   * Watch a helper we just started, and release `updating` if it dies without
+   * taking us with it.
+   *
+   * On the happy path this callback never runs: the helper recreates the Sowel
+   * container, so this process is gone long before the helper exits. Reaching
+   * the callback therefore means the swap did not happen — the image pull
+   * failed, compose refused, or the image-ID verification tripped.
+   *
+   * Before this existed, `updating` stayed set for the life of the process:
+   * the UI kept its full-screen overlay, and `/system/update` and
+   * `/system/restart` answered 409 until someone restarted the container by
+   * hand. A registry outage on 2026-09-02 (`docker pull` timing out against
+   * ghcr.io) pinned an instance that way for hours, with the real cause
+   * readable only in `docker logs sowel-updater`. So we quote that tail into
+   * the error the admin actually sees.
+   */
+  private watchHelper(helper: DockerContainer, name: string): void {
+    void (async () => {
+      let outcome: string;
+      try {
+        const result = (await helper.wait()) as { StatusCode?: number } | undefined;
+        const code = result?.StatusCode ?? -1;
+        outcome = `Helper "${name}" exited with code ${code} without restarting Sowel`;
+      } catch (err) {
+        // The daemon went away, or the container was removed under us. An
+        // unknown outcome still beats a flag pinned for the life of the process.
+        outcome = `Helper "${name}" could not be watched: ${
+          err instanceof Error ? err.message : String(err)
+        }`;
+      }
+
+      // A failure on our own side may have released the flag already; and a
+      // helper that finished after we gave up is not news.
+      if (!this.updating) return;
+
+      const tail = await this.readHelperTail(helper);
+      const error = tail ? `${outcome} — ${tail}` : outcome;
+      this.updating = false;
+      this.logger.error({ helper: name, tail }, "Helper finished without restarting Sowel");
+      this.eventBus.emit({ type: "system.update.error", error });
+    })();
+  }
+
+  /**
+   * Last few lines the helper printed, for the failure message. Best effort:
+   * an unreadable log must not mask the failure it was meant to explain.
+   */
+  private async readHelperTail(helper: DockerContainer): Promise<string> {
+    try {
+      const raw = (await helper.logs({
+        stdout: true,
+        stderr: true,
+        tail: 20,
+      })) as unknown as Buffer;
+
+      return demuxDockerLogs(Buffer.from(raw))
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(-HELPER_LOG_TAIL_LINES)
+        .join(" / ")
+        .slice(0, HELPER_LOG_TAIL_MAX_CHARS);
+    } catch {
+      return "";
+    }
   }
 
   /**
@@ -435,10 +542,9 @@ export class UpdateManager {
    *   sleep 3 && docker compose up -d --force-recreate <service>
    *
    * --force-recreate is critical: without it, compose sees no diff (image
-   * unchanged, env unchanged) and skips the restart entirely. Sowel would
-   * keep running with stale env, the UI would stay on "Update in progress"
-   * forever (the `updating` flag is intentionally never reset here since
-   * we expect to be killed by the helper).
+   * unchanged, env unchanged) and skips the restart entirely — Sowel would
+   * keep running with stale env. The helper exiting without having restarted
+   * us is caught by `watchHelper`, which releases `updating` and reports why.
    */
   async restartViaHelper(): Promise<void> {
     if (this.updating) {
@@ -481,8 +587,9 @@ export class UpdateManager {
       this.updating = false;
       throw err;
     }
-    // NOTE: we do NOT reset `this.updating = false` here — the helper will
-    // stop us soon, so leaving the flag set prevents duplicate triggers.
+    // NOTE: `this.updating` stays set on purpose — the helper is about to stop
+    // us, and holding the flag keeps a second trigger out in the meantime. If
+    // the helper dies instead of swapping us, `watchHelper` releases it.
   }
 
   private emitProgress(step: string, message: string): void {
