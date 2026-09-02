@@ -574,12 +574,32 @@ describe("UpdateManager — helper watchdog", () => {
     expect(errors).toHaveLength(0);
   });
 
+  it("reports without the tail when the daemon never hands the logs over", async () => {
+    // A hung wait() is usually a hung daemon, and the same daemon serves the
+    // logs. Waiting on it forever here would pin the flag three lines after the
+    // watchdog released it.
+    const helper = {
+      wait: vi.fn(async () => ({ StatusCode: 1 })),
+      logs: vi.fn(() => new Promise<never>(() => {})),
+    };
+    internals.updating = true;
+    internals.watchHelper(helper, "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(errors[0]).toContain("code 1");
+  });
+
   it("does not fire the watchdog once the helper has exited", async () => {
     internals.updating = true;
     internals.watchHelper(makeHelperStub({ statusCode: 1 }), "sowel-updater", "update");
 
     await vi.advanceTimersByTimeAsync(0);
     expect(errors).toHaveLength(1);
+
+    // The watchdog timer is cleared, not merely outvoted by the emit guard.
+    expect(vi.getTimerCount()).toBe(0);
 
     await vi.advanceTimersByTimeAsync(WATCHDOG_MS * 2);
     expect(errors).toHaveLength(1);
@@ -599,44 +619,88 @@ describe("UpdateManager — leftover helper", () => {
     internals = manager as unknown as ManagerInternals;
   });
 
-  function dockerWith(container: unknown) {
-    return { getContainer: vi.fn(() => container) };
+  const ABSENT = Symbol("absent");
+
+  /** State of one helper container, or ABSENT when there is none. */
+  type HelperState = typeof ABSENT | { Running: boolean; StartedAt?: string };
+
+  function dockerWith(states: Record<string, HelperState>) {
+    const removals: string[] = [];
+    const docker = {
+      getContainer: (name: string) => ({
+        inspect: async () => {
+          const state = states[name] ?? ABSENT;
+          if (state === ABSENT) throw new Error("no such container");
+          return { State: state };
+        },
+        remove: async () => {
+          removals.push(name);
+        },
+      }),
+    };
+    return { docker, removals };
   }
 
+  const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+
   it("refuses to force-remove a helper that is still running", async () => {
-    const remove = vi.fn();
-    const docker = dockerWith({
-      inspect: vi.fn(async () => ({ State: { Running: true } })),
-      remove,
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: true, StartedAt: minutesAgo(2) },
     });
 
     await expect(internals.removeLeftoverHelper(docker, "sowel-updater")).rejects.toThrow(
       /still running/,
     );
-    expect(remove).not.toHaveBeenCalled();
+    expect(removals).toEqual([]);
   });
 
-  it("removes the container a previous run left behind", async () => {
-    const remove = vi.fn(async () => undefined);
-    const docker = dockerWith({
-      inspect: vi.fn(async () => ({ State: { Running: false } })),
-      remove,
+  // An updater still swapping and a restarter spawned beside it would race for
+  // the same compose project, which is the same damage by another route.
+  it("refuses when the helper still running is the other one", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: true, StartedAt: minutesAgo(2) },
+    });
+
+    await expect(internals.removeLeftoverHelper(docker, "sowel-restarter")).rejects.toThrow(
+      /sowel-updater/,
+    );
+    expect(removals).toEqual([]);
+  });
+
+  // Otherwise a `docker restart sowel` would leave an orphan blocking every
+  // future in-app update until someone removed it by hand.
+  it("clears a runner older than the watchdog window", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: true, StartedAt: minutesAgo(30) },
     });
 
     await internals.removeLeftoverHelper(docker, "sowel-updater");
-    expect(remove).toHaveBeenCalledWith({ force: true });
+    expect(removals).toEqual(["sowel-updater"]);
+  });
+
+  it("removes the container a previous run left behind", async () => {
+    const { docker, removals } = dockerWith({ "sowel-updater": { Running: false } });
+
+    await internals.removeLeftoverHelper(docker, "sowel-updater");
+    expect(removals).toEqual(["sowel-updater"]);
+  });
+
+  // A stopped helper under the other name blocks nothing, and its logs may be
+  // the only record of what went wrong.
+  it("leaves a stopped helper under the other name alone", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: false },
+      "sowel-restarter": { Running: false },
+    });
+
+    await internals.removeLeftoverHelper(docker, "sowel-restarter");
+    expect(removals).toEqual(["sowel-restarter"]);
   });
 
   it("is a no-op when no helper is there", async () => {
-    const remove = vi.fn();
-    const docker = dockerWith({
-      inspect: vi.fn(async () => {
-        throw new Error("no such container");
-      }),
-      remove,
-    });
+    const { docker, removals } = dockerWith({});
 
     await expect(internals.removeLeftoverHelper(docker, "sowel-updater")).resolves.toBeUndefined();
-    expect(remove).not.toHaveBeenCalled();
+    expect(removals).toEqual([]);
   });
 });

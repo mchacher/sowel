@@ -406,9 +406,12 @@ Recovery: fix the cause and click Update again. There is nothing to clean up —
 the next attempt removes the leftover helper itself. The one case it refuses is
 a helper from the previous attempt that is **still running**: removing it could
 cut a `docker compose up -d` in half, so the update stops with
-`Helper "sowel-updater" from a previous attempt is still running`. Wait for it,
-or, once you have read its logs and know it is stuck, `docker rm -f
-sowel-updater`.
+`Helper "sowel-updater" from a previous attempt is still running`. Either helper
+counts, an updater blocks a restart and the reverse, since both drive the same
+compose project. Wait for it, or remove it by hand once its logs show it is
+stuck (`docker rm -f sowel-updater`). Past the fifteen-minute window the next
+attempt clears it itself, so a helper orphaned by a container restart does not
+block updates forever.
 
 ```bash
 cd /opt/sowel

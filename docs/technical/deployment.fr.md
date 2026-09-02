@@ -406,8 +406,12 @@ nettoyer, la tentative suivante supprime elle-même le helper resté en place. L
 seul cas qu'elle refuse est un helper de la tentative précédente **encore en
 cours** : le supprimer couperait un `docker compose up -d` en deux, donc la mise
 à jour s'arrête sur `Helper "sowel-updater" from a previous attempt is still
-running`. Attendez-le, ou, une fois ses logs lus et le blocage confirmé,
-`docker rm -f sowel-updater`.
+running`. Les deux helpers comptent, un updater bloque un restart et
+réciproquement, puisqu'ils pilotent le même projet compose. Attendez-le, ou
+supprimez-le à la main une fois ses logs lus (`docker rm -f sowel-updater`).
+Passé la fenêtre de quinze minutes, la tentative suivante le supprime d'elle-même :
+un helper orphelin laissé par un redémarrage de conteneur ne bloque pas les
+mises à jour indéfiniment.
 
 ```bash
 cd /opt/sowel
