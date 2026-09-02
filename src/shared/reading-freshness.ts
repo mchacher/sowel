@@ -138,8 +138,48 @@ export function isReadingCurrent(
   return now - at <= budgetMs;
 }
 
-/** Why a power reading may or may not be drawn as a live measurement. */
-export type ReadingVerdict = "current" | "offline" | "stale" | "missing";
+/**
+ * How long a power reading may keep ARRIVING with an unchanged full-precision
+ * value before it stops being a measurement and becomes a stuck source.
+ *
+ * This is the other half of the question, and until #881 nothing asked it. A
+ * source that republishes a cached value forever satisfies every timestamp
+ * check ever written: `lastUpdated` is a second old, the equipment is online,
+ * and the figure on screen is fiction. The only witness is the value itself,
+ * and it has to be read at full precision — the Live page rounds watts to the
+ * nearest 5 W below 1 kW and to 0.1 kW above, so a reader watching the screen
+ * cannot tell a stuck 2.4 kW from a live one swinging by 49 W.
+ *
+ * An hour, and deliberately far longer than the silence budget, because the
+ * premise that a live measurement never repeats exactly has exceptions and
+ * they are not rare. A string inverter clipping at its AC cap publishes the
+ * same figure for as long as the sun holds; a meter quantising to whole watts
+ * on a flat load can do the same. Ten minutes would have put a permanent
+ * banner over exactly those installations, which is the failure this whole
+ * issue is about, only pointed the other way. An hour of an identical
+ * full-precision reading survives clipping plateaus and still catches a source
+ * that stopped measuring long before anyone reads the figure as a day's
+ * production.
+ *
+ * A known and accepted gap: `last_changed` only advances on a distinct value,
+ * so a meter coming back from an outage LONGER than this window, whose first
+ * recovered reading happens to be byte-identical to its last one, is called
+ * stuck for one cycle. Closing that needs a count of arrivals since the last
+ * change, which no payload carries today; the conjunction is rare enough to
+ * live with (review of the first draft).
+ */
+export const FROZEN_READING_MS = 60 * 60 * 1000;
+
+/**
+ * Why a power reading may or may not be drawn as a live measurement.
+ *
+ * `stale` and `frozen` are two different failures and read as two different
+ * sentences: `stale` is silence (nothing arrived), `frozen` is a source still
+ * talking but no longer measuring. Only callers that pass `lastChanged` can
+ * receive `frozen`, so a surface that has not been taught the difference never
+ * sees a verdict it would mishandle.
+ */
+export type ReadingVerdict = "current" | "offline" | "stale" | "frozen" | "missing";
 
 /**
  * The one classification both surfaces ask for (#832).
@@ -170,15 +210,64 @@ export function classifyPowerReading(opts: {
    * outdated most of the time (#839). Defaults to `freshnessBudgetFor(type)`.
    */
   budgetMs?: number;
+  /**
+   * When the binding's value last actually MOVED, compared at full precision
+   * (`last_changed` in SQLite, `lastChanged` on the API payload — both written
+   * from the serialized value, never from a rounded or formatted one).
+   *
+   * Opt-in: omit it and the classifier behaves exactly as before. Pass it and
+   * a source that keeps talking without measuring earns `frozen` (#881).
+   */
+  lastChanged?: string | null;
+  /** Budget for the `frozen` check. Defaults to `FROZEN_READING_MS`. */
+  frozenAfterMs?: number;
 }): ReadingVerdict {
   if (opts.status === "offline") return "offline";
   if (typeof opts.value !== "number") return "missing";
-  return isReadingCurrent(
-    opts.lastUpdated,
-    opts.equipmentType,
-    opts.now ?? Date.now(),
-    opts.budgetMs ?? freshnessBudgetFor(opts.equipmentType),
-  )
-    ? "current"
-    : "stale";
+  const now = opts.now ?? Date.now();
+  if (
+    !isReadingCurrent(
+      opts.lastUpdated,
+      opts.equipmentType,
+      now,
+      opts.budgetMs ?? freshnessBudgetFor(opts.equipmentType),
+    )
+  ) {
+    // Silence outranks a stuck value: when nothing has arrived, the value not
+    // moving is a consequence, not a second fact to report.
+    return "stale";
+  }
+  if (
+    opts.lastChanged !== undefined &&
+    isFrozenReading(opts.value, opts.lastChanged, now, opts.frozenAfterMs)
+  ) {
+    return "frozen";
+  }
+  return "current";
+}
+
+/**
+ * A reading still arriving, whose full-precision value has not moved for long
+ * enough that the source cannot credibly still be measuring.
+ *
+ * Exactly zero is exempt, and that exemption is the whole reason this is a
+ * separate function rather than a subtraction. Zero is the one value a healthy
+ * meter genuinely holds for hours: a production meter at night, a submeter on
+ * an appliance nobody switched on. A stuck zero and a true zero are
+ * indistinguishable from the value alone, so they are left to the silence
+ * check, which is what caught the #744 water heater anyway (its readings had
+ * stopped arriving thirteen minutes earlier — that was silence, not a stuck
+ * value).
+ */
+function isFrozenReading(
+  value: number,
+  lastChanged: string | null | undefined,
+  now: number,
+  frozenAfterMs: number = FROZEN_READING_MS,
+): boolean {
+  if (value === 0) return false;
+  const at = parseReadingTime(lastChanged);
+  // No parseable timestamp is no evidence, same reading as `isReadingCurrent`.
+  if (at === null) return false;
+  return now - at > frozenAfterMs;
 }

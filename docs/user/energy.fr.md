@@ -99,15 +99,25 @@ Le diagramme montre trois cases (Réseau, Consommation, Production) avec des fl�
 
 Les cases sont masquées quand l'équipement correspondant n'est pas configuré : sans compteur de production, seules Réseau et Consommation sont affichées.
 
-Un bandeau apparaît au-dessus du diagramme quand un compteur cesse de rapporter, une ligne par source
-et chacune avec son propre âge : « Production : mesure figée depuis 3 min » signifie que le chiffre de
-production juste en dessous a trois minutes, pendant que celui du réseau reste vivant. Un compteur dont
-l'appareil a quitté le réseau affiche « plus de connexion depuis » à la place. Seules les mesures de
-puissance dessinées par le diagramme sont surveillées : un compteur simplement en retard sur une
-tension ou un index d'énergie ne déclenche rien ici.
+Un bandeau apparaît au-dessus du diagramme quand une mesure ne peut plus être crue, une ligne par
+source et chacune avec son propre âge. Il dit l'une de ces trois choses :
 
-Les compteurs qui publient à la variation se taisent dès que leur mesure est stable : un bandeau bref
-sur un plateau est normal. C'est un bandeau qui s'installe qui mérite une enquête.
+- **« aucune mesure reçue depuis 12 min »** : plus rien n'arrive de ce compteur. La fenêtre est de
+  dix minutes, soit le double de la cadence la plus lente parmi les sources supportées, si bien
+  qu'un compteur interrogé toutes les cinq minutes ne déclenche jamais ce bandeau tant qu'il
+  fonctionne.
+- **« mesure figée sur la même valeur depuis 3 h »** : les mesures continuent d'arriver, mais la
+  valeur qu'elles portent a cessé de bouger. C'est une source qui parle encore sans mesurer, et
+  aucun horodatage ne peut le révéler. Sowel compare la valeur telle qu'elle est stockée, en pleine
+  précision, jamais le chiffre arrondi dessiné sur le diagramme : une production affichée à 2,4 kW
+  peut varier de 49 W sans que l'affichage ne bouge. Deux cas sont laissés tranquilles : une mesure
+  exactement nulle, qu'un compteur de production tient réellement toute la nuit, et tout ce qui dure
+  moins d'une heure, pour qu'un onduleur assis sur son plateau d'écrêtage un midi clair ne dise
+  rien.
+- **« plus de connexion depuis 20 min »** : l'appareil du compteur a quitté le réseau.
+
+Seules les mesures de puissance dessinées par le diagramme sont surveillées : un compteur simplement
+en retard sur une tension ou un index d'énergie ne déclenche rien ici.
 
 ### Vue Consommation
 
