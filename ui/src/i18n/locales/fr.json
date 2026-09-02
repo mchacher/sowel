@@ -1244,6 +1244,7 @@
   "plugins.recipes": "Recettes",
   "plugins.recipe_badge": "Recette",
   "plugins.update": "Mettre à jour",
+  "plugins.actionFailed": "L'action a échoué.",
   "plugins.updating": "Mise à jour...",
   "plugins.updateAvailable": "disponible",
   "plugins.updatesAvailable_one": "{{count}} mise à jour plugin disponible",

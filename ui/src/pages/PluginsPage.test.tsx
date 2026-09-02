@@ -163,6 +163,41 @@ describe("PluginsPage (#749)", () => {
     expect(modal?.parentElement).toBe(document.body);
   });
 
+  // A server refusal used to be caught and dropped, so the button spun and the
+  // row came back untouched. Renaming a personal package's GitHub repo puts a
+  // permanent "update available" on the old id whose update can never succeed —
+  // that is the shape the silence hid.
+  it("shows why the server refused an update", async () => {
+    vi.mocked(api.getPlugins).mockResolvedValue([
+      installed({ latestVersion: "2.5.0", source: "personal" }),
+    ]);
+    vi.mocked(api.updatePlugin).mockRejectedValue(
+      new Error('Personal source "adn-dev-adrien/sowel-recipe-delivery-gate" has been removed'),
+    );
+    render(<PluginsPage />);
+
+    await userEvent.click(await screen.findByTitle("Open details for Zigbee2MQTT"));
+    await userEvent.click(screen.getByRole("button", { name: "Update to 2.5.0" }));
+
+    const alert = await screen.findAllByRole("alert");
+    expect(alert.some((el) => /has been removed/.test(el.textContent ?? ""))).toBe(true);
+  });
+
+  it("shows why the server refused an uninstall", async () => {
+    vi.mocked(api.getPlugins).mockResolvedValue([installed()]);
+    vi.mocked(api.uninstallPlugin).mockRejectedValue(new Error("Package is not installed"));
+    render(<PluginsPage />);
+
+    await userEvent.click(await screen.findByTitle("Open details for Zigbee2MQTT"));
+    const sheet = within(screen.getByRole("dialog"));
+    // Two-step confirm: arm, then commit.
+    await userEvent.click(sheet.getByRole("button", { name: "Uninstall" }));
+    await userEvent.click(sheet.getByRole("button", { name: "Stop and uninstall?" }));
+
+    const alert = await screen.findAllByRole("alert");
+    expect(alert.some((el) => /not installed/.test(el.textContent ?? ""))).toBe(true);
+  });
+
   it("offers a single bulk update when several packages are behind", async () => {
     vi.mocked(api.getPlugins).mockResolvedValue([
       installed({ latestVersion: "2.5.0" }),

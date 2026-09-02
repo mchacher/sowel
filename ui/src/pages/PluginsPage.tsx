@@ -447,6 +447,8 @@ function PluginRow({
   const { t } = useTranslation();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmUninstall, setConfirmUninstall] = useState(false);
+  /** Last server refusal on this row — rendered under it, see below. */
+  const [actionError, setActionError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmPersonalUpdate, setConfirmPersonalUpdate] = useState<PersonalConfirmInfo | null>(
     null,
@@ -462,6 +464,7 @@ function PluginRow({
   const doUpdate = async (opts: { confirmed?: boolean; expectedSha256?: string } = {}) => {
     setActionLoading("update");
     setConfirmUninstall(false);
+    setActionError(null);
     try {
       await updatePlugin(plugin.manifest.id, opts);
       setConfirmPersonalUpdate(null);
@@ -477,8 +480,12 @@ function PluginRow({
           version: err.version,
           sha256: err.sha256,
         });
+      } else {
+        // Everything else used to be dropped right here, which is how a
+        // renamed personal source ("Personal source ... has been removed")
+        // became a button that spins and then does nothing at all.
+        setActionError(err instanceof Error ? err.message : t("plugins.actionFailed"));
       }
-      // other errors are surfaced through default fetch error handling
     } finally {
       setActionLoading(null);
     }
@@ -496,6 +503,7 @@ function PluginRow({
     const action = plugin.enabled ? "disable" : "enable";
     setActionLoading(action);
     setConfirmUninstall(false);
+    setActionError(null);
     try {
       if (plugin.enabled) {
         await disablePlugin(plugin.manifest.id);
@@ -503,8 +511,8 @@ function PluginRow({
         await enablePlugin(plugin.manifest.id);
       }
       onRefresh();
-    } catch {
-      // ignore
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t("plugins.actionFailed"));
     } finally {
       setActionLoading(null);
     }
@@ -517,11 +525,12 @@ function PluginRow({
       return;
     }
     setActionLoading("uninstall");
+    setActionError(null);
     try {
       await uninstallPlugin(plugin.manifest.id);
       onRefresh();
-    } catch {
-      // ignore
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t("plugins.actionFailed"));
     } finally {
       setActionLoading(null);
       setConfirmUninstall(false);
@@ -537,7 +546,7 @@ function PluginRow({
 
   return (
     <div
-      className={`flex items-center bg-surface border border-border rounded-[10px] ${
+      className={`flex flex-wrap items-center bg-surface border border-border rounded-[10px] ${
         plugin.enabled ? "" : "opacity-70"
       }`}
     >
@@ -633,6 +642,14 @@ function PluginRow({
         <ChevronRight size={16} strokeWidth={1.5} className="text-text-tertiary shrink-0" />
       </div>
 
+      {/* A refused action used to leave the row exactly as it was, which reads
+          as "nothing happened" rather than "the server said no". */}
+      {actionError && (
+        <p role="alert" className="basis-full px-4 pb-3 -mt-1 text-[12px] text-error break-words">
+          {actionError}
+        </p>
+      )}
+
       <PluginDetailSheet
         open={sheetOpen}
         onClose={closeSheet}
@@ -649,6 +666,7 @@ function PluginRow({
         deviceCount={isRecipe ? undefined : plugin.deviceCount}
         offlineDeviceCount={isRecipe ? undefined : plugin.offlineDeviceCount}
         actionLoading={actionLoading}
+        actionError={actionError}
         confirmUninstall={confirmUninstall}
         onUpdate={() => handleUpdate()}
         onToggle={() => void handleToggle()}
@@ -751,6 +769,7 @@ function StoreRow({
 }) {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
   const [confirmCommunity, setConfirmCommunity] = useState<{ owner: string } | null>(null);
   const [confirmPersonal, setConfirmPersonal] = useState<PersonalConfirmInfo | null>(null);
   const compatible = manifest.compatible !== false;
@@ -762,6 +781,7 @@ function StoreRow({
 
   const doInstall = async (confirmed: boolean, expectedSha256?: string) => {
     setInstalling(true);
+    setInstallError(null);
     try {
       await installPlugin(manifest.repo ?? manifest.id, confirmed, expectedSha256);
       setConfirmCommunity(null);
@@ -778,8 +798,11 @@ function StoreRow({
           version: err.version,
           sha256: err.sha256,
         });
+      } else {
+        // A refused install (checksum mismatch, incompatible sowelVersion, an
+        // unreachable release) was silent here too.
+        setInstallError(err instanceof Error ? err.message : t("plugins.actionFailed"));
       }
-      // other errors are surfaced through default fetch error handling
     } finally {
       setInstalling(false);
     }
@@ -788,7 +811,7 @@ function StoreRow({
   const handleInstall = () => doInstall(false);
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] sm:flex-row sm:flex-wrap sm:items-center">
       <div className="flex items-start gap-3 min-w-0 flex-1">
         {/* Icon */}
         <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
@@ -912,6 +935,12 @@ function StoreRow({
             </div>
           </div>
         </div>
+      )}
+
+      {installError && (
+        <p role="alert" className="basis-full text-[12px] text-error break-words">
+          {installError}
+        </p>
       )}
     </div>
   );

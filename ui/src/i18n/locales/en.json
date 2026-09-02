@@ -1244,6 +1244,7 @@
   "plugins.recipes": "Recipes",
   "plugins.recipe_badge": "Recipe",
   "plugins.update": "Update",
+  "plugins.actionFailed": "The action failed.",
   "plugins.updating": "Updating...",
   "plugins.updateAvailable": "available",
   "plugins.updatesAvailable_one": "{{count}} plugin update available",

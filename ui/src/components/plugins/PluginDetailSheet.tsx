@@ -36,6 +36,9 @@ export interface PluginDetailSheetProps {
   offlineDeviceCount?: number;
   /** "update" | "enable" | "disable" | "uninstall" while an action is in flight. */
   actionLoading: string | null;
+  /** Why the last action was refused. The uninstall button lives here only, so
+   *  without this the refusal would have nowhere to show while the sheet is open. */
+  actionError: string | null;
   confirmUninstall: boolean;
   onUpdate: () => void;
   onToggle: () => void;
@@ -171,6 +174,7 @@ function DetailBody({
   deviceCount,
   offlineDeviceCount,
   actionLoading,
+  actionError,
   confirmUninstall,
   onUpdate,
   onToggle,
@@ -219,6 +223,15 @@ function DetailBody({
           />
         )}
       </dl>
+
+      {actionError && (
+        <p
+          role="alert"
+          className="px-3 py-2 text-[12px] text-error bg-error/10 rounded-[8px] break-words"
+        >
+          {actionError}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         {latestVersion && (
