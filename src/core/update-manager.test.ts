@@ -547,7 +547,9 @@ describe("UpdateManager — helper watchdog", () => {
   function hangingHelper() {
     return {
       wait: vi.fn(() => new Promise<never>(() => {})),
-      logs: vi.fn(async () => frame(1, "[sowel-updater] pulling ghcr.io/mchacher/sowel:1.66.0...\n")),
+      logs: vi.fn(async () =>
+        frame(1, "[sowel-updater] pulling ghcr.io/mchacher/sowel:1.66.0...\n"),
+      ),
     };
   }
 
