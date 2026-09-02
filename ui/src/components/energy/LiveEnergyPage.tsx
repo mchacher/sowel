@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Clock, Waypoints, WifiOff } from "lucide-react";
+import { Clock, Snowflake, Waypoints, WifiOff } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { GridPylonIcon } from "../icons/GridPylonIcon";
@@ -156,7 +156,9 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
       ? when === ""
         ? "energy.live.sourceOfflineUnknown"
         : "energy.live.sourceOffline"
-      : "energy.live.sourceStale";
+      : entry.mode === "frozen"
+        ? "energy.live.sourceFrozen"
+        : "energy.live.sourceStale";
   return (
     <div
       className={`mb-4 flex items-center gap-2 rounded-[10px] border px-4 py-3 text-[13px] ${
@@ -168,6 +170,8 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
     >
       {entry.mode === "offline" ? (
         <WifiOff size={16} strokeWidth={1.75} />
+      ) : entry.mode === "frozen" ? (
+        <Snowflake size={16} strokeWidth={1.75} />
       ) : (
         <Clock size={16} strokeWidth={1.75} />
       )}

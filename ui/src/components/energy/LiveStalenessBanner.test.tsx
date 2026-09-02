@@ -2,6 +2,10 @@
  * Issue #854 — the banner above the live flow diagram must say WHICH meter is
  * frozen, and must keep quiet about readings this page never draws.
  *
+ * Issue #881 — and it must say the right thing about it. Silence and a stuck
+ * value are two different failures, judged on two different signals: the
+ * arrival time, and the value itself compared at full precision.
+ *
  * Rendered through the whole page rather than against the helper, because the
  * reported defect is what the sentence says to a reader: the helper can be
  * right while the page prints the wrong label, or an i18n key that no longer
@@ -30,6 +34,8 @@ function meter(
     offlineSince?: string;
     /** Force `lastUpdated`, including to null: a meter that never reported. */
     lastUpdated?: string | null;
+    /** Age of the last full-precision value change. Defaults to the reading's age. */
+    changedAgeMs?: number;
     extra?: Partial<DataBindingWithValue>[];
   } = {},
 ): EquipmentWithDetails {
@@ -51,6 +57,7 @@ function meter(
         type: "number",
         value: power,
         lastUpdated: opts.lastUpdated !== undefined ? opts.lastUpdated : ago(opts.ageMs ?? 20_000),
+        lastChanged: ago(opts.changedAgeMs ?? opts.ageMs ?? 20_000),
         stale: false,
       },
       ...(opts.extra ?? []).map((b, i) => ({
@@ -80,24 +87,24 @@ describe("Live energy staleness banner (#854)", () => {
   afterEach(() => vi.useRealTimers());
 
   it("names the production meter and leaves the live grid figure alone", () => {
-    // The reported screenshot: production three minutes behind, grid updating.
+    // The reported screenshot: production silent, grid updating.
     seed([
       meter("Grid", "main_energy_meter", 0),
-      meter("Solar", "energy_production_meter", 3000, { ageMs: 3 * 60_000 }),
+      meter("Solar", "energy_production_meter", 3000, { ageMs: 12 * 60_000 }),
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    expect(bannerText()).toEqual(["Production: reading frozen for 3 min"]);
+    expect(bannerText()).toEqual(["Production: no reading received for 12 min"]);
   });
 
   it("names the grid meter when it is the frozen one", () => {
     seed([
-      meter("Grid", "main_energy_meter", 500, { ageMs: 5 * 60_000 }),
+      meter("Grid", "main_energy_meter", 500, { ageMs: 15 * 60_000 }),
       meter("Solar", "energy_production_meter", 3000),
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
-    expect(bannerText()).toEqual(["Grid: reading frozen for 5 min"]);
+    expect(bannerText()).toEqual(["Grid: no reading received for 15 min"]);
   });
 
   it("says nothing when both readings are current", () => {
@@ -146,19 +153,19 @@ describe("Live energy staleness banner (#854)", () => {
 
   it("gives a disconnected meter and a late one one line each, with their own ages", () => {
     // Folded into a single sentence, the grid's 20 minutes was lent to a
-    // production figure 3 minutes old (review of the first draft).
+    // production figure 12 minutes old (review of the first draft).
     seed([
       meter("Grid", "main_energy_meter", 0, {
         status: "offline",
         offlineSince: ago(20 * 60_000),
       }),
-      meter("Solar", "energy_production_meter", 3000, { ageMs: 3 * 60_000 }),
+      meter("Solar", "energy_production_meter", 3000, { ageMs: 12 * 60_000 }),
     ]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
     expect(bannerText()).toEqual([
       "Grid: no connection for 20 min",
-      "Production: reading frozen for 3 min",
+      "Production: no reading received for 12 min",
     ]);
   });
 
@@ -185,12 +192,39 @@ describe("Live energy staleness banner (#854)", () => {
     expect(banners()).toEqual([]);
 
     act(() => {
-      vi.advanceTimersByTime(4 * 60_000);
+      vi.advanceTimersByTime(12 * 60_000);
     });
 
     expect(bannerText()).toEqual([
-      "Grid: reading frozen for 4 min",
-      "Production: reading frozen for 4 min",
+      "Grid: no reading received for 12 min",
+      "Production: no reading received for 12 min",
+    ]);
+  });
+
+  it("keeps quiet through a 300 s reporting cadence (#881)", () => {
+    // Three minutes into a five-minute cadence. The old two-minute window put
+    // this banner on screen for three minutes out of every five, for years, on
+    // a meter that was working.
+    seed([
+      meter("Grid", "main_energy_meter", 500, { ageMs: 3 * 60_000 }),
+      meter("Solar", "energy_production_meter", 3000, { ageMs: 3 * 60_000 }),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+
+    expect(banners()).toEqual([]);
+  });
+
+  it("says a still-reporting meter is stuck, not late (#881)", () => {
+    // Readings arriving twenty seconds ago, carrying watts that have not moved
+    // by a single decimal in twenty minutes. No clock can see this.
+    seed([
+      meter("Grid", "main_energy_meter", 500),
+      meter("Solar", "energy_production_meter", 3000, { changedAgeMs: 20 * 60_000 }),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+
+    expect(bannerText()).toEqual([
+      "Production: reading stuck on the same value for 20 min",
     ]);
   });
 });

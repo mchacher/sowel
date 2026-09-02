@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   classifyPowerReading,
   freshnessBudgetFor,
+  FROZEN_READING_MS,
   isReadingCurrent,
   parseReadingTime,
   SUBMETER_FRESHNESS_MS,
@@ -112,6 +113,73 @@ describe("classifyPowerReading", () => {
     // current, so it counts.
     expect(
       classifyPowerReading({ ...base, status: "degraded", value: 800, lastUpdated: ago(30_000) }),
+    ).toBe("current");
+  });
+
+  it("ignores the value's own age until a caller asks for it (#881)", () => {
+    // Opt-in: a surface that has not been taught the difference between
+    // silence and a stuck value never receives a verdict it would mishandle.
+    expect(
+      classifyPowerReading({
+        ...base,
+        status: "online",
+        value: 560,
+        lastUpdated: ago(30_000),
+      }),
+    ).toBe("current");
+  });
+
+  it("calls a still-arriving reading frozen once its value stops moving (#881)", () => {
+    // The failure no timestamp can see: messages thirty seconds old, carrying
+    // watts identical to the full precision for twenty minutes.
+    expect(
+      classifyPowerReading({
+        ...base,
+        status: "online",
+        value: 560,
+        lastUpdated: ago(30_000),
+        lastChanged: ago(FROZEN_READING_MS + 60_000),
+      }),
+    ).toBe("frozen");
+  });
+
+  it("leaves an unchanging zero alone", () => {
+    // A production meter at night holds exactly 0 W for hours, and so does a
+    // stuck one. The value cannot tell them apart, so it does not try.
+    expect(
+      classifyPowerReading({
+        ...base,
+        status: "online",
+        value: 0,
+        lastUpdated: ago(30_000),
+        lastChanged: ago(FROZEN_READING_MS * 10),
+      }),
+    ).toBe("current");
+  });
+
+  it("prefers silence to a stuck value when both apply", () => {
+    // Nothing has arrived; the value not moving is a consequence of that, not
+    // a second fact worth its own sentence.
+    expect(
+      classifyPowerReading({
+        ...base,
+        status: "online",
+        value: 560,
+        lastUpdated: ago(SUBMETER_FRESHNESS_SLOW_MS + 60_000),
+        lastChanged: ago(FROZEN_READING_MS * 3),
+      }),
+    ).toBe("stale");
+  });
+
+  it("treats an unparseable change timestamp as no evidence", () => {
+    expect(
+      classifyPowerReading({
+        ...base,
+        status: "online",
+        value: 560,
+        lastUpdated: ago(30_000),
+        lastChanged: null,
+      }),
     ).toBe("current");
   });
 
