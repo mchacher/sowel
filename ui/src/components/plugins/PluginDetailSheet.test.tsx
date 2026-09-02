@@ -19,6 +19,7 @@ function props(over: Partial<PluginDetailSheetProps> = {}): PluginDetailSheetPro
     source: "registry",
     enabled: true,
     actionLoading: null,
+    actionError: null,
     confirmUninstall: false,
     onUpdate: vi.fn(),
     onToggle: vi.fn(),
@@ -145,5 +146,24 @@ describe("PluginDetailSheet (#749)", () => {
     expect(baseElement.querySelector("aside")).toBeNull();
     expect(screen.getByText("Solar water heater")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Update to 0.2.0" })).toBeTruthy();
+  });
+});
+
+describe("action errors (#872)", () => {
+  it("shows the server's refusal, so a dead-end update stops looking like a no-op", () => {
+    render(
+      <PluginDetailSheet
+        {...props({
+          actionError: 'Personal source "adn-dev-adrien/sowel-recipe-delivery-gate" has been removed',
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("has been removed");
+  });
+
+  it("renders no alert when the last action succeeded", () => {
+    render(<PluginDetailSheet {...props()} />);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

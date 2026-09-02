@@ -36,6 +36,19 @@ export interface UpdateAvailableInfo {
   releaseUrl: string;
 }
 
+/**
+ * A self-update or a restart that stopped without swapping the container.
+ *
+ * `message` is free-form server text, so the WebSocket layer replaces it with
+ * "[redacted]" for a non-admin client (see FREE_FORM_SYSTEM_FIELDS in
+ * src/api/websocket.ts). `operation` survives that, which is why the copy hangs
+ * off it and not off the message.
+ */
+export interface UpdateFailure {
+  message: string;
+  operation: "update" | "restart";
+}
+
 interface WebSocketState {
   status: ConnectionStatus;
   integrationStatuses: Record<string, string>;
@@ -44,9 +57,12 @@ interface WebSocketState {
   batteryAlerts: BatteryAlert[];
   updateAvailable: UpdateAvailableInfo | null;
   updateInProgress: boolean;
+  /** Why the last self-update or restart stopped, when it stopped without swapping. */
+  updateFailure: UpdateFailure | null;
   restartRequired: string | null; // reason, e.g. "home_location_changed"
   setUpdateAvailable: (info: UpdateAvailableInfo | null) => void;
   setUpdateInProgress: (inProgress: boolean) => void;
+  setUpdateFailure: (failure: UpdateFailure | null) => void;
   setRestartRequired: (reason: string | null) => void;
   connect: () => void;
   disconnect: () => void;
@@ -399,10 +415,18 @@ function handleEvent(event: EngineEvent): void {
       });
       break;
     case "system.update.progress":
-      useWebSocket.setState({ updateInProgress: true });
+      useWebSocket.setState({ updateInProgress: true, updateFailure: null });
       break;
     case "system.update.error":
-      useWebSocket.setState({ updateInProgress: false });
+      useWebSocket.setState({
+        updateInProgress: false,
+        updateFailure: {
+          message: event.error,
+          // A restart helper reports through the same event, and the two
+          // failures do not say the same thing to the user.
+          operation: event.operation === "restart" ? "restart" : "update",
+        },
+      });
       break;
     case "system.restart_required":
       useWebSocket.setState({ restartRequired: event.reason });
@@ -434,10 +458,12 @@ export const useWebSocket = create<WebSocketState>((set) => ({
   batteryAlerts: [],
   updateAvailable: null,
   updateInProgress: false,
+  updateFailure: null,
   restartRequired: null,
 
   setUpdateAvailable: (info) => set({ updateAvailable: info }),
   setUpdateInProgress: (inProgress) => set({ updateInProgress: inProgress }),
+  setUpdateFailure: (failure) => set({ updateFailure: failure }),
   setRestartRequired: (reason) => set({ restartRequired: reason }),
 
   connect: () => {

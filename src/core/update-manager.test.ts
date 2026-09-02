@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "no
 import { resolve as resolvePath } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
-import { UpdateManager, buildHelperScript } from "./update-manager.js";
+import { UpdateManager, buildHelperScript, demuxDockerLogs } from "./update-manager.js";
 import { EventBus } from "./event-bus.js";
 import { createLogger } from "./logger.js";
 import type { BackupManager } from "../backup/backup-manager.js";
@@ -366,5 +366,149 @@ describe("buildHelperScript (spec 104)", () => {
       const result = runScript(before);
       expect(result.composeAfter).toContain("image: ghcr.io/mchacher/sowel:latest");
     });
+  });
+});
+
+// ── Helper supervision ───────────────────────────────────────
+//
+// A helper that dies without restarting Sowel used to leave `updating` set for
+// the life of the process: overlay pinned in the UI, 409 on every later update
+// or restart. These cover the release path.
+
+/** Build one multiplexed `docker logs` frame, the way the daemon sends them. */
+function frame(stream: 1 | 2, text: string): Buffer {
+  const payload = Buffer.from(text, "utf-8");
+  const header = Buffer.alloc(8);
+  header[0] = stream;
+  header.writeUInt32BE(payload.length, 4);
+  return Buffer.concat([header, payload]);
+}
+
+function makeHelperStub(opts: { statusCode?: number; waitError?: Error; logs?: Buffer | Error }) {
+  return {
+    wait: vi.fn(async () => {
+      if (opts.waitError) throw opts.waitError;
+      return { StatusCode: opts.statusCode ?? 1 };
+    }),
+    logs: vi.fn(async () => {
+      if (opts.logs instanceof Error) throw opts.logs;
+      return opts.logs ?? Buffer.alloc(0);
+    }),
+  };
+}
+
+type ManagerInternals = {
+  updating: boolean;
+  watchHelper: (helper: unknown, name: string, operation: "update" | "restart") => void;
+};
+
+type UpdateErrorEvent = { error: string; operation: "update" | "restart" };
+
+/** Resolve with the first system.update.error, or null if none arrives. */
+function nextUpdateError(bus: EventBus): Promise<UpdateErrorEvent | null> {
+  return new Promise((resolve) => {
+    bus.on((event) => {
+      if (event.type === "system.update.error") {
+        resolve({ error: event.error, operation: event.operation });
+      }
+    });
+    // The watcher awaits wait() then logs(); a few macrotask turns cover both.
+    setTimeout(() => resolve(null), 50);
+  });
+}
+
+describe("demuxDockerLogs", () => {
+  it("concatenates the payloads of multiplexed frames", () => {
+    const buf = Buffer.concat([frame(1, "pulling...\n"), frame(2, "i/o timeout\n")]);
+    expect(demuxDockerLogs(buf)).toBe("pulling...\ni/o timeout\n");
+  });
+
+  it("returns a TTY (unframed) body verbatim", () => {
+    const buf = Buffer.from("plain output from a tty container\n", "utf-8");
+    expect(demuxDockerLogs(buf)).toBe("plain output from a tty container\n");
+  });
+
+  it("keeps what arrived when a tail cuts the last frame in half", () => {
+    const full = Buffer.concat([frame(1, "first\n"), frame(1, "second-truncated")]);
+    const cut = full.subarray(0, full.length - 5);
+    expect(demuxDockerLogs(cut)).toBe("first\nsecond-trun");
+  });
+
+  it("returns an empty string for an empty body", () => {
+    expect(demuxDockerLogs(Buffer.alloc(0))).toBe("");
+  });
+
+  it("does not drop a body shorter than one frame header", () => {
+    expect(demuxDockerLogs(Buffer.from("short", "utf-8"))).toBe("short");
+  });
+});
+
+describe("UpdateManager — helper supervision", () => {
+  let eventBus: EventBus;
+  let manager: UpdateManager;
+  let internals: ManagerInternals;
+
+  beforeEach(() => {
+    eventBus = new EventBus(logger);
+    manager = new UpdateManager(eventBus, makeBackupStub(), logger);
+    internals = manager as unknown as ManagerInternals;
+  });
+
+  it("releases the updating flag when the helper exits without restarting us", async () => {
+    const helper = makeHelperStub({
+      statusCode: 1,
+      logs: frame(2, "Error response from daemon: dial tcp 140.82.121.34:443: i/o timeout\n"),
+    });
+    internals.updating = true;
+
+    const errorPromise = nextUpdateError(eventBus);
+    internals.watchHelper(helper, "sowel-updater", "update");
+    const event = await errorPromise;
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(event?.error).toContain("sowel-updater");
+    expect(event?.error).toContain("code 1");
+    // The reason the admin needs is quoted from the helper's own output.
+    expect(event?.error).toContain("i/o timeout");
+    // The UI picks its wording from this, not from the message.
+    expect(event?.operation).toBe("update");
+  });
+
+  it("still releases the flag when the helper cannot be watched", async () => {
+    const helper = makeHelperStub({ waitError: new Error("socket hang up") });
+    internals.updating = true;
+
+    const errorPromise = nextUpdateError(eventBus);
+    internals.watchHelper(helper, "sowel-updater", "update");
+    const event = await errorPromise;
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(event?.error).toContain("socket hang up");
+  });
+
+  it("reports the exit even when the helper logs are unreadable", async () => {
+    const helper = makeHelperStub({ statusCode: 7, logs: new Error("no such container") });
+    internals.updating = true;
+
+    const errorPromise = nextUpdateError(eventBus);
+    internals.watchHelper(helper, "sowel-restarter", "restart");
+    const event = await errorPromise;
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(event?.error).toContain("code 7");
+    // A restart that never happened is not an update that never happened: the
+    // overlay says so, and settings the user just saved are still in place.
+    expect(event?.operation).toBe("restart");
+  });
+
+  it("stays quiet when the flag was already released by a failure on our side", async () => {
+    const helper = makeHelperStub({ statusCode: 0 });
+    internals.updating = false;
+
+    const errorPromise = nextUpdateError(eventBus);
+    internals.watchHelper(helper, "sowel-updater", "update");
+
+    expect(await errorPromise).toBeNull();
+    expect(manager.isUpdating()).toBe(false);
   });
 });

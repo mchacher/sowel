@@ -549,8 +549,23 @@ describe("system events update the store", () => {
     const ws = connect();
     ws.simulateMessage({ type: "system.update.progress" });
     expect(useWebSocket.getState().updateInProgress).toBe(true);
-    ws.simulateMessage({ type: "system.update.error" });
+    expect(useWebSocket.getState().updateFailure).toBeNull();
+    ws.simulateMessage({ type: "system.update.error", error: "pull refused", operation: "update" });
     expect(useWebSocket.getState().updateInProgress).toBe(false);
+    expect(useWebSocket.getState().updateFailure).toEqual({
+      message: "pull refused",
+      operation: "update",
+    });
+  });
+
+  it("keeps a failed restart apart from a failed update", () => {
+    const ws = connect();
+    ws.simulateMessage({
+      type: "system.update.error",
+      error: 'Helper "sowel-restarter" exited with code 1 without restarting Sowel',
+      operation: "restart",
+    });
+    expect(useWebSocket.getState().updateFailure?.operation).toBe("restart");
   });
 });
 

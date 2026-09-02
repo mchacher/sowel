@@ -387,22 +387,31 @@ Common causes:
 
 ### Self-update fails
 
-Symptoms: click "Update", overlay shows, but page never reloads. Container still on old version.
+Symptoms: you click "Update", the overlay shows, and the page never reloads.
 
-Recovery:
+The engine watches the helper container it spawned. A successful helper recreates
+Sowel, so this process dies first; if the helper exits while Sowel is still
+running, the swap did not happen. The overlay is then replaced by **Update
+failed**, quoting the helper's last output — most often a registry it could not
+reach (`dial tcp ...:443: i/o timeout`). Only an administrator sees that text:
+the WebSocket layer redacts free-form server strings for other roles, so they
+get the outcome alone. Sowel keeps serving the previous
+version, and the pre-update backup it took is still in `data/backups/`.
+
+Recovery: fix the cause and click Update again. There is nothing to clean up —
+the next attempt removes the leftover helper itself.
 
 ```bash
 cd /opt/sowel
-docker compose up -d  # recreates the current container if helper failed mid-way
-# Or manual upgrade:
-docker compose pull && docker compose up -d
+docker compose up -d                          # recreate the container if the helper died mid-swap
+docker compose pull && docker compose up -d   # or upgrade by hand
 ```
 
 Investigation:
 
-- Helper container logs are **lost** if `AutoRemove: true` (current default, spec 060)
-- Check sowel's own logs right before the helper was spawned: `Update helper spawned` is the last line before the swap
-- If sowel never came back, check `docker ps -a` to see if the container is Exited
+- `docker logs sowel-updater` — the helper container is deliberately kept after it exits (`AutoRemove: false`) for exactly this
+- Sowel's own logs: `Update helper spawned` is the last line before a successful swap, and `Helper finished without restarting Sowel` marks the failure
+- If Sowel never came back at all, `docker ps -a` shows whether its container is Exited
 
 ### Database corrupted
 
