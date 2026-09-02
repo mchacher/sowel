@@ -19,6 +19,13 @@ const HELPER_LOG_TAIL_LINES = 5;
 const HELPER_LOG_TAIL_MAX_CHARS = 400;
 
 type DockerContainer = InstanceType<typeof import("dockerode").Container>;
+/**
+ * Which helper-driven operation a failure belongs to. Both spawn a helper and
+ * both report through `system.update.error`, but "your settings were saved,
+ * only the restart failed" is not the same sentence as "no new version was
+ * installed" — the UI needs to know which one it is showing.
+ */
+type HelperOperation = "update" | "restart";
 
 /** Quote a string for safe interpolation into a shell command. */
 function shellQuote(s: string): string {
@@ -304,7 +311,7 @@ export class UpdateManager {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error({ err, targetVersion }, "Self-update failed");
-      this.eventBus.emit({ type: "system.update.error", error: message });
+      this.eventBus.emit({ type: "system.update.error", error: message, operation: "update" });
       this.updating = false;
       throw err;
     }
@@ -384,6 +391,7 @@ export class UpdateManager {
 
     await this.runHelperContainer({
       name: HELPER_NAME,
+      operation: "update",
       cmd,
       ctx,
       logContext: {
@@ -403,6 +411,7 @@ export class UpdateManager {
    */
   private async runHelperContainer(args: {
     name: string;
+    operation: HelperOperation;
     cmd: string[];
     ctx: ComposeContext;
     logContext: Record<string, unknown>;
@@ -461,7 +470,7 @@ export class UpdateManager {
 
     await helper.start();
     this.logger.info(args.logContext, args.logMessage);
-    this.watchHelper(helper, args.name);
+    this.watchHelper(helper, args.name, args.operation);
   }
 
   /**
@@ -481,7 +490,7 @@ export class UpdateManager {
    * readable only in `docker logs sowel-updater`. So we quote that tail into
    * the error the admin actually sees.
    */
-  private watchHelper(helper: DockerContainer, name: string): void {
+  private watchHelper(helper: DockerContainer, name: string, operation: HelperOperation): void {
     void (async () => {
       let outcome: string;
       try {
@@ -503,8 +512,11 @@ export class UpdateManager {
       const tail = await this.readHelperTail(helper);
       const error = tail ? `${outcome} — ${tail}` : outcome;
       this.updating = false;
-      this.logger.error({ helper: name, tail }, "Helper finished without restarting Sowel");
-      this.eventBus.emit({ type: "system.update.error", error });
+      this.logger.error(
+        { helper: name, operation, tail },
+        "Helper finished without restarting Sowel",
+      );
+      this.eventBus.emit({ type: "system.update.error", error, operation });
     })();
   }
 
@@ -568,6 +580,7 @@ export class UpdateManager {
       ];
       await this.runHelperContainer({
         name: RESTART_HELPER_NAME,
+        operation: "restart",
         cmd,
         ctx,
         logContext: {
@@ -583,7 +596,7 @@ export class UpdateManager {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error({ err }, "Restart-via-helper failed");
-      this.eventBus.emit({ type: "system.update.error", error: message });
+      this.eventBus.emit({ type: "system.update.error", error: message, operation: "restart" });
       this.updating = false;
       throw err;
     }

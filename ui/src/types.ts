@@ -780,7 +780,7 @@ export type EngineEvent =
   | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
-  | { type: "system.update.error"; error: string }
+  | { type: "system.update.error"; error: string; operation: "update" | "restart" }
   | { type: "system.restart_required"; reason: string }
   | {
       type: "equipment.order.failed";

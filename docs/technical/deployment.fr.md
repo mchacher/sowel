@@ -390,7 +390,9 @@ Le moteur surveille le conteneur helper qu'il a lancé. Un helper qui réussit
 recrée Sowel, donc ce processus meurt en premier ; si le helper se termine alors
 que Sowel tourne encore, c'est que le swap n'a pas eu lieu. L'overlay est alors
 remplacé par **Échec de la mise à jour**, citant la dernière sortie du helper —
-le plus souvent un registre injoignable (`dial tcp ...:443: i/o timeout`). Sowel
+le plus souvent un registre injoignable (`dial tcp ...:443: i/o timeout`). Seul
+un administrateur voit ce texte : la couche WebSocket masque les chaînes libres
+du serveur pour les autres rôles, qui ne voient donc que le résultat. Sowel
 continue de servir la version précédente, et le backup pré-update qu'il a pris
 est toujours dans `data/backups/`.
 

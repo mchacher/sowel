@@ -393,7 +393,9 @@ The engine watches the helper container it spawned. A successful helper recreate
 Sowel, so this process dies first; if the helper exits while Sowel is still
 running, the swap did not happen. The overlay is then replaced by **Update
 failed**, quoting the helper's last output — most often a registry it could not
-reach (`dial tcp ...:443: i/o timeout`). Sowel keeps serving the previous
+reach (`dial tcp ...:443: i/o timeout`). Only an administrator sees that text:
+the WebSocket layer redacts free-form server strings for other roles, so they
+get the outcome alone. Sowel keeps serving the previous
 version, and the pre-update backup it took is still in `data/backups/`.
 
 Recovery: fix the cause and click Update again. There is nothing to clean up —

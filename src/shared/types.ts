@@ -1470,7 +1470,7 @@ export type EngineEvent =
   // Self-update events
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
-  | { type: "system.update.error"; error: string }
+  | { type: "system.update.error"; error: string; operation: "update" | "restart" }
   // Restart required (e.g. after home location / timezone change)
   | { type: "system.restart_required"; reason: string }
   // Activity feed (spec 101)

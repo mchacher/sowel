@@ -399,14 +399,18 @@ function makeHelperStub(opts: { statusCode?: number; waitError?: Error; logs?: B
 
 type ManagerInternals = {
   updating: boolean;
-  watchHelper: (helper: unknown, name: string) => void;
+  watchHelper: (helper: unknown, name: string, operation: "update" | "restart") => void;
 };
 
+type UpdateErrorEvent = { error: string; operation: "update" | "restart" };
+
 /** Resolve with the first system.update.error, or null if none arrives. */
-function nextUpdateError(bus: EventBus): Promise<string | null> {
+function nextUpdateError(bus: EventBus): Promise<UpdateErrorEvent | null> {
   return new Promise((resolve) => {
     bus.on((event) => {
-      if (event.type === "system.update.error") resolve(event.error);
+      if (event.type === "system.update.error") {
+        resolve({ error: event.error, operation: event.operation });
+      }
     });
     // The watcher awaits wait() then logs(); a few macrotask turns cover both.
     setTimeout(() => resolve(null), 50);
@@ -458,14 +462,16 @@ describe("UpdateManager — helper supervision", () => {
     internals.updating = true;
 
     const errorPromise = nextUpdateError(eventBus);
-    internals.watchHelper(helper, "sowel-updater");
-    const error = await errorPromise;
+    internals.watchHelper(helper, "sowel-updater", "update");
+    const event = await errorPromise;
 
     expect(manager.isUpdating()).toBe(false);
-    expect(error).toContain("sowel-updater");
-    expect(error).toContain("code 1");
+    expect(event?.error).toContain("sowel-updater");
+    expect(event?.error).toContain("code 1");
     // The reason the admin needs is quoted from the helper's own output.
-    expect(error).toContain("i/o timeout");
+    expect(event?.error).toContain("i/o timeout");
+    // The UI picks its wording from this, not from the message.
+    expect(event?.operation).toBe("update");
   });
 
   it("still releases the flag when the helper cannot be watched", async () => {
@@ -473,11 +479,11 @@ describe("UpdateManager — helper supervision", () => {
     internals.updating = true;
 
     const errorPromise = nextUpdateError(eventBus);
-    internals.watchHelper(helper, "sowel-updater");
-    const error = await errorPromise;
+    internals.watchHelper(helper, "sowel-updater", "update");
+    const event = await errorPromise;
 
     expect(manager.isUpdating()).toBe(false);
-    expect(error).toContain("socket hang up");
+    expect(event?.error).toContain("socket hang up");
   });
 
   it("reports the exit even when the helper logs are unreadable", async () => {
@@ -485,11 +491,14 @@ describe("UpdateManager — helper supervision", () => {
     internals.updating = true;
 
     const errorPromise = nextUpdateError(eventBus);
-    internals.watchHelper(helper, "sowel-restarter");
-    const error = await errorPromise;
+    internals.watchHelper(helper, "sowel-restarter", "restart");
+    const event = await errorPromise;
 
     expect(manager.isUpdating()).toBe(false);
-    expect(error).toContain("code 7");
+    expect(event?.error).toContain("code 7");
+    // A restart that never happened is not an update that never happened: the
+    // overlay says so, and settings the user just saved are still in place.
+    expect(event?.operation).toBe("restart");
   });
 
   it("stays quiet when the flag was already released by a failure on our side", async () => {
@@ -497,7 +506,7 @@ describe("UpdateManager — helper supervision", () => {
     internals.updating = false;
 
     const errorPromise = nextUpdateError(eventBus);
-    internals.watchHelper(helper, "sowel-updater");
+    internals.watchHelper(helper, "sowel-updater", "update");
 
     expect(await errorPromise).toBeNull();
     expect(manager.isUpdating()).toBe(false);
