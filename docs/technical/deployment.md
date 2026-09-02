@@ -398,8 +398,17 @@ the WebSocket layer redacts free-form server strings for other roles, so they
 get the outcome alone. Sowel keeps serving the previous
 version, and the pre-update backup it took is still in `data/backups/`.
 
+A helper that hangs instead of exiting is caught too: after fifteen minutes the
+engine gives up on it, releases the update and says so. Giving up does not kill
+the helper, so if it was merely slow it may still complete the swap on its own.
+
 Recovery: fix the cause and click Update again. There is nothing to clean up —
-the next attempt removes the leftover helper itself.
+the next attempt removes the leftover helper itself. The one case it refuses is
+a helper from the previous attempt that is **still running**: removing it could
+cut a `docker compose up -d` in half, so the update stops with
+`Helper "sowel-updater" from a previous attempt is still running`. Wait for it,
+or, once you have read its logs and know it is stuck, `docker rm -f
+sowel-updater`.
 
 ```bash
 cd /opt/sowel
@@ -410,7 +419,7 @@ docker compose pull && docker compose up -d   # or upgrade by hand
 Investigation:
 
 - `docker logs sowel-updater` — the helper container is deliberately kept after it exits (`AutoRemove: false`) for exactly this
-- Sowel's own logs: `Update helper spawned` is the last line before a successful swap, and `Helper finished without restarting Sowel` marks the failure
+- Sowel's own logs: `Update helper spawned` is the last line before a successful swap. `Helper finished without restarting Sowel` marks a helper that exited, `Helper did not return within the watchdog window` one that never answered at all
 - If Sowel never came back at all, `docker ps -a` shows whether its container is Exited
 
 ### Database corrupted

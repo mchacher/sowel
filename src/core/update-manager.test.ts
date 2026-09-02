@@ -400,6 +400,7 @@ function makeHelperStub(opts: { statusCode?: number; waitError?: Error; logs?: B
 type ManagerInternals = {
   updating: boolean;
   watchHelper: (helper: unknown, name: string, operation: "update" | "restart") => void;
+  removeLeftoverHelper: (docker: unknown, name: string) => Promise<void>;
 };
 
 type UpdateErrorEvent = { error: string; operation: "update" | "restart" };
@@ -510,5 +511,132 @@ describe("UpdateManager — helper supervision", () => {
 
     expect(await errorPromise).toBeNull();
     expect(manager.isUpdating()).toBe(false);
+  });
+});
+
+// ── Watchdog (#884) ──────────────────────────────────────────
+//
+// Watching for the exit only catches a helper that dies. One that hangs kept
+// `updating` set for the life of the process, which is the same frozen overlay
+// and the same 409 the exit path was fixed for.
+
+const WATCHDOG_MS = 15 * 60 * 1000;
+
+describe("UpdateManager — helper watchdog", () => {
+  let eventBus: EventBus;
+  let manager: UpdateManager;
+  let internals: ManagerInternals;
+  let errors: string[];
+
+  beforeEach(() => {
+    eventBus = new EventBus(logger);
+    manager = new UpdateManager(eventBus, makeBackupStub(), logger);
+    internals = manager as unknown as ManagerInternals;
+    errors = [];
+    eventBus.on((event) => {
+      if (event.type === "system.update.error") errors.push(event.error);
+    });
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A helper whose wait() never settles — the daemon is answering nothing. */
+  function hangingHelper() {
+    return {
+      wait: vi.fn(() => new Promise<never>(() => {})),
+      logs: vi.fn(async () => frame(1, "[sowel-updater] pulling ghcr.io/mchacher/sowel:1.66.0...\n")),
+    };
+  }
+
+  it("gives up on a helper that never returns, and says what it was doing", async () => {
+    internals.updating = true;
+    internals.watchHelper(hangingHelper(), "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS);
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(errors[0]).toContain("has not returned");
+    // The tail still comes from the helper, which is where the stall shows.
+    expect(errors[0]).toContain("pulling ghcr.io/mchacher/sowel:1.66.0");
+  });
+
+  it("holds the flag while the helper is merely slow", async () => {
+    internals.updating = true;
+    internals.watchHelper(hangingHelper(), "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS - 1000);
+
+    // A pull on a slow link is not a failure — a second trigger stays out.
+    expect(manager.isUpdating()).toBe(true);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("does not fire the watchdog once the helper has exited", async () => {
+    internals.updating = true;
+    internals.watchHelper(makeHelperStub({ statusCode: 1 }), "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(errors).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS * 2);
+    expect(errors).toHaveLength(1);
+  });
+});
+
+// ── Leftover helper (#884) ───────────────────────────────────
+//
+// The watchdog gives up on a helper without killing it, so the next attempt can
+// meet one that is still working. Forcing it out would cut a swap in half.
+
+describe("UpdateManager — leftover helper", () => {
+  let internals: ManagerInternals;
+
+  beforeEach(() => {
+    const manager = new UpdateManager(new EventBus(logger), makeBackupStub(), logger);
+    internals = manager as unknown as ManagerInternals;
+  });
+
+  function dockerWith(container: unknown) {
+    return { getContainer: vi.fn(() => container) };
+  }
+
+  it("refuses to force-remove a helper that is still running", async () => {
+    const remove = vi.fn();
+    const docker = dockerWith({
+      inspect: vi.fn(async () => ({ State: { Running: true } })),
+      remove,
+    });
+
+    await expect(internals.removeLeftoverHelper(docker, "sowel-updater")).rejects.toThrow(
+      /still running/,
+    );
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("removes the container a previous run left behind", async () => {
+    const remove = vi.fn(async () => undefined);
+    const docker = dockerWith({
+      inspect: vi.fn(async () => ({ State: { Running: false } })),
+      remove,
+    });
+
+    await internals.removeLeftoverHelper(docker, "sowel-updater");
+    expect(remove).toHaveBeenCalledWith({ force: true });
+  });
+
+  it("is a no-op when no helper is there", async () => {
+    const remove = vi.fn();
+    const docker = dockerWith({
+      inspect: vi.fn(async () => {
+        throw new Error("no such container");
+      }),
+      remove,
+    });
+
+    await expect(internals.removeLeftoverHelper(docker, "sowel-updater")).resolves.toBeUndefined();
+    expect(remove).not.toHaveBeenCalled();
   });
 });

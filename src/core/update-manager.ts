@@ -17,6 +17,19 @@ const BACKUP_KEEP_COUNT = 3;
 const HELPER_LOG_TAIL_LINES = 5;
 /** Cap on the quoted tail, so a runaway helper cannot flood the event bus. */
 const HELPER_LOG_TAIL_MAX_CHARS = 400;
+/**
+ * How long to wait for a helper before deciding it will never hand back.
+ *
+ * Watching for the exit only catches a helper that dies. One that hangs, a
+ * `docker pull` against a registry that accepts the connection and then answers
+ * nothing, leaves `wait()` pending for the life of the process, which is the
+ * pinned flag and the frozen overlay all over again (#884). Fifteen minutes is
+ * far past a normal pull on a slow link, so reaching it means something is
+ * wrong rather than slow.
+ */
+const HELPER_WATCHDOG_MS = 15 * 60 * 1000;
+/** Resolution of the watchdog race, kept distinct from any daemon payload. */
+const HELPER_TIMED_OUT = Symbol("helper-watchdog");
 
 type DockerContainer = InstanceType<typeof import("dockerode").Container>;
 /**
@@ -420,14 +433,7 @@ export class UpdateManager {
     const { default: Docker } = await import("dockerode");
     const docker = new Docker({ socketPath: DOCKER_SOCKET_PATH });
 
-    // Remove any leftover helper from a previous failed run
-    try {
-      const existing = docker.getContainer(args.name);
-      await existing.remove({ force: true });
-      this.logger.debug({ name: args.name }, "Removed leftover helper container");
-    } catch {
-      // Not present — that's fine
-    }
+    await this.removeLeftoverHelper(docker, args.name);
 
     // Pull the helper image (cached after first time)
     try {
@@ -474,6 +480,46 @@ export class UpdateManager {
   }
 
   /**
+   * Clear the helper container a previous attempt left behind.
+   *
+   * The helper is deliberately kept after it exits (`AutoRemove: false`) so its
+   * logs stay readable, so a stopped one is expected here and simply removed.
+   *
+   * A *running* one is a different animal: since #884 the watchdog gives up on
+   * a helper that has not returned, and giving up does not kill it. Forcing it
+   * out here would cut a `docker compose up -d` in half and leave the stack
+   * half-recreated, so refuse instead and say what to do about it. The throw
+   * lands in the caller's catch, which releases `updating` and reports it.
+   */
+  private async removeLeftoverHelper(
+    docker: { getContainer: (name: string) => DockerContainer },
+    name: string,
+  ): Promise<void> {
+    const existing = docker.getContainer(name);
+    let state: { State?: { Running?: boolean } };
+    try {
+      state = await existing.inspect();
+    } catch {
+      return; // Not present — that's fine, nothing to clear
+    }
+
+    if (state.State?.Running) {
+      throw new Error(
+        `Helper "${name}" from a previous attempt is still running. Wait for it to finish, or remove it with: docker rm -f ${name}`,
+      );
+    }
+
+    try {
+      await existing.remove({ force: true });
+      this.logger.debug({ name }, "Removed leftover helper container");
+    } catch (err) {
+      // Raced with someone else removing it. Creating the new one will tell us
+      // soon enough if it really is still there.
+      this.logger.debug({ err, name }, "Leftover helper container already gone");
+    }
+  }
+
+  /**
    * Watch a helper we just started, and release `updating` if it dies without
    * taking us with it.
    *
@@ -489,20 +535,38 @@ export class UpdateManager {
    * ghcr.io) pinned an instance that way for hours, with the real cause
    * readable only in `docker logs sowel-updater`. So we quote that tail into
    * the error the admin actually sees.
+   *
+   * A helper that hangs never reaches any of that, so the wait is also raced
+   * against a watchdog (#884). Giving up on it does not kill it: it may still
+   * be working, and the next attempt refuses to force-remove a helper that is
+   * still running rather than cutting a swap in half.
    */
   private watchHelper(helper: DockerContainer, name: string, operation: HelperOperation): void {
     void (async () => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
       let outcome: string;
+      let timedOut = false;
       try {
-        const result = (await helper.wait()) as { StatusCode?: number } | undefined;
-        const code = result?.StatusCode ?? -1;
-        outcome = `Helper "${name}" exited with code ${code} without restarting Sowel`;
+        const result = await Promise.race([
+          helper.wait() as Promise<{ StatusCode?: number } | undefined>,
+          new Promise<typeof HELPER_TIMED_OUT>((resolveRace) => {
+            timer = setTimeout(() => resolveRace(HELPER_TIMED_OUT), HELPER_WATCHDOG_MS);
+          }),
+        ]);
+        if (result === HELPER_TIMED_OUT) {
+          timedOut = true;
+          outcome = `Helper "${name}" has not returned after ${HELPER_WATCHDOG_MS / 60_000} minutes, giving up on it`;
+        } else {
+          outcome = `Helper "${name}" exited with code ${result?.StatusCode ?? -1} without restarting Sowel`;
+        }
       } catch (err) {
         // The daemon went away, or the container was removed under us. An
         // unknown outcome still beats a flag pinned for the life of the process.
         outcome = `Helper "${name}" could not be watched: ${
           err instanceof Error ? err.message : String(err)
         }`;
+      } finally {
+        clearTimeout(timer);
       }
 
       // A failure on our own side may have released the flag already; and a
@@ -514,7 +578,11 @@ export class UpdateManager {
       this.updating = false;
       this.logger.error(
         { helper: name, operation, tail },
-        "Helper finished without restarting Sowel",
+        // Two distinct lines on purpose: troubleshooting greps for them, and
+        // "finished" would be a lie about a helper that is still running.
+        timedOut
+          ? "Helper did not return within the watchdog window"
+          : "Helper finished without restarting Sowel",
       );
       this.eventBus.emit({ type: "system.update.error", error, operation });
     })();
