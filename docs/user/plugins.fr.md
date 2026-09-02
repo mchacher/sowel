@@ -85,6 +85,14 @@ Personne ne relit le code d'un plugin personnel. Il s'exécute avec les mêmes p
 
 Retirer une source ne désinstalle **pas** les plugins déjà installés depuis celle-ci : ils continuent de fonctionner. Cela bloque seulement les installations et mises à jour futures depuis ce dépôt. Ré-ajouter la source plus tard rétablit les mises à jour.
 
+### Renommer un dépôt
+
+Renommer, c'est désinstaller puis réinstaller, jamais mettre à jour.
+
+GitHub redirige l'ancien nom, et c'est cette redirection qui rend le piège silencieux : le paquet installé sous l'ancien identifiant continue de trouver des releases, donc il continue d'annoncer une mise à jour. Cette mise à jour ne pourra jamais s'installer — la liste des sources porte désormais le nouveau nom, et Sowel refuse de mettre à jour un paquet dont il ne détient plus la source. Il le dit sur la ligne du paquet.
+
+Donc : ajoutez la source renommée, installez-la, puis désinstallez l'ancien paquet. Les instances de recette ne suivent pas — recréez-les, et réépinglez la nouvelle instance si une tuile du tableau de bord pointait sur l'ancienne.
+
 ---
 
 ## Pour les auteurs de plugins et de recettes

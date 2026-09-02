@@ -85,6 +85,14 @@ Nobody reviews the code of a personal plugin. It runs with the same privileges a
 
 Removing a source does **not** uninstall plugins already installed from it: they keep running. It only stops future installs and updates from that repository. Re-adding the source later restores updates.
 
+### Renaming a repository
+
+A rename is an uninstall and a fresh install, never an update.
+
+GitHub redirects the old name, and that redirect is what makes this quiet: the package installed under the old id keeps finding releases, so it keeps advertising an update. That update can never install — the source list now carries the new name, and Sowel refuses to update a package whose source it no longer holds. It says so on the row.
+
+So: add the renamed source, install it, then uninstall the old package. Recipe instances do not carry over — recreate them, and pin the new instance again if a Dashboard tile pointed at the old one.
+
 ---
 
 ## For plugin and recipe authors
