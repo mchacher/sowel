@@ -99,14 +99,22 @@ The diagram shows three boxes (Grid, Consumption, Production) with arrows indica
 
 Tiles are hidden when their underlying equipment is not configured: with no production meter, only Grid and Consumption are shown.
 
-A banner appears above the diagram when a meter stops reporting, one line per source and each with
-its own age: "Production: reading frozen for 3 min" means the production figure below it is three
-minutes old while the grid figure is still live. A meter whose device has dropped off the network
-reads "no connection for" instead. Only the power readings the diagram draws are watched, so a meter
-that is merely late on a voltage or energy reading raises nothing here.
+A banner appears above the diagram when a reading can no longer be trusted, one line per source and
+each with its own age. It says one of three things:
 
-Meters that publish on change go quiet whenever their reading holds steady, so a short banner on a
-plateau is normal. A banner that stays up is the one worth investigating.
+- **"no reading received for 12 min"**: nothing has arrived from that meter for a while. The
+  window is ten minutes, which is twice the slowest reporting cadence any supported source uses, so
+  a meter polled every five minutes never raises this while it is working.
+- **"reading stuck on the same value for 20 min"**: readings keep arriving, but the value inside
+  them stopped moving. That is a source still talking without measuring, and no arrival time can
+  reveal it. Sowel compares the value as stored, at full precision, never the rounded figure drawn
+  on the diagram: production shown as 2.4 kW may be swinging by 49 W without the display changing at
+  all. A reading of exactly zero is left alone, since a production meter at night genuinely holds it
+  for hours.
+- **"no connection for 20 min"**: the meter's device has dropped off the network altogether.
+
+Only the power readings the diagram draws are watched, so a meter that is merely late on a voltage
+or energy reading raises nothing here.
 
 ### Consumption view
 
