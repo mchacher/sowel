@@ -99,3 +99,5 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: bash scripts/check-docs-impact.sh
+      - name: Every spec folder is listed in both indexes
+        run: bash scripts/check-specs-index.sh folders

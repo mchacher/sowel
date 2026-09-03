@@ -21,8 +21,12 @@ the other. Name the untouched file and say why.
 
   Docs-Parity: docs/technical/api-reference.fr.md — typo fix in the EN copy only
 
-Both run locally, before you push:
+A third check needs no trailer: a new `specs/NNN-name/` folder must carry a row in
+`docs/specs-index.md` AND in `docs/specs-index.fr.md`. The check prints the row to paste.
+
+All three run locally, before you push:
 
   bash scripts/check-docs-impact.sh
   bash scripts/check-docs-parity.sh
+  bash scripts/check-specs-index.sh folders
 -->

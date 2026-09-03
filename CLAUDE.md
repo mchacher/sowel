@@ -194,12 +194,13 @@ The `verify-release-notes` job in `.github/workflows/release.yml` greps the tagg
 
 ### Documentation currency (spec 167 — MANDATORY for AI agents)
 
-Two CI checks run on every pull request. Both run locally, and running them before pushing is
-cheaper than reading a red check:
+Three CI checks run on every pull request. All three run locally, and running them before
+pushing is cheaper than reading a red check:
 
 ```bash
 bash scripts/check-docs-parity.sh
 bash scripts/check-docs-impact.sh
+bash scripts/check-specs-index.sh folders
 ```
 
 **EN/FR parity.** Most pages under `docs/` exist as a pair, `x.md` and `x.fr.md`. Touch one and
@@ -222,6 +223,12 @@ Docs-Impact: none — <why nothing a reader can observe changed>
 **The reason is required.** A bare `Docs-Impact: none` fails on purpose: a checkbox gets ticked
 without thought, a sentence does not. `chore`, `refactor`, `test`, `docs`, `style`, `ci`,
 `build` and `perf` are not gated at all.
+
+**Specs index.** Every `specs/NNN-name/` folder needs a row in `docs/specs-index.md` **and** in
+`docs/specs-index.fr.md`. The check names both files and prints the row to paste. It has no
+waiver: the row is one line, and the alternative is a blocked release (issue #872). The other
+half of the same script, `check-specs-index.sh released`, stays at the tag because it needs the
+release notes to have been written.
 
 The check also prints the pages your change probably affects, from the map in
 `scripts/docs-impact-map.sh`. That part never fails a build — it is there to turn "did you think
