@@ -400,6 +400,7 @@ function makeHelperStub(opts: { statusCode?: number; waitError?: Error; logs?: B
 type ManagerInternals = {
   updating: boolean;
   watchHelper: (helper: unknown, name: string, operation: "update" | "restart") => void;
+  removeLeftoverHelper: (docker: unknown, name: string) => Promise<void>;
 };
 
 type UpdateErrorEvent = { error: string; operation: "update" | "restart" };
@@ -510,5 +511,198 @@ describe("UpdateManager — helper supervision", () => {
 
     expect(await errorPromise).toBeNull();
     expect(manager.isUpdating()).toBe(false);
+  });
+});
+
+// ── Watchdog (#884) ──────────────────────────────────────────
+//
+// Watching for the exit only catches a helper that dies. One that hangs kept
+// `updating` set for the life of the process, which is the same frozen overlay
+// and the same 409 the exit path was fixed for.
+
+const WATCHDOG_MS = 15 * 60 * 1000;
+
+describe("UpdateManager — helper watchdog", () => {
+  let eventBus: EventBus;
+  let manager: UpdateManager;
+  let internals: ManagerInternals;
+  let errors: string[];
+
+  beforeEach(() => {
+    eventBus = new EventBus(logger);
+    manager = new UpdateManager(eventBus, makeBackupStub(), logger);
+    internals = manager as unknown as ManagerInternals;
+    errors = [];
+    eventBus.on((event) => {
+      if (event.type === "system.update.error") errors.push(event.error);
+    });
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A helper whose wait() never settles — the daemon is answering nothing. */
+  function hangingHelper() {
+    return {
+      wait: vi.fn(() => new Promise<never>(() => {})),
+      logs: vi.fn(async () =>
+        frame(1, "[sowel-updater] pulling ghcr.io/mchacher/sowel:1.66.0...\n"),
+      ),
+    };
+  }
+
+  it("gives up on a helper that never returns, and says what it was doing", async () => {
+    internals.updating = true;
+    internals.watchHelper(hangingHelper(), "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS);
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(errors[0]).toContain("has not returned");
+    // The tail still comes from the helper, which is where the stall shows.
+    expect(errors[0]).toContain("pulling ghcr.io/mchacher/sowel:1.66.0");
+  });
+
+  it("holds the flag while the helper is merely slow", async () => {
+    internals.updating = true;
+    internals.watchHelper(hangingHelper(), "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS - 1000);
+
+    // A pull on a slow link is not a failure — a second trigger stays out.
+    expect(manager.isUpdating()).toBe(true);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("reports without the tail when the daemon never hands the logs over", async () => {
+    // A hung wait() is usually a hung daemon, and the same daemon serves the
+    // logs. Waiting on it forever here would pin the flag three lines after the
+    // watchdog released it.
+    const helper = {
+      wait: vi.fn(async () => ({ StatusCode: 1 })),
+      logs: vi.fn(() => new Promise<never>(() => {})),
+    };
+    internals.updating = true;
+    internals.watchHelper(helper, "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(manager.isUpdating()).toBe(false);
+    expect(errors[0]).toContain("code 1");
+  });
+
+  it("does not fire the watchdog once the helper has exited", async () => {
+    internals.updating = true;
+    internals.watchHelper(makeHelperStub({ statusCode: 1 }), "sowel-updater", "update");
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(errors).toHaveLength(1);
+
+    // The watchdog timer is cleared, not merely outvoted by the emit guard.
+    expect(vi.getTimerCount()).toBe(0);
+
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS * 2);
+    expect(errors).toHaveLength(1);
+  });
+});
+
+// ── Leftover helper (#884) ───────────────────────────────────
+//
+// The watchdog gives up on a helper without killing it, so the next attempt can
+// meet one that is still working. Forcing it out would cut a swap in half.
+
+describe("UpdateManager — leftover helper", () => {
+  let internals: ManagerInternals;
+
+  beforeEach(() => {
+    const manager = new UpdateManager(new EventBus(logger), makeBackupStub(), logger);
+    internals = manager as unknown as ManagerInternals;
+  });
+
+  const ABSENT = Symbol("absent");
+
+  /** State of one helper container, or ABSENT when there is none. */
+  type HelperState = typeof ABSENT | { Running: boolean; StartedAt?: string };
+
+  function dockerWith(states: Record<string, HelperState>) {
+    const removals: string[] = [];
+    const docker = {
+      getContainer: (name: string) => ({
+        inspect: async () => {
+          const state = states[name] ?? ABSENT;
+          if (state === ABSENT) throw new Error("no such container");
+          return { State: state };
+        },
+        remove: async () => {
+          removals.push(name);
+        },
+      }),
+    };
+    return { docker, removals };
+  }
+
+  const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+
+  it("refuses to force-remove a helper that is still running", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: true, StartedAt: minutesAgo(2) },
+    });
+
+    await expect(internals.removeLeftoverHelper(docker, "sowel-updater")).rejects.toThrow(
+      /still running/,
+    );
+    expect(removals).toEqual([]);
+  });
+
+  // An updater still swapping and a restarter spawned beside it would race for
+  // the same compose project, which is the same damage by another route.
+  it("refuses when the helper still running is the other one", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: true, StartedAt: minutesAgo(2) },
+    });
+
+    await expect(internals.removeLeftoverHelper(docker, "sowel-restarter")).rejects.toThrow(
+      /sowel-updater/,
+    );
+    expect(removals).toEqual([]);
+  });
+
+  // Otherwise a `docker restart sowel` would leave an orphan blocking every
+  // future in-app update until someone removed it by hand.
+  it("clears a runner older than the watchdog window", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: true, StartedAt: minutesAgo(30) },
+    });
+
+    await internals.removeLeftoverHelper(docker, "sowel-updater");
+    expect(removals).toEqual(["sowel-updater"]);
+  });
+
+  it("removes the container a previous run left behind", async () => {
+    const { docker, removals } = dockerWith({ "sowel-updater": { Running: false } });
+
+    await internals.removeLeftoverHelper(docker, "sowel-updater");
+    expect(removals).toEqual(["sowel-updater"]);
+  });
+
+  // A stopped helper under the other name blocks nothing, and its logs may be
+  // the only record of what went wrong.
+  it("leaves a stopped helper under the other name alone", async () => {
+    const { docker, removals } = dockerWith({
+      "sowel-updater": { Running: false },
+      "sowel-restarter": { Running: false },
+    });
+
+    await internals.removeLeftoverHelper(docker, "sowel-restarter");
+    expect(removals).toEqual(["sowel-restarter"]);
+  });
+
+  it("is a no-op when no helper is there", async () => {
+    const { docker, removals } = dockerWith({});
+
+    await expect(internals.removeLeftoverHelper(docker, "sowel-updater")).resolves.toBeUndefined();
+    expect(removals).toEqual([]);
   });
 });

@@ -396,8 +396,22 @@ du serveur pour les autres rôles, qui ne voient donc que le résultat. Sowel
 continue de servir la version précédente, et le backup pré-update qu'il a pris
 est toujours dans `data/backups/`.
 
+Un helper qui se bloque au lieu de sortir est traité lui aussi : au bout de
+quinze minutes le moteur l'abandonne, libère la mise à jour et le signale.
+L'abandonner ne le tue pas, donc s'il était seulement lent il peut encore mener
+le swap à son terme.
+
 Récupération : corrigez la cause et recliquez sur Update. Il n'y a rien à
-nettoyer, la tentative suivante supprime elle-même le helper resté en place.
+nettoyer, la tentative suivante supprime elle-même le helper resté en place. Le
+seul cas qu'elle refuse est un helper de la tentative précédente **encore en
+cours** : le supprimer couperait un `docker compose up -d` en deux, donc la mise
+à jour s'arrête sur `Helper "sowel-updater" from a previous attempt is still
+running`. Les deux helpers comptent, un updater bloque un restart et
+réciproquement, puisqu'ils pilotent le même projet compose. Attendez-le, ou
+supprimez-le à la main une fois ses logs lus (`docker rm -f sowel-updater`).
+Passé la fenêtre de quinze minutes, la tentative suivante le supprime d'elle-même :
+un helper orphelin laissé par un redémarrage de conteneur ne bloque pas les
+mises à jour indéfiniment.
 
 ```bash
 cd /opt/sowel
@@ -408,7 +422,7 @@ docker compose pull && docker compose up -d   # ou mise à jour à la main
 Investigation :
 
 - `docker logs sowel-updater` : le conteneur helper est délibérément conservé après sa sortie (`AutoRemove: false`), précisément pour ça
-- Les logs propres de Sowel : `Update helper spawned` est la dernière ligne avant un swap réussi, et `Helper finished without restarting Sowel` marque l'échec
+- Les logs propres de Sowel : `Update helper spawned` est la dernière ligne avant un swap réussi. `Helper finished without restarting Sowel` marque un helper qui est sorti, `Helper did not return within the watchdog window` un helper qui n'a jamais répondu
 - Si Sowel n'est jamais revenu du tout, `docker ps -a` indique si son conteneur est en Exited
 
 ### Base de données corrompue
