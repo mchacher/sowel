@@ -79,8 +79,11 @@ jobs:
             exit 1
           fi
           echo "Release notes present for v$VERSION ✓"
-      - name: Specs index is complete (spec 167)
-        run: bash scripts/check-specs-index.sh
+      - name: No shipped spec still reads Unreleased (spec 167)
+        # The "one row per spec folder" half of this gate runs on the pull
+        # request now (#872) — only the release-notes-dependent half is left
+        # here.
+        run: bash scripts/check-specs-index.sh released
 
   # ── CI checks ─────────────────────────────────────────────
   ci:

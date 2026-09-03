@@ -22,7 +22,7 @@ scripts/
   check-docs-parity.sh      R1  blocking   pull_request
   check-docs-impact.sh      R2  blocking   pull_request
   docs-impact-map.sh        R3  advisory   pull_request  (sourced by check-docs-impact.sh)
-  check-specs-index.sh      R4  blocking   tag
+  check-specs-index.sh      R4  blocking   pull_request (folders) + tag (released)
 ```
 
 ### R1 — `check-docs-parity.sh`
@@ -78,6 +78,15 @@ Two assertions against `docs/specs-index.md`:
 Runs in `verify-release-notes`, which already exists, already runs at tag time, and already
 gates every build job. Adding it there rather than creating a job keeps the failure in the place
 maintainers already look when a release stops.
+
+> **Amended by issue #872 (2026-09-03).** Assertion 1 depends on the repository contents alone,
+> so it is computable on a pull request, and placing it at the tag charged the release for a gap
+> the author could have closed with one table row: v1.64.0 and v1.65.0 were both blocked and
+> both tags had to be force-updated. The script now takes a mode. `folders` runs in the
+> `Documentation currency` job on every pull request and covers `docs/specs-index.fr.md` too,
+> plus a duplicate-row assertion (the French index had grown a second copy of specs 136-172,
+> invisible to a per-folder grep). `released` stays in `verify-release-notes`, because only that
+> half needs the release notes to exist.
 
 **This one lands red.** The index is currently 34 rows short and marks specs 139-166 as
 unreleased. Acceptance criterion 8 requires green on `main`, so the index is corrected in the

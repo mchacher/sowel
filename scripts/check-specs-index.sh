@@ -6,61 +6,111 @@
 # features ever shipped". It had drifted 42 rows short, and 18 shipped specs
 # still read "Unreleased", some of them a year after shipping.
 #
-# Two assertions:
-#   1. every specs/NNN-*/ folder has a row in the index
-#   2. no spec still reads "Unreleased" once it is cited in a published
-#      release-notes entry
+# Two assertions, and they do NOT need the same context (issue #872):
 #
-# Release-scoped by nature, so it runs at the tag rather than per PR, in the
-# verify-release-notes job that already gates every build.
+#   folders  — every specs/NNN-*/ folder has exactly one row in each index,
+#              EN and FR. Depends on the repository contents alone, so it runs
+#              on the pull request, where the fix is one table row typed by the
+#              author who already has the context.
+#   released — nothing cited in release-notes.md still reads "Unreleased" in
+#              the index. Needs the release notes to have been written, so it
+#              stays at the tag.
 #
-# Runs in CI and locally: `bash scripts/check-specs-index.sh`
+# Placing `folders` at the tag cost two force-updated tags (v1.64.0, v1.65.0):
+# a spec folder merged without its row failed nothing until someone cut a
+# release, and the person who paid was not the person who could have fixed it
+# for free.
+#
+# Usage:
+#   bash scripts/check-specs-index.sh            # both (local one-shot)
+#   bash scripts/check-specs-index.sh folders    # pull-request gate
+#   bash scripts/check-specs-index.sh released   # release gate
 #
 # Portable to bash 3.2 (macOS) — no mapfile / associative arrays.
 
 set -euo pipefail
 
-INDEX="docs/specs-index.md"
+MODE="${1:-all}"
+case "${MODE}" in
+  all | folders | released) ;;
+  *)
+    echo "usage: $(basename "$0") [all|folders|released]" >&2
+    exit 2
+    ;;
+esac
+
+INDEX_EN="docs/specs-index.md"
+INDEX_FR="docs/specs-index.fr.md"
 NOTES="docs/release-notes.md"
 
 failed=0
 
-# ── 1. A row per spec folder ──────────────────────────────────────────
-missing=""
-for dir in specs/*/; do
-  [ -d "${dir}" ] || continue
-  num="$(basename "${dir}" | cut -d- -f1)"
-  if ! grep -qE "^\| ${num} \|" "${INDEX}"; then
-    missing="${missing} ${num}"
-  fi
-done
+# ── 1. One row per spec folder, in both indexes ───────────────────────
+# Both files carry the same table, so a fix that lands in the English index
+# alone fails the next run one round trip later (observed on #871).
+if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
+  for index in "${INDEX_EN}" "${INDEX_FR}"; do
+    missing=""
+    for dir in specs/*/; do
+      [ -d "${dir}" ] || continue
+      slug="$(basename "${dir}")"
+      num="$(echo "${slug}" | cut -d- -f1)"
+      if ! grep -qE "^\| ${num} \|" "${index}"; then
+        missing="${missing} ${slug}"
+      fi
+    done
 
-if [ -n "${missing}" ]; then
-  echo "❌ ${INDEX} has no row for:${missing}"
-  failed=1
+    if [ -n "${missing}" ]; then
+      echo "❌ ${index} has no row for:"
+      for slug in ${missing}; do
+        num="${slug%%-*}"
+        if [ "${index}" = "${INDEX_FR}" ]; then
+          echo "   | ${num} | <titre> | ✅     | Livrée. Voir \`specs/${slug}/\`. |"
+        else
+          echo "   | ${num} | <title> | ✅     | Shipped. See \`specs/${slug}/\`. |"
+        fi
+      done
+      failed=1
+    fi
+
+    # A row pasted twice is invisible to the grep above, and it is how the
+    # French index grew a second copy of specs 136-172 (#872).
+    duplicated="$(grep -oE "^\| [0-9]{3} \|" "${index}" | tr -d '| ' | sort | uniq -d | tr '\n' ' ')"
+    if [ -n "${duplicated}" ]; then
+      echo "❌ ${index} lists the same spec more than once: ${duplicated}"
+      failed=1
+    fi
+  done
 fi
 
 # ── 2. Nothing shipped still reads "Unreleased" ───────────────────────
 # A spec cited anywhere in release-notes.md has shipped, so its row cannot
 # still claim otherwise.
-stale=""
-for num in $(grep -oE "^\| [0-9]{3} \|" "${INDEX}" | tr -d '| '); do
-  grep -qE "^\| ${num} \|.*Unreleased" "${INDEX}" || continue
-  if grep -qiE "spec ${num}\b" "${NOTES}"; then
-    stale="${stale} ${num}"
-  fi
-done
+if [ "${MODE}" = "all" ] || [ "${MODE}" = "released" ]; then
+  stale=""
+  for num in $(grep -oE "^\| [0-9]{3} \|" "${INDEX_EN}" | tr -d '| '); do
+    grep -qE "^\| ${num} \|.*Unreleased" "${INDEX_EN}" || continue
+    if grep -qiE "spec ${num}\b" "${NOTES}"; then
+      stale="${stale} ${num}"
+    fi
+  done
 
-if [ -n "${stale}" ]; then
-  echo "❌ shipped but still marked Unreleased in ${INDEX}:${stale}"
-  failed=1
+  if [ -n "${stale}" ]; then
+    echo "❌ shipped but still marked Unreleased in ${INDEX_EN}:${stale}"
+    failed=1
+  fi
 fi
 
 if [ "${failed}" -ne 0 ]; then
   echo
-  echo "Add the missing rows, and replace 'Unreleased' with the version that"
-  echo "shipped the spec. The oldest release-notes entry citing it is the one."
+  echo "Add the missing rows to BOTH indexes, and replace 'Unreleased' with the"
+  echo "version that shipped the spec. The oldest release-notes entry citing it"
+  echo "is the one."
   exit 1
 fi
 
-echo "Specs index is complete and no shipped spec reads Unreleased ✓"
+case "${MODE}" in
+  folders) echo "Every spec folder has a row in both indexes ✓" ;;
+  released) echo "No shipped spec reads Unreleased ✓" ;;
+  all) echo "Specs index is complete and no shipped spec reads Unreleased ✓" ;;
+esac
