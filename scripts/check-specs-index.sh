@@ -26,6 +26,12 @@
 #   bash scripts/check-specs-index.sh folders    # pull-request gate
 #   bash scripts/check-specs-index.sh released   # release gate
 #
+# `Documentation currency` is not in the branch ruleset, so the CI step alone
+# advises rather than blocks. What blocks is the last case of
+# src/tooling/check-specs-index.test.ts, which runs this script against the
+# repository itself inside the required Backend job. That test is load-bearing:
+# delete it and the folders assertion degrades to advisory.
+#
 # Portable to bash 3.2 (macOS) — no mapfile / associative arrays.
 
 set -euo pipefail
@@ -39,22 +45,42 @@ case "${MODE}" in
     ;;
 esac
 
+# 048a / 048b / 048c exist, so a spec number is three digits plus an optional
+# letter. Both assertions must agree on that, or one accepts a row the other
+# cannot see.
+ROW="^\| [0-9]{3}[a-z]? \|"
+
 INDEX_EN="docs/specs-index.md"
 INDEX_FR="docs/specs-index.fr.md"
 NOTES="docs/release-notes.md"
 
 failed=0
 
+# A wrong cwd used to produce a grep error, a nonsense list of every spec, and
+# the exit code reserved for a usage error.
+require_file() {
+  if [ ! -f "$1" ]; then
+    echo "❌ $1 not found — run this from the repository root."
+    exit 1
+  fi
+}
+
 # ── 1. One row per spec folder, in both indexes ───────────────────────
 # Both files carry the same table, so a fix that lands in the English index
 # alone fails the next run one round trip later (observed on #871).
 if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
+  require_file "${INDEX_EN}"
+  require_file "${INDEX_FR}"
+
   for index in "${INDEX_EN}" "${INDEX_FR}"; do
     missing=""
     for dir in specs/*/; do
       [ -d "${dir}" ] || continue
       slug="$(basename "${dir}")"
-      num="$(echo "${slug}" | cut -d- -f1)"
+      num="${slug%%-*}"
+      # Not a spec folder (no NNN- prefix): nothing to look up, and inviting
+      # someone to paste `| archive | ... |` would be worse than staying quiet.
+      echo "${num}" | grep -qE "^[0-9]{3}[a-z]?$" || continue
       if ! grep -qE "^\| ${num} \|" "${index}"; then
         missing="${missing} ${slug}"
       fi
@@ -75,7 +101,9 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
 
     # A row pasted twice is invisible to the grep above, and it is how the
     # French index grew a second copy of specs 136-172 (#872).
-    duplicated="$(grep -oE "^\| [0-9]{3} \|" "${index}" | tr -d '| ' | sort | uniq -d | tr '\n' ' ')"
+    # `|| true`: grep exits 1 on an index with no rows at all, and pipefail
+    # would then kill the script mid-check without printing anything.
+    duplicated="$( { grep -oE "${ROW}" "${index}" || true; } | tr -d '| ' | sort | uniq -d | tr '\n' ' ')"
     if [ -n "${duplicated}" ]; then
       echo "❌ ${index} lists the same spec more than once: ${duplicated}"
       failed=1
@@ -87,8 +115,11 @@ fi
 # A spec cited anywhere in release-notes.md has shipped, so its row cannot
 # still claim otherwise.
 if [ "${MODE}" = "all" ] || [ "${MODE}" = "released" ]; then
+  require_file "${INDEX_EN}"
+  require_file "${NOTES}"
+
   stale=""
-  for num in $(grep -oE "^\| [0-9]{3} \|" "${INDEX_EN}" | tr -d '| '); do
+  for num in $( { grep -oE "${ROW}" "${INDEX_EN}" || true; } | tr -d '| '); do
     grep -qE "^\| ${num} \|.*Unreleased" "${INDEX_EN}" || continue
     if grep -qiE "spec ${num}\b" "${NOTES}"; then
       stale="${stale} ${num}"

@@ -18,6 +18,8 @@ function run(cwd: string, mode?: string): { status: number; out: string } {
     const stdout = execFileSync("bash", [SCRIPT, ...(mode ? [mode] : [])], {
       cwd,
       encoding: "utf-8",
+      // Keep the usage line of the unknown-mode case out of the vitest output.
+      stdio: ["ignore", "pipe", "pipe"],
     });
     return { status: 0, out: stdout };
   } catch (err) {
@@ -151,6 +153,72 @@ describe("scripts/check-specs-index.sh (spec 167 R4, issue #872)", () => {
     expect(res.status).toBe(1);
     expect(res.out).toContain("has no row for");
     expect(res.out).toContain("still marked Unreleased");
+  });
+
+  it("reports an empty index instead of dying on its own pipeline", () => {
+    // grep exits 1 on an index with no rows, and `set -euo pipefail` turned
+    // that into an exit with no output at all: a red gate nobody could read.
+    seed({
+      specs: ["175-a-thing"],
+      en: HEADER,
+      fr: HEADER,
+    });
+
+    const res = run(dir, "folders");
+
+    expect(res.status).toBe(1);
+    expect(res.out).toContain("docs/specs-index.md has no row for");
+    expect(res.out).toContain("docs/specs-index.fr.md has no row for");
+    expect(res.out).toContain("Add the missing rows to BOTH indexes");
+  });
+
+  it("sees a spec number carrying a letter suffix (048a, 048b)", () => {
+    seed({
+      specs: ["048a-first-half", "048b-second-half"],
+      en: HEADER + row("048a") + row("048b"),
+      fr: HEADER + row("048a") + row("048b") + row("048b"),
+    });
+
+    const res = run(dir, "folders");
+
+    expect(res.status).toBe(1);
+    expect(res.out).toContain("docs/specs-index.fr.md lists the same spec more than once: 048b");
+  });
+
+  it("ignores a folder that is not a spec rather than inviting a nonsense row", () => {
+    mkdirSync(join(dir, "specs", "archive"), { recursive: true });
+    seed({
+      specs: ["175-a-thing"],
+      en: HEADER + row("175"),
+      fr: HEADER + row("175"),
+    });
+
+    const res = run(dir, "folders");
+
+    expect(res.status).toBe(0);
+    expect(res.out).not.toContain("archive");
+  });
+
+  it("does not fail the pull request over a status only the release can settle", () => {
+    seed({
+      specs: ["175-a-thing"],
+      en: HEADER + row("175", "Unreleased."),
+      fr: HEADER + row("175", "Unreleased."),
+      notes: "### v1.67.0\n\n- Spec 175 shipped the thing.\n",
+    });
+
+    const res = run(dir, "folders");
+
+    expect(res.status).toBe(0);
+  });
+
+  it("says where it is when run from the wrong directory", () => {
+    seed({ specs: [], en: HEADER, fr: HEADER });
+
+    const res = run(join(dir, "docs"), "folders");
+
+    expect(res.status).toBe(1);
+    expect(res.out).toContain("run this from the repository root");
   });
 
   it("rejects an unknown mode rather than silently checking nothing", () => {
