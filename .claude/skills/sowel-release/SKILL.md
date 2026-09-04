@@ -37,12 +37,13 @@ If no version is provided, read `package.json` current version, suggest the next
 git checkout main && git pull
 git status --porcelain      # must be empty
 
-# All CI checks must pass
-npx tsc --noEmit
-npx eslint src/ --ext .ts
-npx vitest run
-cd ui && npx tsc -b --noEmit && npx eslint .
+npm run validate
 ```
+
+`validate` is the CI set, in one command: `typecheck`, `typecheck:tests`, `lint`,
+`format:check`, the backend suite, then the UI's own lint, typecheck and tests.
+Run it rather than a hand-picked subset — the two checks people forget,
+`typecheck:tests` (#834) and `format:check`, both fail the pull request.
 
 **ALL must pass with ZERO errors.** If any check fails, STOP and fix before proceeding.
 
@@ -57,7 +58,20 @@ The `verify-release-notes` job in `.github/workflows/release.yml` fails the whol
 1. List everything shipped since the last release: `git log v<last>..main --oneline --no-merges`. The notes must cover **all** merged PRs in that range, not just the latest change.
 2. Add a `### vX.Y.Z — YYYY-MM-DD { #vX-Y-Z }` block under the matching minor section in **both** `docs/release-notes.md` and `docs/release-notes.fr.md`. The explicit `{ #vX-Y-Z }` anchor is required (the in-app UpdatesSheet links to it).
 
-> **CHECK**: Both release-notes files have the new block with the `{ #vX-Y-Z }` anchor.
+The same `verify-release-notes` job also runs `bash scripts/check-specs-index.sh released`
+(spec 167): no spec folder shipped in this release may still read `Unreleased` in
+`docs/specs-index.md` or `docs/specs-index.fr.md`. It costs nothing to run now,
+and it fails the release AFTER the tag is pushed:
+
+```bash
+bash scripts/check-specs-index.sh released
+```
+
+Recovery is the same as a missing anchor: fix the rows, amend the release commit,
+`git tag -f vX.Y.Z && git push --force origin vX.Y.Z`.
+
+> **CHECK**: Both release-notes files have the new block with the `{ #vX-Y-Z }` anchor,
+> and `check-specs-index.sh released` passes.
 
 ---
 
@@ -100,7 +114,7 @@ Note: `scripts/release.sh` predates the main protection ruleset (it commits and 
 
 After pushing the tag, GitHub Actions will:
 
-1. Verify release notes anchors (fails fast if missing — recovery: add the entries, amend, `git tag -f v<version> && git push --force origin v<version>`)
+1. Verify release notes anchors and that no shipped spec still reads `Unreleased` (fails fast if either is missing — recovery: fix it, amend, `git tag -f v<version> && git push --force origin v<version>`)
 2. Run CI checks (typecheck, lint, tests)
 3. Build Docker images (amd64 + arm64) in parallel and push `ghcr.io/mchacher/sowel:<version>` and `:<version>-arm64`
 4. Promote the two into one multi-arch `:<version>`, then point `:latest` at it
