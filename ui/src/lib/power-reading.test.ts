@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolvePowerReading, isOutdated } from "./power-reading";
 import type { DataBindingWithValue, EquipmentType, EquipmentWithDetails } from "../types";
+import { BUDGET_FLOOR_MS } from "../../../src/shared/reading-freshness";
 
 // Issue #839 — a tile may only print a wattage it has reason to believe.
 // The production case these are written against: a water heater drawing 560 W
@@ -86,15 +87,17 @@ describe("resolvePowerReading", () => {
     expect(r.watts).toBe(560);
   });
 
-  it("applies the tight meter window to a metering equipment", () => {
+  it("applies the budget the engine resolved for this source (spec 175)", () => {
+    // A meter streaming at 1 Hz earns the 120 s floor: two minutes of silence
+    // is a dead meter, whatever its equipment type says.
     const fresh = resolvePowerReading(
       equipment("energy_meter"),
-      binding({ lastUpdated: ago(110) }),
+      binding({ lastUpdated: ago(110), freshnessBudgetMs: BUDGET_FLOOR_MS }),
       NOW,
     );
     const aged = resolvePowerReading(
       equipment("energy_meter"),
-      binding({ lastUpdated: ago(130) }),
+      binding({ lastUpdated: ago(130), freshnessBudgetMs: BUDGET_FLOOR_MS }),
       NOW,
     );
 
@@ -102,13 +105,13 @@ describe("resolvePowerReading", () => {
     expect(aged.verdict).toBe("stale");
   });
 
-  it("gives demand_5min the slow budget, since it is a five-minute average", () => {
-    // Under the meter's own two-minute window a healthy NLPC meter would read
-    // outdated for most of every cycle. The quantity cannot be fresher than
-    // the window it is averaged over.
+  it("does not call a 300 s source outdated four minutes in", () => {
+    // The same equipment type, the same age, a slower source: current. Under
+    // the old type-derived window this read "outdated" for three minutes out
+    // of every five over a perfectly healthy meter (#881).
     const r = resolvePowerReading(
-      equipment("main_energy_meter"),
-      binding({ alias: "demand_5min", category: "power", lastUpdated: ago(290) }),
+      equipment("energy_meter"),
+      binding({ lastUpdated: ago(240), freshnessBudgetMs: 750_000 }),
       NOW,
     );
 
@@ -116,15 +119,21 @@ describe("resolvePowerReading", () => {
     expect(r.watts).toBe(560);
   });
 
-  it("still catches a demand_5min reading that is genuinely dead", () => {
-    const r = resolvePowerReading(
+  it("falls back to the learning window when the engine resolved no budget", () => {
+    const inside = resolvePowerReading(
       equipment("main_energy_meter"),
-      binding({ alias: "demand_5min", lastUpdated: ago(124 * 24 * 3600) }),
+      binding({ lastUpdated: ago(290) }),
+      NOW,
+    );
+    const beyond = resolvePowerReading(
+      equipment("main_energy_meter"),
+      binding({ lastUpdated: ago(124 * 24 * 3600) }),
       NOW,
     );
 
-    expect(r.verdict).toBe("stale");
-    expect(r.watts).toBeNull();
+    expect(inside.verdict).toBe("current");
+    expect(beyond.verdict).toBe("stale");
+    expect(beyond.watts).toBeNull();
   });
 
   it("reports offline ahead of age, and dates nothing from it", () => {

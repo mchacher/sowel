@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
+  BUDGET_CEILING_MS,
+  BUDGET_FLOOR_MS,
+  BUDGET_LEARNING_MS,
   classifyPowerReading,
   freshnessBudgetFor,
+  LIVE_POWER_ALIASES,
+  resolveFreshnessBudget,
   FROZEN_READING_MS,
   isReadingCurrent,
   parseReadingTime,
@@ -206,5 +211,54 @@ describe("classifyPowerReading", () => {
     expect(
       classifyPowerReading({ ...base, status: "online", value: true, lastUpdated: ago(1_000) }),
     ).toBe("missing");
+  });
+});
+
+// ============================================================
+// Spec 175 — the budget comes from the source's cadence
+// ============================================================
+
+describe("resolveFreshnessBudget (spec 175)", () => {
+  it("floors a streaming source at two minutes", () => {
+    // 2.5 x 1 s is 2.5 s: one dropped MQTT message would paint the page stale.
+    expect(resolveFreshnessBudget({ observedMs: 1000 })).toBe(BUDGET_FLOOR_MS);
+    expect(BUDGET_FLOOR_MS).toBe(2 * 60 * 1000);
+  });
+
+  it("gives a 300 s source twelve and a half minutes", () => {
+    expect(resolveFreshnessBudget({ observedMs: 300_000 })).toBe(750_000);
+  });
+
+  it("caps a very slow source at half an hour", () => {
+    expect(resolveFreshnessBudget({ observedMs: 3_600_000 })).toBe(BUDGET_CEILING_MS);
+    expect(BUDGET_CEILING_MS).toBe(30 * 60 * 1000);
+  });
+
+  it("uses what the integration declares when nothing is observed yet", () => {
+    expect(resolveFreshnessBudget({ observedMs: null, declaredMs: 300_000 })).toBe(750_000);
+  });
+
+  it("prefers what the source does over what its plugin claims", () => {
+    // A plugin polling every 300 s whose upstream API refreshes hourly is
+    // described by its arrivals, not by its timer — and the other way round.
+    expect(resolveFreshnessBudget({ observedMs: 60_000, declaredMs: 300_000 })).toBe(150_000);
+  });
+
+  it("falls back to the learning window when neither is known", () => {
+    expect(resolveFreshnessBudget({})).toBe(BUDGET_LEARNING_MS);
+    expect(resolveFreshnessBudget({ observedMs: null, declaredMs: null })).toBe(BUDGET_LEARNING_MS);
+    expect(BUDGET_LEARNING_MS).toBe(10 * 60 * 1000);
+  });
+
+  it("treats a nonsensical cadence as no information", () => {
+    expect(resolveFreshnessBudget({ observedMs: 0 })).toBe(BUDGET_LEARNING_MS);
+    expect(resolveFreshnessBudget({ observedMs: -5 })).toBe(BUDGET_LEARNING_MS);
+    expect(resolveFreshnessBudget({ observedMs: Number.NaN })).toBe(BUDGET_LEARNING_MS);
+  });
+
+  it("no longer offers `demand_5min` as a live power alias", () => {
+    // No plugin in the registry has ever produced that alias; its only
+    // declaration in this repository's history was a test fixture (#883).
+    expect([...LIVE_POWER_ALIASES]).toEqual(["power"]);
   });
 });

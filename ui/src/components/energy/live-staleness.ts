@@ -26,36 +26,28 @@
  */
 
 import {
+  BUDGET_LEARNING_MS,
   classifyPowerReading,
   parseReadingTime,
-  SUBMETER_FRESHNESS_SLOW_MS,
 } from "../../../../src/shared/reading-freshness";
 import type { EquipmentWithDetails } from "../../types";
 
 /**
- * How long this page lets a meter go quiet before saying so.
+ * How long this page lets a meter go quiet before saying so: whatever the
+ * engine resolved from that meter's own cadence (spec 175).
  *
- * The two-minute meter window it used to apply is calibrated for a source that
- * streams — a Shelly at 1 Hz — and every polled source in the registry reports
- * far slower than that: `legrand_energy` polls on a 300 s default, and the
- * APsystems bridge publishes on a Tasmota `tele/<root>/SENSOR` topic whose
- * default `TelePeriod` is also 300 s. Two minutes against a five-minute
- * cadence does not detect anything; it puts the banner on screen for three
- * minutes out of every five, permanently, over a healthy meter. That is the
- * report behind #881, and "frozen for 3 min" is just the arithmetic of it.
+ * This used to be a constant, and it had to be. A two-minute window is
+ * calibrated for a source that streams, and against a 300 s poller it detects
+ * nothing while putting the banner on screen for three minutes out of every
+ * five, permanently, over a healthy meter — the report behind #881. Ten
+ * minutes fixed that by being twice the slowest cadence in the registry, and
+ * charged a 1 Hz meter ten minutes of silence before anyone was told it died.
  *
- * Ten minutes is twice the slowest supported cadence, so no supported source
- * oscillates. The cost is stated plainly: a genuinely dead 1 Hz meter now
- * surfaces in ten minutes instead of two. For a banner whose job is to stop a
- * reader trusting a stale figure, ten minutes of delay is worth incomparably
- * less than an alert that is wrong most of the time and learned to be ignored.
- *
- * The window is fixed rather than derived from each meter's observed cadence,
- * which is what it should eventually be (Sowel already has the arrival times
- * in `device_data`); doing that needs the cadence carried on the payload, and
- * it is not needed to make this banner honest.
+ * Neither is needed now that the budget travels on the binding: a streaming
+ * meter is doubted after two minutes, a 300 s poller after twelve and a half,
+ * and no surface holds a number of its own to disagree with.
  */
-const SILENCE_BUDGET_MS = SUBMETER_FRESHNESS_SLOW_MS;
+const FALLBACK_BUDGET_MS = BUDGET_LEARNING_MS;
 
 /** Which side of the diagram a flagged reading belongs to. */
 export type LiveSource = "grid" | "solar";
@@ -97,7 +89,7 @@ function judgeMeter(
     lastUpdated: binding.lastUpdated,
     equipmentType: eq.type,
     now,
-    budgetMs: SILENCE_BUDGET_MS,
+    budgetMs: binding.freshnessBudgetMs ?? FALLBACK_BUDGET_MS,
     // The liveness proof this page was missing: the value as stored, at full
     // precision, never the rounded figure the diagram draws (#881).
     lastChanged: binding.lastChanged,

@@ -217,6 +217,8 @@ PUT /api/v1/equipments/eq-gate
 
 Each entry of `dataBindings[]` also gains `stale: boolean`. Only streaming categories ever flip to `true`; event-based categories (motion, contact_door, action, light_state, shutter_position, etc.) are always `false`.
 
+Bindings in the `power` category also carry `freshnessBudgetMs: number` (spec 175): how old that reading may be and still be drawn as a live measurement. It is derived from what the source actually does, not from the equipment's type — the median interval between its recent arrivals, or failing that the polling interval its integration declares — as `clamp(2.5 x cadence, 120 s, 30 min)`. A meter streaming at 1 Hz therefore carries 120 000 and a cloud poller on a 300 s cycle carries 750 000. The field is absent when the engine could not resolve it (a source that has not reported since the last restart, on an integration that declares no interval); a client reading it must then fall back to 10 minutes, never treat the reading as unbounded.
+
 ### Data Bindings
 
 | Method   | Path                                              | Description                                         |
@@ -268,7 +270,7 @@ Each entry carries an extra field on this role only:
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `powerReadingCurrent` | `true` when the `power` reading may be drawn as a live measurement, `false` when it may not (the reading is older than its freshness budget, or the equipment is offline), `null` when there is no numeric `power` reading to judge. |
 
-A client must consult it before drawing a segment. A reading past its budget is a leftover, not a measurement, and it is quiet: a stale `0 W` looks exactly like an appliance that is off. The budget is two minutes for a declared meter, which the engine already expects to report continuously, and ten minutes otherwise, because several integrations poll on a five-minute cycle and a healthy appliance must not flicker (issues #744 and #832).
+A client must consult it before drawing a segment. A reading past its budget is a leftover, not a measurement, and it is quiet: a stale `0 W` looks exactly like an appliance that is off. The budget is the binding's own `freshnessBudgetMs`, derived from the cadence that source reports at (spec 175), so a meter is judged against its own behaviour rather than against a constant chosen for its equipment type (issues #744, #832 and #883).
 
 Offline equipments stay in the list on purpose, so a client can render an "offline since" row, and they answer `false`: their last reading is not a live measurement however recent it is.
 

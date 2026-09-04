@@ -1,6 +1,6 @@
 import {
+  BUDGET_LEARNING_MS,
   classifyPowerReading,
-  powerBudgetFor,
   type ReadingVerdict,
 } from "../../../src/shared/reading-freshness";
 import type { DataBindingWithValue, EquipmentWithDetails } from "../types";
@@ -18,10 +18,10 @@ import type { DataBindingWithValue, EquipmentWithDetails } from "../types";
 // 944 s, stale false.
 //
 // This module judges; it does not select and it does not format. Selection
-// stays at the call sites because their lookups legitimately differ (the
-// water heater column wants the `power` category, a Legrand meter falls back
-// to `demand_5min`), and routing them all through one lookup here would
-// change what each surface displays, which is not what this fix is for.
+// stays at the call sites because their lookups legitimately differ (the water
+// heater column wants the `power` category, a meter card its `power` alias),
+// and routing them all through one lookup here would change what each surface
+// displays, which is not what this fix is for.
 // Formatting stays there too: two decimals on the compact card, one in the
 // meter's secondary row, none in the water heater column.
 // ============================================================
@@ -45,22 +45,6 @@ export interface PowerReading {
 }
 
 /**
- * The freshness budget a reading answers to, when its own cadence outranks the
- * window its equipment type implies.
- *
- * The rule itself is `powerBudgetFor` in shared/: the zone power total asks the
- * same question of the same bindings (spec 170), and a budget restated per
- * surface is how one meter ends up live on its card and outdated in a total.
- * This wrapper only adapts the shapes the tiles hold.
- */
-function budgetFor(
-  equipment: EquipmentWithDetails,
-  binding: DataBindingWithValue | undefined,
-): number {
-  return powerBudgetFor(equipment.type, binding?.alias);
-}
-
-/**
  * Judge one power binding on behalf of a tile.
  *
  * The binding is passed in rather than looked up: see the module note. Pass
@@ -81,7 +65,10 @@ export function resolvePowerReading(
     lastUpdated: binding?.lastUpdated,
     equipmentType: equipment.type,
     now,
-    budgetMs: budgetFor(equipment, binding),
+    // Resolved by the engine from this source's own cadence and carried on the
+    // binding (spec 175). A tile no longer decides how old is too old, which is
+    // how the same meter used to read live here and outdated in its zone total.
+    budgetMs: binding?.freshnessBudgetMs ?? BUDGET_LEARNING_MS,
   });
   return {
     watts: verdict === "current" && typeof binding?.value === "number" ? binding.value : null,

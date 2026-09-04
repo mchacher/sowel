@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { EquipmentManager, EquipmentError } from "./equipment-manager.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
+import { BUDGET_FLOOR_MS, BUDGET_LEARNING_MS } from "../shared/reading-freshness.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import { DeviceManager } from "../devices/device-manager.js";
 import { ZoneManager } from "../zones/zone-manager.js";
@@ -100,6 +101,9 @@ describe("EquipmentManager", () => {
   let deviceManager: DeviceManager;
   // Connection status the mock integration reports (test hook for #702).
   let pluginStatus: "connected" | "disconnected";
+  // What the mock plugin declares polling at, or null for a streaming plugin
+  // (test hook for the spec 175 freshness budget).
+  let pluginPollingInfo: { lastPollAt: string; intervalMs: number } | null;
   // Order keys whose dispatch should throw (test hook for failure paths).
   let failOrderKeys: Set<string>;
   // Order keys whose dispatch throws exactly once, then recovers (transient
@@ -112,12 +116,14 @@ describe("EquipmentManager", () => {
     zoneManager = new ZoneManager(db, eventBus, logger);
     mockPublished = [];
     pluginStatus = "connected";
+    pluginPollingInfo = null;
     failOrderKeys = new Set();
     failOnceOrderKeys = new Set();
     deviceManager = new DeviceManager(db, eventBus, logger);
     const mockPlugin = {
       id: "zigbee2mqtt",
       getStatus: () => pluginStatus,
+      getPollingInfo: () => pluginPollingInfo,
       executeOrder: async (_device: any, orderKey: string, value: unknown) => {
         if (failOnceOrderKeys.delete(orderKey)) {
           throw new Error(`transient dispatch failure for ${orderKey}`);
@@ -153,6 +159,98 @@ describe("EquipmentManager", () => {
 
   afterEach(() => {
     db.close();
+  });
+
+  // ============================================================
+  // Freshness budget on the payload (spec 175)
+  // ============================================================
+
+  describe("freshness budget on the payload (spec 175)", () => {
+    function seedMeter(): { equipmentId: string; dataId: string } {
+      const { dataIds } = seedDevice(db, {
+        name: "Clamp",
+        dataKeys: [
+          { key: "power", type: "number", category: "power", value: "1200" },
+          { key: "temperature", type: "number", category: "temperature", value: "21" },
+        ],
+      });
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "Clamp", type: "energy_meter", zoneId: zone.id });
+      manager.addDataBinding(eq.id, dataIds[0]!, "power");
+      manager.addDataBinding(eq.id, dataIds[1]!, "temperature");
+      return { equipmentId: eq.id, dataId: dataIds[0]! };
+    }
+
+    function powerBudget(equipmentId: string): number | undefined {
+      const bindings = manager.getDataBindingsWithValues(equipmentId);
+      return bindings.find((b) => b.alias === "power")?.freshnessBudgetMs;
+    }
+
+    it("falls back to the learning window when nothing is known about the source", () => {
+      const { equipmentId } = seedMeter();
+
+      expect(powerBudget(equipmentId)).toBe(BUDGET_LEARNING_MS);
+    });
+
+    it("uses what the integration declares polling at", () => {
+      const { equipmentId } = seedMeter();
+      pluginPollingInfo = { lastPollAt: new Date().toISOString(), intervalMs: 300_000 };
+
+      expect(powerBudget(equipmentId)).toBe(750_000);
+    });
+
+    it("prefers the cadence the source actually reports at", () => {
+      const { equipmentId, dataId } = seedMeter();
+      pluginPollingInfo = { lastPollAt: new Date().toISOString(), intervalMs: 300_000 };
+      const base = Date.now() - 10_000;
+      for (let i = 0; i <= 5; i++) deviceManager.cadence.record(dataId, base + i * 1000);
+
+      // A source arriving every second earns the floor, not the 12.5 min its
+      // plugin's timer would have claimed for it.
+      expect(powerBudget(equipmentId)).toBe(BUDGET_FLOOR_MS);
+    });
+
+    it("budgets power bindings only", () => {
+      const { equipmentId } = seedMeter();
+      const other = manager
+        .getDataBindingsWithValues(equipmentId)
+        .find((b) => b.alias === "temperature");
+
+      // Annotating the rest would invite wiring this into the spec 116 windows,
+      // which spec 175 deliberately leaves alone.
+      expect(other?.freshnessBudgetMs).toBeUndefined();
+    });
+
+    it("leaves the spec 116 staleness flags untouched", () => {
+      const { equipmentId, dataId } = seedMeter();
+      db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
+        new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        dataId,
+      );
+
+      const power = manager.getDataBindingsWithValues(equipmentId).find((b) => b.alias === "power");
+
+      // A declared meter half an hour quiet is stale by the category window,
+      // exactly as before, and now also carries a budget for the display
+      // surfaces. The two answers are separate on purpose.
+      expect(power?.stale).toBe(true);
+      expect(power?.freshnessBudgetMs).toBe(BUDGET_LEARNING_MS);
+    });
+
+    it("forgets a deleted device's cadence", () => {
+      const { dataId } = seedMeter();
+      const base = Date.now() - 10_000;
+      for (let i = 0; i <= 5; i++) deviceManager.cadence.record(dataId, base + i * 1000);
+      const deviceId = (
+        db.prepare("SELECT device_id AS id FROM device_data WHERE id = ?").get(dataId) as {
+          id: string;
+        }
+      ).id;
+
+      deviceManager.delete(deviceId);
+
+      expect(deviceManager.cadence.observedIntervalMs(dataId)).toBeNull();
+    });
   });
 
   // ============================================================

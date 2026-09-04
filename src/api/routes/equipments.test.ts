@@ -637,8 +637,8 @@ describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", ()
   const logger = createLogger("silent").logger;
 
   const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
-  const powerAt = (value: unknown, lastUpdated: string | null) => [
-    { alias: "power", category: "power", type: "number", value, lastUpdated },
+  const powerAt = (value: unknown, lastUpdated: string | null, freshnessBudgetMs?: number) => [
+    { alias: "power", category: "power", type: "number", value, lastUpdated, freshnessBudgetMs },
   ];
 
   async function build(fixture: FixtureEq[]) {
@@ -698,20 +698,51 @@ describe("GET /api/v1/equipments?role=submeter — reading freshness (#832)", ()
     expect(v["Chauffe-eau"]).toBe(false);
   });
 
-  it("does not flag a 300 s poller, which is a supported default cadence", async () => {
-    // Four official integrations poll every 300 s. The #744 snapshot shows two
-    // such rows at 270 s with nothing wrong.
+  it("does not flag a 300 s source four and a half minutes in, whatever its type", async () => {
+    // The budget travels on the binding now (spec 175): 2.5 x 300 s. A meter
+    // and an appliance reporting at the same cadence get the same answer,
+    // where the equipment type used to decide it.
     const v = await verdicts([
-      { id: "1", name: "Lave-linge", type: "appliance", dataBindings: powerAt(0, ago(270_000)) },
+      {
+        id: "1",
+        name: "Lave-linge",
+        type: "appliance",
+        dataBindings: powerAt(0, ago(270_000), 750_000),
+      },
+      {
+        id: "2",
+        name: "Clamp lent",
+        type: "energy_meter",
+        dataBindings: powerAt(500, ago(270_000), 750_000),
+      },
     ]);
     expect(v["Lave-linge"]).toBe(true);
+    expect(v["Clamp lent"]).toBe(true);
   });
 
-  it("holds a declared meter to the tighter window", async () => {
+  it("holds a streaming meter to the window its own cadence earns", async () => {
+    // A source reporting every second earns the 120 s floor, so four and a half
+    // minutes of silence is a dead meter, not a slow one.
     const v = await verdicts([
-      { id: "1", name: "Clamp", type: "energy_meter", dataBindings: powerAt(500, ago(270_000)) },
+      {
+        id: "1",
+        name: "Clamp rapide",
+        type: "energy_meter",
+        dataBindings: powerAt(500, ago(270_000), 120_000),
+      },
     ]);
-    expect(v["Clamp"]).toBe(false);
+    expect(v["Clamp rapide"]).toBe(false);
+  });
+
+  it("falls back to the learning window when the engine resolved no budget", async () => {
+    // An old client, or a binding the engine could not resolve: 10 minutes,
+    // which is what this feed answered before the field existed.
+    const v = await verdicts([
+      { id: "1", name: "Inconnu", type: "energy_meter", dataBindings: powerAt(500, ago(270_000)) },
+      { id: "2", name: "Muet", type: "energy_meter", dataBindings: powerAt(500, ago(700_000)) },
+    ]);
+    expect(v["Inconnu"]).toBe(true);
+    expect(v["Muet"]).toBe(false);
   });
 
   it("reports null when there is no numeric power reading to judge", async () => {

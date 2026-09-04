@@ -10,6 +10,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, render, screen, within } from "../../test-utils";
+import { BUDGET_FLOOR_MS } from "../../../../src/shared/reading-freshness";
 import { MemoryRouter } from "react-router-dom";
 import { LiveEnergyPage } from "./LiveEnergyPage";
 import { useEquipments } from "../../store/useEquipments";
@@ -24,6 +25,12 @@ function meter(
   type: EquipmentWithDetails["type"],
   power: number,
   ageMs = 20_000,
+  /**
+   * The budget the engine resolved from this source's cadence (spec 175).
+   * Defaults to the floor, i.e. a meter that streams: these fixtures are about
+   * what the page does with an aged reading, not about how the age is judged.
+   */
+  freshnessBudgetMs: number = BUDGET_FLOOR_MS,
 ): EquipmentWithDetails {
   return {
     id,
@@ -40,6 +47,7 @@ function meter(
         type: "number",
         value: power,
         lastUpdated: new Date(NOW - ageMs).toISOString(),
+        freshnessBudgetMs,
         // The backend applies the 2-minute power window only to metering
         // equipment types, so a water_heater's power binding reports fresh
         // however old it is. That is the flag the card must not rely on.

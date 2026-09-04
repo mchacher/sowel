@@ -29,6 +29,7 @@ import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
+import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
 import {
   parseForecastDays,
@@ -589,14 +590,18 @@ function useMobileState(
   }
 
   // Energy meter — mirrors the desktop EnergyMeterEquipmentWidget (issue #323):
-  // today's consumption from computedData `energy_day`, plus current power
-  // (`demand_5min`) when present. Without this branch the card rendered blank.
+  // today's consumption from computedData `energy_day`, plus current power when
+  // present. Without this branch the card rendered blank.
+  //
+  // The power lookup used to name `demand_5min`, an alias no plugin has ever
+  // produced (spec 175), so this card printed a dash over every real meter. It
+  // asks `pickLivePowerBinding` now, the same selection the compact card uses.
   if (isEnergyMeter) {
     const computed = equipment.computedData ?? [];
     const energyDay = computed.find((c) => c.alias === "energy_day");
     const demandReading = resolvePowerReading(
       equipment,
-      equipment.dataBindings.find((b) => b.alias === "demand_5min"),
+      pickLivePowerBinding(equipment.dataBindings),
     );
     const demandW = demandReading.watts;
     const fmtWh = (wh: unknown): string =>

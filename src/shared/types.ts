@@ -501,6 +501,16 @@ export interface DataBindingWithValue extends DataBinding {
    * or contact_door (absence of update is not anomaly).
    */
   stale: boolean;
+  /**
+   * How old this reading may be and still be drawn as a live measurement,
+   * derived from the source's own cadence rather than from the equipment's
+   * type (spec 175).
+   *
+   * Present on power bindings only, and absent when the engine could not
+   * resolve it (no provider wired). Absent means "not resolved here", never
+   * "no budget": a consumer falls back to `BUDGET_LEARNING_MS`.
+   */
+  freshnessBudgetMs?: number;
 }
 
 export interface OrderBindingWithDetails extends OrderBinding {

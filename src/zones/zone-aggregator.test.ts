@@ -1307,12 +1307,13 @@ describe("ZoneAggregator", () => {
       expect(events.filter((e) => e.type === "zone.data.changed").length).toBeGreaterThanOrEqual(1);
     });
 
-    it("counts a meter whose only live channel is demand_5min", () => {
+    it("counts a meter six minutes quiet whose cadence is not known yet", () => {
       const zone = zoneManager.create({ name: "Gite" });
-      const { dev } = seedMeter(zone.id, { name: "NLPC", watts: "850", alias: "demand_5min" });
-      // Six minutes old: past the two-minute meter window, inside the budget a
-      // five-minute average answers to (#839). Under the meter window this
-      // healthy meter would drop out of the total for most of every cycle.
+      const { dev } = seedMeter(zone.id, { name: "NLPC", watts: "850" });
+      // Six minutes old, and nothing here has ever recorded an arrival, so the
+      // binding carries the learning budget (spec 175). Under the old
+      // two-minute meter window a healthy 300 s source dropped out of the total
+      // for most of every cycle, while its own card still printed live watts.
       db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
         new Date(Date.now() - 6 * 60 * 1000).toISOString(),
         dev.dataIds[0],
@@ -1323,9 +1324,9 @@ describe("ZoneAggregator", () => {
       expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(850);
     });
 
-    it("still drops a demand_5min reading past the slow budget", () => {
+    it("still drops a reading past the learning budget", () => {
       const zone = zoneManager.create({ name: "Gite" });
-      const { dev } = seedMeter(zone.id, { name: "NLPC", watts: "850", alias: "demand_5min" });
+      const { dev } = seedMeter(zone.id, { name: "NLPC", watts: "850" });
       db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
         new Date(Date.now() - 30 * 60 * 1000).toISOString(),
         dev.dataIds[0],
@@ -1336,22 +1337,23 @@ describe("ZoneAggregator", () => {
       expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBeNull();
     });
 
-    it("prefers `power` over `demand_5min` when an equipment carries both", () => {
+    it("ignores a `demand_5min` channel, which no plugin has ever produced", () => {
+      // The alias was a fallback in `LIVE_POWER_ALIASES` on the premise that a
+      // Legrand NLPC has no `power` channel. It has one, and no integration in
+      // the registry has ever declared `demand_5min` (spec 175). A meter
+      // carrying only that channel contributes nothing, which is the honest
+      // answer for a channel nothing produces.
       const zone = zoneManager.create({ name: "Gite" });
       const dev = seedDevice(db, {
         name: "Meter",
-        dataKeys: [
-          { key: "power", type: "number", category: "power", value: "120" },
-          { key: "demand_5min", type: "number", category: "power", value: "300" },
-        ],
+        dataKeys: [{ key: "demand_5min", type: "number", category: "power", value: "300" }],
       });
       const eq = equipmentManager.create({ name: "Meter", type: "energy_meter", zoneId: zone.id });
-      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "power");
-      equipmentManager.addDataBinding(eq.id, dev.dataIds[1], "demand_5min");
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "demand_5min");
 
       aggregator.computeAll();
 
-      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(120);
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBeNull();
     });
 
     it("drops a reading that ages out with no event, on its own tick", () => {

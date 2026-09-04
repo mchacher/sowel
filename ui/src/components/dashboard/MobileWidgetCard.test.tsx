@@ -32,10 +32,10 @@ function makeEnergyMeter(over: Partial<EquipmentWithDetails> = {}): EquipmentWit
         id: "db-d",
         equipmentId: "em-1",
         deviceDataId: "dd-d",
-        alias: "demand_5min",
+        alias: "power",
         deviceId: "dev-1",
         deviceName: "Meter",
-        key: "demand_5min",
+        key: "power",
         type: "number",
         category: "power",
         value: 800,
@@ -61,7 +61,7 @@ const widget: DashboardWidget = {
 describe("MobileWidgetCard", () => {
   it("renders an energy_meter's today value and current power (issue #323)", () => {
     render(<MobileWidgetCard widget={widget} equipment={makeEnergyMeter()} />);
-    // energy_day 1500 Wh -> 1.5 kWh, demand_5min 800 -> 800 W, joined by " · ".
+    // energy_day 1500 Wh -> 1.5 kWh, power 800 -> 800 W, joined by " · ".
     expect(screen.getByText(/1\.5 kWh/)).toBeTruthy();
     expect(screen.getByText(/800 W/)).toBeTruthy();
   });
@@ -222,9 +222,10 @@ describe("MobileWidgetCard — stale power readings (#839)", () => {
     expect(screen.getByText(/1 h/)).toBeTruthy();
   });
 
-  it("keeps a demand_5min reading inside its own five-minute nature", () => {
-    // 290 s would be past a metering type's two-minute window, but the
-    // quantity is a five-minute average and cannot be fresher than that.
+  it("keeps a reading its source's cadence still vouches for", () => {
+    // 290 s is past the old two-minute meter window. The budget comes from the
+    // source now (spec 175); this fixture has none resolved, so it answers to
+    // the learning window.
     const eq = makeEnergyMeter();
     eq.dataBindings[0].lastUpdated = agoIso(290);
 

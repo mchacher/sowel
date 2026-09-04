@@ -38,6 +38,7 @@ import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
+import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
 import { createElement, type ReactNode } from "react";
 import {
@@ -1256,10 +1257,12 @@ function EnergyMeterEquipmentWidget({
   const energyHour = computed.find((c) => c.alias === "energy_hour");
   const energyMonth = computed.find((c) => c.alias === "energy_month");
 
-  // Also check dataBindings for demand_5min (current power)
+  // Current power, from the `power` binding. This named `demand_5min` until
+  // spec 175 established that no plugin has ever produced that alias, which is
+  // why the figure was missing on every real meter.
   const demandReading = resolvePowerReading(
     equipment,
-    equipment.dataBindings.find((b) => b.alias === "demand_5min"),
+    pickLivePowerBinding(equipment.dataBindings),
   );
   const demandW = demandReading.watts;
 

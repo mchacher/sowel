@@ -63,6 +63,8 @@ function makeEquipment(
     lastUpdated?: string | null;
     /** Spec 173 — the meter that already counts this one. */
     meteringParentId?: string | null;
+    /** Spec 175 — the budget the engine resolved from the source's cadence. */
+    freshnessBudgetMs?: number;
   } = {},
 ): EquipmentWithDetails {
   const bindings: DataBindingWithValue[] = [];
@@ -75,6 +77,7 @@ function makeEquipment(
           opts.lastUpdated !== undefined
             ? opts.lastUpdated
             : ago(opts.readingAgeMs ?? 5_000),
+        freshnessBudgetMs: opts.freshnessBudgetMs,
       }),
     );
   }
@@ -158,11 +161,14 @@ describe("readSubmeterReading", () => {
 // weight. During export the total is a small difference of two large numbers,
 // so a stale part can dwarf it: 275 W against a 35 W house read as 776 %.
 describe("readSubmeterReading — freshness (#744)", () => {
-  it("refuses a reading older than the engine's own power window, on a meter", () => {
+  it("refuses a reading older than the budget its source earns, on a meter", () => {
     const eq = makeEquipment("a", "Piscine", {
       type: "energy_meter",
       power: 1233,
       readingAgeMs: SUBMETER_FRESHNESS_MS + 1_000,
+      // Spec 175 — the budget comes from the source's cadence now, and this
+      // one streams. Without it the reading answers to the learning window.
+      freshnessBudgetMs: SUBMETER_FRESHNESS_MS,
     });
     const reading = readSubmeterReading(eq, NOW);
     expect(reading.power).toBeNull();
