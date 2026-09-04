@@ -176,7 +176,13 @@ Every entry in `plugins/registry.json` MUST carry `sha256` (64 hex chars) and `o
 
 **Official vs community owners**: `OFFICIAL_OWNERS = ["mchacher"]` in `src/packages/registry-types.ts` is the hard-coded whitelist. Plugins from any other owner are flagged community in the UI and require an explicit user confirmation modal at install. The `OFFICIAL_OWNERS` list grows by review (not by PR — a PR adding to it must be reviewed by the Sowel maintainer).
 
-If the registry CI fails on SHA256 mismatch, the fix is always to re-run `backfill-registry-sha256.mjs`, never to remove the field or bypass the check.
+**The `Registry bump integrity` job checks this on every PR** (`scripts/check-registry-bump.sh`, issue #892). For each entry whose `version` or `sha256` changed it downloads the release asset, compares the hash, and reads the `manifest.json` inside the tarball to confirm the entry points at the release it claims. It also refuses any entry in the file missing `sha256`, `owner`, `repo`, `version` or `type`. Run it locally before pushing:
+
+```bash
+bash scripts/check-registry-bump.sh
+```
+
+If it fails on a SHA256 mismatch, the fix is always to re-run `backfill-registry-sha256.mjs`, never to remove the field or bypass the check. If it fails because the release does not exist, the bump is simply ahead of the publish: tag the plugin first.
 
 ### Release notes are mandatory (spec 108 — MANDATORY for AI agents)
 

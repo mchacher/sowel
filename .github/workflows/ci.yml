@@ -101,3 +101,21 @@ jobs:
         run: bash scripts/check-docs-impact.sh
       - name: Every spec folder is listed in both indexes
         run: bash scripts/check-specs-index.sh folders
+
+  registry:
+    name: Registry bump integrity
+    runs-on: ubuntu-latest
+    # Issue #892 — a registry entry pairs a version with the SHA256 of the
+    # tarball GitHub publishes for it. Nothing checked the pair, and a wrong one
+    # fails every install with ChecksumMismatchError about an hour later, once
+    # the CDN has caught up. Exits immediately on a PR that leaves the registry
+    # alone, so it costs nothing to the other 99% of pull requests.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # need main's history for the merge-base diff
+      - name: A bumped entry matches its published release
+        env:
+          # Only to read public release assets — the workflow token is read-only.
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/check-registry-bump.sh
