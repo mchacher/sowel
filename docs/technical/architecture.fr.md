@@ -268,6 +268,12 @@ Des buckets downsamplés supplémentaires (`sowel-hourly`, `sowel-daily`) existe
 
 InfluxDB est obligatoire : Sowel se connecte au démarrage et auto-crée les buckets, les tâches de downsampling, et les tâches d'agrégation énergétique.
 
+#### Où l'effet d'un ordre est observé
+
+Un `executeOrder` qui réussit signifie que l'ordre a atteint l'intégration, pas que l'appareil a agi : le tracker guette donc l'apparition de la valeur ordonnée et alerte si elle ne vient pas. La lecture qu'il surveille est résolue dans cet ordre : une liaison de donnée portant l'alias de l'ordre **sur l'appareil même auquel l'ordre a été envoyé** ; à défaut, la liaison sur un autre appareil, si son type peut rapporter la valeur ordonnée ; à défaut, la donnée propre de l'appareil ciblé sous la clé de l'ordre, là où un thermostat cloud publie un état que personne n'a lié. Quand aucune des trois n'existe, l'ordre reste suivi et rejoué, mais il sort de la surface d'alarme : une alarme que rien ne peut résoudre est du bruit.
+
+La règle du milieu existe parce qu'un alias n'est pas un vocabulaire. Sur un appareil sous-compté, `power` désigne à la fois le booléen envoyé à l'appareil et la puissance lue par une pince, et comparer les deux ne peut jamais être vrai (issue #901).
+
 #### Les deltas d'énergie sont cumulés, jamais échantillonnés
 
 Un binding `energy` porte un **delta additif** (Wh depuis le tick précédent), pas une mesure. La déduplication qui protège les autres catégories (deadband, intervalle minimum de 30 s) détruirait silencieusement de l'énergie : les compteurs ont des cadences très différentes — un Shelly EM émet un tick par minute, un Tuya PJ-1203A en émet ~30, dont un seul porte le saut de compteur de 10 Wh.

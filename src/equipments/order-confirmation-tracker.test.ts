@@ -6,6 +6,7 @@ import {
   RETRY_CHANNEL,
   valuesMatch,
   isConfirmableValue,
+  mirrorCanReport,
 } from "./order-confirmation-tracker.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
@@ -52,6 +53,23 @@ describe("isConfirmableValue", () => {
     expect(isConfirmableValue("CLOSE", ["OPEN", "CLOSED"])).toBe(false);
     expect(isConfirmableValue("STOP", ["OPEN", "CLOSED"])).toBe(false);
     expect(isConfirmableValue("SMART", undefined)).toBe(false);
+  });
+});
+
+describe("mirrorCanReport", () => {
+  it("refuses a wattage as the mirror of a boolean order, and the reverse", () => {
+    expect(mirrorCanReport(true, "number")).toBe(false);
+    expect(mirrorCanReport("OFF", "number")).toBe(false);
+    expect(mirrorCanReport(25, "boolean")).toBe(false);
+  });
+
+  it("keeps every mirror that could actually report the value", () => {
+    expect(mirrorCanReport(true, "boolean")).toBe(true);
+    // An ON/OFF enum is a real mirror for a boolean order, and stays one.
+    expect(mirrorCanReport(true, "enum")).toBe(true);
+    expect(mirrorCanReport(25, "number")).toBe(true);
+    expect(mirrorCanReport("SMART", "enum")).toBe(true);
+    expect(mirrorCanReport(true, undefined)).toBe(true);
   });
 });
 
@@ -597,5 +615,154 @@ describe("OrderConfirmationTracker", () => {
 
       expect(executeOrderCalls).toEqual([{ equipmentId: "eq-1", alias: "state", value: "WAKE" }]);
     });
+  });
+});
+
+// ============================================================
+// Issue #901 — the alias is not a vocabulary
+//
+// A submetered thermostat: the `power` order is a boolean sent to the cloud
+// device, while the `power` data binding is the wattage read from a clamp on
+// the same appliance. Measured on production before this fix: 15 power orders,
+// 15 alarms, and every one of them a false positive.
+// ============================================================
+
+describe("OrderConfirmationTracker — submetered thermostat (issue #901)", () => {
+  let eventBus: EventBus;
+  let tracker: OrderConfirmationTracker;
+  let emitted: EngineEvent[];
+  /** What the Panasonic device itself publishes under `power`, or null. */
+  let devicePower: boolean | null;
+  /** Bindings of the equipment: the clamp wattage, plus optionally the device state. */
+  let bindings: Record<string, unknown>[];
+
+  const equipmentManager = {
+    getById: (id: string) => ({ id, name: "PAC" }),
+    getDataBindingsWithValues: vi.fn(() => bindings),
+    getOrderBindingsWithDetails: vi.fn(() => [
+      { alias: "power", deviceId: "dev-pac", key: "power" },
+    ]),
+    executeOrder: vi.fn(async () => ({ success: true })),
+  } as unknown as EquipmentManager;
+
+  const deviceManager = {
+    getById: (id: string) => ({
+      id,
+      status: "online",
+      integrationId: "panasonic_cc",
+      sourceDeviceId: `src-${id}`,
+    }),
+    getDeviceDataValue: (_integrationId: string, sourceDeviceId: string, key: string) =>
+      sourceDeviceId === "src-dev-pac" && key === "power" ? devicePower : null,
+  } as unknown as DeviceManager;
+
+  const integrationRegistry = {
+    noteUnreachable: () => {},
+    getById: () => ({
+      getStatus: () => "connected",
+      // The real plugin polls every 300 s, so the watchdog is 600 s.
+      getPollingInfo: () => ({ lastPollAt: "2026-09-04T00:00:00Z", intervalMs: 300_000 }),
+    }),
+  } as unknown as IntegrationRegistry;
+
+  function emitOrder(value: unknown): void {
+    eventBus.emit({
+      type: "equipment.order.executed",
+      equipmentId: "eq-pac",
+      orderAlias: "power",
+      value,
+    } as EngineEvent);
+  }
+
+  /** The Panasonic device reporting its own state, one poll later. */
+  function emitDevicePower(value: boolean): void {
+    devicePower = value;
+    eventBus.emit({
+      type: "device.data.updated",
+      deviceId: "dev-pac",
+      deviceName: "PAC",
+      dataId: "dd-1",
+      key: "power",
+      value,
+      previous: !value,
+      timestamp: "2026-09-04T10:36:00Z",
+    } as EngineEvent);
+  }
+
+  function alarmsRaised(): EngineEvent[] {
+    return emitted.filter((e) => e.type === "system.alarm.raised");
+  }
+  function unconfirmedEvents(): EngineEvent[] {
+    return emitted.filter((e) => e.type === "equipment.order.unconfirmed");
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    eventBus = new EventBus(logger);
+    emitted = [];
+    devicePower = false;
+    bindings = [{ alias: "power", value: 646, type: "number", deviceId: "dev-clamp" }];
+    eventBus.on((event) => {
+      emitted.push(event);
+    });
+    tracker = new OrderConfirmationTracker(
+      eventBus,
+      equipmentManager,
+      deviceManager,
+      integrationRegistry,
+      logger,
+    );
+    tracker.init();
+  });
+
+  afterEach(() => {
+    tracker.destroy();
+    vi.useRealTimers();
+  });
+
+  it("confirms from the ordered device's own state when a wattage holds the alias", () => {
+    emitOrder(true);
+    vi.advanceTimersByTime(120_000);
+    emitDevicePower(true);
+    vi.advanceTimersByTime(600_000);
+
+    expect(unconfirmedEvents().length).toBe(0);
+    expect(alarmsRaised().length).toBe(0);
+  });
+
+  it("still alarms when the ordered device reports the opposite state", () => {
+    emitOrder(true);
+    // The device answers, and says it did not switch: that is a real failure.
+    emitDevicePower(false);
+    vi.advanceTimersByTime(601_000);
+
+    expect(unconfirmedEvents().length).toBe(1);
+    expect(alarmsRaised().length).toBe(1);
+  });
+
+  it("stays out of the alarm surface when nothing could report the value", () => {
+    // The cloud device publishes no state under the order key either.
+    devicePower = null;
+    emitOrder(true);
+    vi.advanceTimersByTime(601_000);
+
+    expect(unconfirmedEvents().length).toBe(0);
+    expect(alarmsRaised().length).toBe(0);
+  });
+
+  it("prefers a binding on the ordered device over one on another device", () => {
+    bindings = [
+      { alias: "power", value: 646, type: "number", deviceId: "dev-clamp" },
+      { alias: "power", value: true, type: "boolean", deviceId: "dev-pac" },
+    ];
+
+    // Already in the ordered state, seen through the right binding: nothing to
+    // watch. Against the clamp, `true` versus `646` would have armed a
+    // watchdog that could only expire.
+    emitOrder(true);
+    vi.advanceTimersByTime(601_000);
+
+    expect(unconfirmedEvents().length).toBe(0);
+    expect(alarmsRaised().length).toBe(0);
   });
 });
