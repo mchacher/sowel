@@ -219,6 +219,12 @@ An order dispatched at a disconnected integration never reaches the wire. Rather
 
 Recipe instances are the reason this used to matter on every restart: they start at the very end of boot, behind a bounded wait on the integrations reporting connected, because an instance evaluates and dispatches as soon as it starts. The wait is capped so one unreachable cloud integration cannot hold every automation, and whatever still slips through is caught by the hold-and-replay above. The API and the recipe list do not wait; only running-instance state does.
 
+#### Where an order's effect is observed
+
+`executeOrder` succeeding means the order reached the integration, not that the device acted, so the tracker watches for the ordered value to appear and alarms when it does not. Which reading it watches is resolved in this order: a data binding carrying the order's alias **on the very device the order was sent to**; failing that, the binding on another device, when its type could report the ordered value; failing that, the ordered device's own data under the order key, which is where a cloud thermostat publishes a state nobody bound. When none of the three exists, the order is still tracked and replayed, but it stays out of the alarm surface, because an alarm nothing can resolve is noise.
+
+The middle rule exists because an alias is not a vocabulary. On a submetered appliance `power` is both the boolean sent to the device and the wattage read from a clamp, and comparing the two can only ever be false (issue #901).
+
 ### Current official plugin ecosystem
 
 | Plugin                  | Repo                                          | Type        |

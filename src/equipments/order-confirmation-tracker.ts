@@ -3,7 +3,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { IntegrationRegistry } from "../integrations/integration-registry.js";
-import type { OrderSource } from "../shared/types.js";
+import type { DataBindingWithValue, DataType, OrderSource } from "../shared/types.js";
 
 // ============================================================
 // Spec 141 — order delivery confirmation
@@ -91,6 +91,12 @@ interface PendingOrder {
   deviceIds: string[];
   /** Integrations behind the order bindings — the replay trigger for #702. */
   integrationIds: string[];
+  /**
+   * Set when the confirmation is read from the ordered device's own data
+   * rather than from an equipment binding, because no binding on this
+   * equipment could mirror the order (issue #901).
+   */
+  deviceMirror?: { deviceId: string; key: string };
   source?: OrderSource | undefined;
 }
 
@@ -125,6 +131,22 @@ export function isConfirmableValue(ordered: unknown, enumValues?: string[]): boo
   return false;
 }
 
+/**
+ * Whether a mirror could ever report the ordered value. An alias is not a
+ * vocabulary: on a submetered thermostat `power` is a boolean order to the
+ * cloud device and a wattage read from a clamp, so comparing them can only
+ * ever be false and the watchdog would alarm on every order (issue #901).
+ * Narrow on purpose: boolean against number, both ways, and nothing else.
+ * A boolean ordered against an ON/OFF enum is a real mirror, and stays one.
+ */
+export function mirrorCanReport(ordered: unknown, mirrorType: DataType | undefined): boolean {
+  if (mirrorType === undefined) return true;
+  const normalized = normalizeValue(ordered);
+  if (typeof normalized === "boolean") return mirrorType !== "number";
+  if (typeof normalized === "number") return mirrorType !== "boolean";
+  return true;
+}
+
 export class OrderConfirmationTracker {
   private readonly logger: Logger;
   private readonly pending: Map<string, PendingOrder> = new Map();
@@ -156,6 +178,15 @@ export class OrderConfirmationTracker {
       this.eventBus.onType("equipment.data.changed", (event) => {
         try {
           this.handleDataChanged(event.equipmentId, event.alias, event.value);
+        } catch (err) {
+          this.logger.error({ err }, "Confirmation check failed");
+        }
+      }),
+      // A device-level mirror is not bound to the equipment, so no
+      // equipment.data.changed will ever carry it (issue #901).
+      this.eventBus.onType("device.data.updated", (event) => {
+        try {
+          this.handleDeviceDataUpdated(event.deviceId, event.key, event.value);
         } catch (err) {
           this.logger.error({ err }, "Confirmation check failed");
         }
@@ -233,17 +264,17 @@ export class OrderConfirmationTracker {
       this.pending.delete(key);
     }
 
+    const { deviceIds, integrationIds, targets } = this.targetsFor(equipmentId, alias);
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
-    const mirror = bindings.find((b) => b.alias === alias);
-    // No observable effect (scenes, stateless orders) or a cross-vocabulary
-    // enum (cover CLOSE vs state CLOSED) — exempt. A carried-over alarm has
-    // nothing left to confirm it, so it is released here.
-    if (!mirror || !isConfirmableValue(value, mirror.enumValues)) {
+    const { mirror, deviceMirror } = this.resolveMirror(bindings, alias, value, deviceIds, targets);
+    // No observable effect (scenes, stateless orders), a cross-vocabulary enum
+    // (cover CLOSE vs state CLOSED), or nothing that could ever report this
+    // value — exempt. A carried-over alarm has nothing left to confirm it, so
+    // it is released here.
+    if ((!mirror && !deviceMirror) || !isConfirmableValue(value, mirror?.enumValues)) {
       if (previous?.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
       return;
     }
-
-    const { deviceIds, integrationIds } = this.targetsFor(equipmentId, alias);
 
     const entry: PendingOrder = {
       equipmentId,
@@ -261,12 +292,14 @@ export class OrderConfirmationTracker {
       confirmable: true,
       deviceIds,
       integrationIds,
+      ...(deviceMirror !== undefined ? { deviceMirror } : {}),
       source,
     };
 
     // Already in the ordered state (e.g. OFF ordered while already OFF):
     // nothing will change, confirm immediately.
-    if (valuesMatch(value, mirror.value)) {
+    const current = mirror ? mirror.value : this.readDeviceValue(deviceMirror);
+    if (valuesMatch(value, current)) {
       if (entry.alarmRaised) this.resolveAlarm(entry, "state finally confirmed");
       return;
     }
@@ -285,6 +318,67 @@ export class OrderConfirmationTracker {
   }
 
   /**
+   * Where the effect of this order will be observed.
+   *
+   * The mirror used to be "any data binding carrying the order's alias", which
+   * assumes an alias means one thing per equipment. It does not: on a
+   * submetered thermostat `power` is both the boolean sent to the cloud device
+   * and the wattage read from a clamp, and the tracker then compared `true` to
+   * `646` on every order and alarmed 15 times out of 15 (issue #901).
+   *
+   * Order of preference:
+   *   1. a binding on the very device the order was sent to;
+   *   2. the established cross-device binding, when it could report the value;
+   *   3. the ordered device's own data under the order key, which is where a
+   *      cloud thermostat publishes the state nobody bound;
+   *   4. nothing, and the order is tracked without an alarm.
+   */
+  private resolveMirror(
+    bindings: DataBindingWithValue[],
+    alias: string,
+    value: unknown,
+    deviceIds: string[],
+    targets: { deviceId: string; key: string }[],
+  ): { mirror?: DataBindingWithValue; deviceMirror?: { deviceId: string; key: string } } {
+    const candidates = bindings.filter((b) => b.alias === alias);
+
+    const onTarget = candidates.find((b) => deviceIds.includes(b.deviceId));
+    if (onTarget) return { mirror: onTarget };
+
+    const crossDevice = candidates.find((b) => mirrorCanReport(value, b.type));
+    if (crossDevice) return { mirror: crossDevice };
+
+    for (const target of targets) {
+      const device = this.deviceManager.getById(target.deviceId);
+      if (!device) continue;
+      const current = this.deviceManager.getDeviceDataValue(
+        device.integrationId,
+        device.sourceDeviceId,
+        target.key,
+      );
+      // A key the device has never reported tells us nothing about whether it
+      // could: better no watchdog than one that can only expire.
+      if (current === null) continue;
+      if (!mirrorCanReport(value, typeof current === "number" ? "number" : "boolean")) continue;
+      return { deviceMirror: { deviceId: target.deviceId, key: target.key } };
+    }
+
+    return {};
+  }
+
+  /** Current value of a device-level mirror, for the already-in-state check. */
+  private readDeviceValue(mirror: { deviceId: string; key: string } | undefined): unknown {
+    if (!mirror) return undefined;
+    const device = this.deviceManager.getById(mirror.deviceId);
+    if (!device) return undefined;
+    return this.deviceManager.getDeviceDataValue(
+      device.integrationId,
+      device.sourceDeviceId,
+      mirror.key,
+    );
+  }
+
+  /**
    * The devices behind an order alias, and the integrations that own them.
    * The integrations are what #702 keys its replay on: at boot a device
    * persisted as online never emits a status change, so the integration
@@ -293,11 +387,16 @@ export class OrderConfirmationTracker {
   private targetsFor(
     equipmentId: string,
     alias: string,
-  ): { deviceIds: string[]; integrationIds: string[] } {
-    const deviceIds = this.equipmentManager
+  ): {
+    deviceIds: string[];
+    integrationIds: string[];
+    targets: { deviceId: string; key: string }[];
+  } {
+    const targets = this.equipmentManager
       .getOrderBindingsWithDetails(equipmentId)
       .filter((b) => b.alias === alias)
-      .map((b) => b.deviceId);
+      .map((b) => ({ deviceId: b.deviceId, key: b.key }));
+    const deviceIds = targets.map((t) => t.deviceId);
     const integrationIds = [
       ...new Set(
         deviceIds
@@ -305,7 +404,7 @@ export class OrderConfirmationTracker {
           .filter((id): id is string => id !== undefined),
       ),
     ];
-    return { deviceIds, integrationIds };
+    return { deviceIds, integrationIds, targets };
   }
 
   /** Whether every device behind the order bindings is currently offline. */
@@ -412,18 +511,34 @@ export class OrderConfirmationTracker {
 
   private handleDataChanged(equipmentId: string, alias: string, value: unknown): void {
     const entry = this.pending.get(`${equipmentId}:${alias}`);
-    if (!entry) return;
+    if (!entry || entry.deviceMirror) return;
+    this.confirm(entry, value);
+  }
+
+  /**
+   * The ordered device reporting its own state, for an order whose effect no
+   * equipment binding could mirror (issue #901).
+   */
+  private handleDeviceDataUpdated(deviceId: string, key: string, value: unknown): void {
+    for (const entry of this.pending.values()) {
+      if (entry.deviceMirror?.deviceId !== deviceId) continue;
+      if (entry.deviceMirror.key !== key) continue;
+      this.confirm(entry, value);
+    }
+  }
+
+  private confirm(entry: PendingOrder, value: unknown): void {
     if (!valuesMatch(entry.value, value)) return;
 
     if (entry.timer) clearTimeout(entry.timer);
     if (entry.alarmRaised) {
       this.resolveAlarm(entry, "state finally confirmed");
       this.logger.info(
-        { equipmentId, alias, value },
+        { equipmentId: entry.equipmentId, alias: entry.alias, value },
         "Unconfirmed order finally confirmed by equipment state",
       );
     }
-    this.pending.delete(`${equipmentId}:${alias}`);
+    this.pending.delete(`${entry.equipmentId}:${entry.alias}`);
   }
 
   private resolveAlarm(entry: PendingOrder, why: string): void {
